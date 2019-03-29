@@ -3,6 +3,7 @@ package blockwatch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"math/big"
 
@@ -27,17 +28,17 @@ type fakeClient struct {
 }
 
 // newFakeClient instantiates a fakeClient for testing purposes.
-func newFakeClient() *fakeClient {
+func newFakeClient() (*fakeClient, error) {
 	blob, err := ioutil.ReadFile("testdata/fake_client_fixtures.json")
 	if err != nil {
-		panic("Failed to read blockwatch fixture file")
+		return nil, errors.New("Failed to read blockwatch fixture file")
 	}
 
 	var fixtureData []fixtureTimestep
 	_ = json.Unmarshal(blob, &fixtureData)
 
 	var startTimestep uint = 0
-	return &fakeClient{startTimestep, fixtureData}
+	return &fakeClient{startTimestep, fixtureData}, nil
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
