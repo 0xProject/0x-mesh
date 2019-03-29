@@ -38,7 +38,7 @@ type BlockWatch struct {
 	BlockRetentionLimit uint
 	blockStack          *BlockStack
 	client              BlockClient
-	Events              chan *BlockEvent
+	Events              chan []*BlockEvent
 	Errors              chan error
 	ticker              *time.Ticker
 }
@@ -46,7 +46,7 @@ type BlockWatch struct {
 // NewBlockWatch creates a new BlockWatch instance.
 func NewBlockWatch(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client BlockClient) *BlockWatch {
 	blockStack := &BlockStack{}
-	events := make(chan *BlockEvent)
+	events := make(chan []*BlockEvent)
 	errors := make(chan error)
 	bs := &BlockWatch{startBlockDepth, blockRetentionLimit, blockStack, client, events, errors, nil}
 	return bs
@@ -93,44 +93,59 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 		return err
 	}
 
-	return bs.buildCanonicalChain(ctx, nextHeader)
+	events := []*BlockEvent{}
+	events, err = bs.buildCanonicalChain(ctx, nextHeader, events)
+	// Even if an error occurred, we still want to emit the events gathered since we might have
+	// popped blocks off the BlockStack and they won't be re-added
+	if len(events) != 0 {
+		go func() {
+			bs.Events <- events
+		}()
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader) error {
+func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader, events []*BlockEvent) ([]*BlockEvent, error) {
 	latestHeader := bs.blockStack.Peek()
 	// Is the blockStack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		bs.blockStack.Push(nextHeader)
-		bs.Events <- &BlockEvent{
+		events = append(events, &BlockEvent{
 			WasRemoved:  false,
 			BlockHeader: nextHeader,
-		}
-		return nil
+		})
+		return events, nil
 	}
 
 	poppedBlockHeader := bs.blockStack.Pop()
-	bs.Events <- &BlockEvent{
+	events = append(events, &BlockEvent{
 		WasRemoved:  true,
 		BlockHeader: poppedBlockHeader,
-	}
+	})
 
 	nextParentHeader, err := bs.client.HeaderByHash(ctx, nextHeader.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
 			// Noop and wait next polling interval. We remove the popped blocks
 			// and refetch them on the next polling interval.
-			return nil
+			return events, nil
 		}
-		return err
+		return events, err
 	}
-	bs.buildCanonicalChain(ctx, nextParentHeader)
+	events, err = bs.buildCanonicalChain(ctx, nextParentHeader, events)
+	if err != nil {
+		return events, err
+	}
 	bs.blockStack.Push(nextHeader)
-	bs.Events <- &BlockEvent{
+	events = append(events, &BlockEvent{
 		WasRemoved:  false,
 		BlockHeader: nextHeader,
-	}
+	})
 
-	return nil
+	return events, nil
 }
 
 // GetRetainedBlocks returns the blocks retained in-memory by the BlockWatch instance
