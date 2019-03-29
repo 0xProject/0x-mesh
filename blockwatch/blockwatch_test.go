@@ -1,10 +1,9 @@
-package tests
+package blockwatch
 
 import (
 	"context"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +15,7 @@ func TestBlockWatch(t *testing.T) {
 
 	var blockRetentionLimit uint = 15
 	startBlockDepth := rpc.LatestBlockNumber
-	bs := blockwatch.NewBlockWatch(startBlockDepth, blockRetentionLimit, fakeBlockClient)
+	bs := NewBlockWatch(startBlockDepth, blockRetentionLimit, fakeBlockClient)
 
 	for i := 0; i < fakeBlockClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeBlockClient.GetScenarioLabel()
