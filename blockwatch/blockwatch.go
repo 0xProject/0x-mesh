@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// MiniBlockHeader is a more succinct block representation then the one returned by go-ethereum.
+// MiniBlockHeader is a more succinct block header representation then the one returned by go-ethereum.
 // It contains all the information necessary to implement BlockWatch.
 type MiniBlockHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
@@ -18,8 +18,8 @@ type MiniBlockHeader struct {
 	Number *big.Int    `json:"number" gencodec:"required"`
 }
 
-// NewSuccintBlock returns a new MiniBlockHeader.
-func NewSuccintBlock(hash common.Hash, parent common.Hash, number *big.Int) *MiniBlockHeader {
+// NewMiniBlockHeader returns a new MiniBlockHeader.
+func NewMiniBlockHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniBlockHeader {
 	succintBlock := MiniBlockHeader{Hash: hash, Parent: parent, Number: number}
 	return &succintBlock
 }

@@ -29,23 +29,24 @@ func NewRpcBlockClient(rpcURL string) (*RpcBlockClient, error) {
 	return &RpcBlockClient{client}, nil
 }
 
-// HeaderByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
-// If not block exists with this number it will return a `ethereum.NotFound` error.
+// HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
+// block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (rbc *RpcBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error) {
 	header, err := rbc.client.HeaderByNumber(ctx, number)
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewSuccintBlock(header.Hash(), header.ParentHash, header.Number)
+	succintBlock := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
 	return succintBlock, nil
 }
 
-// HeaderByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
+// HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
+// a `ethereum.NotFound` error.
 func (rbc *RpcBlockClient) HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error) {
 	header, err := rbc.client.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewSuccintBlock(header.Hash(), header.ParentHash, header.Number)
+	succintBlock := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
 	return succintBlock, nil
 }

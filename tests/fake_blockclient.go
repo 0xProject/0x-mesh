@@ -41,8 +41,8 @@ func NewFakeBlockClient() *FakeBlockClient {
 	return &FakeBlockClient{startTimestep, fixtureData}
 }
 
-// HeaderByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
-// If not block exists with this number it will return a `ethereum.NotFound` error.
+// HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
+// block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (fc *FakeBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) (*blockwatch.MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	var miniBlockHeader blockwatch.MiniBlockHeader
@@ -58,7 +58,8 @@ func (fc *FakeBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) 
 	return &miniBlockHeader, nil
 }
 
-// HeaderByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
+// HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
+// a `ethereum.NotFound` error.
 func (fc *FakeBlockClient) HeaderByHash(ctx context.Context, hash common.Hash) (*blockwatch.MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	miniBlockHeader, ok := timestep.GetBlockByHash[hash]
