@@ -1,4 +1,4 @@
-package blockstream
+package blockwatch
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 // SuccinctBlock is a more succinct block representation then the one returned by go-ethereum.
-// It contains all the information necessary to implement BlockStream.
+// It contains all the information necessary to implement BlockWatch.
 type SuccinctBlock struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
@@ -24,36 +24,36 @@ func NewSuccintBlock(hash common.Hash, parent common.Hash, number *big.Int) *Suc
 	return &succintBlock
 }
 
-// BlockEvent describes a block event emitted by a BlockStream
+// BlockEvent describes a block event emitted by a BlockWatch
 type BlockEvent struct {
 	WasRemoved bool
 	Block      *SuccinctBlock
 }
 
-// BlockStream maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
+// BlockWatch maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
-type BlockStream struct {
+type BlockWatch struct {
 	startBlockDepth     rpc.BlockNumber
 	BlockRetentionLimit uint
 	blockStack          *BlockStack
 	client              BlockClient
-	Stream              chan *BlockEvent
+	Events              chan *BlockEvent
 	Errors              chan error
 	ticker              *time.Ticker
 }
 
-// NewBlockStream creates a new BlockStream instance.
-func NewBlockStream(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client BlockClient) *BlockStream {
+// NewBlockWatch creates a new BlockWatch instance.
+func NewBlockWatch(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client BlockClient) *BlockWatch {
 	blockStack := &BlockStack{}
-	stream := make(chan *BlockEvent)
+	events := make(chan *BlockEvent)
 	errors := make(chan error)
-	bs := &BlockStream{startBlockDepth, blockRetentionLimit, blockStack, client, stream, errors, nil}
+	bs := &BlockWatch{startBlockDepth, blockRetentionLimit, blockStack, client, events, errors, nil}
 	return bs
 }
 
-// StartPolling starts the BlockStream block poller.
-func (bs *BlockStream) StartPolling(ctx context.Context, pollingInterval time.Duration) {
+// StartPolling starts the BlockWatch block poller.
+func (bs *BlockWatch) StartPolling(ctx context.Context, pollingInterval time.Duration) {
 	bs.ticker = time.NewTicker(pollingInterval)
 	go func() {
 		for _ = range bs.ticker.C {
@@ -65,15 +65,15 @@ func (bs *BlockStream) StartPolling(ctx context.Context, pollingInterval time.Du
 	}()
 }
 
-// StopPolling stops the BlockStream block poller.
-func (bs *BlockStream) StopPolling() {
+// StopPolling stops the BlockWatch block poller.
+func (bs *BlockWatch) StopPolling() {
 	bs.ticker.Stop()
 }
 
 // PollNextBlock lets you manually poll for the next block to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (bs *BlockStream) PollNextBlock(ctx context.Context) error {
+func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 	var nextBlockNumber *big.Int
 	latestBlock := bs.blockStack.Peek()
 	if latestBlock == nil {
@@ -96,7 +96,7 @@ func (bs *BlockStream) PollNextBlock(ctx context.Context) error {
 	return bs.buildCanonicalChain(ctx, nextBlock)
 }
 
-func (bs *BlockStream) buildCanonicalChain(ctx context.Context, nextBlock *SuccinctBlock) error {
+func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *SuccinctBlock) error {
 	latestBlock := bs.blockStack.Peek()
 	// Is the blockStack empty or is it the next block?
 	if latestBlock == nil || nextBlock.Parent == latestBlock.Hash {
@@ -127,14 +127,14 @@ func (bs *BlockStream) buildCanonicalChain(ctx context.Context, nextBlock *Succi
 	return nil
 }
 
-func (bs *BlockStream) emitBlockEvent(block *SuccinctBlock, wasRemoved bool) {
-	bs.Stream <- &BlockEvent{
+func (bs *BlockWatch) emitBlockEvent(block *SuccinctBlock, wasRemoved bool) {
+	bs.Events <- &BlockEvent{
 		WasRemoved: wasRemoved,
 		Block:      block,
 	}
 }
 
-// GetRetainedBlocks returns the blocks retained in-memory by the BlockStream instance
-func (bs *BlockStream) GetRetainedBlocks() []*SuccinctBlock {
+// GetRetainedBlocks returns the blocks retained in-memory by the BlockWatch instance
+func (bs *BlockWatch) GetRetainedBlocks() []*SuccinctBlock {
 	return bs.blockStack.data
 }

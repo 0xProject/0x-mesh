@@ -1,4 +1,4 @@
-package blockstream
+package blockwatch
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 // BlockClient defines the methods needed to satisfy the blockClient expected when
-// instantiating a BlockStream instance.
+// instantiating a BlockWatch instance.
 type BlockClient interface {
 	BlockByNumber(ctx context.Context, number *big.Int) (*SuccinctBlock, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*SuccinctBlock, error)

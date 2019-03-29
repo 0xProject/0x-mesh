@@ -7,18 +7,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/blockstream"
+	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// TestBlockstream tests that BlockStream properly stores up to blockRetentionLimit blocks in the correct
+// TestBlockWatch tests that BlockWatch properly stores up to blockRetentionLimit blocks in the correct
 // order and also emits block events in the proper order.
-func TestBlockstream(t *testing.T) {
+func TestBlockWatch(t *testing.T) {
 	fakeBlockClient := NewFakeBlockClient()
 
 	var blockRetentionLimit uint = 15
 	startBlockDepth := rpc.LatestBlockNumber
-	bs := blockstream.NewBlockStream(startBlockDepth, blockRetentionLimit, fakeBlockClient)
+	bs := blockwatch.NewBlockWatch(startBlockDepth, blockRetentionLimit, fakeBlockClient)
 
 	for i := 0; i < fakeBlockClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeBlockClient.GetScenarioLabel()
@@ -27,9 +27,9 @@ func TestBlockstream(t *testing.T) {
 		// If we expect events to be emitted, check them
 		if len(expectedBlockEvents) != 0 {
 			go func() {
-				var gotBlockEvents []*blockstream.BlockEvent
+				var gotBlockEvents []*blockwatch.BlockEvent
 				for i = 0; i <= len(expectedBlockEvents)-1; i++ {
-					gotBlockEvent := <-bs.Stream
+					gotBlockEvent := <-bs.Events
 					gotBlockEvents = append(gotBlockEvents, gotBlockEvent)
 				}
 				if !reflect.DeepEqual(expectedBlockEvents, gotBlockEvents) {
@@ -51,7 +51,7 @@ func TestBlockstream(t *testing.T) {
 		bs.PollNextBlock(context.Background())
 		retainedBlocks := bs.GetRetainedBlocks()
 		if uint(len(retainedBlocks)) > blockRetentionLimit {
-			t.Fatal("Blockstream retained more blocks then specified in block retention limit")
+			t.Fatal("BlockWatch retained more blocks then specified in block retention limit")
 		}
 		expectedRetainedBlocks := fakeBlockClient.ExpectedRetainedBlocks()
 		if !reflect.DeepEqual(retainedBlocks, expectedRetainedBlocks) {

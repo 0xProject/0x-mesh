@@ -1,4 +1,4 @@
-package blockstream
+package blockwatch
 
 // BlockStack allows performing basic stack operations on a stack of SuccinctBlocks.
 type BlockStack struct {
