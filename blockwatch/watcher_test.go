@@ -3,6 +3,7 @@ package blockwatch
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
@@ -31,8 +32,13 @@ func TestWatcher(t *testing.T) {
 		expectedEvents := fakeClient.GetEvents()
 		// If we expect events to be emitted, check them
 		if len(expectedEvents) != 0 {
-			gotEvents := <-bs.Events
-			assert.Equal(t, expectedEvents, gotEvents, scenarioLabel)
+			select {
+			case gotEvents := <-bs.Events:
+				assert.Equal(t, expectedEvents, gotEvents, scenarioLabel)
+
+			case <-time.After(3 * time.Second):
+				t.Fatal("Timed out waiting for Events channel to deliver expected events")
+			}
 		}
 
 		fakeClient.IncrementTimestep()
