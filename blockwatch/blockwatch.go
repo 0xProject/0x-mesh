@@ -101,14 +101,18 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *Succin
 	// Is the blockStack empty or is it the next block?
 	if latestBlock == nil || nextBlock.Parent == latestBlock.Hash {
 		bs.blockStack.Push(nextBlock)
-		wasRemoved := false
-		bs.emitBlockEvent(nextBlock, wasRemoved)
+		bs.Events <- &BlockEvent{
+			WasRemoved: false,
+			Block:      nextBlock,
+		}
 		return nil
 	}
 
 	poppedBlock := bs.blockStack.Pop()
-	wasRemoved := true
-	bs.emitBlockEvent(poppedBlock, wasRemoved)
+	bs.Events <- &BlockEvent{
+		WasRemoved: true,
+		Block:      poppedBlock,
+	}
 
 	nextBlockParent, err := bs.client.BlockByHash(ctx, nextBlock.Parent)
 	if err != nil {
@@ -121,17 +125,12 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *Succin
 	}
 	bs.buildCanonicalChain(ctx, nextBlockParent)
 	bs.blockStack.Push(nextBlock)
-	wasRemoved = false
-	bs.emitBlockEvent(nextBlock, wasRemoved)
+	bs.Events <- &BlockEvent{
+		WasRemoved: false,
+		Block:      nextBlock,
+	}
 
 	return nil
-}
-
-func (bs *BlockWatch) emitBlockEvent(block *SuccinctBlock, wasRemoved bool) {
-	bs.Events <- &BlockEvent{
-		WasRemoved: wasRemoved,
-		Block:      block,
-	}
 }
 
 // GetRetainedBlocks returns the blocks retained in-memory by the BlockWatch instance
