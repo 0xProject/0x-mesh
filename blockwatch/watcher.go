@@ -11,7 +11,7 @@ import (
 )
 
 // MiniBlockHeader is a more succinct block header representation then the one returned by go-ethereum.
-// It contains all the information necessary to implement BlockWatch.
+// It contains all the information necessary to implement Watcher.
 type MiniBlockHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
@@ -24,36 +24,36 @@ func NewMiniBlockHeader(hash common.Hash, parent common.Hash, number *big.Int) *
 	return &miniBlockHeader
 }
 
-// BlockEvent describes a block event emitted by a BlockWatch
-type BlockEvent struct {
+// Event describes a block event emitted by a Watcher
+type Event struct {
 	WasRemoved  bool
 	BlockHeader *MiniBlockHeader
 }
 
-// BlockWatch maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
+// Watcher maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
-type BlockWatch struct {
+type Watcher struct {
 	startBlockDepth     rpc.BlockNumber
 	BlockRetentionLimit uint
-	blockStack          *BlockStack
-	client              BlockClient
-	Events              chan []*BlockEvent
+	stack               *Stack
+	client              Client
+	Events              chan []*Event
 	Errors              chan error
 	ticker              *time.Ticker
 }
 
-// NewBlockWatch creates a new BlockWatch instance.
-func NewBlockWatch(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client BlockClient) *BlockWatch {
-	blockStack := &BlockStack{}
-	events := make(chan []*BlockEvent)
+// New creates a new Watcher instance.
+func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client Client) *Watcher {
+	stack := NewStack()
+	events := make(chan []*Event)
 	errors := make(chan error)
-	bs := &BlockWatch{startBlockDepth, blockRetentionLimit, blockStack, client, events, errors, nil}
+	bs := &Watcher{startBlockDepth, blockRetentionLimit, stack, client, events, errors, nil}
 	return bs
 }
 
-// StartPolling starts the BlockWatch block poller.
-func (bs *BlockWatch) StartPolling(ctx context.Context, pollingInterval time.Duration) {
+// StartPolling starts the Watcher block poller.
+func (bs *Watcher) StartPolling(ctx context.Context, pollingInterval time.Duration) {
 	bs.ticker = time.NewTicker(pollingInterval)
 	go func() {
 		for _ = range bs.ticker.C {
@@ -65,17 +65,17 @@ func (bs *BlockWatch) StartPolling(ctx context.Context, pollingInterval time.Dur
 	}()
 }
 
-// StopPolling stops the BlockWatch block poller.
-func (bs *BlockWatch) StopPolling() {
+// StopPolling stops the Watcher block poller.
+func (bs *Watcher) StopPolling() {
 	bs.ticker.Stop()
 }
 
 // PollNextBlock lets you manually poll for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
+func (bs *Watcher) PollNextBlock(ctx context.Context) error {
 	var nextBlockNumber *big.Int
-	latestHeader := bs.blockStack.Peek()
+	latestHeader := bs.stack.Peek()
 	if latestHeader == nil {
 		if bs.startBlockDepth == rpc.LatestBlockNumber {
 			nextBlockNumber = nil
@@ -93,10 +93,10 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 		return err
 	}
 
-	events := []*BlockEvent{}
+	events := []*Event{}
 	events, err = bs.buildCanonicalChain(ctx, nextHeader, events)
 	// Even if an error occurred, we still want to emit the events gathered since we might have
-	// popped blocks off the BlockStack and they won't be re-added
+	// popped blocks off the Stack and they won't be re-added
 	if len(events) != 0 {
 		go func() {
 			bs.Events <- events
@@ -108,20 +108,20 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 	return nil
 }
 
-func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader, events []*BlockEvent) ([]*BlockEvent, error) {
-	latestHeader := bs.blockStack.Peek()
-	// Is the blockStack empty or is it the next block?
+func (bs *Watcher) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader, events []*Event) ([]*Event, error) {
+	latestHeader := bs.stack.Peek()
+	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
-		bs.blockStack.Push(nextHeader)
-		events = append(events, &BlockEvent{
+		bs.stack.Push(nextHeader)
+		events = append(events, &Event{
 			WasRemoved:  false,
 			BlockHeader: nextHeader,
 		})
 		return events, nil
 	}
 
-	poppedBlockHeader := bs.blockStack.Pop()
-	events = append(events, &BlockEvent{
+	poppedBlockHeader := bs.stack.Pop()
+	events = append(events, &Event{
 		WasRemoved:  true,
 		BlockHeader: poppedBlockHeader,
 	})
@@ -139,8 +139,8 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniB
 	if err != nil {
 		return events, err
 	}
-	bs.blockStack.Push(nextHeader)
-	events = append(events, &BlockEvent{
+	bs.stack.Push(nextHeader)
+	events = append(events, &Event{
 		WasRemoved:  false,
 		BlockHeader: nextHeader,
 	})
@@ -148,7 +148,8 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniB
 	return events, nil
 }
 
-// GetRetainedBlocks returns the blocks retained in-memory by the BlockWatch instance
-func (bs *BlockWatch) GetRetainedBlocks() []*MiniBlockHeader {
-	return bs.blockStack.data
+// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
+// particularly performant and therefore should only be used for debugging and testing purposes.
+func (bs *Watcher) InspectRetainedBlocks() []*MiniBlockHeader {
+	return bs.stack.Inspect()
 }

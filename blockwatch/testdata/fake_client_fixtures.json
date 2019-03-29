@@ -26,7 +26,7 @@
         "number": 5
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -80,7 +80,7 @@
         "number": 6
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -149,7 +149,7 @@
         "number": 7
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -218,7 +218,7 @@
         "number": 7
       }
     ],
-    "blockEvents": [],
+    "Events": [],
     "scenarioLabel": "NO_NEW_BLOCK"
   },
   {
@@ -303,7 +303,7 @@
         "number": 8
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": true,
         "blockHeader": {
@@ -444,7 +444,7 @@
         "number": 9
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -568,7 +568,7 @@
         "number": 10
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -697,7 +697,7 @@
         "number": 11
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": true,
         "blockHeader": {
@@ -937,7 +937,7 @@
         "number": 12
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -1096,7 +1096,7 @@
         "number": 13
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -1290,7 +1290,7 @@
         "number": 14
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": true,
         "blockHeader": {
@@ -1563,7 +1563,7 @@
         "number": 15
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -1787,7 +1787,7 @@
         "number": 16
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -2006,7 +2006,7 @@
         "number": 17
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": true,
         "blockHeader": {
@@ -2432,7 +2432,7 @@
         "number": 18
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
@@ -2681,7 +2681,7 @@
         "number": 19
       }
     ],
-    "blockEvents": [
+    "Events": [
       {
         "wasRemoved": false,
         "blockHeader": {
