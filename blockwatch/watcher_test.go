@@ -11,7 +11,7 @@ import (
 // TestWatcher tests that Watcher properly stores up to blockRetentionLimit blocks in the correct
 // order and also emits block events in the proper order.
 func TestWatcher(t *testing.T) {
-	fakeClient := NewFakeClient()
+	fakeClient := newFakeClient()
 
 	var blockRetentionLimit uint = 15
 	startBlockDepth := rpc.LatestBlockNumber

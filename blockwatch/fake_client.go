@@ -20,14 +20,14 @@ type FixtureTimestep struct {
 	ScenarioLabel    string                          `json:"scenarioLabel" gencodec:"required"`
 }
 
-// FakeClient is a fake Client for testing purposes.
-type FakeClient struct {
+// fakeClient is a fake Client for testing purposes.
+type fakeClient struct {
 	currentTimestep uint
 	fixtureData     []FixtureTimestep
 }
 
-// NewFakeClient instantiates a FakeClient for testing purposes.
-func NewFakeClient() *FakeClient {
+// newFakeClient instantiates a fakeClient for testing purposes.
+func newFakeClient() *fakeClient {
 	blob, err := ioutil.ReadFile("testdata/fake_client_fixtures.json")
 	if err != nil {
 		panic("Failed to read blockwatch fixture file")
@@ -37,12 +37,12 @@ func NewFakeClient() *FakeClient {
 	_ = json.Unmarshal(blob, &fixtureData)
 
 	var startTimestep uint = 0
-	return &FakeClient{startTimestep, fixtureData}
+	return &fakeClient{startTimestep, fixtureData}
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *FakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	var miniBlockHeader MiniBlockHeader
 	var ok bool
@@ -59,7 +59,7 @@ func (fc *FakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*Min
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *FakeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	miniBlockHeader, ok := timestep.GetBlockByHash[hash]
 	if !ok {
@@ -69,28 +69,28 @@ func (fc *FakeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*Mini
 }
 
 // IncrementTimestep increments the timestep of the simulation.
-func (fc *FakeClient) IncrementTimestep() {
+func (fc *fakeClient) IncrementTimestep() {
 	fc.currentTimestep++
 }
 
 // NumberOfTimesteps returns the number of timesteps in the simulation
-func (fc *FakeClient) NumberOfTimesteps() int {
+func (fc *fakeClient) NumberOfTimesteps() int {
 	return len(fc.fixtureData)
 }
 
 // ExpectedRetainedBlocks returns the expected retained blocks at the current timestep.
-func (fc *FakeClient) ExpectedRetainedBlocks() []*MiniBlockHeader {
+func (fc *fakeClient) ExpectedRetainedBlocks() []*MiniBlockHeader {
 	return fc.fixtureData[fc.currentTimestep].GetCorrectChain
 }
 
 // GetScenarioLabel returns a label describing the test case being tested by the current timestep
 // of the simulation.
-func (fc *FakeClient) GetScenarioLabel() string {
+func (fc *fakeClient) GetScenarioLabel() string {
 	return fc.fixtureData[fc.currentTimestep].ScenarioLabel
 }
 
 // GetEvents returns the events in the order they should have been emitted by Watcher for
 // the current timestep of the simulation.
-func (fc *FakeClient) GetEvents() []*Event {
+func (fc *fakeClient) GetEvents() []*Event {
 	return fc.fixtureData[fc.currentTimestep].Events
 }
