@@ -10,24 +10,24 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// SuccinctBlock is a more succinct block representation then the one returned by go-ethereum.
+// MiniBlockHeader is a more succinct block representation then the one returned by go-ethereum.
 // It contains all the information necessary to implement BlockWatch.
-type SuccinctBlock struct {
+type MiniBlockHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
 	Number *big.Int    `json:"number" gencodec:"required"`
 }
 
-// NewSuccintBlock returns a new SuccinctBlock.
-func NewSuccintBlock(hash common.Hash, parent common.Hash, number *big.Int) *SuccinctBlock {
-	succintBlock := SuccinctBlock{Hash: hash, Parent: parent, Number: number}
+// NewSuccintBlock returns a new MiniBlockHeader.
+func NewSuccintBlock(hash common.Hash, parent common.Hash, number *big.Int) *MiniBlockHeader {
+	succintBlock := MiniBlockHeader{Hash: hash, Parent: parent, Number: number}
 	return &succintBlock
 }
 
 // BlockEvent describes a block event emitted by a BlockWatch
 type BlockEvent struct {
 	WasRemoved bool
-	Block      *SuccinctBlock
+	Block      *MiniBlockHeader
 }
 
 // BlockWatch maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
@@ -85,7 +85,7 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 	} else {
 		nextBlockNumber = big.NewInt(0).Add(latestBlock.Number, big.NewInt(1))
 	}
-	nextBlock, err := bs.client.BlockByNumber(ctx, nextBlockNumber)
+	nextBlock, err := bs.client.HeaderByNumber(ctx, nextBlockNumber)
 	if err != nil {
 		if err == ethereum.NotFound {
 			return nil // Noop and wait next polling interval
@@ -96,7 +96,7 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 	return bs.buildCanonicalChain(ctx, nextBlock)
 }
 
-func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *SuccinctBlock) error {
+func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *MiniBlockHeader) error {
 	latestBlock := bs.blockStack.Peek()
 	// Is the blockStack empty or is it the next block?
 	if latestBlock == nil || nextBlock.Parent == latestBlock.Hash {
@@ -114,7 +114,7 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *Succin
 		Block:      poppedBlock,
 	}
 
-	nextBlockParent, err := bs.client.BlockByHash(ctx, nextBlock.Parent)
+	nextBlockParent, err := bs.client.HeaderByHash(ctx, nextBlock.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
 			// Noop and wait next polling interval. We remove the popped blocks
@@ -134,6 +134,6 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlock *Succin
 }
 
 // GetRetainedBlocks returns the blocks retained in-memory by the BlockWatch instance
-func (bs *BlockWatch) GetRetainedBlocks() []*SuccinctBlock {
+func (bs *BlockWatch) GetRetainedBlocks() []*MiniBlockHeader {
 	return bs.blockStack.data
 }

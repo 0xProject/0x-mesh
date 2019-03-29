@@ -13,12 +13,12 @@ import (
 
 // FixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
 type FixtureTimestep struct {
-	GetLatestBlock   blockwatch.SuccinctBlock                 `json:"getLatestBlock"  gencodec:"required"`
-	GetBlockByNumber map[uint64]blockwatch.SuccinctBlock      `json:"getBlockByNumber"  gencodec:"required"`
-	GetBlockByHash   map[common.Hash]blockwatch.SuccinctBlock `json:"getBlockByHash"  gencodec:"required"`
-	GetCorrectChain  []*blockwatch.SuccinctBlock              `json:"getCorrectChain" gencodec:"required"`
-	BlockEvents      []*blockwatch.BlockEvent                 `json:"blockEvents" gencodec:"required"`
-	ScenarioLabel    string                                   `json:"scenarioLabel" gencodec:"required"`
+	GetLatestBlock   blockwatch.MiniBlockHeader                 `json:"getLatestBlock"  gencodec:"required"`
+	GetBlockByNumber map[uint64]blockwatch.MiniBlockHeader      `json:"getBlockByNumber"  gencodec:"required"`
+	GetBlockByHash   map[common.Hash]blockwatch.MiniBlockHeader `json:"getBlockByHash"  gencodec:"required"`
+	GetCorrectChain  []*blockwatch.MiniBlockHeader              `json:"getCorrectChain" gencodec:"required"`
+	BlockEvents      []*blockwatch.BlockEvent                   `json:"blockEvents" gencodec:"required"`
+	ScenarioLabel    string                                     `json:"scenarioLabel" gencodec:"required"`
 }
 
 // FakeBlockClient is a fake BlockClient for testing purposes.
@@ -41,31 +41,31 @@ func NewFakeBlockClient() *FakeBlockClient {
 	return &FakeBlockClient{startTimestep, fixtureData}
 }
 
-// BlockByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
+// HeaderByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
 // If not block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *FakeBlockClient) BlockByNumber(ctx context.Context, number *big.Int) (*blockwatch.SuccinctBlock, error) {
+func (fc *FakeBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) (*blockwatch.MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
-	var succinctBlock blockwatch.SuccinctBlock
+	var miniBlockHeader blockwatch.MiniBlockHeader
 	var ok bool
 	if number == nil {
-		succinctBlock = timestep.GetLatestBlock
+		miniBlockHeader = timestep.GetLatestBlock
 	} else {
-		succinctBlock, ok = timestep.GetBlockByNumber[number.Uint64()]
+		miniBlockHeader, ok = timestep.GetBlockByNumber[number.Uint64()]
 		if !ok {
 			return nil, ethereum.NotFound
 		}
 	}
-	return &succinctBlock, nil
+	return &miniBlockHeader, nil
 }
 
-// BlockByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *FakeBlockClient) BlockByHash(ctx context.Context, hash common.Hash) (*blockwatch.SuccinctBlock, error) {
+// HeaderByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
+func (fc *FakeBlockClient) HeaderByHash(ctx context.Context, hash common.Hash) (*blockwatch.MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
-	succinctBlock, ok := timestep.GetBlockByHash[hash]
+	miniBlockHeader, ok := timestep.GetBlockByHash[hash]
 	if !ok {
 		return nil, ethereum.NotFound
 	}
-	return &succinctBlock, nil
+	return &miniBlockHeader, nil
 }
 
 // IncrementTimestep increments the timestep of the simulation.
@@ -79,7 +79,7 @@ func (fc *FakeBlockClient) NumberOfTimesteps() int {
 }
 
 // ExpectedRetainedBlocks returns the expected retained blocks at the current timestep.
-func (fc *FakeBlockClient) ExpectedRetainedBlocks() []*blockwatch.SuccinctBlock {
+func (fc *FakeBlockClient) ExpectedRetainedBlocks() []*blockwatch.MiniBlockHeader {
 	return fc.fixtureData[fc.currentTimestep].GetCorrectChain
 }
 

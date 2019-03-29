@@ -11,8 +11,8 @@ import (
 // BlockClient defines the methods needed to satisfy the blockClient expected when
 // instantiating a BlockWatch instance.
 type BlockClient interface {
-	BlockByNumber(ctx context.Context, number *big.Int) (*SuccinctBlock, error)
-	BlockByHash(ctx context.Context, hash common.Hash) (*SuccinctBlock, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error)
+	HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error)
 }
 
 // RpcBlockClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
@@ -29,23 +29,23 @@ func NewRpcBlockClient(rpcURL string) (*RpcBlockClient, error) {
 	return &RpcBlockClient{client}, nil
 }
 
-// BlockByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
+// HeaderByNumber fetches a block by its number. If no `number` is supplied, it will return the latest block.
 // If not block exists with this number it will return a `ethereum.NotFound` error.
-func (rbc *RpcBlockClient) BlockByNumber(ctx context.Context, number *big.Int) (*SuccinctBlock, error) {
-	block, err := rbc.client.BlockByNumber(ctx, number)
+func (rbc *RpcBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error) {
+	header, err := rbc.client.HeaderByNumber(ctx, number)
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewSuccintBlock(block.Hash(), block.ParentHash(), block.Number())
+	succintBlock := NewSuccintBlock(header.Hash(), header.ParentHash, header.Number)
 	return succintBlock, nil
 }
 
-// BlockByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
-func (rbc *RpcBlockClient) BlockByHash(ctx context.Context, hash common.Hash) (*SuccinctBlock, error) {
-	block, err := rbc.client.BlockByHash(ctx, hash)
+// HeaderByHash fetches a block by its block hash. If not block exists with this number it will return a `ethereum.NotFound` error.
+func (rbc *RpcBlockClient) HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error) {
+	header, err := rbc.client.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewSuccintBlock(block.Hash(), block.ParentHash(), block.Number())
+	succintBlock := NewSuccintBlock(header.Hash(), header.ParentHash, header.Number)
 	return succintBlock, nil
 }
