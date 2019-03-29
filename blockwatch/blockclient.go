@@ -36,8 +36,8 @@ func (rbc *RpcBlockClient) HeaderByNumber(ctx context.Context, number *big.Int) 
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
-	return succintBlock, nil
+	miniBlockHeader := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
+	return miniBlockHeader, nil
 }
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
@@ -47,6 +47,6 @@ func (rbc *RpcBlockClient) HeaderByHash(ctx context.Context, hash common.Hash) (
 	if err != nil {
 		return nil, err
 	}
-	succintBlock := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
-	return succintBlock, nil
+	miniBlockHeader := NewMiniBlockHeader(header.Hash(), header.ParentHash, header.Number)
+	return miniBlockHeader, nil
 }

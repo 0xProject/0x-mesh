@@ -20,8 +20,8 @@ type MiniBlockHeader struct {
 
 // NewMiniBlockHeader returns a new MiniBlockHeader.
 func NewMiniBlockHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniBlockHeader {
-	succintBlock := MiniBlockHeader{Hash: hash, Parent: parent, Number: number}
-	return &succintBlock
+	miniBlockHeader := MiniBlockHeader{Hash: hash, Parent: parent, Number: number}
+	return &miniBlockHeader
 }
 
 // BlockEvent describes a block event emitted by a BlockWatch
