@@ -10,8 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// FixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
-type FixtureTimestep struct {
+// fixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
+type fixtureTimestep struct {
 	GetLatestBlock   MiniBlockHeader                 `json:"getLatestBlock"  gencodec:"required"`
 	GetBlockByNumber map[uint64]MiniBlockHeader      `json:"getBlockByNumber"  gencodec:"required"`
 	GetBlockByHash   map[common.Hash]MiniBlockHeader `json:"getBlockByHash"  gencodec:"required"`
@@ -23,7 +23,7 @@ type FixtureTimestep struct {
 // fakeClient is a fake Client for testing purposes.
 type fakeClient struct {
 	currentTimestep uint
-	fixtureData     []FixtureTimestep
+	fixtureData     []fixtureTimestep
 }
 
 // newFakeClient instantiates a fakeClient for testing purposes.
@@ -33,7 +33,7 @@ func newFakeClient() *fakeClient {
 		panic("Failed to read blockwatch fixture file")
 	}
 
-	var fixtureData []FixtureTimestep
+	var fixtureData []fixtureTimestep
 	_ = json.Unmarshal(blob, &fixtureData)
 
 	var startTimestep uint = 0
