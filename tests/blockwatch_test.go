@@ -50,9 +50,6 @@ func TestBlockWatch(t *testing.T) {
 
 		bs.PollNextBlock(context.Background())
 		retainedBlocks := bs.GetRetainedBlocks()
-		if uint(len(retainedBlocks)) > blockRetentionLimit {
-			t.Fatal("BlockWatch retained more blocks then specified in block retention limit")
-		}
 		expectedRetainedBlocks := fakeBlockClient.ExpectedRetainedBlocks()
 		if !reflect.DeepEqual(retainedBlocks, expectedRetainedBlocks) {
 			retainedBlocksJson, err := json.MarshalIndent(retainedBlocks, "", "	")
