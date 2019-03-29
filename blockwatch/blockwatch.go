@@ -70,22 +70,22 @@ func (bs *BlockWatch) StopPolling() {
 	bs.ticker.Stop()
 }
 
-// PollNextBlock lets you manually poll for the next block to be added to the block stack.
+// PollNextBlock lets you manually poll for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
 func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 	var nextBlockNumber *big.Int
-	latestBlockHeader := bs.blockStack.Peek()
-	if latestBlockHeader == nil {
+	latestHeader := bs.blockStack.Peek()
+	if latestHeader == nil {
 		if bs.startBlockDepth == rpc.LatestBlockNumber {
 			nextBlockNumber = nil
 		} else {
 			nextBlockNumber = big.NewInt(int64(bs.startBlockDepth))
 		}
 	} else {
-		nextBlockNumber = big.NewInt(0).Add(latestBlockHeader.Number, big.NewInt(1))
+		nextBlockNumber = big.NewInt(0).Add(latestHeader.Number, big.NewInt(1))
 	}
-	nextBlockHeader, err := bs.client.HeaderByNumber(ctx, nextBlockNumber)
+	nextHeader, err := bs.client.HeaderByNumber(ctx, nextBlockNumber)
 	if err != nil {
 		if err == ethereum.NotFound {
 			return nil // Noop and wait next polling interval
@@ -93,28 +93,28 @@ func (bs *BlockWatch) PollNextBlock(ctx context.Context) error {
 		return err
 	}
 
-	return bs.buildCanonicalChain(ctx, nextBlockHeader)
+	return bs.buildCanonicalChain(ctx, nextHeader)
 }
 
-func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlockHeader *MiniBlockHeader) error {
-	latestBlockHeader := bs.blockStack.Peek()
+func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader) error {
+	latestHeader := bs.blockStack.Peek()
 	// Is the blockStack empty or is it the next block?
-	if latestBlockHeader == nil || nextBlockHeader.Parent == latestBlockHeader.Hash {
-		bs.blockStack.Push(nextBlockHeader)
+	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
+		bs.blockStack.Push(nextHeader)
 		bs.Events <- &BlockEvent{
 			WasRemoved:  false,
-			BlockHeader: nextBlockHeader,
+			BlockHeader: nextHeader,
 		}
 		return nil
 	}
 
-	poppedBlock := bs.blockStack.Pop()
+	poppedBlockHeader := bs.blockStack.Pop()
 	bs.Events <- &BlockEvent{
 		WasRemoved:  true,
-		BlockHeader: poppedBlock,
+		BlockHeader: poppedBlockHeader,
 	}
 
-	nextBlockParentHeader, err := bs.client.HeaderByHash(ctx, nextBlockHeader.Parent)
+	nextParentHeader, err := bs.client.HeaderByHash(ctx, nextHeader.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
 			// Noop and wait next polling interval. We remove the popped blocks
@@ -123,11 +123,11 @@ func (bs *BlockWatch) buildCanonicalChain(ctx context.Context, nextBlockHeader *
 		}
 		return err
 	}
-	bs.buildCanonicalChain(ctx, nextBlockParentHeader)
-	bs.blockStack.Push(nextBlockHeader)
+	bs.buildCanonicalChain(ctx, nextParentHeader)
+	bs.blockStack.Push(nextHeader)
 	bs.Events <- &BlockEvent{
 		WasRemoved:  false,
-		BlockHeader: nextBlockHeader,
+		BlockHeader: nextHeader,
 	}
 
 	return nil
