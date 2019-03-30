@@ -52,7 +52,16 @@ func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client
 	stack := NewStack(blockRetentionLimit)
 	events := make(chan []*Event)
 	errors := make(chan error)
-	bs := &Watcher{startBlockDepth: startBlockDepth, blockRetentionLimit: blockRetentionLimit, stack: stack, client: client, Events: events, Errors: errors, ticker: nil, tickerCancelFunc: nil}
+	bs := &Watcher{
+		Events:              events,
+		Errors:              errors,
+		blockRetentionLimit: blockRetentionLimit,
+		startBlockDepth:     startBlockDepth,
+		stack:               stack,
+		client:              client,
+		ticker:              nil,
+		tickerCancelFunc:    nil,
+	}
 	return bs
 }
 
