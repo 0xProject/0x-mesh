@@ -12,10 +12,10 @@ import (
 
 // fixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
 type fixtureTimestep struct {
-	GetLatestBlock   MiniBlockHeader                 `json:"getLatestBlock"  gencodec:"required"`
-	GetBlockByNumber map[uint64]MiniBlockHeader      `json:"getBlockByNumber"  gencodec:"required"`
-	GetBlockByHash   map[common.Hash]MiniBlockHeader `json:"getBlockByHash"  gencodec:"required"`
-	GetCorrectChain  []*MiniBlockHeader              `json:"getCorrectChain" gencodec:"required"`
+	GetLatestBlock   MiniHeader                 `json:"getLatestBlock"  gencodec:"required"`
+	GetBlockByNumber map[uint64]MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
+	GetBlockByHash   map[common.Hash]MiniHeader `json:"getBlockByHash"  gencodec:"required"`
+	GetCorrectChain  []*MiniHeader              `json:"getCorrectChain" gencodec:"required"`
 	Events           []*Event                        `json:"Events" gencodec:"required"`
 	ScenarioLabel    string                          `json:"scenarioLabel" gencodec:"required"`
 }
@@ -42,30 +42,30 @@ func newFakeClient() (*fakeClient, error) {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByNumber(number *big.Int) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
-	var miniBlockHeader MiniBlockHeader
+	var miniHeader MiniHeader
 	var ok bool
 	if number == nil {
-		miniBlockHeader = timestep.GetLatestBlock
+		miniHeader = timestep.GetLatestBlock
 	} else {
-		miniBlockHeader, ok = timestep.GetBlockByNumber[number.Uint64()]
+		miniHeader, ok = timestep.GetBlockByNumber[number.Uint64()]
 		if !ok {
 			return nil, ethereum.NotFound
 		}
 	}
-	return &miniBlockHeader, nil
+	return &miniHeader, nil
 }
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByHash(hash common.Hash) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
-	miniBlockHeader, ok := timestep.GetBlockByHash[hash]
+	miniHeader, ok := timestep.GetBlockByHash[hash]
 	if !ok {
 		return nil, ethereum.NotFound
 	}
-	return &miniBlockHeader, nil
+	return &miniHeader, nil
 }
 
 // IncrementTimestep increments the timestep of the simulation.
@@ -79,7 +79,7 @@ func (fc *fakeClient) NumberOfTimesteps() int {
 }
 
 // ExpectedRetainedBlocks returns the expected retained blocks at the current timestep.
-func (fc *fakeClient) ExpectedRetainedBlocks() []*MiniBlockHeader {
+func (fc *fakeClient) ExpectedRetainedBlocks() []*MiniHeader {
 	return fc.fixtureData[fc.currentTimestep].GetCorrectChain
 }
 

@@ -12,24 +12,24 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// MiniBlockHeader is a more succinct block header representation then the one returned by go-ethereum.
+// MiniHeader is a more succinct block header representation then the one returned by go-ethereum.
 // It contains all the information necessary to implement Watcher.
-type MiniBlockHeader struct {
+type MiniHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
 	Number *big.Int    `json:"number" gencodec:"required"`
 }
 
-// NewMiniBlockHeader returns a new MiniBlockHeader.
-func NewMiniBlockHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniBlockHeader {
-	miniBlockHeader := MiniBlockHeader{Hash: hash, Parent: parent, Number: number}
-	return &miniBlockHeader
+// NewMiniHeader returns a new MiniHeader.
+func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniHeader {
+	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number}
+	return &miniHeader
 }
 
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	WasRemoved  bool
-	BlockHeader *MiniBlockHeader
+	BlockHeader *MiniHeader
 }
 
 // Watcher maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
@@ -132,7 +132,7 @@ func (bs *Watcher) PollNextBlock() error {
 	return nil
 }
 
-func (bs *Watcher) buildCanonicalChain(nextHeader *MiniBlockHeader, events []*Event) ([]*Event, error) {
+func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) ([]*Event, error) {
 	latestHeader := bs.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
@@ -174,6 +174,6 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniBlockHeader, events []*Ev
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
-func (bs *Watcher) InspectRetainedBlocks() []*MiniBlockHeader {
+func (bs *Watcher) InspectRetainedBlocks() []*MiniHeader {
 	return bs.stack.Inspect()
 }
