@@ -36,9 +36,9 @@ type Event struct {
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
-	blockRetentionLimit int
 	Events              chan []*Event
 	Errors              chan error
+	blockRetentionLimit int
 	startBlockDepth     rpc.BlockNumber
 	stack               *Stack
 	client              Client
