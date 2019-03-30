@@ -1,7 +1,6 @@
 package blockwatch
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -43,7 +42,7 @@ func newFakeClient() (*fakeClient, error) {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByNumber(number *big.Int) (*MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	var miniBlockHeader MiniBlockHeader
 	var ok bool
@@ -60,7 +59,7 @@ func (fc *fakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*Min
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*MiniBlockHeader, error) {
+func (fc *fakeClient) HeaderByHash(hash common.Hash) (*MiniBlockHeader, error) {
 	timestep := fc.fixtureData[fc.currentTimestep]
 	miniBlockHeader, ok := timestep.GetBlockByHash[hash]
 	if !ok {

@@ -1,7 +1,6 @@
 package blockwatch
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -24,7 +23,7 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		bs.PollNextBlock(context.Background())
+		bs.PollNextBlock()
 		retainedBlocks := bs.InspectRetainedBlocks()
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)

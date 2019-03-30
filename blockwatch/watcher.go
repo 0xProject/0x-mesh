@@ -2,7 +2,9 @@ package blockwatch
 
 import (
 	"context"
+	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -41,6 +43,8 @@ type Watcher struct {
 	Events              chan []*Event
 	Errors              chan error
 	ticker              *time.Ticker
+	tickerCancelFunc    context.CancelFunc
+	tickerMut           sync.Mutex
 }
 
 // New creates a new Watcher instance.
@@ -48,32 +52,49 @@ func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client Clien
 	stack := NewStack()
 	events := make(chan []*Event)
 	errors := make(chan error)
-	bs := &Watcher{startBlockDepth, blockRetentionLimit, stack, client, events, errors, nil}
+	bs := &Watcher{startBlockDepth: startBlockDepth, BlockRetentionLimit: blockRetentionLimit, stack: stack, client: client, Events: events, Errors: errors, ticker: nil, tickerCancelFunc: nil}
 	return bs
 }
 
 // StartPolling starts the Watcher block poller.
-func (bs *Watcher) StartPolling(ctx context.Context, pollingInterval time.Duration) {
+func (bs *Watcher) StartPolling(pollingInterval time.Duration) error {
+	bs.tickerMut.Lock()
+	defer bs.tickerMut.Unlock()
+	if bs.ticker != nil {
+		return errors.New("cannot start polling more than once")
+	}
 	bs.ticker = time.NewTicker(pollingInterval)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	bs.tickerCancelFunc = cancelFn
 	go func() {
-		for _ = range bs.ticker.C {
-			err := bs.PollNextBlock(ctx)
-			if err != nil {
-				bs.Errors <- err
+		for {
+			select {
+			case <-bs.ticker.C:
+				err := bs.PollNextBlock()
+				if err != nil {
+					bs.Errors <- err
+				}
+			case <-ctx.Done():
+				// The context was cancelled or timed out, etc. End the goroutine by returning.
+				return
 			}
 		}
 	}()
+	return nil
 }
 
 // StopPolling stops the Watcher block poller.
 func (bs *Watcher) StopPolling() {
+	bs.tickerMut.Lock()
+	defer bs.tickerMut.Unlock()
 	bs.ticker.Stop()
+	bs.tickerCancelFunc()
 }
 
 // PollNextBlock lets you manually poll for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (bs *Watcher) PollNextBlock(ctx context.Context) error {
+func (bs *Watcher) PollNextBlock() error {
 	var nextBlockNumber *big.Int
 	latestHeader := bs.stack.Peek()
 	if latestHeader == nil {
@@ -85,7 +106,7 @@ func (bs *Watcher) PollNextBlock(ctx context.Context) error {
 	} else {
 		nextBlockNumber = big.NewInt(0).Add(latestHeader.Number, big.NewInt(1))
 	}
-	nextHeader, err := bs.client.HeaderByNumber(ctx, nextBlockNumber)
+	nextHeader, err := bs.client.HeaderByNumber(nextBlockNumber)
 	if err != nil {
 		if err == ethereum.NotFound {
 			return nil // Noop and wait next polling interval
@@ -94,10 +115,13 @@ func (bs *Watcher) PollNextBlock(ctx context.Context) error {
 	}
 
 	events := []*Event{}
-	events, err = bs.buildCanonicalChain(ctx, nextHeader, events)
+	events, err = bs.buildCanonicalChain(nextHeader, events)
 	// Even if an error occurred, we still want to emit the events gathered since we might have
 	// popped blocks off the Stack and they won't be re-added
 	if len(events) != 0 {
+		// TODO(fabio): This could be a memory leak if the channel consumer does not receive all
+		// events from the bs.Events channel. To fix this, we would need to `select` on sending
+		// to the Events channel and returning if a value is received on chan `ctx.Done()`
 		go func() {
 			bs.Events <- events
 		}()
@@ -108,7 +132,7 @@ func (bs *Watcher) PollNextBlock(ctx context.Context) error {
 	return nil
 }
 
-func (bs *Watcher) buildCanonicalChain(ctx context.Context, nextHeader *MiniBlockHeader, events []*Event) ([]*Event, error) {
+func (bs *Watcher) buildCanonicalChain(nextHeader *MiniBlockHeader, events []*Event) ([]*Event, error) {
 	latestHeader := bs.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
@@ -126,7 +150,7 @@ func (bs *Watcher) buildCanonicalChain(ctx context.Context, nextHeader *MiniBloc
 		BlockHeader: poppedBlockHeader,
 	})
 
-	nextParentHeader, err := bs.client.HeaderByHash(ctx, nextHeader.Parent)
+	nextParentHeader, err := bs.client.HeaderByHash(nextHeader.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
 			// Noop and wait next polling interval. We remove the popped blocks
@@ -135,7 +159,7 @@ func (bs *Watcher) buildCanonicalChain(ctx context.Context, nextHeader *MiniBloc
 		}
 		return events, err
 	}
-	events, err = bs.buildCanonicalChain(ctx, nextParentHeader, events)
+	events, err = bs.buildCanonicalChain(nextParentHeader, events)
 	if err != nil {
 		return events, err
 	}
