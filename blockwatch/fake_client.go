@@ -16,8 +16,8 @@ type fixtureTimestep struct {
 	GetBlockByNumber map[uint64]MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
 	GetBlockByHash   map[common.Hash]MiniHeader `json:"getBlockByHash"  gencodec:"required"`
 	GetCorrectChain  []*MiniHeader              `json:"getCorrectChain" gencodec:"required"`
-	Events           []*Event                        `json:"Events" gencodec:"required"`
-	ScenarioLabel    string                          `json:"scenarioLabel" gencodec:"required"`
+	BlockEvents      []*Event                   `json:"blockEvents" gencodec:"required"`
+	ScenarioLabel    string                     `json:"scenarioLabel" gencodec:"required"`
 }
 
 // fakeClient is a fake Client for testing purposes.
@@ -92,5 +92,5 @@ func (fc *fakeClient) GetScenarioLabel() string {
 // GetEvents returns the events in the order they should have been emitted by Watcher for
 // the current timestep of the simulation.
 func (fc *fakeClient) GetEvents() []*Event {
-	return fc.fixtureData[fc.currentTimestep].Events
+	return fc.fixtureData[fc.currentTimestep].BlockEvents
 }

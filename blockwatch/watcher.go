@@ -26,9 +26,22 @@ func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniH
 	return &miniHeader
 }
 
+// EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
+// and added to our representation of the chain. During a block re-org, a block previously stored
+// can be removed from the list. Lastly, if more then blockRetentionLimit blocks have been discovered,
+// the oldest block stored will be retired (e.g., no longer tracked, but still considered part of the
+// canonical chain).
+type EventType int
+
+const (
+	Added EventType = iota
+	Removed
+	Retire
+)
+
 // Event describes a block event emitted by a Watcher
 type Event struct {
-	WasRemoved  bool
+	Type        EventType
 	BlockHeader *MiniHeader
 }
 
@@ -151,17 +164,23 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 	latestHeader := bs.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
-		bs.stack.Push(nextHeader)
+		retiredBlock := bs.stack.Push(nextHeader)
 		events = append(events, &Event{
-			WasRemoved:  false,
+			Type:        Added,
 			BlockHeader: nextHeader,
 		})
+		if retiredBlock != nil {
+			events = append(events, &Event{
+				Type:        Retire,
+				BlockHeader: retiredBlock,
+			})
+		}
 		return events, nil
 	}
 
 	poppedBlockHeader := bs.stack.Pop()
 	events = append(events, &Event{
-		WasRemoved:  true,
+		Type:        Removed,
 		BlockHeader: poppedBlockHeader,
 	})
 
@@ -178,11 +197,17 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 	if err != nil {
 		return events, err
 	}
-	bs.stack.Push(nextHeader)
+	retiredBlock := bs.stack.Push(nextHeader)
 	events = append(events, &Event{
-		WasRemoved:  false,
+		Type:        Added,
 		BlockHeader: nextHeader,
 	})
+	if retiredBlock != nil {
+		events = append(events, &Event{
+			Type:        Retire,
+			BlockHeader: retiredBlock,
+		})
+	}
 
 	return events, nil
 }

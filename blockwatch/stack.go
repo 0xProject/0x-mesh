@@ -30,15 +30,18 @@ func (bs *Stack) Pop() *MiniHeader {
 	return block.Value.(*MiniHeader)
 }
 
-// Push pushes a block header onto the block stack.
-func (bs *Stack) Push(block *MiniHeader) {
+// Push pushes a block header onto the block stack. If the stack limit is reached,
+// it will remove the oldest block header and return it.
+func (bs *Stack) Push(block *MiniHeader) *MiniHeader {
 	bs.mut.Lock()
 	defer bs.mut.Unlock()
 	bs.list.PushFront(block)
 	if bs.list.Len() > bs.limit {
 		lastElement := bs.list.Back()
 		bs.list.Remove(lastElement)
+		return lastElement.Value.(*MiniHeader)
 	}
+	return nil
 }
 
 // Peek returns the latest block header from the block stack without removing it.
