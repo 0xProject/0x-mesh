@@ -16,7 +16,7 @@ func TestWatcher(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	var blockRetentionLimit uint = 15
+	blockRetentionLimit := 15
 	startBlockDepth := rpc.LatestBlockNumber
 	bs := New(startBlockDepth, blockRetentionLimit, fakeClient)
 

@@ -32,27 +32,27 @@ type Event struct {
 	BlockHeader *MiniHeader
 }
 
-// Watcher maintains a consistent representation of the latest `BlockRetentionLimit` blocks,
+// Watcher maintains a consistent representation of the latest `blockRetentionLimit` blocks,
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
-	startBlockDepth     rpc.BlockNumber
-	BlockRetentionLimit uint
-	stack               *Stack
-	client              Client
+	blockRetentionLimit int
 	Events              chan []*Event
 	Errors              chan error
+	startBlockDepth     rpc.BlockNumber
+	stack               *Stack
+	client              Client
 	ticker              *time.Ticker
 	tickerCancelFunc    context.CancelFunc
 	tickerMut           sync.Mutex
 }
 
 // New creates a new Watcher instance.
-func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit uint, client Client) *Watcher {
-	stack := NewStack()
+func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
+	stack := NewStack(blockRetentionLimit)
 	events := make(chan []*Event)
 	errors := make(chan error)
-	bs := &Watcher{startBlockDepth: startBlockDepth, BlockRetentionLimit: blockRetentionLimit, stack: stack, client: client, Events: events, Errors: errors, ticker: nil, tickerCancelFunc: nil}
+	bs := &Watcher{startBlockDepth: startBlockDepth, blockRetentionLimit: blockRetentionLimit, stack: stack, client: client, Events: events, Errors: errors, ticker: nil, tickerCancelFunc: nil}
 	return bs
 }
 

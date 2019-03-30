@@ -7,14 +7,17 @@ import (
 
 // Stack allows performing basic stack operations on a stack of MiniHeaders.
 type Stack struct {
-	list *list.List
-	mut  sync.Mutex
+	limit int
+	list  *list.List
+	mut   sync.Mutex
 }
 
-// NewStack instantiates a new stack.
-func NewStack() *Stack {
+// NewStack instantiates a new stack with the specified size limit. Once the size limit
+// is reached, adding additional blocks will evict the deepest block.
+func NewStack(limit int) *Stack {
 	return &Stack{
-		list: list.New(),
+		limit: limit,
+		list:  list.New(),
 	}
 }
 
@@ -32,6 +35,10 @@ func (bs *Stack) Push(block *MiniHeader) {
 	bs.mut.Lock()
 	defer bs.mut.Unlock()
 	bs.list.PushFront(block)
+	if bs.list.Len() > bs.limit {
+		lastElement := bs.list.Back()
+		bs.list.Remove(lastElement)
+	}
 }
 
 // Peek returns the latest block header from the block stack without removing it.
