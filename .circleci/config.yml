@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12-node
+    steps:
+      - checkout
+      - run: node --version
+      - run:
+          name: Set npm path
+          command: npm set prefix=/home/circleci/npm && echo 'export PATH=$HOME/circleci/npm/bin:$PATH' >> /home/circleci/.bashrc
+      - run:
+          name: Install yarn
+          command: npm i -g yarn@^1.15
+      - run:
+          name: Install dependencies
+          command: yarn install
+      - run:
+          name: Run Go tests
+          command: yarn test:go
+      - run:
+          name: Run WebAssembly tests
+          command: yarn test:wasm
