@@ -122,6 +122,12 @@ func (bs *Watcher) PollNextBlock() error {
 		// TODO(fabio): This could be a memory leak if the channel consumer does not receive all
 		// events from the bs.Events channel. To fix this, we would need to `select` on sending
 		// to the Events channel and returning if a value is received on chan `ctx.Done()`
+		// BUG(fabio): Although channels preserve the ordering with which values are sent into the
+		// channel, go-routines make no guarentees about when they are run. Since we use blocking
+		// channels, and use go routines to queue values, we are not guarenteed they will be sent in
+		// the order produced. This means we are guarenteed to receive the events of a particular polling
+		// interval in the correct order, but have no ordering guarentees on the events we receive from
+		// multiple polling intervals. This "bug" does not cause issues for our current use-cases of BlockWatch.
 		go func() {
 			bs.Events <- events
 		}()
