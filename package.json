@@ -2,7 +2,7 @@
   "name": "0x-mesh",
   "version": "0.0.1",
   "engines": {
-    "node": ">=10"
+    "node": ">=11"
   },
   "scripts": {
     "preinstall": "go get ./...",
