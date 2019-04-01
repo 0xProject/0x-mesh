@@ -1,14 +1,22 @@
 version: 2
 jobs:
   build:
+    environment:
+      BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.12-node
+      - image: circleci/golang:1.12
     steps:
       - checkout
-      - run: node --version
       - run:
-          name: Set npm path
-          command: npm set prefix=/home/circleci/npm && echo 'export PATH=$HOME/circleci/npm/bin:$PATH' >> /home/circleci/.bashrc
+          name: Install nvm
+          command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+      - run:
+          name: Configure nvm
+          command: export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      - run:
+          name: Install Node v11
+          command: nvm install 11
+      - run: node --version
       - run:
           name: Install yarn
           command: npm i -g yarn@^1.15
