@@ -55,9 +55,9 @@ type Watcher struct {
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
-	isWatching          bool                    // Whether the event notification loop is running
+	isWatching          bool                    // Whether the block poller is running
 	pollingInterval     time.Duration
-	tickerChan          <-chan time.Time
+	ticker              *time.Ticker
 
 	mu sync.RWMutex
 }
@@ -93,7 +93,7 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 
 	if !w.isWatching {
 		w.isWatching = true
-		w.tickerChan = time.NewTicker(w.pollingInterval).C
+		w.ticker = time.NewTicker(w.pollingInterval)
 		go w.startPolling()
 	}
 
@@ -108,11 +108,12 @@ func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
 
 func (w *Watcher) startPolling() {
 	for {
-		<-w.tickerChan
+		<-w.ticker.C
 
 		w.mu.Lock()
 		if w.blockScope.Count() == 0 {
 			w.isWatching = false
+			w.ticker.Stop()
 			w.mu.Unlock()
 			return
 		}

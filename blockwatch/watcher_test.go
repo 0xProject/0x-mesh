@@ -28,14 +28,17 @@ func TestWatcher(t *testing.T) {
 	// internal ticker channel
 	watcher.isWatching = true // When isWatching = true, `Subscribe` doesn't start the polling loop
 	sub := watcher.Subscribe(events)
-	tickerChan := make(chan time.Time)
-	watcher.tickerChan = tickerChan // Replace default ticker with our own custom channel
-	go watcher.startPolling()       // Start polling. Blocks waiting to receive from `tickerChan`
+	fakeTickerChan := make(chan time.Time, 1)
+	fakeTicker := &time.Ticker{
+		C: fakeTickerChan,
+	}
+	watcher.ticker = fakeTicker // Replace default ticker with our own custom ticker
+	go watcher.startPolling()   // Start polling. Blocks waiting to receive from `tickerChan`
 
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		tickerChan <- time.Now()          // Trigger block poll
+		fakeTickerChan <- time.Now()
 		time.Sleep(10 * time.Millisecond) // Ensure pollNextBlock runs
 
 		retainedBlocks := watcher.InspectRetainedBlocks()
