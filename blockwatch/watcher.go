@@ -139,7 +139,7 @@ func (w *Watcher) pollNextBlock() error {
 	latestHeader := w.stack.Peek()
 	if latestHeader == nil {
 		if w.startBlockDepth == rpc.LatestBlockNumber {
-			nextBlockNumber = nil
+			nextBlockNumber = nil // Fetch latest block
 		} else {
 			nextBlockNumber = big.NewInt(int64(w.startBlockDepth))
 		}
@@ -185,10 +185,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 		return events, nil
 	}
 
-	poppedBlockHeader := w.stack.Pop()
+	w.stack.Pop() // Pop latestHeader from the stack. We already have a reference to it.
 	events = append(events, &Event{
 		Type:        Removed,
-		BlockHeader: poppedBlockHeader,
+		BlockHeader: latestHeader,
 	})
 
 	nextParentHeader, err := w.client.HeaderByHash(nextHeader.Parent)
