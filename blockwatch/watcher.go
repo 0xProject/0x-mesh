@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -17,11 +18,12 @@ type MiniHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
 	Number *big.Int    `json:"number" gencodec:"required"`
+	Logs   []types.Log `json:"logs" gencodec:"required"`
 }
 
 // NewMiniHeader returns a new MiniHeader.
 func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniHeader {
-	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number}
+	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number, Logs: []types.Log{}}
 	return &miniHeader
 }
 
@@ -58,12 +60,13 @@ type Watcher struct {
 	isWatching          bool                    // Whether the block poller is running
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
+	withLogs            bool
 
 	mu sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
+func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, client Client) *Watcher {
 	stack := NewStack(blockRetentionLimit)
 	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
 	errorsChan := make(chan error, 5)
@@ -74,6 +77,7 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 		startBlockDepth:     startBlockDepth,
 		stack:               stack,
 		client:              client,
+		withLogs:            withLogs,
 	}
 	return bs
 }
@@ -171,6 +175,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	latestHeader := w.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
+		nextHeader, err := w.addLogs(nextHeader)
+		if err != nil {
+			return events, err
+		}
 		retiredBlock := w.stack.Push(nextHeader)
 		events = append(events, &Event{
 			Type:        Added,
@@ -204,6 +212,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	if err != nil {
 		return events, err
 	}
+	nextHeader, err = w.addLogs(nextHeader)
+	if err != nil {
+		return events, err
+	}
 	retiredBlock := w.stack.Push(nextHeader)
 	events = append(events, &Event{
 		Type:        Added,
@@ -217,4 +229,19 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	}
 
 	return events, nil
+}
+
+func (w *Watcher) addLogs(header *MiniHeader) (*MiniHeader, error) {
+	if !w.withLogs {
+		return header, nil
+	}
+	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
+		BlockHash: &header.Hash,
+		// TODO(fabio): Add topics (hash of event signatures we care about)
+	})
+	if err != nil {
+		return nil, err
+	}
+	header.Logs = logs
+	return header, nil
 }

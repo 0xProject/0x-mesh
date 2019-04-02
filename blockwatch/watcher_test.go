@@ -18,7 +18,8 @@ func TestWatcher(t *testing.T) {
 	pollingInterval := 1 * time.Second
 	blockRetentionLimit := 10
 	startBlockDepth := rpc.LatestBlockNumber
-	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, fakeClient)
+	withLogs := false
+	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, fakeClient)
 
 	// HACK(fabio): By default `blockwatch.Watcher` starts polling for blocks as soon as the first
 	// subscription is established. Since we want to control the polling interval, we hijack the
