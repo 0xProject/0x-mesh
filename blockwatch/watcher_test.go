@@ -14,26 +14,25 @@ func TestWatcher(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	// Polling interval unused because we hijack the tickerChan for this test
-	fauxPollingInterval := 1 * time.Second
+	// Polling interval unused because we hijack the ticker for this test
+	pollingInterval := 1 * time.Second
 	blockRetentionLimit := 10
 	startBlockDepth := rpc.LatestBlockNumber
-	watcher := New(fauxPollingInterval, startBlockDepth, blockRetentionLimit, fakeClient)
-
-	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
-	events := make(chan []*Event, 1)
+	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, fakeClient)
 
 	// HACK(fabio): By default `blockwatch.Watcher` starts polling for blocks as soon as the first
 	// subscription is established. Since we want to control the polling interval, we hijack the
 	// internal ticker channel
 	watcher.isWatching = true // When isWatching = true, `Subscribe` doesn't start the polling loop
+	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
+	events := make(chan []*Event, 1)
 	sub := watcher.Subscribe(events)
 	fakeTickerChan := make(chan time.Time, 1)
 	fakeTicker := &time.Ticker{
 		C: fakeTickerChan,
 	}
 	watcher.ticker = fakeTicker // Replace default ticker with our own custom ticker
-	go watcher.startPolling()   // Start polling. Blocks waiting to receive from `tickerChan`
+	go watcher.startPolling()   // Start polling. Blocks waiting to receive from ticker channel
 
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
