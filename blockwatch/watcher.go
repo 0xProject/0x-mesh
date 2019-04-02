@@ -48,6 +48,7 @@ type Event struct {
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
+	Errors              chan error
 	blockRetentionLimit int
 	startBlockDepth     rpc.BlockNumber
 	stack               *Stack
@@ -64,7 +65,10 @@ type Watcher struct {
 // New creates a new Watcher instance.
 func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
 	stack := NewStack(blockRetentionLimit)
+	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
+	errorsChan := make(chan error, 5)
 	bs := &Watcher{
+		Errors:              errorsChan,
 		pollingInterval:     pollingInterval,
 		blockRetentionLimit: blockRetentionLimit,
 		startBlockDepth:     startBlockDepth,
@@ -114,7 +118,15 @@ func (bs *Watcher) startPolling() {
 		}
 		bs.mu.Unlock()
 
-		bs.pollNextBlock()
+		err := bs.pollNextBlock()
+		if err != nil {
+			// Attempt to send errors but if buffered channel is full, we assume there is no
+			// interested consumer and drop them. The Watcher recovers gracefully from errors.
+			select {
+			case bs.Errors <- err:
+			default:
+			}
+		}
 	}
 }
 
