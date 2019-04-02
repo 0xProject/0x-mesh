@@ -22,33 +22,33 @@ func NewStack(limit int) *Stack {
 }
 
 // Pop removes and returns the latest block header on the block stack.
-func (bs *Stack) Pop() *MiniHeader {
-	bs.mut.Lock()
-	defer bs.mut.Unlock()
-	block := bs.list.Front()
-	bs.list.Remove(block)
+func (s *Stack) Pop() *MiniHeader {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	block := s.list.Front()
+	s.list.Remove(block)
 	return block.Value.(*MiniHeader)
 }
 
 // Push pushes a block header onto the block stack. If the stack limit is reached,
 // it will remove the oldest block header and return it.
-func (bs *Stack) Push(block *MiniHeader) *MiniHeader {
-	bs.mut.Lock()
-	defer bs.mut.Unlock()
-	bs.list.PushFront(block)
-	if bs.list.Len() > bs.limit {
-		lastElement := bs.list.Back()
-		bs.list.Remove(lastElement)
+func (s *Stack) Push(block *MiniHeader) *MiniHeader {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.list.PushFront(block)
+	if s.list.Len() > s.limit {
+		lastElement := s.list.Back()
+		s.list.Remove(lastElement)
 		return lastElement.Value.(*MiniHeader)
 	}
 	return nil
 }
 
 // Peek returns the latest block header from the block stack without removing it.
-func (bs *Stack) Peek() *MiniHeader {
-	bs.mut.Lock()
-	defer bs.mut.Unlock()
-	block := bs.list.Front()
+func (s *Stack) Peek() *MiniHeader {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	block := s.list.Front()
 	if block == nil {
 		return nil
 	}
@@ -57,11 +57,11 @@ func (bs *Stack) Peek() *MiniHeader {
 
 // Inspect returns all the block headers currently on the stack. This method should only be
 // used for debugging and testing purposes since it is not performant.
-func (bs *Stack) Inspect() []*MiniHeader {
-	bs.mut.Lock()
-	defer bs.mut.Unlock()
+func (s *Stack) Inspect() []*MiniHeader {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	blocks := []*MiniHeader{}
-	for e := bs.list.Back(); e != nil; e = e.Prev() {
+	for e := s.list.Back(); e != nil; e = e.Prev() {
 		blocks = append(blocks, e.Value.(*MiniHeader))
 	}
 	return blocks

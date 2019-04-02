@@ -84,17 +84,17 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 // consumers have unsubscribed, the block polling stops.
 // The sink channel should have ample buffer space to avoid blocking other subscribers.
 // Slow subscribers are not dropped.
-func (bs *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	// We need the mutex to reliably start/stop the update loop
-	bs.mu.Lock()
-	defer bs.mu.Unlock()
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-	sub := bs.blockScope.Track(bs.blockFeed.Subscribe(sink))
+	sub := w.blockScope.Track(w.blockFeed.Subscribe(sink))
 
-	if !bs.isWatching {
-		bs.isWatching = true
-		bs.tickerChan = time.NewTicker(bs.pollingInterval).C
-		go bs.startPolling()
+	if !w.isWatching {
+		w.isWatching = true
+		w.tickerChan = time.NewTicker(w.pollingInterval).C
+		go w.startPolling()
 	}
 
 	return sub
@@ -102,28 +102,28 @@ func (bs *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
-func (bs *Watcher) InspectRetainedBlocks() []*MiniHeader {
-	return bs.stack.Inspect()
+func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
+	return w.stack.Inspect()
 }
 
-func (bs *Watcher) startPolling() {
+func (w *Watcher) startPolling() {
 	for {
-		<-bs.tickerChan
+		<-w.tickerChan
 
-		bs.mu.Lock()
-		if bs.blockScope.Count() == 0 {
-			bs.isWatching = false
-			bs.mu.Unlock()
+		w.mu.Lock()
+		if w.blockScope.Count() == 0 {
+			w.isWatching = false
+			w.mu.Unlock()
 			return
 		}
-		bs.mu.Unlock()
+		w.mu.Unlock()
 
-		err := bs.pollNextBlock()
+		err := w.pollNextBlock()
 		if err != nil {
 			// Attempt to send errors but if buffered channel is full, we assume there is no
 			// interested consumer and drop them. The Watcher recovers gracefully from errors.
 			select {
-			case bs.Errors <- err:
+			case w.Errors <- err:
 			default:
 			}
 		}
@@ -133,19 +133,19 @@ func (bs *Watcher) startPolling() {
 // pollNextBlock polls for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (bs *Watcher) pollNextBlock() error {
+func (w *Watcher) pollNextBlock() error {
 	var nextBlockNumber *big.Int
-	latestHeader := bs.stack.Peek()
+	latestHeader := w.stack.Peek()
 	if latestHeader == nil {
-		if bs.startBlockDepth == rpc.LatestBlockNumber {
+		if w.startBlockDepth == rpc.LatestBlockNumber {
 			nextBlockNumber = nil
 		} else {
-			nextBlockNumber = big.NewInt(int64(bs.startBlockDepth))
+			nextBlockNumber = big.NewInt(int64(w.startBlockDepth))
 		}
 	} else {
 		nextBlockNumber = big.NewInt(0).Add(latestHeader.Number, big.NewInt(1))
 	}
-	nextHeader, err := bs.client.HeaderByNumber(nextBlockNumber)
+	nextHeader, err := w.client.HeaderByNumber(nextBlockNumber)
 	if err != nil {
 		if err == ethereum.NotFound {
 			return nil // Noop and wait next polling interval
@@ -154,11 +154,11 @@ func (bs *Watcher) pollNextBlock() error {
 	}
 
 	events := []*Event{}
-	events, err = bs.buildCanonicalChain(nextHeader, events)
+	events, err = w.buildCanonicalChain(nextHeader, events)
 	// Even if an error occurred, we still want to emit the events gathered since we might have
 	// popped blocks off the Stack and they won't be re-added
 	if len(events) != 0 {
-		bs.blockFeed.Send(events)
+		w.blockFeed.Send(events)
 	}
 	if err != nil {
 		return err
@@ -166,11 +166,11 @@ func (bs *Watcher) pollNextBlock() error {
 	return nil
 }
 
-func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) ([]*Event, error) {
-	latestHeader := bs.stack.Peek()
+func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) ([]*Event, error) {
+	latestHeader := w.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
-		retiredBlock := bs.stack.Push(nextHeader)
+		retiredBlock := w.stack.Push(nextHeader)
 		events = append(events, &Event{
 			Type:        Added,
 			BlockHeader: nextHeader,
@@ -184,13 +184,13 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 		return events, nil
 	}
 
-	poppedBlockHeader := bs.stack.Pop()
+	poppedBlockHeader := w.stack.Pop()
 	events = append(events, &Event{
 		Type:        Removed,
 		BlockHeader: poppedBlockHeader,
 	})
 
-	nextParentHeader, err := bs.client.HeaderByHash(nextHeader.Parent)
+	nextParentHeader, err := w.client.HeaderByHash(nextHeader.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
 			// Noop and wait next polling interval. We remove the popped blocks
@@ -199,11 +199,11 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 		}
 		return events, err
 	}
-	events, err = bs.buildCanonicalChain(nextParentHeader, events)
+	events, err = w.buildCanonicalChain(nextParentHeader, events)
 	if err != nil {
 		return events, err
 	}
-	retiredBlock := bs.stack.Push(nextHeader)
+	retiredBlock := w.stack.Push(nextHeader)
 	events = append(events, &Event{
 		Type:        Added,
 		BlockHeader: nextHeader,
