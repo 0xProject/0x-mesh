@@ -74,10 +74,12 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 	return bs
 }
 
-// Subscribe allows anyone subscribe to the block events emitted by the Watcher.
+// Subscribe allows one to subscribe to the block events emitted by the Watcher.
+// As soon as the first subscription is registered, the block poller is started.
+// To unsubscribe, simply call `Unsubscribe` on the returned subscription. When all
+// consumers have unsubscribed, the block polling stops.
 // The sink channel should have ample buffer space to avoid blocking other subscribers.
-// Slow subscribers are not dropped. To unsubscribe, simply call `Unsubscribe` on returned
-// subscription. When all consumers have unsubscribed, the block polling stops.
+// Slow subscribers are not dropped.
 func (bs *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	// We need the mutex to reliably start/stop the update loop
 	bs.mu.Lock()
