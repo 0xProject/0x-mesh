@@ -1,7 +1,6 @@
 package blockwatch
 
 import (
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -121,7 +120,6 @@ func (bs *Watcher) startPolling() {
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
 func (bs *Watcher) pollNextBlock() error {
-	fmt.Println("Polling!")
 	var nextBlockNumber *big.Int
 	latestHeader := bs.stack.Peek()
 	if latestHeader == nil {
