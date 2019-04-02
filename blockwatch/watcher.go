@@ -1,14 +1,14 @@
 package blockwatch
 
 import (
-	"context"
-	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -36,7 +36,7 @@ type EventType int
 const (
 	Added EventType = iota
 	Removed
-	Retire
+	Retired
 )
 
 // Event describes a block event emitted by a Watcher
@@ -49,74 +49,79 @@ type Event struct {
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
-	Events              chan []*Event
-	Errors              chan error
 	blockRetentionLimit int
 	startBlockDepth     rpc.BlockNumber
 	stack               *Stack
 	client              Client
-	ticker              *time.Ticker
-	tickerCancelFunc    context.CancelFunc
-	tickerMut           sync.Mutex
+	blockFeed           event.Feed
+	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
+	isWatching          bool                    // Whether the event notification loop is running
+	pollingInterval     time.Duration
+	tickerChan          <-chan time.Time
+
+	mu sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
+func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
 	stack := NewStack(blockRetentionLimit)
-	events := make(chan []*Event)
-	errors := make(chan error)
 	bs := &Watcher{
-		Events:              events,
-		Errors:              errors,
+		pollingInterval:     pollingInterval,
 		blockRetentionLimit: blockRetentionLimit,
 		startBlockDepth:     startBlockDepth,
 		stack:               stack,
 		client:              client,
-		ticker:              nil,
-		tickerCancelFunc:    nil,
 	}
 	return bs
 }
 
-// StartPolling starts the Watcher block poller.
-func (bs *Watcher) StartPolling(pollingInterval time.Duration) error {
-	bs.tickerMut.Lock()
-	defer bs.tickerMut.Unlock()
-	if bs.ticker != nil {
-		return errors.New("cannot start polling more than once")
+// Subscribe allows anyone subscribe to the block events emitted by the Watcher.
+// The sink channel should have ample buffer space to avoid blocking other subscribers.
+// Slow subscribers are not dropped. To unsubscribe, simply call `Unsubscribe` on returned
+// subscription. When all consumers have unsubscribed, the block polling stops.
+func (bs *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+	// We need the mutex to reliably start/stop the update loop
+	bs.mu.Lock()
+	defer bs.mu.Unlock()
+
+	sub := bs.blockScope.Track(bs.blockFeed.Subscribe(sink))
+
+	if !bs.isWatching {
+		bs.isWatching = true
+		bs.tickerChan = time.NewTicker(bs.pollingInterval).C
+		go bs.startPolling()
 	}
-	bs.ticker = time.NewTicker(pollingInterval)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	bs.tickerCancelFunc = cancelFn
-	go func() {
-		for {
-			select {
-			case <-bs.ticker.C:
-				err := bs.PollNextBlock()
-				if err != nil {
-					bs.Errors <- err
-				}
-			case <-ctx.Done():
-				// The context was cancelled or timed out, etc. End the goroutine by returning.
-				return
-			}
+
+	return sub
+}
+
+// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
+// particularly performant and therefore should only be used for debugging and testing purposes.
+func (bs *Watcher) InspectRetainedBlocks() []*MiniHeader {
+	return bs.stack.Inspect()
+}
+
+func (bs *Watcher) startPolling() {
+	for {
+		<-bs.tickerChan
+
+		bs.mu.Lock()
+		if bs.blockScope.Count() == 0 {
+			bs.isWatching = false
+			bs.mu.Unlock()
+			return
 		}
-	}()
-	return nil
+		bs.mu.Unlock()
+
+		bs.pollNextBlock()
+	}
 }
 
-// StopPolling stops the Watcher block poller.
-func (bs *Watcher) StopPolling() {
-	bs.tickerMut.Lock()
-	defer bs.tickerMut.Unlock()
-	bs.ticker.Stop()
-	bs.tickerCancelFunc()
-}
-
-// PollNextBlock lets you manually poll for the next block header to be added to the block stack.
+// pollNextBlock polls for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (bs *Watcher) PollNextBlock() error {
+func (bs *Watcher) pollNextBlock() error {
+	fmt.Println("Polling!")
 	var nextBlockNumber *big.Int
 	latestHeader := bs.stack.Peek()
 	if latestHeader == nil {
@@ -141,18 +146,7 @@ func (bs *Watcher) PollNextBlock() error {
 	// Even if an error occurred, we still want to emit the events gathered since we might have
 	// popped blocks off the Stack and they won't be re-added
 	if len(events) != 0 {
-		// TODO(fabio): This could be a memory leak if the channel consumer does not receive all
-		// events from the bs.Events channel. To fix this, we would need to `select` on sending
-		// to the Events channel and returning if a value is received on chan `ctx.Done()`
-		// BUG(fabio): Although channels preserve the ordering with which values are sent into the
-		// channel, go-routines make no guarentees about when they are run. Since we use blocking
-		// channels, and use go routines to queue values, we are not guarenteed they will be sent in
-		// the order produced. This means we are guarenteed to receive the events of a particular polling
-		// interval in the correct order, but have no ordering guarentees on the events we receive from
-		// multiple polling intervals. This "bug" does not cause issues for our current use-cases of BlockWatch.
-		go func() {
-			bs.Events <- events
-		}()
+		bs.blockFeed.Send(events)
 	}
 	if err != nil {
 		return err
@@ -171,7 +165,7 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 		})
 		if retiredBlock != nil {
 			events = append(events, &Event{
-				Type:        Retire,
+				Type:        Retired,
 				BlockHeader: retiredBlock,
 			})
 		}
@@ -204,16 +198,10 @@ func (bs *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) 
 	})
 	if retiredBlock != nil {
 		events = append(events, &Event{
-			Type:        Retire,
+			Type:        Retired,
 			BlockHeader: retiredBlock,
 		})
 	}
 
 	return events, nil
-}
-
-// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
-// particularly performant and therefore should only be used for debugging and testing purposes.
-func (bs *Watcher) InspectRetainedBlocks() []*MiniHeader {
-	return bs.stack.Inspect()
 }
