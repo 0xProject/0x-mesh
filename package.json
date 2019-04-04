@@ -4,12 +4,6 @@
   "engines": {
     "node": ">=11"
   },
-  "scripts": {
-    "preinstall": "go get ./...",
-    "test:all": "yarn test:go && yarn test:wasm",
-    "test:go": "go test ./... -race",
-    "test:wasm": "export ZEROEX_MESH_ROOT_DIR=$(pwd); GOOS=js GOARCH=wasm go test -exec=\"$ZEROEX_MESH_ROOT_DIR/test-wasm/go_js_wasm_exec\" -v ./..."
-  },
   "description": "A peer-to-peer network for sharing orders",
   "main": "index.js",
   "repository": "git@github.com:0xProject/0x-mesh.git",
