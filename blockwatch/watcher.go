@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"errors"
 	"math/big"
 	"sync"
 	"time"
@@ -84,43 +85,30 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 	return bs
 }
 
-// Subscribe allows one to subscribe to the block events emitted by the Watcher.
-// As soon as the first subscription is registered, the block poller is started.
-// To unsubscribe, simply call `Unsubscribe` on the returned subscription. When all
-// consumers have unsubscribed, the block polling stops.
-// The sink channel should have ample buffer space to avoid blocking other subscribers.
-// Slow subscribers are not dropped.
-func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+// StartPolling starts the block poller
+func (w *Watcher) StartPolling() error {
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	sub := w.blockScope.Track(w.blockFeed.Subscribe(sink))
-
-	if !w.isWatching {
-		w.isWatching = true
-		w.ticker = time.NewTicker(w.pollingInterval)
-		go w.startPolling()
+	if w.isWatching {
+		return errors.New("Polling  already started")
 	}
 
-	return sub
+	w.isWatching = true
+	if w.ticker == nil {
+		w.ticker = time.NewTicker(w.pollingInterval)
+	}
+	go w.startPollingLoop()
+	return nil
 }
 
-// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
-// particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
-	return w.stack.Inspect()
-}
-
-func (w *Watcher) startPolling() {
+func (w *Watcher) startPollingLoop() {
 	for {
 		<-w.ticker.C
 
 		w.mu.Lock()
-		if w.blockScope.Count() == 0 {
-			w.isWatching = false
-			w.ticker.Stop()
-			w.mu.Unlock()
+		if !w.isWatching {
 			return
 		}
 		w.mu.Unlock()
@@ -135,6 +123,34 @@ func (w *Watcher) startPolling() {
 			}
 		}
 	}
+}
+
+// StopPolling stops the block poller
+func (w *Watcher) StopPolling() {
+	w.mu.Lock()
+	w.isWatching = false
+	w.ticker.Stop()
+	w.ticker = nil
+	w.mu.Unlock()
+}
+
+// Subscribe allows one to subscribe to the block events emitted by the Watcher.
+// To unsubscribe, simply call `Unsubscribe` on the returned subscription.
+// The sink channel should have ample buffer space to avoid blocking other subscribers.
+// Slow subscribers are not dropped.
+func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
+}
+
+// NumSubscribers returns the number of subscribers
+func (w *Watcher) NumSubscribers() int {
+	return w.blockScope.Count()
+}
+
+// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
+// particularly performant and therefore should only be used for debugging and testing purposes.
+func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
+	return w.stack.Inspect()
 }
 
 // pollNextBlock polls for the next block header to be added to the block stack.
