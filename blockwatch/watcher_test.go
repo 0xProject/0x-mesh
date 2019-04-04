@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +20,8 @@ func TestWatcher(t *testing.T) {
 	blockRetentionLimit := 10
 	startBlockDepth := rpc.LatestBlockNumber
 	withLogs := false
-	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, fakeClient)
+	topics := []common.Hash{}
+	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
 
 	// HACK(fabio): By default `blockwatch.Watcher` starts polling for blocks as soon as the first
 	// subscription is established. Since we want to control the polling interval, we hijack the

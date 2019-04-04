@@ -61,12 +61,13 @@ type Watcher struct {
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
 	withLogs            bool
+	topics              []common.Hash
 
 	mu sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, client Client) *Watcher {
+func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, topics []common.Hash, client Client) *Watcher {
 	stack := NewStack(blockRetentionLimit)
 	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
 	errorsChan := make(chan error, 5)
@@ -78,6 +79,7 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 		stack:               stack,
 		client:              client,
 		withLogs:            withLogs,
+		topics:              topics,
 	}
 	return bs
 }
@@ -237,7 +239,7 @@ func (w *Watcher) addLogs(header *MiniHeader) (*MiniHeader, error) {
 	}
 	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
 		BlockHash: &header.Hash,
-		// TODO(fabio): Add topics (hash of event signatures we care about)
+		Topics:    [][]common.Hash{w.topics},
 	})
 	if err != nil {
 		return nil, err
