@@ -14,8 +14,9 @@ import (
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	blockWatcher *blockwatch.Watcher
-	decoder      *Decoder
+	blockWatcher     *blockwatch.Watcher
+	eventDecoder     *Decoder
+	assetDataDecoder *zeroex.AssetDataDecoder
 }
 
 // New instantiates a new order watcher
@@ -32,9 +33,14 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, rpcClie
 	if err != nil {
 		return nil, err
 	}
+	assetDataDecoder, err := zeroex.NewAssetDataDecoder()
+	if err != nil {
+		return nil, err
+	}
 	return &Watcher{
-		blockWatcher: blockWatcher,
-		decoder:      decoder,
+		blockWatcher:     blockWatcher,
+		eventDecoder:     decoder,
+		assetDataDecoder: assetDataDecoder,
 	}, nil
 }
 
@@ -51,20 +57,26 @@ func (w *Watcher) Start() {
 }
 
 // Watch adds a 0x order to the ones being tracked for order-relevant state changes
-// func (w *Watcher) Watch(signedOrder SignedOrder) {
-// 	// TODO(fabio): Add order's exchange addresses to decoder
-// 	// TODO(fabio): Decode assetDatas and add ERC20/ERC721's addresses to decoder
-// 	// TODO(fabio): Add expiration & hash to expiration watcher
-// }
+func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
+	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
+
+	decodedMakerAssetData, err := w.assetDataDecoder.Decode(signedOrder.MakerAssetData)
+	if err != nil {
+		return err
+	}
+	w.addAddressToEventDecoder(decodedMakerAssetData)
+	decodedTakerAssetData, err := w.assetDataDecoder.Decode(signedOrder.TakerAssetData)
+	if err != nil {
+		return err
+	}
+	w.addAddressToEventDecoder(decodedTakerAssetData)
+
+	// TODO(fabio): Add expiration & hash to expiration watcher
+
+	return nil
+}
 
 func (w *Watcher) setupEventWatcher() {
-	// TODO(fabio): Add all ERC20 & ERC721 token addresses involved in 0x orders to the decoder
-	w.decoder.AddKnownERC20(common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"))
-	w.decoder.AddKnownERC20(common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
-	w.decoder.AddKnownERC721(common.HexToAddress("0x5d00d312e171be5342067c09bae883f9bcb2003b"))
-	w.decoder.AddKnownERC721(common.HexToAddress("0xf5b0a3efb8e8e4c201e2a935f110eaaf3ffecb8d"))
-	w.decoder.AddKnownExchange(common.HexToAddress("0x4f833a24e1f95d70f028921e27040ca56e09ab0b"))
-
 	blockEvents := make(chan []*blockwatch.Event, 10)
 	sub := w.blockWatcher.Subscribe(blockEvents)
 	defer sub.Unsubscribe()
@@ -132,7 +144,7 @@ func (w *Watcher) setupEventWatcher() {
 func (w *Watcher) decodeLogs(logs []types.Log) ([]interface{}, error) {
 	decodedLogs := []interface{}{}
 	for _, log := range logs {
-		decodedLog, err := w.decoder.Decode(log)
+		decodedLog, err := w.eventDecoder.Decode(log)
 		// Ignore unsupported events
 		if err != nil && err.Error() != "Unsupported event" {
 			return nil, err
@@ -141,4 +153,24 @@ func (w *Watcher) decodeLogs(logs []types.Log) ([]interface{}, error) {
 	}
 
 	return decodedLogs, nil
+}
+
+func (w *Watcher) addAddressToEventDecoder(decodedAssetData interface{}) error {
+	switch decodedAssetData.(type) {
+	case zeroex.ERC20AssetData:
+		w.eventDecoder.AddKnownERC20(decodedAssetData.(zeroex.ERC20AssetData).Address)
+	case zeroex.ERC721AssetData:
+		w.eventDecoder.AddKnownERC721(decodedAssetData.(zeroex.ERC721AssetData).Address)
+	case zeroex.MultiAssetData:
+		multiAssetData := decodedAssetData.(zeroex.MultiAssetData)
+		// Recursively add the nested assetData to the event decoder
+		for _, assetData := range multiAssetData.NestedAssetData {
+			d, err := w.assetDataDecoder.Decode(assetData)
+			if err != nil {
+				return err
+			}
+			w.addAddressToEventDecoder(d)
+		}
+	}
+	return nil
 }
