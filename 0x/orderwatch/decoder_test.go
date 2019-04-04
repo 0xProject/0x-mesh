@@ -75,7 +75,7 @@ func TestDecodeERC20Approval(t *testing.T) {
 	}
 	actualApprovalEvent := decodedLog.(ERC20ApprovalEvent)
 
-	assert.Equal(t, expectedApprovalEvent, actualApprovalEvent, "Transfer event decode")
+	assert.Equal(t, expectedApprovalEvent, actualApprovalEvent, "Approval event decode")
 
 }
 
@@ -205,7 +205,7 @@ func TestDecodeExchangeCancel(t *testing.T) {
 		MakerAssetData:      common.Hex2Bytes("f47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
 		TakerAssetData:      common.Hex2Bytes("f47261b000000000000000000000000089d24a6b4ccb1b6faa2625fe562bdd9a23260359"),
 	}
-	assert.Equal(t, expectedEvent, actualEvent, "Exchange Fill event decode")
+	assert.Equal(t, expectedEvent, actualEvent, "Exchange Cancel event decode")
 }
 func TestDecodeExchangeCancelUpTo(t *testing.T) {
 	var cancelUpToLog types.Log
@@ -227,7 +227,7 @@ func TestDecodeExchangeCancelUpTo(t *testing.T) {
 		SenderAddress: common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		OrderEpoch:    big.NewInt(1554341123041),
 	}
-	assert.Equal(t, expectedEvent, actualEvent, "Exchange FillUpTo event decode")
+	assert.Equal(t, expectedEvent, actualEvent, "Exchange CancelUpTo event decode")
 }
 func TestDecodeWethDeposit(t *testing.T) {
 	var depositLog types.Log
@@ -269,7 +269,7 @@ func TestDecodeWethWithdrawal(t *testing.T) {
 		Owner: common.HexToAddress("0xb3fa5bA98fdB56E493C4C362920289A42948294e"),
 		Value: big.NewInt(353732490000000000),
 	}
-	assert.Equal(t, expectedEvent, actualEvent, "WETH Withdrawal	 event decode")
+	assert.Equal(t, expectedEvent, actualEvent, "WETH Withdrawal event decode")
 }
 
 func unmarshalLogStr(logStr string, out interface{}) {
