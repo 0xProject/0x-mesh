@@ -17,7 +17,7 @@ type Watcher struct {
 	decoder      *Decoder
 }
 
-// New instatiates a new orderwatch.Watcher
+// New instantiates a new order watcher
 func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, rpcClient blockwatch.Client) (*Watcher, error) {
 	blockRetentionLimit := 20
 	withLogs := true
