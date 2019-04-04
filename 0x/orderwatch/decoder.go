@@ -12,6 +12,17 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
+var EVENT_SIGNATURES = [...]string{
+	"Transfer(address,address,uint256)",
+	"Approval(address,address,uint256)",
+	"ApprovalForAll(address,address,bool)",
+	"Deposit(address,uint256)",
+	"Withdrawal(address,uint256)",
+	"Fill(address,address,address,address,uint256,uint256,uint256,uint256,bytes32,bytes,bytes)",
+	"Cancel(address,address,address,bytes32,bytes,bytes)",
+	"CancelUpTo(address,address,uint256)",
+}
+
 // Also includes WETH `Deposit` & `Withdraw` events
 const ERC20_EVENTS_ABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_spender\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"}]"
 
