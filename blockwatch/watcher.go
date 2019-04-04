@@ -142,11 +142,6 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
-// NumSubscribers returns the number of subscribers
-func (w *Watcher) NumSubscribers() int {
-	return w.blockScope.Count()
-}
-
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
 func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
