@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// SignedOrder represents a signed 0x order
 type SignedOrder struct {
 	MakerAddress           common.Address
 	MakerAssetData         []byte
