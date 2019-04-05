@@ -8,7 +8,8 @@ import (
 	"github.com/ocdogan/rbt"
 )
 
-type ExpiryEntry struct {
+// ExpiredOrder represents an expired order returned from the ExpirationWatcher
+type ExpiredOrder struct {
 	expirationTimeSeconds int64
 	orderHash             common.Hash
 }
@@ -38,8 +39,8 @@ func (e *ExpirationWatcher) Add(expirationTimeSeconds int64, orderHash common.Ha
 
 // Prune checks for any expired orders, removes them from the expiration watcher and returns them
 // to the caller
-func (e *ExpirationWatcher) Prune() []ExpiryEntry {
-	pruned := []ExpiryEntry{}
+func (e *ExpirationWatcher) Prune() []ExpiredOrder {
+	pruned := []ExpiredOrder{}
 	currentTimestamp := time.Now().Unix()
 	for {
 		key, value := e.rbTree.Min()
@@ -50,7 +51,7 @@ func (e *ExpirationWatcher) Prune() []ExpiryEntry {
 		if expirationTimeSeconds > currentTimestamp+e.expirationBuffer {
 			break
 		}
-		pruned = append(pruned, ExpiryEntry{
+		pruned = append(pruned, ExpiredOrder{
 			expirationTimeSeconds: expirationTimeSeconds,
 			orderHash:             value.(common.Hash),
 		})

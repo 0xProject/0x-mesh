@@ -13,13 +13,13 @@ func TestPrunesExpiredOrders(t *testing.T) {
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
-	expiryEntryOne := ExpiryEntry{
+	expiryEntryOne := ExpiredOrder{
 		expirationTimeSeconds: current - 3,
 		orderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
 	}
 	watcher.Add(expiryEntryOne.expirationTimeSeconds, expiryEntryOne.orderHash)
 
-	expiryEntryTwo := ExpiryEntry{
+	expiryEntryTwo := ExpiredOrder{
 		expirationTimeSeconds: current - 1,
 		orderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
 	}
