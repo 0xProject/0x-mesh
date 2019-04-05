@@ -36,12 +36,12 @@ func TestDecodeERC20Transfer(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC20(ERC20_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(transferLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	expectedTransferEvent := ERC20TransferEvent{
@@ -60,12 +60,12 @@ func TestDecodeERC20Approval(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC20(ERC20_TOKEN_ADDRESS)
 	decodedLog, err := decoder.decodeERC20(approvalLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	expectedApprovalEvent := ERC20ApprovalEvent{
@@ -85,12 +85,12 @@ func TestDecodeERC721Transfer(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC721(ERC721_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(transferLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	expectedTransferEvent := ERC721TransferEvent{
@@ -109,12 +109,12 @@ func TestDecodeERC721Approval(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC721(ERC721_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(approvalLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	expectedApprovalEvent := ERC721ApprovalEvent{
@@ -133,12 +133,12 @@ func TestDecodeERC721ApprovalForAll(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC721(ERC721_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(approvalForAllLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	expectedApprovalForAllEvent := ERC721ApprovalForAllEvent{
@@ -157,12 +157,12 @@ func TestDecodeExchangeFill(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownExchange(EXCHANGE_ADDRESS)
 	decodedLog, err := decoder.Decode(fillLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	actualFillEvent := decodedLog.(ExchangeFillEvent)
@@ -188,12 +188,12 @@ func TestDecodeExchangeCancel(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownExchange(EXCHANGE_ADDRESS)
 	decodedLog, err := decoder.Decode(cancelLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	actualEvent := decodedLog.(ExchangeCancelEvent)
@@ -213,12 +213,12 @@ func TestDecodeExchangeCancelUpTo(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownExchange(EXCHANGE_ADDRESS)
 	decodedLog, err := decoder.Decode(cancelUpToLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	actualEvent := decodedLog.(ExchangeCancelUpToEvent)
@@ -235,12 +235,12 @@ func TestDecodeWethDeposit(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC20(ERC20_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(depositLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	actualEvent := decodedLog.(WethDepositEvent)
@@ -256,12 +256,12 @@ func TestDecodeWethWithdrawal(t *testing.T) {
 
 	decoder, err := NewDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 	decoder.AddKnownERC20(ERC20_TOKEN_ADDRESS)
 	decodedLog, err := decoder.Decode(withdrawalLog)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 
 	actualEvent := decodedLog.(WethWithdrawalEvent)
@@ -275,6 +275,6 @@ func TestDecodeWethWithdrawal(t *testing.T) {
 func unmarshalLogStr(logStr string, out interface{}) {
 	err := json.Unmarshal([]byte(logStr), &out)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Errro())
 	}
 }
