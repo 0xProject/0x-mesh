@@ -110,6 +110,6 @@ func (d *AssetDataDecoder) Decode(assetData []byte) (interface{}, error) {
 		return decodedAssetData, nil
 
 	default:
-		return nil, errors.New(fmt.Sprintf("Unsupported AssetData with name %s", name))
+		return nil, errors.New(fmt.Sprintf("Unsupported AssetData with name %s", info.name))
 	}
 }
