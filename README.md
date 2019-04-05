@@ -10,6 +10,7 @@ for more background on how this works.
 
 ### Prerequisites
 
+- [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
 - [Go version >= 1.12](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g))
 - [Node.js version >= 10](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
 - [Yarn package manager](https://yarnpkg.com/en/)
@@ -17,7 +18,7 @@ for more background on how this works.
 ### Installing dependencies
 
 ```
-yarn install
+make deps
 ```
 
 ### Running tests
@@ -25,17 +26,17 @@ yarn install
 Run tests in a vanilla Go environment:
 
 ```
-yarn test:go
+make test-go
 ```
 
 Run tests in a Node.js/WebAssembly environment:
 
 ```
-yarn test:wasm
+make test-wasm
 ```
 
 Run tests in both environments:
 
 ```
-yarn test:all
+make test-all
 ```
