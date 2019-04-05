@@ -128,10 +128,10 @@ func (w *Watcher) startPollingLoop() {
 // StopPolling stops the block poller
 func (w *Watcher) StopPolling() {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.isWatching = false
 	w.ticker.Stop()
 	w.ticker = nil
-	w.mu.Unlock()
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
