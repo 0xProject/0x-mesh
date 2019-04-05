@@ -91,8 +91,7 @@ func (n *Node) Receive() <-chan *Message {
 	return n.messages
 }
 
-// Evict signals that a message should be evicted. The Node will update its
-// score for each neighbor appropriately.
+// Evict signals that a message should be evicted.
 func (n *Node) Evict(msg *Message) error {
 	return errors.New("Not yet implemented")
 }
