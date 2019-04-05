@@ -64,12 +64,12 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 	if err != nil {
 		return err
 	}
-	w.addAddressToEventDecoder(decodedMakerAssetData)
+	w.addAddressFromAssetDataToEventDecoder(decodedMakerAssetData)
 	decodedTakerAssetData, err := w.assetDataDecoder.Decode(signedOrder.TakerAssetData)
 	if err != nil {
 		return err
 	}
-	w.addAddressToEventDecoder(decodedTakerAssetData)
+	w.addAddressFromAssetDataToEventDecoder(decodedTakerAssetData)
 
 	// TODO(fabio): Add expiration & hash to expiration watcher
 
@@ -85,7 +85,9 @@ func (w *Watcher) setupEventWatcher() {
 		for _, event := range events {
 			decodedLogs, err := w.decodeLogs(event.BlockHeader.Logs)
 			if err != nil {
-				panic(err) // TODO(fabio): Should we panic here?
+				// The decoder is very lenient, so if an error is returned,
+				// it must be for an unrecoverable error and we should panic
+				panic(err)
 			}
 			for _, decodedLog := range decodedLogs {
 				switch decodedLog.(type) {
@@ -130,9 +132,6 @@ func (w *Watcher) setupEventWatcher() {
 					fmt.Printf("%+v\n", withdrawalEvent)
 					// TODO(fabio): Handle this event
 
-				case nil:
-					// We were unable to decode the event, ignore.
-
 				default:
 					panic(fmt.Sprintf("Unrecognized event returned: %+v", decodedLog))
 				}
@@ -149,13 +148,17 @@ func (w *Watcher) decodeLogs(logs []types.Log) ([]interface{}, error) {
 		if err != nil && err.Error() != "Unsupported event" {
 			return nil, err
 		}
+		if decodedLog == nil {
+			// The log was not decodable, so we ignore it
+			continue
+		}
 		decodedLogs = append(decodedLogs, decodedLog)
 	}
 
 	return decodedLogs, nil
 }
 
-func (w *Watcher) addAddressToEventDecoder(decodedAssetData interface{}) error {
+func (w *Watcher) addAddressFromAssetDataToEventDecoder(decodedAssetData interface{}) error {
 	switch decodedAssetData.(type) {
 	case zeroex.ERC20AssetData:
 		w.eventDecoder.AddKnownERC20(decodedAssetData.(zeroex.ERC20AssetData).Address)
@@ -169,7 +172,7 @@ func (w *Watcher) addAddressToEventDecoder(decodedAssetData interface{}) error {
 			if err != nil {
 				return err
 			}
-			w.addAddressToEventDecoder(d)
+			w.addAddressFromAssetDataToEventDecoder(d)
 		}
 	}
 	return nil
