@@ -13,11 +13,11 @@ func TestDecodeERC20AssetData(t *testing.T) {
 
 	d, err := NewAssetDataDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 	decodedAssetData, err := d.Decode(assetData)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 
 	expectedAssetData := ERC20AssetData{
@@ -32,11 +32,11 @@ func TestDecodeERC721AssetData(t *testing.T) {
 
 	d, err := NewAssetDataDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 	decodedAssetData, err := d.Decode(assetData)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 
 	expectedDecodedAssetData := ERC721AssetData{
@@ -51,11 +51,11 @@ func TestDecodeMultiAssetData(t *testing.T) {
 
 	d, err := NewAssetDataDecoder()
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 	decodedAssetData, err := d.Decode(assetData)
 	if err != nil {
-		panic(err)
+		t.Fatal(err.Error())
 	}
 
 	nestedAssetData := [][]byte{
