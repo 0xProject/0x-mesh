@@ -32,8 +32,10 @@ const EXCHANGE_CANCEL_UP_TO_LOG string = "{\"address\":\"0x4f833a24e1f95d70f0289
 
 func TestDecodeERC20Transfer(t *testing.T) {
 	var transferLog types.Log
-	unmarshalLogStr(ERC20_TRANSFER_LOG, &transferLog)
-
+	err := unmarshalLogStr(ERC20_TRANSFER_LOG, &transferLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -56,8 +58,10 @@ func TestDecodeERC20Transfer(t *testing.T) {
 
 func TestDecodeERC20Approval(t *testing.T) {
 	var approvalLog types.Log
-	unmarshalLogStr(ERC20_APPROVAL_LOG, &approvalLog)
-
+	err := unmarshalLogStr(ERC20_APPROVAL_LOG, &approvalLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -81,8 +85,10 @@ func TestDecodeERC20Approval(t *testing.T) {
 
 func TestDecodeERC721Transfer(t *testing.T) {
 	var transferLog types.Log
-	unmarshalLogStr(ERC721_TRANSFER_LOG, &transferLog)
-
+	err := unmarshalLogStr(ERC721_TRANSFER_LOG, &transferLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -105,8 +111,10 @@ func TestDecodeERC721Transfer(t *testing.T) {
 
 func TestDecodeERC721Approval(t *testing.T) {
 	var approvalLog types.Log
-	unmarshalLogStr(ERC721_APPROVAL_LOG, &approvalLog)
-
+	err := unmarshalLogStr(ERC721_APPROVAL_LOG, &approvalLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -129,8 +137,10 @@ func TestDecodeERC721Approval(t *testing.T) {
 
 func TestDecodeERC721ApprovalForAll(t *testing.T) {
 	var approvalForAllLog types.Log
-	unmarshalLogStr(ERC721_APPROVAL_FOR_ALL_LOG, &approvalForAllLog)
-
+	err := unmarshalLogStr(ERC721_APPROVAL_FOR_ALL_LOG, &approvalForAllLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -153,8 +163,10 @@ func TestDecodeERC721ApprovalForAll(t *testing.T) {
 
 func TestDecodeExchangeFill(t *testing.T) {
 	var fillLog types.Log
-	unmarshalLogStr(EXCHANGE_FILL_LOG, &fillLog)
-
+	err := unmarshalLogStr(EXCHANGE_FILL_LOG, &fillLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -184,8 +196,10 @@ func TestDecodeExchangeFill(t *testing.T) {
 
 func TestDecodeExchangeCancel(t *testing.T) {
 	var cancelLog types.Log
-	unmarshalLogStr(EXCHANGE_CANCEL_LOG, &cancelLog)
-
+	err := unmarshalLogStr(EXCHANGE_CANCEL_LOG, &cancelLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -209,8 +223,10 @@ func TestDecodeExchangeCancel(t *testing.T) {
 }
 func TestDecodeExchangeCancelUpTo(t *testing.T) {
 	var cancelUpToLog types.Log
-	unmarshalLogStr(EXCHANGE_CANCEL_UP_TO_LOG, &cancelUpToLog)
-
+	err := unmarshalLogStr(EXCHANGE_CANCEL_UP_TO_LOG, &cancelUpToLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -231,8 +247,10 @@ func TestDecodeExchangeCancelUpTo(t *testing.T) {
 }
 func TestDecodeWethDeposit(t *testing.T) {
 	var depositLog types.Log
-	unmarshalLogStr(WETH_DEPOSIT_LOG, &depositLog)
-
+	err := unmarshalLogStr(WETH_DEPOSIT_LOG, &depositLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -252,8 +270,10 @@ func TestDecodeWethDeposit(t *testing.T) {
 }
 func TestDecodeWethWithdrawal(t *testing.T) {
 	var withdrawalLog types.Log
-	unmarshalLogStr(WETH_WITHDRAWAL_LOG, &withdrawalLog)
-
+	err := unmarshalLogStr(WETH_WITHDRAWAL_LOG, &withdrawalLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 	decoder, err := NewDecoder()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -272,9 +292,10 @@ func TestDecodeWethWithdrawal(t *testing.T) {
 	assert.Equal(t, expectedEvent, actualEvent, "WETH Withdrawal event decode")
 }
 
-func unmarshalLogStr(logStr string, out interface{}) {
+func unmarshalLogStr(logStr string, out interface{}) error {
 	err := json.Unmarshal([]byte(logStr), &out)
 	if err != nil {
-		t.Fatal(err.Error())
+		return err
 	}
+	return nil
 }
