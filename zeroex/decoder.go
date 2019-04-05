@@ -35,17 +35,16 @@ type MultiAssetData struct {
 	NestedAssetData [][]byte
 }
 
+type assetDataInfo struct {
+	name string
+	abi  abi.ABI
+}
+
 type AssetDataDecoder struct {
-	idToAbi  map[string]abi.ABI
-	idToName map[string]string
+	idToAssetDataInfo map[string]assetDataInfo
 }
 
 func NewAssetDataDecoder() (*AssetDataDecoder, error) {
-	idToName := map[string]string{
-		ERC20_ASSET_DATA_ID:  "ERC20Token",
-		ERC721_ASSET_DATA_ID: "ERC721Token",
-		MULTI_ASSET_DATA_ID:  "MultiAsset",
-	}
 	erc20AssetDataABI, err := abi.JSON(strings.NewReader(ERC20_ASSET_DATA_ABI))
 	if err != nil {
 		return nil, err
@@ -58,14 +57,22 @@ func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	idToAbi := map[string]abi.ABI{
-		ERC20_ASSET_DATA_ID:  erc20AssetDataABI,
-		ERC721_ASSET_DATA_ID: erc721AssetDataABI,
-		MULTI_ASSET_DATA_ID:  multiAssetDataABI,
+	idToAssetDataInfo := map[string]assetDataInfo{
+		ERC20_ASSET_DATA_ID: assetDataInfo{
+			name: "ERC20Token",
+			abi:  erc20AssetDataABI,
+		},
+		ERC721_ASSET_DATA_ID: assetDataInfo{
+			name: "ERC721Token",
+			abi:  erc721AssetDataABI,
+		},
+		MULTI_ASSET_DATA_ID: assetDataInfo{
+			name: "MultiAsset",
+			abi:  multiAssetDataABI,
+		},
 	}
 	decoder := &AssetDataDecoder{
-		idToAbi:  idToAbi,
-		idToName: idToName,
+		idToAssetDataInfo: idToAssetDataInfo,
 	}
 	return decoder, nil
 }
@@ -73,26 +80,22 @@ func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 func (d *AssetDataDecoder) Decode(assetData []byte) (interface{}, error) {
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
-	abi, ok := d.idToAbi[idHex]
+	info, ok := d.idToAssetDataInfo[idHex]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
 	}
-	name, ok := d.idToName[idHex]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("Found assetData prefix without corresponding name: %s", idHex))
-	}
 
-	switch name {
+	switch info.name {
 	case "ERC20Token":
 		var decodedAssetData ERC20AssetData
-		err := abi.Methods[name].Inputs.Unpack(&decodedAssetData, assetData[4:])
+		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
 		if err != nil {
 			return nil, err
 		}
 		return decodedAssetData, nil
 	case "ERC721Token":
 		var decodedAssetData ERC721AssetData
-		err := abi.Methods[name].Inputs.Unpack(&decodedAssetData, assetData[4:])
+		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +103,7 @@ func (d *AssetDataDecoder) Decode(assetData []byte) (interface{}, error) {
 
 	case "MultiAsset":
 		var decodedAssetData MultiAssetData
-		err := abi.Methods[name].Inputs.Unpack(&decodedAssetData, assetData[4:])
+		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
 		if err != nil {
 			return nil, err
 		}
