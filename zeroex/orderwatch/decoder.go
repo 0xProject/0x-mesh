@@ -117,15 +117,18 @@ type WethDepositEvent struct {
 // have the same signatures, but different meanings, all ERC20 & ERC721 contract addresses must
 // be added to the decoder ahead of time.
 type Decoder struct {
-	knownERC20Addresses    map[common.Address]bool
-	knownERC721Addresses   map[common.Address]bool
-	knownExchangeAddresses map[common.Address]bool
-	erc20ABI               abi.ABI
-	erc721ABI              abi.ABI
-	exchangeABI            abi.ABI
+	knownERC20Addresses      map[common.Address]bool
+	knownERC721Addresses     map[common.Address]bool
+	knownExchangeAddresses   map[common.Address]bool
+	erc20ABI                 abi.ABI
+	erc721ABI                abi.ABI
+	exchangeABI              abi.ABI
+	erc20TopicToEventName    map[common.Hash]string
+	erc721TopicToEventName   map[common.Hash]string
+	exchangeTopicToEventName map[common.Hash]string
 }
 
-// NewDecoder instantiates a new decoder
+// NewDecoder instantiates a new 0x order-relevant events decoder
 func NewDecoder() (*Decoder, error) {
 	erc20ABI, err := abi.JSON(strings.NewReader(ERC20_EVENTS_ABI))
 	if err != nil {
@@ -142,13 +145,29 @@ func NewDecoder() (*Decoder, error) {
 		return nil, err
 	}
 
+	erc20TopicToEventName := map[common.Hash]string{}
+	for _, event := range erc20ABI.Events {
+		erc20TopicToEventName[event.Id()] = event.Name
+	}
+	erc721TopicToEventName := map[common.Hash]string{}
+	for _, event := range erc721ABI.Events {
+		erc721TopicToEventName[event.Id()] = event.Name
+	}
+	exchangeTopicToEventName := map[common.Hash]string{}
+	for _, event := range exchangeABI.Events {
+		exchangeTopicToEventName[event.Id()] = event.Name
+	}
+
 	return &Decoder{
-		knownERC20Addresses:    make(map[common.Address]bool),
-		knownERC721Addresses:   make(map[common.Address]bool),
-		knownExchangeAddresses: make(map[common.Address]bool),
-		erc20ABI:               erc20ABI,
-		erc721ABI:              erc721ABI,
-		exchangeABI:            exchangeABI,
+		knownERC20Addresses:      make(map[common.Address]bool),
+		knownERC721Addresses:     make(map[common.Address]bool),
+		knownExchangeAddresses:   make(map[common.Address]bool),
+		erc20ABI:                 erc20ABI,
+		erc721ABI:                erc721ABI,
+		exchangeABI:              exchangeABI,
+		erc20TopicToEventName:    erc20TopicToEventName,
+		erc721TopicToEventName:   erc721TopicToEventName,
+		exchangeTopicToEventName: exchangeTopicToEventName,
 	}, nil
 }
 
@@ -189,11 +208,7 @@ func (d *Decoder) Decode(log types.Log) (interface{}, error) {
 }
 
 func (d *Decoder) decodeERC20(log types.Log) (interface{}, error) {
-	topicToEventName := map[common.Hash]string{}
-	for _, event := range d.erc20ABI.Events {
-		topicToEventName[event.Id()] = event.Name
-	}
-	eventName, ok := topicToEventName[log.Topics[0]]
+	eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("Could not find ERC20 event name with topic: %s", log.Topics[0].Hex()))
 	}
@@ -238,11 +253,7 @@ func (d *Decoder) decodeERC20(log types.Log) (interface{}, error) {
 }
 
 func (d *Decoder) decodeERC721(log types.Log) (interface{}, error) {
-	topicToEventName := map[common.Hash]string{}
-	for _, event := range d.erc721ABI.Events {
-		topicToEventName[event.Id()] = event.Name
-	}
-	eventName, ok := topicToEventName[log.Topics[0]]
+	eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("Could not find ERC721 event name with topic: %s", log.Topics[0].Hex()))
 	}
@@ -278,11 +289,7 @@ func (d *Decoder) decodeERC721(log types.Log) (interface{}, error) {
 }
 
 func (d *Decoder) decodeExchange(log types.Log) (interface{}, error) {
-	topicToEventName := map[common.Hash]string{}
-	for _, event := range d.exchangeABI.Events {
-		topicToEventName[event.Id()] = event.Name
-	}
-	eventName, ok := topicToEventName[log.Topics[0]]
+	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
 	if !ok {
 		return nil, errors.New(UNSUPPORTED_EVENT)
 	}
