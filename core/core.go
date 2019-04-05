@@ -18,9 +18,9 @@ import (
 )
 
 type Node struct {
-	host   host.Host
-	config Config
-	events chan *Event
+	host     host.Host
+	config   Config
+	messages chan *Message
 }
 
 type Config struct {
@@ -29,6 +29,9 @@ type Config struct {
 	RandSeed   int64
 }
 
+// New creates a new Node with the given config. The Node will automatically
+// and continuously connect to peers and receive new messages until Close is
+// called.
 func New(config Config) (*Node, error) {
 	// If the seed is zero, use real cryptographic randomness. Otherwise, use a
 	// deterministic randomness source to make generated keys stay the same
@@ -83,16 +86,18 @@ func (n *Node) Send(msg *Message) error {
 	return errors.New("Not yet implemented")
 }
 
-// Events returns a channel that can be used to listen for new messages and
-// evicted messages.
-func (n *Node) Events() <-chan *Event {
-	return n.events
+// Receive returns a channel that can be used to listen for new messages.
+func (n *Node) Receive() <-chan *Message {
+	return n.messages
 }
 
+// Evict signals that a message should be evicted. The Node will update its
+// score for each neighbor appropriately.
 func (n *Node) Evict(msg *Message) error {
 	return errors.New("Not yet implemented")
 }
 
+// Close closes the Node and any active connections.
 func (n *Node) Close() error {
 	return errors.New("Not yet implemented")
 }
