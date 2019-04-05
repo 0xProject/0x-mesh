@@ -22,10 +22,10 @@ jobs:
           command: npm i -g yarn@^1.15
       - run:
           name: Install dependencies
-          command: yarn install
+          command: make deps
       - run:
           name: Run Go tests
-          command: yarn test:go
+          command: make test-go
       - run:
           name: Run WebAssembly tests
-          command: yarn test:wasm
+          command: make test-wasm
