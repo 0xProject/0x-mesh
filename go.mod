@@ -20,6 +20,7 @@ require (
 	github.com/libp2p/go-libp2p-protocol v0.0.1
 	github.com/libp2p/go-libp2p-transport v0.0.4
 	github.com/libp2p/go-libp2p-webrtc-direct v0.0.0-20190402142946-efdf8240a3ce
+	github.com/libp2p/go-mplex v0.2.31-0.20190405215346-dbbae9bbed80 // indirect
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/multiformats/go-multiaddr v0.0.2
 	github.com/pions/webrtc v1.2.1-0.20190402062217-69e5725007d2

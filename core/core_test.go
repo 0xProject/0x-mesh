@@ -3,7 +3,6 @@ package core
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"sync/atomic"
 	"testing"
@@ -39,9 +38,6 @@ func TestPingPong(t *testing.T) {
 	node1 := newTestNode(t)
 	node0.host.Peerstore().AddAddrs(node1.host.ID(), node1.host.Addrs(), peerstore.PermanentAddrTTL)
 	node1.host.Peerstore().AddAddrs(node0.host.ID(), node0.host.Addrs(), peerstore.PermanentAddrTTL)
-
-	fmt.Println(node0.host.Addrs())
-	fmt.Println(node1.host.Addrs())
 
 	ping := []byte("ping\n")
 	pong := []byte("pong\n")
