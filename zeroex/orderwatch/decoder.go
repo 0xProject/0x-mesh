@@ -13,14 +13,14 @@ import (
 )
 
 var EVENT_SIGNATURES = [...]string{
-	"Transfer(address,address,uint256)",
-	"Approval(address,address,uint256)",
-	"ApprovalForAll(address,address,bool)",
-	"Deposit(address,uint256)",
-	"Withdrawal(address,uint256)",
-	"Fill(address,address,address,address,uint256,uint256,uint256,uint256,bytes32,bytes,bytes)",
-	"Cancel(address,address,address,bytes32,bytes,bytes)",
-	"CancelUpTo(address,address,uint256)",
+	"Transfer(address,address,uint256)",    // ERC20 & ERC721
+	"Approval(address,address,uint256)",    // ERC20 & ERC721
+	"ApprovalForAll(address,address,bool)", // ERC721
+	"Deposit(address,uint256)",             // WETH9
+	"Withdrawal(address,uint256)",          // WETH9
+	"Fill(address,address,address,address,uint256,uint256,uint256,uint256,bytes32,bytes,bytes)", // Exchange
+	"Cancel(address,address,address,bytes32,bytes,bytes)",                                       // Exchange
+	"CancelUpTo(address,address,uint256)",                                                       // Exchange
 }
 
 // Includes ERC20 `Transfer` & `Approval` events as well as WETH `Deposit` & `Withdraw` events
@@ -123,7 +123,6 @@ type Decoder struct {
 	erc20ABI               abi.ABI
 	erc721ABI              abi.ABI
 	exchangeABI            abi.ABI
-	topicToNumTopics       map[common.Hash]int
 }
 
 // NewDecoder instantiates a new decoder
@@ -150,7 +149,6 @@ func NewDecoder() (*Decoder, error) {
 		erc20ABI:               erc20ABI,
 		erc721ABI:              erc721ABI,
 		exchangeABI:            exchangeABI,
-		topicToNumTopics:       make(map[common.Hash]int),
 	}, nil
 }
 
