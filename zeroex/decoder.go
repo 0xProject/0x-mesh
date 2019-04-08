@@ -10,13 +10,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const ERC20_ASSET_DATA_ID = "f47261b0"
-const ERC721_ASSET_DATA_ID = "02571792"
-const MULTI_ASSET_DATA_ID = "94cfcdd7"
+const erc20AssetDataId = "f47261b0"
+const erc721AssetDataId = "02571792"
+const multiAssetDataId = "94cfcdd7"
 
-const ERC20_ASSET_DATA_ABI = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"}],\"name\":\"ERC20Token\",\"type\":\"function\"}]"
-const ERC721_ASSET_DATA_ABI = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721Token\",\"type\":\"function\"}]"
-const MULTI_ASSET_DATA_ABI = "[{\"inputs\":[{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"MultiAsset\",\"type\":\"function\"}]"
+const erc20AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"}],\"name\":\"ERC20Token\",\"type\":\"function\"}]"
+const erc721AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721Token\",\"type\":\"function\"}]"
+const multiAssetDataAbi = "[{\"inputs\":[{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"MultiAsset\",\"type\":\"function\"}]"
 
 // ERC20AssetData represents an ERC20 assetData
 type ERC20AssetData struct {
@@ -45,28 +45,28 @@ type AssetDataDecoder struct {
 }
 
 func NewAssetDataDecoder() (*AssetDataDecoder, error) {
-	erc20AssetDataABI, err := abi.JSON(strings.NewReader(ERC20_ASSET_DATA_ABI))
+	erc20AssetDataABI, err := abi.JSON(strings.NewReader(erc20AssetDataAbi))
 	if err != nil {
 		return nil, err
 	}
-	erc721AssetDataABI, err := abi.JSON(strings.NewReader(ERC721_ASSET_DATA_ABI))
+	erc721AssetDataABI, err := abi.JSON(strings.NewReader(erc721AssetDataAbi))
 	if err != nil {
 		return nil, err
 	}
-	multiAssetDataABI, err := abi.JSON(strings.NewReader(MULTI_ASSET_DATA_ABI))
+	multiAssetDataABI, err := abi.JSON(strings.NewReader(multiAssetDataAbi))
 	if err != nil {
 		return nil, err
 	}
 	idToAssetDataInfo := map[string]assetDataInfo{
-		ERC20_ASSET_DATA_ID: assetDataInfo{
+		erc20AssetDataId: assetDataInfo{
 			name: "ERC20Token",
 			abi:  erc20AssetDataABI,
 		},
-		ERC721_ASSET_DATA_ID: assetDataInfo{
+		erc721AssetDataId: assetDataInfo{
 			name: "ERC721Token",
 			abi:  erc721AssetDataABI,
 		},
-		MULTI_ASSET_DATA_ID: assetDataInfo{
+		multiAssetDataId: assetDataInfo{
 			name: "MultiAsset",
 			abi:  multiAssetDataABI,
 		},
