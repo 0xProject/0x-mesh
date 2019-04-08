@@ -15,7 +15,8 @@ func TestDecodeERC20AssetData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decodedAssetData, err := d.Decode(assetData)
+	var actualDecodedAssetData ERC20AssetData
+	err = d.Decode(assetData, &actualDecodedAssetData)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -23,7 +24,6 @@ func TestDecodeERC20AssetData(t *testing.T) {
 	expectedAssetData := ERC20AssetData{
 		Address: common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32"),
 	}
-	actualDecodedAssetData := decodedAssetData.(ERC20AssetData)
 	assert.Equal(t, expectedAssetData, actualDecodedAssetData, "ERC20 Asset Data properly decoded")
 }
 
@@ -34,7 +34,8 @@ func TestDecodeERC721AssetData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decodedAssetData, err := d.Decode(assetData)
+	var actualDecodedAssetData ERC721AssetData
+	err = d.Decode(assetData, &actualDecodedAssetData)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -43,7 +44,6 @@ func TestDecodeERC721AssetData(t *testing.T) {
 		Address: common.HexToAddress("0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48"),
 		TokenId: big.NewInt(1),
 	}
-	actualDecodedAssetData := decodedAssetData.(ERC721AssetData)
 	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "ERC721 Asset Data properly decoded")
 }
 func TestDecodeMultiAssetData(t *testing.T) {
@@ -53,7 +53,8 @@ func TestDecodeMultiAssetData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decodedAssetData, err := d.Decode(assetData)
+	var actualDecodedAssetData MultiAssetData
+	err = d.Decode(assetData, &actualDecodedAssetData)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -67,6 +68,5 @@ func TestDecodeMultiAssetData(t *testing.T) {
 		Amounts:         []*big.Int{big.NewInt(70), big.NewInt(1), big.NewInt(18)},
 		NestedAssetData: nestedAssetData,
 	}
-	actualDecodedAssetData := decodedAssetData.(MultiAssetData)
 	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "Multi Asset Data properly decoded")
 }

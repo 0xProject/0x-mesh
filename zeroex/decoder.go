@@ -40,10 +40,12 @@ type assetDataInfo struct {
 	abi  abi.ABI
 }
 
+// AssetDataDecoder decodes 0x order asset data
 type AssetDataDecoder struct {
 	idToAssetDataInfo map[string]assetDataInfo
 }
 
+// NewAssetDataDecoder instantiates a new asset data decoder
 func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 	erc20AssetDataABI, err := abi.JSON(strings.NewReader(erc20AssetDataAbi))
 	if err != nil {
@@ -77,39 +79,29 @@ func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 	return decoder, nil
 }
 
-func (d *AssetDataDecoder) Decode(assetData []byte) (interface{}, error) {
+// GetName returns the name of the assetData type
+func (d *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
 	info, ok := d.idToAssetDataInfo[idHex]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+		return "", errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+	}
+	return info.name, nil
+}
+
+// Decode decodes an encoded asset data into it's sub-components
+func (d *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}) error {
+	id := assetData[:4]
+	idHex := common.Bytes2Hex(id)
+	info, ok := d.idToAssetDataInfo[idHex]
+	if !ok {
+		return errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
 	}
 
-	switch info.name {
-	case "ERC20Token":
-		var decodedAssetData ERC20AssetData
-		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
-		if err != nil {
-			return nil, err
-		}
-		return decodedAssetData, nil
-	case "ERC721Token":
-		var decodedAssetData ERC721AssetData
-		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
-		if err != nil {
-			return nil, err
-		}
-		return decodedAssetData, nil
-
-	case "MultiAsset":
-		var decodedAssetData MultiAssetData
-		err := info.abi.Methods[info.name].Inputs.Unpack(&decodedAssetData, assetData[4:])
-		if err != nil {
-			return nil, err
-		}
-		return decodedAssetData, nil
-
-	default:
-		return nil, errors.New(fmt.Sprintf("Unsupported AssetData with name %s", info.name))
+	err := info.abi.Methods[info.name].Inputs.Unpack(decodedAssetData, assetData[4:])
+	if err != nil {
+		return err
 	}
+	return nil
 }

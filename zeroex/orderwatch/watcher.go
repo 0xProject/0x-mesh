@@ -1,6 +1,7 @@
 package orderwatch
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -59,16 +60,14 @@ func (w *Watcher) Start() {
 func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
-	decodedMakerAssetData, err := w.assetDataDecoder.Decode(signedOrder.MakerAssetData)
+	err := w.addAddressFromAssetDataToEventDecoder(signedOrder.MakerAssetData)
 	if err != nil {
 		return err
 	}
-	w.addAddressFromAssetDataToEventDecoder(decodedMakerAssetData)
-	decodedTakerAssetData, err := w.assetDataDecoder.Decode(signedOrder.TakerAssetData)
+	err = w.addAddressFromAssetDataToEventDecoder(signedOrder.TakerAssetData)
 	if err != nil {
 		return err
 	}
-	w.addAddressFromAssetDataToEventDecoder(decodedTakerAssetData)
 
 	// TODO(fabio): Add expiration & hash to expiration watcher
 
@@ -171,22 +170,37 @@ func (w *Watcher) setupEventWatcher() {
 	}
 }
 
-func (w *Watcher) addAddressFromAssetDataToEventDecoder(decodedAssetData interface{}) error {
-	switch decodedAssetData.(type) {
-	case zeroex.ERC20AssetData:
-		w.eventDecoder.AddKnownERC20(decodedAssetData.(zeroex.ERC20AssetData).Address)
-	case zeroex.ERC721AssetData:
-		w.eventDecoder.AddKnownERC721(decodedAssetData.(zeroex.ERC721AssetData).Address)
-	case zeroex.MultiAssetData:
-		multiAssetData := decodedAssetData.(zeroex.MultiAssetData)
-		// Recursively add the nested assetData to the event decoder
-		for _, assetData := range multiAssetData.NestedAssetData {
-			d, err := w.assetDataDecoder.Decode(assetData)
-			if err != nil {
-				return err
-			}
-			w.addAddressFromAssetDataToEventDecoder(d)
+func (w *Watcher) addAddressFromAssetDataToEventDecoder(assetData []byte) error {
+	assetDataName, err := w.assetDataDecoder.GetName(assetData)
+	if err != nil {
+		return err
+	}
+	switch assetDataName {
+	case "ERC20Token":
+		var decodedAssetData zeroex.ERC20AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
 		}
+		w.eventDecoder.AddKnownERC20(decodedAssetData.Address)
+	case "ERC721Token":
+		var decodedAssetData zeroex.ERC721AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
+	case "MultiAsset":
+		var decodedAssetData zeroex.MultiAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		for _, assetData := range decodedAssetData.NestedAssetData {
+			w.addAddressFromAssetDataToEventDecoder(assetData)
+		}
+	default:
+		return errors.New(fmt.Sprintf("Unrecognized assetData type name found: %s\n", assetDataName))
 	}
 	return nil
 }
