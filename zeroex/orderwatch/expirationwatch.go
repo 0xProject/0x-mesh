@@ -33,6 +33,7 @@ type ExpirationWatcher struct {
 func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 	rbTree := rbt.NewRbTree()
 	return &ExpirationWatcher{
+		ExpiredOrders:    make(chan []ExpiredOrder),
 		rbTree:           rbTree,
 		expirationBuffer: expirationBuffer,
 	}
@@ -70,7 +71,7 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 			}
 			e.mu.Unlock()
 
-			expiredOrders := e.Prune()
+			expiredOrders := e.prune()
 			go func() {
 				e.ExpiredOrders <- expiredOrders
 			}()
@@ -86,9 +87,9 @@ func (e *ExpirationWatcher) Stop() {
 	e.isWatching = false
 }
 
-// Prune checks for any expired orders, removes them from the expiration watcher and returns them
+// prune checks for any expired orders, removes them from the expiration watcher and returns them
 // to the caller
-func (e *ExpirationWatcher) Prune() []ExpiredOrder {
+func (e *ExpirationWatcher) prune() []ExpiredOrder {
 	pruned := []ExpiredOrder{}
 	currentTimestamp := time.Now().Unix()
 	for {

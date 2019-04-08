@@ -143,6 +143,7 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
+// IsWatching returns whether or not the block poller has been started
 func (w *Watcher) IsWatching() bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
