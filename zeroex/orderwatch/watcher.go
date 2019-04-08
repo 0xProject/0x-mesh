@@ -45,11 +45,11 @@ func (w *Watcher) Setup() {
 func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
-	err := w.addAddressFromAssetDataToEventDecoder(signedOrder.MakerAssetData)
+	err := w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
 	if err != nil {
 		return err
 	}
-	err = w.addAddressFromAssetDataToEventDecoder(signedOrder.TakerAssetData)
+	err = w.addAssetDataAddressToEventDecoder(signedOrder.TakerAssetData)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (w *Watcher) handleEventDecodingError(err error) {
 	}
 }
 
-func (w *Watcher) addAddressFromAssetDataToEventDecoder(assetData []byte) error {
+func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 	assetDataName, err := w.assetDataDecoder.GetName(assetData)
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func (w *Watcher) addAddressFromAssetDataToEventDecoder(assetData []byte) error 
 			return err
 		}
 		for _, assetData := range decodedAssetData.NestedAssetData {
-			w.addAddressFromAssetDataToEventDecoder(assetData)
+			w.addAssetDataAddressToEventDecoder(assetData)
 		}
 	default:
 		return errors.New(fmt.Sprintf("Unrecognized assetData type name found: %s\n", assetDataName))
