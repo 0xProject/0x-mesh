@@ -5,7 +5,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -14,6 +16,7 @@ import (
 type Client interface {
 	HeaderByNumber(number *big.Int) (*MiniHeader, error)
 	HeaderByHash(hash common.Hash) (*MiniHeader, error)
+	FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
@@ -53,4 +56,14 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 	}
 	miniHeader := NewMiniHeader(header.Hash(), header.ParentHash, header.Number)
 	return miniHeader, nil
+}
+
+// FilterLogs returns the logs that satisfy the supplied filter query.
+func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
+	ctx, _ := context.WithTimeout(context.Background(), rc.requestTimeout)
+	logs, err := rc.client.FilterLogs(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return logs, nil
 }

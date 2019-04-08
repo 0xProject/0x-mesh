@@ -1,12 +1,14 @@
 package blockwatch
 
 import (
+	"errors"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -17,11 +19,12 @@ type MiniHeader struct {
 	Hash   common.Hash `json:"hash"   gencodec:"required"`
 	Parent common.Hash `json:"parent" gencodec:"required"`
 	Number *big.Int    `json:"number" gencodec:"required"`
+	Logs   []types.Log `json:"logs" gencodec:"required"`
 }
 
 // NewMiniHeader returns a new MiniHeader.
 func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniHeader {
-	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number}
+	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number, Logs: []types.Log{}}
 	return &miniHeader
 }
 
@@ -58,12 +61,14 @@ type Watcher struct {
 	isWatching          bool                    // Whether the block poller is running
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
+	withLogs            bool
+	topics              []common.Hash
 
 	mu sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, client Client) *Watcher {
+func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, topics []common.Hash, client Client) *Watcher {
 	stack := NewStack(blockRetentionLimit)
 	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
 	errorsChan := make(chan error, 5)
@@ -74,46 +79,36 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRe
 		startBlockDepth:     startBlockDepth,
 		stack:               stack,
 		client:              client,
+		withLogs:            withLogs,
+		topics:              topics,
 	}
 	return bs
 }
 
-// Subscribe allows one to subscribe to the block events emitted by the Watcher.
-// As soon as the first subscription is registered, the block poller is started.
-// To unsubscribe, simply call `Unsubscribe` on the returned subscription. When all
-// consumers have unsubscribed, the block polling stops.
-// The sink channel should have ample buffer space to avoid blocking other subscribers.
-// Slow subscribers are not dropped.
-func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+// StartPolling starts the block poller
+func (w *Watcher) StartPolling() error {
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	sub := w.blockScope.Track(w.blockFeed.Subscribe(sink))
-
-	if !w.isWatching {
-		w.isWatching = true
-		w.ticker = time.NewTicker(w.pollingInterval)
-		go w.startPolling()
+	if w.isWatching {
+		return errors.New("Polling  already started")
 	}
 
-	return sub
+	w.isWatching = true
+	if w.ticker == nil {
+		w.ticker = time.NewTicker(w.pollingInterval)
+	}
+	go w.startPollingLoop()
+	return nil
 }
 
-// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
-// particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
-	return w.stack.Inspect()
-}
-
-func (w *Watcher) startPolling() {
+func (w *Watcher) startPollingLoop() {
 	for {
 		<-w.ticker.C
 
 		w.mu.Lock()
-		if w.blockScope.Count() == 0 {
-			w.isWatching = false
-			w.ticker.Stop()
+		if !w.isWatching {
 			w.mu.Unlock()
 			return
 		}
@@ -129,6 +124,29 @@ func (w *Watcher) startPolling() {
 			}
 		}
 	}
+}
+
+// StopPolling stops the block poller
+func (w *Watcher) StopPolling() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.isWatching = false
+	w.ticker.Stop()
+	w.ticker = nil
+}
+
+// Subscribe allows one to subscribe to the block events emitted by the Watcher.
+// To unsubscribe, simply call `Unsubscribe` on the returned subscription.
+// The sink channel should have ample buffer space to avoid blocking other subscribers.
+// Slow subscribers are not dropped.
+func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
+	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
+}
+
+// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
+// particularly performant and therefore should only be used for debugging and testing purposes.
+func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
+	return w.stack.Inspect()
 }
 
 // pollNextBlock polls for the next block header to be added to the block stack.
@@ -171,6 +189,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	latestHeader := w.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
+		nextHeader, err := w.addLogs(nextHeader)
+		if err != nil {
+			return events, err
+		}
 		retiredBlock := w.stack.Push(nextHeader)
 		events = append(events, &Event{
 			Type:        Added,
@@ -204,6 +226,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	if err != nil {
 		return events, err
 	}
+	nextHeader, err = w.addLogs(nextHeader)
+	if err != nil {
+		return events, err
+	}
 	retiredBlock := w.stack.Push(nextHeader)
 	events = append(events, &Event{
 		Type:        Added,
@@ -217,4 +243,19 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	}
 
 	return events, nil
+}
+
+func (w *Watcher) addLogs(header *MiniHeader) (*MiniHeader, error) {
+	if !w.withLogs {
+		return header, nil
+	}
+	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
+		BlockHash: &header.Hash,
+		Topics:    [][]common.Hash{w.topics},
+	})
+	if err != nil {
+		return nil, err
+	}
+	header.Logs = logs
+	return header, nil
 }

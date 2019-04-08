@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // fixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
@@ -72,6 +73,12 @@ func (fc *fakeClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 		return nil, ethereum.NotFound
 	}
 	return &miniHeader, nil
+}
+
+// FilterLogs returns the logs that satisfy the supplied filter query.
+func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
+	// NOT IMPLEMENTED SINCE NOT USED IN TESTS
+	return []types.Log{}, nil
 }
 
 // IncrementTimestep increments the timestep of the simulation.
