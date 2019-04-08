@@ -83,7 +83,7 @@ func (w *Watcher) setupEventWatcher() {
 	for events := range blockEvents {
 		for _, event := range events {
 			for _, log := range event.BlockHeader.Logs {
-				eventType, err := w.eventDecoder.findEventType(log)
+				eventType, err := w.eventDecoder.FindEventType(log)
 				if err != nil {
 					if err.Error() == unsupportedEvent {
 						continue

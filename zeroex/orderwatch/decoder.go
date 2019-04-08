@@ -192,7 +192,9 @@ func (d *Decoder) AddKnownExchange(address common.Address) {
 	d.knownExchangeAddresses[address] = true
 }
 
-func (d *Decoder) findEventType(log types.Log) (string, error) {
+// FindEventType returns to event type contained in the supplied log. It looks both at the registered
+// contract addresses and the log topic.
+func (d *Decoder) FindEventType(log types.Log) (string, error) {
 	if _, exists := d.knownERC20Addresses[log.Address]; exists {
 		eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
 		if !ok {
