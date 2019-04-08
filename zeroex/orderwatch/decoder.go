@@ -192,134 +192,88 @@ func (d *Decoder) AddKnownExchange(address common.Address) {
 	d.knownExchangeAddresses[address] = true
 }
 
+func (d *Decoder) findEventType(log types.Log) (string, error) {
 	if _, exists := d.knownERC20Addresses[log.Address]; exists {
-		return d.decodeERC20(log)
+		eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
+		if !ok {
+			return "", errors.New(unsupportedEvent)
+		}
+		if eventName == "Deposit" || eventName == "Withdraw" {
+			return fmt.Sprintf("Weth%sEvent", eventName), nil
+		}
+		return fmt.Sprintf("ERC20%sEvent", eventName), nil
 	}
 	if _, exists := d.knownERC721Addresses[log.Address]; exists {
-		return d.decodeERC721(log)
+		eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
+		if !ok {
+			return "", errors.New(unsupportedEvent)
+		}
+		return fmt.Sprintf("ERC721%sEvent", eventName), nil
 	}
 	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
-		return d.decodeExchange(log)
+		eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
+		if !ok {
+			return "", errors.New(unsupportedEvent)
+		}
+		return fmt.Sprintf("Exchange%sEvent", eventName), nil
 	}
 
-	return nil, errors.New(unsupportedEvent)
+	return "", errors.New(unsupportedEvent)
 }
 
-func (d *Decoder) decodeERC20(log types.Log) (interface{}, error) {
+// Decode attempts to decode the supplied log given the event types relevant to 0x orders. The
+// decoded result is stored in the value pointed to by supplied `decodedLog` struct.
+func (d *Decoder) Decode(log types.Log, decodedLog interface{}) error {
+	if _, exists := d.knownERC20Addresses[log.Address]; exists {
+		return d.decodeERC20(log, decodedLog)
+	}
+	if _, exists := d.knownERC721Addresses[log.Address]; exists {
+		return d.decodeERC721(log, decodedLog)
+	}
+	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
+		return d.decodeExchange(log, decodedLog)
+	}
+
+	return errors.New(unsupportedEvent)
+}
+
+func (d *Decoder) decodeERC20(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("Could not find ERC20 event name with topic: %s", log.Topics[0].Hex()))
+		return errors.New(fmt.Sprintf("Could not find ERC20 event name with topic: %s", log.Topics[0].Hex()))
 	}
 
-	switch eventName {
-	case "Transfer":
-		var transferEvent ERC20TransferEvent
-		err := unpackLog(&transferEvent, eventName, log, d.erc20ABI)
-		if err != nil {
-			return nil, err
-		}
-		return transferEvent, nil
-
-	case "Approval":
-		var approvalEvent ERC20ApprovalEvent
-		err := unpackLog(&approvalEvent, eventName, log, d.erc20ABI)
-		if err != nil {
-			return nil, err
-		}
-		return approvalEvent, nil
-
-	// WETH is an ERC20 token with `Withdraw` & `Deposit` events
-	case "Withdrawal":
-		var withdrawalEvent WethWithdrawalEvent
-		err := unpackLog(&withdrawalEvent, eventName, log, d.erc20ABI)
-		if err != nil {
-			return nil, err
-		}
-		return withdrawalEvent, nil
-
-	case "Deposit":
-		var depositEvent WethDepositEvent
-		err := unpackLog(&depositEvent, eventName, log, d.erc20ABI)
-		if err != nil {
-			return nil, err
-		}
-		return depositEvent, nil
-
-	default:
-		return nil, errors.New(fmt.Sprintf("Unrecognized ERC20 Event: %s", eventName))
+	err := unpackLog(decodedLog, eventName, log, d.erc20ABI)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
-func (d *Decoder) decodeERC721(log types.Log) (interface{}, error) {
+func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("Could not find ERC721 event name with topic: %s", log.Topics[0].Hex()))
+		return errors.New(fmt.Sprintf("Could not find ERC721 event name with topic: %s", log.Topics[0].Hex()))
 	}
 
-	switch eventName {
-	case "Transfer":
-		var transferEvent ERC721TransferEvent
-		err := unpackLog(&transferEvent, eventName, log, d.erc721ABI)
-		if err != nil {
-			return nil, err
-		}
-		return transferEvent, nil
-
-	case "Approval":
-		var approvalEvent ERC721ApprovalEvent
-		err := unpackLog(&approvalEvent, eventName, log, d.erc721ABI)
-		if err != nil {
-			return nil, err
-		}
-		return approvalEvent, nil
-
-	case "ApprovalForAll":
-		var approvalForAllEvent ERC721ApprovalForAllEvent
-		err := unpackLog(&approvalForAllEvent, eventName, log, d.erc721ABI)
-		if err != nil {
-			return nil, err
-		}
-		return approvalForAllEvent, nil
-
-	default:
-		return nil, errors.New(fmt.Sprintf("Unrecognized ERC721 Event: %s", eventName))
+	err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
-func (d *Decoder) decodeExchange(log types.Log) (interface{}, error) {
+func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
 	if !ok {
-		return nil, errors.New(unsupportedEvent)
+		return errors.New(unsupportedEvent)
 	}
 
-	switch eventName {
-	case "Fill":
-		var fillEvent ExchangeFillEvent
-		err := unpackLog(&fillEvent, eventName, log, d.exchangeABI)
-		if err != nil {
-			return nil, err
-		}
-		return fillEvent, nil
-
-	case "Cancel":
-		var cancelEvent ExchangeCancelEvent
-		err := unpackLog(&cancelEvent, eventName, log, d.exchangeABI)
-		if err != nil {
-			return nil, err
-		}
-		return cancelEvent, nil
-
-	case "CancelUpTo":
-		var cancelUpToEvent ExchangeCancelUpToEvent
-		err := unpackLog(&cancelUpToEvent, eventName, log, d.exchangeABI)
-		if err != nil {
-			return nil, err
-		}
-		return cancelUpToEvent, nil
-
-	default:
-		return nil, errors.New(fmt.Sprintf("Unsupported Log Event: %s", eventName))
+	err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
 // unpackLog unpacks a retrieved log into the provided output structure.

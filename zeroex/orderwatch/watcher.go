@@ -7,7 +7,6 @@ import (
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -83,79 +82,93 @@ func (w *Watcher) setupEventWatcher() {
 
 	for events := range blockEvents {
 		for _, event := range events {
-			decodedLogs, err := w.decodeLogs(event.BlockHeader.Logs)
-			if err != nil {
-				// The decoder is very lenient, so if an error is returned,
-				// it must be for an unrecoverable error and we should panic
-				panic(err)
-			}
-			for _, decodedLog := range decodedLogs {
-				switch decodedLog.(type) {
-				case ERC20TransferEvent:
-					transferEvent := decodedLog.(ERC20TransferEvent)
-					fmt.Printf("%+v\n", transferEvent)
+			for _, log := range event.BlockHeader.Logs {
+				eventType, err := w.eventDecoder.findEventType(log)
+				if err != nil {
+					if err.Error() == unsupportedEvent {
+						continue
+					}
+					// The decoder is very lenient, so if another error is returned,
+					// it must be for an unrecoverable error and we should panic
+					panic(err)
+				}
+				switch eventType {
+				case "ERC20TransferEvent":
+					var transferEvent ERC20TransferEvent
+					err = w.eventDecoder.Decode(log, &transferEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ERC20ApprovalEvent:
-					approvalEvent := decodedLog.(ERC20ApprovalEvent)
-					fmt.Printf("%+v\n", approvalEvent)
+				case "ERC20ApprovalEvent":
+					var approvalEvent ERC20ApprovalEvent
+					err = w.eventDecoder.Decode(log, &approvalEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ERC721TransferEvent:
-					transferEvent := decodedLog.(ERC721TransferEvent)
-					fmt.Printf("%+v\n", transferEvent)
+				case "ERC721TransferEvent":
+					var transferEvent ERC721TransferEvent
+					err = w.eventDecoder.Decode(log, &transferEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ERC721ApprovalEvent:
-					approvalEvent := decodedLog.(ERC721ApprovalEvent)
-					fmt.Printf("%+v\n", approvalEvent)
+				case "ERC721ApprovalEvent":
+					var approvalEvent ERC721ApprovalEvent
+					err = w.eventDecoder.Decode(log, &approvalEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ERC721ApprovalForAllEvent:
-					approvalForAllEvent := decodedLog.(ERC721ApprovalForAllEvent)
-					fmt.Printf("%+v\n", approvalForAllEvent)
+				case "ERC721ApprovalForAllEvent":
+					var approvalForAllEvent ERC721ApprovalForAllEvent
+					err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ExchangeFillEvent:
-					fillEvent := decodedLog.(ExchangeFillEvent)
-					fmt.Printf("%+v\n", fillEvent)
+				case "WethWithdrawalEvent":
+					var withdrawalEvent WethWithdrawalEvent
+					err = w.eventDecoder.Decode(log, &withdrawalEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ExchangeCancelEvent:
-					cancelEvent := decodedLog.(ExchangeCancelEvent)
-					fmt.Printf("%+v\n", cancelEvent)
+				case "WethDepositEvent":
+					var depositEvent WethDepositEvent
+					err = w.eventDecoder.Decode(log, &depositEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case ExchangeCancelUpToEvent:
-					cancelUpToEvent := decodedLog.(ExchangeCancelUpToEvent)
-					fmt.Printf("%+v\n", cancelUpToEvent)
+				case "ExchangeFillEvent":
+					var exchangeFillEvent ExchangeFillEvent
+					err = w.eventDecoder.Decode(log, &exchangeFillEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case WethDepositEvent:
-					depositEvent := decodedLog.(WethDepositEvent)
-					fmt.Printf("%+v\n", depositEvent)
+				case "ExchangeCancelEvent":
+					var exchangeCancelEvent ExchangeCancelEvent
+					err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-				case WethWithdrawalEvent:
-					withdrawalEvent := decodedLog.(WethWithdrawalEvent)
-					fmt.Printf("%+v\n", withdrawalEvent)
+				case "ExchangeCancelUpToEvent":
+					var exchangeCancelUpToEvent ExchangeCancelUpToEvent
+					err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
+					if err != nil {
+						panic(err)
+					}
 					// TODO(fabio): Handle this event
-
 				default:
-					panic(fmt.Sprintf("Unrecognized event returned: %+v", decodedLog))
+					panic(fmt.Sprintf("Did not handle event %s\n", eventType))
 				}
 			}
 		}
 	}
-}
-
-func (w *Watcher) decodeLogs(logs []types.Log) ([]interface{}, error) {
-	decodedLogs := []interface{}{}
-	for _, log := range logs {
-		decodedLog, err := w.eventDecoder.Decode(log)
-		// Ignore unsupported events
-		if err != nil && err.Error() != "Unsupported event" {
-			return nil, err
-		}
-		if decodedLog == nil {
-			// The log was not decodable, so we ignore it
-			continue
-		}
-		decodedLogs = append(decodedLogs, decodedLog)
-	}
-
-	return decodedLogs, nil
 }
 
 func (w *Watcher) addAddressFromAssetDataToEventDecoder(decodedAssetData interface{}) error {
