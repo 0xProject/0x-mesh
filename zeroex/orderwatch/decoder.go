@@ -113,12 +113,13 @@ type WethDepositEvent struct {
 
 // UnsupportedEventError is thrown when an unsupported topic is encountered
 type UnsupportedEventError struct {
-	Topics []common.Hash
+	Topics          []common.Hash
+	ContractAddress common.Address
 }
 
 // Error returns the error string
 func (e UnsupportedEventError) Error() string {
-	return fmt.Sprintf("unsupported event: topics: %d", e.Topics)
+	return fmt.Sprintf("unsupported event: contract address: %s, topics: %v", e.ContractAddress, e.Topics)
 }
 
 type UntrackedTokenError struct {
@@ -217,7 +218,7 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 	if _, exists := d.knownERC20Addresses[log.Address]; exists {
 		eventName, ok := d.erc20TopicToEventName[firstTopic]
 		if !ok {
-			return "", UnsupportedEventError{Topics: log.Topics}
+			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
 		if eventName == "Deposit" || eventName == "Withdraw" {
 			return fmt.Sprintf("Weth%sEvent", eventName), nil
@@ -227,14 +228,14 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 	if _, exists := d.knownERC721Addresses[log.Address]; exists {
 		eventName, ok := d.erc721TopicToEventName[firstTopic]
 		if !ok {
-			return "", UnsupportedEventError{Topics: log.Topics}
+			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
 		return fmt.Sprintf("ERC721%sEvent", eventName), nil
 	}
 	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
 		eventName, ok := d.erc721TopicToEventName[firstTopic]
 		if !ok {
-			return "", UnsupportedEventError{Topics: log.Topics}
+			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
 		return fmt.Sprintf("Exchange%sEvent", eventName), nil
 	}
@@ -261,7 +262,7 @@ func (d *Decoder) Decode(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeERC20(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
 	if !ok {
-		return UnsupportedEventError{Topics: log.Topics}
+		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.erc20ABI)
@@ -274,7 +275,7 @@ func (d *Decoder) decodeERC20(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
 	if !ok {
-		return UnsupportedEventError{Topics: log.Topics}
+		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
@@ -287,7 +288,7 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
 	if !ok {
-		return UnsupportedEventError{Topics: log.Topics}
+		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
@@ -311,7 +312,7 @@ func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.A
 		}
 	}
 	if len(indexed) != len(log.Topics[1:]) {
-		return UnsupportedEventError{Topics: log.Topics}
+		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 	return parseTopics(decodedEvent, indexed, log.Topics[1:])
 }
