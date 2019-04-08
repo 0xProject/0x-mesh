@@ -192,15 +192,13 @@ func (d *Decoder) AddKnownExchange(address common.Address) {
 	d.knownExchangeAddresses[address] = true
 }
 
-// Decode attempts to decode the supplied log given the event types relevant to 0x orders
-func (d *Decoder) Decode(log types.Log) (interface{}, error) {
-	if _, ok := d.knownERC20Addresses[log.Address]; ok {
+	if _, exists := d.knownERC20Addresses[log.Address]; exists {
 		return d.decodeERC20(log)
 	}
-	if _, ok := d.knownERC721Addresses[log.Address]; ok {
+	if _, exists := d.knownERC721Addresses[log.Address]; exists {
 		return d.decodeERC721(log)
 	}
-	if _, ok := d.knownExchangeAddresses[log.Address]; ok {
+	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
 		return d.decodeExchange(log)
 	}
 
