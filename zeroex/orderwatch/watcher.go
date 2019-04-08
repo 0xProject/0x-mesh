@@ -3,13 +3,9 @@ package orderwatch
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Watcher watches all order-relevant state and handles the state transitions
@@ -20,15 +16,7 @@ type Watcher struct {
 }
 
 // New instantiates a new order watcher
-func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, rpcClient blockwatch.Client) (*Watcher, error) {
-	blockRetentionLimit := 20
-	withLogs := true
-	topics := []common.Hash{}
-	for _, signature := range EVENT_SIGNATURES {
-		topic := common.BytesToHash(crypto.Keccak256([]byte(signature)))
-		topics = append(topics, topic)
-	}
-	blockWatcher := blockwatch.New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, rpcClient)
+func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
@@ -44,16 +32,13 @@ func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, rpcClie
 	}, nil
 }
 
-// Start starts the order watcher
-func (w *Watcher) Start() {
+// Setup sets up the event & expiration watchers as well as the cleanup worker
+func (w *Watcher) Setup() {
 	w.setupEventWatcher()
 
 	// TODO(fabio): Implement and instantiate expirationwatch
 
 	// TODO(fabio): Implement and instantiate the cleanup worker
-
-	// Everything has been set up. Let's start the block poller.
-	w.blockWatcher.StartPolling()
 }
 
 // Watch adds a 0x order to the ones being tracked for order-relevant state changes
@@ -77,8 +62,9 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 func (w *Watcher) setupEventWatcher() {
 	blockEvents := make(chan []*blockwatch.Event, 10)
 	sub := w.blockWatcher.Subscribe(blockEvents)
-	defer sub.Unsubscribe()
 
+	go func() {
+	defer sub.Unsubscribe()
 	for events := range blockEvents {
 		for _, event := range events {
 			for _, log := range event.BlockHeader.Logs {
