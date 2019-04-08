@@ -80,10 +80,10 @@ func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 }
 
 // GetName returns the name of the assetData type
-func (d *AssetDataDecoder) GetName(assetData []byte) (string, error) {
+func (a *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
-	info, ok := d.idToAssetDataInfo[idHex]
+	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
 		return "", errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
 	}
@@ -91,10 +91,10 @@ func (d *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 }
 
 // Decode decodes an encoded asset data into it's sub-components
-func (d *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}) error {
+func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}) error {
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
-	info, ok := d.idToAssetDataInfo[idHex]
+	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
 		return errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
 	}
