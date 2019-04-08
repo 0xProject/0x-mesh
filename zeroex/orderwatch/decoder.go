@@ -309,11 +309,6 @@ var (
 	reflectBigInt  = reflect.TypeOf(new(big.Int))
 )
 
-// capitalise makes a camel-case string which starts with an upper case character.
-func capitalise(input string) string {
-	return abi.ToCamelCase(input)
-}
-
 // parseTopics converts the indexed topic fields into actual log field values.
 //
 // Note, dynamic types cannot be reconstructed since they get mapped to Keccak256
@@ -328,7 +323,7 @@ func parseTopics(out interface{}, fields abi.Arguments, topics []common.Hash) er
 		if !arg.Indexed {
 			return errors.New("non-indexed field in topic reconstruction")
 		}
-		field := reflect.ValueOf(out).Elem().FieldByName(capitalise(arg.Name))
+		field := reflect.ValueOf(out).Elem().FieldByName(abi.ToCamelCase(arg.Name))
 
 		// Try to parse the topic back into the fields based on primitive types
 		switch field.Kind() {
