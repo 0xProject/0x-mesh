@@ -1,7 +1,9 @@
 package orderwatch
 
 import (
+	"errors"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,8 +18,13 @@ type ExpiredOrder struct {
 
 // ExpirationWatcher watches the expiration of 0x orders
 type ExpirationWatcher struct {
+	ExpiredOrders    chan []ExpiredOrder
 	rbTree           *rbt.RbTree
 	expirationBuffer int64
+	ticker           *time.Ticker
+	isWatching       bool
+	wasStartedOnce   bool
+	mu               sync.RWMutex
 }
 
 // NewExpirationWatcher instantiates a new expiration watcher. An expiration buffer (either positive or negative)
@@ -35,6 +42,48 @@ func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 func (e *ExpirationWatcher) Add(expirationTimeSeconds int64, orderHash common.Hash) {
 	key := rbt.Int64Key(expirationTimeSeconds)
 	e.rbTree.Insert(&key, orderHash)
+}
+
+// Start starts the expiration watchers poller
+func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.isWatching {
+		return errors.New("Expiration watcher already started")
+	}
+	if e.wasStartedOnce {
+		return errors.New("Can only start ExpirationWatcher once per instance")
+	}
+	e.wasStartedOnce = true
+
+	ticker := time.NewTicker(pollingInterval)
+	go func() {
+		for {
+			<-ticker.C
+
+			e.mu.Lock()
+			if !e.isWatching {
+				ticker.Stop()
+				close(e.ExpiredOrders)
+				e.mu.Unlock()
+				return
+			}
+			e.mu.Unlock()
+
+			expiredOrders := e.Prune()
+			go func() {
+				e.ExpiredOrders <- expiredOrders
+			}()
+		}
+	}()
+	return nil
+}
+
+// Stop stops the expiration watchers poller
+func (e *ExpirationWatcher) Stop() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.isWatching = false
 }
 
 // Prune checks for any expired orders, removes them from the expiration watcher and returns them

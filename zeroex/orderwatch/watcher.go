@@ -3,16 +3,24 @@ package orderwatch
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 )
+
+var expirationPollingInterval time.Duration = 50 * time.Millisecond
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	blockWatcher     *blockwatch.Watcher
-	eventDecoder     *Decoder
-	assetDataDecoder *zeroex.AssetDataDecoder
+	blockWatcher      *blockwatch.Watcher
+	eventDecoder      *Decoder
+	assetDataDecoder  *zeroex.AssetDataDecoder
+	expirationWatcher *ExpirationWatcher
+	isSetup           bool
+	setupMux          sync.RWMutex
 }
 
 // New instantiates a new order watcher
@@ -25,24 +33,44 @@ func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watche
 	if err != nil {
 		return nil, err
 	}
+	var expirationBuffer int64 = 0
 	return &Watcher{
-		blockWatcher:     blockWatcher,
-		eventDecoder:     decoder,
-		assetDataDecoder: assetDataDecoder,
+		blockWatcher:      blockWatcher,
+		expirationWatcher: NewExpirationWatcher(expirationBuffer),
+		eventDecoder:      decoder,
+		assetDataDecoder:  assetDataDecoder,
 	}, nil
 }
 
-// Setup sets up the event & expiration watchers as well as the cleanup worker
-func (w *Watcher) Setup() {
+// Setup sets up the event & expiration watchers as well as the cleanup worker.
+func (w *Watcher) Setup() error {
+	w.setupMux.Lock()
+	defer w.setupMux.Unlock()
+	if w.isSetup {
+		return errors.New("Setup can only be called once")
+	}
+
 	w.setupEventWatcher()
 
-	// TODO(fabio): Implement and instantiate expirationwatch
+	w.setupExpirationWatcher()
 
 	// TODO(fabio): Implement and instantiate the cleanup worker
+
+	w.isSetup = true
+	return nil
 }
 
 // Watch adds a 0x order to the ones being tracked for order-relevant state changes
-func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
+func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
+	w.setupMux.Lock()
+	defer w.setupMux.Unlock()
+	if !w.isSetup {
+		return errors.New("Cannot watch orders before calling Setup()")
+	}
+	if !w.blockWatcher.IsWatching() {
+		return errors.New("Block watcher must be started before adding orders to orderwatch.Watcher")
+	}
+
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
 	err := w.addAddressFromAssetDataToEventDecoder(signedOrder.MakerAssetData)
@@ -54,9 +82,22 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 		return err
 	}
 
-	// TODO(fabio): Add expiration & hash to expiration watcher
+	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
 	return nil
+}
+
+func (w *Watcher) setupExpirationWatcher() {
+	go func() {
+		for expiredOrders := range w.expirationWatcher.ExpiredOrders {
+			for _, expiredOrder := range expiredOrders {
+				// TODO(fabio): Handle expired order
+				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))
+			}
+		}
+	}()
+
+	w.expirationWatcher.Start(expirationPollingInterval)
 }
 
 func (w *Watcher) setupEventWatcher() {
