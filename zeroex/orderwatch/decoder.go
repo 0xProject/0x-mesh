@@ -32,8 +32,6 @@ const erc721EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"n
 // Includes Exchange `Fill`, `Cancel`, `CancelUpTo` events
 const exchangeEventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"takerAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"makerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"makerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerFeePaid\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Fill\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Cancel\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"orderEpoch\",\"type\":\"uint256\"}],\"name\":\"CancelUpTo\",\"type\":\"event\"}]"
 
-const unsupportedEvent = "Unsupported event"
-
 // ERC20TransferEvent represents an ERC20 Transfer event
 type ERC20TransferEvent struct {
 	From  common.Address
@@ -111,6 +109,26 @@ type WethWithdrawalEvent struct {
 type WethDepositEvent struct {
 	Owner common.Address
 	Value *big.Int
+}
+
+// UnsupportedEventError is thrown when an unsupported topic is encountered
+type UnsupportedEventError struct {
+	Topics []common.Hash
+}
+
+// Error returns the error string
+func (e UnsupportedEventError) Error() string {
+	return fmt.Sprintf("unsupported event: topics: %d", e.Topics)
+}
+
+type UntrackedTokenError struct {
+	Topic        common.Hash
+	TokenAddress common.Address
+}
+
+// Error returns the error string
+func (e UntrackedTokenError) Error() string {
+	return fmt.Sprintf("event for an untracked token: contract address: %s, topic: %s", e.TokenAddress, e.Topic)
 }
 
 // Decoder decodes events relevant to the fillability of 0x orders. Since ERC20 & ERC721 events
@@ -195,10 +213,11 @@ func (d *Decoder) AddKnownExchange(address common.Address) {
 // FindEventType returns to event type contained in the supplied log. It looks both at the registered
 // contract addresses and the log topic.
 func (d *Decoder) FindEventType(log types.Log) (string, error) {
+	firstTopic := log.Topics[0]
 	if _, exists := d.knownERC20Addresses[log.Address]; exists {
-		eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
+		eventName, ok := d.erc20TopicToEventName[firstTopic]
 		if !ok {
-			return "", errors.New(unsupportedEvent)
+			return "", UnsupportedEventError{Topics: log.Topics}
 		}
 		if eventName == "Deposit" || eventName == "Withdraw" {
 			return fmt.Sprintf("Weth%sEvent", eventName), nil
@@ -206,21 +225,21 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 		return fmt.Sprintf("ERC20%sEvent", eventName), nil
 	}
 	if _, exists := d.knownERC721Addresses[log.Address]; exists {
-		eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
+		eventName, ok := d.erc721TopicToEventName[firstTopic]
 		if !ok {
-			return "", errors.New(unsupportedEvent)
+			return "", UnsupportedEventError{Topics: log.Topics}
 		}
 		return fmt.Sprintf("ERC721%sEvent", eventName), nil
 	}
 	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
-		eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
+		eventName, ok := d.erc721TopicToEventName[firstTopic]
 		if !ok {
-			return "", errors.New(unsupportedEvent)
+			return "", UnsupportedEventError{Topics: log.Topics}
 		}
 		return fmt.Sprintf("Exchange%sEvent", eventName), nil
 	}
 
-	return "", errors.New(unsupportedEvent)
+	return "", UntrackedTokenError{Topic: firstTopic, TokenAddress: log.Address}
 }
 
 // Decode attempts to decode the supplied log given the event types relevant to 0x orders. The
@@ -236,13 +255,13 @@ func (d *Decoder) Decode(log types.Log, decodedLog interface{}) error {
 		return d.decodeExchange(log, decodedLog)
 	}
 
-	return errors.New(unsupportedEvent)
+	return UntrackedTokenError{Topic: log.Topics[0], TokenAddress: log.Address}
 }
 
 func (d *Decoder) decodeERC20(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc20TopicToEventName[log.Topics[0]]
 	if !ok {
-		return errors.New(fmt.Sprintf("Could not find ERC20 event name with topic: %s", log.Topics[0].Hex()))
+		return UnsupportedEventError{Topics: log.Topics}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.erc20ABI)
@@ -255,7 +274,7 @@ func (d *Decoder) decodeERC20(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.erc721TopicToEventName[log.Topics[0]]
 	if !ok {
-		return errors.New(fmt.Sprintf("Could not find ERC721 event name with topic: %s", log.Topics[0].Hex()))
+		return UnsupportedEventError{Topics: log.Topics}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
@@ -268,7 +287,7 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
 	if !ok {
-		return errors.New(unsupportedEvent)
+		return UnsupportedEventError{Topics: log.Topics}
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
@@ -292,7 +311,7 @@ func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.A
 		}
 	}
 	if len(indexed) != len(log.Topics[1:]) {
-		return errors.New(unsupportedEvent)
+		return UnsupportedEventError{Topics: log.Topics}
 	}
 	return parseTopics(decodedEvent, indexed, log.Topics[1:])
 }
