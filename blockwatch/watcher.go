@@ -109,6 +109,7 @@ func (w *Watcher) startPollingLoop() {
 
 		w.mu.Lock()
 		if !w.isWatching {
+			w.mu.Unlock()
 			return
 		}
 		w.mu.Unlock()
