@@ -9,15 +9,15 @@ import (
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 )
-
-var expirationPollingInterval time.Duration = 50 * time.Millisecond
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
 	blockWatcher      *blockwatch.Watcher
 	eventDecoder      *Decoder
 	assetDataDecoder  *zeroex.AssetDataDecoder
+	blockSubscription event.Subscription
 	expirationWatcher *ExpirationWatcher
 	isSetup           bool
 	setupMux          sync.RWMutex
@@ -43,7 +43,7 @@ func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watche
 }
 
 // Setup sets up the event & expiration watchers as well as the cleanup worker.
-func (w *Watcher) Setup() error {
+func (w *Watcher) Setup(expirationPollingInterval time.Duration) error {
 	w.setupMux.Lock()
 	defer w.setupMux.Unlock()
 	if w.isSetup {
@@ -52,7 +52,7 @@ func (w *Watcher) Setup() error {
 
 	w.setupEventWatcher()
 
-	w.setupExpirationWatcher()
+	w.setupExpirationWatcher(expirationPollingInterval)
 
 	// TODO(fabio): Implement and instantiate the cleanup worker
 
@@ -87,7 +87,7 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 	return nil
 }
 
-func (w *Watcher) setupExpirationWatcher() {
+func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) {
 	go func() {
 		for expiredOrders := range w.expirationWatcher.ExpiredOrders {
 			for _, expiredOrder := range expiredOrders {
