@@ -96,7 +96,8 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 
 func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) {
 	go func() {
-		for expiredOrders := range w.expirationWatcher.ExpiredOrders {
+		expiredOrders := w.expirationWatcher.Receive()
+		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
 				// TODO(fabio): Handle expired order
 				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))

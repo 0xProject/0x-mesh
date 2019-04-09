@@ -63,7 +63,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	go func() {
 		for {
 			select {
-			case _, isOpen := <-watcher.ExpiredOrders:
+			case _, isOpen := <-watcher.Receive():
 				if !isOpen {
 					return
 				}

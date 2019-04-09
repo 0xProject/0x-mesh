@@ -18,7 +18,7 @@ type ExpiredOrder struct {
 
 // ExpirationWatcher watches the expiration of 0x orders
 type ExpirationWatcher struct {
-	ExpiredOrders    chan []ExpiredOrder
+	expiredOrders    chan []ExpiredOrder
 	rbTree           *rbt.RbTree
 	expirationBuffer int64
 	ticker           *time.Ticker
@@ -33,7 +33,7 @@ type ExpirationWatcher struct {
 func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 	rbTree := rbt.NewRbTree()
 	return &ExpirationWatcher{
-		ExpiredOrders:    make(chan []ExpiredOrder, 10),
+		expiredOrders:    make(chan []ExpiredOrder, 10),
 		rbTree:           rbTree,
 		expirationBuffer: expirationBuffer,
 	}
@@ -66,14 +66,14 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 			e.mu.Lock()
 			if !e.isWatching {
 				ticker.Stop()
-				close(e.ExpiredOrders)
+				close(e.expiredOrders)
 				e.mu.Unlock()
 				return
 			}
 			e.mu.Unlock()
 
 			expiredOrders := e.prune()
-			e.ExpiredOrders <- expiredOrders
+			e.expiredOrders <- expiredOrders
 		}
 	}()
 	return nil
@@ -84,6 +84,11 @@ func (e *ExpirationWatcher) Stop() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.isWatching = false
+}
+
+// Receive returns a read-only channel that can be used to listen for expired orders
+func (e *ExpirationWatcher) Receive() <-chan []ExpiredOrder {
+	return e.expiredOrders
 }
 
 // prune checks for any expired orders, removes them from the expiration watcher and returns them
