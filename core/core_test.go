@@ -47,12 +47,13 @@ func TestPingPong(t *testing.T) {
 	// Send ping from node0 to node1
 	pingMessage := &Message{Data: []byte("ping\n")}
 	require.NoError(t, node0.Send(pingMessage))
-	expectMessage(t, node1.Receive(), pingMessage, 5*time.Second)
+	const pingPongTimeout = 15 * time.Second
+	expectMessage(t, node1.Receive(), pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{Data: []byte("pong\n")}
 	require.NoError(t, node1.Send(pongMessage))
-	expectMessage(t, node0.Receive(), pongMessage, 5*time.Second)
+	expectMessage(t, node0.Receive(), pongMessage, pingPongTimeout)
 }
 
 func expectMessage(t *testing.T, ch <-chan *Message, expected *Message, timeout time.Duration) {
