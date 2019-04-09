@@ -81,7 +81,6 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	watcher.Stop()
 	expectedIsWatching = false
 	assert.Equal(t, expectedIsWatching, watcher.isWatching)
-	<-time.Tick(50 * time.Millisecond)
 
 	countMux.Lock()
 	expectedChannelCount := 1
