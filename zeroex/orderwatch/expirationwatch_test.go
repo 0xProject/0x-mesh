@@ -1,6 +1,7 @@
 package orderwatch
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -48,4 +49,42 @@ func TestReturnsEmptyIfNoOrders(t *testing.T) {
 
 	pruned := watcher.prune()
 	assert.Equal(t, 0, len(pruned), "Returns empty array when no orders tracked")
+}
+
+func TestStartsAndStopsPoller(t *testing.T) {
+	var expirationBuffer int64 = 0
+	watcher := NewExpirationWatcher(expirationBuffer)
+
+	pollingInterval := 100 * time.Millisecond
+	watcher.Start(pollingInterval)
+
+	var countMux sync.RWMutex
+	channelCount := 0
+	go func() {
+		for {
+			select {
+			case _, isOpen := <-watcher.ExpiredOrders:
+				if !isOpen {
+					return
+				}
+				countMux.Lock()
+				channelCount++
+				countMux.Unlock()
+			}
+		}
+	}()
+
+	expectedIsWatching := true
+	assert.Equal(t, expectedIsWatching, watcher.isWatching)
+
+	<-time.Tick(110 * time.Millisecond)
+	watcher.Stop()
+	expectedIsWatching = false
+	assert.Equal(t, expectedIsWatching, watcher.isWatching)
+	<-time.Tick(50 * time.Millisecond)
+
+	countMux.Lock()
+	expectedChannelCount := 1
+	assert.Equal(t, expectedChannelCount, channelCount)
+	countMux.Unlock()
 }

@@ -33,7 +33,7 @@ type ExpirationWatcher struct {
 func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 	rbTree := rbt.NewRbTree()
 	return &ExpirationWatcher{
-		ExpiredOrders:    make(chan []ExpiredOrder),
+		ExpiredOrders:    make(chan []ExpiredOrder, 10),
 		rbTree:           rbTree,
 		expirationBuffer: expirationBuffer,
 	}
@@ -58,8 +58,8 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 	e.isWatching = true
 	e.wasStartedOnce = true
 
-	ticker := time.NewTicker(pollingInterval)
 	go func() {
+		ticker := time.NewTicker(pollingInterval)
 		for {
 			<-ticker.C
 
@@ -73,9 +73,7 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 			e.mu.Unlock()
 
 			expiredOrders := e.prune()
-			go func() {
-				e.ExpiredOrders <- expiredOrders
-			}()
+			e.ExpiredOrders <- expiredOrders
 		}
 	}()
 	return nil
