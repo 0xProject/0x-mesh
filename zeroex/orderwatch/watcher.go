@@ -78,15 +78,6 @@ func (w *Watcher) Teardown() error {
 
 // Watch adds a 0x order to the ones being tracked for order-relevant state changes
 func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
-	w.setupMux.Lock()
-	defer w.setupMux.Unlock()
-	if !w.isSetup {
-		return errors.New("Cannot watch orders before calling Setup()")
-	}
-	if !w.blockWatcher.IsWatching() {
-		return errors.New("Block watcher must be started before adding orders to orderwatch.Watcher")
-	}
-
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
 	err := w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)

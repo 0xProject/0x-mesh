@@ -143,13 +143,6 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
-// IsWatching returns whether or not the block poller has been started
-func (w *Watcher) IsWatching() bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.isWatching
-}
-
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
 func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
