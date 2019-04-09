@@ -55,6 +55,7 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 	if e.wasStartedOnce {
 		return errors.New("Can only start ExpirationWatcher once per instance")
 	}
+	e.isWatching = true
 	e.wasStartedOnce = true
 
 	ticker := time.NewTicker(pollingInterval)
