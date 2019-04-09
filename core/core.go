@@ -100,7 +100,7 @@ func New(config Config) (*Node, error) {
 		config:   config,
 		pubsub:   ps,
 		sub:      sub,
-		messages: make(chan *Message),
+		messages: make(chan *Message, messageBuffer),
 	}
 
 	// Start listening in the background for messages over the subscription.
