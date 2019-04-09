@@ -15,7 +15,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	direct "github.com/libp2p/go-libp2p-webrtc-direct"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/pions/webrtc"
+	webrtc "github.com/pion/webrtc/v2"
 	mplex "github.com/whyrusleeping/go-smux-multiplex"
 )
 
