@@ -55,7 +55,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	var expirationBuffer int64 = 0
 	watcher := NewExpirationWatcher(expirationBuffer)
 
-	pollingInterval := 100 * time.Millisecond
+	pollingInterval := 50 * time.Millisecond
 	watcher.Start(pollingInterval)
 
 	var countMux sync.RWMutex
@@ -77,7 +77,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	expectedIsWatching := true
 	assert.Equal(t, expectedIsWatching, watcher.isWatching)
 
-	<-time.Tick(110 * time.Millisecond)
+	<-time.Tick(60 * time.Millisecond)
 	watcher.Stop()
 	expectedIsWatching = false
 	assert.Equal(t, expectedIsWatching, watcher.isWatching)
