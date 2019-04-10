@@ -25,7 +25,7 @@ type SignedOrder struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
-	Signature             []byte         `json:"signature,omitempty"`
+	Signature             []byte         `json:"signature"`
 }
 
 var eip712OrderTypes = signer.Types{
