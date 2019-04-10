@@ -30,6 +30,7 @@ func TestGenerateOrderHash(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(0),
 	}
 
+	// expectedOrderHash copied over from canonical order hashing test in Typescript library
 	expectedOrderHash := common.HexToHash("0x434c6b41e2fb6dfcfe1b45c4492fb03700798e9c1afc6f801ba6203f948c1fa7")
 	actualOrderHash, err := order.ComputeOrderHash()
 	require.NoError(t, err)
