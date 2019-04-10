@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/signer/core"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -98,7 +97,7 @@ var eip712OrderTypes = signer.Types{
 
 // ComputeOrderHash computes a 0x order hash
 func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
-	var domain = core.TypedDataDomain{
+	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
 		VerifyingContract: s.ExchangeAddress.Hex(),
