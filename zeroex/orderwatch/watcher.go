@@ -42,8 +42,9 @@ func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watche
 	}, nil
 }
 
-// Setup sets up the event & expiration watchers as well as the cleanup worker.
-func (w *Watcher) Setup(expirationPollingInterval time.Duration) error {
+// Start sets up the event & expiration watchers as well as the cleanup worker. Event
+// watching will require the blockwatch.Watcher to be started however.
+func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
 	w.setupMux.Lock()
 	defer w.setupMux.Unlock()
 	if w.isSetup {
@@ -60,7 +61,8 @@ func (w *Watcher) Setup(expirationPollingInterval time.Duration) error {
 	return nil
 }
 
-func (w *Watcher) Teardown() error {
+// Stop closes the block subscription, stops the event, expiration watcher and the cleanup worker.
+func (w *Watcher) Stop() error {
 	w.setupMux.Lock()
 	if !w.isSetup {
 		w.setupMux.Unlock()
@@ -73,6 +75,8 @@ func (w *Watcher) Teardown() error {
 
 	// Stop expiration watcher
 	w.expirationWatcher.Stop()
+
+	// TODO(fabio): Stop the cleanup worker
 	return nil
 }
 
