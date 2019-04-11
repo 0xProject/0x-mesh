@@ -27,7 +27,6 @@ require (
 	github.com/rs/cors v1.6.0 // indirect
 	github.com/status-im/keycard-go v0.0.0-20190409111710-eed60ac3da70 // indirect
 	github.com/stretchr/testify v1.3.0
-	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.0.0 // indirect
 	github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208 // indirect
 	golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5 // indirect
