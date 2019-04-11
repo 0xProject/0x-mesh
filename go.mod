@@ -10,6 +10,7 @@ require (
 	github.com/ethereum/go-ethereum v1.8.23
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33
 	github.com/rs/cors v1.6.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0 // indirect

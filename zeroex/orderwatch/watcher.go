@@ -3,16 +3,24 @@ package orderwatch
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	blockWatcher     *blockwatch.Watcher
-	eventDecoder     *Decoder
-	assetDataDecoder *zeroex.AssetDataDecoder
+	blockWatcher      *blockwatch.Watcher
+	eventDecoder      *Decoder
+	assetDataDecoder  *zeroex.AssetDataDecoder
+	blockSubscription event.Subscription
+	expirationWatcher *ExpirationWatcher
+	isSetup           bool
+	setupMux          sync.RWMutex
 }
 
 // New instantiates a new order watcher
@@ -25,24 +33,55 @@ func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watche
 	if err != nil {
 		return nil, err
 	}
+	var expirationBuffer int64 = 0
 	return &Watcher{
-		blockWatcher:     blockWatcher,
-		eventDecoder:     decoder,
-		assetDataDecoder: assetDataDecoder,
+		blockWatcher:      blockWatcher,
+		expirationWatcher: NewExpirationWatcher(expirationBuffer),
+		eventDecoder:      decoder,
+		assetDataDecoder:  assetDataDecoder,
 	}, nil
 }
 
-// Setup sets up the event & expiration watchers as well as the cleanup worker
-func (w *Watcher) Setup() {
+// Start sets up the event & expiration watchers as well as the cleanup worker. Event
+// watching will require the blockwatch.Watcher to be started however.
+func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
+	w.setupMux.Lock()
+	defer w.setupMux.Unlock()
+	if w.isSetup {
+		return errors.New("Setup can only be called once")
+	}
+
 	w.setupEventWatcher()
 
-	// TODO(fabio): Implement and instantiate expirationwatch
+	w.setupExpirationWatcher(expirationPollingInterval)
 
 	// TODO(fabio): Implement and instantiate the cleanup worker
+
+	w.isSetup = true
+	return nil
+}
+
+// Stop closes the block subscription, stops the event, expiration watcher and the cleanup worker.
+func (w *Watcher) Stop() error {
+	w.setupMux.Lock()
+	if !w.isSetup {
+		w.setupMux.Unlock()
+		return errors.New("Cannot teardown before calling Setup()")
+	}
+	w.setupMux.Unlock()
+
+	// Stop event subscription
+	w.blockSubscription.Unsubscribe()
+
+	// Stop expiration watcher
+	w.expirationWatcher.Stop()
+
+	// TODO(fabio): Stop the cleanup worker
+	return nil
 }
 
 // Watch adds a 0x order to the ones being tracked for order-relevant state changes
-func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
+func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
 	err := w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
@@ -54,169 +93,197 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder) error {
 		return err
 	}
 
-	// TODO(fabio): Add expiration & hash to expiration watcher
+	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
 	return nil
 }
 
+func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) {
+	go func() {
+		expiredOrders := w.expirationWatcher.Receive()
+		for expiredOrders := range expiredOrders {
+			for _, expiredOrder := range expiredOrders {
+				// TODO(fabio): Handle expired order
+				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))
+			}
+		}
+	}()
+
+	w.expirationWatcher.Start(expirationPollingInterval)
+}
+
 func (w *Watcher) setupEventWatcher() {
 	blockEvents := make(chan []*blockwatch.Event, 10)
-	sub := w.blockWatcher.Subscribe(blockEvents)
+	w.blockSubscription = w.blockWatcher.Subscribe(blockEvents)
 
 	go func() {
-		defer sub.Unsubscribe()
-		for events := range blockEvents {
-			for _, event := range events {
-				for _, log := range event.BlockHeader.Logs {
-					eventType, err := w.eventDecoder.FindEventType(log)
-					if err != nil {
-						switch err.(type) {
-						case UntrackedTokenError:
-							continue
-						case UnsupportedEventError:
-							// TODO(fabio): Log the event topics
-							continue
+		for {
+			select {
+			case err, isOpen := <-w.blockSubscription.Err():
+				close(blockEvents)
+				if !isOpen {
+					// event.Subscription closes the Error channel on unsubscribe.
+					// We therefore cleanup this goroutine on channel closure.
+					return
+				}
+				// TODO(fabio): Log subscription error
+				fmt.Println(err)
+				return
+
+			case events := <-blockEvents:
+				for _, event := range events {
+					for _, log := range event.BlockHeader.Logs {
+						eventType, err := w.eventDecoder.FindEventType(log)
+						if err != nil {
+							switch err.(type) {
+							case UntrackedTokenError:
+								continue
+							case UnsupportedEventError:
+								// TODO(fabio): Log the event topics
+								continue
+							default:
+								panic(err)
+							}
+						}
+						switch eventType {
+						case "ERC20TransferEvent":
+							var transferEvent ERC20TransferEvent
+							err = w.eventDecoder.Decode(log, &transferEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ERC20ApprovalEvent":
+							var approvalEvent ERC20ApprovalEvent
+							err = w.eventDecoder.Decode(log, &approvalEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ERC721TransferEvent":
+							var transferEvent ERC721TransferEvent
+							err = w.eventDecoder.Decode(log, &transferEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ERC721ApprovalEvent":
+							var approvalEvent ERC721ApprovalEvent
+							err = w.eventDecoder.Decode(log, &approvalEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ERC721ApprovalForAllEvent":
+							var approvalForAllEvent ERC721ApprovalForAllEvent
+							err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "WethWithdrawalEvent":
+							var withdrawalEvent WethWithdrawalEvent
+							err = w.eventDecoder.Decode(log, &withdrawalEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "WethDepositEvent":
+							var depositEvent WethDepositEvent
+							err = w.eventDecoder.Decode(log, &depositEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ExchangeFillEvent":
+							var exchangeFillEvent ExchangeFillEvent
+							err = w.eventDecoder.Decode(log, &exchangeFillEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ExchangeCancelEvent":
+							var exchangeCancelEvent ExchangeCancelEvent
+							err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
+						case "ExchangeCancelUpToEvent":
+							var exchangeCancelUpToEvent ExchangeCancelUpToEvent
+							err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
+							if err != nil {
+								switch err.(type) {
+								case UnsupportedEventError:
+									// TODO(fabio): Log the event topics
+									continue
+								default:
+									panic(err)
+								}
+							}
+							// TODO(fabio): Handle this event
 						default:
-							panic(err)
+							panic(fmt.Sprintf("Did not handle event %s\n", eventType))
 						}
-					}
-					switch eventType {
-					case "ERC20TransferEvent":
-						var transferEvent ERC20TransferEvent
-						err = w.eventDecoder.Decode(log, &transferEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ERC20ApprovalEvent":
-						var approvalEvent ERC20ApprovalEvent
-						err = w.eventDecoder.Decode(log, &approvalEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ERC721TransferEvent":
-						var transferEvent ERC721TransferEvent
-						err = w.eventDecoder.Decode(log, &transferEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ERC721ApprovalEvent":
-						var approvalEvent ERC721ApprovalEvent
-						err = w.eventDecoder.Decode(log, &approvalEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ERC721ApprovalForAllEvent":
-						var approvalForAllEvent ERC721ApprovalForAllEvent
-						err = w.eventDecoder.Decode(log, &approvalForAllEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "WethWithdrawalEvent":
-						var withdrawalEvent WethWithdrawalEvent
-						err = w.eventDecoder.Decode(log, &withdrawalEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "WethDepositEvent":
-						var depositEvent WethDepositEvent
-						err = w.eventDecoder.Decode(log, &depositEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ExchangeFillEvent":
-						var exchangeFillEvent ExchangeFillEvent
-						err = w.eventDecoder.Decode(log, &exchangeFillEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ExchangeCancelEvent":
-						var exchangeCancelEvent ExchangeCancelEvent
-						err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					case "ExchangeCancelUpToEvent":
-						var exchangeCancelUpToEvent ExchangeCancelUpToEvent
-						err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
-						if err != nil {
-							switch err.(type) {
-							case UnsupportedEventError:
-								// TODO(fabio): Log the event topics
-								continue
-							default:
-								panic(err)
-							}
-						}
-						// TODO(fabio): Handle this event
-					default:
-						panic(fmt.Sprintf("Did not handle event %s\n", eventType))
 					}
 				}
 			}
 		}
+
 	}()
 }
 
