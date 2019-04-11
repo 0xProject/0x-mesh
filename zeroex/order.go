@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -35,72 +36,72 @@ type SignedOrder struct {
 	Signature             []byte         `json:"signature"`
 }
 
-// var eip712OrderTypes = signer.Types{
-// 	"EIP712Domain": {
-// 		{
-// 			Name: "name",
-// 			Type: "string",
-// 		},
-// 		{
-// 			Name: "version",
-// 			Type: "string",
-// 		},
-// 		{
-// 			Name: "verifyingContract",
-// 			Type: "address",
-// 		},
-// 	},
-// 	"Order": {
-// 		{
-// 			Name: "makerAddress",
-// 			Type: "address",
-// 		},
-// 		{
-// 			Name: "takerAddress",
-// 			Type: "address",
-// 		},
-// 		{
-// 			Name: "feeRecipientAddress",
-// 			Type: "address",
-// 		},
-// 		{
-// 			Name: "senderAddress",
-// 			Type: "address",
-// 		},
-// 		{
-// 			Name: "makerAssetAmount",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "takerAssetAmount",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "makerFee",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "takerFee",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "expirationTimeSeconds",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "salt",
-// 			Type: "uint256",
-// 		},
-// 		{
-// 			Name: "makerAssetData",
-// 			Type: "bytes",
-// 		},
-// 		{
-// 			Name: "takerAssetData",
-// 			Type: "bytes",
-// 		},
-// 	},
-// }
+var eip712OrderTypes = signer.Types{
+	"EIP712Domain": {
+		{
+			Name: "name",
+			Type: "string",
+		},
+		{
+			Name: "version",
+			Type: "string",
+		},
+		{
+			Name: "verifyingContract",
+			Type: "address",
+		},
+	},
+	"Order": {
+		{
+			Name: "makerAddress",
+			Type: "address",
+		},
+		{
+			Name: "takerAddress",
+			Type: "address",
+		},
+		{
+			Name: "feeRecipientAddress",
+			Type: "address",
+		},
+		{
+			Name: "senderAddress",
+			Type: "address",
+		},
+		{
+			Name: "makerAssetAmount",
+			Type: "uint256",
+		},
+		{
+			Name: "takerAssetAmount",
+			Type: "uint256",
+		},
+		{
+			Name: "makerFee",
+			Type: "uint256",
+		},
+		{
+			Name: "takerFee",
+			Type: "uint256",
+		},
+		{
+			Name: "expirationTimeSeconds",
+			Type: "uint256",
+		},
+		{
+			Name: "salt",
+			Type: "uint256",
+		},
+		{
+			Name: "makerAssetData",
+			Type: "bytes",
+		},
+		{
+			Name: "takerAssetData",
+			Type: "bytes",
+		},
+	},
+}
 
 // // ComputeOrderHash computes a 0x order hash
 // func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
