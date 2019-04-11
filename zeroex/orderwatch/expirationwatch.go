@@ -24,7 +24,7 @@ type ExpirationWatcher struct {
 	ticker           *time.Ticker
 	isWatching       bool
 	wasStartedOnce   bool
-	mu               sync.RWMutex
+	mu               sync.Mutex
 }
 
 // NewExpirationWatcher instantiates a new expiration watcher. An expiration buffer (positive or negative) can

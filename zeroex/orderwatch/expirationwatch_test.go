@@ -58,7 +58,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	pollingInterval := 50 * time.Millisecond
 	watcher.Start(pollingInterval)
 
-	var countMux sync.RWMutex
+	var countMux sync.Mutex
 	channelCount := 0
 	go func() {
 		for {
