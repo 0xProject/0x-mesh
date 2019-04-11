@@ -10,21 +10,21 @@ import (
 )
 
 func TestPrunesExpiredOrders(t *testing.T) {
-	var expirationBuffer int64 = 0
+	var expirationBuffer int64
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
 	expiryEntryOne := ExpiredOrder{
-		expirationTimeSeconds: current - 3,
-		orderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
+		ExpirationTimeSeconds: current - 3,
+		OrderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
 	}
-	watcher.Add(expiryEntryOne.expirationTimeSeconds, expiryEntryOne.orderHash)
+	watcher.Add(expiryEntryOne.ExpirationTimeSeconds, expiryEntryOne.OrderHash)
 
 	expiryEntryTwo := ExpiredOrder{
-		expirationTimeSeconds: current - 1,
-		orderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
+		ExpirationTimeSeconds: current - 1,
+		OrderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
 	}
-	watcher.Add(expiryEntryTwo.expirationTimeSeconds, expiryEntryTwo.orderHash)
+	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
 
 	pruned := watcher.prune()
 	assert.Equal(t, 2, len(pruned), "Pruned the expired order")
@@ -32,7 +32,7 @@ func TestPrunesExpiredOrders(t *testing.T) {
 	assert.Equal(t, expiryEntryTwo, pruned[1])
 }
 func TestKeepsUnexpiredOrder(t *testing.T) {
-	var expirationBuffer int64 = 0
+	var expirationBuffer int64
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	orderHash := common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e")
@@ -44,7 +44,7 @@ func TestKeepsUnexpiredOrder(t *testing.T) {
 }
 
 func TestReturnsEmptyIfNoOrders(t *testing.T) {
-	var expirationBuffer int64 = 0
+	var expirationBuffer int64
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pruned := watcher.prune()
@@ -52,7 +52,7 @@ func TestReturnsEmptyIfNoOrders(t *testing.T) {
 }
 
 func TestStartsAndStopsPoller(t *testing.T) {
-	var expirationBuffer int64 = 0
+	var expirationBuffer int64
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pollingInterval := 50 * time.Millisecond

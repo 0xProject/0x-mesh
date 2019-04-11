@@ -12,8 +12,8 @@ import (
 
 // ExpiredOrder represents an expired order returned from the ExpirationWatcher
 type ExpiredOrder struct {
-	expirationTimeSeconds int64
-	orderHash             common.Hash
+	ExpirationTimeSeconds int64
+	OrderHash             common.Hash
 }
 
 // ExpirationWatcher watches the expiration of 0x orders
@@ -108,8 +108,8 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 			break
 		}
 		pruned = append(pruned, ExpiredOrder{
-			expirationTimeSeconds: expirationTimeSeconds,
-			orderHash:             value.(common.Hash),
+			ExpirationTimeSeconds: expirationTimeSeconds,
+			OrderHash:             value.(common.Hash),
 		})
 		e.rbTree.Delete(key)
 	}
