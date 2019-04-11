@@ -27,9 +27,11 @@ type ExpirationWatcher struct {
 	mu               sync.RWMutex
 }
 
-// NewExpirationWatcher instantiates a new expiration watcher. An expiration buffer (either positive or negative)
-// can be specified, causing orders to be deemed expired some time before or after their expiration reaches current
-// UTC time.
+// NewExpirationWatcher instantiates a new expiration watcher. An expiration buffer (positive or negative) can
+// be specified, causing orders to be deemed expired some time before or after their expiration reaches current
+// UTC time. A positive expirationBuffer will make the order expire sooner then UTC, and a negative buffer after.
+// A relayer might want to use a positive buffer to ensure all orders on their orderbook are fillable, and a market
+// maker might use a negative buffer when tracking their orders to make sure expired orders are truly unfillable.
 func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 	rbTree := rbt.NewRbTree()
 	return &ExpirationWatcher{
