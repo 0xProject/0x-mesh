@@ -79,8 +79,7 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 			}
 			e.mu.Unlock()
 
-			expiredOrders := e.prune()
-			e.expiredOrders <- expiredOrders
+			e.expiredOrders <- e.prune()
 		}
 	}()
 	return nil
