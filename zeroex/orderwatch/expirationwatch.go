@@ -61,6 +61,11 @@ func (e *ExpirationWatcher) Start(pollingInterval time.Duration) error {
 	e.wasStartedOnce = true
 
 	go func() {
+		// TODO(fabio): Optimize this poller. We could keep track of soonestExpirationTime as a property of
+		// ExpirationWatcher. Whenever a new order is added via Add, we check if the expiration time is sooner
+		// than soonestExpirationTime and if so, we update soonestExpirationTime. Then instead of running the
+		// inner for loop at a constant frequency, we adjust the frequency based on the value of
+		// soonestExpirationTime (probably by using time.After or time.Sleep).
 		ticker := time.NewTicker(pollingInterval)
 		for {
 			<-ticker.C
