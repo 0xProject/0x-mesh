@@ -77,7 +77,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	expectedIsWatching := true
 	assert.Equal(t, expectedIsWatching, watcher.isWatching)
 
-	<-time.Tick(60 * time.Millisecond)
+	time.Sleep(60 * time.Millisecond)
 	watcher.Stop()
 	expectedIsWatching = false
 	assert.Equal(t, expectedIsWatching, watcher.isWatching)
