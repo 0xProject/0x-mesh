@@ -19,6 +19,7 @@ type ExpiredOrder struct {
 // ExpirationWatcher watches the expiration of 0x orders
 type ExpirationWatcher struct {
 	expiredOrders    chan []ExpiredOrder
+	rbTreeMu         sync.RWMutex
 	rbTree           *rbt.RbTree
 	expirationBuffer int64
 	ticker           *time.Ticker
@@ -44,6 +45,8 @@ func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
 // Add adds a new order to the expiration watcher
 func (e *ExpirationWatcher) Add(expirationTimeSeconds int64, orderHash common.Hash) {
 	key := rbt.Int64Key(expirationTimeSeconds)
+	e.rbTreeMu.Lock()
+	defer e.rbTreeMu.Unlock()
 	e.rbTree.Insert(&key, orderHash)
 }
 
@@ -103,7 +106,9 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 	pruned := []ExpiredOrder{}
 	currentTimestamp := time.Now().Unix()
 	for {
+		e.rbTreeMu.RLock()
 		key, value := e.rbTree.Min()
+		e.rbTreeMu.RUnlock()
 		if key == nil {
 			break
 		}
@@ -115,7 +120,9 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 			ExpirationTimeSeconds: expirationTimeSeconds,
 			OrderHash:             value.(common.Hash),
 		})
+		e.rbTreeMu.Lock()
 		e.rbTree.Delete(key)
+		e.rbTreeMu.Unlock()
 	}
 	return pruned
 }
