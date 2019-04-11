@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"golang.org/x/crypto/sha3"
 )
 
 // import (
@@ -145,11 +146,11 @@ type SignedOrder struct {
 // 	return hash, nil
 // }
 
-// // keccak256 calculates and returns the Keccak256 hash of the input data.
-// func keccak256(data ...[]byte) []byte {
-// 	d := sha3.NewLegacyKeccak256()
-// 	for _, b := range data {
-// 		d.Write(b)
-// 	}
-// 	return d.Sum(nil)
-// }
+// keccak256 calculates and returns the Keccak256 hash of the input data.
+func keccak256(data ...[]byte) []byte {
+	d := sha3.NewLegacyKeccak256()
+	for _, b := range data {
+		d.Write(b)
+	}
+	return d.Sum(nil)
+}
