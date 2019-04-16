@@ -5,8 +5,12 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/golang:1.12
+    working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout
+      - run:
+          name: Install dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run:
           name: Install nvm
           command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
