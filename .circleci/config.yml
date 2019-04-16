@@ -8,6 +8,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run:
           name: Install nvm
           command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
       - run:
