@@ -1,0 +1,9 @@
+**NOTE:** This is a fork/vendoring of github.com/golang/snappy
+
+The Snappy compression format in the Go programming language.
+
+To download and install from source:
+$ go get -u -v github.com/btcsuite/snappy-go
+
+Unless otherwise noted, the Snappy-Go source files are distributed
+under the BSD-style license found in the LICENSE file.
