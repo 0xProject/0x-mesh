@@ -1,6 +1,6 @@
 .PHONY: deps
 deps:
-	go get ./...
+	dep ensure
 	yarn install
 
 
