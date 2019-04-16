@@ -44,3 +44,7 @@
 [[prune.project]]
   name = "github.com/ethereum/go-ethereum"
   unused-packages = false
+
+[[prune.project]]
+  name = "github.com/karalabe/hid"
+  unused-packages = false
