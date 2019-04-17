@@ -27,8 +27,9 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  version = "1.8.26"
-
+  branch = "wasm_signer_core"
+  source = "github.com/0xproject/go-ethereum"
+  
 [[constraint]]
   branch = "master"
   name = "github.com/ocdogan/rbt"
