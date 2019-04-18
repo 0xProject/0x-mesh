@@ -3,14 +3,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dea680124cf11514b94279d88b417b537fd30d054067caceb4c8842f44fbf9b6"
+  digest = "1:bd8814ce0ab69107d1565096277cfdc90e8e332a3a0be34872cee2ed5e452070"
   name = "github.com/0xProject/0x-mesh"
   packages = [
     "blockwatch",
     "zeroex",
   ]
   pruneopts = "UT"
-  revision = "330a962763b583e0881c04c45a2d75bee69a4625"
+  revision = "16d156d2ac87f0f893f37b4082675d40ae4a689a"
 
 [[projects]]
   branch = "master"
@@ -68,6 +68,7 @@
     ".",
     "accounts",
     "accounts/abi",
+    "accounts/abi/bind",
     "accounts/keystore",
     "accounts/scwallet",
     "accounts/usbwallet",
@@ -395,6 +396,7 @@
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
+    "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
