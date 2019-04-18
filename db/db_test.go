@@ -91,7 +91,6 @@ func TestInsertWithIndex(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	t.Skip("Skipping Delete for now. API will change soon.")
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	col.AddIndex("age", func(m Model) []byte {
@@ -102,7 +101,7 @@ func TestDelete(t *testing.T) {
 		Age:  42,
 	}
 	require.NoError(t, col.Insert(model))
-	require.NoError(t, col.Delete(model))
+	require.NoError(t, col.Delete(model.ID()))
 	{
 		exists, err := db.ldb.Has([]byte("model:people:foo"), nil)
 		require.NoError(t, err)

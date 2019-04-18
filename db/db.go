@@ -210,13 +210,10 @@ func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}
 	return nil
 }
 
-// Delete deletes the given model from the database. It returns an error if the
-// model doesn't exist in the database.
-func (c *Collection) Delete(model Model) error {
-	if err := c.checkModelType(model); err != nil {
-		return err
-	}
-	if len(model.ID()) == 0 {
+// Delete deletes the model with the given id from the database. It returns an
+// error if the model doesn't exist in the database.
+func (c *Collection) Delete(id []byte) error {
+	if len(id) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
 	txn, err := c.db.ldb.OpenTransaction()
@@ -226,14 +223,13 @@ func (c *Collection) Delete(model Model) error {
 
 	// Get the latest data for the Model. Required because the given model might
 	// be out of sync with the actual data in the database.
-	pk := c.primaryKeyForModel(model)
+	pk := c.primaryKeyForID(id)
 	data, err := txn.Get(pk, nil)
 	if err != nil {
 		txn.Discard()
 		return err
 	}
-	// TODO(albrow): Be more safe here. Handle pointers and non-pointers.
-	updatedRef := reflect.New(reflect.TypeOf(model)).Interface().(Model)
+	updatedRef := reflect.New(c.modelType).Interface()
 	if err := json.Unmarshal(data, updatedRef); err != nil {
 		txn.Discard()
 		return err
