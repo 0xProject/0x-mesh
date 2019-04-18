@@ -18,6 +18,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const ganacheEndpoint = "http://localhost:8545"
+
+// Values taken from Ganache snapshot
+var firstAccountBalance, _ = math.ParseBig256("99943972190000000000")
+var hundredEth, _ = math.ParseBig256("100000000000000000000")
+
 var ethAccountToBalance = map[common.Address]*big.Int{
 	common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"): firstAccountBalance,
 	common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb"): hundredEth,
@@ -31,13 +37,10 @@ var ethAccountToBalance = map[common.Address]*big.Int{
 	common.HexToAddress("0x91c987bf62d25945db517bdaa840a6c661374402"): hundredEth,
 }
 
-var firstAccountBalance, _ = math.ParseBig256("99943972190000000000")
-var hundredEth, _ = math.ParseBig256("100000000000000000000")
-
 var pollingInterval = 100 * time.Millisecond
 
 func TestAddingAddressToETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial("http://localhost:8545")
+	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -57,7 +60,7 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 }
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial("http://localhost:8545")
+	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -82,7 +85,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	}
 }
 func TestStartStopETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial("http://localhost:8545")
+	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
