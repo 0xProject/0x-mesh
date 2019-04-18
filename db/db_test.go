@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -71,4 +72,20 @@ func TestFindAll(t *testing.T) {
 	var got []testModel
 	require.NoError(t, col.FindAll(&got))
 	assert.Equal(t, expected, got)
+}
+
+func TestInsertWithIndex(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people")
+	col.AddIndex("age", func(m Model) []byte {
+		return []byte(fmt.Sprint(m.(testModel).Age))
+	})
+	model := testModel{
+		Name: "foo",
+		Age:  42,
+	}
+	require.NoError(t, col.Insert(model))
+	exists, err := db.ldb.Has([]byte("index:people:age:42:foo"), nil)
+	require.NoError(t, err)
+	assert.True(t, exists, "Index not stored in database at the expected key")
 }

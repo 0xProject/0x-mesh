@@ -34,8 +34,9 @@ func (db *DB) Close() error {
 }
 
 type Collection struct {
-	db   *DB
-	name string
+	db      *DB
+	name    string
+	indexes []*Index
 }
 
 func (db *DB) NewCollection(name string) *Collection {
@@ -75,21 +76,34 @@ func (c *Collection) Insert(model Model) error {
 	}
 	pk := c.primaryKeyForModel(model)
 	if exists, err := txn.Has(pk, nil); err != nil {
+		txn.Discard()
 		return err
 	} else if exists {
+		txn.Discard()
 		return fmt.Errorf("%s model with given ID already exists in database: %s", c.name, hex.Dump(model.ID()))
 	}
 	if err := txn.Put(pk, data, nil); err != nil {
+		txn.Discard()
 		return err
 	}
+	for _, index := range c.indexes {
+		key := index.keyForModel(model)
+		if err := txn.Put(key, nil, nil); err != nil {
+			txn.Discard()
+			return err
+		}
+	}
 
-	// TODO(albrow): Add/update indexes.
 	return txn.Commit()
 }
 
 func (c *Collection) FindByID(id []byte, model Model) error {
 	pk := c.primaryKeyForID(id)
-	data, err := c.db.ldb.Get(pk, nil)
+	return c.findByKey(pk, model)
+}
+
+func (c *Collection) findByKey(key []byte, model Model) error {
+	data, err := c.db.ldb.Get(key, nil)
 	if err != nil {
 		return err
 	}
@@ -106,8 +120,6 @@ func (c *Collection) FindAll(models interface{}) error {
 	iter := c.db.ldb.NewIterator(prefixRange, nil)
 	defer iter.Release()
 	for iter.Next() {
-		// Remember that the contents of the returned slice should not be modified, and
-		// only valid until the next call to Next.
 		data := iter.Value()
 		model := reflect.New(modelType)
 		if err := json.Unmarshal(data, model.Interface()); err != nil {
@@ -119,6 +131,35 @@ func (c *Collection) FindAll(models interface{}) error {
 		return err
 	}
 	return nil
+}
+
+type Index struct {
+	col    *Collection
+	name   string
+	getter func(m Model) []byte
+}
+
+func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
+	index := &Index{
+		col:    c,
+		name:   name,
+		getter: getter,
+	}
+	c.indexes = append(c.indexes, index)
+	return index
+}
+
+func (index *Index) Name() string {
+	return index.name
+}
+
+func (index *Index) prefix() []byte {
+	return []byte(fmt.Sprintf("index:%s:%s", index.col.name, index.name))
+}
+
+func (index *Index) keyForModel(model Model) []byte {
+	value := index.getter(model)
+	return []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), value, model.ID()))
 }
 
 var modelInterfaceType = reflect.TypeOf([]Model{}).Elem()
