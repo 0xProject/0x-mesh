@@ -1,1 +1,3 @@
-ethereum/wrappers/*.go liguist-generated
+# Automatically collapse generated files in GitHub.
+ethereum/wrappers/*go liguist-generated
+
