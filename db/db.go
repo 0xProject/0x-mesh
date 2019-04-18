@@ -107,6 +107,9 @@ func (c *Collection) findByKey(key []byte, model Model) error {
 	if err != nil {
 		return err
 	}
+	if data == nil {
+		return errors.New("model not found")
+	}
 	return json.Unmarshal(data, model)
 }
 
@@ -131,6 +134,50 @@ func (c *Collection) FindAll(models interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Collection) Delete(model Model) error {
+	if len(model.ID()) == 0 {
+		return errors.New("can't delete model with empty ID")
+	}
+	txn, err := c.db.ldb.OpenTransaction()
+	if err != nil {
+		return err
+	}
+
+	// Get the latest data for the Model. Required because the given model might
+	// be out of sync with the actual data in the database.
+	pk := c.primaryKeyForModel(model)
+	data, err := txn.Get(pk, nil)
+	if err != nil {
+		txn.Discard()
+		return err
+	}
+	// TODO(albrow): Be more safe here. Handle pointers and non-pointers.
+	updatedRef := reflect.New(reflect.TypeOf(model)).Interface().(Model)
+	if err := json.Unmarshal(data, updatedRef); err != nil {
+		txn.Discard()
+		return err
+	}
+	updated := reflect.ValueOf(updatedRef).Elem().Interface().(Model)
+
+	// Delete the primary key.
+	if err := txn.Delete(pk, nil); err != nil {
+		txn.Discard()
+		return err
+	}
+
+	// Delete any index entries.
+	for _, index := range c.indexes {
+		key := index.keyForModel(updated)
+		fmt.Println(string(key))
+		if err := txn.Delete(key, nil); err != nil {
+			txn.Discard()
+			return err
+		}
+	}
+
+	return txn.Commit()
 }
 
 type Index struct {

@@ -89,3 +89,27 @@ func TestInsertWithIndex(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, exists, "Index not stored in database at the expected key")
 }
+
+func TestDelete(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people")
+	col.AddIndex("age", func(m Model) []byte {
+		return []byte(fmt.Sprint(m.(testModel).Age))
+	})
+	model := testModel{
+		Name: "foo",
+		Age:  42,
+	}
+	require.NoError(t, col.Insert(model))
+	require.NoError(t, col.Delete(model))
+	{
+		exists, err := db.ldb.Has([]byte("model:people:foo"), nil)
+		require.NoError(t, err)
+		assert.False(t, exists, "Primary key should not be stored in database after calling Delete")
+	}
+	{
+		exists, err := db.ldb.Has([]byte("index:people:age:42:foo"), nil)
+		require.NoError(t, err)
+		assert.False(t, exists, "Index should not be stored in database after calling Delete")
+	}
+}
