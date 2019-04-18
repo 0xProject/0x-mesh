@@ -67,6 +67,8 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethWatcher := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
 
 	for address := range ethAccountToBalance {
+		// Set initial balances to 0 so that when the watcher is started an event will be emitted
+		// for each tracked address with the correct balance.
 		ethWatcher.Add(address, big.NewInt(0))
 	}
 
@@ -92,6 +94,8 @@ func TestStartStopETHWatcher(t *testing.T) {
 	ethWatcher := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
 
 	for address := range ethAccountToBalance {
+		// Set initial balances to 0 so that when the watcher is started an event will be emitted
+		// for each tracked address with the correct balance.
 		ethWatcher.Add(address, big.NewInt(0))
 	}
 

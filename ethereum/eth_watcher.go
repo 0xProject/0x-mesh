@@ -58,7 +58,7 @@ func (e *ETHWatcher) Start() error {
 			<-e.ticker.C
 
 			// TODO(fabio): Currently if `updateBalance` takes longer then the ticker interval,
-			// we would kick off an additional call before the previous one completed. This might
+			// we would kick off an additional call before the previous one completes. This might
 			// not be desirable, and we might want to noop if a previous request is in progress.
 			e.updateBalances()
 		}
