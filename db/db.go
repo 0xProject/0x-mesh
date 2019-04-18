@@ -58,19 +58,21 @@ func (db *DB) Close() error {
 
 // Collection represents a set of a specific type of model.
 type Collection struct {
-	db      *DB
-	name    string
-	indexes []*Index
+	db        *DB
+	name      string
+	modelType reflect.Type
+	indexes   []*Index
 }
 
-// NewCollection creates and returns a new collection with the given name. You
-// should create exactly one collection for each model type. The collection
-// should typically be created once at the start of your application and
-// re-used.
-func (db *DB) NewCollection(name string) *Collection {
+// NewCollection creates and returns a new collection with the given name and
+// model type. You should create exactly one collection for each model type. The
+// collection should typically be created once at the start of your application
+// and re-used.
+func (db *DB) NewCollection(name string, typ Model) *Collection {
 	return &Collection{
-		db:   db,
-		name: name,
+		db:        db,
+		name:      name,
+		modelType: reflect.TypeOf(typ),
 	}
 }
 
@@ -91,11 +93,37 @@ func (c *Collection) primaryKeyForID(id []byte) []byte {
 	return []byte(fmt.Sprintf("%s:%s", c.prefix(), id))
 }
 
+func (c *Collection) checkModelType(model Model) error {
+	actualType := reflect.TypeOf(model)
+	if c.modelType != actualType {
+		if actualType.Kind() == reflect.Ptr {
+			if c.modelType == actualType.Elem() {
+				// Pointers to the expected type are allowed here.
+				return nil
+			}
+		}
+		return fmt.Errorf("for %q collection: incorrect type for model (expected %s but got %s)", c.Name(), c.modelType, actualType)
+	}
+	return nil
+}
+
+func (c *Collection) checkModelsType(models interface{}) error {
+	expectedType := reflect.PtrTo(reflect.SliceOf(c.modelType))
+	actualType := reflect.TypeOf(models)
+	if expectedType != actualType {
+		return fmt.Errorf("for %q collection: incorrect type for models (expected %s but got %s)", c.Name(), expectedType, actualType)
+	}
+	return nil
+}
+
 // Insert inserts the given model into the database. It returns an error if a
 // model with the same id already exists.
 func (c *Collection) Insert(model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't insert model with empty ID")
+	}
+	if err := c.checkModelType(model); err != nil {
+		return err
 	}
 	data, err := json.Marshal(model)
 	if err != nil {
@@ -138,6 +166,9 @@ func (c *Collection) FindByID(id []byte, model Model) error {
 }
 
 func (c *Collection) findByKey(key []byte, model Model) error {
+	if err := c.checkModelType(model); err != nil {
+		return err
+	}
 	data, err := c.db.ldb.Get(key, nil)
 	if err != nil {
 		return err
@@ -159,8 +190,7 @@ func (c *Collection) FindAll(models interface{}) error {
 
 func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}) error {
 	defer iter.Release()
-	modelType, err := getModelTypeFromSlice(models)
-	if err != nil {
+	if err := c.checkModelsType(models); err != nil {
 		return err
 	}
 	modelsVal := reflect.ValueOf(models).Elem()
@@ -168,7 +198,7 @@ func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}
 		// We assume that each value in the iterator is the encoded data for some
 		// model.
 		data := iter.Value()
-		model := reflect.New(modelType)
+		model := reflect.New(c.modelType)
 		if err := json.Unmarshal(data, model.Interface()); err != nil {
 			return err
 		}
@@ -183,6 +213,9 @@ func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}
 // Delete deletes the given model from the database. It returns an error if the
 // model doesn't exist in the database.
 func (c *Collection) Delete(model Model) error {
+	if err := c.checkModelType(model); err != nil {
+		return err
+	}
 	if len(model.ID()) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
@@ -295,8 +328,7 @@ func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, mod
 
 func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator, models interface{}) error {
 	defer iter.Release()
-	modelType, err := getModelTypeFromSlice(models)
-	if err != nil {
+	if err := c.checkModelsType(models); err != nil {
 		return err
 	}
 	modelsVal := reflect.ValueOf(models).Elem()
@@ -310,7 +342,7 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 		if err != nil {
 			return err
 		}
-		model := reflect.New(modelType)
+		model := reflect.New(c.modelType)
 		if err := json.Unmarshal(data, model.Interface()); err != nil {
 			return err
 		}
@@ -320,22 +352,4 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 		return err
 	}
 	return nil
-}
-
-var modelInterfaceType = reflect.TypeOf([]Model{}).Elem()
-
-func getModelTypeFromSlice(models interface{}) (reflect.Type, error) {
-	ptrType := reflect.TypeOf(models)
-	if ptrType.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("type should be a pointer to a slice of models but got: %T (not a pointer)", models)
-	}
-	sliceType := ptrType.Elem()
-	if sliceType.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("type should be a pointer to a slice of models but got: %T (not a slice)", models)
-	}
-	elemType := sliceType.Elem()
-	if !elemType.Implements(modelInterfaceType) {
-		return nil, fmt.Errorf("type should be a pointer to a slice of models but got: %T (element type doesn't implement Model)", models)
-	}
-	return elemType, nil
 }
