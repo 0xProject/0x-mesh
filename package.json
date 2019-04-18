@@ -9,6 +9,9 @@
   "repository": "git@github.com:0xProject/0x-mesh.git",
   "private": true,
   "devDependencies": {
-    "wrtc": "^0.3.5"
-  }
+    "wrtc": "^0.3.5",
+    "es6-promise": "^4.2.6",
+    "isomorphic-fetch": "^2.2.1"
+  },
+  "dependencies": {}
 }
