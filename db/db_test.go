@@ -113,3 +113,61 @@ func TestDelete(t *testing.T) {
 		assert.False(t, exists, "Index should not be stored in database after calling Delete")
 	}
 }
+
+func TestFindWithValue(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people")
+
+	ageIndex := col.AddIndex("age", func(m Model) []byte {
+		return []byte(fmt.Sprint(m.(testModel).Age))
+	})
+
+	// expected is a set of testModels with Age = 42
+	expected := []testModel{}
+	for i := 0; i < 5; i++ {
+		model := testModel{
+			Name: "ExpectedPerson_" + strconv.Itoa(i),
+			Age:  42,
+		}
+		require.NoError(t, col.Insert(model))
+		expected = append(expected, model)
+	}
+
+	// We also insert some other models with a different age.
+	for i := 0; i < 5; i++ {
+		model := testModel{
+			Name: "OtherPerson_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, col.Insert(model))
+	}
+
+	var got []testModel
+	require.NoError(t, col.FindWithValue(ageIndex, []byte(fmt.Sprint(42)), &got))
+	assert.Equal(t, expected, got)
+}
+
+func TestFindWithRange(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people")
+
+	ageIndex := col.AddIndex("age", func(m Model) []byte {
+		return []byte(fmt.Sprint(m.(testModel).Age))
+	})
+
+	all := []testModel{}
+	for i := 0; i < 5; i++ {
+		model := testModel{
+			Name: "Person_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, col.Insert(model))
+		all = append(all, model)
+	}
+	// expected is the set of people with 1 <= age < 4
+	expected := all[1:4]
+
+	var got []testModel
+	require.NoError(t, col.FindWithRange(ageIndex, []byte(fmt.Sprint(1)), []byte(fmt.Sprint(4)), &got))
+	assert.Equal(t, expected, got)
+}

@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -114,16 +116,45 @@ func (c *Collection) findByKey(key []byte, model Model) error {
 }
 
 func (c *Collection) FindAll(models interface{}) error {
+	prefixRange := util.BytesPrefix(c.prefix())
+	iter := c.db.ldb.NewIterator(prefixRange, nil)
+	return c.findWithIterator(iter, models)
+}
+
+func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}) error {
+	defer iter.Release()
 	modelType, err := getModelTypeFromSlice(models)
 	if err != nil {
 		return err
 	}
 	modelsVal := reflect.ValueOf(models).Elem()
-	prefixRange := util.BytesPrefix(c.prefix())
-	iter := c.db.ldb.NewIterator(prefixRange, nil)
-	defer iter.Release()
 	for iter.Next() {
 		data := iter.Value()
+		model := reflect.New(modelType)
+		if err := json.Unmarshal(data, model.Interface()); err != nil {
+			return err
+		}
+		modelsVal.Set(reflect.Append(modelsVal, model.Elem()))
+	}
+	if err := iter.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator, models interface{}) error {
+	defer iter.Release()
+	modelType, err := getModelTypeFromSlice(models)
+	if err != nil {
+		return err
+	}
+	modelsVal := reflect.ValueOf(models).Elem()
+	for iter.Next() {
+		pk := index.primaryKeyFromKey(iter.Key())
+		data, err := c.db.ldb.Get(pk, nil)
+		if err != nil {
+			return err
+		}
 		model := reflect.New(modelType)
 		if err := json.Unmarshal(data, model.Interface()); err != nil {
 			return err
@@ -170,7 +201,6 @@ func (c *Collection) Delete(model Model) error {
 	// Delete any index entries.
 	for _, index := range c.indexes {
 		key := index.keyForModel(updated)
-		fmt.Println(string(key))
 		if err := txn.Delete(key, nil); err != nil {
 			txn.Discard()
 			return err
@@ -207,6 +237,29 @@ func (index *Index) prefix() []byte {
 func (index *Index) keyForModel(model Model) []byte {
 	value := index.getter(model)
 	return []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), value, model.ID()))
+}
+
+// primaryKeyFromKey extracts and returns the primary key from the given index
+// key.
+func (index *Index) primaryKeyFromKey(key []byte) []byte {
+	pkAndVal := strings.TrimPrefix(string(key), string(index.prefix()))
+	split := strings.Split(pkAndVal, ":")
+	return index.col.primaryKeyForID([]byte(split[2]))
+}
+
+func (c *Collection) FindWithValue(index *Index, val []byte, models interface{}) error {
+	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), val))
+	prefixRange := util.BytesPrefix(prefix)
+	iter := c.db.ldb.NewIterator(prefixRange, nil)
+	return c.findWithIndexIterator(index, iter, models)
+}
+
+func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, models interface{}) error {
+	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), start))
+	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), limit))
+	r := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
+	iter := c.db.ldb.NewIterator(r, nil)
+	return c.findWithIndexIterator(index, iter, models)
 }
 
 var modelInterfaceType = reflect.TypeOf([]Model{}).Elem()
