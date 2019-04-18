@@ -3,17 +3,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dea680124cf11514b94279d88b417b537fd30d054067caceb4c8842f44fbf9b6"
-  name = "github.com/0xProject/0x-mesh"
-  packages = [
-    "blockwatch",
-    "zeroex",
-  ]
-  pruneopts = "UT"
-  revision = "330a962763b583e0881c04c45a2d75bee69a4625"
-
-[[projects]]
-  branch = "master"
   digest = "1:e574dab86697e4e3a8e2e815e0e932cfbf3618e74d6379d8732b33757e11b23d"
   name = "github.com/allegro/bigcache"
   packages = [
@@ -389,8 +378,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/0xProject/0x-mesh/blockwatch",
-    "github.com/0xProject/0x-mesh/zeroex",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/common",
