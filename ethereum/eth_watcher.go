@@ -1,12 +1,14 @@
 package ethereum
 
 import (
+	"context"
 	"errors"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/0xproject/0x-mesh/ethereum/wrappers"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -139,7 +141,17 @@ func (e *ETHWatcher) updateBalances() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			balances, err := ethBalanceChecker.GetEthBalances(nil, chunk)
+
+			// Pass a context with a 10 second timeout to `GetEthBalances` in order to avoid
+			// any one request from taking longer then 10 seconds and as a consequence, hold
+			// up the polling loop for more then 10 seconds.
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			opts := &bind.CallOpts{
+				Pending: false,
+				Context: ctx,
+			}
+			balances, err := ethBalanceChecker.GetEthBalances(opts, chunk)
 			if err != nil {
 				// TODO(fabio): Log error
 				return // Noop on failure, simply wait for next polling interval
