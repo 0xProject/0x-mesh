@@ -26,26 +26,31 @@ type Balance struct {
 // ETHWatcher allows for watching a set of Ethereum addresses for ETH balance
 // changes
 type ETHWatcher struct {
-	addressToBalance         map[common.Address]*big.Int
-	minPollingInterval       time.Duration
-	isWatching               bool
-	balanceChan              chan Balance
-	ethBalanceCheckerAddress common.Address
-	ethClient                *ethclient.Client
-	ticker                   *time.Ticker
-	addressToBalanceMu       sync.Mutex
+	addressToBalance   map[common.Address]*big.Int
+	minPollingInterval time.Duration
+	isWatching         bool
+	balanceChan        chan Balance
+	ethBalanceChecker  *wrappers.EthBalanceChecker
+	ethClient          *ethclient.Client
+	ticker             *time.Ticker
+	addressToBalanceMu sync.Mutex
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, ethBalanceCheckerAddress common.Address) *ETHWatcher {
-	return &ETHWatcher{
-		addressToBalance:         make(map[common.Address]*big.Int),
-		balanceChan:              make(chan Balance, 100),
-		minPollingInterval:       minPollingInterval,
-		ethBalanceCheckerAddress: ethBalanceCheckerAddress,
-		isWatching:               false,
-		ethClient:                ethClient,
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, ethBalanceCheckerAddress common.Address) (*ETHWatcher, error) {
+	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(ethBalanceCheckerAddress, ethClient)
+	if err != nil {
+		return nil, err
 	}
+
+	return &ETHWatcher{
+		addressToBalance:   make(map[common.Address]*big.Int),
+		balanceChan:        make(chan Balance, 100),
+		minPollingInterval: minPollingInterval,
+		isWatching:         false,
+		ethClient:          ethClient,
+		ethBalanceChecker:  ethBalanceChecker,
+	}, nil
 }
 
 // Start begins the ETH balance poller
@@ -131,10 +136,6 @@ func (e *ETHWatcher) updateBalances() error {
 		chunks = append(chunks, addresses)
 	}
 
-	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(e.ethBalanceCheckerAddress, e.ethClient)
-	if err != nil {
-		return err
-	}
 	wg := &sync.WaitGroup{}
 	for _, chunk := range chunks {
 		// Call contract for each chunk of addresses in parallel
@@ -151,7 +152,7 @@ func (e *ETHWatcher) updateBalances() error {
 				Pending: false,
 				Context: ctx,
 			}
-			balances, err := ethBalanceChecker.GetEthBalances(opts, chunk)
+			balances, err := e.ethBalanceChecker.GetEthBalances(opts, chunk)
 			if err != nil {
 				// TODO(fabio): Log error
 				return // Noop on failure, simply wait for next polling interval

@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const ganacheEndpoint = "http://localhost:8545"
@@ -41,10 +42,10 @@ var pollingInterval = 100 * time.Millisecond
 
 func TestAddingAddressToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	ethWatcher := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
+
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
 		ethWatcher.Add(address, big.NewInt(0))
@@ -61,10 +62,10 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	ethWatcher := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
+
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
 		// Set initial balances to 0 so that when the watcher is started an event will be emitted
@@ -88,10 +89,10 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 }
 func TestStartStopETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	ethWatcher := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
+
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
 		// Set initial balances to 0 so that when the watcher is started an event will be emitted
