@@ -112,4 +112,5 @@ func TestStartStopETHWatcher(t *testing.T) {
 	}
 
 	ethWatcher.Stop()
+	assert.False(t, ethWatcher.isWatching, "Calling Stop() show stop the ethWatcher poller")
 }
