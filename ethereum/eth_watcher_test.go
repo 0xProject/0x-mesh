@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xproject/0x-mesh/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -44,7 +43,7 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
@@ -64,7 +63,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
@@ -91,7 +90,7 @@ func TestStartStopETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(ganacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, config.GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
