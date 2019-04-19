@@ -150,10 +150,10 @@ func (e *ETHWatcher) updateBalances() error {
 		go func() {
 			defer wg.Done()
 
-			// Pass a context with a 10 second timeout to `GetEthBalances` in order to avoid
-			// any one request from taking longer then 10 seconds and as a consequence, hold
-			// up the polling loop for more then 10 seconds.
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
+			// any one request from taking longer then 20 seconds and as a consequence, hold
+			// up the polling loop for more then 20 seconds.
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			opts := &bind.CallOpts{
 				Pending: false,
