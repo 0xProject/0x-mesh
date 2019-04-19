@@ -49,3 +49,8 @@
 [[prune.project]]
   name = "github.com/karalabe/hid"
   unused-packages = false
+
+[[constraint]]
+  name = "github.com/syndtr/goleveldb"
+  branch = "minimum-wasm-support"
+  source = "github.com/0xProject/goleveldb"

@@ -263,7 +263,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:685fdfea42d825ebd39ee0994354b46c374cf2c2b2d97a41a8dee1807c6a9b62"
+  branch = "minimum-wasm-support"
+  digest = "1:fd89d5b43d208d71dda7947134f259bc7f41d517b47de0ffc9e46d1e73570c8d"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -280,7 +281,8 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "b001fa50d6b27f3f0bb175a87d0cb55426d0a0ae"
+  revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
+  source = "github.com/0xProject/goleveldb"
 
 [[projects]]
   digest = "1:98c7f8a39334cff11ba2402d7e940941b5fcb40e1dd93be6b633a0a6fbaf46e5"
@@ -389,6 +391,7 @@
     "github.com/ocdogan/rbt",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
+    "github.com/syndtr/goleveldb/leveldb",
     "golang.org/x/crypto/sha3",
   ]
   solver-name = "gps-cdcl"
