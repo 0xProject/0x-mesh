@@ -93,7 +93,7 @@ func (w *Watcher) StartPolling() error {
 	defer w.mu.Unlock()
 
 	if w.isWatching {
-		return errors.New("Polling  already started")
+		return errors.New("Polling already started")
 	}
 
 	w.isWatching = true
