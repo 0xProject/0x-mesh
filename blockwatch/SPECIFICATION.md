@@ -7,19 +7,17 @@ This doc outlines the high-level technical design specifications of 0x Mesh.
 Proposed package hierarchy and organization within the `0x-mesh` project.
 
 - `db` -- Contains all the logic related to interfacing with IndexDB & Redis databases
-  - `db.go` -- Contains the key-value database interface
-  - `indexdb.go` -- Contains the IndexDB-backed implementation of the db interface
-  - `redis.go` -- Contains the Redis-backed implementation of the db interface
+  - `db.go` -- Contains a higher-level interface around LevelDB that adds index support
 - `core` -- Contains the core ETH-staked messaging logic
   - `core.go` -- Allows for a core node to be instantiated
   - `networking` -- Contains all p2p networking logic (TODO: Flesh this out more)
-  - `ethwatch` -- Enables watching ETH balances for changes
   - `sharing` -- Contains the logic for sharing messages with peers
   - `reputation` -- Manages the reputations of neighbors
   - `messages` -- Manages the messages DB (`message` is defined as [payload, signature])
 - `ethereum` -- Contains all logic that is Ethereum-specific.
   - `blockwatch` -- Enables watching Ethereum blocks in a block reorg friendly way
   - `eventwatch` -- Enables contract event watching in a block reorg friendly way
+  - `ethwatch` -- Enables watching ETH balances for changes
 - `0x` -- Contains all 0x-specific logic
   - `orderwatch` -- Enables watching a set of orders for order-relevant state changes
     - `orderwatch.go` -- See above
@@ -33,17 +31,7 @@ Proposed package hierarchy and organization within the `0x-mesh` project.
 
 ## DB
 
-We will be using a key-value store database for 0x Mesh. Since the node runs both in the browser and server, we will use `IndexDB` in the browser, and `Redis` when running on a server. The differences between the interfaces of these two databases will be abstracted behind a `Database` interface.
-
-### Database interface
-
-```go
-type Database interface {
-    // TODO: Research Redis and see if a common interface is possible.
-}
-```
-
-The rest of the node's logic will only interact with the database via a module that adheres to this interface.
+We will be using a key-value store database for 0x Mesh. We have found a way to get Leveldb working in the browser by using BrowserFS as a file-system shim. We can therefore use leveldb in both the browser and server settings.
 
 ## Core
 
@@ -53,7 +41,7 @@ TODO(albrow)
 
 ### EthWatch
 
-Watches for changes in ETH balances of interest and emits events whenever they change.
+Watches for changes in ETH balances of interest and emits events whenever they change. Current implementation uses a ETH balance batch fetcher contract that can fetch up to 4000 balances per `eth_call`.
 
 ### Sharing
 
@@ -83,7 +71,7 @@ type Event type {
 }
 
 type Node interface {
-    ValidationFn func(message *Message) bool
+    ValidationFn func(message *Message) error
     Events chan*Event
     EvictionRequests chan*EvictionRequest
 }
@@ -182,7 +170,7 @@ Unfortunately watching contract events is not 100% reliable. We therefore need t
 
 ##### Database
 
-In order to persistently store orders and order-relevant state (e.g., trader balances, allowances, etc.) across re-starts, we require a database. This database will be constructed using the 0x Mesh key-value store interface that abstracts away the implementation differences between browser/server DB implementations.
+In order to persistently store orders and order-relevant state (e.g., trader balances, allowances, etc.) across re-starts, we require a database. This database will be constructed using the 0x Mesh key-value store.
 
 ##### Tables
 
