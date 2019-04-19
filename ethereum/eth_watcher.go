@@ -25,7 +25,7 @@ type Balance struct {
 // changes
 type ETHWatcher struct {
 	addressToBalance         map[common.Address]*big.Int
-	pollingInterval          time.Duration
+	minPollingInterval       time.Duration
 	isWatching               bool
 	balanceChan              chan Balance
 	ethBalanceCheckerAddress common.Address
@@ -35,11 +35,11 @@ type ETHWatcher struct {
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(pollingInterval time.Duration, ethClient *ethclient.Client, ethBalanceCheckerAddress common.Address) *ETHWatcher {
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, ethBalanceCheckerAddress common.Address) *ETHWatcher {
 	return &ETHWatcher{
 		addressToBalance:         make(map[common.Address]*big.Int),
 		balanceChan:              make(chan Balance, 100),
-		pollingInterval:          pollingInterval,
+		minPollingInterval:       minPollingInterval,
 		ethBalanceCheckerAddress: ethBalanceCheckerAddress,
 		isWatching:               false,
 		ethClient:                ethClient,
@@ -52,15 +52,17 @@ func (e *ETHWatcher) Start() error {
 		return errors.New("Watcher already started")
 	}
 	e.isWatching = true
-	e.ticker = time.NewTicker(e.pollingInterval)
+	e.ticker = time.NewTicker(e.minPollingInterval)
 	go func() {
 		for {
-			<-e.ticker.C
+			start := time.Now()
 
-			// TODO(fabio): Currently if `updateBalance` takes longer then the ticker interval,
-			// we would kick off an additional call before the previous one completes. This might
-			// not be desirable, and we might want to noop if a previous request is in progress.
 			e.updateBalances()
+
+			// Wait minPollingInterval before calling updateBalances again. Since
+			// we only start sleeping _after_ updateBalances completes, we will never
+			// have multiple calls to updateBalances running in parallel
+			time.Sleep(e.minPollingInterval - time.Since(start))
 		}
 	}()
 	return nil
@@ -131,9 +133,12 @@ func (e *ETHWatcher) updateBalances() error {
 	if err != nil {
 		return err
 	}
+	wg := &sync.WaitGroup{}
 	for _, chunk := range chunks {
 		// Call contract for each chunk of addresses in parallel
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			balances, err := ethBalanceChecker.GetEthBalances(nil, chunk)
 			if err != nil {
 				// TODO(fabio): Log error
@@ -157,5 +162,6 @@ func (e *ETHWatcher) updateBalances() error {
 			}
 		}()
 	}
+	wg.Wait()
 	return nil
 }
