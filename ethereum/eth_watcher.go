@@ -19,9 +19,10 @@ var MainnetEthBalanceCheckerAddress = common.HexToAddress("0x9bc2c6ae8b1a8e3c375
 // GanacheEthBalanceCheckerAddress is the ganache snapshot EthBalanceChecker contract address
 var GanacheEthBalanceCheckerAddress = common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc")
 
-// The most addresses we can fetch balances for in a single CALL without having Parity nor Geth
-// timeout
-const chunkSize = 4000
+// The most addresses we can fetch balances for in a single CALL without going over the block gas
+// limit. One of Geth/Parity caps the gas limit for `eth_call`s at the block gas limit.
+// Block gas limit on 19th April 2019: 7,600,889
+const chunkSize = 3500 // 7,475,648 gas
 
 // Balance represents a single Ethereum addresses Ether balance
 type Balance struct {
