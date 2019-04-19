@@ -311,7 +311,7 @@ func (c *Collection) FindWithValue(index *Index, val []byte, models interface{})
 	return c.findWithIndexIterator(index, iter, models)
 }
 
-// FindWithValue finds all models with a value >= start and < limit according to
+// FindWithRange finds all models with a value >= start and < limit according to
 // the index and scans the results into models. models should be a pointer to an
 // empty slice of a concrete model type (e.g. *[]myModelType).
 func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, models interface{}) error {
