@@ -1,23 +1,36 @@
 version: 2
 jobs:
   build:
+    environment:
+      BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.12-node
+      - image: circleci/golang:1.12
+      - image: 0xorg/mesh-ganache-cli
+    working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout
-      - run: node --version
       - run:
-          name: Set npm path
-          command: npm set prefix=/home/circleci/npm && echo 'export PATH=$HOME/circleci/npm/bin:$PATH' >> /home/circleci/.bashrc
+          name: Install dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run:
+          name: Install nvm
+          command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+      - run:
+          name: Configure nvm
+          command: export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      - run:
+          name: Install Node v11
+          command: nvm install 11
+      - run: node --version
       - run:
           name: Install yarn
           command: npm i -g yarn@^1.15
       - run:
           name: Install dependencies
-          command: yarn install
+          command: make deps
       - run:
           name: Run Go tests
-          command: yarn test:go
+          command: make test-go
       - run:
           name: Run WebAssembly tests
-          command: yarn test:wasm
+          command: make test-wasm

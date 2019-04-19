@@ -1,0 +1,3 @@
+# Automatically collapse generated files in GitHub.
+ethereum/wrappers/*.go  linguist-generated=true
+
