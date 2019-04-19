@@ -170,6 +170,9 @@ func (e *ETHWatcher) updateBalances() error {
 							e.balanceChan <- updatedBalance
 						}()
 					}
+				} else {
+					// TODO(fabio): Log error since the address was removed from the
+					// mapping and should not have been
 				}
 				e.addressToBalanceMu.Unlock()
 			}
