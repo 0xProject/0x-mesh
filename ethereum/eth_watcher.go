@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	log "github.com/sirupsen/logrus"
 )
 
 // MainnetEthBalanceCheckerAddress is the mainnet EthBalanceChecker contract address
@@ -94,7 +95,12 @@ func (e *ETHWatcher) Stop() {
 func (e *ETHWatcher) Add(address common.Address, initialBalance *big.Int) {
 	e.addressToBalanceMu.Lock()
 	defer e.addressToBalanceMu.Unlock()
-	if _, ok := e.addressToBalance[address]; ok {
+	if existingBalance, ok := e.addressToBalance[address]; ok {
+		log.WithFields(log.Fields{
+			"address":         address.Hex(),
+			"initialBalance":  initialBalance,
+			"existingBalance": existingBalance,
+		}).Warn("tried to add address to ETHWatcher that already exists")
 		return // Noop. Already exists and we bias towards our existing balance
 	}
 	e.addressToBalance[address] = initialBalance
@@ -160,7 +166,10 @@ func (e *ETHWatcher) updateBalances() error {
 			}
 			balances, err := e.ethBalanceChecker.GetEthBalances(opts, chunk)
 			if err != nil {
-				// TODO(fabio): Log error
+				log.WithFields(log.Fields{
+					"error":     err.Error(),
+					"addresses": chunk,
+				}).Info("ether batch balance check failed")
 				return // Noop on failure, simply wait for next polling interval
 			}
 			for i, address := range chunk {
@@ -177,8 +186,9 @@ func (e *ETHWatcher) updateBalances() error {
 						}()
 					}
 				} else {
-					// TODO(fabio): Log error since the address was removed from the
-					// mapping and should not have been
+					log.WithFields(log.Fields{
+						"address": address,
+					}).Error("address unexpectedly missing from addressToBalance map")
 				}
 				e.addressToBalanceMu.Unlock()
 			}

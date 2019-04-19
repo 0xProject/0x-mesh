@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
+	log "github.com/sirupsen/logrus"
 )
 
 // MiniHeader is a more succinct block header representation then the one returned by go-ethereum.
@@ -167,6 +168,9 @@ func (w *Watcher) pollNextBlock() error {
 	nextHeader, err := w.client.HeaderByNumber(nextBlockNumber)
 	if err != nil {
 		if err == ethereum.NotFound {
+			log.WithFields(log.Fields{
+				"blockNumber": nextBlockNumber,
+			}).Info("block header not found")
 			return nil // Noop and wait next polling interval
 		}
 		return err
@@ -216,6 +220,9 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	nextParentHeader, err := w.client.HeaderByHash(nextHeader.Parent)
 	if err != nil {
 		if err == ethereum.NotFound {
+			log.WithFields(log.Fields{
+				"blockNumber": nextHeader.Parent.Hex(),
+			}).Info("block header not found")
 			// Noop and wait next polling interval. We remove the popped blocks
 			// and refetch them on the next polling interval.
 			return events, nil
