@@ -108,7 +108,7 @@
   ]
   pruneopts = "T"
   revision = "aa34e00ba93924332ca55155ac5bde205017544d"
-  source = "github.com/0xproject/go-ethereum"
+  source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
   branch = "master"
@@ -307,7 +307,7 @@
   ]
   pruneopts = "UT"
   revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
-  source = "github.com/0xproject/goleveldb"
+  source = "github.com/0xProject/goleveldb"
 
 [[projects]]
   digest = "1:98c7f8a39334cff11ba2402d7e940941b5fcb40e1dd93be6b633a0a6fbaf46e5"
