@@ -90,7 +90,6 @@ func (w *Watcher) StartPolling() error {
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
 	if w.isWatching {
 		return errors.New("Polling  already started")
 	}
@@ -112,9 +111,9 @@ func (w *Watcher) startPollingLoop() {
 			w.mu.Unlock()
 			return
 		}
+		w.mu.Unlock()
 
 		err := w.pollNextBlock()
-		w.mu.Unlock()
 		if err != nil {
 			// Attempt to send errors but if buffered channel is full, we assume there is no
 			// interested consumer and drop them. The Watcher recovers gracefully from errors.
@@ -132,7 +131,6 @@ func (w *Watcher) StopPolling() {
 	defer w.mu.Unlock()
 	w.isWatching = false
 	w.ticker.Stop()
-	w.ticker = nil
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
