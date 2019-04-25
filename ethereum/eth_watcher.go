@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xproject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
