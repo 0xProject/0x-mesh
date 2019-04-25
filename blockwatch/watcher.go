@@ -95,10 +95,9 @@ func (w *Watcher) StartPolling() error {
 	}
 
 	w.isWatching = true
-	if w.ticker != nil {
-		w.ticker.Stop()
+	if w.ticker == nil {
+		w.ticker = time.NewTicker(w.pollingInterval)
 	}
-	w.ticker = time.NewTicker(w.pollingInterval)
 	go w.startPollingLoop()
 	return nil
 }
@@ -106,11 +105,11 @@ func (w *Watcher) StartPolling() error {
 func (w *Watcher) startPollingLoop() {
 	for {
 		w.mu.Lock()
-		<-w.ticker.C
 		if !w.isWatching {
 			w.mu.Unlock()
 			return
 		}
+		<-w.ticker.C
 		w.mu.Unlock()
 
 		err := w.pollNextBlock()
@@ -130,7 +129,10 @@ func (w *Watcher) StopPolling() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.isWatching = false
-	w.ticker.Stop()
+	if w.ticker != nil {
+		w.ticker.Stop()
+	}
+	w.ticker = nil
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
