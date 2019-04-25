@@ -95,18 +95,18 @@ func (w *Watcher) StartPolling() error {
 	}
 
 	w.isWatching = true
-	if w.ticker == nil {
-		w.ticker = time.NewTicker(w.pollingInterval)
+	if w.ticker != nil {
+		w.ticker.Stop()
 	}
+	w.ticker = time.NewTicker(w.pollingInterval)
 	go w.startPollingLoop()
 	return nil
 }
 
 func (w *Watcher) startPollingLoop() {
 	for {
-		<-w.ticker.C
-
 		w.mu.Lock()
+		<-w.ticker.C
 		if !w.isWatching {
 			w.mu.Unlock()
 			return
