@@ -15,6 +15,7 @@ management and does not support Go modules.
 - [Dep package manager](https://golang.github.io/dep/docs/installation.html)
 - [Node.js version >= 10](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
 - [Yarn package manager](https://yarnpkg.com/en/)
+- [golangci-lint version 1.16.0](https://github.com/golangci/golangci-lint#install)
 
 ### Installing dependencies
 
@@ -40,6 +41,12 @@ Run tests in both environments:
 
 ```
 make test-all
+```
+
+### Running the linter
+
+```
+make lint
 ```
 
 ### Managing Dependencies
