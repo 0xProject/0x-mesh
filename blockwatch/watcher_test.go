@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWatcher(t *testing.T) {
@@ -33,7 +34,7 @@ func TestWatcher(t *testing.T) {
 		C: fakeTickerChan,
 	}
 	watcher.ticker = fakeTicker
-	watcher.StartPolling() // Start polling. The polling loop blocks waiting to receive from ticker channel
+	require.NoError(t, watcher.StartPolling()) // Start polling. The polling loop blocks waiting to receive from ticker channel
 
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
@@ -63,5 +64,5 @@ func TestWatcher(t *testing.T) {
 		}
 	}
 
-	watcher.StartPolling()
+	require.NoError(t, watcher.StartPolling())
 }
