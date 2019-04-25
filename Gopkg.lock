@@ -3,17 +3,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bd8814ce0ab69107d1565096277cfdc90e8e332a3a0be34872cee2ed5e452070"
-  name = "github.com/0xProject/0x-mesh"
-  packages = [
-    "blockwatch",
-    "zeroex",
-  ]
-  pruneopts = "UT"
-  revision = "16d156d2ac87f0f893f37b4082675d40ae4a689a"
-
-[[projects]]
-  branch = "master"
   digest = "1:e574dab86697e4e3a8e2e815e0e932cfbf3618e74d6379d8732b33757e11b23d"
   name = "github.com/allegro/bigcache"
   packages = [
@@ -200,12 +189,28 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:b6bbd2f9e0724bd81890c8644259f920c6d61c08453978faff0bebd25f3e7d3e"
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:447562773a19dc1719359c2cd70d275c62c0b89f79d763f41d5deedb0e69873f"
   name = "github.com/karalabe/hid"
   packages = ["."]
   pruneopts = "T"
   revision = "d815e0c1a2e2082a287a2806bc90bc8fc7b276a9"
+
+[[projects]]
+  digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
@@ -256,6 +261,14 @@
   version = "v1.0"
 
 [[projects]]
+  digest = "1:fd61cf4ae1953d55df708acb6b91492d538f49c305b364a014049914495db426"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
+  version = "v1.4.1"
+
+[[projects]]
   branch = "develop"
   digest = "1:6deccaba5762377091f2e5b26dba70e630e01edb3f95d1a6a59d9b098bd4358f"
   name = "github.com/status-im/keycard-go"
@@ -294,7 +307,7 @@
   ]
   pruneopts = "UT"
   revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
-  source = "github.com/0xProject/goleveldb"
+  source = "github.com/0xproject/goleveldb"
 
 [[projects]]
   digest = "1:98c7f8a39334cff11ba2402d7e940941b5fcb40e1dd93be6b633a0a6fbaf46e5"
@@ -392,8 +405,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/0xProject/0x-mesh/blockwatch",
-    "github.com/0xProject/0x-mesh/zeroex",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
@@ -404,10 +415,15 @@
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
+    "github.com/google/uuid",
+    "github.com/jpillora/backoff",
     "github.com/ocdogan/rbt",
+    "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/syndtr/goleveldb/leveldb",
+    "github.com/syndtr/goleveldb/leveldb/iterator",
+    "github.com/syndtr/goleveldb/leveldb/util",
     "golang.org/x/crypto/sha3",
   ]
   solver-name = "gps-cdcl"
