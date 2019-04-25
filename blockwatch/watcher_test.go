@@ -35,6 +35,7 @@ func TestWatcher(t *testing.T) {
 	}
 	watcher.ticker = fakeTicker
 	require.NoError(t, watcher.StartPolling()) // Start polling. The polling loop blocks waiting to receive from ticker channel
+	defer watcher.StopPolling()
 
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
@@ -63,6 +64,4 @@ func TestWatcher(t *testing.T) {
 			sub.Unsubscribe()
 		}
 	}
-
-	require.NoError(t, watcher.StartPolling())
 }
