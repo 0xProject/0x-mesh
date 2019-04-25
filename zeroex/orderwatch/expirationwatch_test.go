@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrunesExpiredOrders(t *testing.T) {
@@ -56,7 +57,7 @@ func TestStartsAndStopsPoller(t *testing.T) {
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pollingInterval := 50 * time.Millisecond
-	watcher.Start(pollingInterval)
+	require.NoError(t, watcher.Start(pollingInterval))
 
 	var countMux sync.Mutex
 	channelCount := 0
