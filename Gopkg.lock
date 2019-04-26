@@ -3,17 +3,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bd8814ce0ab69107d1565096277cfdc90e8e332a3a0be34872cee2ed5e452070"
-  name = "github.com/0xProject/0x-mesh"
-  packages = [
-    "blockwatch",
-    "zeroex",
-  ]
-  pruneopts = "UT"
-  revision = "16d156d2ac87f0f893f37b4082675d40ae4a689a"
-
-[[projects]]
-  branch = "master"
   digest = "1:e574dab86697e4e3a8e2e815e0e932cfbf3618e74d6379d8732b33757e11b23d"
   name = "github.com/allegro/bigcache"
   packages = [
@@ -392,8 +381,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/0xProject/0x-mesh/blockwatch",
-    "github.com/0xProject/0x-mesh/zeroex",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
@@ -404,10 +391,13 @@
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
+    "github.com/google/uuid",
     "github.com/ocdogan/rbt",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/syndtr/goleveldb/leveldb",
+    "github.com/syndtr/goleveldb/leveldb/iterator",
+    "github.com/syndtr/goleveldb/leveldb/util",
     "golang.org/x/crypto/sha3",
   ]
   solver-name = "gps-cdcl"

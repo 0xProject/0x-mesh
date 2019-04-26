@@ -73,7 +73,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	}
 
 	go func() {
-		ethWatcher.updateBalances()
+		require.NoError(t, ethWatcher.updateBalances())
 	}()
 
 	for i := 0; i < len(ethAccountToBalance); i++ {
@@ -99,7 +99,7 @@ func TestStartStopETHWatcher(t *testing.T) {
 		ethWatcher.Add(address, big.NewInt(0))
 	}
 
-	ethWatcher.Start()
+	require.NoError(t, ethWatcher.Start())
 
 	for i := 0; i < len(ethAccountToBalance); i++ {
 		select {

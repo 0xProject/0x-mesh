@@ -37,7 +37,8 @@ func NewRpcClient(rpcURL string, requestTimeout time.Duration) (*RpcClient, erro
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
-	ctx, _ := context.WithTimeout(context.Background(), rc.requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
+	defer cancel()
 	header, err := rc.client.HeaderByNumber(ctx, number)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
-	ctx, _ := context.WithTimeout(context.Background(), rc.requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
+	defer cancel()
 	header, err := rc.client.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -60,7 +62,8 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	ctx, _ := context.WithTimeout(context.Background(), rc.requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
+	defer cancel()
 	logs, err := rc.client.FilterLogs(ctx, q)
 	if err != nil {
 		return nil, err
