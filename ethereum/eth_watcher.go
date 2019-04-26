@@ -39,7 +39,6 @@ type ETHWatcher struct {
 	balanceChan        chan Balance
 	ethBalanceChecker  *wrappers.EthBalanceChecker
 	ethClient          *ethclient.Client
-	ticker             *time.Ticker
 	addressToBalanceMu sync.Mutex
 }
 
@@ -66,7 +65,6 @@ func (e *ETHWatcher) Start() error {
 		return errors.New("Watcher already started")
 	}
 	e.isWatching = true
-	e.ticker = time.NewTicker(e.minPollingInterval)
 	go func() {
 		for {
 			start := time.Now()
@@ -89,7 +87,6 @@ func (e *ETHWatcher) Stop() {
 	if !e.isWatching {
 		return // noop
 	}
-	e.ticker.Stop()
 	e.isWatching = false
 }
 
