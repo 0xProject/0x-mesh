@@ -54,3 +54,7 @@
   name = "github.com/syndtr/goleveldb"
   branch = "minimum-wasm-support"
   source = "github.com/0xProject/goleveldb"
+
+[[constraint]]
+  name = "github.com/albrow/stringset"
+  version = "2.1.0"

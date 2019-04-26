@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/albrow/stringset"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -313,9 +314,11 @@ func (c *Collection) Delete(id []byte) error {
 // *doesn't* discard the transaction if there is an error.
 func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model) error {
 	for _, index := range c.indexes {
-		key := index.keyForModel(model)
-		if err := txn.Delete(key, nil); err != nil {
-			return err
+		keys := index.keysForModel(model)
+		for _, key := range keys {
+			if err := txn.Delete(key, nil); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -323,9 +326,11 @@ func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model
 
 func (c *Collection) saveIndexesForModel(txn *leveldb.Transaction, model Model) error {
 	for _, index := range c.indexes {
-		key := index.keyForModel(model)
-		if err := txn.Put(key, nil, nil); err != nil {
-			return err
+		keys := index.keysForModel(model)
+		for _, key := range keys {
+			if err := txn.Put(key, nil, nil); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -354,7 +359,7 @@ func (c *Collection) findExistingModelByPrimaryKey(txn *leveldb.Transaction, pri
 type Index struct {
 	col    *Collection
 	name   string
-	getter func(m Model) []byte
+	getter func(m Model) [][]byte
 }
 
 // AddIndex creates and returns a new index. name is an arbitrary, unique name
@@ -365,6 +370,21 @@ type Index struct {
 // be indexed. Any models inserted prior to calling AddIndex will *not* be
 // indexed.
 func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
+	// Internally, all indexes are treated as MultiIndexes. We wrap the given
+	// getter function so that it returns [][]byte instead of just []byte.
+	wrappedGetter := func(model Model) [][]byte {
+		return [][]byte{getter(model)}
+	}
+	return c.AddMultiIndex(name, wrappedGetter)
+}
+
+// AddMultiIndex is like AddIndex but has the ability to index multiple values
+// for the same model. For methods like FindWithRange and FindWithValue, the
+// model will be included in the results if *any* of the values returned by the
+// getter function satisfy the constraints. It is useful for representing
+// one-to-many relationships. Any models inserted prior to calling AddMultiIndex
+// will *not* be indexed.
+func (c *Collection) AddMultiIndex(name string, getter func(Model) [][]byte) *Index {
 	index := &Index{
 		col:    c,
 		name:   name,
@@ -383,9 +403,13 @@ func (index *Index) prefix() []byte {
 	return []byte(fmt.Sprintf("index:%s:%s", index.col.name, index.name))
 }
 
-func (index *Index) keyForModel(model Model) []byte {
-	value := index.getter(model)
-	return []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), escape(value), escape(model.ID())))
+func (index *Index) keysForModel(model Model) [][]byte {
+	values := index.getter(model)
+	indexKeys := make([][]byte, len(values))
+	for i, value := range values {
+		indexKeys[i] = []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), escape(value), escape(model.ID())))
+	}
+	return indexKeys
 }
 
 // primaryKeyFromIndexKey extracts and returns the primary key from the given index
@@ -422,6 +446,9 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 	if err := c.checkModelsType(models); err != nil {
 		return err
 	}
+	// MultiIndexes can result in the same model being included more than once. To
+	// prevent this, we keep track of the primaryKeys we have already seen.
+	pkSet := stringset.New()
 	modelsVal := reflect.ValueOf(models).Elem()
 	for iter.Next() {
 		// We assume that each key in the iterator consists of an index prefix, the
@@ -429,6 +456,10 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 		// key from this key and use it to get the encoded data for the model
 		// itself.
 		pk := index.primaryKeyFromIndexKey(iter.Key())
+		if pkSet.Contains(string(pk)) {
+			continue
+		}
+		pkSet.Add(string(pk))
 		data, err := c.db.ldb.Get(pk, nil)
 		if err != nil {
 			return err
