@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
+  name = "github.com/albrow/stringset"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5cbcec770ff3993feab398d47a8c0ca9f0a812de"
+  version = "v2.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:e574dab86697e4e3a8e2e815e0e932cfbf3618e74d6379d8732b33757e11b23d"
   name = "github.com/allegro/bigcache"
@@ -405,6 +413,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",

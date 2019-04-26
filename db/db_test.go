@@ -23,8 +23,9 @@ func TestOpen(t *testing.T) {
 }
 
 type testModel struct {
-	Name string
-	Age  int
+	Name      string
+	Age       int
+	Nicknames []string
 }
 
 func (tm *testModel) ID() []byte {
@@ -245,6 +246,129 @@ func TestFindWithRange(t *testing.T) {
 
 	var actual []*testModel
 	require.NoError(t, col.FindWithRange(ageIndex, []byte(fmt.Sprint(1)), []byte(fmt.Sprint(4)), &actual))
+	assert.Equal(t, expected, actual)
+}
+
+func TestFindWithValueWithMultiIndex(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people", &testModel{})
+	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {
+		person := m.(*testModel)
+		indexValues := make([][]byte, len(person.Nicknames))
+		for i, nickname := range person.Nicknames {
+			indexValues[i] = []byte(nickname)
+		}
+		return indexValues
+	})
+
+	// expected is a set of testModels that include the nickname "Bob"
+	expected := []*testModel{
+		{
+			Name:      "ExpectedPerson_0",
+			Age:       42,
+			Nicknames: []string{"Bob", "Jim", "John"},
+		},
+		{
+			Name:      "ExpectedPerson_1",
+			Age:       43,
+			Nicknames: []string{"Alice", "Bob", "Emily"},
+		},
+		{
+			Name:      "ExpectedPerson_2",
+			Age:       44,
+			Nicknames: []string{"Bob", "No one"},
+		},
+	}
+	for _, model := range expected {
+		require.NoError(t, col.Insert(model))
+	}
+
+	// We also insert some other models with different nicknames.
+	excluded := []*testModel{
+		{
+			Name:      "ExcludedPerson_0",
+			Age:       42,
+			Nicknames: []string{"Bill", "Jim", "John"},
+		},
+		{
+			Name:      "ExcludedPerson_1",
+			Age:       43,
+			Nicknames: []string{"Alice", "Jane", "Emily"},
+		},
+		{
+			Name:      "ExcludedPerson_2",
+			Age:       44,
+			Nicknames: []string{"Nemo", "No one"},
+		},
+	}
+	for _, model := range excluded {
+		require.NoError(t, col.Insert(model))
+	}
+
+	var actual []*testModel
+	require.NoError(t, col.FindWithValue(nicknameIndex, []byte("Bob"), &actual))
+	assert.Equal(t, expected, actual)
+}
+
+func TestFindWithRangeWithMultiIndex(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people", &testModel{})
+	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {
+		person := m.(*testModel)
+		indexValues := make([][]byte, len(person.Nicknames))
+		for i, nickname := range person.Nicknames {
+			indexValues[i] = []byte(nickname)
+		}
+		return indexValues
+	})
+
+	// expected is a set of testModels that include at least one nickname that
+	// satisfies "B" <= nickname < "E"
+	expected := []*testModel{
+		{
+			Name:      "ExpectedPerson_0",
+			Age:       42,
+			Nicknames: []string{"Alice", "Beth", "Emily"},
+		},
+		{
+			Name:      "ExpectedPerson_1",
+			Age:       43,
+			Nicknames: []string{"Bob", "Charles", "Dan"},
+		},
+		{
+			Name:      "ExpectedPerson_2",
+			Age:       44,
+			Nicknames: []string{"James", "Darell"},
+		},
+	}
+	for _, model := range expected {
+		require.NoError(t, col.Insert(model))
+	}
+
+	// We also insert some other models with different nicknames.
+	excluded := []*testModel{
+		{
+			Name:      "ExcludedPerson_0",
+			Age:       42,
+			Nicknames: []string{"Allen", "Jim", "John"},
+		},
+		{
+			Name:      "ExcludedPerson_1",
+			Age:       43,
+			Nicknames: []string{"Sophia", "Jane", "Emily"},
+		},
+		{
+			Name:      "ExcludedPerson_2",
+			Age:       44,
+			Nicknames: []string{"Nemo", "No one"},
+		},
+	}
+	for _, model := range excluded {
+		require.NoError(t, col.Insert(model))
+	}
+
+	var actual []*testModel
+	require.NoError(t, col.FindWithRange(nicknameIndex, []byte("B"), []byte("E"), &actual))
 	assert.Equal(t, expected, actual)
 }
 
