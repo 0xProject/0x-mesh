@@ -96,11 +96,11 @@ func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add the first account with the correct initial balance. We expect no event to be emitted for
-	// this account since the watcher already has the most up-to-date balance for this account.
+	// this account since the watcher already has the most up-to-date
 	ethWatcher.Add(firstAccount, firstAccountBalance)
 
 	// Add the second account with an incorrect balance, so that an event will be emitted for it
-	// when running updateBalances
+	// when running updateBalances()
 	ethWatcher.Add(secondAccount, big.NewInt(0))
 
 	go func() {
