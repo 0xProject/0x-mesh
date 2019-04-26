@@ -7,7 +7,7 @@ import (
 
 type meshEnvVars struct {
 	// Logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
-	verbosity int `envvar:"VERBOSITY"`
+	Verbosity int `envvar:VERBOSITY"`
 }
 
 func main() {
@@ -19,5 +19,5 @@ func main() {
 
 	// Logging settings
 	log.SetFormatter(&log.JSONFormatter{})
-	log.SetLevel(log.Level(vars.verbosity))
+	log.SetLevel(log.Level(vars.Verbosity))
 }
