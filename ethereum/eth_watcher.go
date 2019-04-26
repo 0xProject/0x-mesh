@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xproject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -71,7 +71,9 @@ func (e *ETHWatcher) Start() error {
 		for {
 			start := time.Now()
 
-			e.updateBalances()
+			if err := e.updateBalances(); err != nil {
+				// TODO(albrow): Log error
+			}
 
 			// Wait minPollingInterval before calling updateBalances again. Since
 			// we only start sleeping _after_ updateBalances completes, we will never
@@ -147,7 +149,7 @@ func (e *ETHWatcher) updateBalances() error {
 	for _, chunk := range chunks {
 		// Call contract for each chunk of addresses in parallel
 		wg.Add(1)
-		go func() {
+		go func(chunk []common.Address) {
 			defer wg.Done()
 
 			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
@@ -183,7 +185,7 @@ func (e *ETHWatcher) updateBalances() error {
 				}
 				e.addressToBalanceMu.Unlock()
 			}
-		}()
+		}(chunk)
 	}
 	wg.Wait()
 	return nil

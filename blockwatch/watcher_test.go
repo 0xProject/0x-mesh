@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWatcher(t *testing.T) {
@@ -33,7 +34,8 @@ func TestWatcher(t *testing.T) {
 		C: fakeTickerChan,
 	}
 	watcher.ticker = fakeTicker
-	watcher.StartPolling() // Start polling. The polling loop blocks waiting to receive from ticker channel
+	watcher.isWatching = true
+	go watcher.startPollingLoop()
 
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
@@ -62,6 +64,22 @@ func TestWatcher(t *testing.T) {
 			sub.Unsubscribe()
 		}
 	}
+}
 
-	watcher.StartPolling()
+func TestWatcherStartStop(t *testing.T) {
+	fakeClient, err := newFakeClient()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	pollingInterval := 1 * time.Second
+	blockRetentionLimit := 10
+	startBlockDepth := rpc.LatestBlockNumber
+	withLogs := false
+	topics := []common.Hash{}
+	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
+	require.NoError(t, watcher.StartPolling())
+	watcher.StopPolling()
+	require.NoError(t, watcher.StartPolling())
+	watcher.StopPolling()
 }
