@@ -1,6 +1,8 @@
 package db
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -90,6 +92,10 @@ func (c *Collection) primaryKeyForModel(model Model) []byte {
 }
 
 func (c *Collection) primaryKeyForID(id []byte) []byte {
+	return []byte(fmt.Sprintf("%s:%s", c.prefix(), escape(id)))
+}
+
+func (c *Collection) primaryKeyForIDWithoutEscape(id []byte) []byte {
 	return []byte(fmt.Sprintf("%s:%s", c.prefix(), id))
 }
 
@@ -145,12 +151,9 @@ func (c *Collection) Insert(model Model) error {
 		txn.Discard()
 		return err
 	}
-	for _, index := range c.indexes {
-		key := index.keyForModel(model)
-		if err := txn.Put(key, nil, nil); err != nil {
-			txn.Discard()
-			return err
-		}
+	if err := c.saveIndexesForModel(txn, model); err != nil {
+		txn.Discard()
+		return err
 	}
 
 	return txn.Commit()
@@ -200,12 +203,9 @@ func (c *Collection) Update(model Model) error {
 		txn.Discard()
 		return err
 	}
-	for _, index := range c.indexes {
-		key := index.keyForModel(model)
-		if err := txn.Put(key, nil, nil); err != nil {
-			txn.Discard()
-			return err
-		}
+	if err := c.saveIndexesForModel(txn, model); err != nil {
+		txn.Discard()
+		return err
 	}
 
 	return txn.Commit()
@@ -321,6 +321,16 @@ func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model
 	return nil
 }
 
+func (c *Collection) saveIndexesForModel(txn *leveldb.Transaction, model Model) error {
+	for _, index := range c.indexes {
+		key := index.keyForModel(model)
+		if err := txn.Put(key, nil, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // findExistingModelByPrimaryKey gets the latest data for the given primary key.
 // Useful in cases where the given model may be out of date with what is
 // currently stored in the database. It *doesn't* discard the transaction if
@@ -375,22 +385,22 @@ func (index *Index) prefix() []byte {
 
 func (index *Index) keyForModel(model Model) []byte {
 	value := index.getter(model)
-	return []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), value, model.ID()))
+	return []byte(fmt.Sprintf("%s:%s:%s", index.prefix(), escape(value), escape(model.ID())))
 }
 
-// primaryKeyFromKey extracts and returns the primary key from the given index
+// primaryKeyFromIndexKey extracts and returns the primary key from the given index
 // key.
-func (index *Index) primaryKeyFromKey(key []byte) []byte {
+func (index *Index) primaryKeyFromIndexKey(key []byte) []byte {
 	pkAndVal := strings.TrimPrefix(string(key), string(index.prefix()))
 	split := strings.Split(pkAndVal, ":")
-	return index.col.primaryKeyForID([]byte(split[2]))
+	return index.col.primaryKeyForIDWithoutEscape([]byte(split[2]))
 }
 
 // FindWithValue finds all models with the given value according to the index
 // and scans the results into models. models should be a pointer to an empty
 // slice of a concrete model type (e.g. *[]myModelType).
 func (c *Collection) FindWithValue(index *Index, val []byte, models interface{}) error {
-	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), val))
+	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(val)))
 	prefixRange := util.BytesPrefix(prefix)
 	iter := c.db.ldb.NewIterator(prefixRange, nil)
 	return c.findWithIndexIterator(index, iter, models)
@@ -400,8 +410,8 @@ func (c *Collection) FindWithValue(index *Index, val []byte, models interface{})
 // the index and scans the results into models. models should be a pointer to an
 // empty slice of a concrete model type (e.g. *[]myModelType).
 func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, models interface{}) error {
-	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), start))
-	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), limit))
+	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(start)))
+	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(limit)))
 	r := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
 	iter := c.db.ldb.NewIterator(r, nil)
 	return c.findWithIndexIterator(index, iter, models)
@@ -418,7 +428,7 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 		// value for a particular model, and the model ID. We can extract a primary
 		// key from this key and use it to get the encoded data for the model
 		// itself.
-		pk := index.primaryKeyFromKey(iter.Key())
+		pk := index.primaryKeyFromIndexKey(iter.Key())
 		data, err := c.db.ldb.Get(pk, nil)
 		if err != nil {
 			return err
@@ -433,4 +443,50 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 		return err
 	}
 	return nil
+}
+
+// escape replaces ':' with '\c' and '\' with '\\'.
+func escape(value []byte) []byte {
+	escaped := []byte{}
+	for _, b := range value {
+		switch b {
+		case ':':
+			escaped = append(escaped, ([]byte{'\\', 'c'})...)
+		case '\\':
+			escaped = append(escaped, ([]byte{'\\', b})...)
+		default:
+			escaped = append(escaped, b)
+		}
+	}
+	return escaped
+}
+
+// unescape is the inverse of escape.
+func unescape(value []byte) []byte {
+	reader := bufio.NewReader(bytes.NewBuffer(value))
+	unescaped := []byte{}
+	for {
+		b, err := reader.ReadByte()
+		if err != nil {
+			// Assume io.EOF error indicating we reached the end of the value.
+			break
+		}
+		if b == '\\' {
+			next, err := reader.ReadByte()
+			if err != nil {
+				// This is only possible if the value was not escaped properly. Should
+				// never happen.
+				// TODO(albrow): Log the error here using logrus.
+				panic(err)
+			}
+			if next == 'c' {
+				unescaped = append(unescaped, ':')
+			} else {
+				unescaped = append(unescaped, next)
+			}
+		} else {
+			unescaped = append(unescaped, b)
+		}
+	}
+	return unescaped
 }
