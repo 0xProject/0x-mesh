@@ -17,11 +17,11 @@ import (
 //
 // There are two types of keys used. A "primary key" is the main key for a
 // particular model. It's value is the encoded data for that model. The format
-// for a primary key is: `model:<collection name>:<model id>`.
+// for a primary key is: `model:<collection name>:<model ID>`.
 //
 // An "index key" is used in the FindWithValue and FindWithRange methods to find
 // models with specific indexed values. The format for an index key is:
-// `index:<collection name>:<index name>:<value>:<model id>`. Unlike primary
+// `index:<collection name>:<index name>:<value>:<model ID>`. Unlike primary
 // keys, index keys have no values and don't store any actual data. Instead, the
 // primary key can be extracted from an index key and then used to look up the
 // data for the corresponding model.
@@ -156,6 +156,61 @@ func (c *Collection) Insert(model Model) error {
 	return txn.Commit()
 }
 
+// Update updates an existing model in the database. It returns an error if the
+// given model doesn't already exist.
+func (c *Collection) Update(model Model) error {
+	if len(model.ID()) == 0 {
+		return errors.New("can't update model with empty ID")
+	}
+	if err := c.checkModelType(model); err != nil {
+		return err
+	}
+	newData, err := json.Marshal(model)
+	if err != nil {
+		return err
+	}
+	txn, err := c.db.ldb.OpenTransaction()
+	if err != nil {
+		return err
+	}
+	pk := c.primaryKeyForModel(model)
+
+	// Check if the model already exists and return an error if not.
+	if exists, err := txn.Has(pk, nil); err != nil {
+		txn.Discard()
+		return err
+	} else if !exists {
+		txn.Discard()
+		return fmt.Errorf("can't update %s model because ID doesn't exist in database: %s", c.name, hex.Dump(model.ID()))
+	}
+
+	// Get the existing data for the model and delete any (now outdated) indexes.
+	existingModel, err := c.findExistingModelByPrimaryKey(txn, pk)
+	if err != nil {
+		txn.Discard()
+		return err
+	}
+	if err := c.deleteIndexesForModel(txn, existingModel); err != nil {
+		txn.Discard()
+		return err
+	}
+
+	// Save the new data and add the new indexes.
+	if err := txn.Put(pk, newData, nil); err != nil {
+		txn.Discard()
+		return err
+	}
+	for _, index := range c.indexes {
+		key := index.keyForModel(model)
+		if err := txn.Put(key, nil, nil); err != nil {
+			txn.Discard()
+			return err
+		}
+	}
+
+	return txn.Commit()
+}
+
 // FindByID finds the model with the given ID and scans the results into the
 // given model. As in the Unmarshal and Decode methods in the encoding/json
 // package, model must be settable via reflect. Typically, this means you should
@@ -210,7 +265,7 @@ func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}
 	return nil
 }
 
-// Delete deletes the model with the given id from the database. It returns an
+// Delete deletes the model with the given ID from the database. It returns an
 // error if the model doesn't exist in the database.
 func (c *Collection) Delete(id []byte) error {
 	if len(id) == 0 {
@@ -221,20 +276,23 @@ func (c *Collection) Delete(id []byte) error {
 		return err
 	}
 
-	// Get the latest data for the Model. Required because the given model might
-	// be out of sync with the actual data in the database.
+	// Check if the model already exists and return an error if not.
 	pk := c.primaryKeyForID(id)
-	data, err := txn.Get(pk, nil)
+	if exists, err := txn.Has(pk, nil); err != nil {
+		txn.Discard()
+		return err
+	} else if !exists {
+		txn.Discard()
+		return fmt.Errorf("can't delete %s model because ID doesn't exist in database: %s", c.name, hex.Dump(id))
+	}
+
+	// We need to get the latest data because the given model might be out of sync
+	// with the actual data in the database.
+	latest, err := c.findExistingModelByPrimaryKey(txn, pk)
 	if err != nil {
 		txn.Discard()
 		return err
 	}
-	updatedRef := reflect.New(c.modelType).Interface()
-	if err := json.Unmarshal(data, updatedRef); err != nil {
-		txn.Discard()
-		return err
-	}
-	updated := reflect.ValueOf(updatedRef).Elem().Interface().(Model)
 
 	// Delete the primary key.
 	if err := txn.Delete(pk, nil); err != nil {
@@ -243,15 +301,42 @@ func (c *Collection) Delete(id []byte) error {
 	}
 
 	// Delete any index entries.
-	for _, index := range c.indexes {
-		key := index.keyForModel(updated)
-		if err := txn.Delete(key, nil); err != nil {
-			txn.Discard()
-			return err
-		}
+	if err := c.deleteIndexesForModel(txn, latest); err != nil {
+		txn.Discard()
+		return err
 	}
 
 	return txn.Commit()
+}
+
+// deleteIndexesForModel deletes any indexes computed from the given model. It
+// *doesn't* discard the transaction if there is an error.
+func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model) error {
+	for _, index := range c.indexes {
+		key := index.keyForModel(model)
+		if err := txn.Delete(key, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// findExistingModelByPrimaryKey gets the latest data for the given primary key.
+// Useful in cases where the given model may be out of date with what is
+// currently stored in the database. It *doesn't* discard the transaction if
+// there is an error.
+func (c *Collection) findExistingModelByPrimaryKey(txn *leveldb.Transaction, primaryKey []byte) (Model, error) {
+	data, err := txn.Get(primaryKey, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Use reflect to create a new reference for the model type.
+	modelRef := reflect.New(c.modelType).Interface()
+	if err := json.Unmarshal(data, modelRef); err != nil {
+		return nil, err
+	}
+	model := reflect.ValueOf(modelRef).Elem().Interface().(Model)
+	return model, nil
 }
 
 // Index can be used to search for specific values or specific ranges of values
@@ -330,7 +415,7 @@ func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator,
 	modelsVal := reflect.ValueOf(models).Elem()
 	for iter.Next() {
 		// We assume that each key in the iterator consists of an index prefix, the
-		// value for a particular model, and the model id. We can extract a primary
+		// value for a particular model, and the model ID. We can extract a primary
 		// key from this key and use it to get the encoded data for the model
 		// itself.
 		pk := index.primaryKeyFromKey(iter.Key())
