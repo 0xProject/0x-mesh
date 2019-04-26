@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
@@ -20,12 +21,13 @@ type Watcher struct {
 	assetDataDecoder  *zeroex.AssetDataDecoder
 	blockSubscription event.Subscription
 	expirationWatcher *ExpirationWatcher
+	cleanupWorker     *CleanupWorker
 	isSetup           bool
 	setupMux          sync.RWMutex
 }
 
 // New instantiates a new order watcher
-func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watcher, error) {
+func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderValidatorAddress common.Address) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
@@ -34,10 +36,15 @@ func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watche
 	if err != nil {
 		return nil, err
 	}
+	cleanupWorker, err := NewCleanupWorker(orderValidatorAddress, ethClient)
+	if err != nil {
+		return nil, err
+	}
 	var expirationBuffer int64 = 0
 	return &Watcher{
 		blockWatcher:      blockWatcher,
 		expirationWatcher: NewExpirationWatcher(expirationBuffer),
+		cleanupWorker:     cleanupWorker,
 		eventDecoder:      decoder,
 		assetDataDecoder:  assetDataDecoder,
 	}, nil
@@ -56,7 +63,7 @@ func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
 
 	w.setupExpirationWatcher(expirationPollingInterval)
 
-	// TODO(fabio): Implement and instantiate the cleanup worker
+	w.cleanupWorker.Start()
 
 	w.isSetup = true
 	return nil
@@ -77,7 +84,8 @@ func (w *Watcher) Stop() error {
 	// Stop expiration watcher
 	w.expirationWatcher.Stop()
 
-	// TODO(fabio): Stop the cleanup worker
+	// Stop cleanup worker
+	w.cleanupWorker.Stop()
 	return nil
 }
 
