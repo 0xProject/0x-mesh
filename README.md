@@ -59,7 +59,7 @@ See https://golang.github.io/dep/docs/daily-dep.html.
 
 For VS Code, the following editor configuration is recommended:
 
-```json
+```javascript
 {
   // ...
 
