@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/albrow/stringset"
+	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -507,8 +508,10 @@ func unescape(value []byte) []byte {
 			if err != nil {
 				// This is only possible if the value was not escaped properly. Should
 				// never happen.
-				// TODO(albrow): Log the error here using logrus.
-				panic(err)
+				log.WithFields(log.Fields{
+					"err":   err.Error(),
+					"value": hex.Dump(value),
+				}).Panic("unexpected error in unescape")
 			}
 			if next == 'c' {
 				unescaped = append(unescaped, ':')

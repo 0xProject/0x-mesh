@@ -71,7 +71,9 @@ func (e *ETHWatcher) Start() error {
 			start := time.Now()
 
 			if err := e.updateBalances(); err != nil {
-				// TODO(albrow): Log error
+				log.WithFields(log.Fields{
+					"err": err.Error(),
+				}).Error("unexpected error from ETHWatcher.updateBalances()")
 			}
 
 			// Wait minPollingInterval before calling updateBalances again. Since
