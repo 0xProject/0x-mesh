@@ -119,7 +119,7 @@
   ]
   pruneopts = "T"
   revision = "aa34e00ba93924332ca55155ac5bde205017544d"
-  source = "github.com/0xproject/go-ethereum"
+  source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
   branch = "master"
