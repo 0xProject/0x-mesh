@@ -91,7 +91,6 @@ func (w *Watcher) StartPolling() error {
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
 	if w.isWatching {
 		return errors.New("Polling already started")
 	}
@@ -106,13 +105,12 @@ func (w *Watcher) StartPolling() error {
 
 func (w *Watcher) startPollingLoop() {
 	for {
-		<-w.ticker.C
-
 		w.mu.Lock()
 		if !w.isWatching {
 			w.mu.Unlock()
 			return
 		}
+		<-w.ticker.C
 		w.mu.Unlock()
 
 		err := w.pollNextBlock()
@@ -132,7 +130,9 @@ func (w *Watcher) StopPolling() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.isWatching = false
-	w.ticker.Stop()
+	if w.ticker != nil {
+		w.ticker.Stop()
+	}
 	w.ticker = nil
 }
 

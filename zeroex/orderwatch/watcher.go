@@ -61,7 +61,9 @@ func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
 
 	w.setupEventWatcher()
 
-	w.setupExpirationWatcher(expirationPollingInterval)
+	if err := w.setupExpirationWatcher(expirationPollingInterval); err != nil {
+		return err
+	}
 
 	w.cleanupWorker.Start()
 
@@ -107,7 +109,7 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 	return nil
 }
 
-func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) {
+func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) error {
 	go func() {
 		expiredOrders := w.expirationWatcher.Receive()
 		for expiredOrders := range expiredOrders {
@@ -118,7 +120,7 @@ func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration
 		}
 	}()
 
-	w.expirationWatcher.Start(expirationPollingInterval)
+	return w.expirationWatcher.Start(expirationPollingInterval)
 }
 
 func (w *Watcher) setupEventWatcher() {
@@ -392,7 +394,9 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		for _, assetData := range decodedAssetData.NestedAssetData {
-			w.addAssetDataAddressToEventDecoder(assetData)
+			if err := w.addAssetDataAddressToEventDecoder(assetData); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.New(fmt.Sprintf("Unrecognized assetData type name found: %s\n", assetDataName))

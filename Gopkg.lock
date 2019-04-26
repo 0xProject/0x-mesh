@@ -416,7 +416,6 @@
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
-    "github.com/jpillora/backoff",
     "github.com/ocdogan/rbt",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",

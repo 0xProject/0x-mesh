@@ -163,7 +163,7 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 func keccak256(data ...[]byte) []byte {
 	d := sha3.NewLegacyKeccak256()
 	for _, b := range data {
-		d.Write(b)
+		_, _ = d.Write(b)
 	}
 	return d.Sum(nil)
 }
