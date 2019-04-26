@@ -42,5 +42,5 @@ func TestRevalidateOrder(t *testing.T) {
 	cleanupWorker, err := NewCleanupWorker(GanacheOrderValidatorAddress, ethClient)
 	require.NoError(t, err)
 
-	cleanupWorker.revalidateOrders(orders)
+	cleanupWorker.RevalidateOrders(orders)
 }
