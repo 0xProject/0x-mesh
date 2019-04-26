@@ -108,7 +108,7 @@
   ]
   pruneopts = "T"
   revision = "aa34e00ba93924332ca55155ac5bde205017544d"
-  source = "github.com/0xproject/go-ethereum"
+  source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
   branch = "master"
@@ -197,6 +197,14 @@
   revision = "d815e0c1a2e2082a287a2806bc90bc8fc7b276a9"
 
 [[projects]]
+  digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   branch = "master"
   digest = "1:7f728b11da089d6162d536b9adfe0d68abc9a6f277585d82f14601791ebaf9c2"
   name = "github.com/ocdogan/rbt"
@@ -211,6 +219,14 @@
   pruneopts = "UT"
   revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
   version = "v1.2"
+
+[[projects]]
+  digest = "1:1161eb0f91cb535b559db421f5e59c59fa7f231d27533018cc527157083a7fff"
+  name = "github.com/plaid/go-envvar"
+  packages = ["envvar"]
+  pruneopts = "UT"
+  revision = "9426fece058e5c4d8715f543a76b361e3156435a"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
@@ -243,6 +259,14 @@
   pruneopts = "UT"
   revision = "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
   version = "v1.0"
+
+[[projects]]
+  digest = "1:fd61cf4ae1953d55df708acb6b91492d538f49c305b364a014049914495db426"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
+  version = "v1.4.1"
 
 [[projects]]
   branch = "develop"
@@ -393,6 +417,8 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/ocdogan/rbt",
+    "github.com/plaid/go-envvar/envvar",
+    "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/syndtr/goleveldb/leveldb",
