@@ -166,7 +166,7 @@ func (e *ETHWatcher) updateBalances() error {
 			for i, address := range chunk {
 				e.addressToBalanceMu.Lock()
 				if balance, ok := e.addressToBalance[address]; ok {
-					if balance != balances[i] {
+					if balance.Cmp(balances[i]) != 0 {
 						e.addressToBalance[address] = balances[i]
 						updatedBalance := Balance{
 							Address: address,

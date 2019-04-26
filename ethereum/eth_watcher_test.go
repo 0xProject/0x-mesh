@@ -21,12 +21,14 @@ import (
 const ganacheEndpoint = "http://localhost:8545"
 
 // Values taken from Ganache snapshot
+var firstAccount = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")
 var firstAccountBalance, _ = math.ParseBig256("99943972190000000000")
+var secondAccount = common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
 
 var ethAccountToBalance = map[common.Address]*big.Int{
-	common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"): firstAccountBalance,
-	common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb"): hundredEth,
+	firstAccount:  firstAccountBalance,
+	secondAccount: hundredEth,
 	common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84"): hundredEth,
 	common.HexToAddress("0xe834ec434daba538cd1b9fe1582052b880bd7e63"): hundredEth,
 	common.HexToAddress("0x78dc5d2d739606d31509c31d654056a45185ecb6"): hundredEth,
@@ -80,6 +82,36 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 		select {
 		case balance := <-ethWatcher.Receive():
 			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance)
+
+		case <-time.After(3 * time.Second):
+			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
+		}
+	}
+}
+func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
+	ethClient, err := ethclient.Dial(ganacheEndpoint)
+	require.NoError(t, err)
+
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
+	require.NoError(t, err)
+
+	// Add the first account with the correct initial balance. We expect no event to be emitted for
+	// this account since the watcher already has the most up-to-date balance for this account.
+	ethWatcher.Add(firstAccount, firstAccountBalance)
+
+	// Add the second account with an incorrect balance, so that an event will be emitted for it
+	// when running updateBalances
+	ethWatcher.Add(secondAccount, big.NewInt(0))
+
+	go func() {
+		require.NoError(t, ethWatcher.updateBalances())
+	}()
+
+	for i := 0; i < 1; i++ {
+		select {
+		case balance := <-ethWatcher.Receive():
+			assert.Equal(t, hundredEth, balance.Balance)
+			assert.Equal(t, secondAccount, balance.Address)
 
 		case <-time.After(3 * time.Second):
 			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
