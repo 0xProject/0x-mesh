@@ -476,6 +476,7 @@ func unescape(value []byte) []byte {
 			if err != nil {
 				// This is only possible if the value was not escaped properly. Should
 				// never happen.
+				// TODO(albrow): Log the error here using logrus.
 				panic(err)
 			}
 			if next == 'c' {
