@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,12 +15,12 @@ import (
 
 // fixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
 type fixtureTimestep struct {
-	GetLatestBlock   MiniHeader                 `json:"getLatestBlock"  gencodec:"required"`
-	GetBlockByNumber map[uint64]MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
-	GetBlockByHash   map[common.Hash]MiniHeader `json:"getBlockByHash"  gencodec:"required"`
-	GetCorrectChain  []*MiniHeader              `json:"getCorrectChain" gencodec:"required"`
-	BlockEvents      []*Event                   `json:"blockEvents" gencodec:"required"`
-	ScenarioLabel    string                     `json:"scenarioLabel" gencodec:"required"`
+	GetLatestBlock   meshdb.MiniHeader                 `json:"getLatestBlock"  gencodec:"required"`
+	GetBlockByNumber map[uint64]meshdb.MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
+	GetBlockByHash   map[common.Hash]meshdb.MiniHeader `json:"getBlockByHash"  gencodec:"required"`
+	GetCorrectChain  []*meshdb.MiniHeader              `json:"getCorrectChain" gencodec:"required"`
+	BlockEvents      []*Event                          `json:"blockEvents" gencodec:"required"`
+	ScenarioLabel    string                            `json:"scenarioLabel" gencodec:"required"`
 }
 
 // fakeClient is a fake Client for testing purposes.
@@ -45,11 +46,11 @@ func newFakeClient() (*fakeClient, error) {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
+func (fc *fakeClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
-	var miniHeader MiniHeader
+	var miniHeader meshdb.MiniHeader
 	var ok bool
 	if number == nil {
 		miniHeader = timestep.GetLatestBlock
@@ -64,7 +65,7 @@ func (fc *fakeClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
+func (fc *fakeClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
@@ -94,7 +95,7 @@ func (fc *fakeClient) NumberOfTimesteps() int {
 }
 
 // ExpectedRetainedBlocks returns the expected retained blocks at the current timestep.
-func (fc *fakeClient) ExpectedRetainedBlocks() []*MiniHeader {
+func (fc *fakeClient) ExpectedRetainedBlocks() []*meshdb.MiniHeader {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	return fc.fixtureData[fc.currentTimestep].GetCorrectChain
