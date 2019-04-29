@@ -446,6 +446,17 @@ func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, mod
 	return c.findWithIndexIterator(index, iter, models)
 }
 
+// FindWithPrefix finds all models with a value that starts with the given
+// prefix according to the index and scans the results into models. models
+// should be a pointer to an empty slice of a concrete model type (e.g.
+// *[]myModelType).
+func (c *Collection) FindWithPrefix(index *Index, prefix []byte, models interface{}) error {
+	keyPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(prefix)))
+	r := util.BytesPrefix(keyPrefix)
+	iter := c.db.ldb.NewIterator(r, nil)
+	return c.findWithIndexIterator(index, iter, models)
+}
+
 func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator, models interface{}) error {
 	defer iter.Release()
 	if err := c.checkModelsType(models); err != nil {
