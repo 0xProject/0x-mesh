@@ -261,15 +261,15 @@ func TestFindWithPrefix(t *testing.T) {
 	expected := []*testModel{
 		{
 			Name: "ExpectedPerson_0",
-			Age:  201,
+			Age:  2021,
 		},
 		{
 			Name: "ExpectedPerson_1",
-			Age:  25,
+			Age:  22,
 		},
 		{
 			Name: "ExpectedPerson_2",
-			Age:  2,
+			Age:  250,
 		},
 	}
 	for _, model := range expected {
@@ -280,24 +280,33 @@ func TestFindWithPrefix(t *testing.T) {
 	excluded := []*testModel{
 		{
 			Name: "ExcludedPerson_0",
-			Age:  12,
+			Age:  40,
 		},
 		{
 			Name: "ExcludedPerson_1",
-			Age:  123,
+			Age:  41,
 		},
 		{
 			Name: "ExcludedPerson_2",
-			Age:  322,
+			Age:  42,
 		},
 	}
 	for _, model := range excluded {
 		require.NoError(t, col.Insert(model))
 	}
 
-	var actual []*testModel
-	require.NoError(t, col.FindWithPrefix(ageIndex, []byte("2"), &actual))
-	assert.Equal(t, expected, actual)
+	{
+		var actual []*testModel
+		require.NoError(t, col.FindWithPrefix(ageIndex, []byte("2"), &actual))
+		assert.Equal(t, expected, actual)
+	}
+	{
+		// An empty prefix should return all models.
+		all := append(expected, excluded...)
+		var actual []*testModel
+		require.NoError(t, col.FindWithPrefix(ageIndex, []byte{}, &actual))
+		assert.Equal(t, all, actual)
+	}
 }
 
 func TestFindWithValueWithMultiIndex(t *testing.T) {
