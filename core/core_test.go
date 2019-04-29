@@ -39,8 +39,9 @@ func TestPingPong(t *testing.T) {
 	node0.host.Peerstore().AddAddrs(node1.host.ID(), node1.host.Addrs(), peerstore.PermanentAddrTTL)
 	node1.host.Peerstore().AddAddrs(node0.host.ID(), node0.host.Addrs(), peerstore.PermanentAddrTTL)
 	node1PeerInfo := node0.host.Peerstore().PeerInfo(node1.host.ID())
-	connectContext, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	node0.host.Connect(connectContext, node1PeerInfo)
+	connectContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	require.NoError(t, node0.host.Connect(connectContext, node1PeerInfo))
 	defer node0.Close()
 	defer node1.Close()
 

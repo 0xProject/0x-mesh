@@ -1,3 +1,5 @@
+// +build !js
+
 package core
 
 import (
@@ -13,10 +15,7 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	direct "github.com/libp2p/go-libp2p-webrtc-direct"
 	ma "github.com/multiformats/go-multiaddr"
-	webrtc "github.com/pion/webrtc/v2"
-	mplex "github.com/whyrusleeping/go-smux-multiplex"
 )
 
 const pubsubTopic = "0x-orders"
@@ -61,11 +60,7 @@ func New(config Config) (*Node, error) {
 	}
 
 	// Set up the transport and the host.
-	transport := direct.NewTransport(
-		webrtc.Configuration{},
-		new(mplex.Transport),
-	)
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/http/p2p-webrtc-direct", config.ListenPort))
+	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", config.ListenPort))
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +68,6 @@ func New(config Config) (*Node, error) {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(priv),
 		libp2p.DisableRelay(),
-		libp2p.Transport(transport),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
