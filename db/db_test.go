@@ -220,7 +220,7 @@ func TestFindWithValue(t *testing.T) {
 	}
 
 	var actual []*testModel
-	require.NoError(t, col.FindWithValue(ageIndex, []byte(fmt.Sprint(42)), &actual))
+	require.NoError(t, col.FindWithValue(ageIndex, []byte("42"), &actual))
 	assert.Equal(t, expected, actual)
 }
 
@@ -245,8 +245,68 @@ func TestFindWithRange(t *testing.T) {
 	expected := all[1:4]
 
 	var actual []*testModel
-	require.NoError(t, col.FindWithRange(ageIndex, []byte(fmt.Sprint(1)), []byte(fmt.Sprint(4)), &actual))
+	require.NoError(t, col.FindWithRange(ageIndex, []byte("1"), []byte("4"), &actual))
 	assert.Equal(t, expected, actual)
+}
+
+func TestFindWithPrefix(t *testing.T) {
+	db := newTestDB(t)
+	col := db.NewCollection("people", &testModel{})
+
+	ageIndex := col.AddIndex("age", func(m Model) []byte {
+		return []byte(fmt.Sprint(m.(*testModel).Age))
+	})
+
+	// expected is a set of testModels with an age that starts with "2"
+	expected := []*testModel{
+		{
+			Name: "ExpectedPerson_0",
+			Age:  2021,
+		},
+		{
+			Name: "ExpectedPerson_1",
+			Age:  22,
+		},
+		{
+			Name: "ExpectedPerson_2",
+			Age:  250,
+		},
+	}
+	for _, model := range expected {
+		require.NoError(t, col.Insert(model))
+	}
+
+	// We also insert some other models with different ages.
+	excluded := []*testModel{
+		{
+			Name: "ExcludedPerson_0",
+			Age:  40,
+		},
+		{
+			Name: "ExcludedPerson_1",
+			Age:  41,
+		},
+		{
+			Name: "ExcludedPerson_2",
+			Age:  42,
+		},
+	}
+	for _, model := range excluded {
+		require.NoError(t, col.Insert(model))
+	}
+
+	{
+		var actual []*testModel
+		require.NoError(t, col.FindWithPrefix(ageIndex, []byte("2"), &actual))
+		assert.Equal(t, expected, actual)
+	}
+	{
+		// An empty prefix should return all models.
+		all := append(expected, excluded...)
+		var actual []*testModel
+		require.NoError(t, col.FindWithPrefix(ageIndex, []byte{}, &actual))
+		assert.Equal(t, all, actual)
+	}
 }
 
 func TestFindWithValueWithMultiIndex(t *testing.T) {

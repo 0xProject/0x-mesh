@@ -31,7 +31,9 @@ import (
 // data for the corresponding model.
 
 // Model is any type which can be inserted and retrieved from the database. The
-// only requirement is an ID method.
+// only requirement is an ID method. Because the db package uses reflect to
+// encode/decode models, only exported struct fields will be saved and retrieved
+// from the database.
 type Model interface {
 	// ID returns a unique identifier for this model.
 	ID() []byte
@@ -369,7 +371,8 @@ type Index struct {
 // on a struct field, getter should return the value of that field. After
 // AddIndex is called, any new models in this collection that are inserted will
 // be indexed. Any models inserted prior to calling AddIndex will *not* be
-// indexed.
+// indexed. Note that in order to function correctly, indexes must be based on
+// data that is actually saved to the database (e.g. exported struct fields).
 func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
 	// Internally, all indexes are treated as MultiIndexes. We wrap the given
 	// getter function so that it returns [][]byte instead of just []byte.
@@ -384,7 +387,8 @@ func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
 // model will be included in the results if *any* of the values returned by the
 // getter function satisfy the constraints. It is useful for representing
 // one-to-many relationships. Any models inserted prior to calling AddMultiIndex
-// will *not* be indexed.
+// will *not* be indexed. Note that in order to function correctly, indexes must
+// be based on data that is actually saved to the database (e.g. exported struct fields).
 func (c *Collection) AddMultiIndex(name string, getter func(Model) [][]byte) *Index {
 	index := &Index{
 		col:    c,
@@ -438,6 +442,17 @@ func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, mod
 	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(start)))
 	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(limit)))
 	r := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
+	iter := c.db.ldb.NewIterator(r, nil)
+	return c.findWithIndexIterator(index, iter, models)
+}
+
+// FindWithPrefix finds all models with a value that starts with the given
+// prefix according to the index and scans the results into models. models
+// should be a pointer to an empty slice of a concrete model type (e.g.
+// *[]myModelType).
+func (c *Collection) FindWithPrefix(index *Index, prefix []byte, models interface{}) error {
+	keyPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(prefix)))
+	r := util.BytesPrefix(keyPrefix)
 	iter := c.db.ldb.NewIterator(r, nil)
 	return c.findWithIndexIterator(index, iter, models)
 }
