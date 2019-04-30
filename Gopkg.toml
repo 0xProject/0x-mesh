@@ -58,3 +58,27 @@
 [[constraint]]
   name = "github.com/albrow/stringset"
   version = "2.1.0"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p"
+  version = "0.0.7"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-peerstore"
+  version = "0.0.1"
+
+[[constraint]]
+  name = "github.com/multiformats/go-multiaddr"
+  version = "0.0.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-crypto"
+  version = "0.0.1"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-host"
+  version = "0.0.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-pubsub"
+  version = "0.0.1"
