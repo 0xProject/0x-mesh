@@ -11,6 +11,8 @@ import (
 	mrand "math/rand"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
@@ -120,7 +122,7 @@ func (n *Node) listenForMessages() {
 				return
 			}
 			// TODO(albrow): Don't panic here.
-			panic(err)
+			log.WithField("err", err.Error()).Panic("Unexpected error in listenForMessages")
 		}
 		n.messages <- &Message{Data: msg.Data}
 	}
