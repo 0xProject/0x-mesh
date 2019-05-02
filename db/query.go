@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -14,22 +15,21 @@ type Query struct {
 	Filter *Filter
 	Limit  *int
 	Offset *int
+	// TOOD(albrow): Add option for ASC or DESC order.
 }
 
 type Filter struct {
-	index    *Index
-	iterator iterator.Iterator
+	index *Index
+	slice *util.Range
 }
 
 // ValueFilter returns a Filter which will match all models with the given value
 // according to the index.
 func (index *Index) ValueFilter(val []byte) *Filter {
 	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(val)))
-	prefixRange := util.BytesPrefix(prefix)
-	iterator := index.col.db.ldb.NewIterator(prefixRange, nil)
 	return &Filter{
-		index:    index,
-		iterator: iterator,
+		index: index,
+		slice: util.BytesPrefix(prefix),
 	}
 }
 
@@ -38,11 +38,10 @@ func (index *Index) ValueFilter(val []byte) *Filter {
 func (index *Index) RangeFilter(start []byte, limit []byte) *Filter {
 	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(start)))
 	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(limit)))
-	r := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
-	iterator := index.col.db.ldb.NewIterator(r, nil)
+	slice := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
 	return &Filter{
-		index:    index,
-		iterator: iterator,
+		index: index,
+		slice: slice,
 	}
 }
 
@@ -50,11 +49,9 @@ func (index *Index) RangeFilter(start []byte, limit []byte) *Filter {
 // starts with the given prefix according to the index.
 func (index *Index) PrefixFilter(prefix []byte) *Filter {
 	keyPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(prefix)))
-	r := util.BytesPrefix(keyPrefix)
-	iterator := index.col.db.ldb.NewIterator(r, nil)
 	return &Filter{
-		index:    index,
-		iterator: iterator,
+		index: index,
+		slice: util.BytesPrefix(keyPrefix),
 	}
 }
 
@@ -62,6 +59,9 @@ func (index *Index) PrefixFilter(prefix []byte) *Filter {
 // should be a pointer to an empty slice of a concrete model type (e.g.
 // *[]myModelType).
 func (c *Collection) RunQuery(query *Query, models interface{}) error {
+
+	// TODO(albrow): Respect query.Limit and query.Offset.
+
 	if err := c.checkModelsType(models); err != nil {
 		return err
 	}
@@ -70,10 +70,11 @@ func (c *Collection) RunQuery(query *Query, models interface{}) error {
 	var iter iterator.Iterator
 	var index *Index
 	if query.Filter != nil {
-		iter = query.Filter.iterator
+		iter = c.db.ldb.NewIterator(query.Filter.slice, nil)
 		index = query.Filter.index
 	} else {
 		// TODO(albrow): Use a default iterator and index.
+		return errors.New("Query.Filter is required")
 	}
 	defer iter.Release()
 
