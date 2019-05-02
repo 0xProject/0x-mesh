@@ -44,7 +44,11 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	if err != nil {
 		return nil, err
 	}
-	miniHeader := meshdb.NewMiniHeader(header.Hash(), header.ParentHash, header.Number)
+	miniHeader := &meshdb.MiniHeader{
+		Hash:   header.Hash(),
+		Parent: header.ParentHash,
+		Number: header.Number,
+	}
 	return miniHeader, nil
 }
 
@@ -57,7 +61,11 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error) 
 	if err != nil {
 		return nil, err
 	}
-	miniHeader := meshdb.NewMiniHeader(header.Hash(), header.ParentHash, header.Number)
+	miniHeader := &meshdb.MiniHeader{
+		Hash:   header.Hash(),
+		Parent: header.ParentHash,
+		Number: header.Number,
+	}
 	return miniHeader, nil
 }
 

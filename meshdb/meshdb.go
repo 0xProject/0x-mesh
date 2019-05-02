@@ -17,12 +17,6 @@ type MiniHeader struct {
 	Logs   []types.Log
 }
 
-// NewMiniHeader returns a new MiniHeader.
-func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniHeader {
-	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number, Logs: []types.Log{}}
-	return &miniHeader
-}
-
 // ID returns the MiniHeader's ID
 func (m *MiniHeader) ID() []byte {
 	return m.Hash.Bytes()
