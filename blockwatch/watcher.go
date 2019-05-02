@@ -33,6 +33,17 @@ type Event struct {
 	BlockHeader *meshdb.MiniHeader
 }
 
+// Config holds some configuration options for an instance of BlockWatcher.
+type Config struct {
+	MeshDB              *meshdb.MeshDB
+	PollingInterval     time.Duration
+	StartBlockDepth     rpc.BlockNumber
+	BlockRetentionLimit int
+	WithLogs            bool
+	Topics              []common.Hash
+	Client              Client
+}
+
 // Watcher maintains a consistent representation of the latest `blockRetentionLimit` blocks,
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
@@ -53,20 +64,20 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(meshDB *meshdb.MeshDB, pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, topics []common.Hash, client Client) *Watcher {
-	stack := NewStack(meshDB, blockRetentionLimit)
+func New(config Config) *Watcher {
+	stack := NewStack(config.MeshDB, config.BlockRetentionLimit)
 
 	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
 	errorsChan := make(chan error, 5)
 	bs := &Watcher{
 		Errors:              errorsChan,
-		pollingInterval:     pollingInterval,
-		blockRetentionLimit: blockRetentionLimit,
-		startBlockDepth:     startBlockDepth,
+		pollingInterval:     config.PollingInterval,
+		blockRetentionLimit: config.BlockRetentionLimit,
+		startBlockDepth:     config.StartBlockDepth,
 		stack:               stack,
-		client:              client,
-		withLogs:            withLogs,
-		topics:              topics,
+		client:              config.Client,
+		withLogs:            config.WithLogs,
+		topics:              config.Topics,
 	}
 	return bs
 }

@@ -21,12 +21,16 @@ func TestWatcher(t *testing.T) {
 	// Polling interval unused because we hijack the ticker for this test
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	pollingInterval := 1 * time.Second
-	blockRetentionLimit := 10
-	startBlockDepth := rpc.LatestBlockNumber
-	withLogs := false
-	topics := []common.Hash{}
-	watcher := New(meshDB, pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
+	config := Config{
+		MeshDB:              meshDB,
+		PollingInterval:     1 * time.Second,
+		BlockRetentionLimit: 10,
+		StartBlockDepth:     rpc.LatestBlockNumber,
+		WithLogs:            false,
+		Topics:              []common.Hash{},
+		Client:              fakeClient,
+	}
+	watcher := New(config)
 
 	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
 	events := make(chan []*Event, 1)
@@ -70,12 +74,16 @@ func TestWatcherStartStop(t *testing.T) {
 
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	pollingInterval := 1 * time.Second
-	blockRetentionLimit := 10
-	startBlockDepth := rpc.LatestBlockNumber
-	withLogs := false
-	topics := []common.Hash{}
-	watcher := New(meshDB, pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
+	config := Config{
+		MeshDB:              meshDB,
+		PollingInterval:     1 * time.Second,
+		BlockRetentionLimit: 10,
+		StartBlockDepth:     rpc.LatestBlockNumber,
+		WithLogs:            false,
+		Topics:              []common.Hash{},
+		Client:              fakeClient,
+	}
+	watcher := New(config)
 	require.NoError(t, watcher.StartPolling())
 	watcher.StopPolling()
 	require.NoError(t, watcher.StartPolling())
