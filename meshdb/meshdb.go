@@ -1,8 +1,8 @@
 package meshdb
 
 import (
+	"fmt"
 	"math/big"
-	"sort"
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,10 +11,10 @@ import (
 
 // MiniHeader is the database representation of a succinct Ethereum block headers
 type MiniHeader struct {
-	Hash   common.Hash `json:"hash"   gencodec:"required"`
-	Parent common.Hash `json:"parent" gencodec:"required"`
-	Number *big.Int    `json:"number" gencodec:"required"`
-	Logs   []types.Log `json:"logs" gencodec:"required"`
+	Hash   common.Hash
+	Parent common.Hash
+	Number *big.Int
+	Logs   []types.Log
 }
 
 // NewMiniHeader returns a new MiniHeader.
@@ -31,7 +31,12 @@ func (m *MiniHeader) ID() []byte {
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
 	database    *db.DB
-	MiniHeaders *db.Collection
+	MiniHeaders *MiniHeadersCollection
+}
+
+type MiniHeadersCollection struct {
+	*db.Collection
+	numberIndex *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -40,11 +45,32 @@ func NewMeshDB(path string) (*MeshDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	miniHeaders := database.NewCollection("miniHeader", &MiniHeader{})
+
+	miniHeaders, err := setupMiniHeaders(database)
+	if err != nil {
+		return nil, err
+	}
 
 	return &MeshDB{
 		database:    database,
 		MiniHeaders: miniHeaders,
+	}, nil
+}
+
+func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
+	col := database.NewCollection("miniHeader", &MiniHeader{})
+	numberIndex := col.AddIndex("number", func(model db.Model) []byte {
+		// By default, the index is sorted in byte order. In order to sort by
+		// numerical order, we need to pad with zeroes. The maximum length of an
+		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
+		// length of the number is always 80.
+		number := model.(*MiniHeader).Number
+		return []byte(fmt.Sprintf("%80s", number.String()))
+	})
+
+	return &MiniHeadersCollection{
+		Collection:  col,
+		numberIndex: numberIndex,
 	}, nil
 }
 
@@ -54,11 +80,11 @@ func (m *MeshDB) Close() {
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
-func (m *MeshDB) FindAllMiniHeadersSortedByNumber() []*MiniHeader {
+func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 	miniHeaders := []*MiniHeader{}
-	m.MiniHeaders.FindAll(&miniHeaders)
-	sort.Slice(miniHeaders, func(i, j int) bool {
-		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number) == -1
-	})
-	return miniHeaders
+	err := m.MiniHeaders.FindWithPrefix(m.MiniHeaders.numberIndex, []byte{}, &miniHeaders)
+	if err != nil {
+		return nil, err
+	}
+	return miniHeaders, nil
 }

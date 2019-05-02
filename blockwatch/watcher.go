@@ -131,7 +131,7 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() []*meshdb.MiniHeader {
+func (w *Watcher) InspectRetainedBlocks() ([]*meshdb.MiniHeader, error) {
 	return w.stack.Inspect()
 }
 
@@ -140,7 +140,10 @@ func (w *Watcher) InspectRetainedBlocks() []*meshdb.MiniHeader {
 // `startBlockDepth` supplied at instantiation.
 func (w *Watcher) pollNextBlock() error {
 	var nextBlockNumber *big.Int
-	latestHeader := w.stack.Peek()
+	latestHeader, err := w.stack.Peek()
+	if err != nil {
+		return err
+	}
 	if latestHeader == nil {
 		if w.startBlockDepth == rpc.LatestBlockNumber {
 			nextBlockNumber = nil // Fetch latest block
@@ -175,7 +178,10 @@ func (w *Watcher) pollNextBlock() error {
 }
 
 func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*Event) ([]*Event, error) {
-	latestHeader := w.stack.Peek()
+	latestHeader, err := w.stack.Peek()
+	if err != nil {
+		return nil, err
+	}
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		nextHeader, err := w.addLogs(nextHeader)
@@ -199,8 +205,8 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		return events, nil
 	}
 
-	_, err := w.stack.Pop() // Pop latestHeader from the stack. We already have a reference to it.
-	if err != nil {
+	// Pop latestHeader from the stack. We already have a reference to it.
+	if _, err := w.stack.Pop(); err != nil {
 		return events, err
 	}
 	events = append(events, &Event{

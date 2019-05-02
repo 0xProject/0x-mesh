@@ -38,7 +38,8 @@ func TestWatcher(t *testing.T) {
 		err := watcher.pollNextBlock()
 		require.NoError(t, err)
 
-		retainedBlocks := watcher.InspectRetainedBlocks()
+		retainedBlocks, err := watcher.InspectRetainedBlocks()
+		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)
 
