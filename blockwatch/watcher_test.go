@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,33 +19,31 @@ func TestWatcher(t *testing.T) {
 	}
 
 	// Polling interval unused because we hijack the ticker for this test
-	pollingInterval := 1 * time.Second
-	blockRetentionLimit := 10
-	startBlockDepth := rpc.LatestBlockNumber
-	withLogs := false
-	topics := []common.Hash{}
-	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	config := Config{
+		MeshDB:              meshDB,
+		PollingInterval:     1 * time.Second,
+		BlockRetentionLimit: 10,
+		StartBlockDepth:     rpc.LatestBlockNumber,
+		WithLogs:            false,
+		Topics:              []common.Hash{},
+		Client:              fakeClient,
+	}
+	watcher := New(config)
 
 	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
 	events := make(chan []*Event, 1)
 	sub := watcher.Subscribe(events)
 
-	// Replace default ticker with our own custom ticker
-	fakeTickerChan := make(chan time.Time, 1)
-	fakeTicker := &time.Ticker{
-		C: fakeTickerChan,
-	}
-	watcher.ticker = fakeTicker
-	watcher.isWatching = true
-	go watcher.startPollingLoop()
-
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		fakeTickerChan <- time.Now()
-		time.Sleep(10 * time.Millisecond) // Ensure pollNextBlock runs
+		err := watcher.pollNextBlock()
+		require.NoError(t, err)
 
-		retainedBlocks := watcher.InspectRetainedBlocks()
+		retainedBlocks, err := watcher.InspectRetainedBlocks()
+		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)
 
@@ -72,12 +72,18 @@ func TestWatcherStartStop(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	pollingInterval := 1 * time.Second
-	blockRetentionLimit := 10
-	startBlockDepth := rpc.LatestBlockNumber
-	withLogs := false
-	topics := []common.Hash{}
-	watcher := New(pollingInterval, startBlockDepth, blockRetentionLimit, withLogs, topics, fakeClient)
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	config := Config{
+		MeshDB:              meshDB,
+		PollingInterval:     1 * time.Second,
+		BlockRetentionLimit: 10,
+		StartBlockDepth:     rpc.LatestBlockNumber,
+		WithLogs:            false,
+		Topics:              []common.Hash{},
+		Client:              fakeClient,
+	}
+	watcher := New(config)
 	require.NoError(t, watcher.StartPolling())
 	watcher.StopPolling()
 	require.NoError(t, watcher.StartPolling())

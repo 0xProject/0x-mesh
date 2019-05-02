@@ -6,28 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
 )
-
-// MiniHeader is a more succinct block header representation then the one returned by go-ethereum.
-// It contains all the information necessary to implement Watcher.
-type MiniHeader struct {
-	Hash   common.Hash `json:"hash"   gencodec:"required"`
-	Parent common.Hash `json:"parent" gencodec:"required"`
-	Number *big.Int    `json:"number" gencodec:"required"`
-	Logs   []types.Log `json:"logs" gencodec:"required"`
-}
-
-// NewMiniHeader returns a new MiniHeader.
-func NewMiniHeader(hash common.Hash, parent common.Hash, number *big.Int) *MiniHeader {
-	miniHeader := MiniHeader{Hash: hash, Parent: parent, Number: number, Logs: []types.Log{}}
-	return &miniHeader
-}
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
 // and added to our representation of the chain. During a block re-org, a block previously stored
@@ -45,7 +30,18 @@ const (
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	Type        EventType
-	BlockHeader *MiniHeader
+	BlockHeader *meshdb.MiniHeader
+}
+
+// Config holds some configuration options for an instance of BlockWatcher.
+type Config struct {
+	MeshDB              *meshdb.MeshDB
+	PollingInterval     time.Duration
+	StartBlockDepth     rpc.BlockNumber
+	BlockRetentionLimit int
+	WithLogs            bool
+	Topics              []common.Hash
+	Client              Client
 }
 
 // Watcher maintains a consistent representation of the latest `blockRetentionLimit` blocks,
@@ -64,24 +60,24 @@ type Watcher struct {
 	ticker              *time.Ticker
 	withLogs            bool
 	topics              []common.Hash
-
-	mu sync.RWMutex
+	mu                  sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(pollingInterval time.Duration, startBlockDepth rpc.BlockNumber, blockRetentionLimit int, withLogs bool, topics []common.Hash, client Client) *Watcher {
-	stack := NewStack(blockRetentionLimit)
+func New(config Config) *Watcher {
+	stack := NewStack(config.MeshDB, config.BlockRetentionLimit)
+
 	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
 	errorsChan := make(chan error, 5)
 	bs := &Watcher{
 		Errors:              errorsChan,
-		pollingInterval:     pollingInterval,
-		blockRetentionLimit: blockRetentionLimit,
-		startBlockDepth:     startBlockDepth,
+		pollingInterval:     config.PollingInterval,
+		blockRetentionLimit: config.BlockRetentionLimit,
+		startBlockDepth:     config.StartBlockDepth,
 		stack:               stack,
-		client:              client,
-		withLogs:            withLogs,
-		topics:              topics,
+		client:              config.Client,
+		withLogs:            config.WithLogs,
+		topics:              config.Topics,
 	}
 	return bs
 }
@@ -146,7 +142,7 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
+func (w *Watcher) InspectRetainedBlocks() ([]*meshdb.MiniHeader, error) {
 	return w.stack.Inspect()
 }
 
@@ -155,7 +151,10 @@ func (w *Watcher) InspectRetainedBlocks() []*MiniHeader {
 // `startBlockDepth` supplied at instantiation.
 func (w *Watcher) pollNextBlock() error {
 	var nextBlockNumber *big.Int
-	latestHeader := w.stack.Peek()
+	latestHeader, err := w.stack.Peek()
+	if err != nil {
+		return err
+	}
 	if latestHeader == nil {
 		if w.startBlockDepth == rpc.LatestBlockNumber {
 			nextBlockNumber = nil // Fetch latest block
@@ -189,15 +188,21 @@ func (w *Watcher) pollNextBlock() error {
 	return nil
 }
 
-func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) ([]*Event, error) {
-	latestHeader := w.stack.Peek()
+func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*Event) ([]*Event, error) {
+	latestHeader, err := w.stack.Peek()
+	if err != nil {
+		return nil, err
+	}
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		nextHeader, err := w.addLogs(nextHeader)
 		if err != nil {
 			return events, err
 		}
-		retiredBlock := w.stack.Push(nextHeader)
+		retiredBlock, err := w.stack.Push(nextHeader)
+		if err != nil {
+			return events, err
+		}
 		events = append(events, &Event{
 			Type:        Added,
 			BlockHeader: nextHeader,
@@ -211,7 +216,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 		return events, nil
 	}
 
-	w.stack.Pop() // Pop latestHeader from the stack. We already have a reference to it.
+	// Pop latestHeader from the stack. We already have a reference to it.
+	if _, err := w.stack.Pop(); err != nil {
+		return events, err
+	}
 	events = append(events, &Event{
 		Type:        Removed,
 		BlockHeader: latestHeader,
@@ -237,7 +245,10 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	if err != nil {
 		return events, err
 	}
-	retiredBlock := w.stack.Push(nextHeader)
+	retiredBlock, err := w.stack.Push(nextHeader)
+	if err != nil {
+		return events, err
+	}
 	events = append(events, &Event{
 		Type:        Added,
 		BlockHeader: nextHeader,
@@ -252,7 +263,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	return events, nil
 }
 
-func (w *Watcher) addLogs(header *MiniHeader) (*MiniHeader, error) {
+func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
 	}
