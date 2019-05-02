@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"testing"
 
@@ -37,12 +38,8 @@ func TestQueryWithValue(t *testing.T) {
 		require.NoError(t, col.Insert(model))
 	}
 
-	var actual []*testModel
-	query := &Query{
-		Filter: ageIndex.ValueFilter([]byte("42")),
-	}
-	require.NoError(t, col.RunQuery(query, &actual))
-	assert.Equal(t, expected, actual)
+	filter := ageIndex.ValueFilter([]byte("42"))
+	testQueryWithFilter(t, col, filter, expected)
 }
 
 func TestQueryWithRange(t *testing.T) {
@@ -64,13 +61,8 @@ func TestQueryWithRange(t *testing.T) {
 	}
 	// expected is the set of people with 1 <= age < 4
 	expected := all[1:4]
-
-	var actual []*testModel
-	query := &Query{
-		Filter: ageIndex.RangeFilter([]byte("1"), []byte("4")),
-	}
-	require.NoError(t, col.RunQuery(query, &actual))
-	assert.Equal(t, expected, actual)
+	filter := ageIndex.RangeFilter([]byte("1"), []byte("4"))
+	testQueryWithFilter(t, col, filter, expected)
 }
 
 func TestQueryWithPrefix(t *testing.T) {
@@ -118,24 +110,15 @@ func TestQueryWithPrefix(t *testing.T) {
 	for _, model := range excluded {
 		require.NoError(t, col.Insert(model))
 	}
-
 	{
-		var actual []*testModel
-		query := &Query{
-			Filter: ageIndex.PrefixFilter([]byte("2")),
-		}
-		require.NoError(t, col.RunQuery(query, &actual))
-		assert.Equal(t, expected, actual)
+		filter := ageIndex.PrefixFilter([]byte("2"))
+		testQueryWithFilter(t, col, filter, expected)
 	}
 	{
 		// An empty prefix should return all models.
 		all := append(expected, excluded...)
-		var actual []*testModel
-		query := &Query{
-			Filter: ageIndex.PrefixFilter([]byte{}),
-		}
-		require.NoError(t, col.RunQuery(query, &actual))
-		assert.Equal(t, all, actual)
+		filter := ageIndex.PrefixFilter([]byte{})
+		testQueryWithFilter(t, col, filter, all)
 	}
 }
 
@@ -195,12 +178,8 @@ func TestFindWithValueWithMultiIndex(t *testing.T) {
 		require.NoError(t, col.Insert(model))
 	}
 
-	var actual []*testModel
-	query := &Query{
-		Filter: nicknameIndex.ValueFilter([]byte("Bob")),
-	}
-	require.NoError(t, col.RunQuery(query, &actual))
-	assert.Equal(t, expected, actual)
+	filter := nicknameIndex.ValueFilter([]byte("Bob"))
+	testQueryWithFilter(t, col, filter, expected)
 }
 
 func TestFindWithRangeWithMultiIndex(t *testing.T) {
@@ -260,10 +239,51 @@ func TestFindWithRangeWithMultiIndex(t *testing.T) {
 		require.NoError(t, col.Insert(model))
 	}
 
-	var actual []*testModel
-	query := &Query{
-		Filter: nicknameIndex.RangeFilter([]byte("B"), []byte("E")),
+	filter := nicknameIndex.RangeFilter([]byte("B"), []byte("E"))
+	testQueryWithFilter(t, col, filter, expected)
+}
+
+func testQueryWithFilter(t *testing.T, col *Collection, filter *Filter, expected []*testModel) {
+	reverseExpected := reverseSlice(expected)
+	// safeMax is min(2, len(expected)) to account for the fact that expected may
+	// have length shorter than 2.
+	var safeMax = int(math.Min(2, float64(len(expected))))
+
+	// Each test case covers slight variations of the same query.
+	testCases := []struct {
+		query    *Query
+		expected []*testModel
+	}{
+		{
+			query:    col.NewQuery(filter),
+			expected: expected,
+		},
+		{
+			query:    col.NewQuery(filter).Reverse(),
+			expected: reverseExpected,
+		},
+		{
+			query:    col.NewQuery(filter).Max(safeMax),
+			expected: expected[:safeMax],
+		},
+		{
+			query:    col.NewQuery(filter).Reverse().Max(safeMax),
+			expected: reverseExpected[:safeMax],
+		},
 	}
-	require.NoError(t, col.RunQuery(query, &actual))
-	assert.Equal(t, expected, actual)
+
+	for i, tc := range testCases {
+		var actual []*testModel
+		require.NoError(t, tc.query.Run(&actual))
+		assert.Equal(t, tc.expected, actual, "test case %d", i)
+	}
+}
+
+func reverseSlice(s []*testModel) []*testModel {
+	reversed := make([]*testModel, len(s))
+	copy(reversed, s)
+	for left, right := 0, len(reversed)-1; left < right; left, right = left+1, right-1 {
+		reversed[left], reversed[right] = reversed[right], reversed[left]
+	}
+	return reversed
 }
