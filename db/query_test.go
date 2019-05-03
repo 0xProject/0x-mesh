@@ -243,6 +243,8 @@ func TestFindWithRangeWithMultiIndex(t *testing.T) {
 	testQueryWithFilter(t, col, filter, expected)
 }
 
+// testQueryWithFilter runs a comprehensive set of queries based on the given
+// filter and checks that the results are always what we expect.
 func testQueryWithFilter(t *testing.T, col *Collection, filter *Filter, expected []*testModel) {
 	reverseExpected := reverseSlice(expected)
 	// safeMax is min(2, len(expected)) to account for the fact that expected may
