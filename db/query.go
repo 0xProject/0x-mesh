@@ -82,17 +82,16 @@ func (index *Index) PrefixFilter(prefix []byte) *Filter {
 	}
 }
 
-// All returns a Filter which will match all models. Useful for when you
-// want to retreive models in sorted order without excluding any of them.
+// All returns a Filter which will match all models. It is useful for when you
+// want to retrieve models in sorted order without excluding any of them.
 func (index *Index) All() *Filter {
 	return index.PrefixFilter([]byte{})
 }
 
-// Run runs the query and scans the results into models. models
-// should be a pointer to an empty slice of a concrete model type (e.g.
-// *[]myModelType). It returns an error if models is the wrong type or there was
-// a problem reading from the database. It does not return an error if no models
-// match the query.
+// Run runs the query and scans the results into models. models should be a
+// pointer to an empty slice of a concrete model type (e.g. *[]myModelType). It
+// returns an error if models is the wrong type or there was a problem reading
+// from the database. It does not return an error if no models match the query.
 func (q *Query) Run(models interface{}) error {
 	if err := q.col.checkModelsType(models); err != nil {
 		return err
@@ -127,7 +126,8 @@ func getModelsWithIteratorForwards(iter iterator.Iterator, index *Index, max int
 func getModelsWithIteratorReverse(iter iterator.Iterator, index *Index, max int, models interface{}) error {
 	pkSet := stringset.New()
 	modelsVal := reflect.ValueOf(models).Elem()
-	// Move the iterator to the last key and then move backwards.
+	// Move the iterator to the last key and then iterate backwards by calling
+	// Prev instead of Next for each iteration of the for loop.
 	iter.Last()
 	iter.Next()
 	for iter.Prev() {
