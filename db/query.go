@@ -82,6 +82,12 @@ func (index *Index) PrefixFilter(prefix []byte) *Filter {
 	}
 }
 
+// All returns a Filter which will match all models. Useful for when you
+// want to retreive models in sorted order without excluding any of them.
+func (index *Index) All() *Filter {
+	return index.PrefixFilter([]byte{})
+}
+
 // Run runs the query and scans the results into models. models
 // should be a pointer to an empty slice of a concrete model type (e.g.
 // *[]myModelType). It returns an error if models is the wrong type or there was
