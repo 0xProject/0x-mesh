@@ -10,8 +10,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// TODO(albrow): Test filter, max, and reverse.
-
+// Query is used to return certain results from the database.
 type Query struct {
 	col     *Collection
 	filter  *Filter
@@ -19,11 +18,18 @@ type Query struct {
 	reverse bool
 }
 
+// Filter determines which models to return in the query and what order to
+// return them in.
 type Filter struct {
 	index *Index
 	slice *util.Range
 }
 
+// New Query creates and returns a new query with the given filter. By default,
+// a query will return all models that match the filter in ascending byte order
+// according to their index values. The query offers methods that can be used to
+// change this (e.g. Reverse and Max). The query is lazily executed, i.e. it
+// does not actually touch the database until you call Run.
 func (c *Collection) NewQuery(filter *Filter) *Query {
 	return &Query{
 		col:    c,
@@ -31,29 +37,21 @@ func (c *Collection) NewQuery(filter *Filter) *Query {
 	}
 }
 
+// Max causes the query to only return up to max results.
 func (q *Query) Max(max int) *Query {
 	q.max = max
 	return q
 }
 
+// Reverse causes the query to return models in descending byte order according
+// to their index values instead of the default (ascending byte order).
 func (q *Query) Reverse() *Query {
 	q.reverse = true
 	return q
 }
 
-// copy returns a shallow copy of the query, which can then be modified without
-// affecting the original. Intended for testing only.
-func (q *Query) copy() *Query {
-	return &Query{
-		col:     q.col,
-		filter:  q.filter,
-		max:     q.max,
-		reverse: q.reverse,
-	}
-}
-
-// ValueFilter returns a Filter which will match all models with the given value
-// according to the index.
+// ValueFilter returns a Filter which will match all models with an index value
+// equal to the given value.
 func (index *Index) ValueFilter(val []byte) *Filter {
 	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(val)))
 	return &Filter{
@@ -62,8 +60,8 @@ func (index *Index) ValueFilter(val []byte) *Filter {
 	}
 }
 
-// RangeFilter returns a Filter which will match all models with a value >=
-// start and < limit according to the index.
+// RangeFilter returns a Filter which will match all models with an index value
+// >= start and < limit.
 func (index *Index) RangeFilter(start []byte, limit []byte) *Filter {
 	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(start)))
 	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(limit)))
@@ -74,8 +72,8 @@ func (index *Index) RangeFilter(start []byte, limit []byte) *Filter {
 	}
 }
 
-// PrefixFilter returns a Filter which will match all models with a value that
-// starts with the given prefix according to the index.
+// PrefixFilter returns a Filter which will match all models with an index value
+// that starts with the given prefix.
 func (index *Index) PrefixFilter(prefix []byte) *Filter {
 	keyPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(prefix)))
 	return &Filter{
@@ -86,7 +84,9 @@ func (index *Index) PrefixFilter(prefix []byte) *Filter {
 
 // Run runs the query and scans the results into models. models
 // should be a pointer to an empty slice of a concrete model type (e.g.
-// *[]myModelType).
+// *[]myModelType). It returns an error if models is the wrong type or there was
+// a problem reading from the database. It does not return an error if no models
+// match the query.
 func (q *Query) Run(models interface{}) error {
 	if err := q.col.checkModelsType(models); err != nil {
 		return err
