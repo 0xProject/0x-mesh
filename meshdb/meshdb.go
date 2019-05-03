@@ -83,3 +83,18 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 	}
 	return miniHeaders, nil
 }
+
+// FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
+// largest block number), or nil if there are none in the database.
+func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
+	miniHeaders := []*MiniHeader{}
+	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All()).Reverse().Max(1)
+	err := query.Run(&miniHeaders)
+	if err != nil {
+		return nil, err
+	}
+	if len(miniHeaders) == 0 {
+		return nil, nil
+	}
+	return miniHeaders[0], nil
+}
