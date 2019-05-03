@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/albrow/stringset"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -306,39 +305,4 @@ func (c *Collection) findExistingModelByPrimaryKey(txn *leveldb.Transaction, pri
 	}
 	model := reflect.ValueOf(modelRef).Elem().Interface().(Model)
 	return model, nil
-}
-
-func (c *Collection) findWithIndexIterator(index *Index, iter iterator.Iterator, models interface{}) error {
-	defer iter.Release()
-	if err := c.checkModelsType(models); err != nil {
-		return err
-	}
-	// MultiIndexes can result in the same model being included more than once. To
-	// prevent this, we keep track of the primaryKeys we have already seen.
-	pkSet := stringset.New()
-	modelsVal := reflect.ValueOf(models).Elem()
-	for iter.Next() {
-		// We assume that each key in the iterator consists of an index prefix, the
-		// value for a particular model, and the model ID. We can extract a primary
-		// key from this key and use it to get the encoded data for the model
-		// itself.
-		pk := index.primaryKeyFromIndexKey(iter.Key())
-		if pkSet.Contains(string(pk)) {
-			continue
-		}
-		pkSet.Add(string(pk))
-		data, err := c.db.ldb.Get(pk, nil)
-		if err != nil {
-			return err
-		}
-		model := reflect.New(c.modelType)
-		if err := json.Unmarshal(data, model.Interface()); err != nil {
-			return err
-		}
-		modelsVal.Set(reflect.Append(modelsVal, model.Elem()))
-	}
-	if err := iter.Error(); err != nil {
-		return err
-	}
-	return nil
 }

@@ -3,8 +3,6 @@ package db
 import (
 	"fmt"
 	"strings"
-
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 // Index can be used to search for specific values or specific ranges of values
@@ -73,36 +71,4 @@ func (index *Index) primaryKeyFromIndexKey(key []byte) []byte {
 	pkAndVal := strings.TrimPrefix(string(key), string(index.prefix()))
 	split := strings.Split(pkAndVal, ":")
 	return index.col.primaryKeyForIDWithoutEscape([]byte(split[2]))
-}
-
-// FindWithValue finds all models with the given value according to the index
-// and scans the results into models. models should be a pointer to an empty
-// slice of a concrete model type (e.g. *[]myModelType).
-func (c *Collection) FindWithValue(index *Index, val []byte, models interface{}) error {
-	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(val)))
-	prefixRange := util.BytesPrefix(prefix)
-	iter := c.db.ldb.NewIterator(prefixRange, nil)
-	return c.findWithIndexIterator(index, iter, models)
-}
-
-// FindWithRange finds all models with a value >= start and < limit according to
-// the index and scans the results into models. models should be a pointer to an
-// empty slice of a concrete model type (e.g. *[]myModelType).
-func (c *Collection) FindWithRange(index *Index, start []byte, limit []byte, models interface{}) error {
-	startWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(start)))
-	limitWithPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(limit)))
-	r := &util.Range{Start: startWithPrefix, Limit: limitWithPrefix}
-	iter := c.db.ldb.NewIterator(r, nil)
-	return c.findWithIndexIterator(index, iter, models)
-}
-
-// FindWithPrefix finds all models with a value that starts with the given
-// prefix according to the index and scans the results into models. models
-// should be a pointer to an empty slice of a concrete model type (e.g.
-// *[]myModelType).
-func (c *Collection) FindWithPrefix(index *Index, prefix []byte, models interface{}) error {
-	keyPrefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(prefix)))
-	r := util.BytesPrefix(keyPrefix)
-	iter := c.db.ldb.NewIterator(r, nil)
-	return c.findWithIndexIterator(index, iter, models)
 }

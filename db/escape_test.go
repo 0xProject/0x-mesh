@@ -51,8 +51,8 @@ func TestFindWithValueWithEscape(t *testing.T) {
 	for i, expected := range models {
 		require.NoError(t, col.Insert(expected), "testModel %d", i)
 		actual := []*testModel{}
-		err := col.FindWithValue(ageIndex, []byte(fmt.Sprintf(":%d:", expected.Age)), &actual)
-		require.NoError(t, err, "testModel %d", i)
+		query := col.NewQuery(ageIndex.ValueFilter([]byte(fmt.Sprintf(":%d:", expected.Age))))
+		require.NoError(t, query.Run(&actual), "testModel %d", i)
 		require.Len(t, actual, 1, "testModel %d", i)
 		assert.Equal(t, expected, actual[0])
 	}

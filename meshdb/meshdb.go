@@ -76,7 +76,8 @@ func (m *MeshDB) Close() {
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
 func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 	miniHeaders := []*MiniHeader{}
-	err := m.MiniHeaders.FindWithPrefix(m.MiniHeaders.numberIndex, []byte{}, &miniHeaders)
+	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All())
+	err := query.Run(&miniHeaders)
 	if err != nil {
 		return nil, err
 	}
