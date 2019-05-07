@@ -48,27 +48,24 @@ func TestPingPong(t *testing.T) {
 	// Send ping from node0 to node1
 	pingMessage := &Message{Data: []byte("ping\n")}
 	require.NoError(t, node0.Send(pingMessage))
-	const pingPongTimeout = 30 * time.Second
-	expectMessage(t, node1.Receive(), pingMessage, pingPongTimeout)
+	const pingPongTimeout = 10 * time.Second
+	expectMessage(t, node1, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{Data: []byte("pong\n")}
 	require.NoError(t, node1.Send(pongMessage))
-	expectMessage(t, node0.Receive(), pongMessage, pingPongTimeout)
+	expectMessage(t, node0, pongMessage, pingPongTimeout)
 }
 
-func expectMessage(t *testing.T, ch <-chan *Message, expected *Message, timeout time.Duration) {
-	timeoutChan := time.After(timeout)
+func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	for {
-		select {
-		case msg := <-ch:
-			// We might receive other messages. Ignore anything that doesn't match the
-			// expected message.
-			if assert.ObjectsAreEqualValues(expected, msg) {
-				return
-			}
-		case <-timeoutChan:
-			t.Errorf("Timed out after %s waiting for message: %v\n", timeout, expected)
+		actual, err := node.Receive(ctx)
+		require.NoError(t, err)
+		// We might receive other messages. Ignore anything that doesn't match the
+		// expected message.
+		if assert.ObjectsAreEqualValues(expected, actual) {
 			return
 		}
 	}
