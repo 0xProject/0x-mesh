@@ -1,68 +1,81 @@
 package blockwatch
 
 import (
-	"container/list"
 	"sync"
+
+	"github.com/0xProject/0x-mesh/meshdb"
 )
 
-// Stack allows performing basic stack operations on a stack of MiniHeaders.
+// Stack allows performing basic stack operations on a stack of meshdb.MiniHeaders.
 type Stack struct {
-	limit int
-	list  *list.List
-	mut   sync.Mutex
+	// TODO(albrow): Use Transactions when db supports them instead of a mutex
+	// here. There are cases where we need to make sure no modifications are made
+	// to the database in between a read/write or read/delete.
+	mut    sync.Mutex
+	meshDB *meshdb.MeshDB
+	limit  int
 }
 
 // NewStack instantiates a new stack with the specified size limit. Once the size limit
 // is reached, adding additional blocks will evict the deepest block.
-func NewStack(limit int) *Stack {
+func NewStack(meshDB *meshdb.MeshDB, limit int) *Stack {
 	return &Stack{
-		limit: limit,
-		list:  list.New(),
+		meshDB: meshDB,
+		limit:  limit,
 	}
 }
 
-// Pop removes and returns the latest block header on the block stack.
-func (s *Stack) Pop() *MiniHeader {
+// Pop removes and returns the latest block header on the block stack. It
+// returns nil if the stack is empty.
+func (s *Stack) Pop() (*meshdb.MiniHeader, error) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-	block := s.list.Front()
-	s.list.Remove(block)
-	return block.Value.(*MiniHeader)
+	latestMiniHeader, err := s.meshDB.FindLatestMiniHeader()
+	if err != nil {
+		return nil, err
+	}
+	if latestMiniHeader == nil {
+		return nil, nil
+	}
+	if err := s.meshDB.MiniHeaders.Delete(latestMiniHeader.ID()); err != nil {
+		return nil, err
+	}
+	return latestMiniHeader, nil
 }
 
-// Push pushes a block header onto the block stack. If the stack limit is reached,
-// it will remove the oldest block header and return it.
-func (s *Stack) Push(block *MiniHeader) *MiniHeader {
+// Push pushes a block header onto the block stack. If the stack limit is
+// reached, it will remove the oldest block header and return it.
+func (s *Stack) Push(block *meshdb.MiniHeader) (*meshdb.MiniHeader, error) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-	s.list.PushFront(block)
-	if s.list.Len() > s.limit {
-		lastElement := s.list.Back()
-		s.list.Remove(lastElement)
-		return lastElement.Value.(*MiniHeader)
+	miniHeaders, err := s.meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	var oldestMiniHeader *meshdb.MiniHeader
+	if len(miniHeaders) == s.limit {
+		oldestMiniHeader = miniHeaders[0]
+		if err := s.meshDB.MiniHeaders.Delete(oldestMiniHeader.ID()); err != nil {
+			return nil, err
+		}
+	}
+	if err := s.meshDB.MiniHeaders.Insert(block); err != nil {
+		return nil, err
+	}
+	return oldestMiniHeader, nil
 }
 
-// Peek returns the latest block header from the block stack without removing it.
-func (s *Stack) Peek() *MiniHeader {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-	block := s.list.Front()
-	if block == nil {
-		return nil
-	}
-	return block.Value.(*MiniHeader)
+// Peek returns the latest block header from the block stack without removing
+// it. It returns nil if the stack is empty.
+func (s *Stack) Peek() (*meshdb.MiniHeader, error) {
+	return s.meshDB.FindLatestMiniHeader()
 }
 
-// Inspect returns all the block headers currently on the stack. This method should only be
-// used for debugging and testing purposes since it is not performant.
-func (s *Stack) Inspect() []*MiniHeader {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-	blocks := []*MiniHeader{}
-	for e := s.list.Back(); e != nil; e = e.Prev() {
-		blocks = append(blocks, e.Value.(*MiniHeader))
+// Inspect returns all the block headers currently on the stack
+func (s *Stack) Inspect() ([]*meshdb.MiniHeader, error) {
+	miniHeaders, err := s.meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return nil, err
 	}
-	return blocks
+	return miniHeaders, nil
 }

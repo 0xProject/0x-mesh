@@ -20,9 +20,10 @@ var MainnetEthBalanceCheckerAddress = common.HexToAddress("0x9bc2c6ae8b1a8e3c375
 // GanacheEthBalanceCheckerAddress is the ganache snapshot EthBalanceChecker contract address
 var GanacheEthBalanceCheckerAddress = common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc")
 
-// The most addresses we can fetch balances for in a single CALL without having Parity nor Geth
-// timeout
-const chunkSize = 4000
+// The most addresses we can fetch balances for in a single CALL without going over the block gas
+// limit. One of Geth/Parity caps the gas limit for `eth_call`s at the block gas limit.
+// Block gas limit on 19th April 2019: 7,600,889
+const chunkSize = 3500 // 7,475,648 gas
 
 // Balance represents a single Ethereum addresses Ether balance
 type Balance struct {
@@ -39,7 +40,6 @@ type ETHWatcher struct {
 	balanceChan        chan Balance
 	ethBalanceChecker  *wrappers.EthBalanceChecker
 	ethClient          *ethclient.Client
-	ticker             *time.Ticker
 	addressToBalanceMu sync.Mutex
 }
 
@@ -66,13 +66,14 @@ func (e *ETHWatcher) Start() error {
 		return errors.New("Watcher already started")
 	}
 	e.isWatching = true
-	e.ticker = time.NewTicker(e.minPollingInterval)
 	go func() {
 		for {
 			start := time.Now()
 
 			if err := e.updateBalances(); err != nil {
-				// TODO(albrow): Log error
+				log.WithFields(log.Fields{
+					"err": err.Error(),
+				}).Error("unexpected error from ETHWatcher.updateBalances()")
 			}
 
 			// Wait minPollingInterval before calling updateBalances again. Since
@@ -89,7 +90,6 @@ func (e *ETHWatcher) Stop() {
 	if !e.isWatching {
 		return // noop
 	}
-	e.ticker.Stop()
 	e.isWatching = false
 }
 
@@ -157,10 +157,10 @@ func (e *ETHWatcher) updateBalances() error {
 		go func(chunk []common.Address) {
 			defer wg.Done()
 
-			// Pass a context with a 10 second timeout to `GetEthBalances` in order to avoid
-			// any one request from taking longer then 10 seconds and as a consequence, hold
-			// up the polling loop for more then 10 seconds.
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
+			// any one request from taking longer then 20 seconds and as a consequence, hold
+			// up the polling loop for more then 20 seconds.
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			opts := &bind.CallOpts{
 				Pending: false,
@@ -177,7 +177,7 @@ func (e *ETHWatcher) updateBalances() error {
 			for i, address := range chunk {
 				e.addressToBalanceMu.Lock()
 				if balance, ok := e.addressToBalance[address]; ok {
-					if balance != balances[i] {
+					if balance.Cmp(balances[i]) != 0 {
 						e.addressToBalance[address] = balances[i]
 						updatedBalance := Balance{
 							Address: address,

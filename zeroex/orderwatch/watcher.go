@@ -212,190 +212,80 @@ func (w *Watcher) setupEventWatcher() {
 							var transferEvent ERC20TransferEvent
 							err = w.eventDecoder.Decode(log, &transferEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ERC20ApprovalEvent":
 							var approvalEvent ERC20ApprovalEvent
 							err = w.eventDecoder.Decode(log, &approvalEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ERC721TransferEvent":
 							var transferEvent ERC721TransferEvent
 							err = w.eventDecoder.Decode(log, &transferEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ERC721ApprovalEvent":
 							var approvalEvent ERC721ApprovalEvent
 							err = w.eventDecoder.Decode(log, &approvalEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ERC721ApprovalForAllEvent":
 							var approvalForAllEvent ERC721ApprovalForAllEvent
 							err = w.eventDecoder.Decode(log, &approvalForAllEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "WethWithdrawalEvent":
 							var withdrawalEvent WethWithdrawalEvent
 							err = w.eventDecoder.Decode(log, &withdrawalEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "WethDepositEvent":
 							var depositEvent WethDepositEvent
 							err = w.eventDecoder.Decode(log, &depositEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ExchangeFillEvent":
 							var exchangeFillEvent ExchangeFillEvent
 							err = w.eventDecoder.Decode(log, &exchangeFillEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ExchangeCancelEvent":
 							var exchangeCancelEvent ExchangeCancelEvent
 							err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						case "ExchangeCancelUpToEvent":
 							var exchangeCancelUpToEvent ExchangeCancelUpToEvent
 							err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
 							if err != nil {
-								switch err.(type) {
-								case UnsupportedEventError:
-									logger.WithFields(logger.Fields{
-										"eventType":       eventType,
-										"topics":          err.(UnsupportedEventError).Topics,
-										"contractAddress": err.(UnsupportedEventError).ContractAddress,
-									}).Warn("unsupported event found")
-									continue
-								default:
-									logger.WithFields(logger.Fields{
-										"err": err.Error(),
-									}).Panic("unexpected event decoder error encountered")
-								}
+								w.handleDecodeErr(err, eventType)
+								continue
 							}
 							// TODO(fabio): Handle this event
 						default:
@@ -410,6 +300,22 @@ func (w *Watcher) setupEventWatcher() {
 		}
 
 	}()
+}
+
+func (w *Watcher) handleDecodeErr(err error, eventType string) {
+	switch err.(type) {
+	case UnsupportedEventError:
+		logger.WithFields(logger.Fields{
+			"eventType":       eventType,
+			"topics":          err.(UnsupportedEventError).Topics,
+			"contractAddress": err.(UnsupportedEventError).ContractAddress,
+		}).Warn("unsupported event found")
+
+	default:
+		logger.WithFields(logger.Fields{
+			"err": err.Error(),
+		}).Panic("unexpected event decoder error encountered")
+	}
 }
 
 func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
