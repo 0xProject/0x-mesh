@@ -1,5 +1,9 @@
-// Code generated - DO NOT EDIT.
+// Mostly code generated - DO NOT EDIT (mostly).
 // This file is a generated binding and any manual changes will be lost.
+// Fabio: This file was generated with a fork of `go-ethereum` that added
+// ABIV2 support: https://github.com/ethereum/go-ethereum/pull/18491.
+// I also renamed the generated structs from Struct1, Struct2, Struct3 to
+// OrderWithoutExchangeAddress, TraderInfo, OrderInfo respectively.
 
 package wrappers
 
