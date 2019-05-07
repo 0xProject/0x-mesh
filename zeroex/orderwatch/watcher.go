@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
+	"github.com/0xProject/0x-mesh/configs"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -16,14 +17,16 @@ import (
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	blockWatcher      *blockwatch.Watcher
-	eventDecoder      *Decoder
-	assetDataDecoder  *zeroex.AssetDataDecoder
-	blockSubscription event.Subscription
-	expirationWatcher *ExpirationWatcher
-	cleanupWorker     *CleanupWorker
-	isSetup           bool
-	setupMux          sync.RWMutex
+	blockWatcher            *blockwatch.Watcher
+	eventDecoder            *Decoder
+	assetDataDecoder        *zeroex.AssetDataDecoder
+	blockSubscription       event.Subscription
+	expirationWatcher       *ExpirationWatcher
+	orderHashToWatchedOrder map[common.Hash]*zeroex.SignedOrder
+	isCleanupWorkerRunning  bool
+	orderValidator          *zeroex.OrderValidator
+	isSetup                 bool
+	setupMux                sync.RWMutex
 }
 
 // New instantiates a new order watcher
@@ -36,17 +39,19 @@ func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderVal
 	if err != nil {
 		return nil, err
 	}
-	cleanupWorker, err := NewCleanupWorker(orderValidatorAddress, ethClient)
+	orderValidator, err := zeroex.NewOrderValidator(orderValidatorAddress, ethClient)
 	if err != nil {
 		return nil, err
 	}
 	var expirationBuffer int64 = 0
 	return &Watcher{
-		blockWatcher:      blockWatcher,
-		expirationWatcher: NewExpirationWatcher(expirationBuffer),
-		cleanupWorker:     cleanupWorker,
-		eventDecoder:      decoder,
-		assetDataDecoder:  assetDataDecoder,
+		blockWatcher:            blockWatcher,
+		expirationWatcher:       NewExpirationWatcher(expirationBuffer),
+		orderHashToWatchedOrder: map[common.Hash]*zeroex.SignedOrder{},
+		isCleanupWorkerRunning:  false,
+		orderValidator:          orderValidator,
+		eventDecoder:            decoder,
+		assetDataDecoder:        assetDataDecoder,
 	}, nil
 }
 
@@ -65,7 +70,7 @@ func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
 		return err
 	}
 
-	w.cleanupWorker.Start()
+	w.StartCleanupWorker()
 
 	w.isSetup = true
 	return nil
@@ -87,7 +92,7 @@ func (w *Watcher) Stop() error {
 	w.expirationWatcher.Stop()
 
 	// Stop cleanup worker
-	w.cleanupWorker.Stop()
+	w.StopCleanupWorker()
 	return nil
 }
 
@@ -106,7 +111,46 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 
 	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
+	w.orderHashToWatchedOrder[orderHash] = signedOrder
+
 	return nil
+}
+
+// StartCleanupWorker starts the cleanup workers polling loop
+func (w *Watcher) StartCleanupWorker() {
+	w.isCleanupWorkerRunning = true
+	go func() {
+		for {
+			if !w.isCleanupWorkerRunning {
+				return
+			}
+
+			start := time.Now()
+
+			// TODO(fabio): Once orders are stored in DB, only fetch orders where lastUpdated field is > X
+			signedOrders := []*zeroex.SignedOrder{}
+			// TODO(fabio): Do we need to put a mutex around accessing orderHashToWatchedOrder?
+			for _, signedOrder := range w.orderHashToWatchedOrder {
+				signedOrders = append(signedOrders, signedOrder)
+			}
+			orderInfos := w.orderValidator.BatchValidate(signedOrders)
+			for orderHash, orderInfo := range orderInfos {
+				// TODO(fabio): Emit all change events
+				_ = orderHash
+				_ = orderInfo
+			}
+
+			// Wait MinCleanupInterval before calling ValidateOrders again. Since
+			// we only start sleeping _after_ ValidateOrders completes, we will never
+			// have multiple calls to ValidateOrders running in parallel
+			time.Sleep(configs.MinCleanupInterval - time.Since(start))
+		}
+	}()
+}
+
+// StopCleanupWorker stops the cleanup worker
+func (w *Watcher) StopCleanupWorker() {
+	w.isCleanupWorkerRunning = false
 }
 
 func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) error {
@@ -114,7 +158,8 @@ func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration
 		expiredOrders := w.expirationWatcher.Receive()
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
-				// TODO(fabio): Handle expired order
+				// TODO(fabio): Emit an event for the expired order
+				delete(w.orderHashToWatchedOrder, expiredOrder.OrderHash)
 				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))
 			}
 		}

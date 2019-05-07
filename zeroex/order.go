@@ -10,6 +10,21 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+// OrderStatus represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo
+type OrderStatus uint8
+
+// OrderStatus values
+const (
+	Invalid OrderStatus = iota
+	InvalidMakerAssetAmount
+	InvalidTakerAssetAmount
+	Fillable
+	Expired
+	FullyFilled
+	Cancelled
+)
+
 // SignedOrder represents a signed 0x order
 type SignedOrder struct {
 	MakerAddress          common.Address `json:"makerAddress"`
