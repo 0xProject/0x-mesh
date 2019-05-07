@@ -48,7 +48,7 @@ func TestPingPong(t *testing.T) {
 	// Send ping from node0 to node1
 	pingMessage := &Message{Data: []byte("ping\n")}
 	require.NoError(t, node0.Send(pingMessage))
-	const pingPongTimeout = 15 * time.Second
+	const pingPongTimeout = 30 * time.Second
 	expectMessage(t, node1.Receive(), pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
