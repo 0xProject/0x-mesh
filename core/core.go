@@ -11,8 +11,6 @@ import (
 	mrand "math/rand"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
@@ -92,40 +90,17 @@ func New(config Config) (*Node, error) {
 
 	// Create the Node.
 	node := &Node{
-		host:     basicHost,
-		config:   config,
-		pubsub:   ps,
-		sub:      sub,
-		messages: make(chan *Message, messageBuffer),
+		host:   basicHost,
+		config: config,
+		pubsub: ps,
+		sub:    sub,
 	}
-
-	// Start listening in the background for messages over the subscription.
-	go node.listenForMessages()
 
 	return node, nil
 }
 
 func isErrSubCancelled(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "subscription cancelled")
-}
-
-// listenForMessages continuously listens in the background for new messages on
-// n.sub. It is a blocking function, but can be called in a goroutine. It
-// returns if n.sub is cancelled.
-func (n *Node) listenForMessages() {
-	for {
-		msg, err := n.sub.Next(context.Background())
-		if err != nil {
-			if isErrSubCancelled(err) {
-				// The sub was cancelled. We can assume Node.Close() was called or
-				// there was another error that has already been returned/handled.
-				return
-			}
-			// TODO(albrow): Don't panic here.
-			log.WithField("err", err.Error()).Panic("Unexpected error in listenForMessages")
-		}
-		n.messages <- &Message{Data: msg.Data}
-	}
 }
 
 // Send sends a message to connected peers in the network.
@@ -135,10 +110,14 @@ func (n *Node) Send(msg *Message) error {
 	return n.pubsub.Publish(pubsubTopic, msg.Data)
 }
 
-// Receive returns a read-only channel that can be used to listen for new
-// messages.
-func (n *Node) Receive() <-chan *Message {
-	return n.messages
+// Receive returns the next pending message. It blocks if no messages are
+// available. If the given context is canceled, it returns nil, ctx.Err().
+func (n *Node) Receive(ctx context.Context) (*Message, error) {
+	msg, err := n.sub.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &Message{Data: msg.Data}, nil
 }
 
 // Evict signals that a message should be evicted.
