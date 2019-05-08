@@ -97,7 +97,11 @@ func setupOrders(database *db.DB) *OrdersCollection {
 
 		indexValues := make([][]byte, len(singleAssetDatas))
 		for i, singleAssetData := range singleAssetDatas {
-			indexValues[i] = []byte(fmt.Sprintf(order.SignedOrder.MakerAddress.Hex(), "|", singleAssetData.Address.Hex(), "|", singleAssetData.TokenID))
+			indexValue := []byte(fmt.Sprintf(order.SignedOrder.MakerAddress.Hex(), "|", singleAssetData.Address.Hex(), "|"))
+			if singleAssetData.TokenID != nil {
+				indexValue = append(indexValue, singleAssetData.TokenID.Bytes()...)
+			}
+			indexValues[i] = indexValue
 		}
 		return indexValues
 	})
