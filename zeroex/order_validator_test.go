@@ -140,14 +140,8 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		},
 	}
 
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
-	require.NoError(t, err)
-
-	orderValidator, err := NewOrderValidator(GanacheOrderValidatorAddress, ethClient)
-	require.NoError(t, err)
-
 	for expectedRemainingnFillableTakerAssetAmount, traderInfo := range expectedRemainingAmountToTraderInfo {
-		remainingFillableTakerAssetAmount := orderValidator.calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
+		remainingFillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 		assert.Equal(t, expectedRemainingnFillableTakerAssetAmount, remainingFillableTakerAssetAmount)
 	}
 
@@ -168,6 +162,6 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		TakerZrxBalance:   big.NewInt(10000000000000000),
 		TakerZrxAllowance: big.NewInt(10000000000000000),
 	}
-	remainingFillableTakerAssetAmount := orderValidator.calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
+	remainingFillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 	assert.Equal(t, new(big.Int).Div(takerAssetAmount, big.NewInt(2)), remainingFillableTakerAssetAmount)
 }
