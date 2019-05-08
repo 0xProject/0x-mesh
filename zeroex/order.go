@@ -154,8 +154,8 @@ func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
 	return hash, nil
 }
 
-// ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected when passing
-// an order into a smart contract.
+// ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
+// smart contracts.
 func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {
 	orderWithoutExchangeAddress := wrappers.OrderWithoutExchangeAddress{
 		MakerAddress:          s.MakerAddress,
