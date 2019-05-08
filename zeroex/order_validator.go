@@ -98,7 +98,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	wg := &sync.WaitGroup{}
 	for i, params := range chunks {
 		wg.Add(1)
-		go func(params getOrdersAndTradersInfoParams) {
+		go func(params getOrdersAndTradersInfoParams, i int) {
 			defer wg.Done()
 
 			// Add one to the semaphore chan. If it already has concurrencyLimit values,
@@ -140,7 +140,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 				}
 
 				for j, orderInfo := range results.OrdersInfo {
-					traderInfo := results.TradersInfo[i]
+					traderInfo := results.TradersInfo[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[chunkSize*i+j]
 					switch OrderStatus(orderInfo.OrderStatus) {
@@ -169,7 +169,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 				<-semaphoreChan
 				return
 			}
-		}(params)
+		}(params, i)
 	}
 
 	wg.Wait()
