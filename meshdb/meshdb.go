@@ -164,6 +164,18 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 	return miniHeaders[0], nil
 }
 
+// FindOrdersByMakerAddress finds all orders belonging to a particular maker address
+func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order, error) {
+	prefix := []byte(makerAddress.Hex() + "|")
+	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
 type singleAssetData struct {
 	Address common.Address
 	TokenID *big.Int

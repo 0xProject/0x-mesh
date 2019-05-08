@@ -57,10 +57,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, meshDB.Orders.NewQuery(filter).Run(&orders))
 	assert.Equal(t, []*Order{order}, orders)
 
-	prefix := []byte(makerAddress.Hex() + "|")
-	filter = meshDB.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
-	orders = []*Order{}
-	require.NoError(t, meshDB.Orders.NewQuery(filter).Run(&orders))
+	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
 	assert.Equal(t, []*Order{order}, orders)
 
 	// Update
