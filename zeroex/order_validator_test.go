@@ -49,6 +49,9 @@ func TestBatchValidate(t *testing.T) {
 }
 
 func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
+	takerAssetAmount := big.NewInt(200000000000000000)
+	makerAssetAmount := big.NewInt(100000000000000000)
+	makerFee := big.NewInt(10000000000000000)
 	signedOrder := &SignedOrder{
 		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
 		TakerAddress:          nullAddress,
@@ -57,10 +60,10 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
 		Salt:                  big.NewInt(1548619145450),
-		MakerFee:              big.NewInt(10000000000000000),
+		MakerFee:              makerFee,
 		TakerFee:              big.NewInt(10000000000000000),
-		MakerAssetAmount:      big.NewInt(100000000000000000),
-		TakerAssetAmount:      big.NewInt(200000000000000000),
+		MakerAssetAmount:      makerAssetAmount,
+		TakerAssetAmount:      takerAssetAmount,
 		ExpirationTimeSeconds: big.NewInt(99548619325),
 		ExchangeAddress:       configs.GanacheExchangeAddress,
 	}
@@ -88,11 +91,11 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		},
 		// Sufficient balances & allowances
 		big.NewInt(200000000000000000): wrappers.TraderInfo{
-			MakerBalance:      big.NewInt(100000000000000000),
-			MakerAllowance:    big.NewInt(100000000000000000),
-			TakerBalance:      big.NewInt(200000000000000000),
-			TakerAllowance:    big.NewInt(200000000000000000),
-			MakerZrxBalance:   big.NewInt(10000000000000000),
+			MakerBalance:      makerAssetAmount,
+			MakerAllowance:    makerAssetAmount,
+			TakerBalance:      takerAssetAmount,
+			TakerAllowance:    takerAssetAmount,
+			MakerZrxBalance:   makerFee,
 			MakerZrxAllowance: big.NewInt(10000000000000000),
 			TakerZrxBalance:   big.NewInt(10000000000000000),
 			TakerZrxAllowance: big.NewInt(10000000000000000),
@@ -100,34 +103,34 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		// Taker only has half the required amount BUT takerAddress is NULL address so it's
 		// ignored.
 		big.NewInt(200000000000000000): wrappers.TraderInfo{
-			MakerBalance:      big.NewInt(100000000000000000),
-			MakerAllowance:    big.NewInt(100000000000000000),
-			TakerBalance:      big.NewInt(100000000000000000),
-			TakerAllowance:    big.NewInt(200000000000000000),
-			MakerZrxBalance:   big.NewInt(10000000000000000),
+			MakerBalance:      makerAssetAmount,
+			MakerAllowance:    makerAssetAmount,
+			TakerBalance:      new(big.Int).Div(takerAssetAmount, big.NewInt(2)),
+			TakerAllowance:    takerAssetAmount,
+			MakerZrxBalance:   makerFee,
 			MakerZrxAllowance: big.NewInt(10000000000000000),
 			TakerZrxBalance:   big.NewInt(10000000000000000),
 			TakerZrxAllowance: big.NewInt(10000000000000000),
 		},
 		// Maker only has half the required balance
 		big.NewInt(100000000000000000): wrappers.TraderInfo{
-			MakerBalance:      big.NewInt(50000000000000000),
-			MakerAllowance:    big.NewInt(100000000000000000),
-			TakerBalance:      big.NewInt(200000000000000000),
-			TakerAllowance:    big.NewInt(200000000000000000),
-			MakerZrxBalance:   big.NewInt(10000000000000000),
+			MakerBalance:      new(big.Int).Div(makerAssetAmount, big.NewInt(2)),
+			MakerAllowance:    makerAssetAmount,
+			TakerBalance:      takerAssetAmount,
+			TakerAllowance:    takerAssetAmount,
+			MakerZrxBalance:   makerFee,
 			MakerZrxAllowance: big.NewInt(10000000000000000),
 			TakerZrxBalance:   big.NewInt(10000000000000000),
 			TakerZrxAllowance: big.NewInt(10000000000000000),
 		},
 		// Maker only has half the required ZRX balance
 		big.NewInt(100000000000000000): wrappers.TraderInfo{
-			MakerBalance:      big.NewInt(100000000000000000),
-			MakerAllowance:    big.NewInt(100000000000000000),
-			TakerBalance:      big.NewInt(200000000000000000),
-			TakerAllowance:    big.NewInt(200000000000000000),
-			MakerZrxBalance:   big.NewInt(5000000000000000),
-			MakerZrxAllowance: big.NewInt(10000000000000000),
+			MakerBalance:      makerAssetAmount,
+			MakerAllowance:    makerAssetAmount,
+			TakerBalance:      takerAssetAmount,
+			TakerAllowance:    takerAssetAmount,
+			MakerZrxBalance:   new(big.Int).Div(makerFee, big.NewInt(2)),
+			MakerZrxAllowance: makerFee,
 			TakerZrxBalance:   big.NewInt(10000000000000000),
 			TakerZrxAllowance: big.NewInt(10000000000000000),
 		},
@@ -144,4 +147,23 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		assert.Equal(t, expectedRemainingnFillableTakerAssetAmount, remainingFillableTakerAssetAmount)
 	}
 
+	// Order already half filled
+	orderInfo = wrappers.OrderInfo{
+		OrderHash:                   orderHash,
+		OrderStatus:                 uint8(Fillable),
+		OrderTakerAssetFilledAmount: new(big.Int).Div(takerAssetAmount, big.NewInt(2)),
+	}
+	// Sufficient balances & allowances
+	traderInfo := wrappers.TraderInfo{
+		MakerBalance:      makerAssetAmount,
+		MakerAllowance:    makerAssetAmount,
+		TakerBalance:      takerAssetAmount,
+		TakerAllowance:    takerAssetAmount,
+		MakerZrxBalance:   makerFee,
+		MakerZrxAllowance: big.NewInt(10000000000000000),
+		TakerZrxBalance:   big.NewInt(10000000000000000),
+		TakerZrxAllowance: big.NewInt(10000000000000000),
+	}
+	remainingFillableTakerAssetAmount := orderValidator.calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
+	assert.Equal(t, new(big.Int).Div(takerAssetAmount, big.NewInt(2)), remainingFillableTakerAssetAmount)
 }
