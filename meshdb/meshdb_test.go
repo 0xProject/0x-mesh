@@ -52,12 +52,13 @@ func TestOrderCRUDOperations(t *testing.T) {
 	assert.Equal(t, order, foundOrder)
 
 	// Check Indexes
-	filter := meshDB.Orders.SaltIndex.ValueFilter(salt.Bytes())
-	orders := []*Order{}
-	require.NoError(t, meshDB.Orders.NewQuery(filter).Run(&orders))
+	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
+	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, saltPlusOne)
+	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 
 	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
+	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 
 	// Update

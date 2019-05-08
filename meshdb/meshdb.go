@@ -83,12 +83,14 @@ func NewMeshDB(path string) (*MeshDB, error) {
 
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
-	saltIndex := col.AddIndex("salt", func(m db.Model) []byte {
+	saltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
 		// length of the number is always 80.
-		return []byte(fmt.Sprintf("%80s", m.(*Order).SignedOrder.Salt.String()))
+		signedOrder := m.(*Order).SignedOrder
+		index := []byte(fmt.Sprintf("%s|%080s", signedOrder.MakerAddress.Hex(), signedOrder.Salt.String()))
+		return index
 	})
 	// TODO(fabio): Optimize this index callback since it gets called many times under-the-hood.
 	// We might want to parse the assetData once and store it's components in the DB. The trade-off
@@ -128,7 +130,7 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
 		// length of the number is always 80.
 		number := model.(*MiniHeader).Number
-		return []byte(fmt.Sprintf("%80s", number.String()))
+		return []byte(fmt.Sprintf("%080s", number.String()))
 	})
 
 	return &MiniHeadersCollection{
@@ -172,6 +174,20 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order, error) {
 	prefix := []byte(makerAddress.Hex() + "|")
 	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+// FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
+// also have a salt value less then X
+func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
+	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
+	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), salt.String()))
+	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	err := m.Orders.NewQuery(filter).Run(&orders)
 	if err != nil {
