@@ -19,7 +19,6 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	makerAddress := common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d")
-	// makerTokenAddress := common.HexToAddress("0x34d402f14d58e001d8efbe6585051bf9706aa064")
 	salt := big.NewInt(1548619145450)
 	signedOrder := &zeroex.SignedOrder{
 		MakerAddress:          makerAddress,
