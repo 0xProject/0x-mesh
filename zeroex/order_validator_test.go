@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ganacheEndpoint = "http://localhost:8545"
-
 func TestBatchValidate(t *testing.T) {
 	signedOrder := &SignedOrder{
 		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
@@ -38,7 +36,7 @@ func TestBatchValidate(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(ganacheEndpoint)
+	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
 	require.NoError(t, err)
 
 	orderValidator, err := NewOrderValidator(GanacheOrderValidatorAddress, ethClient)
@@ -135,7 +133,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		},
 	}
 
-	ethClient, err := ethclient.Dial(ganacheEndpoint)
+	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
 	require.NoError(t, err)
 
 	orderValidator, err := NewOrderValidator(GanacheOrderValidatorAddress, ethClient)
