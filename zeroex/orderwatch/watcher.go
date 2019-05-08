@@ -57,7 +57,7 @@ func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderVal
 
 // Start sets up the event & expiration watchers as well as the cleanup worker. Event
 // watching will require the blockwatch.Watcher to be started however.
-func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
+func (w *Watcher) Start() error {
 	w.setupMux.Lock()
 	defer w.setupMux.Unlock()
 	if w.isSetup {
@@ -66,7 +66,7 @@ func (w *Watcher) Start(expirationPollingInterval time.Duration) error {
 
 	w.setupEventWatcher()
 
-	if err := w.setupExpirationWatcher(expirationPollingInterval); err != nil {
+	if err := w.setupExpirationWatcher(); err != nil {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (w *Watcher) StopCleanupWorker() {
 	w.isCleanupWorkerRunning = false
 }
 
-func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration) error {
+func (w *Watcher) setupExpirationWatcher() error {
 	go func() {
 		expiredOrders := w.expirationWatcher.Receive()
 		for expiredOrders := range expiredOrders {
@@ -165,7 +165,7 @@ func (w *Watcher) setupExpirationWatcher(expirationPollingInterval time.Duration
 		}
 	}()
 
-	return w.expirationWatcher.Start(expirationPollingInterval)
+	return w.expirationWatcher.Start(configs.ExpirationPollingInterval)
 }
 
 func (w *Watcher) setupEventWatcher() {

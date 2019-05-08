@@ -21,3 +21,7 @@ var GanacheExchangeAddress = common.HexToAddress("0x48bacb9266a570d521063ef5dd96
 // cleanups are meant to catch any stale orders that somehow were not caught by the event watcher
 // process.
 var MinCleanupInterval = 1 * time.Hour
+
+// ExpirationPollingInterval specifies the interval in which the order watcher should check for expired
+// orders
+var ExpirationPollingInterval = 50 * time.Millisecond
