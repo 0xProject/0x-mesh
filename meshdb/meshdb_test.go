@@ -55,7 +55,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	// Check Indexes
 	filter := meshDB.Orders.SaltIndex.ValueFilter(salt.Bytes())
 	orders := []*Order{}
-	meshDB.Orders.NewQuery(filter).Run(&orders)
+	require.NoError(t, meshDB.Orders.NewQuery(filter).Run(&orders))
 	assert.Equal(t, []*Order{order}, orders)
 
 	prefix := []byte(makerAddress.Hex() + "|")
