@@ -261,14 +261,6 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:b6bbd2f9e0724bd81890c8644259f920c6d61c08453978faff0bebd25f3e7d3e"
-  name = "github.com/jpillora/backoff"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
-  version = "1.0.0"
-
-[[projects]]
   branch = "master"
   digest = "1:8f4aedc183dc8dfef9a7a1f1ba205dc87ecd2675eea350a736bda889e3bcf8ea"
   name = "github.com/jbenet/go-temp-err-catcher"
@@ -288,6 +280,14 @@
   ]
   pruneopts = "UT"
   revision = "b497e2f366b8624394fb2e89c10ab607bebdde0b"
+
+[[projects]]
+  digest = "1:b6bbd2f9e0724bd81890c8644259f920c6d61c08453978faff0bebd25f3e7d3e"
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
 
 [[projects]]
   branch = "master"
@@ -1044,6 +1044,7 @@
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
+    "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-host",
