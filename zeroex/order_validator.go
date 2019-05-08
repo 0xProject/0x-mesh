@@ -14,18 +14,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
 var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
 
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
-// The most orders we can validate in a single eth_call without having Parity nor Geth
-// timeout
+// The most orders we can validate in a single eth_call without having the request timeout
 const chunkSize = 500
 
-// Specifies the number of eth_call requests we want to make at any given point in time.
-// Additional requests to block until an ongoing request has completed.
+// Specifies the max number of eth_call requests we want to make concurrently.
+// Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
 
 type getOrdersAndTradersInfoParams struct {
@@ -58,9 +59,11 @@ func NewOrderValidator(orderValidatorAddress common.Address, ethClient *ethclien
 	}, nil
 }
 
-// BatchValidate revalidates all the supplied orders in chunks of chunkSize, with never more then
-// concurrencyLimit number of requests in parallel. If a request fails, re-attempt it
-// up to four times and then give up.
+// BatchValidate retrieves all the information needed to validate the supplied orders.
+// It splits the orders into chunks of `chunkSize`, and makes no more then `concurrencyLimit`
+// requests concurrently. If a request fails, re-attempt it up to four times before giving up.
+// If it some requests fail, this method still returns whatever order information it was able to
+// retrieve.
 func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]OrderInfo {
 	takerAddresses := []common.Address{}
 	for i := 0; i < len(signedOrders); i++ {
@@ -88,13 +91,12 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 		})
 	}
 
-	// Make concurrencyLimit eth_call requests in parallel
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
 
 	orderHashToInfo := map[common.Hash]OrderInfo{}
 	wg := &sync.WaitGroup{}
-	for j, params := range chunks {
+	for i, params := range chunks {
 		wg.Add(1)
 		go func(params getOrdersAndTradersInfoParams) {
 			defer wg.Done()
@@ -106,10 +108,9 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 			// Attempt to make the eth_call request 4 times with an exponential back-off.
 			maxDuration := 4 * time.Second
 			b := &backoff.Backoff{
-				//These are the defaults
-				Min:    250 * time.Millisecond,
-				Max:    maxDuration,
-				Factor: 2,
+				Min:    250 * time.Millisecond, // First back-off length
+				Max:    maxDuration,            // Longest back-off length
+				Factor: 2,                      // Factor to multiple each successive back-off
 			}
 
 			for {
@@ -121,7 +122,6 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					Pending: false,
 					Context: ctx,
 				}
-				// Make eth_call request
 				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, params.Orders, params.TakerAddresses)
 				if err != nil {
 					log.WithFields(log.Fields{
@@ -133,25 +133,20 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
-						// TODO(fabio): Do we want to re-schedule the cleanup job immediately if
-						// this happens?
 						return // Give up after 4 attempts
 					}
 					time.Sleep(d)
 					continue
 				}
 
-				for i, orderInfo := range results.OrdersInfo {
+				for j, orderInfo := range results.OrdersInfo {
 					traderInfo := results.TradersInfo[i]
 					orderHash := common.Hash(orderInfo.OrderHash)
-					signedOrder := signedOrders[chunkSize*j+i]
+					signedOrder := signedOrders[chunkSize*i+j]
 					switch OrderStatus(orderInfo.OrderStatus) {
-					case Invalid:
-						log.WithFields(log.Fields{
-							"orderHash": orderInfo.OrderHash,
-						}).Panic("Found order with Invalid OrderStatus")
 					// TODO(fabio): A future optimization would be to check that both the maker & taker
-					// amounts are non-zero locally rather then wait for the RPC call to catch it.
+					// amounts are non-zero locally rather then wait for the RPC call to catch these two
+					// failure cases.
 					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled:
 						orderHashToInfo[orderHash] = OrderInfo{
 							OrderHash:                orderHash,
