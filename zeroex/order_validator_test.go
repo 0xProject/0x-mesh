@@ -1,3 +1,7 @@
+// +build !js
+
+// We currently don't run these tests in WASM because of an issue in Go. See the header of
+// eth_watcher_test.go for more details.
 package zeroex
 
 import (
