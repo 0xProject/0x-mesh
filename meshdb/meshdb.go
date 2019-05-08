@@ -56,7 +56,7 @@ type MiniHeadersCollection struct {
 // OrdersCollection represents a DB collection of 0x orders
 type OrdersCollection struct {
 	*db.Collection
-	SaltIndex                            *db.Index
+	MakerAddressAndSaltIndex             *db.Index
 	MakerAddressTokenAddressTokenIDIndex *db.Index
 }
 
@@ -83,7 +83,7 @@ func NewMeshDB(path string) (*MeshDB, error) {
 
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
-	saltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
+	makerAddressAndSaltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
@@ -118,7 +118,7 @@ func setupOrders(database *db.DB) *OrdersCollection {
 	return &OrdersCollection{
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
-		SaltIndex:                            saltIndex,
+		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
 	}
 }
 
@@ -187,7 +187,7 @@ func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order
 func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
 	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), salt.String()))
-	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.RangeFilter(start, limit)
+	filter := m.Orders.MakerAddressAndSaltIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	err := m.Orders.NewQuery(filter).Run(&orders)
 	if err != nil {
