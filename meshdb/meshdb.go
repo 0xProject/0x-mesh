@@ -84,7 +84,11 @@ func NewMeshDB(path string) (*MeshDB, error) {
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
 	saltIndex := col.AddIndex("salt", func(m db.Model) []byte {
-		return m.(*Order).SignedOrder.Salt.Bytes()
+		// By default, the index is sorted in byte order. In order to sort by
+		// numerical order, we need to pad with zeroes. The maximum length of an
+		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
+		// length of the number is always 80.
+		return []byte(fmt.Sprintf("%80s", m.(*Order).SignedOrder.Salt.String()))
 	})
 	// TODO(fabio): Optimize this index callback since it gets called many times under-the-hood.
 	// We might want to parse the assetData once and store it's components in the DB. The trade-off
