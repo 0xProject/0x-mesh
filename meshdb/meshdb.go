@@ -84,7 +84,7 @@ func NewMeshDB(path string) (*MeshDB, error) {
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
 	saltIndex := col.AddIndex("salt", func(m db.Model) []byte {
-		return []byte(fmt.Sprint(m.(*Order).SignedOrder.Salt))
+		return m.(*Order).SignedOrder.Salt.Bytes()
 	})
 	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
