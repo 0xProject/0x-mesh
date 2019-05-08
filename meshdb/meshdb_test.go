@@ -20,14 +20,15 @@ func TestOrderCRUDOperations(t *testing.T) {
 
 	makerAddress := common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d")
 	// makerTokenAddress := common.HexToAddress("0x34d402f14d58e001d8efbe6585051bf9706aa064")
+	salt := big.NewInt(1548619145450)
 	signedOrder := &zeroex.SignedOrder{
 		MakerAddress:          makerAddress,
 		TakerAddress:          nullAddress,
 		SenderAddress:         nullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-		TakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-		Salt:                  big.NewInt(1548619145450),
+		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+		Salt:                  salt,
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
@@ -52,6 +53,11 @@ func TestOrderCRUDOperations(t *testing.T) {
 	assert.Equal(t, order, foundOrder)
 
 	// Check Indexes [NOT WORKING]
+	// filter := meshDB.Orders.SaltIndex.ValueFilter(salt.Bytes())
+	// foundOrder = &Order{}
+	// meshDB.Orders.NewQuery(filter).Run(foundOrder)
+	// assert.Equal(t, order, foundOrder)
+
 	// prefix := []byte(fmt.Sprintf(makerAddress.Hex(), "|"))
 	// filter := meshDB.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
 	// foundOrder = &Order{}
