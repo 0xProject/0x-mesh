@@ -86,6 +86,9 @@ func setupOrders(database *db.DB) *OrdersCollection {
 	saltIndex := col.AddIndex("salt", func(m db.Model) []byte {
 		return m.(*Order).SignedOrder.Salt.Bytes()
 	})
+	// TODO(fabio): Optimize this index callback since it gets called many times under-the-hood.
+	// We might want to parse the assetData once and store it's components in the DB. The trade-off
+	// here is compute time for storage space.
 	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
 		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerAssetData)
