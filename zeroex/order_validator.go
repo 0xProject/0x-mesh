@@ -225,6 +225,7 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 		minSet = append(minSet, maxTakerAssetFillAmountGivenMakerZRXConstraints)
 	}
 
+	// Add the remaining takerAsset fill amount to the minSet
 	remainingTakerAssetFillAmount := new(big.Int).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
 	minSet = append(minSet, remainingTakerAssetFillAmount)
 
