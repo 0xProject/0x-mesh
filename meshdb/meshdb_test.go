@@ -53,7 +53,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 
 	// Check Indexes [NOT WORKING]
 	// prefix := []byte(fmt.Sprintf(makerAddress.Hex(), "|"))
-	// filter := meshDB.makerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	// filter := meshDB.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
 	// foundOrder = &Order{}
 	// meshDB.Orders.NewQuery(filter).Run(foundOrder)
 	// assert.Equal(t, order, foundOrder)

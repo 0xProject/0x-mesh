@@ -42,16 +42,22 @@ func (o Order) ID() []byte {
 
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
-	database                             *db.DB
-	MiniHeaders                          *MiniHeadersCollection
-	Orders                               *db.Collection
-	makerAddressTokenAddressTokenIDIndex *db.Index
+	database    *db.DB
+	MiniHeaders *MiniHeadersCollection
+	Orders      *OrdersCollection
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
 type MiniHeadersCollection struct {
 	*db.Collection
 	numberIndex *db.Index
+}
+
+// OrdersCollection represents a DB collection of 0x orders
+type OrdersCollection struct {
+	*db.Collection
+	SaltIndex                            *db.Index
+	MakerAddressTokenAddressTokenIDIndex *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -66,22 +72,21 @@ func NewMeshDB(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
-	orders, makerAddressTokenAddressTokenIDIndex := setupOrders(database)
+	orders := setupOrders(database)
 
 	return &MeshDB{
-		database:                             database,
-		MiniHeaders:                          miniHeaders,
-		Orders:                               orders,
-		makerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
+		database:    database,
+		MiniHeaders: miniHeaders,
+		Orders:      orders,
 	}, nil
 }
 
-func setupOrders(database *db.DB) (*db.Collection, *db.Index) {
-	orders := database.NewCollection("order", &Order{})
-	orders.AddIndex("salt", func(m db.Model) []byte {
+func setupOrders(database *db.DB) *OrdersCollection {
+	col := database.NewCollection("order", &Order{})
+	saltIndex := col.AddIndex("salt", func(m db.Model) []byte {
 		return []byte(fmt.Sprint(m.(*Order).SignedOrder.Salt))
 	})
-	makerAddressTokenAddressTokenIDIndex := orders.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
+	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
 		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerAssetData)
 		if err != nil {
@@ -96,7 +101,12 @@ func setupOrders(database *db.DB) (*db.Collection, *db.Index) {
 		}
 		return indexValues
 	})
-	return orders, makerAddressTokenAddressTokenIDIndex
+
+	return &OrdersCollection{
+		Collection:                           col,
+		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
+		SaltIndex:                            saltIndex,
+	}
 }
 
 func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
