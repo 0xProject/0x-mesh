@@ -23,6 +23,7 @@ type Watcher struct {
 	blockSubscription       event.Subscription
 	expirationWatcher       *ExpirationWatcher
 	orderHashToWatchedOrder map[common.Hash]*zeroex.SignedOrder
+	watchedOrdersMux        sync.RWMutex
 	isCleanupWorkerRunning  bool
 	orderValidator          *zeroex.OrderValidator
 	isSetup                 bool
@@ -111,7 +112,9 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 
 	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
+	w.watchedOrdersMux.Lock()
 	w.orderHashToWatchedOrder[orderHash] = signedOrder
+	w.watchedOrdersMux.Unlock()
 
 	return nil
 }
@@ -129,10 +132,11 @@ func (w *Watcher) StartCleanupWorker() {
 
 			// TODO(fabio): Once orders are stored in DB, only fetch orders where lastUpdated field is > X
 			signedOrders := []*zeroex.SignedOrder{}
-			// TODO(fabio): Do we need to put a mutex around accessing orderHashToWatchedOrder?
+			w.watchedOrdersMux.Lock()
 			for _, signedOrder := range w.orderHashToWatchedOrder {
 				signedOrders = append(signedOrders, signedOrder)
 			}
+			w.watchedOrdersMux.Unlock()
 			orderInfos := w.orderValidator.BatchValidate(signedOrders)
 			for orderHash, orderInfo := range orderInfos {
 				// TODO(fabio): Emit all change events
@@ -159,7 +163,9 @@ func (w *Watcher) setupExpirationWatcher() error {
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
 				// TODO(fabio): Emit an event for the expired order
+				w.watchedOrdersMux.Lock()
 				delete(w.orderHashToWatchedOrder, expiredOrder.OrderHash)
+				w.watchedOrdersMux.Unlock()
 				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))
 			}
 		}
