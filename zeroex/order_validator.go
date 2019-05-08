@@ -159,7 +159,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 						orderHashToInfo[orderHash] = OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
-							FillableTakerAssetAmount: o.calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
+							FillableTakerAssetAmount: calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
 							OrderStatus:              OrderStatus(orderInfo.OrderStatus),
 						}
 						continue
@@ -176,7 +176,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	return orderHashToInfo
 }
 
-func (o *OrderValidator) calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
+func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
 	minSet := []*big.Int{}
 
 	// Calculate min of balance & allowance of taker's takerAsset
