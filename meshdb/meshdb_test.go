@@ -59,8 +59,18 @@ func TestOrderCRUDOperations(t *testing.T) {
 	// assert.Equal(t, order, foundOrder)
 
 	// Update
+	modifiedOrder := foundOrder
+	modifiedOrder.FillableTakerAssetAmount = big.NewInt(0)
+	require.NoError(t, meshDB.Orders.Update(modifiedOrder))
+	foundModifiedOrder := &Order{}
+	require.NoError(t, meshDB.Orders.FindByID(modifiedOrder.ID(), foundModifiedOrder))
+	assert.Equal(t, modifiedOrder, foundModifiedOrder)
 
 	// Delete
+	require.NoError(t, meshDB.Orders.Delete(foundModifiedOrder.ID()))
+	nonExistentOrder := &Order{}
+	err = meshDB.Orders.FindByID(foundModifiedOrder.ID(), nonExistentOrder)
+	assert.Equal(t, "leveldb: not found", err.Error())
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
