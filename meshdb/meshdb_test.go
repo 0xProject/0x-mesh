@@ -83,7 +83,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	erc20AssetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
 	singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(erc20AssetData)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(singleAssetDatas))
+	assert.Len(t, singleAssetDatas, 1)
 	expectedAddress := common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32")
 	assert.Equal(t, expectedAddress, singleAssetDatas[0].Address)
 	var expectedTokenID *big.Int
