@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
 func TestGenerateOrderHash(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
