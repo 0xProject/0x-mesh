@@ -52,17 +52,17 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, meshDB.Orders.FindByID(order.ID(), foundOrder))
 	assert.Equal(t, order, foundOrder)
 
-	// Check Indexes [NOT WORKING]
-	// filter := meshDB.Orders.SaltIndex.ValueFilter(salt.Bytes())
-	// foundOrder = &Order{}
-	// meshDB.Orders.NewQuery(filter).Run(foundOrder)
-	// assert.Equal(t, order, foundOrder)
+	// Check Indexes
+	filter := meshDB.Orders.SaltIndex.ValueFilter(salt.Bytes())
+	orders := []*Order{}
+	meshDB.Orders.NewQuery(filter).Run(&orders)
+	assert.Equal(t, []*Order{order}, orders)
 
-	// prefix := []byte(fmt.Sprintf(makerAddress.Hex(), "|"))
-	// filter := meshDB.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
-	// foundOrder = &Order{}
-	// meshDB.Orders.NewQuery(filter).Run(foundOrder)
-	// assert.Equal(t, order, foundOrder)
+	prefix := []byte(makerAddress.Hex() + "|")
+	filter = meshDB.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders = []*Order{}
+	require.NoError(t, meshDB.Orders.NewQuery(filter).Run(&orders))
+	assert.Equal(t, []*Order{order}, orders)
 
 	// Update
 	modifiedOrder := foundOrder
