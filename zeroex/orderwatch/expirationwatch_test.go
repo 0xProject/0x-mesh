@@ -32,6 +32,31 @@ func TestPrunesExpiredOrders(t *testing.T) {
 	assert.Equal(t, expiryEntryOne, pruned[0])
 	assert.Equal(t, expiryEntryTwo, pruned[1])
 }
+
+func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
+	var expirationBuffer int64
+	watcher := NewExpirationWatcher(expirationBuffer)
+
+	current := time.Now().Unix()
+	expiration := current - 3
+	expiryEntryOne := ExpiredOrder{
+		ExpirationTimeSeconds: expiration,
+		OrderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
+	}
+	watcher.Add(expiryEntryOne.ExpirationTimeSeconds, expiryEntryOne.OrderHash)
+
+	expiryEntryTwo := ExpiredOrder{
+		ExpirationTimeSeconds: expiration,
+		OrderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
+	}
+	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
+
+	pruned := watcher.prune()
+	assert.Equal(t, 2, len(pruned), "Pruned the expired order")
+	assert.Equal(t, expiryEntryOne, pruned[0])
+	assert.Equal(t, expiryEntryTwo, pruned[1])
+}
+
 func TestKeepsUnexpiredOrder(t *testing.T) {
 	var expirationBuffer int64
 	watcher := NewExpirationWatcher(expirationBuffer)
@@ -50,6 +75,54 @@ func TestReturnsEmptyIfNoOrders(t *testing.T) {
 
 	pruned := watcher.prune()
 	assert.Equal(t, 0, len(pruned), "Returns empty array when no orders tracked")
+}
+
+func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
+	var expirationBuffer int64
+	watcher := NewExpirationWatcher(expirationBuffer)
+
+	current := time.Now().Unix()
+	expiryEntryOne := ExpiredOrder{
+		ExpirationTimeSeconds: current - 3,
+		OrderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
+	}
+	watcher.Add(expiryEntryOne.ExpirationTimeSeconds, expiryEntryOne.OrderHash)
+
+	expiryEntryTwo := ExpiredOrder{
+		ExpirationTimeSeconds: current - 1,
+		OrderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
+	}
+	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
+
+	watcher.Remove(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
+
+	pruned := watcher.prune()
+	assert.Equal(t, 1, len(pruned), "Pruned the expired order")
+	assert.Equal(t, expiryEntryOne, pruned[0])
+}
+func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
+	var expirationBuffer int64
+	watcher := NewExpirationWatcher(expirationBuffer)
+
+	current := time.Now().Unix()
+	singleExpirationTimeSeconds := current - 3
+	expiryEntryOne := ExpiredOrder{
+		ExpirationTimeSeconds: singleExpirationTimeSeconds,
+		OrderHash:             common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"),
+	}
+	watcher.Add(expiryEntryOne.ExpirationTimeSeconds, expiryEntryOne.OrderHash)
+
+	expiryEntryTwo := ExpiredOrder{
+		ExpirationTimeSeconds: singleExpirationTimeSeconds,
+		OrderHash:             common.HexToHash("0x12ab7edd34515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d3bee521"),
+	}
+	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
+
+	watcher.Remove(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
+
+	pruned := watcher.prune()
+	assert.Equal(t, 1, len(pruned), "Pruned the expired order")
+	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 
 func TestStartsAndStopsPoller(t *testing.T) {
