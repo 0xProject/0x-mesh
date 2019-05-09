@@ -19,6 +19,8 @@ import (
 // is created.
 var counter int64 = -1
 
+const testTopic = "0x-mesh-testing"
+
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
 // messages valid and doesn't actually store or share any messages.
 type dummyMessageHandler struct{}
@@ -39,7 +41,7 @@ func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
 // purposes.
 func newTestNode(t *testing.T) *Node {
 	config := Config{
-		Topic:          "0x-mesh-testing",
+		Topic:          testTopic,
 		ListenPort:     0, // Let OS randomly choose an open port.
 		Insecure:       true,
 		RandSeed:       atomic.AddInt64(&counter, 1),
@@ -50,18 +52,24 @@ func newTestNode(t *testing.T) *Node {
 	return node
 }
 
-func TestPingPong(t *testing.T) {
+func createTwoConnectedTestNodes(t *testing.T) (*Node, *Node) {
 	// Create two nodes and add each one to the other's peerstore and connect
-	// them. Note that the connection is symmetrical so we only need to establish
-	// one connection.
+	// them.
 	node0 := newTestNode(t)
 	node1 := newTestNode(t)
 	node0.host.Peerstore().AddAddrs(node1.host.ID(), node1.host.Addrs(), peerstore.PermanentAddrTTL)
 	node1.host.Peerstore().AddAddrs(node0.host.ID(), node0.host.Addrs(), peerstore.PermanentAddrTTL)
 	node1PeerInfo := node0.host.Peerstore().PeerInfo(node1.host.ID())
+	node0PeerInfo := node1.host.Peerstore().PeerInfo(node0.host.ID())
 	connectContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	require.NoError(t, node0.host.Connect(connectContext, node1PeerInfo))
+	require.NoError(t, node1.host.Connect(connectContext, node0PeerInfo))
+	return node0, node1
+}
+
+func TestPingPong(t *testing.T) {
+	node0, node1 := createTwoConnectedTestNodes(t)
 	defer node0.Close()
 	defer node1.Close()
 
@@ -155,22 +163,11 @@ func (mh *inMemoryMessageHandler) GetMessagesToShare(max int) ([][]byte, error) 
 }
 
 func TestMessagesAreShared(t *testing.T) {
-	// Create two nodes and add each one to the other's peerstore and connect
-	// them. Note that the connection is symmetrical so we only need to establish
-	// one connection.
-	node0 := newTestNode(t)
-	node1 := newTestNode(t)
-	node0.host.Peerstore().AddAddrs(node1.host.ID(), node1.host.Addrs(), peerstore.PermanentAddrTTL)
-	node1.host.Peerstore().AddAddrs(node0.host.ID(), node0.host.Addrs(), peerstore.PermanentAddrTTL)
-	node1PeerInfo := node0.host.Peerstore().PeerInfo(node1.host.ID())
-	connectContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	require.NoError(t, node0.host.Connect(connectContext, node1PeerInfo))
+	node0, node1 := createTwoConnectedTestNodes(t)
 	defer node0.Close()
 	defer node1.Close()
 
 	// Set up special MessageHandlers for testing purposes.
-
 	// oddMessageHandler only considers messages valid if the first byte is odd.
 	oddMessageHandler := newInMemoryMessageHandler(func(msg *Message) (bool, error) {
 		if len(msg.Data) < 1 {
