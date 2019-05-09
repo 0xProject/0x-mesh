@@ -23,11 +23,11 @@ var counter int64 = -1
 // messages valid and doesn't actually store or share any messages.
 type dummyMessageHandler struct{}
 
-func (*dummyMessageHandler) Validate(*Message) (bool, error) {
-	return true, nil
+func (*dummyMessageHandler) Validate(messages []*Message) ([]*Message, error) {
+	return messages, nil
 }
 
-func (*dummyMessageHandler) Store(*Message) error {
+func (*dummyMessageHandler) Store([]*Message) error {
 	return nil
 }
 
@@ -102,23 +102,40 @@ func newInMemoryMessageHandler(validator func(*Message) (bool, error)) *inMemory
 	}
 }
 
-func (mh *inMemoryMessageHandler) Validate(msg *Message) (bool, error) {
-	return mh.validator(msg)
-}
-
-func (mh *inMemoryMessageHandler) Store(msg *Message) error {
-	for _, existing := range mh.messages {
-		if bytes.Compare(existing.Data, msg.Data) == 0 {
-			// Don't need to store. Already in existing messages.
-			return nil
+func (mh *inMemoryMessageHandler) Validate(messages []*Message) ([]*Message, error) {
+	validMessages := []*Message{}
+	for _, msg := range messages {
+		valid, err := mh.validator(msg)
+		if err != nil {
+			return nil, err
+		}
+		if valid {
+			validMessages = append(validMessages, msg)
 		}
 	}
-	// append the new message and keep the list of messages sorted for easy
-	// testing.
-	mh.messages = append(mh.messages, msg)
-	sort.Slice(mh.messages, func(i int, j int) bool {
-		return bytes.Compare(mh.messages[i].Data, mh.messages[j].Data) == -1
-	})
+	return validMessages, nil
+}
+
+func (mh *inMemoryMessageHandler) Store(messages []*Message) error {
+	for _, msg := range messages {
+		found := false
+		for _, existing := range mh.messages {
+			if bytes.Compare(existing.Data, msg.Data) == 0 {
+				found = true
+				break
+			}
+		}
+		if found {
+			// Don't need to store. Already in existing messages.
+			continue
+		}
+		// append the new message and keep the list of messages sorted for easy
+		// testing.
+		mh.messages = append(mh.messages, msg)
+		sort.Slice(mh.messages, func(i int, j int) bool {
+			return bytes.Compare(mh.messages[i].Data, mh.messages[j].Data) == -1
+		})
+	}
 	return nil
 }
 

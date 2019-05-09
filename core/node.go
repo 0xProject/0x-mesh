@@ -5,7 +5,6 @@ package core
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +16,6 @@ import (
 	host "github.com/libp2p/go-libp2p-host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
-	logger "github.com/sirupsen/logrus"
 )
 
 const (
@@ -199,18 +197,12 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 // message in messages one at a time. It only attempts to store messages that
 // are valid.
 func (n *Node) validateAndStoreMessages(messages []*Message) error {
-	for _, msg := range messages {
-		valid, err := n.messageHandler.Validate(msg)
-		if err != nil {
-			return err
-		}
-		if !valid {
-			logger.WithField("data", hex.Dump(msg.Data)).Warn("invalid message")
-			continue
-		}
-		if err := n.messageHandler.Store(msg); err != nil {
-			return fmt.Errorf("could not store message: %s", err.Error())
-		}
+	validMessages, err := n.messageHandler.Validate(messages)
+	if err != nil {
+		return err
+	}
+	if err := n.messageHandler.Store(validMessages); err != nil {
+		return fmt.Errorf("could not store message: %s", err.Error())
 	}
 	return nil
 }
