@@ -53,8 +53,13 @@ func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
 
 	pruned := watcher.prune()
 	assert.Equal(t, 2, len(pruned), "Pruned the expired order")
-	assert.Equal(t, expiryEntryOne, pruned[0])
-	assert.Equal(t, expiryEntryTwo, pruned[1])
+	orderHashes := map[common.Hash]bool{
+		expiryEntryOne.OrderHash: true,
+		expiryEntryTwo.OrderHash: true,
+	}
+	for _, expiredOrder := range pruned {
+		assert.True(t, orderHashes[expiredOrder.OrderHash])
+	}
 }
 
 func TestKeepsUnexpiredOrder(t *testing.T) {
