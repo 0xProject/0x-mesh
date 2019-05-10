@@ -63,8 +63,12 @@ func main() {
 		log.WithField("err", err.Error()).Fatal("could not initialize app")
 	}
 	if err := app.start(); err != nil {
-		log.WithField("err", err.Error()).Fatal("fatal error")
+		log.WithField("err", err.Error()).Fatal("fatal error while starting app")
 	}
+	defer app.close()
+	// TODO(albrow): Really we shouldn't exit main unless there's a fatal error.
+	// This is just here as an ad hoc test to make sure close works correctly.
+	time.Sleep(30 * time.Second)
 }
 
 func newApp() (*application, error) {
@@ -101,7 +105,9 @@ func newApp() (*application, error) {
 		StartBlockDepth:     rpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,
-		// TODO(albrow): What should Topics be?
+		// TODO: The order watcher (and any other watchers that use
+		// blockwatch.Watcher should register topics so that main.go isn't
+		// responsible for it.
 		Topics: nil,
 		Client: blockWatcherClient,
 	}
@@ -116,6 +122,7 @@ func newApp() (*application, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO(albrow): Call Watch for all existing orders in the database.
 
 	// Initialize the ETH balance watcher (but don't start it yet).
 	ethBalanceCheckerAddress, err := getETHBalanceCheckerAddressForNetwork(env.EthereumNetworkID)
@@ -126,6 +133,7 @@ func newApp() (*application, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO(albrow): Call Add for all existing makers/signers in the database.
 
 	// Initialize the order validator
 	orderValidator, err := zeroex.NewOrderValidator(orderValidatorAddress, ethClient)
@@ -191,6 +199,9 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	if err := app.db.Orders.FindAll(&allOrders); err != nil {
 		return nil, err
 	}
+	if len(allOrders) == 0 {
+		return nil, nil
+	}
 	start := rand.Intn(len(allOrders))
 	end := start + max
 	if end > len(allOrders) {
@@ -250,6 +261,8 @@ func (app *application) Validate(messages []*core.Message) ([]*core.Message, err
 	return validMessages, nil
 }
 
+// TODO(albrow): Combine Validate and Store methods so we can store orders with
+// the correct RemainingFillableAmount.
 func (app *application) Store(messages []*core.Message) error {
 	for _, msg := range messages {
 		order, err := decodeOrder(msg.Data)
@@ -260,7 +273,6 @@ func (app *application) Store(messages []*core.Message) error {
 		if err != nil {
 			return err
 		}
-		// Calling Watch implicitly stores the order.
 		if err := app.orderWatcher.Watch(order, orderHash); err != nil {
 			return err
 		}
@@ -269,8 +281,39 @@ func (app *application) Store(messages []*core.Message) error {
 }
 
 func (app *application) start() error {
-	// TODO(albrow): Implement this.
+	go func() {
+		err := app.node.Start()
+		if err != nil {
+			app.close()
+		}
+	}()
+
+	// TODO(albrow) we might want to match the synchronous API of core.Node which
+	// returns any fatal errors. As it currently stands, if one of these watchers
+	// experiences a fatal error or crashes, it is difficult for us to tear down
+	// correctly.
+	if err := app.blockWatcher.StartPolling(); err != nil {
+		return err
+	}
+	if err := app.orderWatcher.Start(); err != nil {
+		return err
+	}
+	if err := app.ethWathcher.Start(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (app *application) close() {
+	if err := app.node.Close(); err != nil {
+		log.WithField("err", err.Error()).Error("error while closing node")
+	}
+	app.ethWathcher.Stop()
+	if err := app.orderWatcher.Stop(); err != nil {
+		log.WithField("err", err.Error()).Error("error while closing orderWatcher")
+	}
+	app.blockWatcher.StopPolling()
+	app.db.Close()
 }
 
 type orderMessage struct {
