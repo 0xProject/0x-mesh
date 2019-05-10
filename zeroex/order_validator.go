@@ -187,17 +187,6 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
 	minSet := []*big.Int{}
 
-	// Calculate min of balance & allowance of taker's takerAsset
-	if signedOrder.TakerAddress != nullAddress {
-		var maxTakerAssetFillAmountGivenTakerConstraints *big.Int
-		if traderInfo.TakerBalance.Cmp(traderInfo.TakerAllowance) == -1 {
-			maxTakerAssetFillAmountGivenTakerConstraints = traderInfo.TakerBalance
-		} else {
-			maxTakerAssetFillAmountGivenTakerConstraints = traderInfo.TakerAllowance
-		}
-		minSet = append(minSet, maxTakerAssetFillAmountGivenTakerConstraints)
-	}
-
 	// Calculate min of balance & allowance of makers makerAsset -> translate into takerAsset amount
 	var maxMakerAssetFillAmount *big.Int
 	if traderInfo.MakerBalance.Cmp(traderInfo.MakerAllowance) == -1 {
@@ -208,18 +197,6 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 	maxTakerAssetFillAmountGivenMakerConstraints := new(big.Int).Div(new(big.Int).Mul(maxMakerAssetFillAmount, signedOrder.TakerAssetAmount), signedOrder.MakerAssetAmount)
 
 	minSet = append(minSet, maxTakerAssetFillAmountGivenMakerConstraints)
-
-	// Calculate min of balance & allowance of taker's ZRX -> translate into takerAsset amount
-	if signedOrder.TakerFee.Cmp(big.NewInt(0)) != 0 {
-		var takerZRXAvailable *big.Int
-		if traderInfo.TakerZrxBalance.Cmp(traderInfo.TakerZrxAllowance) == -1 {
-			takerZRXAvailable = traderInfo.TakerZrxBalance
-		} else {
-			takerZRXAvailable = traderInfo.TakerZrxAllowance
-		}
-		maxTakerAssetFillAmountGivenTakerZRXConstraints := new(big.Int).Div(new(big.Int).Mul(takerZRXAvailable, signedOrder.TakerAssetAmount), signedOrder.TakerFee)
-		minSet = append(minSet, maxTakerAssetFillAmountGivenTakerZRXConstraints)
-	}
 
 	// Calculate min of balance & allowance of maker's ZRX -> translate into takerAsset amount
 	if signedOrder.MakerFee.Cmp(big.NewInt(0)) != 0 {

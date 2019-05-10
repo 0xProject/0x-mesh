@@ -117,10 +117,6 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 	if err != nil {
 		return err
 	}
-	err = w.addAssetDataAddressToEventDecoder(signedOrder.TakerAssetData)
-	if err != nil {
-		return err
-	}
 
 	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
