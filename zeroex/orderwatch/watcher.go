@@ -1,6 +1,7 @@
 package orderwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -32,7 +33,8 @@ type Watcher struct {
 	expirationWatcher       *ExpirationWatcher
 	orderHashToWatchedOrder map[common.Hash]*zeroex.SignedOrder
 	watchedOrdersMux        sync.RWMutex
-	isCleanupWorkerRunning  bool
+	cleanupCtx              context.Context
+	cleanupCancelFunc       context.CancelFunc
 	orderValidator          *zeroex.OrderValidator
 	isSetup                 bool
 	setupMux                sync.RWMutex
@@ -52,12 +54,14 @@ func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderVal
 	if err != nil {
 		return nil, err
 	}
+	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
 	var expirationBuffer int64 = 0
 	return &Watcher{
 		blockWatcher:            blockWatcher,
 		expirationWatcher:       NewExpirationWatcher(expirationBuffer),
 		orderHashToWatchedOrder: map[common.Hash]*zeroex.SignedOrder{},
-		isCleanupWorkerRunning:  false,
+		cleanupCtx:              cleanupCtx,
+		cleanupCancelFunc:       cleanupCancelFunc,
 		orderValidator:          orderValidator,
 		eventDecoder:            decoder,
 		assetDataDecoder:        assetDataDecoder,
@@ -79,7 +83,7 @@ func (w *Watcher) Start() error {
 		return err
 	}
 
-	w.StartCleanupWorker()
+	w.startCleanupWorker()
 
 	w.isSetup = true
 	return nil
@@ -101,7 +105,7 @@ func (w *Watcher) Stop() error {
 	w.expirationWatcher.Stop()
 
 	// Stop cleanup worker
-	w.StopCleanupWorker()
+	w.stopCleanupWorker()
 	return nil
 }
 
@@ -127,13 +131,13 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 	return nil
 }
 
-// StartCleanupWorker starts the cleanup workers polling loop
-func (w *Watcher) StartCleanupWorker() {
-	w.isCleanupWorkerRunning = true
+func (w *Watcher) startCleanupWorker() {
 	go func() {
 		for {
-			if !w.isCleanupWorkerRunning {
+			select {
+			case <-w.cleanupCtx.Done():
 				return
+			default:
 			}
 
 			start := time.Now()
@@ -160,9 +164,8 @@ func (w *Watcher) StartCleanupWorker() {
 	}()
 }
 
-// StopCleanupWorker stops the cleanup worker
-func (w *Watcher) StopCleanupWorker() {
-	w.isCleanupWorkerRunning = false
+func (w *Watcher) stopCleanupWorker() {
+	w.cleanupCancelFunc()
 }
 
 func (w *Watcher) setupExpirationWatcher() error {
