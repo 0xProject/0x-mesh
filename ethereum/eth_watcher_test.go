@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xProject/0x-mesh/configs"
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -41,7 +41,7 @@ var ethAccountToBalance = map[common.Address]*big.Int{
 var pollingInterval = 100 * time.Millisecond
 
 func TestAddingAddressToETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
@@ -61,7 +61,7 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 }
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
@@ -88,7 +88,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	}
 }
 func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
@@ -118,7 +118,7 @@ func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
 	}
 }
 func TestStartStopETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)

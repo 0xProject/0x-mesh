@@ -25,6 +25,9 @@ var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc9
 // The most orders we can validate in a single eth_call without having the request timeout
 const chunkSize = 500
 
+// The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
+const getOrdersAndTradersInfoTimeout = 15 * time.Second
+
 // Specifies the max number of eth_call requests we want to make concurrently.
 // Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
@@ -116,7 +119,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 			for {
 				// Pass a context with a 15 second timeout to `GetOrdersAndTradersInfo` in order to avoid
 				// any one request from taking longer then 15 seconds
-				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), getOrdersAndTradersInfoTimeout)
 				defer cancel()
 				opts := &bind.CallOpts{
 					Pending: false,
@@ -133,6 +136,11 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
+						log.WithFields(log.Fields{
+							"err":            err.Error(),
+							"orders":         params.Orders,
+							"takerAddresses": params.TakerAddresses,
+						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
 						return // Give up after 4 attempts
 					}
 					time.Sleep(d)

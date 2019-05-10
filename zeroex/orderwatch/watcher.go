@@ -1,19 +1,28 @@
 package orderwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
-	"github.com/0xProject/0x-mesh/configs"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
+
+// minCleanupInterval specified the minimum amount of time between orderbook cleanup intervals. These
+// cleanups are meant to catch any stale orders that somehow were not caught by the event watcher
+// process.
+var minCleanupInterval = 1 * time.Hour
+
+// expirationPollingInterval specifies the interval in which the order watcher should check for expired
+// orders
+var expirationPollingInterval = 50 * time.Millisecond
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
@@ -24,7 +33,8 @@ type Watcher struct {
 	expirationWatcher       *ExpirationWatcher
 	orderHashToWatchedOrder map[common.Hash]*zeroex.SignedOrder
 	watchedOrdersMux        sync.RWMutex
-	isCleanupWorkerRunning  bool
+	cleanupCtx              context.Context
+	cleanupCancelFunc       context.CancelFunc
 	orderValidator          *zeroex.OrderValidator
 	isSetup                 bool
 	setupMux                sync.RWMutex
@@ -44,12 +54,14 @@ func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderVal
 	if err != nil {
 		return nil, err
 	}
+	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
 	var expirationBuffer int64 = 0
 	return &Watcher{
 		blockWatcher:            blockWatcher,
 		expirationWatcher:       NewExpirationWatcher(expirationBuffer),
 		orderHashToWatchedOrder: map[common.Hash]*zeroex.SignedOrder{},
-		isCleanupWorkerRunning:  false,
+		cleanupCtx:              cleanupCtx,
+		cleanupCancelFunc:       cleanupCancelFunc,
 		orderValidator:          orderValidator,
 		eventDecoder:            decoder,
 		assetDataDecoder:        assetDataDecoder,
@@ -71,7 +83,7 @@ func (w *Watcher) Start() error {
 		return err
 	}
 
-	w.StartCleanupWorker()
+	w.startCleanupWorker()
 
 	w.isSetup = true
 	return nil
@@ -93,7 +105,7 @@ func (w *Watcher) Stop() error {
 	w.expirationWatcher.Stop()
 
 	// Stop cleanup worker
-	w.StopCleanupWorker()
+	w.stopCleanupWorker()
 	return nil
 }
 
@@ -119,13 +131,13 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 	return nil
 }
 
-// StartCleanupWorker starts the cleanup workers polling loop
-func (w *Watcher) StartCleanupWorker() {
-	w.isCleanupWorkerRunning = true
+func (w *Watcher) startCleanupWorker() {
 	go func() {
 		for {
-			if !w.isCleanupWorkerRunning {
+			select {
+			case <-w.cleanupCtx.Done():
 				return
+			default:
 			}
 
 			start := time.Now()
@@ -147,14 +159,13 @@ func (w *Watcher) StartCleanupWorker() {
 			// Wait MinCleanupInterval before calling ValidateOrders again. Since
 			// we only start sleeping _after_ ValidateOrders completes, we will never
 			// have multiple calls to ValidateOrders running in parallel
-			time.Sleep(configs.MinCleanupInterval - time.Since(start))
+			time.Sleep(minCleanupInterval - time.Since(start))
 		}
 	}()
 }
 
-// StopCleanupWorker stops the cleanup worker
-func (w *Watcher) StopCleanupWorker() {
-	w.isCleanupWorkerRunning = false
+func (w *Watcher) stopCleanupWorker() {
+	w.cleanupCancelFunc()
 }
 
 func (w *Watcher) setupExpirationWatcher() error {
@@ -171,7 +182,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 		}
 	}()
 
-	return w.expirationWatcher.Start(configs.ExpirationPollingInterval)
+	return w.expirationWatcher.Start(expirationPollingInterval)
 }
 
 func (w *Watcher) setupEventWatcher() {

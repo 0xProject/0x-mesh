@@ -1,9 +1,7 @@
-// Mostly code generated - DO NOT EDIT (mostly).
+// Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 // Fabio: This file was generated with a fork of `go-ethereum` that added
 // ABIV2 support: https://github.com/ethereum/go-ethereum/pull/18491.
-// I also renamed the generated structs from Struct1, Struct2, Struct3 to
-// OrderWithoutExchangeAddress, TraderInfo, OrderInfo respectively.
 
 package wrappers
 
@@ -176,8 +174,8 @@ func (_OrderValidator *OrderValidatorTransactorRaw) Transact(opts *bind.Transact
 	return _OrderValidator.Contract.contract.Transact(opts, method, params...)
 }
 
-// OrderWithoutExchangeAddress is a 0x order representation expected by the smart contracts.
-type OrderWithoutExchangeAddress struct {
+// Struct1 is an auto-generated struct
+type Struct1 struct {
 	MakerAddress          common.Address
 	TakerAddress          common.Address
 	FeeRecipientAddress   common.Address
@@ -192,8 +190,8 @@ type OrderWithoutExchangeAddress struct {
 	TakerAssetData        []byte
 }
 
-// TraderInfo contains all the order-relevant trader balances & allowances.
-type TraderInfo struct {
+// Struct2 is an auto-generated struct
+type Struct2 struct {
 	MakerBalance      *big.Int
 	MakerAllowance    *big.Int
 	TakerBalance      *big.Int
@@ -204,8 +202,8 @@ type TraderInfo struct {
 	TakerZrxAllowance *big.Int
 }
 
-// OrderInfo contains the status and filled amount of an order.
-type OrderInfo struct {
+// Struct3 is an auto-generated struct
+type Struct3 struct {
 	OrderStatus                 uint8
 	OrderHash                   [32]byte
 	OrderTakerAssetFilledAmount *big.Int

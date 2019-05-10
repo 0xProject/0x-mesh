@@ -50,10 +50,10 @@ func (e *ExpirationWatcher) Add(expirationTimeSeconds int64, orderHash common.Ha
 	defer e.rbTreeMu.Unlock()
 	value, ok := e.rbTree.Get(&key)
 	if !ok {
-		e.rbTree.Insert(&key, map[common.Hash]bool{orderHash: true})
+		e.rbTree.Insert(&key, map[common.Hash]struct{}{orderHash: struct{}{}})
 	} else {
-		orderHashes := value.(map[common.Hash]bool)
-		orderHashes[orderHash] = true
+		orderHashes := value.(map[common.Hash]struct{})
+		orderHashes[orderHash] = struct{}{}
 		e.rbTree.Insert(&key, orderHashes)
 	}
 }
@@ -70,7 +70,7 @@ func (e *ExpirationWatcher) Remove(expirationTimeSeconds int64, orderHash common
 		}).Warning("Attempted to remove order from ExpirationWatcher that did not exist")
 		return // Noop
 	} else {
-		orderHashes := value.(map[common.Hash]bool)
+		orderHashes := value.(map[common.Hash]struct{})
 		delete(orderHashes, orderHash)
 		if len(orderHashes) == 0 {
 			e.rbTree.Delete(&key)
@@ -146,7 +146,7 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 		if expirationTimeSeconds > currentTimestamp+e.expirationBuffer {
 			break
 		}
-		orderHashes := value.(map[common.Hash]bool)
+		orderHashes := value.(map[common.Hash]struct{})
 		for orderHash := range orderHashes {
 			pruned = append(pruned, ExpiredOrder{
 				ExpirationTimeSeconds: expirationTimeSeconds,
