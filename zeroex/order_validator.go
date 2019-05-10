@@ -136,6 +136,11 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
+						log.WithFields(log.Fields{
+							"err":            err.Error(),
+							"orders":         params.Orders,
+							"takerAddresses": params.TakerAddresses,
+						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
 						return // Give up after 4 attempts
 					}
 					time.Sleep(d)
