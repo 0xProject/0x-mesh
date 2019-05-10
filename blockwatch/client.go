@@ -26,13 +26,10 @@ type RpcClient struct {
 	requestTimeout time.Duration
 }
 
-// NewRpcClient returns a new Client for fetching Ethereum blocks from a supplied JSON-RPC endpoint.
-func NewRpcClient(rpcURL string, requestTimeout time.Duration) (*RpcClient, error) {
-	client, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	return &RpcClient{client, requestTimeout}, nil
+// NewRpcClient returns a new Client for fetching Ethereum blocks using the given
+// ethclient.Client.
+func NewRpcClient(ethClient *ethclient.Client, requestTimeout time.Duration) (*RpcClient, error) {
+	return &RpcClient{ethClient, requestTimeout}, nil
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
