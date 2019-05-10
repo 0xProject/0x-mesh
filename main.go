@@ -1,12 +1,16 @@
+// +build !js
+
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -33,9 +37,9 @@ type meshEnvVars struct {
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
-	// ETHBalanceCheckerAddress is the hex-encoded address of the ETH balance
-	// checker smart contract.
-	ETHBalanceCheckerAddress string `envvar:"ETH_BALANCE_CHECKER_ADDRESS"`
+	// EthereumNetworkID is the network ID to use when communicating with
+	// Ethereum.
+	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
 }
 
 type application struct {
@@ -76,8 +80,14 @@ func newApp() (*application, error) {
 		return nil, err
 	}
 
+	// Initialize the ETH client, which will be used by various watchers.
+	ethClient, err := ethclient.Dial(env.EthereumRPCURL)
+	if err != nil {
+		return nil, err
+	}
+
 	// Initialize block watcher (but don't start it yet).
-	rpcClient, err := blockwatch.NewRpcClient(env.EthereumRPCURL, ethereumRPCRequestTimeout)
+	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient, ethereumRPCRequestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -91,22 +101,25 @@ func newApp() (*application, error) {
 		WithLogs:            true,
 		// TODO(albrow): What should Topics be?
 		Topics: nil,
-		Client: rpcClient,
+		Client: blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(blockWatcher, rpcClient)
+	orderValidatorAddress, err := getOrderValidatorAddressForNetwork(env.EthereumNetworkID)
+	if err != nil {
+		return nil, err
+	}
+	orderWatcher, err := orderwatch.New(blockWatcher, ethClient, orderValidatorAddress)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethClient, err := ethclient.Dial(env.EthereumRPCURL)
+	ethBalanceCheckerAddress, err := getETHBalanceCheckerAddressForNetwork(env.EthereumNetworkID)
 	if err != nil {
 		return nil, err
 	}
-	ethBalanceCheckerAddress := common.HexToAddress(env.ETHBalanceCheckerAddress)
 	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, ethBalanceCheckerAddress)
 	if err != nil {
 		return nil, err
@@ -135,6 +148,28 @@ func newApp() (*application, error) {
 	app.node = node
 
 	return app, nil
+}
+
+func getETHBalanceCheckerAddressForNetwork(networkID int) (common.Address, error) {
+	switch networkID {
+	case 1:
+		return ethereum.MainnetEthBalanceCheckerAddress, nil
+	case 50:
+		return ethereum.GanacheEthBalanceCheckerAddress, nil
+	default:
+		return [common.AddressLength]byte{}, fmt.Errorf("unknown or unsupported network id: %d", networkID)
+	}
+}
+
+func getOrderValidatorAddressForNetwork(networkID int) (common.Address, error) {
+	switch networkID {
+	case 1:
+		return zeroex.MainnetOrderValidatorAddress, nil
+	case 50:
+		return zeroex.GanacheOrderValidatorAddress, nil
+	default:
+		return [common.AddressLength]byte{}, fmt.Errorf("unknown or unsupported network id: %d", networkID)
+	}
 }
 
 func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
