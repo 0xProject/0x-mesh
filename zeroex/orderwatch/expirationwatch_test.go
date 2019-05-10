@@ -28,7 +28,7 @@ func TestPrunesExpiredOrders(t *testing.T) {
 	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
 
 	pruned := watcher.prune()
-	assert.Equal(t, 2, len(pruned), "Pruned the expired order")
+	assert.Len(t, pruned, 2, "Pruned the expired order")
 	assert.Equal(t, expiryEntryOne, pruned[0])
 	assert.Equal(t, expiryEntryTwo, pruned[1])
 }
@@ -52,7 +52,7 @@ func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
 	watcher.Add(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
 
 	pruned := watcher.prune()
-	assert.Equal(t, 2, len(pruned), "Pruned the expired order")
+	assert.Len(t, pruned, 2, "Pruned the expired order")
 	orderHashes := map[common.Hash]bool{
 		expiryEntryOne.OrderHash: true,
 		expiryEntryTwo.OrderHash: true,
@@ -79,7 +79,7 @@ func TestReturnsEmptyIfNoOrders(t *testing.T) {
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pruned := watcher.prune()
-	assert.Equal(t, 0, len(pruned), "Returns empty array when no orders tracked")
+	assert.Len(t, pruned, 0, "Returns empty array when no orders tracked")
 }
 
 func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
@@ -102,7 +102,7 @@ func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
 	watcher.Remove(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
 
 	pruned := watcher.prune()
-	assert.Equal(t, 1, len(pruned), "Pruned the expired order")
+	assert.Len(t, pruned, 1, "Pruned the expired order")
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
@@ -126,7 +126,7 @@ func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
 	watcher.Remove(expiryEntryTwo.ExpirationTimeSeconds, expiryEntryTwo.OrderHash)
 
 	pruned := watcher.prune()
-	assert.Equal(t, 1, len(pruned), "Pruned the expired order")
+	assert.Len(t, pruned, 1, "Pruned the expired order")
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 
