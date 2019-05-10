@@ -25,7 +25,7 @@ type Watcher struct {
 }
 
 // New instantiates a new order watcher
-func New(blockWatcher *blockwatch.Watcher, rpcClient blockwatch.Client) (*Watcher, error) {
+func New(blockWatcher *blockwatch.Watcher) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
