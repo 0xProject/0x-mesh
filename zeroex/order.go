@@ -4,9 +4,25 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
+)
+
+// OrderStatus represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo
+type OrderStatus uint8
+
+// OrderStatus values
+const (
+	Invalid OrderStatus = iota
+	InvalidMakerAssetAmount
+	InvalidTakerAssetAmount
+	Fillable
+	Expired
+	FullyFilled
+	Cancelled
 )
 
 // SignedOrder represents a signed 0x order
@@ -136,6 +152,26 @@ func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
 	return hash, nil
+}
+
+// ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
+// smart contracts.
+func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {
+	orderWithoutExchangeAddress := wrappers.OrderWithoutExchangeAddress{
+		MakerAddress:          s.MakerAddress,
+		TakerAddress:          s.TakerAddress,
+		FeeRecipientAddress:   s.FeeRecipientAddress,
+		SenderAddress:         s.SenderAddress,
+		MakerAssetAmount:      s.MakerAssetAmount,
+		TakerAssetAmount:      s.TakerAssetAmount,
+		MakerFee:              s.MakerFee,
+		TakerFee:              s.TakerFee,
+		ExpirationTimeSeconds: s.ExpirationTimeSeconds,
+		Salt:                  s.Salt,
+		MakerAssetData:        s.MakerAssetData,
+		TakerAssetData:        s.TakerAssetData,
+	}
+	return orderWithoutExchangeAddress
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.

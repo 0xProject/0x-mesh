@@ -282,6 +282,14 @@
   revision = "b497e2f366b8624394fb2e89c10ab607bebdde0b"
 
 [[projects]]
+  digest = "1:b6bbd2f9e0724bd81890c8644259f920c6d61c08453978faff0bebd25f3e7d3e"
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:447562773a19dc1719359c2cd70d275c62c0b89f79d763f41d5deedb0e69873f"
   name = "github.com/karalabe/hid"
@@ -1036,6 +1044,7 @@
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
+    "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-host",
