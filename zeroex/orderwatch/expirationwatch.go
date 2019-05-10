@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ocdogan/rbt"
+	log "github.com/sirupsen/logrus"
 )
 
 // ExpiredOrder represents an expired order returned from the ExpirationWatcher
@@ -47,7 +48,36 @@ func (e *ExpirationWatcher) Add(expirationTimeSeconds int64, orderHash common.Ha
 	key := rbt.Int64Key(expirationTimeSeconds)
 	e.rbTreeMu.Lock()
 	defer e.rbTreeMu.Unlock()
-	e.rbTree.Insert(&key, orderHash)
+	value, ok := e.rbTree.Get(&key)
+	if !ok {
+		e.rbTree.Insert(&key, map[common.Hash]struct{}{orderHash: struct{}{}})
+	} else {
+		orderHashes := value.(map[common.Hash]struct{})
+		orderHashes[orderHash] = struct{}{}
+		e.rbTree.Insert(&key, orderHashes)
+	}
+}
+
+// Remove removes the order from the expiration watcher
+func (e *ExpirationWatcher) Remove(expirationTimeSeconds int64, orderHash common.Hash) {
+	key := rbt.Int64Key(expirationTimeSeconds)
+	e.rbTreeMu.Lock()
+	defer e.rbTreeMu.Unlock()
+	value, ok := e.rbTree.Get(&key)
+	if !ok {
+		log.WithFields(log.Fields{
+			"orderHash": orderHash,
+		}).Warning("Attempted to remove order from ExpirationWatcher that did not exist")
+		return // Noop
+	} else {
+		orderHashes := value.(map[common.Hash]struct{})
+		delete(orderHashes, orderHash)
+		if len(orderHashes) == 0 {
+			e.rbTree.Delete(&key)
+		} else {
+			e.rbTree.Insert(&key, orderHashes)
+		}
+	}
 }
 
 // Start starts the expiration watchers poller
@@ -116,10 +146,13 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 		if expirationTimeSeconds > currentTimestamp+e.expirationBuffer {
 			break
 		}
-		pruned = append(pruned, ExpiredOrder{
-			ExpirationTimeSeconds: expirationTimeSeconds,
-			OrderHash:             value.(common.Hash),
-		})
+		orderHashes := value.(map[common.Hash]struct{})
+		for orderHash := range orderHashes {
+			pruned = append(pruned, ExpiredOrder{
+				ExpirationTimeSeconds: expirationTimeSeconds,
+				OrderHash:             orderHash,
+			})
+		}
 		e.rbTreeMu.Lock()
 		e.rbTree.Delete(key)
 		e.rbTreeMu.Unlock()
