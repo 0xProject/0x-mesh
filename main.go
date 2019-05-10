@@ -3,10 +3,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"time"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/core"
@@ -16,6 +16,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -45,12 +46,13 @@ type meshEnvVars struct {
 }
 
 type application struct {
-	env          meshEnvVars
-	db           *meshdb.MeshDB
-	node         *core.Node
-	blockWatcher *blockwatch.Watcher
-	orderWatcher *orderwatch.Watcher
-	ethWathcher  *ethereum.ETHWatcher
+	env            meshEnvVars
+	db             *meshdb.MeshDB
+	node           *core.Node
+	blockWatcher   *blockwatch.Watcher
+	orderWatcher   *orderwatch.Watcher
+	ethWathcher    *ethereum.ETHWatcher
+	orderValidator *zeroex.OrderValidator
 }
 
 func main() {
@@ -125,12 +127,19 @@ func newApp() (*application, error) {
 		return nil, err
 	}
 
+	// Initialize the order validator
+	orderValidator, err := zeroex.NewOrderValidator(orderValidatorAddress, ethClient)
+	if err != nil {
+		return nil, err
+	}
+
 	app := &application{
-		env:          env,
-		db:           db,
-		blockWatcher: blockWatcher,
-		orderWatcher: orderWatcher,
-		ethWathcher:  ethWatcher,
+		env:            env,
+		db:             db,
+		blockWatcher:   blockWatcher,
+		orderWatcher:   orderWatcher,
+		ethWathcher:    ethWatcher,
+		orderValidator: orderValidator,
 	}
 
 	// Initialize the core node.
@@ -173,21 +182,117 @@ func getOrderValidatorAddressForNetwork(networkID int) (common.Address, error) {
 }
 
 func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
-	// TODO(albrow): Implement this.
-	return nil, nil
+	// For now, we just select a random set of orders from those we have stored.
+	// TODO(albrow): This could be made more efficient if the db package supported
+	// a `Count` method for counting the number of models in a collection or
+	// counting the number of models that satisfy some query.
+	// TODO: This will need to change when we add support for WeijieSub.
+	var allOrders []*meshdb.Order
+	if err := app.db.Orders.FindAll(&allOrders); err != nil {
+		return nil, err
+	}
+	start := rand.Intn(len(allOrders))
+	end := start + max
+	if end > len(allOrders) {
+		end = len(allOrders)
+	}
+	selectedOrders := allOrders[start:end]
+
+	// After we have selected all the orders to share, we need to encode them to
+	// the message data format.
+	messageData := make([][]byte, len(selectedOrders))
+	for i, order := range selectedOrders {
+		encoded, err := encodeOrder(order.SignedOrder)
+		if err != nil {
+			return nil, err
+		}
+		messageData[i] = encoded
+	}
+	return messageData, nil
 }
 
 func (app *application) Validate(messages []*core.Message) ([]*core.Message, error) {
-	// TODO(albrow): Implement this.
-	return messages, nil
+	orders := []*zeroex.SignedOrder{}
+	orderHashToMessage := map[common.Hash]*core.Message{}
+	for _, msg := range messages {
+		order, err := decodeOrder(msg.Data)
+		if err != nil {
+			return nil, err
+		}
+		orderHash, err := order.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		// Validate doesn't guarantee there are no duplicates so we keep track of
+		// which orders we've already seen.
+		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
+			continue
+		}
+		orders = append(orders, order)
+		orderHashToMessage[orderHash] = msg
+	}
+
+	// Validate the orders in a single batch.
+	orderHashToOrderInfo := app.orderValidator.BatchValidate(orders)
+
+	// Filter out the invalid messages (i.e. messages which correspond to invalid
+	// orders).
+	validMessages := []*core.Message{}
+	for orderHash, msg := range orderHashToMessage {
+		orderInfo, found := orderHashToOrderInfo[orderHash]
+		if !found {
+			continue
+		}
+		if orderInfo.OrderStatus == zeroex.Fillable {
+			validMessages = append(validMessages, msg)
+		}
+	}
+	return validMessages, nil
 }
 
-func (app *application) Store([]*core.Message) error {
-	// TODO(albrow): Implement this.
+func (app *application) Store(messages []*core.Message) error {
+	for _, msg := range messages {
+		order, err := decodeOrder(msg.Data)
+		if err != nil {
+			return err
+		}
+		orderHash, err := order.ComputeOrderHash()
+		if err != nil {
+			return err
+		}
+		// Calling Watch implicitly stores the order.
+		if err := app.orderWatcher.Watch(order, orderHash); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (app *application) start() error {
 	// TODO(albrow): Implement this.
 	return nil
+}
+
+type orderMessage struct {
+	// TODO(albrow): Add additional metadata for the order? Signer?
+	MessageType string
+	Order       *zeroex.SignedOrder
+}
+
+func encodeOrder(order *zeroex.SignedOrder) ([]byte, error) {
+	return json.Marshal(orderMessage{
+		MessageType: "order",
+		Order:       order,
+	})
+}
+
+func decodeOrder(data []byte) (*zeroex.SignedOrder, error) {
+	var orderMessage orderMessage
+	if err := json.Unmarshal(data, &orderMessage); err != nil {
+		return nil, err
+	}
+	if orderMessage.MessageType != "order" {
+		return nil, fmt.Errorf("unexpected message type: %q", orderMessage.MessageType)
+	}
+	return orderMessage.Order, nil
 }
