@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -92,11 +94,9 @@ func newApp() (*application, error) {
 		return nil, err
 	}
 	blockWatcherConfig := blockwatch.Config{
-		MeshDB:          db,
-		PollingInterval: blockWatcherPollingInterval,
-		// TODO(albrow): Start at current block or by checking the database for the
-		// most recent block?
-		StartBlockDepth:     0,
+		MeshDB:              db,
+		PollingInterval:     blockWatcherPollingInterval,
+		StartBlockDepth:     rpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,
 		// TODO(albrow): What should Topics be?
