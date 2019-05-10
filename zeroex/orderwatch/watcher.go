@@ -7,13 +7,21 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
-	"github.com/0xProject/0x-mesh/configs"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
+
+// minCleanupInterval specified the minimum amount of time between orderbook cleanup intervals. These
+// cleanups are meant to catch any stale orders that somehow were not caught by the event watcher
+// process.
+var minCleanupInterval = 1 * time.Hour
+
+// expirationPollingInterval specifies the interval in which the order watcher should check for expired
+// orders
+var expirationPollingInterval = 50 * time.Millisecond
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
@@ -147,7 +155,7 @@ func (w *Watcher) StartCleanupWorker() {
 			// Wait MinCleanupInterval before calling ValidateOrders again. Since
 			// we only start sleeping _after_ ValidateOrders completes, we will never
 			// have multiple calls to ValidateOrders running in parallel
-			time.Sleep(configs.MinCleanupInterval - time.Since(start))
+			time.Sleep(minCleanupInterval - time.Since(start))
 		}
 	}()
 }
@@ -171,7 +179,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 		}
 	}()
 
-	return w.expirationWatcher.Start(configs.ExpirationPollingInterval)
+	return w.expirationWatcher.Start(expirationPollingInterval)
 }
 
 func (w *Watcher) setupEventWatcher() {

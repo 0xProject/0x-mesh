@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/configs"
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -30,7 +30,7 @@ func TestBatchValidate(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(300000000000000),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       configs.GanacheExchangeAddress,
+		ExchangeAddress:       constants.GanacheExchangeAddress,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -40,7 +40,7 @@ func TestBatchValidate(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(configs.GanacheEndpoint)
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	orderValidator, err := NewOrderValidator(GanacheOrderValidatorAddress, ethClient)
@@ -69,7 +69,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		MakerAssetAmount:      makerAssetAmount,
 		TakerAssetAmount:      takerAssetAmount,
 		ExpirationTimeSeconds: big.NewInt(99548619325),
-		ExchangeAddress:       configs.GanacheExchangeAddress,
+		ExchangeAddress:       constants.GanacheExchangeAddress,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()
