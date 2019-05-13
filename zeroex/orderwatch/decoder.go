@@ -197,6 +197,12 @@ func (d *Decoder) AddKnownERC20(address common.Address) {
 	d.knownERC20Addresses[address] = true
 }
 
+// RemoveKnownERC20 removes an ERC20 address from the list of known addresses. We will no longer decode
+// events for this token.
+func (d *Decoder) RemoveKnownERC20(address common.Address) {
+	delete(d.knownERC20Addresses, address)
+}
+
 // AddKnownERC721 registers the supplied contract address as an ERC721 contract. If an event is found
 // from this contract address, the decoder will properly decode the `Transfer` and `Approve` events
 // including the correct event parameter names.
@@ -204,11 +210,23 @@ func (d *Decoder) AddKnownERC721(address common.Address) {
 	d.knownERC721Addresses[address] = true
 }
 
+// RemoveKnownERC721 removes an ERC721 address from the list of known addresses. We will no longer decode
+// events for this token.
+func (d *Decoder) RemoveKnownERC721(address common.Address) {
+	delete(d.knownERC721Addresses, address)
+}
+
 // AddKnownExchange registers the supplied contract address as a 0x Exchange contract. If an event is found
 // from this contract address, the decoder will properly decode it's events including the correct event
 // parameter names.
 func (d *Decoder) AddKnownExchange(address common.Address) {
 	d.knownExchangeAddresses[address] = true
+}
+
+// RemoveKnownExchange removes an Exchange address from the list of known addresses. We will no longer decode
+// events for this contract.
+func (d *Decoder) RemoveKnownExchange(address common.Address) {
+	delete(d.knownExchangeAddresses, address)
 }
 
 // FindEventType returns to event type contained in the supplied log. It looks both at the registered

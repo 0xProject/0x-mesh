@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -20,28 +23,35 @@ import (
 // process.
 var minCleanupInterval = 1 * time.Hour
 
+// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
+// be re-validated by the cleanup worker
+var lastUpdatedBuffer = 30 * time.Minute
+
 // expirationPollingInterval specifies the interval in which the order watcher should check for expired
 // orders
 var expirationPollingInterval = 50 * time.Millisecond
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	blockWatcher            *blockwatch.Watcher
-	eventDecoder            *Decoder
-	assetDataDecoder        *zeroex.AssetDataDecoder
-	blockSubscription       event.Subscription
-	expirationWatcher       *ExpirationWatcher
-	orderHashToWatchedOrder map[common.Hash]*zeroex.SignedOrder
-	watchedOrdersMux        sync.RWMutex
-	cleanupCtx              context.Context
-	cleanupCancelFunc       context.CancelFunc
-	orderValidator          *zeroex.OrderValidator
-	isSetup                 bool
-	setupMux                sync.RWMutex
+	meshDB                     *meshdb.MeshDB
+	blockWatcher               *blockwatch.Watcher
+	eventDecoder               *Decoder
+	assetDataDecoder           *zeroex.AssetDataDecoder
+	blockSubscription          event.Subscription
+	contractNameToAddress      constants.ContractNameToAddress
+	expirationWatcher          *ExpirationWatcher
+	cachedOrderEvents          []*zeroex.OrderInfo
+	cachedOrderEventsMux       sync.RWMutex
+	cleanupCtx                 context.Context
+	cleanupCancelFunc          context.CancelFunc
+	contractAddressToSeenCount map[common.Address]uint
+	orderValidator             *zeroex.OrderValidator
+	isSetup                    bool
+	setupMux                   sync.RWMutex
 }
 
 // New instantiates a new order watcher
-func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderValidatorAddress common.Address) (*Watcher, error) {
+func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, networkId int) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
@@ -50,21 +60,25 @@ func New(blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, orderVal
 	if err != nil {
 		return nil, err
 	}
-	orderValidator, err := zeroex.NewOrderValidator(orderValidatorAddress, ethClient)
+	contractNameToAddress := constants.NetworkIDToContractAddresses[networkId]
+	orderValidator, err := zeroex.NewOrderValidator(contractNameToAddress["OrderValidator"], ethClient)
 	if err != nil {
 		return nil, err
 	}
 	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
 	var expirationBuffer int64 = 0
 	return &Watcher{
-		blockWatcher:            blockWatcher,
-		expirationWatcher:       NewExpirationWatcher(expirationBuffer),
-		orderHashToWatchedOrder: map[common.Hash]*zeroex.SignedOrder{},
-		cleanupCtx:              cleanupCtx,
-		cleanupCancelFunc:       cleanupCancelFunc,
-		orderValidator:          orderValidator,
-		eventDecoder:            decoder,
-		assetDataDecoder:        assetDataDecoder,
+		meshDB:                     meshDB,
+		blockWatcher:               blockWatcher,
+		expirationWatcher:          NewExpirationWatcher(expirationBuffer),
+		cachedOrderEvents:          []*zeroex.OrderInfo{},
+		cleanupCtx:                 cleanupCtx,
+		cleanupCancelFunc:          cleanupCancelFunc,
+		contractAddressToSeenCount: map[common.Address]uint{},
+		orderValidator:             orderValidator,
+		eventDecoder:               decoder,
+		assetDataDecoder:           assetDataDecoder,
+		contractNameToAddress:      contractNameToAddress,
 	}, nil
 }
 
@@ -120,11 +134,16 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) 
 
 	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
 
-	w.watchedOrdersMux.Lock()
-	w.orderHashToWatchedOrder[orderHash] = signedOrder
-	w.watchedOrdersMux.Unlock()
-
 	return nil
+}
+
+// GetEvents fetches the latest order events emitted by the OrderWatcher.
+func (w *Watcher) GetEvents() []*zeroex.OrderInfo {
+	w.cachedOrderEventsMux.Lock()
+	cachedEvents := w.cachedOrderEvents
+	w.cachedOrderEvents = []*zeroex.OrderInfo{}
+	w.cachedOrderEventsMux.Lock()
+	return cachedEvents
 }
 
 func (w *Watcher) startCleanupWorker() {
@@ -138,19 +157,16 @@ func (w *Watcher) startCleanupWorker() {
 
 			start := time.Now()
 
-			// TODO(fabio): Once orders are stored in DB, only fetch orders where lastUpdated field is > X
-			signedOrders := []*zeroex.SignedOrder{}
-			w.watchedOrdersMux.Lock()
-			for _, signedOrder := range w.orderHashToWatchedOrder {
-				signedOrders = append(signedOrders, signedOrder)
+			// We do not re-validate orders that have been updated within the last 30mins
+			lastUpdatedCutOff := start.Add(-lastUpdatedBuffer)
+			orders, err := w.meshDB.FindOrdersLastUpdatedBefore(lastUpdatedCutOff)
+			if err != nil {
+				logger.WithFields(logger.Fields{
+					"error":             err.Error(),
+					"lastUpdatedCutOff": lastUpdatedCutOff,
+				}).Panic("Failed to find orders by LastUpdatedBefore")
 			}
-			w.watchedOrdersMux.Unlock()
-			orderInfos := w.orderValidator.BatchValidate(signedOrders)
-			for orderHash, orderInfo := range orderInfos {
-				// TODO(fabio): Emit all change events
-				_ = orderHash
-				_ = orderInfo
-			}
+			w.generateOrderEventsIfChanged(orders)
 
 			// Wait MinCleanupInterval before calling ValidateOrders again. Since
 			// we only start sleeping _after_ ValidateOrders completes, we will never
@@ -169,11 +185,25 @@ func (w *Watcher) setupExpirationWatcher() error {
 		expiredOrders := w.expirationWatcher.Receive()
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
-				// TODO(fabio): Emit an event for the expired order
-				w.watchedOrdersMux.Lock()
-				delete(w.orderHashToWatchedOrder, expiredOrder.OrderHash)
-				w.watchedOrdersMux.Unlock()
-				panic(fmt.Sprintf("Handling expired orders is not implemented yet: %+v\n", expiredOrder))
+				order := &meshdb.Order{}
+				err := w.meshDB.Orders.FindByID(expiredOrder.OrderHash.Bytes(), order)
+				if err != nil {
+					logger.WithFields(logger.Fields{
+						"error":     err.Error(),
+						"orderHash": expiredOrder.OrderHash,
+					}).Warning("Order expired that was no longer in DB")
+					continue
+				}
+				orderInfo := &zeroex.OrderInfo{
+					OrderHash:                expiredOrder.OrderHash,
+					SignedOrder:              order.SignedOrder,
+					FillableTakerAssetAmount: big.NewInt(0),
+					OrderStatus:              zeroex.Cancelled,
+				}
+				w.unwatchOrder(order.SignedOrder, expiredOrder.OrderHash)
+				w.cachedOrderEventsMux.Lock()
+				w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
+				w.cachedOrderEventsMux.Unlock()
 			}
 		}
 	}()
@@ -228,7 +258,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, nil)
+
 						case "ERC20ApprovalEvent":
 							var approvalEvent ERC20ApprovalEvent
 							err = w.eventDecoder.Decode(log, &approvalEvent)
@@ -236,7 +267,12 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							// Ignores approvals set to anyone except the AssetProxy
+							if approvalEvent.Spender != w.contractNameToAddress["ERC20Proxy"] {
+								continue
+							}
+							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil)
+
 						case "ERC721TransferEvent":
 							var transferEvent ERC721TransferEvent
 							err = w.eventDecoder.Decode(log, &transferEvent)
@@ -244,7 +280,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, transferEvent.TokenId)
+
 						case "ERC721ApprovalEvent":
 							var approvalEvent ERC721ApprovalEvent
 							err = w.eventDecoder.Decode(log, &approvalEvent)
@@ -252,7 +289,12 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							// Ignores approvals set to anyone except the AssetProxy
+							if approvalEvent.Approved != w.contractNameToAddress["ERC721Proxy"] {
+								continue
+							}
+							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
+
 						case "ERC721ApprovalForAllEvent":
 							var approvalForAllEvent ERC721ApprovalForAllEvent
 							err = w.eventDecoder.Decode(log, &approvalForAllEvent)
@@ -260,7 +302,12 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							// Ignores approvals set to anyone except the AssetProxy
+							if approvalForAllEvent.Operator != w.contractNameToAddress["ERC721Proxy"] {
+								continue
+							}
+							w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil)
+
 						case "WethWithdrawalEvent":
 							var withdrawalEvent WethWithdrawalEvent
 							err = w.eventDecoder.Decode(log, &withdrawalEvent)
@@ -268,7 +315,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrdersAndGenerateOrderEvents(withdrawalEvent.Owner, log.Address, nil)
+
 						case "WethDepositEvent":
 							var depositEvent WethDepositEvent
 							err = w.eventDecoder.Decode(log, &depositEvent)
@@ -276,7 +324,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrdersAndGenerateOrderEvents(depositEvent.Owner, log.Address, nil)
+
 						case "ExchangeFillEvent":
 							var exchangeFillEvent ExchangeFillEvent
 							err = w.eventDecoder.Decode(log, &exchangeFillEvent)
@@ -284,7 +333,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrderAndGenerateOrderEvents(exchangeFillEvent.OrderHash)
+
 						case "ExchangeCancelEvent":
 							var exchangeCancelEvent ExchangeCancelEvent
 							err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
@@ -292,7 +342,8 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
+							w.findOrderAndGenerateOrderEvents(exchangeCancelEvent.OrderHash)
+
 						case "ExchangeCancelUpToEvent":
 							var exchangeCancelUpToEvent ExchangeCancelUpToEvent
 							err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
@@ -301,6 +352,14 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// TODO(fabio): Handle this event
+							orders, err := w.meshDB.FindOrdersByMakerAddressAndMaxSalt(exchangeCancelUpToEvent.MakerAddress, exchangeCancelUpToEvent.OrderEpoch)
+							if err != nil {
+								logger.WithFields(logger.Fields{
+									"err": err.Error(),
+								}).Panic("unexpected query error encountered")
+							}
+							w.generateOrderEventsIfChanged(orders)
+
 						default:
 							logger.WithFields(logger.Fields{
 								"eventType": eventType,
@@ -313,6 +372,58 @@ func (w *Watcher) setupEventWatcher() {
 		}
 
 	}()
+}
+
+func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) {
+	order := meshdb.Order{}
+	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
+	if err != nil {
+		if err.Error() == "model not found" {
+			return // We will receive events from orders we aren't actively tracking
+		}
+		logger.WithFields(logger.Fields{
+			"error":     err.Error(),
+			"orderHash": orderHash,
+		}).Warning("Unexpected error using FindByID for order")
+	}
+	w.generateOrderEventsIfChanged([]*meshdb.Order{&order})
+}
+
+func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress common.Address, tokenID *big.Int) {
+	orders, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"err": err.Error(),
+		}).Panic("unexpected query error encountered")
+	}
+	w.generateOrderEventsIfChanged(orders)
+}
+
+func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
+	signedOrders := []*zeroex.SignedOrder{}
+	for _, order := range orders {
+		signedOrders = append(signedOrders, order.SignedOrder)
+	}
+	hashToOrderInfo := w.orderValidator.BatchValidate(signedOrders)
+	for _, order := range orders {
+		orderInfo, ok := hashToOrderInfo[order.Hash]
+		if !ok {
+			continue // Skip orders where OrderInfo was not returned
+		}
+		if order.FillableTakerAssetAmount != orderInfo.FillableTakerAssetAmount {
+			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
+			if isOrderUnfillable {
+				w.unwatchOrder(orderInfo.SignedOrder, orderInfo.OrderHash)
+			} else {
+				order.LastUpdated = time.Now().Truncate(0)
+				order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
+				w.meshDB.Orders.Update(order)
+			}
+			w.cachedOrderEventsMux.Lock()
+			w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
+			w.cachedOrderEventsMux.Unlock()
+		}
+	}
 }
 
 func (w *Watcher) handleDecodeErr(err error, eventType string) {
@@ -344,6 +455,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC20(decodedAssetData.Address)
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -351,6 +463,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -363,7 +476,72 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			}
 		}
 	default:
-		return errors.New(fmt.Sprintf("Unrecognized assetData type name found: %s\n", assetDataName))
+		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return nil
+}
+
+func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error {
+	assetDataName, err := w.assetDataDecoder.GetName(assetData)
+	if err != nil {
+		return err
+	}
+	switch assetDataName {
+	case "ERC20Token":
+		var decodedAssetData zeroex.ERC20AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
+		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+			w.eventDecoder.RemoveKnownERC20(decodedAssetData.Address)
+		}
+	case "ERC721Token":
+		var decodedAssetData zeroex.ERC721AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
+		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+			w.eventDecoder.RemoveKnownERC721(decodedAssetData.Address)
+		}
+	case "MultiAsset":
+		var decodedAssetData zeroex.MultiAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		for _, assetData := range decodedAssetData.NestedAssetData {
+			if err := w.removeAssetDataAddressFromEventDecoder(assetData); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
+	}
+	return nil
+}
+
+func (w *Watcher) unwatchOrder(signedOrder *zeroex.SignedOrder, orderHash common.Hash) {
+
+	if err := w.meshDB.Orders.Delete(orderHash.Bytes()); err != nil {
+		logger.WithFields(logger.Fields{
+			"error":     err.Error(),
+			"orderHash": orderHash,
+		}).Warning("Failed to remove order from DB because it doesn't exist in DB")
+	}
+
+	w.expirationWatcher.Remove(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
+
+	err := w.removeAssetDataAddressFromEventDecoder(signedOrder.MakerAssetData)
+	if err != nil {
+		// This should never happen since the same error would have happened when adding
+		// the assetData to the EventDecoder.
+		logger.WithFields(logger.Fields{
+			"error":       err.Error(),
+			"signedOrder": signedOrder,
+		}).Error("Failed to unwatch order")
+	}
 }

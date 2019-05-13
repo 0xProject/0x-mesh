@@ -188,6 +188,22 @@ func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order
 	return orders, nil
 }
 
+// FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
+// address where makerAssetData encodes for a particular token contract & token ID
+func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*Order, error) {
+	prefix := []byte(makerAddress.Hex() + "|" + tokenAddress.Hex() + "|")
+	if tokenID != nil {
+		prefix = append(prefix, tokenID.Bytes()...)
+	}
+	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
 // FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
 // also have a salt value less then or equal to X
 func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
