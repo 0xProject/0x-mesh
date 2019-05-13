@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -13,11 +14,12 @@ import (
 )
 
 var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-var ganacheExchangeAddress = common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788")
 
 func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+
+	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
 	makerAddress := common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d")
 	salt := big.NewInt(1548619145450)
@@ -34,7 +36,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       ganacheExchangeAddress,
+		ExchangeAddress:       contractNameToAddress["Exchange"],
 	}
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
