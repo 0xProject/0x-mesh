@@ -58,6 +58,7 @@ type OrdersCollection struct {
 	*db.Collection
 	MakerAddressAndSaltIndex             *db.Index
 	MakerAddressTokenAddressTokenIDIndex *db.Index
+	LastUpdatedIndex                     *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -83,6 +84,10 @@ func NewMeshDB(path string) (*MeshDB, error) {
 
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
+	lastUpdatedIndex := col.AddIndex("lastUpdated", func(m db.Model) []byte {
+		index := []byte(m.(*Order).LastUpdated.Format(time.RFC3339))
+		return index
+	})
 	makerAddressAndSaltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an
@@ -119,6 +124,7 @@ func setupOrders(database *db.DB) *OrdersCollection {
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
+		LastUpdatedIndex:                     lastUpdatedIndex,
 	}
 }
 
@@ -188,6 +194,20 @@ func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address,
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
 	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), salt.String()))
 	filter := m.Orders.MakerAddressAndSaltIndex.RangeFilter(start, limit)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+// FindOrdersLastUpdatedBefore finds all orders where the LastUpdated time is less
+// than X
+func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, error) {
+	start := []byte(time.Unix(0, 0).Format(time.RFC3339))
+	limit := []byte(lastUpdated.Format(time.RFC3339))
+	filter := m.Orders.LastUpdatedIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	err := m.Orders.NewQuery(filter).Run(&orders)
 	if err != nil {

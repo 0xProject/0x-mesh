@@ -3,6 +3,7 @@ package meshdb
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -38,11 +39,16 @@ func TestOrderCRUDOperations(t *testing.T) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
+	currentTime := time.Now().Truncate(0)
+	fiveMinutesFromNow := currentTime.Add(5 * time.Minute)
+	lastUpdated := currentTime
+
 	// Insert
 	order := &Order{
 		Hash:                     orderHash,
 		SignedOrder:              signedOrder,
 		FillableTakerAssetAmount: big.NewInt(1),
+		LastUpdated:              lastUpdated,
 	}
 	require.NoError(t, meshDB.Orders.Insert(order))
 
@@ -58,6 +64,10 @@ func TestOrderCRUDOperations(t *testing.T) {
 	assert.Equal(t, []*Order{order}, orders)
 
 	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
+	require.NoError(t, err)
+	assert.Equal(t, []*Order{order}, orders)
+
+	orders, err = meshDB.FindOrdersLastUpdatedBefore(fiveMinutesFromNow)
 	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 
