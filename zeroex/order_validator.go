@@ -67,7 +67,7 @@ func NewOrderValidator(orderValidatorAddress common.Address, ethClient *ethclien
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]OrderInfo {
+func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
 	takerAddresses := []common.Address{}
 	for i := 0; i < len(signedOrders); i++ {
 		takerAddresses = append(takerAddresses, signedOrders[i].TakerAddress)
@@ -97,7 +97,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
 
-	orderHashToInfo := map[common.Hash]OrderInfo{}
+	orderHashToInfo := map[common.Hash]*OrderInfo{}
 	wg := &sync.WaitGroup{}
 	for i, params := range chunks {
 		wg.Add(1)
@@ -156,7 +156,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
 					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled:
-						orderHashToInfo[orderHash] = OrderInfo{
+						orderHashToInfo[orderHash] = &OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: big.NewInt(0),
@@ -164,7 +164,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 						}
 						continue
 					case Fillable:
-						orderHashToInfo[orderHash] = OrderInfo{
+						orderHashToInfo[orderHash] = &OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
