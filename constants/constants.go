@@ -13,3 +13,6 @@ const GanacheEndpoint = "http://localhost:8545"
 
 // GanacheExchangeAddress specifies the 0x Exchange contract address on the Ganache snapshot
 var GanacheExchangeAddress = common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788")
+
+// NullAddress is an Ethereum address with all zeroes.
+var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
