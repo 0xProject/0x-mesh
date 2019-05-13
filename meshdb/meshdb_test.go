@@ -58,8 +58,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	assert.Equal(t, order, foundOrder)
 
 	// Check Indexes
-	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
-	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, saltPlusOne)
+	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, salt)
 	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 
