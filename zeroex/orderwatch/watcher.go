@@ -93,7 +93,10 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		return nil, err
 	}
 	for _, order := range orders {
-		w.setupInMemoryOrderState(order.SignedOrder, order.Hash)
+		err := w.setupInMemoryOrderState(order.SignedOrder, order.Hash)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return w, nil
@@ -155,9 +158,15 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.Order
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
-	w.meshDB.Orders.Insert(order)
+	err := w.meshDB.Orders.Insert(order)
+	if err != nil {
+		return err
+	}
 
-	w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
+	err := w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -470,7 +479,13 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo)
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().Truncate(0)
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
-	w.meshDB.Orders.Update(order)
+	err := w.meshDB.Orders.Update(order)
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
 
 	// Re-add order to expiration watcher
 	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
