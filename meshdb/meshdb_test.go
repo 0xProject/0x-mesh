@@ -51,6 +51,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		SignedOrder:              signedOrder,
 		FillableTakerAssetAmount: big.NewInt(1),
 		LastUpdated:              lastUpdated,
+		IsRemoved:                false,
 	}
 	require.NoError(t, meshDB.Orders.Insert(order))
 

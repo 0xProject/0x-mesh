@@ -33,6 +33,11 @@ type Order struct {
 	LastUpdated time.Time
 	// How much of this order can still be filled
 	FillableTakerAssetAmount *big.Int
+	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
+	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
+	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
+	// the order can be permanently deleted.
+	IsRemoved bool
 }
 
 // ID returns the Order's ID

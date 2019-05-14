@@ -27,6 +27,11 @@ var minCleanupInterval = 1 * time.Hour
 // be re-validated by the cleanup worker
 var lastUpdatedBuffer = 30 * time.Minute
 
+// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
+// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 4 minutes
+// corresponds to a block depth of ~20.
+var permanentlyDeleteAfter = 4 * time.Minute
+
 // expirationPollingInterval specifies the interval in which the order watcher should check for expired
 // orders
 var expirationPollingInterval = 50 * time.Millisecond
@@ -166,6 +171,7 @@ func (w *Watcher) startCleanupWorker() {
 					"lastUpdatedCutOff": lastUpdatedCutOff,
 				}).Panic("Failed to find orders by LastUpdatedBefore")
 			}
+
 			w.generateOrderEventsIfChanged(orders)
 
 			// Wait MinCleanupInterval before calling ValidateOrders again. Since
@@ -200,7 +206,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 					FillableTakerAssetAmount: big.NewInt(0),
 					OrderStatus:              zeroex.Cancelled,
 				}
-				w.unwatchOrder(order.SignedOrder, expiredOrder.OrderHash)
+				w.unwatchOrder(order)
 				w.cachedOrderEventsMux.Lock()
 				w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
 				w.cachedOrderEventsMux.Unlock()
@@ -401,6 +407,10 @@ func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress co
 func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orders {
+		if order.IsRemoved && time.Now().Sub(order.LastUpdated) > permanentlyDeleteAfter {
+			w.permanentlyDeleteOrder(order)
+			continue
+		}
 		signedOrders = append(signedOrders, order.SignedOrder)
 	}
 	hashToOrderInfo := w.orderValidator.BatchValidate(signedOrders)
@@ -412,16 +422,60 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 		if order.FillableTakerAssetAmount != orderInfo.FillableTakerAssetAmount {
 			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
 			if isOrderUnfillable {
-				w.unwatchOrder(orderInfo.SignedOrder, orderInfo.OrderHash)
+				w.unwatchOrder(order)
 			} else {
-				order.LastUpdated = time.Now().Truncate(0)
-				order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
-				w.meshDB.Orders.Update(order)
+				w.rewatchOrder(order, orderInfo)
 			}
 			w.cachedOrderEventsMux.Lock()
 			w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
 			w.cachedOrderEventsMux.Unlock()
 		}
+	}
+}
+
+func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo) {
+	order.IsRemoved = false
+	order.LastUpdated = time.Now().Truncate(0)
+	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
+	w.meshDB.Orders.Update(order)
+
+	// Re-add order to expiration watcher
+	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+}
+
+func (w *Watcher) unwatchOrder(order *meshdb.Order) {
+	order.IsRemoved = true
+	order.LastUpdated = time.Now().Truncate(0)
+	order.FillableTakerAssetAmount = big.NewInt(0)
+	err := w.meshDB.Orders.Update(order)
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
+
+	w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+}
+
+func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {
+	err := w.meshDB.Orders.Delete(order.Hash.Bytes())
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Panic("Unexpected error while attempting to delete an order")
+	}
+
+	// After permanently deleting an order, we also remove it's assetData from the Decoder
+	err = w.removeAssetDataAddressFromEventDecoder(order.SignedOrder.MakerAssetData)
+	if err != nil {
+		// This should never happen since the same error would have happened when adding
+		// the assetData to the EventDecoder.
+		logger.WithFields(logger.Fields{
+			"error":       err.Error(),
+			"signedOrder": order.SignedOrder,
+		}).Panic("Unexpected error when trying to remove an assetData from decoder")
 	}
 }
 
@@ -521,26 +575,4 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return nil
-}
-
-func (w *Watcher) unwatchOrder(signedOrder *zeroex.SignedOrder, orderHash common.Hash) {
-
-	if err := w.meshDB.Orders.Delete(orderHash.Bytes()); err != nil {
-		logger.WithFields(logger.Fields{
-			"error":     err.Error(),
-			"orderHash": orderHash,
-		}).Warning("Failed to remove order from DB because it doesn't exist in DB")
-	}
-
-	w.expirationWatcher.Remove(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
-
-	err := w.removeAssetDataAddressFromEventDecoder(signedOrder.MakerAssetData)
-	if err != nil {
-		// This should never happen since the same error would have happened when adding
-		// the assetData to the EventDecoder.
-		logger.WithFields(logger.Fields{
-			"error":       err.Error(),
-			"signedOrder": signedOrder,
-		}).Error("Failed to unwatch order")
-	}
 }
