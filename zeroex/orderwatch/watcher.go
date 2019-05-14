@@ -204,7 +204,7 @@ func (w *Watcher) startCleanupWorker() {
 
 			start := time.Now()
 
-			// We do not re-validate orders that have been updated within the last 30mins
+			// We do not re-validate orders that have been updated within the last `lastUpdatedBuffer` time
 			lastUpdatedCutOff := start.Add(-lastUpdatedBuffer)
 			orders, err := w.meshDB.FindOrdersLastUpdatedBefore(lastUpdatedCutOff)
 			if err != nil {
@@ -449,7 +449,7 @@ func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress co
 func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orders {
-		if order.IsRemoved && time.Now().Sub(order.LastUpdated) > permanentlyDeleteAfter {
+		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
 			w.permanentlyDeleteOrder(order)
 			continue
 		}
@@ -459,7 +459,10 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 	for _, order := range orders {
 		orderInfo, ok := hashToOrderInfo[order.Hash]
 		if !ok {
-			continue // Skip orders where OrderInfo was not returned
+			// Skip orders where OrderInfo was not returned. This only happens if
+			// the Ethereum JSON-RPC request for the particular batch including this
+			// order fails to succeed (re-try steps included)
+			continue
 		}
 		if order.FillableTakerAssetAmount != orderInfo.FillableTakerAssetAmount {
 			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
