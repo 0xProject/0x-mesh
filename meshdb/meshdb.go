@@ -194,7 +194,7 @@ func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order
 }
 
 // FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
-// address where makerAssetData encodes for a particular token contract & token ID
+// address where makerAssetData encodes for a particular token contract and optionally a token ID
 func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*Order, error) {
 	prefix := []byte(makerAddress.Hex() + "|" + tokenAddress.Hex() + "|")
 	if tokenID != nil {
@@ -212,9 +212,9 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 // FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
 // also have a salt value less then or equal to X
 func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
-	// DB range queries exclude the limit value however for the 0x protocol `cancelOrdersUpTo` method
+	// DB range queries exclude the limit value however the 0x protocol `cancelOrdersUpTo` method
 	// is inclusive of the value supplied. In order to make this helper method more useful to our
-	// particular use-case, we add 1 to the supplied salt (making the query include the value supplied)
+	// particular use-case, we add 1 to the supplied salt (making the query inclusive instead)
 	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
 	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), saltPlusOne.String()))
