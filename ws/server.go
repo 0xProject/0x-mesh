@@ -12,8 +12,7 @@ import (
 )
 
 // Server is a JSON RPC 2.0 server implementation over WebSockets. It accepts
-// requests from a client for adding and removing orders from the 0x Mesh
-// network.
+// requests from a client for adding orders to the 0x Mesh network.
 type Server struct {
 	mut          sync.Mutex
 	addr         string

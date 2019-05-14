@@ -19,8 +19,7 @@ import (
 // dummyOrderHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyOrderHandler struct {
-	addOrderHandler    func(order *zeroex.SignedOrder) error
-	removeOrderHandler func(orderHash common.Hash) error
+	addOrderHandler func(order *zeroex.SignedOrder) error
 }
 
 func (d *dummyOrderHandler) AddOrder(order *zeroex.SignedOrder) error {
@@ -28,13 +27,6 @@ func (d *dummyOrderHandler) AddOrder(order *zeroex.SignedOrder) error {
 		return errors.New("dummyOrderHandler: no handler set for AddOrder")
 	}
 	return d.addOrderHandler(order)
-}
-
-func (d *dummyOrderHandler) RemoveOrder(orderHash common.Hash) error {
-	if d.removeOrderHandler == nil {
-		return errors.New("dummyOrderHandler: no handler set for RemoveOrder")
-	}
-	return d.removeOrderHandler(orderHash)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
@@ -101,29 +93,5 @@ func TestAddOrder(t *testing.T) {
 	assert.Equal(t, expectedOrderHash.String(), actualOrderHash.String(), "returned orderHash did not match")
 
 	// The WaitGroup signals that AddOrder was called on the server-side.
-	wg.Wait()
-}
-
-func TestRemoveOrder(t *testing.T) {
-	expectedOrderHash, err := testOrder.ComputeOrderHash()
-	require.NoError(t, err)
-
-	// Set up the dummy handler with a removeOrderHandler.
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	orderHandler := &dummyOrderHandler{
-		removeOrderHandler: func(orderHash common.Hash) error {
-			assert.Equal(t, expectedOrderHash, orderHash, "RemoveOrder was called with the wrong orderHash argument")
-			wg.Done()
-			return nil
-		},
-	}
-
-	server, client := newTestServerAndClient(t, orderHandler)
-	defer server.Close()
-
-	require.NoError(t, client.RemoveOrder(expectedOrderHash))
-
-	// The WaitGroup signals that RemoveOrder was called on the server-side.
 	wg.Wait()
 }

@@ -7,7 +7,7 @@ import (
 )
 
 // Client is a JSON RPC 2.0 client implementation over WebSockets. It can be
-// used to communicate with a 0x Mesh node and add/remove orders.
+// used to communicate with a 0x Mesh node and add orders.
 type Client struct {
 	rpcClient *rpc.Client
 }
@@ -32,11 +32,4 @@ func (c *Client) AddOrder(order *zeroex.SignedOrder) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 	return common.HexToHash(orderHashHex), nil
-}
-
-// RemoveOrder removes an order from the 0x Mesh node. That node will no longer
-// broadcast the order, but other nodes on the network may still store and
-// broadcast it.
-func (c *Client) RemoveOrder(orderHash common.Hash) error {
-	return c.rpcClient.Call(nil, "mesh_removeOrder", orderHash.Hex())
 }
