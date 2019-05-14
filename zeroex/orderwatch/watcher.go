@@ -163,7 +163,7 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.Order
 		return err
 	}
 
-	err := w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
+	err = w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
 	if err != nil {
 		return err
 	}
