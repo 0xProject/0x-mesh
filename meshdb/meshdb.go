@@ -90,7 +90,7 @@ func NewMeshDB(path string) (*MeshDB, error) {
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
 	lastUpdatedIndex := col.AddIndex("lastUpdated", func(m db.Model) []byte {
-		index := []byte(m.(*Order).LastUpdated.Format(time.RFC3339Nano))
+		index := []byte(m.(*Order).LastUpdated.UTC().Format(time.RFC3339Nano))
 		return index
 	})
 	makerAddressAndSaltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
@@ -231,7 +231,7 @@ func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address,
 // than X
 func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, error) {
 	start := []byte(time.Unix(0, 0).Format(time.RFC3339Nano))
-	limit := []byte(lastUpdated.Format(time.RFC3339Nano))
+	limit := []byte(lastUpdated.UTC().Format(time.RFC3339Nano))
 	filter := m.Orders.LastUpdatedIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	err := m.Orders.NewQuery(filter).Run(&orders)
