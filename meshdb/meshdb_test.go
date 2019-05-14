@@ -43,14 +43,13 @@ func TestOrderCRUDOperations(t *testing.T) {
 
 	currentTime := time.Now().Truncate(0)
 	fiveMinutesFromNow := currentTime.Add(5 * time.Minute)
-	lastUpdated := currentTime
 
 	// Insert
 	order := &Order{
 		Hash:                     orderHash,
 		SignedOrder:              signedOrder,
 		FillableTakerAssetAmount: big.NewInt(1),
-		LastUpdated:              lastUpdated,
+		LastUpdated:              currentTime,
 		IsRemoved:                false,
 	}
 	require.NoError(t, meshDB.Orders.Insert(order))
