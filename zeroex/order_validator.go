@@ -14,8 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
 var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
 
@@ -67,7 +65,7 @@ func NewOrderValidator(orderValidatorAddress common.Address, ethClient *ethclien
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]OrderInfo {
+func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
 	takerAddresses := []common.Address{}
 	for i := 0; i < len(signedOrders); i++ {
 		takerAddresses = append(takerAddresses, signedOrders[i].TakerAddress)
@@ -97,7 +95,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
 
-	orderHashToInfo := map[common.Hash]OrderInfo{}
+	orderHashToInfo := map[common.Hash]*OrderInfo{}
 	wg := &sync.WaitGroup{}
 	for i, params := range chunks {
 		wg.Add(1)
@@ -156,7 +154,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
 					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled:
-						orderHashToInfo[orderHash] = OrderInfo{
+						orderHashToInfo[orderHash] = &OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: big.NewInt(0),
@@ -164,7 +162,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 						}
 						continue
 					case Fillable:
-						orderHashToInfo[orderHash] = OrderInfo{
+						orderHashToInfo[orderHash] = &OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
@@ -187,17 +185,6 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
 	minSet := []*big.Int{}
 
-	// Calculate min of balance & allowance of taker's takerAsset
-	if signedOrder.TakerAddress != nullAddress {
-		var maxTakerAssetFillAmountGivenTakerConstraints *big.Int
-		if traderInfo.TakerBalance.Cmp(traderInfo.TakerAllowance) == -1 {
-			maxTakerAssetFillAmountGivenTakerConstraints = traderInfo.TakerBalance
-		} else {
-			maxTakerAssetFillAmountGivenTakerConstraints = traderInfo.TakerAllowance
-		}
-		minSet = append(minSet, maxTakerAssetFillAmountGivenTakerConstraints)
-	}
-
 	// Calculate min of balance & allowance of makers makerAsset -> translate into takerAsset amount
 	var maxMakerAssetFillAmount *big.Int
 	if traderInfo.MakerBalance.Cmp(traderInfo.MakerAllowance) == -1 {
@@ -208,18 +195,6 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 	maxTakerAssetFillAmountGivenMakerConstraints := new(big.Int).Div(new(big.Int).Mul(maxMakerAssetFillAmount, signedOrder.TakerAssetAmount), signedOrder.MakerAssetAmount)
 
 	minSet = append(minSet, maxTakerAssetFillAmountGivenMakerConstraints)
-
-	// Calculate min of balance & allowance of taker's ZRX -> translate into takerAsset amount
-	if signedOrder.TakerFee.Cmp(big.NewInt(0)) != 0 {
-		var takerZRXAvailable *big.Int
-		if traderInfo.TakerZrxBalance.Cmp(traderInfo.TakerZrxAllowance) == -1 {
-			takerZRXAvailable = traderInfo.TakerZrxBalance
-		} else {
-			takerZRXAvailable = traderInfo.TakerZrxAllowance
-		}
-		maxTakerAssetFillAmountGivenTakerZRXConstraints := new(big.Int).Div(new(big.Int).Mul(takerZRXAvailable, signedOrder.TakerAssetAmount), signedOrder.TakerFee)
-		minSet = append(minSet, maxTakerAssetFillAmountGivenTakerZRXConstraints)
-	}
 
 	// Calculate min of balance & allowance of maker's ZRX -> translate into takerAsset amount
 	if signedOrder.MakerFee.Cmp(big.NewInt(0)) != 0 {

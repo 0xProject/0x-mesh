@@ -3,7 +3,9 @@ package meshdb
 import (
 	"math/big"
 	"testing"
+	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -11,19 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-var ganacheExchangeAddress = common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788")
-
 func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+
+	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
 	makerAddress := common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d")
 	salt := big.NewInt(1548619145450)
 	signedOrder := &zeroex.SignedOrder{
 		MakerAddress:          makerAddress,
-		TakerAddress:          nullAddress,
-		SenderAddress:         nullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
@@ -33,16 +34,21 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       ganacheExchangeAddress,
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
+
+	currentTime := time.Now().UTC()
+	fiveMinutesFromNow := currentTime.Add(5 * time.Minute)
 
 	// Insert
 	order := &Order{
 		Hash:                     orderHash,
 		SignedOrder:              signedOrder,
 		FillableTakerAssetAmount: big.NewInt(1),
+		LastUpdated:              currentTime,
+		IsRemoved:                false,
 	}
 	require.NoError(t, meshDB.Orders.Insert(order))
 
@@ -52,12 +58,15 @@ func TestOrderCRUDOperations(t *testing.T) {
 	assert.Equal(t, order, foundOrder)
 
 	// Check Indexes
-	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
-	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, saltPlusOne)
+	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, salt)
 	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 
 	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
+	require.NoError(t, err)
+	assert.Equal(t, []*Order{order}, orders)
+
+	orders, err = meshDB.FindOrdersLastUpdatedBefore(fiveMinutesFromNow)
 	require.NoError(t, err)
 	assert.Equal(t, []*Order{order}, orders)
 

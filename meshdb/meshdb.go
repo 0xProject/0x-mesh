@@ -33,6 +33,11 @@ type Order struct {
 	LastUpdated time.Time
 	// How much of this order can still be filled
 	FillableTakerAssetAmount *big.Int
+	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
+	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
+	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
+	// the order can be permanently deleted.
+	IsRemoved bool
 }
 
 // ID returns the Order's ID
@@ -58,6 +63,7 @@ type OrdersCollection struct {
 	*db.Collection
 	MakerAddressAndSaltIndex             *db.Index
 	MakerAddressTokenAddressTokenIDIndex *db.Index
+	LastUpdatedIndex                     *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -83,6 +89,10 @@ func NewMeshDB(path string) (*MeshDB, error) {
 
 func setupOrders(database *db.DB) *OrdersCollection {
 	col := database.NewCollection("order", &Order{})
+	lastUpdatedIndex := col.AddIndex("lastUpdated", func(m db.Model) []byte {
+		index := []byte(m.(*Order).LastUpdated.UTC().Format(time.RFC3339Nano))
+		return index
+	})
 	makerAddressAndSaltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an
@@ -119,6 +129,7 @@ func setupOrders(database *db.DB) *OrdersCollection {
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
+		LastUpdatedIndex:                     lastUpdatedIndex,
 	}
 }
 
@@ -182,12 +193,46 @@ func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order
 	return orders, nil
 }
 
+// FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
+// address where makerAssetData encodes for a particular token contract and optionally a token ID
+func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*Order, error) {
+	prefix := []byte(makerAddress.Hex() + "|" + tokenAddress.Hex() + "|")
+	if tokenID != nil {
+		prefix = append(prefix, tokenID.Bytes()...)
+	}
+	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
 // FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
-// also have a salt value less then X
+// also have a salt value less then or equal to X
 func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
+	// DB range queries exclude the limit value however the 0x protocol `cancelOrdersUpTo` method
+	// is inclusive of the value supplied. In order to make this helper method more useful to our
+	// particular use-case, we add 1 to the supplied salt (making the query inclusive instead)
+	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
-	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), salt.String()))
+	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), saltPlusOne.String()))
 	filter := m.Orders.MakerAddressAndSaltIndex.RangeFilter(start, limit)
+	orders := []*Order{}
+	err := m.Orders.NewQuery(filter).Run(&orders)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+// FindOrdersLastUpdatedBefore finds all orders where the LastUpdated time is less
+// than X
+func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, error) {
+	start := []byte(time.Unix(0, 0).Format(time.RFC3339Nano))
+	limit := []byte(lastUpdated.UTC().Format(time.RFC3339Nano))
+	filter := m.Orders.LastUpdatedIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	err := m.Orders.NewQuery(filter).Run(&orders)
 	if err != nil {

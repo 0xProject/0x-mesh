@@ -17,10 +17,12 @@ import (
 )
 
 func TestBatchValidate(t *testing.T) {
+	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
+
 	signedOrder := &SignedOrder{
 		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
-		TakerAddress:          nullAddress,
-		SenderAddress:         nullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
@@ -30,7 +32,7 @@ func TestBatchValidate(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(300000000000000),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       constants.GanacheExchangeAddress,
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -53,13 +55,15 @@ func TestBatchValidate(t *testing.T) {
 }
 
 func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
+	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
+
 	takerAssetAmount := big.NewInt(200000000000000000)
 	makerAssetAmount := big.NewInt(100000000000000000)
 	makerFee := big.NewInt(10000000000000000)
 	signedOrder := &SignedOrder{
 		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
-		TakerAddress:          nullAddress,
-		SenderAddress:         nullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
@@ -69,7 +73,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		MakerAssetAmount:      makerAssetAmount,
 		TakerAssetAmount:      takerAssetAmount,
 		ExpirationTimeSeconds: big.NewInt(99548619325),
-		ExchangeAddress:       constants.GanacheExchangeAddress,
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()
