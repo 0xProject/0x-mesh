@@ -7,7 +7,7 @@ import (
 )
 
 // Client is a JSON RPC 2.0 client implementation over WebSockets. It can be
-// to communicate with a 0x Mesh node and add/remove orders.
+// used to communicate with a 0x Mesh node and add/remove orders.
 type Client struct {
 	rpcClient *rpc.Client
 }
