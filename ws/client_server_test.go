@@ -56,7 +56,7 @@ func newTestServerAndClient(t *testing.T, orderHandler *dummyOrderHandler) (*Ser
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// Create a new client and call AddOrder.
+	// Create a new client which is connected to the server.
 	client, err := NewClient("ws://" + server.Addr().String())
 	require.NoError(t, err)
 
