@@ -72,7 +72,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 	}
 	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
 	var expirationBuffer int64 = 0
-	return &Watcher{
+	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
 		expirationWatcher:          NewExpirationWatcher(expirationBuffer),
@@ -84,7 +84,19 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractNameToAddress:      contractNameToAddress,
-	}, nil
+	}
+
+	// Pre-populate the OrderWatcher with all orders already stored in the DB
+	orders := []*meshdb.Order{}
+	err = w.meshDB.Orders.FindAll(&orders)
+	if err != nil {
+		return nil, err
+	}
+	for _, order := range orders {
+		w.setupInMemoryOrderState(order.SignedOrder, order.Hash)
+	}
+
+	return w, nil
 }
 
 // Start sets up the event & expiration watchers as well as the cleanup worker. Event
@@ -128,8 +140,29 @@ func (w *Watcher) Stop() error {
 	return nil
 }
 
-// Watch adds a 0x order to the ones being tracked for order-relevant state changes
-func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
+// Watch adds a 0x order to the DB and watches it for changes in fillability.
+func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.OrderInfo) error {
+	if orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+		logger.WithFields(logger.Fields{
+			"signedOrder": signedOrder,
+			"orderInfo":   orderInfo,
+		}).Panic("Attempted to add unfillable order to OrderWatcher")
+	}
+	order := meshdb.Order{
+		Hash:                     orderInfo.OrderHash,
+		SignedOrder:              signedOrder,
+		LastUpdated:              time.Now().Truncate(0),
+		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+		IsRemoved:                false,
+	}
+	w.meshDB.Orders.Insert(order)
+
+	w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
+
+	return nil
+}
+
+func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
 	err := w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
