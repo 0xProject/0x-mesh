@@ -207,10 +207,9 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 // FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
 // also have a salt value less then or equal to X
 func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
-	// DB range queries exclude the limit value whereas the 0x protocol `cancelOrdersUpTo` method
-	// we need this query for includes the value supplied. In order to make this helper method more
-	// useful to our particular use-case, we add 1 to the supplied salt (making the query inclusive
-	// of the value supplied)
+	// DB range queries exclude the limit value however for the 0x protocol `cancelOrdersUpTo` method
+	// is inclusive of the value supplied. In order to make this helper method more useful to our
+	// particular use-case, we add 1 to the supplied salt (making the query include the value supplied)
 	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
 	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), saltPlusOne.String()))
