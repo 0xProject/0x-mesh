@@ -543,6 +543,13 @@ func (w *Watcher) handleDecodeErr(err error, eventType string) {
 	}
 }
 
+// addAssetDataAddressToEventDecoder decodes the supplied AssetData and figures out which
+// tokens (address & token standard) it contains. It then registers these token addresses
+// with the contract events decoder so that knows how to properly decode events from that
+// contract address. This is necessary because different token standards share identical
+// event signatures but use different parameter names (see: decoder.go for more context).
+// In order to unregister token addresses when the last order involving it is deleted, we
+// also keep track of the number of tokens seen referencing a particular token address.
 func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 	assetDataName, err := w.assetDataDecoder.GetName(assetData)
 	if err != nil {
@@ -582,6 +589,10 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 	return nil
 }
 
+// Whenever we delete an order from the DB, we must also decrement the count of orders
+// involving a specific token address. We therefore call this method which decrements the
+// count, and if it reaches 0 for a given token, it removes the token address from the
+// contract event decoder.
 func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error {
 	assetDataName, err := w.assetDataDecoder.GetName(assetData)
 	if err != nil {
