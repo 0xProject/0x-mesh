@@ -154,7 +154,7 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.Order
 	order := meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              signedOrder,
-		LastUpdated:              time.Now().Truncate(0),
+		LastUpdated:              time.Now().Truncate(0).UTC(),
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
@@ -477,7 +477,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 
 func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo) {
 	order.IsRemoved = false
-	order.LastUpdated = time.Now().Truncate(0)
+	order.LastUpdated = time.Now().Truncate(0).UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
 	err := w.meshDB.Orders.Update(order)
 	if err != nil {
@@ -493,7 +493,7 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo)
 
 func (w *Watcher) unwatchOrder(order *meshdb.Order) {
 	order.IsRemoved = true
-	order.LastUpdated = time.Now().Truncate(0)
+	order.LastUpdated = time.Now().Truncate(0).UTC()
 	order.FillableTakerAssetAmount = big.NewInt(0)
 	err := w.meshDB.Orders.Update(order)
 	if err != nil {

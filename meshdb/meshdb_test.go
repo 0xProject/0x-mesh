@@ -41,7 +41,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
-	currentTime := time.Now().Truncate(0)
+	currentTime := time.Now().Truncate(0).UTC()
 	fiveMinutesFromNow := currentTime.Add(5 * time.Minute)
 
 	// Insert
