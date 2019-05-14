@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,12 +14,12 @@ func TestGenerateOrderHash(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
 	order := SignedOrder{
-		MakerAddress:          nullAddress,
-		TakerAddress:          nullAddress,
-		SenderAddress:         nullAddress,
-		FeeRecipientAddress:   nullAddress,
-		MakerAssetData:        nullAddress.Bytes(),
-		TakerAssetData:        nullAddress.Bytes(),
+		MakerAddress:          constants.NullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
+		FeeRecipientAddress:   constants.NullAddress,
+		MakerAssetData:        constants.NullAddress.Bytes(),
+		TakerAssetData:        constants.NullAddress.Bytes(),
 		ExchangeAddress:       fakeExchangeContractAddress,
 		Salt:                  big.NewInt(0),
 		MakerFee:              big.NewInt(0),

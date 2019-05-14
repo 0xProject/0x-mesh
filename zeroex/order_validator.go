@@ -14,8 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
 var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
 

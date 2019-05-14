@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var nullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-
 func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
@@ -25,8 +23,8 @@ func TestOrderCRUDOperations(t *testing.T) {
 	salt := big.NewInt(1548619145450)
 	signedOrder := &zeroex.SignedOrder{
 		MakerAddress:          makerAddress,
-		TakerAddress:          nullAddress,
-		SenderAddress:         nullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),

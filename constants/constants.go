@@ -41,3 +41,6 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 		EthBalanceChecker: common.HexToAddress("0x9bc2c6ae8b1a8e3c375b6ccb55eb4273b2c3fbde"),
 	},
 }
+
+// NullAddress is an Ethereum address with all zeroes.
+var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
