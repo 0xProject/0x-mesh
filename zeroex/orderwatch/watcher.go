@@ -351,7 +351,6 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							// TODO(fabio): Handle this event
 							orders, err := w.meshDB.FindOrdersByMakerAddressAndMaxSalt(exchangeCancelUpToEvent.MakerAddress, exchangeCancelUpToEvent.OrderEpoch)
 							if err != nil {
 								logger.WithFields(logger.Fields{
