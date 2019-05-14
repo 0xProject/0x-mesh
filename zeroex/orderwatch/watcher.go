@@ -66,7 +66,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		return nil, err
 	}
 	contractNameToAddress := constants.NetworkIDToContractAddresses[networkId]
-	orderValidator, err := zeroex.NewOrderValidator(contractNameToAddress["OrderValidator"], ethClient)
+	orderValidator, err := zeroex.NewOrderValidator(contractNameToAddress.OrderValidator, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalEvent.Spender != w.contractNameToAddress["ERC20Proxy"] {
+							if approvalEvent.Spender != w.contractNameToAddress.ERC20Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil)
@@ -338,7 +338,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalEvent.Approved != w.contractNameToAddress["ERC721Proxy"] {
+							if approvalEvent.Approved != w.contractNameToAddress.ERC721Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
@@ -351,7 +351,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalForAllEvent.Operator != w.contractNameToAddress["ERC721Proxy"] {
+							if approvalForAllEvent.Operator != w.contractNameToAddress.ERC721Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil)

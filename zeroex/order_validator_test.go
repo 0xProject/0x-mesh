@@ -32,7 +32,7 @@ func TestBatchValidate(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(300000000000000),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       contractNameToAddress["Exchange"],
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -73,7 +73,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		MakerAssetAmount:      makerAssetAmount,
 		TakerAssetAmount:      takerAssetAmount,
 		ExpirationTimeSeconds: big.NewInt(99548619325),
-		ExchangeAddress:       contractNameToAddress["Exchange"],
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 
 	orderHash, err := signedOrder.ComputeOrderHash()

@@ -36,7 +36,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       contractNameToAddress["Exchange"],
+		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
