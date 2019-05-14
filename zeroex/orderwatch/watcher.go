@@ -457,8 +457,8 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 	}
 	hashToOrderInfo := w.orderValidator.BatchValidate(signedOrders)
 	for _, order := range orders {
-		orderInfo, ok := hashToOrderInfo[order.Hash]
-		if !ok {
+		orderInfo, hasOrderInfo := hashToOrderInfo[order.Hash]
+		if !hasOrderInfo {
 			// Skip orders where OrderInfo was not returned. This only happens if
 			// the Ethereum JSON-RPC request for the particular batch including this
 			// order fails to succeed (re-try steps included)
