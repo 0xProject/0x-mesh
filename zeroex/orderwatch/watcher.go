@@ -246,7 +246,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 					OrderHash:                expiredOrder.OrderHash,
 					SignedOrder:              order.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
-					OrderStatus:              zeroex.Cancelled,
+					OrderStatus:              zeroex.Expired,
 				}
 				w.unwatchOrder(order)
 				w.cachedOrderEventsMux.Lock()
