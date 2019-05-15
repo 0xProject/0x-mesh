@@ -71,9 +71,9 @@ func main() {
 		log.WithField("err", err.Error()).Fatal("fatal error while starting app")
 	}
 	defer app.close()
-	// TODO(albrow): Really we shouldn't exit main unless there's a fatal error.
-	// This is just here as an ad hoc test to make sure close works correctly.
-	time.Sleep(30 * time.Second)
+
+	// Block forever
+	select {}
 }
 
 func newApp() (*application, error) {
