@@ -114,29 +114,21 @@ func newApp() (*application, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize order watcher (but don't start it yet).
-	orderValidatorAddress, err := getOrderValidatorAddressForNetwork(env.EthereumNetworkID)
-	if err != nil {
-		return nil, err
-	}
-	orderWatcher, err := orderwatch.New(blockWatcher, ethClient, orderValidatorAddress)
+	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, env.EthereumNetworkID)
 	if err != nil {
 		return nil, err
 	}
 	// TODO(albrow): Call Watch for all existing orders in the database.
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethBalanceCheckerAddress, err := getETHBalanceCheckerAddressForNetwork(env.EthereumNetworkID)
-	if err != nil {
-		return nil, err
-	}
-	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, ethBalanceCheckerAddress)
+	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, env.EthereumNetworkID)
 	if err != nil {
 		return nil, err
 	}
 	// TODO(albrow): Call Add for all existing makers/signers in the database.
 
 	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(orderValidatorAddress, ethClient)
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, env.EthereumNetworkID)
 	if err != nil {
 		return nil, err
 	}
@@ -264,19 +256,19 @@ func (app *application) Validate(messages []*core.Message) ([]*core.Message, err
 // TODO(albrow): Combine Validate and Store methods so we can store orders with
 // the correct RemainingFillableAmount.
 func (app *application) Store(messages []*core.Message) error {
-	for _, msg := range messages {
-		order, err := decodeOrder(msg.Data)
-		if err != nil {
-			return err
-		}
-		orderHash, err := order.ComputeOrderHash()
-		if err != nil {
-			return err
-		}
-		if err := app.orderWatcher.Watch(order, orderHash); err != nil {
-			return err
-		}
-	}
+	// for _, msg := range messages {
+	// 	order, err := decodeOrder(msg.Data)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	orderHash, err := order.ComputeOrderHash()
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if err := app.orderWatcher.Watch(order, orderHash); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
