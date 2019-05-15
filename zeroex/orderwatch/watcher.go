@@ -144,16 +144,16 @@ func (w *Watcher) Stop() error {
 }
 
 // Watch adds a 0x order to the DB and watches it for changes in fillability.
-func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.OrderInfo) error {
+func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 	if orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 		logger.WithFields(logger.Fields{
-			"signedOrder": signedOrder,
+			"signedOrder": orderInfo.SignedOrder,
 			"orderInfo":   orderInfo,
 		}).Panic("Attempted to add unfillable order to OrderWatcher")
 	}
 	order := meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
-		SignedOrder:              signedOrder,
+		SignedOrder:              orderInfo.SignedOrder,
 		LastUpdated:              time.Now().UTC(),
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
@@ -163,7 +163,7 @@ func (w *Watcher) Watch(signedOrder *zeroex.SignedOrder, orderInfo *zeroex.Order
 		return err
 	}
 
-	err = w.setupInMemoryOrderState(signedOrder, orderInfo.OrderHash)
+	err = w.setupInMemoryOrderState(orderInfo.SignedOrder, orderInfo.OrderHash)
 	if err != nil {
 		return err
 	}
