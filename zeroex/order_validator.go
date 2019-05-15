@@ -231,6 +231,6 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 // considers the given OrderInfo and does not update it or send any calls to
 // Ethereum. Typically, you will need to call BatchValidate periodically in
 // order to get the latest OrderInfo.
-func IsOrderValid(orderInfo OrderInfo) bool {
+func IsOrderValid(orderInfo *OrderInfo) bool {
 	return orderInfo.OrderStatus == Fillable && orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 1
 }
