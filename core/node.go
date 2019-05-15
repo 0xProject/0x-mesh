@@ -155,8 +155,9 @@ func (n *Node) runOnce() error {
 	if err != nil {
 		return err
 	}
-	if err := n.validateAndStoreMessages(incoming); err != nil {
-		return err
+	_, err = n.messageHandler.ValidateAndStore(incoming)
+	if err != nil {
+		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
 	// Send up to maxSendBatch messages.
@@ -191,20 +192,6 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 		}
 		messages = append(messages, msg)
 	}
-}
-
-// validateAndStore messages uses the MessageHandler to validate and store each
-// message in messages one at a time. It only attempts to store messages that
-// are valid.
-func (n *Node) validateAndStoreMessages(messages []*Message) error {
-	validMessages, err := n.messageHandler.Validate(messages)
-	if err != nil {
-		return err
-	}
-	if err := n.messageHandler.Store(validMessages); err != nil {
-		return fmt.Errorf("could not store message: %s", err.Error())
-	}
-	return nil
 }
 
 // shareBatch shares up to maxShareBatch messages (selected via the

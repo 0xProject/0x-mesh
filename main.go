@@ -186,6 +186,8 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	// TODO(albrow): This could be made more efficient if the db package supported
 	// a `Count` method for counting the number of models in a collection or
 	// counting the number of models that satisfy some query.
+	// TODO(albrow): Add an index for IsDeleted and don't return messages that
+	// have already been deleted.
 	// TODO: This will need to change when we add support for WeijieSub.
 	var allOrders []*meshdb.Order
 	if err := app.db.Orders.FindAll(&allOrders); err != nil {
@@ -214,7 +216,7 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	return messageData, nil
 }
 
-func (app *application) Validate(messages []*core.Message) ([]*core.Message, error) {
+func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Message, error) {
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*core.Message{}
 	for _, msg := range messages {
@@ -248,28 +250,15 @@ func (app *application) Validate(messages []*core.Message) ([]*core.Message, err
 		}
 		if orderInfo.OrderStatus == zeroex.Fillable {
 			validMessages = append(validMessages, msg)
+			// Watch stores the message in the database.
+			// TODO(albrow): Implement `Exists` method in database and only watch
+			// orders that don't already exist.
+			if err := app.orderWatcher.Watch(orderInfo); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return validMessages, nil
-}
-
-// TODO(albrow): Combine Validate and Store methods so we can store orders with
-// the correct RemainingFillableAmount.
-func (app *application) Store(messages []*core.Message) error {
-	// for _, msg := range messages {
-	// 	order, err := decodeOrder(msg.Data)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	orderHash, err := order.ComputeOrderHash()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	if err := app.orderWatcher.Watch(order, orderHash); err != nil {
-	// 		return err
-	// 	}
-	// }
-	return nil
 }
 
 func (app *application) start() error {
