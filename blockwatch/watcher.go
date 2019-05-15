@@ -16,15 +16,12 @@ import (
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
 // and added to our representation of the chain. During a block re-org, a block previously stored
-// can be removed from the list. Lastly, if more then blockRetentionLimit blocks have been discovered,
-// the oldest block stored will be retired (e.g., no longer tracked, but still considered part of the
-// canonical chain).
+// can be removed from the list.
 type EventType int
 
 const (
 	Added EventType = iota
 	Removed
-	Retired
 )
 
 // Event describes a block event emitted by a Watcher
@@ -199,7 +196,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		if err != nil {
 			return events, err
 		}
-		retiredBlock, err := w.stack.Push(nextHeader)
+		err = w.stack.Push(nextHeader)
 		if err != nil {
 			return events, err
 		}
@@ -207,12 +204,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 			Type:        Added,
 			BlockHeader: nextHeader,
 		})
-		if retiredBlock != nil {
-			events = append(events, &Event{
-				Type:        Retired,
-				BlockHeader: retiredBlock,
-			})
-		}
 		return events, nil
 	}
 
@@ -245,7 +236,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 	if err != nil {
 		return events, err
 	}
-	retiredBlock, err := w.stack.Push(nextHeader)
+	err = w.stack.Push(nextHeader)
 	if err != nil {
 		return events, err
 	}
@@ -253,12 +244,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		Type:        Added,
 		BlockHeader: nextHeader,
 	})
-	if retiredBlock != nil {
-		events = append(events, &Event{
-			Type:        Retired,
-			BlockHeader: retiredBlock,
-		})
-	}
 
 	return events, nil
 }
