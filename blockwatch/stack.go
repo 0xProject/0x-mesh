@@ -44,25 +44,24 @@ func (s *Stack) Pop() (*meshdb.MiniHeader, error) {
 }
 
 // Push pushes a block header onto the block stack. If the stack limit is
-// reached, it will remove the oldest block header and return it.
-func (s *Stack) Push(block *meshdb.MiniHeader) (*meshdb.MiniHeader, error) {
+// reached, it will remove the oldest block header.
+func (s *Stack) Push(block *meshdb.MiniHeader) error {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	miniHeaders, err := s.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var oldestMiniHeader *meshdb.MiniHeader
 	if len(miniHeaders) == s.limit {
-		oldestMiniHeader = miniHeaders[0]
+		oldestMiniHeader := miniHeaders[0]
 		if err := s.meshDB.MiniHeaders.Delete(oldestMiniHeader.ID()); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if err := s.meshDB.MiniHeaders.Insert(block); err != nil {
-		return nil, err
+		return err
 	}
-	return oldestMiniHeader, nil
+	return nil
 }
 
 // Peek returns the latest block header from the block stack without removing
