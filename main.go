@@ -328,7 +328,29 @@ func (app *application) start() error {
 
 // AddOrder is called when an RPC client sends an AddOrder request.
 func (app *application) AddOrder(order *zeroex.SignedOrder) error {
-	log.Info("AddOrder was called")
+	log.Info("received order via RPC")
+	orderHash, err := order.ComputeOrderHash()
+	if err != nil {
+		log.WithField("order", order).Error("received order via RPC but could not compute order hash")
+		return nil
+	}
+	orderHashToOrderInfo := app.orderValidator.BatchValidate([]*zeroex.SignedOrder{order})
+	orderInfo, found := orderHashToOrderInfo[orderHash]
+	if !found {
+		log.WithField("order", order).Error("received order via RPC but could not validate it")
+		return nil
+	}
+	if orderInfo.OrderStatus != zeroex.Fillable {
+		log.WithField("order", order).Error("received invalid order via RPC")
+		return nil
+	}
+
+	log.WithField("order", order).Error("order received via RPC is valid")
+	if err := app.orderWatcher.Watch(orderInfo); err != nil {
+		log.WithField("order", order).Error("received valid order via RPC but could not watch it")
+		return err
+	}
+
 	return nil
 }
 
