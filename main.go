@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -28,6 +29,10 @@ const (
 	blockWatcherRetentionLimit  = 40
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	ethWatcherPollingInterval   = 5 * time.Second
+)
+
+var (
+	errInternal = errors.New("internal error")
 )
 
 type meshEnvVars struct {
@@ -308,6 +313,7 @@ func (app *application) start() error {
 	go func() {
 		err := app.node.Start()
 		if err != nil {
+			log.WithField("error", err.Error()).Error("core node returned error")
 			app.close()
 		}
 	}()
@@ -336,6 +342,7 @@ func (app *application) start() error {
 	go func() {
 		err := app.wsServer.Listen()
 		if err != nil {
+			log.WithField("error", err.Error()).Error("RPC server returned error")
 			app.close()
 		}
 	}()
@@ -354,23 +361,26 @@ func (app *application) AddOrder(order *zeroex.SignedOrder) error {
 	orderHash, err := order.ComputeOrderHash()
 	if err != nil {
 		log.WithField("order", order).Error("received order via RPC but could not compute order hash")
-		return nil
+		return errInternal
 	}
 	orderHashToOrderInfo := app.orderValidator.BatchValidate([]*zeroex.SignedOrder{order})
 	orderInfo, found := orderHashToOrderInfo[orderHash]
 	if !found {
 		log.WithField("order", order).Error("received order via RPC but could not validate it")
-		return nil
+		return errInternal
 	}
-	if zeroex.IsOrderValid(orderInfo) {
-		log.WithField("order", order).Error("received invalid order via RPC")
-		return nil
+	if !zeroex.IsOrderValid(orderInfo) {
+		log.WithField("orderInfo", orderInfo).Error("received invalid order via RPC")
+		return errors.New("invalid order")
 	}
 
-	log.WithField("order", order).Error("order received via RPC is valid")
+	log.WithField("orderInfo", orderInfo).Error("order received via RPC is valid")
 	if err := app.orderWatcher.Watch(orderInfo); err != nil {
-		log.WithField("order", order).Error("received valid order via RPC but could not watch it")
-		return err
+		log.WithFields(map[string]interface{}{
+			"orderInfo": orderInfo,
+			"error":     err.Error(),
+		}).Error("received valid order via RPC but could not watch it")
+		return errInternal
 	}
 
 	return nil
