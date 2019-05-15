@@ -118,17 +118,15 @@ func newApp() (*application, error) {
 	if err != nil {
 		return nil, err
 	}
+	topics := orderwatch.GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{
 		MeshDB:              db,
 		PollingInterval:     blockWatcherPollingInterval,
 		StartBlockDepth:     rpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,
-		// TODO: The order watcher (and any other watchers that use
-		// blockwatch.Watcher should register topics so that main.go isn't
-		// responsible for it.
-		Topics: nil,
-		Client: blockWatcherClient,
+		Topics:              topics,
+		Client:              blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
