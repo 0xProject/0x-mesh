@@ -45,7 +45,7 @@ func TestBatchValidate(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(GanacheOrderValidatorAddress, ethClient)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
 	orderInfos := orderValidator.BatchValidate(signedOrders)

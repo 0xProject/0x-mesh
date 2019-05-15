@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -44,8 +45,9 @@ type ETHWatcher struct {
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, ethBalanceCheckerAddress common.Address) (*ETHWatcher, error) {
-	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(ethBalanceCheckerAddress, ethClient)
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, networkID int) (*ETHWatcher, error) {
+	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(contractNameToAddress.EthBalanceChecker, ethClient)
 	if err != nil {
 		return nil, err
 	}

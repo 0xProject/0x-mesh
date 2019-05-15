@@ -44,7 +44,7 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
@@ -64,7 +64,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
@@ -91,7 +91,7 @@ func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
 	// Add the first account with the correct initial balance. We expect no event to be emitted for
@@ -121,7 +121,7 @@ func TestStartStopETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, GanacheEthBalanceCheckerAddress)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
 	for address := range ethAccountToBalance {
