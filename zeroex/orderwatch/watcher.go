@@ -148,7 +148,7 @@ func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 	if !zeroex.IsOrderValid(orderInfo) {
 		logger.WithFields(logger.Fields{
 			"orderInfo": orderInfo,
-		}).Panic("Attempted to add invalid order to OrderWatcher")
+		}).Error("Attempted to add invalid order to OrderWatcher")
 		return errors.New("cannot watch invalid order")
 	}
 	order := meshdb.Order{
