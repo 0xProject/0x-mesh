@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -16,9 +15,8 @@ import (
 )
 
 type clientEnvVars struct {
-	// RPCPort is the port to use for the JSON RPC API over WebSockets. By
-	// default, 0x Mesh will let the OS select a randomly available port.
-	RPCPort int `envvar:"RPC_PORT"`
+	// RPCAddress is the address of the 0x Mesh node to communicate with.
+	RPCAddress string `envvar:"RPC_ADDRESS"`
 }
 
 var testOrder = &zeroex.SignedOrder{
@@ -43,10 +41,7 @@ func main() {
 		panic(err)
 	}
 
-	// TODO(albrow): Set up allowances and balances.
-
-	rpcAddr := fmt.Sprintf("ws://localhost:%d", env.RPCPort)
-	client, err := ws.NewClient(rpcAddr)
+	client, err := ws.NewClient(env.RPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}
