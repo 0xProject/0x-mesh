@@ -269,7 +269,7 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 		if !found {
 			continue
 		}
-		if orderInfo.OrderStatus == zeroex.Fillable {
+		if zeroex.IsOrderValid(orderInfo) {
 			validMessages = append(validMessages, msg)
 			// Watch stores the message in the database.
 			// TODO(albrow): Implement `Exists` method in database and only watch
@@ -340,7 +340,7 @@ func (app *application) AddOrder(order *zeroex.SignedOrder) error {
 		log.WithField("order", order).Error("received order via RPC but could not validate it")
 		return nil
 	}
-	if orderInfo.OrderStatus != zeroex.Fillable {
+	if zeroex.IsOrderValid(orderInfo) {
 		log.WithField("order", order).Error("received invalid order via RPC")
 		return nil
 	}
