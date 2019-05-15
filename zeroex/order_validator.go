@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -49,8 +50,9 @@ type OrderValidator struct {
 }
 
 // NewOrderValidator instantiates a new order validator
-func NewOrderValidator(orderValidatorAddress common.Address, ethClient *ethclient.Client) (*OrderValidator, error) {
-	orderValidator, err := wrappers.NewOrderValidator(orderValidatorAddress, ethClient)
+func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
+	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+	orderValidator, err := wrappers.NewOrderValidator(contractNameToAddress.OrderValidator, ethClient)
 	if err != nil {
 		return nil, err
 	}

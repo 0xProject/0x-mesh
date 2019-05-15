@@ -65,13 +65,13 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 	if err != nil {
 		return nil, err
 	}
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkId]
-	orderValidator, err := zeroex.NewOrderValidator(contractNameToAddress.OrderValidator, ethClient)
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, networkId)
 	if err != nil {
 		return nil, err
 	}
 	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
 	var expirationBuffer int64 = 0
+	contractNameToAddress := constants.NetworkIDToContractAddresses[networkId]
 	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
