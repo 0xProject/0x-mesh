@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
@@ -288,16 +289,25 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 			continue
 		}
 		if zeroex.IsOrderValid(orderInfo) {
-			log.WithFields(map[string]interface{}{
-				"orderInfo": orderInfo,
-				"from":      msg.From.String(),
-			}).Debug("storing valid order received from peer")
 			validMessages = append(validMessages, msg)
-			// Watch stores the message in the database.
-			// TODO(albrow): Implement `Exists` method in database and only watch
-			// orders that don't already exist.
-			if err := app.orderWatcher.Watch(orderInfo); err != nil {
+			alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
+			if err != nil {
 				return nil, err
+			}
+			if alreadyStored {
+				log.WithFields(map[string]interface{}{
+					"orderInfo": orderInfo,
+					"from":      msg.From.String(),
+				}).Debug("order received from peer is valid but already stored")
+			} else {
+				log.WithFields(map[string]interface{}{
+					"orderInfo": orderInfo,
+					"from":      msg.From.String(),
+				}).Debug("storing valid order received from peer")
+				// Watch stores the message in the database.
+				if err := app.orderWatcher.Watch(orderInfo); err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			log.WithFields(map[string]interface{}{
@@ -374,7 +384,21 @@ func (app *application) AddOrder(order *zeroex.SignedOrder) error {
 		return errors.New("invalid order")
 	}
 
-	log.WithField("orderInfo", orderInfo).Error("order received via RPC is valid")
+	log.WithField("orderInfo", orderInfo).Debug("order received via RPC is valid")
+
+	alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
+	if err != nil {
+		log.WithFields(map[string]interface{}{
+			"orderInfo": orderInfo,
+			"error":     err.Error(),
+		}).Error("received valid order via RPC but could not determine if it is already stored")
+		return errInternal
+	}
+	if alreadyStored {
+		log.WithField("orderInfo", orderInfo).Debug("received valid order via RPC but it is already stored")
+		return nil
+	}
+
 	if err := app.orderWatcher.Watch(orderInfo); err != nil {
 		log.WithFields(map[string]interface{}{
 			"orderInfo": orderInfo,
@@ -423,4 +447,17 @@ func decodeOrder(data []byte) (*zeroex.SignedOrder, error) {
 		return nil, fmt.Errorf("unexpected message type: %q", orderMessage.MessageType)
 	}
 	return orderMessage.Order, nil
+}
+
+// TODO(albrow): Either use the Exists method or check for a typed error after
+// updating the db package.
+func (app *application) orderAlreadyStored(orderHash common.Hash) (bool, error) {
+	var order meshdb.Order
+	err := app.db.Orders.FindByID(orderHash.Bytes(), &order)
+	if err == nil {
+		return true, nil
+	} else if strings.Contains(err.Error(), "not found") {
+		return false, nil
+	}
+	return false, err
 }
