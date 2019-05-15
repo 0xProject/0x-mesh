@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/ws"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
@@ -34,6 +35,9 @@ type meshEnvVars struct {
 	Verbosity int `envvar:"VERBOSITY" default:"2"`
 	// DatabaseDir is the directory to use for persisting the database.
 	DatabaseDir string `envvar:"DATABASE_DIR" default:"./0x_mesh_db"`
+	// RPCPort is the port to use for the JSON RPC API over WebSockets. By
+	// default, 0x Mesh will let the OS select a randomly available port.
+	RPCPort int `envvar:"RPC_PORT" default:"0"`
 	// P2PListenPort is the port on which to listen for new peer connections. By
 	// default, 0x Mesh will let the OS select a randomly available port.
 	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
@@ -53,6 +57,7 @@ type application struct {
 	orderWatcher   *orderwatch.Watcher
 	ethWathcher    *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
+	wsServer       *ws.Server
 }
 
 func main() {
@@ -81,6 +86,14 @@ func newApp() (*application, error) {
 	// Configure logger
 	// TOOD(albrow): Don't use global veriables for these settings.
 	log.SetLevel(log.Level(env.Verbosity))
+	log.WithFields(map[string]interface{}{
+		"VERBOSITY":           env.Verbosity,
+		"DATABASE_DIR":        env.DatabaseDir,
+		"RPC_PORT":            env.RPCPort,
+		"P2P_LISTEN_PORT":     env.P2PListenPort,
+		"ETHEREUM_RPC_URL":    env.EthereumRPCURL,
+		"ETHEREUM_NETWORK_ID": env.EthereumNetworkID,
+	}).Info("parsed environment variables")
 
 	// Initialize db
 	db, err := meshdb.NewMeshDB(env.DatabaseDir)
@@ -155,6 +168,14 @@ func newApp() (*application, error) {
 		return nil, err
 	}
 	app.node = node
+
+	// Initialize the JSON RPC WebSocket server (but don't start it yet).
+	rpcAddr := fmt.Sprintf(":%d", env.RPCPort)
+	wsServer, err := ws.NewServer(rpcAddr, app)
+	if err != nil {
+		return nil, err
+	}
+	app.wsServer = wsServer
 
 	return app, nil
 }
@@ -268,6 +289,10 @@ func (app *application) start() error {
 			app.close()
 		}
 	}()
+	log.WithFields(map[string]interface{}{
+		"multiaddress": app.node.Multiaddrs(),
+		"peerID":       app.node.ID().String(),
+	}).Info("started core node")
 
 	// TODO(albrow) we might want to match the synchronous API of core.Node which
 	// returns any fatal errors. As it currently stands, if one of these watchers
@@ -276,22 +301,47 @@ func (app *application) start() error {
 	if err := app.blockWatcher.StartPolling(); err != nil {
 		return err
 	}
+	log.Info("started block watcher")
 	if err := app.orderWatcher.Start(); err != nil {
 		return err
 	}
+	log.Info("started order watcher")
 	if err := app.ethWathcher.Start(); err != nil {
 		return err
 	}
+	log.Info("started ETH balance watcher")
+
+	go func() {
+		err := app.wsServer.Listen()
+		if err != nil {
+			app.close()
+		}
+	}()
+	// Wait for the server to start listening and select an address.
+	for app.wsServer.Addr() == nil {
+		time.Sleep(10 * time.Millisecond)
+	}
+	log.WithField("address", app.wsServer.Addr().String()).Info("started RPC server")
+
+	return nil
+}
+
+// AddOrder is called when an RPC client sends an AddOrder request.
+func (app *application) AddOrder(order *zeroex.SignedOrder) error {
+	log.Info("AddOrder was called")
 	return nil
 }
 
 func (app *application) close() {
+	if err := app.wsServer.Close(); err != nil {
+		log.WithField("error", err.Error()).Error("error while closing RPC server")
+	}
 	if err := app.node.Close(); err != nil {
-		log.WithField("err", err.Error()).Error("error while closing node")
+		log.WithField("error", err.Error()).Error("error while closing node")
 	}
 	app.ethWathcher.Stop()
 	if err := app.orderWatcher.Stop(); err != nil {
-		log.WithField("err", err.Error()).Error("error while closing orderWatcher")
+		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
 	app.blockWatcher.StopPolling()
 	app.db.Close()

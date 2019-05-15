@@ -14,6 +14,7 @@ import (
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -125,6 +126,16 @@ func New(config Config) (*Node, error) {
 	}
 
 	return node, nil
+}
+
+// Multiaddrs returns all multi addresses at which the node is dialable.
+func (n *Node) Multiaddrs() []ma.Multiaddr {
+	return n.host.Addrs()
+}
+
+// ID returns the peer id of the node.
+func (n *Node) ID() peer.ID {
+	return n.host.ID()
 }
 
 // Start causes the Node to continuously send messages to and receive messages
