@@ -151,7 +151,8 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					traderInfo := results.TradersInfo[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[chunkSize*i+j]
-					switch OrderStatus(orderInfo.OrderStatus) {
+					orderStatus := OrderStatus(orderInfo.OrderStatus)
+					switch orderStatus {
 					// TODO(fabio): A future optimization would be to check that both the maker & taker
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
@@ -160,7 +161,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: big.NewInt(0),
-							OrderStatus:              OrderStatus(orderInfo.OrderStatus),
+							OrderStatus:              orderStatus,
 						}
 						continue
 					case Fillable:
@@ -168,7 +169,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
 							FillableTakerAssetAmount: calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
-							OrderStatus:              OrderStatus(orderInfo.OrderStatus),
+							OrderStatus:              orderStatus,
 						}
 						continue
 					}
@@ -222,4 +223,14 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 	}
 
 	return maxTakerAssetFillAmount
+}
+
+// IsOrderValid returns true if the OrderStatus is Fillable and the
+// FillableTakerAssetAmount is greater than 0, indicating that the order is
+// valid and can be filled. It returns false otherwise. Note that this only
+// considers the given OrderInfo and does not update it or send any calls to
+// Ethereum. Typically, you will need to call BatchValidate periodically in
+// order to get the latest OrderInfo.
+func IsOrderValid(orderInfo OrderInfo) bool {
+	return orderInfo.OrderStatus == Fillable && orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 1
 }
