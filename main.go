@@ -224,10 +224,18 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	}
 	selectedOrders := allOrders[start:end]
 
+	log.WithFields(map[string]interface{}{
+		"maxNumberToShare":    max,
+		"actualNumberToShare": len(selectedOrders),
+	}).Debug("preparing to share orders with peers")
+
 	// After we have selected all the orders to share, we need to encode them to
 	// the message data format.
 	messageData := make([][]byte, len(selectedOrders))
 	for i, order := range selectedOrders {
+		log.WithFields(map[string]interface{}{
+			"order": order,
+		}).Debug("selected order to share")
 		encoded, err := encodeOrder(order.SignedOrder)
 		if err != nil {
 			return nil, err
@@ -254,6 +262,11 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
 			continue
 		}
+		log.WithFields(map[string]interface{}{
+			"order":     order,
+			"orderHash": orderHash,
+			"from":      msg.From.String(),
+		}).Debug("received order from peer")
 		orders = append(orders, order)
 		orderHashToMessage[orderHash] = msg
 	}
@@ -270,6 +283,10 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 			continue
 		}
 		if zeroex.IsOrderValid(orderInfo) {
+			log.WithFields(map[string]interface{}{
+				"orderInfo": orderInfo,
+				"from":      msg.From.String(),
+			}).Debug("storing valid order received from peer")
 			validMessages = append(validMessages, msg)
 			// Watch stores the message in the database.
 			// TODO(albrow): Implement `Exists` method in database and only watch
@@ -277,6 +294,11 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 			if err := app.orderWatcher.Watch(orderInfo); err != nil {
 				return nil, err
 			}
+		} else {
+			log.WithFields(map[string]interface{}{
+				"orderInfo": orderInfo,
+				"from":      msg.From.String(),
+			}).Debug("not storing invalid order received from peer")
 		}
 	}
 	return validMessages, nil
