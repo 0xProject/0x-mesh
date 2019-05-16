@@ -151,7 +151,7 @@ func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 		}).Error("Attempted to add invalid order to OrderWatcher")
 		return errors.New("cannot watch invalid order")
 	}
-	order := meshdb.Order{
+	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		LastUpdated:              time.Now().UTC(),

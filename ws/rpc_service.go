@@ -16,6 +16,7 @@ type OrderHandler interface {
 }
 
 // AddOrder calls orderHandler.AddOrder and returns the computed order hash.
+// TODO(albrow): Add the ability to send multiple orders at once.
 func (s *rpcService) AddOrder(order *zeroex.SignedOrder) (orderHashHex string, err error) {
 	orderHash, err := order.ComputeOrderHash()
 	if err != nil {

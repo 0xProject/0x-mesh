@@ -14,6 +14,7 @@ import (
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -127,6 +128,16 @@ func New(config Config) (*Node, error) {
 	return node, nil
 }
 
+// Multiaddrs returns all multi addresses at which the node is dialable.
+func (n *Node) Multiaddrs() []ma.Multiaddr {
+	return n.host.Addrs()
+}
+
+// ID returns the peer id of the node.
+func (n *Node) ID() peer.ID {
+	return n.host.ID()
+}
+
 // Start causes the Node to continuously send messages to and receive messages
 // from its peers. It blocks until an error is encountered or `Stop` is called.
 func (n *Node) Start() error {
@@ -155,8 +166,9 @@ func (n *Node) runOnce() error {
 	if err != nil {
 		return err
 	}
-	if err := n.validateAndStoreMessages(incoming); err != nil {
-		return err
+	_, err = n.messageHandler.ValidateAndStore(incoming)
+	if err != nil {
+		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
 	// Send up to maxSendBatch messages.
@@ -191,20 +203,6 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 		}
 		messages = append(messages, msg)
 	}
-}
-
-// validateAndStore messages uses the MessageHandler to validate and store each
-// message in messages one at a time. It only attempts to store messages that
-// are valid.
-func (n *Node) validateAndStoreMessages(messages []*Message) error {
-	validMessages, err := n.messageHandler.Validate(messages)
-	if err != nil {
-		return err
-	}
-	if err := n.messageHandler.Store(validMessages); err != nil {
-		return fmt.Errorf("could not store message: %s", err.Error())
-	}
-	return nil
 }
 
 // shareBatch shares up to maxShareBatch messages (selected via the

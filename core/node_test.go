@@ -25,12 +25,8 @@ const testTopic = "0x-mesh-testing"
 // messages valid and doesn't actually store or share any messages.
 type dummyMessageHandler struct{}
 
-func (*dummyMessageHandler) Validate(messages []*Message) ([]*Message, error) {
+func (*dummyMessageHandler) ValidateAndStore(messages []*Message) ([]*Message, error) {
 	return messages, nil
-}
-
-func (*dummyMessageHandler) Store([]*Message) error {
-	return nil
 }
 
 func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
@@ -110,7 +106,7 @@ func newInMemoryMessageHandler(validator func(*Message) (bool, error)) *inMemory
 	}
 }
 
-func (mh *inMemoryMessageHandler) Validate(messages []*Message) ([]*Message, error) {
+func (mh *inMemoryMessageHandler) ValidateAndStore(messages []*Message) ([]*Message, error) {
 	validMessages := []*Message{}
 	for _, msg := range messages {
 		valid, err := mh.validator(msg)
@@ -121,10 +117,13 @@ func (mh *inMemoryMessageHandler) Validate(messages []*Message) ([]*Message, err
 			validMessages = append(validMessages, msg)
 		}
 	}
+	if err := mh.store(validMessages); err != nil {
+		return nil, err
+	}
 	return validMessages, nil
 }
 
-func (mh *inMemoryMessageHandler) Store(messages []*Message) error {
+func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 	for _, msg := range messages {
 		found := false
 		for _, existing := range mh.messages {

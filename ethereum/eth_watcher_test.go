@@ -21,13 +21,14 @@ import (
 
 // Values taken from Ganache snapshot
 var firstAccount = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")
-var firstAccountBalance, _ = math.ParseBig256("99943972190000000000")
+var firstAccountBalance, _ = math.ParseBig256("99943881242000000000")
 var secondAccount = common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb")
+var secondAccountBalance, _ = math.ParseBig256("49999822428000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
 
 var ethAccountToBalance = map[common.Address]*big.Int{
 	firstAccount:  firstAccountBalance,
-	secondAccount: hundredEth,
+	secondAccount: secondAccountBalance,
 	common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84"): hundredEth,
 	common.HexToAddress("0xe834ec434daba538cd1b9fe1582052b880bd7e63"): hundredEth,
 	common.HexToAddress("0x78dc5d2d739606d31509c31d654056a45185ecb6"): hundredEth,
@@ -80,7 +81,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	for i := 0; i < len(ethAccountToBalance); i++ {
 		select {
 		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance)
+			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
 
 		case <-time.After(3 * time.Second):
 			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
@@ -109,7 +110,7 @@ func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
 	for i := 0; i < 1; i++ {
 		select {
 		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, hundredEth, balance.Balance)
+			assert.Equal(t, secondAccountBalance, balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
 			assert.Equal(t, secondAccount, balance.Address)
 
 		case <-time.After(3 * time.Second):
@@ -135,7 +136,7 @@ func TestStartStopETHWatcher(t *testing.T) {
 	for i := 0; i < len(ethAccountToBalance); i++ {
 		select {
 		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance)
+			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
 
 		case <-time.After(3 * time.Second):
 			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
