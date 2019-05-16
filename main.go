@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -385,6 +387,12 @@ func (app *application) AddOrder(order *zeroex.SignedOrder) error {
 	}
 
 	return nil
+}
+
+// AddPeer is called when an RPC client sends an AddPeer request.
+func (app *application) AddPeer(peerinfo peerstore.PeerInfo) error {
+	// TODO(albrow): Implement this
+	return errors.New("Not yet implemented")
 }
 
 func (app *application) close() {
