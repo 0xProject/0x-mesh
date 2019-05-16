@@ -38,10 +38,10 @@ func (c *Client) AddOrder(order *zeroex.SignedOrder) (common.Hash, error) {
 
 // AddPeer adds the peer to the node's list of peers. The node will attempt to
 // connect to this new peer and return an error if it cannot.
-func (c *Client) AddPeer(peerinfo peerstore.PeerInfo) error {
-	peerIDString := peer.IDB58Encode(peerinfo.ID)
-	multiAddrStrings := make([]string, len(peerinfo.Addrs))
-	for i, addr := range peerinfo.Addrs {
+func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
+	peerIDString := peer.IDB58Encode(peerInfo.ID)
+	multiAddrStrings := make([]string, len(peerInfo.Addrs))
+	for i, addr := range peerInfo.Addrs {
 		multiAddrStrings[i] = addr.String()
 	}
 	if err := c.rpcClient.Call(nil, "mesh_addPeer", peerIDString, multiAddrStrings); err != nil {
