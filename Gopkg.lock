@@ -1039,6 +1039,7 @@
     "github.com/ethereum/go-ethereum/common",
     "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/core/types",
+    "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
@@ -1061,7 +1062,6 @@
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/util",
     "golang.org/x/crypto/sha3",
-    "golang.org/x/net/websocket",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
