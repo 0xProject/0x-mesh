@@ -15,8 +15,10 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -142,6 +144,18 @@ func (n *Node) ID() peer.ID {
 // from its peers. It blocks until an error is encountered or `Stop` is called.
 func (n *Node) Start() error {
 	return n.mainLoop()
+}
+
+// Connect ensures there is a connection between this host and the peer with
+// given peerInfo. If there is not an active connection, Connect will dial the
+// peer, and block until a connection is open, or an error is returned.
+func (n *Node) Connect(ctx context.Context, peerInfo peerstore.PeerInfo) error {
+	err := n.host.Connect(ctx, peerInfo)
+	if err != nil {
+		return err
+	}
+	log.WithField("peerInfo", peerInfo).Debug("connected to peer")
+	return nil
 }
 
 // mainLoop is where the core logic for a Node is implemented. On each iteration

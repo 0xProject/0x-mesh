@@ -53,14 +53,13 @@ func createTwoConnectedTestNodes(t *testing.T) (*Node, *Node) {
 	// them.
 	node0 := newTestNode(t)
 	node1 := newTestNode(t)
-	node0.host.Peerstore().AddAddrs(node1.host.ID(), node1.host.Addrs(), peerstore.PermanentAddrTTL)
-	node1.host.Peerstore().AddAddrs(node0.host.ID(), node0.host.Addrs(), peerstore.PermanentAddrTTL)
-	node1PeerInfo := node0.host.Peerstore().PeerInfo(node1.host.ID())
-	node0PeerInfo := node1.host.Peerstore().PeerInfo(node0.host.ID())
-	connectContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	require.NoError(t, node0.host.Connect(connectContext, node1PeerInfo))
-	require.NoError(t, node1.host.Connect(connectContext, node0PeerInfo))
+	node1PeerInfo := peerstore.PeerInfo{
+		ID:    node1.ID(),
+		Addrs: node1.Multiaddrs(),
+	}
+	require.NoError(t, node0.Connect(connectCtx, node1PeerInfo))
 	return node0, node1
 }
 
