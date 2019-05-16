@@ -16,15 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// dummyOrderHandler is used for testing purposes. It allows declaring handlers
+// dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
-type dummyOrderHandler struct {
+type dummyRPCHandler struct {
 	addOrderHandler func(order *zeroex.SignedOrder) error
 }
 
-func (d *dummyOrderHandler) AddOrder(order *zeroex.SignedOrder) error {
+func (d *dummyRPCHandler) AddOrder(order *zeroex.SignedOrder) error {
 	if d.addOrderHandler == nil {
-		return errors.New("dummyOrderHandler: no handler set for AddOrder")
+		return errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
 	return d.addOrderHandler(order)
 }
@@ -34,7 +34,7 @@ func (d *dummyOrderHandler) AddOrder(order *zeroex.SignedOrder) error {
 // orderHandler to handle incoming requests. Useful for testing purposes. Will
 // block until both the server and client are running and connected to one
 // another.
-func newTestServerAndClient(t *testing.T, orderHandler *dummyOrderHandler) (*Server, *Client) {
+func newTestServerAndClient(t *testing.T, orderHandler *dummyRPCHandler) (*Server, *Client) {
 	// Start a new server.
 	server, err := NewServer(":0", orderHandler)
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestAddOrder(t *testing.T) {
 	// Set up the dummy handler with an addOrderHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	orderHandler := &dummyOrderHandler{
+	orderHandler := &dummyRPCHandler{
 		addOrderHandler: func(order *zeroex.SignedOrder) error {
 			assert.Equal(t, testOrder, order, "AddOrder was called with an unexpected order argument")
 			wg.Done()
