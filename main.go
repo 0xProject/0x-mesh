@@ -27,7 +27,7 @@ import (
 const (
 	pubsubTopic                 = "0x-orders:v0"
 	blockWatcherPollingInterval = 5 * time.Second
-	blockWatcherRetentionLimit  = 40
+	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	ethWatcherPollingInterval   = 5 * time.Second
 )
@@ -90,7 +90,7 @@ func newApp() (*application, error) {
 	}
 
 	// Configure logger
-	// TOOD(albrow): Don't use global veriables for these settings.
+	// TODO(albrow): Don't use global variables for these settings.
 	log.SetLevel(log.Level(env.Verbosity))
 	log.WithFields(map[string]interface{}{
 		"VERBOSITY":           env.Verbosity,
@@ -135,7 +135,6 @@ func newApp() (*application, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO(albrow): Call Watch for all existing orders in the database.
 
 	// Initialize the ETH balance watcher (but don't start it yet).
 	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, env.EthereumNetworkID)
@@ -182,28 +181,6 @@ func newApp() (*application, error) {
 	app.wsServer = wsServer
 
 	return app, nil
-}
-
-func getETHBalanceCheckerAddressForNetwork(networkID int) (common.Address, error) {
-	switch networkID {
-	case 1:
-		return ethereum.MainnetEthBalanceCheckerAddress, nil
-	case 50:
-		return ethereum.GanacheEthBalanceCheckerAddress, nil
-	default:
-		return [common.AddressLength]byte{}, fmt.Errorf("unknown or unsupported network id: %d", networkID)
-	}
-}
-
-func getOrderValidatorAddressForNetwork(networkID int) (common.Address, error) {
-	switch networkID {
-	case 1:
-		return zeroex.MainnetOrderValidatorAddress, nil
-	case 50:
-		return zeroex.GanacheOrderValidatorAddress, nil
-	default:
-		return [common.AddressLength]byte{}, fmt.Errorf("unknown or unsupported network id: %d", networkID)
-	}
 }
 
 func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
@@ -342,6 +319,8 @@ func (app *application) start() error {
 		return err
 	}
 	log.Info("started order watcher")
+	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
+	// for future use by the order storing algorithm.
 	if err := app.ethWathcher.Start(); err != nil {
 		return err
 	}
