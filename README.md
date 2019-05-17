@@ -2,6 +2,8 @@
 
 A peer-to-peer network for sharing orders
 
+:no_entry: WARNING: This project is still under construction and is not ready for use :no_entry:
+
 ## Development
 
 If you are working on 0x-mesh, the root directory for the project must be at
