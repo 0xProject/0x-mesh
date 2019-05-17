@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,6 +32,7 @@ const (
 	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	ethWatcherPollingInterval   = 5 * time.Second
+	peerConnectTimeout          = 60 * time.Second
 )
 
 var (
@@ -208,7 +211,7 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	log.WithFields(map[string]interface{}{
 		"maxNumberToShare":    max,
 		"actualNumberToShare": len(selectedOrders),
-	}).Debug("preparing to share orders with peers")
+	}).Trace("preparing to share orders with peers")
 
 	// After we have selected all the orders to share, we need to encode them to
 	// the message data format.
@@ -216,7 +219,7 @@ func (app *application) GetMessagesToShare(max int) ([][]byte, error) {
 	for i, order := range selectedOrders {
 		log.WithFields(map[string]interface{}{
 			"order": order,
-		}).Debug("selected order to share")
+		}).Trace("selected order to share")
 		encoded, err := encodeOrder(order.SignedOrder)
 		if err != nil {
 			return nil, err
@@ -247,7 +250,7 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 			"order":     order,
 			"orderHash": orderHash,
 			"from":      msg.From.String(),
-		}).Debug("received order from peer")
+		}).Trace("received order from peer")
 		orders = append(orders, order)
 		orderHashToMessage[orderHash] = msg
 	}
@@ -273,7 +276,7 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 				log.WithFields(map[string]interface{}{
 					"orderInfo": orderInfo,
 					"from":      msg.From.String(),
-				}).Debug("order received from peer is valid but already stored")
+				}).Trace("order received from peer is valid but already stored")
 			} else {
 				log.WithFields(map[string]interface{}{
 					"orderInfo": orderInfo,
@@ -288,7 +291,7 @@ func (app *application) ValidateAndStore(messages []*core.Message) ([]*core.Mess
 			log.WithFields(map[string]interface{}{
 				"orderInfo": orderInfo,
 				"from":      msg.From.String(),
-			}).Debug("not storing invalid order received from peer")
+			}).Warn("not storing invalid order received from peer")
 		}
 	}
 	return validMessages, nil
@@ -344,7 +347,7 @@ func (app *application) start() error {
 
 // AddOrder is called when an RPC client sends an AddOrder request.
 func (app *application) AddOrder(order *zeroex.SignedOrder) error {
-	log.Info("received order via RPC")
+	log.Debug("received AddOrder request via RPC")
 	orderHash, err := order.ComputeOrderHash()
 	if err != nil {
 		log.WithField("order", order).Error("received order via RPC but could not compute order hash")
@@ -385,6 +388,14 @@ func (app *application) AddOrder(order *zeroex.SignedOrder) error {
 	}
 
 	return nil
+}
+
+// AddPeer is called when an RPC client sends an AddPeer request.
+func (app *application) AddPeer(peerInfo peerstore.PeerInfo) error {
+	log.Debug("received AddPeer request via RPC")
+	ctx, cancel := context.WithTimeout(context.Background(), peerConnectTimeout)
+	defer cancel()
+	return app.node.Connect(ctx, peerInfo)
 }
 
 func (app *application) close() {

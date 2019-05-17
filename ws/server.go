@@ -17,18 +17,18 @@ type Server struct {
 	mut          sync.Mutex
 	addr         string
 	listenerAddr net.Addr
-	orderHandler OrderHandler
+	rpcHandler   RPCHandler
 	listener     net.Listener
 	rpcServer    *rpc.Server
 }
 
 // NewServer creates and returns a new server which will listen for new
-// connections on the given addr and use the orderHandler to handle incoming
+// connections on the given addr and use the rpcHandler to handle incoming
 // requests.
-func NewServer(addr string, orderHandler OrderHandler) (*Server, error) {
+func NewServer(addr string, rpcHandler RPCHandler) (*Server, error) {
 	return &Server{
-		addr:         addr,
-		orderHandler: orderHandler,
+		addr:       addr,
+		rpcHandler: rpcHandler,
 	}, nil
 }
 
@@ -38,7 +38,7 @@ func (s *Server) Listen() error {
 	s.mut.Lock()
 
 	rpcService := &rpcService{
-		orderHandler: s.orderHandler,
+		rpcHandler: s.rpcHandler,
 	}
 	s.rpcServer = rpc.NewServer()
 	if err := s.rpcServer.RegisterName("mesh", rpcService); err != nil {

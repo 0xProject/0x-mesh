@@ -1,5 +1,4 @@
-// demo/client is a short program that can be used for ad hoc integration
-// testing.
+// demo/add_order is a short program that adds an order to 0x Mesh via RPC
 package main
 
 import (
