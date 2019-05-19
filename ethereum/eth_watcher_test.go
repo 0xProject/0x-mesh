@@ -146,3 +146,16 @@ func TestStartStopETHWatcher(t *testing.T) {
 	ethWatcher.Stop()
 	assert.False(t, ethWatcher.isWatching, "Calling Stop() should stop the ethWatcher poller")
 }
+
+func TestGetContractAddresses(t *testing.T) {
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	// a valid network returns no error
+	_, err = NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	require.NoError(t, err)
+
+	// an invalid network returns an error stating the desired network id
+	_, err = NewETHWatcher(pollingInterval, ethClient, 42)
+	assert.EqualError(t, err, "invalid network: 42")
+}

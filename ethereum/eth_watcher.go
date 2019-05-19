@@ -3,6 +3,7 @@ package ethereum
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -46,7 +47,10 @@ type ETHWatcher struct {
 
 // NewETHWatcher creates a new instance of ETHWatcher
 func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, networkID int) (*ETHWatcher, error) {
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+	contractNameToAddress, err := getContractAddressesForNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
 	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(contractNameToAddress.EthBalanceChecker, ethClient)
 	if err != nil {
 		return nil, err
@@ -132,6 +136,15 @@ func (e *ETHWatcher) GetBalance(address common.Address) (*big.Int, error) {
 // Receive returns a read-only channel that can be used to listen for modified ETH balances
 func (e *ETHWatcher) Receive() <-chan Balance {
 	return e.balanceChan
+}
+
+// getContractAddressesForNetworkID returns the contract name mapping for the given network.
+// It returns an error if the network doesn't exist.
+func getContractAddressesForNetworkID(networkID int) (constants.ContractNameToAddress, error) {
+	if contractNameToAddress, ok := constants.NetworkIDToContractAddresses[networkID]; ok {
+		return contractNameToAddress, nil
+	}
+	return constants.ContractNameToAddress{}, fmt.Errorf("invalid network: %d", networkID)
 }
 
 func (e *ETHWatcher) updateBalances() error {
