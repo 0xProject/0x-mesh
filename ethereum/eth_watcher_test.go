@@ -126,3 +126,16 @@ func transferFunds(t *testing.T, client *ethclient.Client, from, to common.Addre
 	txReceipt, err := client.TransactionReceipt(context.Background(), signedTx.Hash())
 	assert.Equal(t, uint64(1), txReceipt.Status)
 }
+
+func TestGetContractAddresses(t *testing.T) {
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	// a valid network returns no error
+	_, err = NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	require.NoError(t, err)
+
+	// an invalid network returns an error stating the desired network id
+	_, err = NewETHWatcher(pollingInterval, ethClient, 42)
+	assert.EqualError(t, err, "invalid network: 42")
+}
