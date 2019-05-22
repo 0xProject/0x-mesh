@@ -4,6 +4,22 @@ A peer-to-peer network for sharing orders
 
 :no_entry: WARNING: This project is still under construction and is not ready for use :no_entry:
 
+What's currently implemented? In it's current state, 0x Mesh is a P2P node that stores, validates, and shares 0x orders.- It uses FloodSub as a pubsub mechanism.
+
+- It has a WebSocket endpoint for submitting 0x orders to the network.
+- It performs 0x order validation and orderbook pruning.
+- All relevant state is persisted to disk so that the node can trivially restart from where it left off after a crash.
+
+What is still being built for the Beta release:
+
+- Peer discovery (currently you must manually add new peers).
+- WeijieSub (a more incentive-compatible and more efficient pubsub mechanism).
+- A way to subscribe to order events via the WebSocket API.
+- Tracking ETH reserves for orders stored (we have already implemented efficient ETH balance updating; it's just not currently used when storing orders).
+- Full browser support (some components are already browser-ready, but others are not).
+
+Open an issue and introduce yourself if you want to help build Mesh!
+
 ## Development
 
 If you are working on 0x-mesh, the root directory for the project must be at
