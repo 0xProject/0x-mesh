@@ -105,6 +105,7 @@ func newApp() (*application, error) {
 		"P2P_LISTEN_PORT":     env.P2PListenPort,
 		"ETHEREUM_RPC_URL":    env.EthereumRPCURL,
 		"ETHEREUM_NETWORK_ID": env.EthereumNetworkID,
+		"USE_BOOTSTRAP_LIST":  env.UseBootstrapList,
 	}).Info("parsed environment variables")
 
 	// Initialize db
