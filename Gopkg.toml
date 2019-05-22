@@ -61,24 +61,42 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p"
-  version = "0.0.7"
+  version = "v0.0.28"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-peerstore"
-  version = "0.0.1"
+  version = "v0.0.6"
 
 [[constraint]]
   name = "github.com/multiformats/go-multiaddr"
-  version = "0.0.2"
+  version = "0.0.4"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-crypto"
-  version = "0.0.1"
-
-[[constraint]]
-  name = "github.com/libp2p/go-libp2p-host"
   version = "0.0.2"
 
 [[constraint]]
+  name = "github.com/libp2p/go-libp2p-host"
+  version = "0.0.3"
+
+[[constraint]]
   name = "github.com/libp2p/go-libp2p-pubsub"
-  version = "0.0.1"
+  version = "0.0.3"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-kad-dht"
+  version = "0.0.13"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-connmgr"
+  version = "0.0.4"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-discovery"
+  version = "0.0.4"
+
+[[override]]
+  name = "github.com/gballet/go-libpcsclite"
+  revision = "312b5175032f98274685a4dd81935a92ad2412a5"
+  [metadata]
+    note = "go-ethereum depends on this package and they made a breaking API change"

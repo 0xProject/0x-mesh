@@ -56,6 +56,9 @@ type meshEnvVars struct {
 	// EthereumNetworkID is the network ID to use when communicating with
 	// Ethereum.
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
+	// UseBootstrapList is whether to use the predetermined list of peers to
+	// bootstrap the DHT and peer discovery.
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
 }
 
 type application struct {
@@ -163,11 +166,13 @@ func newApp() (*application, error) {
 
 	// Initialize the core node.
 	nodeConfig := core.Config{
-		Topic:          pubsubTopic,
-		ListenPort:     env.P2PListenPort,
-		Insecure:       false,
-		RandSeed:       0,
-		MessageHandler: app,
+		Topic:            pubsubTopic,
+		ListenPort:       env.P2PListenPort,
+		Insecure:         false,
+		RandSeed:         0,
+		MessageHandler:   app,
+		RendezvousString: "0x-mesh:v0.0.1",
+		UseBootstrapList: env.UseBootstrapList,
 	}
 	node, err := core.New(nodeConfig)
 	if err != nil {

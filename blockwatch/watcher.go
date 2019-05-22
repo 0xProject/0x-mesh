@@ -166,7 +166,7 @@ func (w *Watcher) pollNextBlock() error {
 		if err == ethereum.NotFound {
 			log.WithFields(log.Fields{
 				"blockNumber": nextBlockNumber,
-			}).Info("block header not found")
+			}).Trace("block header not found")
 			return nil // Noop and wait next polling interval
 		}
 		return err
