@@ -14,6 +14,7 @@ import (
 // connections.
 const localConnTag = "local-connection"
 
+// notifee receives notifications for network-related events.
 type notifee struct {
 	node *Node
 }
