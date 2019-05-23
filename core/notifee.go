@@ -3,16 +3,20 @@
 package core
 
 import (
-	"strings"
+	"time"
 
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
 
-// localConnTag is the tag used with the Connection Manager to mark local
-// connections.
-const localConnTag = "local-connection"
+const (
+	// pubsubProtocolTag is the tag used for peers who speak our pubsub protocol.
+	pubsubProtocolTag = "pubsub-protocol"
+	// pubsubProtocolScore is the score to add to peers who speak our pubsub
+	// protocol.
+	pubsubProtocolScore = 10
+)
 
 // notifee receives notifications for network-related events.
 type notifee struct {
@@ -33,18 +37,6 @@ func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 		"peerID":       conn.RemotePeer(),
 		"multiaddress": conn.RemoteMultiaddr(),
 	}).Trace("connected to peer")
-	if isLocalConn(conn) {
-		// Protect local connections. This is a temporary measure which helps us do
-		// ad hoc tests in a local environment by ensuring we don't disconnect from
-		// any local peers.
-		// TODO(albrow): Remove this once we have proper peer scoring/tagging in
-		// place.
-		log.WithFields(map[string]interface{}{
-			"peerID":       conn.RemotePeer(),
-			"multiaddress": conn.RemoteMultiaddr(),
-		}).Debug("protecting local connection")
-		n.node.connManager.Protect(conn.RemotePeer(), localConnTag)
-	}
 }
 
 // Disconnected is called when a connection closed
@@ -56,15 +48,34 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 }
 
 // OpenedStream is called when a stream opened
-func (n *notifee) OpenedStream(p2pnet.Network, p2pnet.Stream) {}
+func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
+	go func() {
+		// HACK(albrow): When the stream is initially opened, the protocol is not set.
+		// For now, we have to manually poll until it is set.
+		timeout := time.After(5 * time.Second)
+		for stream.Protocol() == "" {
+			select {
+			case <-n.node.ctx.Done():
+				return
+			case <-timeout:
+				return
+			default:
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		if stream.Protocol() == pubsubProtocolID {
+			// When we find a peer who speaks our protocol, we give them a slight
+			// positive score so the Connection Manager will be less likely to
+			// disconnect them.
+			log.WithFields(map[string]interface{}{
+				"peerID":    stream.Conn().RemotePeer(),
+				"protocol":  stream.Protocol(),
+				"direction": stream.Stat().Direction,
+			}).Debug("found peer who speaks our protocol")
+			n.node.connManager.TagPeer(stream.Conn().RemotePeer(), pubsubProtocolTag, pubsubProtocolScore)
+		}
+	}()
+}
 
 // ClosedStream is called when a stream closed
-func (n *notifee) ClosedStream(p2pnet.Network, p2pnet.Stream) {}
-
-func isLocalConn(conn p2pnet.Conn) bool {
-	ipv4Addr, err := conn.RemoteMultiaddr().ValueForProtocol(ma.P_IP4)
-	if err != nil {
-		return false
-	}
-	return strings.Contains(ipv4Addr, "localhost") || strings.Contains(ipv4Addr, "127.0.0.1")
-}
+func (n *notifee) ClosedStream(network p2pnet.Network, stream p2pnet.Stream) {}

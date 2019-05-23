@@ -21,6 +21,7 @@ import (
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -47,6 +48,8 @@ const (
 	defaultNetworkTimeout = 5 * time.Second
 	// advertiseTTL is the TTL for our announcement to the discovery network.
 	advertiseTTL = 5 * time.Minute
+	// pubsubProtocolID is the protocol ID to use for pubsub.
+	pubsubProtocolID = protocol.ID("/0x-mesh-floodsub/0.0.1")
 )
 
 // Node is the main type for the core package. It represents a particpant in the
@@ -154,7 +157,7 @@ func New(config Config) (*Node, error) {
 
 	// Set up pubsub.
 	// TODO: Replace with WeijieSub. Using FloodSub for now.
-	ps, err := pubsub.NewFloodSub(nodeCtx, basicHost)
+	ps, err := pubsub.NewFloodsubWithProtocols(nodeCtx, basicHost, []protocol.ID{pubsubProtocolID})
 	if err != nil {
 		cancel()
 		return nil, err
@@ -306,7 +309,7 @@ func (n *Node) runOnce() error {
 func (n *Node) findNewPeers(max int) error {
 	log.WithFields(map[string]interface{}{
 		"max": max,
-	}).Debug("looking for new peers")
+	}).Trace("looking for new peers")
 	findPeersCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
 	defer cancel()
 	peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, n.config.RendezvousString, discovery.Limit(max))
@@ -317,12 +320,12 @@ func (n *Node) findNewPeers(max int) error {
 	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
 	defer cancel()
 	for peer := range peerChan {
-		if peer.ID == n.host.ID() {
+		if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
 			continue
 		}
 		log.WithFields(map[string]interface{}{
 			"peerInfo": peer,
-		}).Debug("found peer via rendezvous")
+		}).Trace("found peer via rendezvous")
 		if err := n.host.Connect(connectCtx, peer); err != nil {
 			// If we fail to connect to a single peer we should still keep trying the
 			// others. Log instead of returning the error.

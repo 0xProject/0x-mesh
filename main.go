@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	pubsubTopic                 = "0x-orders:v0"
+	pubsubTopic                 = "/0x-orders/0.0.1"
 	blockWatcherPollingInterval = 5 * time.Second
 	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
@@ -172,7 +172,7 @@ func newApp() (*application, error) {
 		Insecure:         false,
 		RandSeed:         0,
 		MessageHandler:   app,
-		RendezvousString: "0x-mesh:v0.0.1",
+		RendezvousString: "/0x-mesh/0.0.1",
 		UseBootstrapList: env.UseBootstrapList,
 	}
 	node, err := core.New(nodeConfig)
