@@ -42,7 +42,7 @@ func TestECSignOrder(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
 	order := SignedOrder{
-		MakerAddress:          constants.NullAddress,
+		MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   constants.NullAddress,
@@ -57,13 +57,12 @@ func TestECSignOrder(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(0),
 	}
 
-	signerAddress := common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	signatureBytes, err := order.ECSign(signerAddress, rpcClient)
+	signatureBytes, err := order.ECSign(rpcClient)
 	require.NoError(t, err)
 
-	expectedSignature := "0x1c5df471fd3ab082ef46b6d258e7f0e76a04aabbab6801b031cd4dc260d2677c13373fad62139cbae182350f91c630ee2125a7b811650229575fcc5492444b7be003"
+	expectedSignature := "0x1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603"
 	actualSignature := fmt.Sprintf("0x%s", common.Bytes2Hex(signatureBytes))
 	assert.Equal(t, expectedSignature, actualSignature)
 }
