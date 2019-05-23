@@ -8,8 +8,8 @@ import (
 // ECSignature contains the parameters of an elliptic curve signature
 type ECSignature struct {
 	V byte
-	R []byte
-	S []byte
+	R common.Hash
+	S common.Hash
 }
 
 // ECSign signs a message via the `eth_sign` Ethereum JSON-RPC call
@@ -26,13 +26,11 @@ func ECSign(message []byte, signerAddress common.Address, rpcClient *rpc.Client)
 	} else if vParam == byte(1) {
 		vParam = byte(28)
 	}
-	rParam := signatureBytes[0:32]
-	sParam := signatureBytes[32:64]
 
 	ecSignature := &ECSignature{
 		V: vParam,
-		R: rParam,
-		S: sParam,
+		R: common.BytesToHash(signatureBytes[0:32]),
+		S: common.BytesToHash(signatureBytes[32:64]),
 	}
 	return ecSignature, nil
 }

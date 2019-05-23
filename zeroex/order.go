@@ -182,11 +182,11 @@ func (s *SignedOrder) ECSign(rpcClient *rpc.Client) ([]byte, error) {
 		return nil, err
 	}
 
-	signature := []byte{}
-	signature = append(signature, ecSignature.V)
-	signature = append(signature, ecSignature.R...)
-	signature = append(signature, ecSignature.S...)
-	signature = append(signature, byte(EthSignSignature))
+	signature := make([]byte, 66)
+	signature[0] = ecSignature.V
+	copy(signature[1:33], ecSignature.R[:])
+	copy(signature[33:65], ecSignature.S[:])
+	signature[65] = byte(EthSignSignature)
 	return signature, nil
 }
 
