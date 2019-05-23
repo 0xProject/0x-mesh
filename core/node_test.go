@@ -306,16 +306,11 @@ func TestPeerDiscovery(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Create a test notifee for both node0 and node1 which will be used to detect
-	// new connections.
-	node0Notif := &testNotifee{
+	// Create a test notifee which will be used to detect new connections.
+	notif := &testNotifee{
 		conns: make(chan p2pnet.Conn),
 	}
-	node0.host.Network().Notify(node0Notif)
-	node2Notif := &testNotifee{
-		conns: make(chan p2pnet.Conn),
-	}
-	node2.host.Network().Notify(node2Notif)
+	node0.host.Network().Notify(notif)
 
 	// Start all the nodes (this also starts the peer discovery process).
 	go func() {
@@ -335,12 +330,8 @@ loop:
 		select {
 		case <-timeout:
 			t.Fatal("timed out waiting for node0 to discover node2")
-		case conn := <-node0Notif.conns:
+		case conn := <-notif.conns:
 			if conn.RemotePeer() == node2.ID() {
-				break loop
-			}
-		case conn := <-node2Notif.conns:
-			if conn.RemotePeer() == node0.ID() {
 				break loop
 			}
 		}
