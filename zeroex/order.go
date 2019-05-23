@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
@@ -152,6 +154,26 @@ func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
 	return hash, nil
+}
+
+// ECSign signs the order with it's `makerAddress` and formats it to be a valid 0x order signature
+func (s *SignedOrder) ECSign(rpcClient *rpc.Client) ([]byte, error) {
+	orderHash, err := s.ComputeOrderHash()
+	if err != nil {
+		return nil, err
+	}
+	ecSignature, err := ethereum.ECSign(orderHash.Bytes(), s.MakerAddress, rpcClient)
+	if err != nil {
+		return nil, err
+	}
+
+	signature := []byte{}
+	signature = append(signature, ecSignature.V)
+	signature = append(signature, ecSignature.R...)
+	signature = append(signature, ecSignature.S...)
+	ethSignType := byte(3)
+	signature = append(signature, ethSignType)
+	return signature, nil
 }
 
 // ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
