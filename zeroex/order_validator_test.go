@@ -38,7 +38,7 @@ func TestBatchValidate(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	signedOrder, err := ConvertToSignedOrder(order, rpcClient)
+	signedOrder, err := SignOrder(order, rpcClient)
 	require.NoError(t, err)
 
 	orderHash, err := order.ComputeOrderHash()
@@ -84,7 +84,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(99548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	signedOrder, err := ConvertToSignedOrder(order, rpcClient)
+	signedOrder, err := SignOrder(order, rpcClient)
 	require.NoError(t, err)
 
 	orderHash, err := order.ComputeOrderHash()

@@ -86,7 +86,7 @@ var testOrder = &zeroex.Order{
 func TestAddOrder(t *testing.T) {
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	signedTestOrder, err := zeroex.ConvertToSignedOrder(testOrder, rpcClient)
+	signedTestOrder, err := zeroex.SignOrder(testOrder, rpcClient)
 	require.NoError(t, err)
 
 	// Set up the dummy handler with an addOrderHandler

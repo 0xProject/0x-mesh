@@ -176,8 +176,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	return hash, nil
 }
 
-// ECSign signs the order with it's `makerAddress` and formats it to be a valid 0x order signature
-func (o *Order) ECSign(rpcClient *rpc.Client) ([]byte, error) {
+func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
 	orderHash, err := o.ComputeOrderHash()
 	if err != nil {
 		return nil, err
@@ -215,9 +214,9 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 	return orderWithoutExchangeAddress
 }
 
-// ConvertToSignedOrder converts an order to a signed 0x order
-func ConvertToSignedOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
-	signature, err := order.ECSign(rpcClient)
+// SignOrder converts an order to a signed 0x order
+func SignOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
+	signature, err := order.ecSign(rpcClient)
 	if err != nil {
 		return nil, err
 	}

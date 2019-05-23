@@ -61,7 +61,7 @@ func TestECSignOrder(t *testing.T) {
 
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	signatureBytes, err := order.ECSign(rpcClient)
+	signatureBytes, err := order.ecSign(rpcClient)
 	require.NoError(t, err)
 
 	expectedSignature := "0x1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603"

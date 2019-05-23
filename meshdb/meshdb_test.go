@@ -42,7 +42,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	signedOrder, err := zeroex.ConvertToSignedOrder(o, rpcClient)
+	signedOrder, err := zeroex.SignOrder(o, rpcClient)
 	require.NoError(t, err)
 
 	orderHash, err := o.ComputeOrderHash()

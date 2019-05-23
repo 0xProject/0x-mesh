@@ -56,7 +56,7 @@ func main() {
 		log.WithError(err).Fatal("could not create Ethereum rpc client")
 	}
 
-	signedTestOrder, err := zeroex.ConvertToSignedOrder(testOrder, rpcClient)
+	signedTestOrder, err := zeroex.SignOrder(testOrder, rpcClient)
 	if err != nil {
 		log.WithError(err).Fatal("could not sign 0x order")
 	}
