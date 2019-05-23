@@ -34,11 +34,11 @@ const (
 	// maxShareBatch is the maximum number of messages to share at once.
 	maxShareBatch = 10
 	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 10
+	peerCountLow = 100
 	// peerCountHigh is the maximum number of peers to be connected to. If the
 	// number of connections exceeds this number, we will prune connections until
 	// we reach peerCountLow.
-	peerCountHigh = 12
+	peerCountHigh = 110
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
@@ -205,14 +205,15 @@ func (n *Node) Start() error {
 		return err
 	}
 
-	// Advertise ourselves for the purposes of peer discovery.
-	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
-
+	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
 		if err := n.connectToBootstrapList(); err != nil {
 			return err
 		}
 	}
+
+	// Advertise ourselves for the purposes of peer discovery.
+	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
 	return n.mainLoop()
 }
@@ -240,6 +241,13 @@ func (n *Node) connectToBootstrapList() error {
 		}()
 	}
 	wg.Wait()
+
+	// It is recommended to wait for 2 seconds after connecting to all the
+	// bootstrap peers to give time for the relevant notifees to trigger and the
+	// DHT to fully initialize.
+	// See: https://github.com/0xProject/0x-mesh/pull/69#discussion_r286849679
+	time.Sleep(2 * time.Second)
+
 	return nil
 }
 

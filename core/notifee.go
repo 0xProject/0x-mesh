@@ -31,7 +31,7 @@ func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
 		"peerID":       conn.RemotePeer(),
 		"multiaddress": conn.RemoteMultiaddr(),
-	}).Debug("connected to peer")
+	}).Trace("connected to peer")
 	if isLocalConn(conn) {
 		// Protect local connections. This is a temporary measure which helps us do
 		// ad hoc tests in a local environment by ensuring we don't disconnect from
@@ -51,7 +51,7 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
 		"peerID":       conn.RemotePeer(),
 		"multiaddress": conn.RemoteMultiaddr(),
-	}).Debug("disconnected from peer")
+	}).Trace("disconnected from peer")
 }
 
 // OpenedStream is called when a stream opened
