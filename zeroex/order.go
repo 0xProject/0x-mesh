@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
@@ -25,8 +27,8 @@ const (
 	Cancelled
 )
 
-// SignedOrder represents a signed 0x order
-type SignedOrder struct {
+// Order represents an unsigned 0x order
+type Order struct {
 	MakerAddress          common.Address `json:"makerAddress"`
 	MakerAssetData        []byte         `json:"makerAssetData"`
 	MakerAssetAmount      *big.Int       `json:"makerAssetAmount"`
@@ -40,8 +42,28 @@ type SignedOrder struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
-	Signature             []byte         `json:"signature"`
 }
+
+// SignedOrder represents a signed 0x order
+type SignedOrder struct {
+	*Order
+	Signature []byte `json:"signature"`
+}
+
+// SignatureType represents the type of 0x signature encountered
+type SignatureType uint8
+
+// SignatureType values
+const (
+	IllegalSignature SignatureType = iota
+	InvalidSignature
+	EIP712Signature
+	EthSignSignature
+	WalletSignature
+	ValidatorSignature
+	PreSignedSignature
+	NSignatureTypesSignature
+)
 
 var eip712OrderTypes = signer.Types{
 	"EIP712Domain": {
@@ -111,26 +133,26 @@ var eip712OrderTypes = signer.Types{
 }
 
 // ComputeOrderHash computes a 0x order hash
-func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
+func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
-		VerifyingContract: s.ExchangeAddress.Hex(),
+		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
 
 	var message = map[string]interface{}{
-		"makerAddress":          s.MakerAddress.Hex(),
-		"takerAddress":          s.TakerAddress.Hex(),
-		"senderAddress":         s.SenderAddress.Hex(),
-		"feeRecipientAddress":   s.FeeRecipientAddress.Hex(),
-		"makerAssetData":        s.MakerAssetData,
-		"takerAssetData":        s.TakerAssetData,
-		"salt":                  s.Salt,
-		"makerFee":              s.MakerFee,
-		"takerFee":              s.TakerFee,
-		"makerAssetAmount":      s.MakerAssetAmount,
-		"takerAssetAmount":      s.TakerAssetAmount,
-		"expirationTimeSeconds": s.ExpirationTimeSeconds,
+		"makerAddress":          o.MakerAddress.Hex(),
+		"takerAddress":          o.TakerAddress.Hex(),
+		"senderAddress":         o.SenderAddress.Hex(),
+		"feeRecipientAddress":   o.FeeRecipientAddress.Hex(),
+		"makerAssetData":        o.MakerAssetData,
+		"takerAssetData":        o.TakerAssetData,
+		"salt":                  o.Salt,
+		"makerFee":              o.MakerFee,
+		"takerFee":              o.TakerFee,
+		"makerAssetAmount":      o.MakerAssetAmount,
+		"takerAssetAmount":      o.TakerAssetAmount,
+		"expirationTimeSeconds": o.ExpirationTimeSeconds,
 	}
 
 	var typedData = signer.TypedData{
@@ -154,6 +176,24 @@ func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
 	return hash, nil
 }
 
+func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
+	orderHash, err := o.ComputeOrderHash()
+	if err != nil {
+		return nil, err
+	}
+	ecSignature, err := ethereum.ECSign(orderHash.Bytes(), o.MakerAddress, rpcClient)
+	if err != nil {
+		return nil, err
+	}
+
+	signature := make([]byte, 66)
+	signature[0] = ecSignature.V
+	copy(signature[1:33], ecSignature.R[:])
+	copy(signature[33:65], ecSignature.S[:])
+	signature[65] = byte(EthSignSignature)
+	return signature, nil
+}
+
 // ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
 // smart contracts.
 func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {
@@ -172,6 +212,19 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 		TakerAssetData:        s.TakerAssetData,
 	}
 	return orderWithoutExchangeAddress
+}
+
+// SignOrder converts an order to a signed 0x order
+func SignOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
+	signature, err := order.ecSign(rpcClient)
+	if err != nil {
+		return nil, err
+	}
+	signedOrder := &SignedOrder{
+		Order:     order,
+		Signature: signature,
+	}
+	return signedOrder, nil
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.

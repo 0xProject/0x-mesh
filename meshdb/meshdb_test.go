@@ -1,3 +1,5 @@
+// +build !js
+
 package meshdb
 
 import (
@@ -8,6 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,9 +22,12 @@ func TestOrderCRUDOperations(t *testing.T) {
 
 	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
-	makerAddress := common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d")
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
-	signedOrder := &zeroex.SignedOrder{
+	o := &zeroex.Order{
 		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -36,7 +42,10 @@ func TestOrderCRUDOperations(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	orderHash, err := signedOrder.ComputeOrderHash()
+	signedOrder, err := zeroex.SignOrder(o, rpcClient)
+	require.NoError(t, err)
+
+	orderHash, err := o.ComputeOrderHash()
 	require.NoError(t, err)
 
 	currentTime := time.Now().UTC()
