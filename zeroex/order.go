@@ -27,8 +27,8 @@ const (
 	Cancelled
 )
 
-// SignedOrder represents a signed 0x order
-type SignedOrder struct {
+// Order represents an unsigned 0x order
+type Order struct {
 	MakerAddress          common.Address `json:"makerAddress"`
 	MakerAssetData        []byte         `json:"makerAssetData"`
 	MakerAssetAmount      *big.Int       `json:"makerAssetAmount"`
@@ -42,7 +42,12 @@ type SignedOrder struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
-	Signature             []byte         `json:"signature"`
+}
+
+// SignedOrder represents a signed 0x order
+type SignedOrder struct {
+	*Order
+	Signature []byte `json:"signature"`
 }
 
 // SignatureType represents the type of 0x signature encountered
@@ -128,26 +133,26 @@ var eip712OrderTypes = signer.Types{
 }
 
 // ComputeOrderHash computes a 0x order hash
-func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
+func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
-		VerifyingContract: s.ExchangeAddress.Hex(),
+		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
 
 	var message = map[string]interface{}{
-		"makerAddress":          s.MakerAddress.Hex(),
-		"takerAddress":          s.TakerAddress.Hex(),
-		"senderAddress":         s.SenderAddress.Hex(),
-		"feeRecipientAddress":   s.FeeRecipientAddress.Hex(),
-		"makerAssetData":        s.MakerAssetData,
-		"takerAssetData":        s.TakerAssetData,
-		"salt":                  s.Salt,
-		"makerFee":              s.MakerFee,
-		"takerFee":              s.TakerFee,
-		"makerAssetAmount":      s.MakerAssetAmount,
-		"takerAssetAmount":      s.TakerAssetAmount,
-		"expirationTimeSeconds": s.ExpirationTimeSeconds,
+		"makerAddress":          o.MakerAddress.Hex(),
+		"takerAddress":          o.TakerAddress.Hex(),
+		"senderAddress":         o.SenderAddress.Hex(),
+		"feeRecipientAddress":   o.FeeRecipientAddress.Hex(),
+		"makerAssetData":        o.MakerAssetData,
+		"takerAssetData":        o.TakerAssetData,
+		"salt":                  o.Salt,
+		"makerFee":              o.MakerFee,
+		"takerFee":              o.TakerFee,
+		"makerAssetAmount":      o.MakerAssetAmount,
+		"takerAssetAmount":      o.TakerAssetAmount,
+		"expirationTimeSeconds": o.ExpirationTimeSeconds,
 	}
 
 	var typedData = signer.TypedData{
@@ -172,12 +177,12 @@ func (s *SignedOrder) ComputeOrderHash() (common.Hash, error) {
 }
 
 // ECSign signs the order with it's `makerAddress` and formats it to be a valid 0x order signature
-func (s *SignedOrder) ECSign(rpcClient *rpc.Client) ([]byte, error) {
-	orderHash, err := s.ComputeOrderHash()
+func (o *Order) ECSign(rpcClient *rpc.Client) ([]byte, error) {
+	orderHash, err := o.ComputeOrderHash()
 	if err != nil {
 		return nil, err
 	}
-	ecSignature, err := ethereum.ECSign(orderHash.Bytes(), s.MakerAddress, rpcClient)
+	ecSignature, err := ethereum.ECSign(orderHash.Bytes(), o.MakerAddress, rpcClient)
 	if err != nil {
 		return nil, err
 	}
@@ -208,6 +213,19 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 		TakerAssetData:        s.TakerAssetData,
 	}
 	return orderWithoutExchangeAddress
+}
+
+// ConvertToSignedOrder converts an order to a signed 0x order
+func ConvertToSignedOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
+	signature, err := order.ECSign(rpcClient)
+	if err != nil {
+		return nil, err
+	}
+	signedOrder := &SignedOrder{
+		Order:     order,
+		Signature: signature,
+	}
+	return signedOrder, nil
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.

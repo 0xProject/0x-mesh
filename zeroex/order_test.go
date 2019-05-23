@@ -17,7 +17,7 @@ import (
 func TestGenerateOrderHash(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
-	order := SignedOrder{
+	order := Order{
 		MakerAddress:          constants.NullAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -43,7 +43,7 @@ func TestGenerateOrderHash(t *testing.T) {
 func TestECSignOrder(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
-	order := SignedOrder{
+	order := Order{
 		MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,

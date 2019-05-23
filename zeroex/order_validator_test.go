@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +20,11 @@ import (
 func TestBatchValidate(t *testing.T) {
 	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
-	signedOrder := &SignedOrder{
-		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	order := &Order{
+		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
@@ -34,16 +38,18 @@ func TestBatchValidate(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
+	signedOrder, err := ConvertToSignedOrder(order, rpcClient)
+	require.NoError(t, err)
 
-	orderHash, err := signedOrder.ComputeOrderHash()
+	orderHash, err := order.ComputeOrderHash()
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	signedOrders := []*SignedOrder{
 		signedOrder,
 	}
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
@@ -57,11 +63,14 @@ func TestBatchValidate(t *testing.T) {
 func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
 	takerAssetAmount := big.NewInt(200000000000000000)
 	makerAssetAmount := big.NewInt(100000000000000000)
 	makerFee := big.NewInt(10000000000000000)
-	signedOrder := &SignedOrder{
-		MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
+	order := &Order{
+		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
@@ -75,8 +84,10 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(99548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
+	signedOrder, err := ConvertToSignedOrder(order, rpcClient)
+	require.NoError(t, err)
 
-	orderHash, err := signedOrder.ComputeOrderHash()
+	orderHash, err := order.ComputeOrderHash()
 	require.NoError(t, err)
 
 	orderInfo := wrappers.OrderInfo{

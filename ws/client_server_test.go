@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -66,8 +67,8 @@ func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler) (*Server,
 	return server, client
 }
 
-var testOrder = &zeroex.SignedOrder{
-	MakerAddress:          common.HexToAddress("0x6924a03bb710eaf199ab6ac9f2bb148215ae9b5d"),
+var testOrder = &zeroex.Order{
+	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
 	FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
@@ -83,12 +84,17 @@ var testOrder = &zeroex.SignedOrder{
 }
 
 func TestAddOrder(t *testing.T) {
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	signedTestOrder, err := zeroex.ConvertToSignedOrder(testOrder, rpcClient)
+	require.NoError(t, err)
+
 	// Set up the dummy handler with an addOrderHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrderHandler: func(order *zeroex.SignedOrder) error {
-			assert.Equal(t, testOrder, order, "AddOrder was called with an unexpected order argument")
+		addOrderHandler: func(signedOrder *zeroex.SignedOrder) error {
+			assert.Equal(t, signedTestOrder, signedOrder, "AddOrder was called with an unexpected order argument")
 			wg.Done()
 			return nil
 		},
@@ -97,7 +103,7 @@ func TestAddOrder(t *testing.T) {
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
-	actualOrderHash, err := client.AddOrder(testOrder)
+	actualOrderHash, err := client.AddOrder(signedTestOrder)
 	require.NoError(t, err)
 	expectedOrderHash, err := testOrder.ComputeOrderHash()
 	require.NoError(t, err)

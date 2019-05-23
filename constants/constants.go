@@ -44,3 +44,6 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 
 // NullAddress is an Ethereum address with all zeroes.
 var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
+// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
+var GanacheAccount0 = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")

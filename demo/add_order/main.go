@@ -1,3 +1,5 @@
+// +build !js
+
 // demo/add_order is a short program that adds an order to 0x Mesh via RPC
 package main
 
@@ -9,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/ws"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -16,9 +19,12 @@ import (
 type clientEnvVars struct {
 	// RPCAddress is the address of the 0x Mesh node to communicate with.
 	RPCAddress string `envvar:"RPC_ADDRESS"`
+	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
+	// API.
+	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
 }
 
-var testOrder = &zeroex.SignedOrder{
+var testOrder = &zeroex.Order{
 	MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -45,7 +51,17 @@ func main() {
 		log.WithError(err).Fatal("could not create client")
 	}
 
-	hash, err := client.AddOrder(testOrder)
+	rpcClient, err := rpc.Dial(env.EthereumRPCURL)
+	if err != nil {
+		log.WithError(err).Fatal("could not create Ethereum rpc client")
+	}
+
+	signedTestOrder, err := zeroex.ConvertToSignedOrder(testOrder, rpcClient)
+	if err != nil {
+		log.WithError(err).Fatal("could not sign 0x order")
+	}
+
+	hash, err := client.AddOrder(signedTestOrder)
 	if err != nil {
 		log.WithError(err).Fatal("error from AddOrder")
 	} else {
