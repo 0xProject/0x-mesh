@@ -19,7 +19,10 @@ import (
 // is created.
 var counter int64 = -1
 
-const testTopic = "0x-mesh-testing"
+const (
+	testTopic            = "0x-mesh-testing"
+	testRendezvousString = "0x-mesh-testing-rendezvous"
+)
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
 // messages valid and doesn't actually store or share any messages.
@@ -37,11 +40,11 @@ func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
 // purposes.
 func newTestNode(t *testing.T) *Node {
 	config := Config{
-		Topic:          testTopic,
-		ListenPort:     0, // Let OS randomly choose an open port.
-		Insecure:       true,
-		RandSeed:       atomic.AddInt64(&counter, 1),
-		MessageHandler: &dummyMessageHandler{},
+		Topic:            testTopic,
+		ListenPort:       0, // Let OS randomly choose an open port.
+		RandSeed:         atomic.AddInt64(&counter, 1),
+		MessageHandler:   &dummyMessageHandler{},
+		RendezvousString: testRendezvousString,
 	}
 	node, err := New(config)
 	require.NoError(t, err)
@@ -84,6 +87,12 @@ func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Dur
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for message")
+			return
+		default:
+		}
 		actual, err := node.receive(ctx)
 		require.NoError(t, err)
 		// We might receive other messages. Ignore anything that doesn't match the

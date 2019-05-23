@@ -312,6 +312,9 @@ func (n *Node) findNewPeers(max int) error {
 		if peer.ID == n.host.ID() {
 			continue
 		}
+		log.WithFields(map[string]interface{}{
+			"peerInfo": peer,
+		}).Debug("found peer via rendezvous")
 		if err := n.host.Connect(connectCtx, peer); err != nil {
 			// If we fail to connect to a single peer we should still keep trying the
 			// others. Log instead of returning the error.
@@ -385,6 +388,5 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 // Close closes the Node and any active connections.
 func (n *Node) Close() error {
 	n.cancel()
-	n.sub.Cancel()
 	return n.host.Close()
 }
