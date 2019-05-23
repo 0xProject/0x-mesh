@@ -45,6 +45,21 @@ type SignedOrder struct {
 	Signature             []byte         `json:"signature"`
 }
 
+// SignatureType represents the type of 0x signature encountered
+type SignatureType uint8
+
+// SignatureType values
+const (
+	IllegalSignature SignatureType = iota
+	InvalidSignature
+	EIP712Signature
+	EthSignSignature
+	WalletSignature
+	ValidatorSignature
+	PreSignedSignature
+	NSignatureTypesSignature
+)
+
 var eip712OrderTypes = signer.Types{
 	"EIP712Domain": {
 		{
@@ -171,8 +186,7 @@ func (s *SignedOrder) ECSign(rpcClient *rpc.Client) ([]byte, error) {
 	signature = append(signature, ecSignature.V)
 	signature = append(signature, ecSignature.R...)
 	signature = append(signature, ecSignature.S...)
-	ethSignType := byte(3)
-	signature = append(signature, ethSignType)
+	signature = append(signature, byte(EthSignSignature))
 	return signature, nil
 }
 
