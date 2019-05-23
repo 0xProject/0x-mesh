@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	p2pnet "github.com/libp2p/go-libp2p-net"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -265,4 +267,82 @@ func TestMessagesAreShared(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedAllMessages, node1.messageHandler.(*inMemoryMessageHandler).messages, "node1 should be storing all messages")
+}
+
+type testNotifee struct {
+	conns chan p2pnet.Conn
+}
+
+func (n *testNotifee) Listen(p2pnet.Network, ma.Multiaddr)                   {}
+func (n *testNotifee) ListenClose(p2pnet.Network, ma.Multiaddr)              {}
+func (n *testNotifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {}
+func (n *testNotifee) OpenedStream(p2pnet.Network, p2pnet.Stream)            {}
+func (n *testNotifee) ClosedStream(p2pnet.Network, p2pnet.Stream)            {}
+
+// Connected is called when a connection opened
+func (n *testNotifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
+	go func() {
+		n.conns <- conn
+	}()
+}
+
+func TestPeerDiscovery(t *testing.T) {
+	// Create three nodes: 0, 1, and 2.
+	//
+	//   - node0 is connected to node1
+	//   - node1 is ocnnected to node2
+	//   - node0 is not initially connected to node2
+	//
+	node0, node1 := createTwoConnectedTestNodes(t)
+	defer node0.Close()
+	defer node1.Close()
+	node2 := newTestNode(t)
+	defer node2.Close()
+	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := node2.Connect(connectCtx, peerstore.PeerInfo{
+		ID:    node1.host.ID(),
+		Addrs: node1.host.Addrs(),
+	})
+	require.NoError(t, err)
+
+	// Create a test notifee for both node0 and node1 which will be used to detect
+	// new connections.
+	node0Notif := &testNotifee{
+		conns: make(chan p2pnet.Conn),
+	}
+	node0.host.Network().Notify(node0Notif)
+	node2Notif := &testNotifee{
+		conns: make(chan p2pnet.Conn),
+	}
+	node2.host.Network().Notify(node2Notif)
+
+	// Start all the nodes (this also starts the peer discovery process).
+	go func() {
+		require.NoError(t, node0.Start())
+	}()
+	go func() {
+		require.NoError(t, node1.Start())
+	}()
+	go func() {
+		require.NoError(t, node2.Start())
+	}()
+
+	// Wait for node0 ande node2 to find each other
+	timeout := time.After(10 * time.Second)
+loop:
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("timed out waiting for node0 to discover node2")
+		case conn := <-node0Notif.conns:
+			if conn.RemotePeer() == node2.ID() {
+				break loop
+			}
+		case conn := <-node2Notif.conns:
+			if conn.RemotePeer() == node0.ID() {
+				break loop
+			}
+		}
+	}
 }
