@@ -12,14 +12,13 @@ type ECSignature struct {
 	S []byte
 }
 
-// ECSign signs an order and generates an EthSign signature type
+// ECSign signs a message via the `eth_sign` Ethereum JSON-RPC call
 func ECSign(message []byte, signerAddress common.Address, rpcClient *rpc.Client) (*ECSignature, error) {
-	// Set an ETH_SIGN JSON-RPC request
 	var signatureHex string
 	if err := rpcClient.Call(&signatureHex, "eth_sign", signerAddress.Hex(), common.Bytes2Hex(message)); err != nil {
 		return nil, err
 	}
-	// eth_sign returns the signature as r+s+v
+	// `eth_sign` returns the signature as r+s+v and the `v` parameter as 0/1 instead of 27/28
 	signatureBytes := common.Hex2Bytes(signatureHex[2:])
 	vParam := signatureBytes[64]
 	if vParam == byte(0) {
