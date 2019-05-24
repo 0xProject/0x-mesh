@@ -1176,6 +1176,7 @@
   input-imports = [
     "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
+    "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
@@ -1197,6 +1198,7 @@
     "github.com/libp2p/go-libp2p-net",
     "github.com/libp2p/go-libp2p-peer",
     "github.com/libp2p/go-libp2p-peerstore",
+    "github.com/libp2p/go-libp2p-protocol",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/multiformats/go-multiaddr",
     "github.com/ocdogan/rbt",
