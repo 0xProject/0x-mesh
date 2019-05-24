@@ -5,7 +5,7 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/golang:1.12
-      - image: 0xorg/mesh-ganache-cli:4.0.3
+      - image: 0xorg/mesh-ganache-cli:5.0.0
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout

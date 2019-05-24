@@ -4,10 +4,10 @@ package wrappers
 // contract ABI so we add type aliases here to correct the struct names.
 
 // OrderWithoutExchangeAddress is a 0x order representation expected by the smart contracts.
-type OrderWithoutExchangeAddress = Struct1
+type OrderWithoutExchangeAddress = Struct0
 
 // TraderInfo contains all the order-relevant trader balances & allowances.
-type TraderInfo = Struct2
+type TraderInfo = Struct1
 
 // OrderInfo contains the status and filled amount of an order.
-type OrderInfo = Struct3
+type OrderInfo = Struct2

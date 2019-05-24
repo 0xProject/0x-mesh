@@ -30,7 +30,7 @@ var (
 )
 
 // OrderValidatorABI is the input ABI used to generate the binding from.
-const OrderValidatorABI = "[{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"order\",\"type\":\"tuple\"},{\"name\":\"takerAddress\",\"type\":\"address\"}],\"name\":\"getOrderAndTraderInfo\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"orderInfo\",\"type\":\"tuple\"},{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"traderInfo\",\"type\":\"tuple\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"target\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalanceAndAllowance\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"},{\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"takerAddresses\",\"type\":\"address[]\"}],\"name\":\"getOrdersAndTradersInfo\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"ordersInfo\",\"type\":\"tuple[]\"},{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"tradersInfo\",\"type\":\"tuple[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"takerAddresses\",\"type\":\"address[]\"}],\"name\":\"getTradersInfo\",\"outputs\":[{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"\",\"type\":\"tuple[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"token\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getERC721TokenOwner\",\"outputs\":[{\"name\":\"owner\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"target\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBalancesAndAllowances\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256[]\"},{\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"order\",\"type\":\"tuple\"},{\"name\":\"takerAddress\",\"type\":\"address\"}],\"name\":\"getTraderInfo\",\"outputs\":[{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"traderInfo\",\"type\":\"tuple\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_exchange\",\"type\":\"address\"},{\"name\":\"_zrxAssetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+const OrderValidatorABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"target\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalanceAndAllowance\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"},{\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"takerAddresses\",\"type\":\"address[]\"}],\"name\":\"getTradersInfo\",\"outputs\":[{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"\",\"type\":\"tuple[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"token\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getERC721TokenOwner\",\"outputs\":[{\"name\":\"owner\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"order\",\"type\":\"tuple\"},{\"name\":\"signature\",\"type\":\"bytes\"},{\"name\":\"takerAddress\",\"type\":\"address\"}],\"name\":\"getOrderAndTraderInfo\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"orderInfo\",\"type\":\"tuple\"},{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"traderInfo\",\"type\":\"tuple\"},{\"name\":\"isValidSignature\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"target\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBalancesAndAllowances\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256[]\"},{\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"order\",\"type\":\"tuple\"},{\"name\":\"takerAddress\",\"type\":\"address\"}],\"name\":\"getTraderInfo\",\"outputs\":[{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"traderInfo\",\"type\":\"tuple\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"signatures\",\"type\":\"bytes[]\"},{\"name\":\"takerAddresses\",\"type\":\"address[]\"}],\"name\":\"getOrdersAndTradersInfo\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"ordersInfo\",\"type\":\"tuple[]\"},{\"components\":[{\"name\":\"makerBalance\",\"type\":\"uint256\"},{\"name\":\"makerAllowance\",\"type\":\"uint256\"},{\"name\":\"takerBalance\",\"type\":\"uint256\"},{\"name\":\"takerAllowance\",\"type\":\"uint256\"},{\"name\":\"makerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"makerZrxAllowance\",\"type\":\"uint256\"},{\"name\":\"takerZrxBalance\",\"type\":\"uint256\"},{\"name\":\"takerZrxAllowance\",\"type\":\"uint256\"}],\"name\":\"tradersInfo\",\"type\":\"tuple[]\"},{\"name\":\"isValidSignature\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_exchange\",\"type\":\"address\"},{\"name\":\"_zrxAssetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
 
 // OrderValidator is an auto generated Go binding around an Ethereum contract.
 type OrderValidator struct {
@@ -174,8 +174,8 @@ func (_OrderValidator *OrderValidatorTransactorRaw) Transact(opts *bind.Transact
 	return _OrderValidator.Contract.contract.Transact(opts, method, params...)
 }
 
-// Struct1 is an auto-generated struct
-type Struct1 struct {
+// Struct0 is an auto generated low-level Go binding around an user-defined struct.
+type Struct0 struct {
 	MakerAddress          common.Address
 	TakerAddress          common.Address
 	FeeRecipientAddress   common.Address
@@ -190,8 +190,8 @@ type Struct1 struct {
 	TakerAssetData        []byte
 }
 
-// Struct2 is an auto-generated struct
-type Struct2 struct {
+// Struct1 is an auto generated low-level Go binding around an user-defined struct.
+type Struct1 struct {
 	MakerBalance      *big.Int
 	MakerAllowance    *big.Int
 	TakerBalance      *big.Int
@@ -202,8 +202,8 @@ type Struct2 struct {
 	TakerZrxAllowance *big.Int
 }
 
-// Struct3 is an auto-generated struct
-type Struct3 struct {
+// Struct2 is an auto generated low-level Go binding around an user-defined struct.
+type Struct2 struct {
 	OrderStatus                 uint8
 	OrderHash                   [32]byte
 	OrderTakerAssetFilledAmount *big.Int
@@ -301,84 +301,92 @@ func (_OrderValidator *OrderValidatorCallerSession) GetERC721TokenOwner(token co
 	return _OrderValidator.Contract.GetERC721TokenOwner(&_OrderValidator.CallOpts, token, tokenId)
 }
 
-// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0x04ad1e53.
+// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0xc6319fc5.
 //
-// Solidity: function getOrderAndTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(OrderInfo orderInfo, TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorCaller) GetOrderAndTraderInfo(opts *bind.CallOpts, order OrderWithoutExchangeAddress, takerAddress common.Address) (struct {
-	OrderInfo  OrderInfo
-	TraderInfo TraderInfo
+// Solidity: function getOrderAndTraderInfo(Struct0 order, bytes signature, address takerAddress) constant returns(Struct2 orderInfo, Struct1 traderInfo, bool isValidSignature)
+func (_OrderValidator *OrderValidatorCaller) GetOrderAndTraderInfo(opts *bind.CallOpts, order Struct0, signature []byte, takerAddress common.Address) (struct {
+	OrderInfo        Struct2
+	TraderInfo       Struct1
+	IsValidSignature bool
 }, error) {
 	ret := new(struct {
-		OrderInfo  OrderInfo
-		TraderInfo TraderInfo
+		OrderInfo        Struct2
+		TraderInfo       Struct1
+		IsValidSignature bool
 	})
 	out := ret
-	err := _OrderValidator.contract.Call(opts, out, "getOrderAndTraderInfo", order, takerAddress)
+	err := _OrderValidator.contract.Call(opts, out, "getOrderAndTraderInfo", order, signature, takerAddress)
 	return *ret, err
 }
 
-// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0x04ad1e53.
+// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0xc6319fc5.
 //
-// Solidity: function getOrderAndTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(OrderInfo orderInfo, TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorSession) GetOrderAndTraderInfo(order OrderWithoutExchangeAddress, takerAddress common.Address) (struct {
-	OrderInfo  OrderInfo
-	TraderInfo TraderInfo
+// Solidity: function getOrderAndTraderInfo(Struct0 order, bytes signature, address takerAddress) constant returns(Struct2 orderInfo, Struct1 traderInfo, bool isValidSignature)
+func (_OrderValidator *OrderValidatorSession) GetOrderAndTraderInfo(order Struct0, signature []byte, takerAddress common.Address) (struct {
+	OrderInfo        Struct2
+	TraderInfo       Struct1
+	IsValidSignature bool
 }, error) {
-	return _OrderValidator.Contract.GetOrderAndTraderInfo(&_OrderValidator.CallOpts, order, takerAddress)
+	return _OrderValidator.Contract.GetOrderAndTraderInfo(&_OrderValidator.CallOpts, order, signature, takerAddress)
 }
 
-// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0x04ad1e53.
+// GetOrderAndTraderInfo is a free data retrieval call binding the contract method 0xc6319fc5.
 //
-// Solidity: function getOrderAndTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(OrderInfo orderInfo, TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorCallerSession) GetOrderAndTraderInfo(order OrderWithoutExchangeAddress, takerAddress common.Address) (struct {
-	OrderInfo  OrderInfo
-	TraderInfo TraderInfo
+// Solidity: function getOrderAndTraderInfo(Struct0 order, bytes signature, address takerAddress) constant returns(Struct2 orderInfo, Struct1 traderInfo, bool isValidSignature)
+func (_OrderValidator *OrderValidatorCallerSession) GetOrderAndTraderInfo(order Struct0, signature []byte, takerAddress common.Address) (struct {
+	OrderInfo        Struct2
+	TraderInfo       Struct1
+	IsValidSignature bool
 }, error) {
-	return _OrderValidator.Contract.GetOrderAndTraderInfo(&_OrderValidator.CallOpts, order, takerAddress)
+	return _OrderValidator.Contract.GetOrderAndTraderInfo(&_OrderValidator.CallOpts, order, signature, takerAddress)
 }
 
-// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0x4b95de13.
+// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0xf7c1c03f.
 //
-// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo)
-func (_OrderValidator *OrderValidatorCaller) GetOrdersAndTradersInfo(opts *bind.CallOpts, orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) (struct {
-	OrdersInfo  []OrderInfo
-	TradersInfo []TraderInfo
+// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, bytes[] signatures, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo, bool[] isValidSignature)
+func (_OrderValidator *OrderValidatorCaller) GetOrdersAndTradersInfo(opts *bind.CallOpts, orders []Struct0, signatures [][]byte, takerAddresses []common.Address) (struct {
+	OrdersInfo       []Struct2
+	TradersInfo      []Struct1
+	IsValidSignature []bool
 }, error) {
 	ret := new(struct {
-		OrdersInfo  []OrderInfo
-		TradersInfo []TraderInfo
+		OrdersInfo       []Struct2
+		TradersInfo      []Struct1
+		IsValidSignature []bool
 	})
 	out := ret
-	err := _OrderValidator.contract.Call(opts, out, "getOrdersAndTradersInfo", orders, takerAddresses)
+	err := _OrderValidator.contract.Call(opts, out, "getOrdersAndTradersInfo", orders, signatures, takerAddresses)
 	return *ret, err
 }
 
-// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0x4b95de13.
+// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0xf7c1c03f.
 //
-// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo)
-func (_OrderValidator *OrderValidatorSession) GetOrdersAndTradersInfo(orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) (struct {
-	OrdersInfo  []OrderInfo
-	TradersInfo []TraderInfo
+// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, bytes[] signatures, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo, bool[] isValidSignature)
+func (_OrderValidator *OrderValidatorSession) GetOrdersAndTradersInfo(orders []Struct0, signatures [][]byte, takerAddresses []common.Address) (struct {
+	OrdersInfo       []Struct2
+	TradersInfo      []Struct1
+	IsValidSignature []bool
 }, error) {
-	return _OrderValidator.Contract.GetOrdersAndTradersInfo(&_OrderValidator.CallOpts, orders, takerAddresses)
+	return _OrderValidator.Contract.GetOrdersAndTradersInfo(&_OrderValidator.CallOpts, orders, signatures, takerAddresses)
 }
 
-// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0x4b95de13.
+// GetOrdersAndTradersInfo is a free data retrieval call binding the contract method 0xf7c1c03f.
 //
-// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo)
-func (_OrderValidator *OrderValidatorCallerSession) GetOrdersAndTradersInfo(orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) (struct {
-	OrdersInfo  []OrderInfo
-	TradersInfo []TraderInfo
+// Solidity: function getOrdersAndTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, bytes[] signatures, address[] takerAddresses) constant returns((uint8,bytes32,uint256)[] ordersInfo, (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[] tradersInfo, bool[] isValidSignature)
+func (_OrderValidator *OrderValidatorCallerSession) GetOrdersAndTradersInfo(orders []Struct0, signatures [][]byte, takerAddresses []common.Address) (struct {
+	OrdersInfo       []Struct2
+	TradersInfo      []Struct1
+	IsValidSignature []bool
 }, error) {
-	return _OrderValidator.Contract.GetOrdersAndTradersInfo(&_OrderValidator.CallOpts, orders, takerAddresses)
+	return _OrderValidator.Contract.GetOrdersAndTradersInfo(&_OrderValidator.CallOpts, orders, signatures, takerAddresses)
 }
 
 // GetTraderInfo is a free data retrieval call binding the contract method 0xf241ffb0.
 //
-// Solidity: function getTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorCaller) GetTraderInfo(opts *bind.CallOpts, order OrderWithoutExchangeAddress, takerAddress common.Address) (TraderInfo, error) {
+// Solidity: function getTraderInfo(Struct0 order, address takerAddress) constant returns(Struct1 traderInfo)
+func (_OrderValidator *OrderValidatorCaller) GetTraderInfo(opts *bind.CallOpts, order Struct0, takerAddress common.Address) (Struct1, error) {
 	var (
-		ret0 = new(TraderInfo)
+		ret0 = new(Struct1)
 	)
 	out := ret0
 	err := _OrderValidator.contract.Call(opts, out, "getTraderInfo", order, takerAddress)
@@ -387,24 +395,24 @@ func (_OrderValidator *OrderValidatorCaller) GetTraderInfo(opts *bind.CallOpts, 
 
 // GetTraderInfo is a free data retrieval call binding the contract method 0xf241ffb0.
 //
-// Solidity: function getTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorSession) GetTraderInfo(order OrderWithoutExchangeAddress, takerAddress common.Address) (TraderInfo, error) {
+// Solidity: function getTraderInfo(Struct0 order, address takerAddress) constant returns(Struct1 traderInfo)
+func (_OrderValidator *OrderValidatorSession) GetTraderInfo(order Struct0, takerAddress common.Address) (Struct1, error) {
 	return _OrderValidator.Contract.GetTraderInfo(&_OrderValidator.CallOpts, order, takerAddress)
 }
 
 // GetTraderInfo is a free data retrieval call binding the contract method 0xf241ffb0.
 //
-// Solidity: function getTraderInfo(OrderWithoutExchangeAddress order, address takerAddress) constant returns(TraderInfo traderInfo)
-func (_OrderValidator *OrderValidatorCallerSession) GetTraderInfo(order OrderWithoutExchangeAddress, takerAddress common.Address) (TraderInfo, error) {
+// Solidity: function getTraderInfo(Struct0 order, address takerAddress) constant returns(Struct1 traderInfo)
+func (_OrderValidator *OrderValidatorCallerSession) GetTraderInfo(order Struct0, takerAddress common.Address) (Struct1, error) {
 	return _OrderValidator.Contract.GetTraderInfo(&_OrderValidator.CallOpts, order, takerAddress)
 }
 
 // GetTradersInfo is a free data retrieval call binding the contract method 0x690d3114.
 //
 // Solidity: function getTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[])
-func (_OrderValidator *OrderValidatorCaller) GetTradersInfo(opts *bind.CallOpts, orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) ([]TraderInfo, error) {
+func (_OrderValidator *OrderValidatorCaller) GetTradersInfo(opts *bind.CallOpts, orders []Struct0, takerAddresses []common.Address) ([]Struct1, error) {
 	var (
-		ret0 = new([]TraderInfo)
+		ret0 = new([]Struct1)
 	)
 	out := ret0
 	err := _OrderValidator.contract.Call(opts, out, "getTradersInfo", orders, takerAddresses)
@@ -414,13 +422,13 @@ func (_OrderValidator *OrderValidatorCaller) GetTradersInfo(opts *bind.CallOpts,
 // GetTradersInfo is a free data retrieval call binding the contract method 0x690d3114.
 //
 // Solidity: function getTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[])
-func (_OrderValidator *OrderValidatorSession) GetTradersInfo(orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) ([]TraderInfo, error) {
+func (_OrderValidator *OrderValidatorSession) GetTradersInfo(orders []Struct0, takerAddresses []common.Address) ([]Struct1, error) {
 	return _OrderValidator.Contract.GetTradersInfo(&_OrderValidator.CallOpts, orders, takerAddresses)
 }
 
 // GetTradersInfo is a free data retrieval call binding the contract method 0x690d3114.
 //
 // Solidity: function getTradersInfo((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes)[] orders, address[] takerAddresses) constant returns((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)[])
-func (_OrderValidator *OrderValidatorCallerSession) GetTradersInfo(orders []OrderWithoutExchangeAddress, takerAddresses []common.Address) ([]TraderInfo, error) {
+func (_OrderValidator *OrderValidatorCallerSession) GetTradersInfo(orders []Struct0, takerAddresses []common.Address) ([]Struct1, error) {
 	return _OrderValidator.Contract.GetTradersInfo(&_OrderValidator.CallOpts, orders, takerAddresses)
 }
