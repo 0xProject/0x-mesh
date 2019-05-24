@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ws"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -46,17 +46,17 @@ func main() {
 		panic(err)
 	}
 
-	client, err := ws.NewClient(env.RPCAddress)
+	client, err := rpc.NewClient(env.RPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}
 
-	rpcClient, err := rpc.Dial(env.EthereumRPCURL)
+	ethClient, err := ethrpc.Dial(env.EthereumRPCURL)
 	if err != nil {
 		log.WithError(err).Fatal("could not create Ethereum rpc client")
 	}
 
-	signedTestOrder, err := zeroex.SignOrder(testOrder, rpcClient)
+	signedTestOrder, err := zeroex.SignOrder(testOrder, ethClient)
 	if err != nil {
 		log.WithError(err).Fatal("could not sign 0x order")
 	}

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/ws"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
@@ -28,18 +28,18 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 	rpcHandler := &rpcHandler{
 		app: app,
 	}
-	wsServer, err := ws.NewServer(rpcAddr, rpcHandler)
+	rpcServer, err := rpc.NewServer(rpcAddr, rpcHandler)
 	if err != nil {
 		return nil
 	}
 	go func() {
 		// Wait for the server to start listening and select an address.
-		for wsServer.Addr() == nil {
+		for rpcServer.Addr() == nil {
 			time.Sleep(10 * time.Millisecond)
 		}
-		log.WithField("address", wsServer.Addr().String()).Info("started RPC server")
+		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
 	}()
-	return wsServer.Listen()
+	return rpcServer.Listen()
 }
 
 // AddOrder is called when an RPC client calls AddOrder.
