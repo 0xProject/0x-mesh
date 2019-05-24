@@ -50,8 +50,12 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 // OpenedStream is called when a stream opened
 func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 	go func() {
-		// HACK(albrow): When the stream is initially opened, the protocol is not set.
-		// For now, we have to manually poll until it is set.
+		// HACK(albrow): When the stream is initially opened, the protocol is not
+		// set. For now, we have to manually poll until it is set.
+		// https://github.com/libp2p/go-libp2p/issues/467 mentions an internal
+		// event bus which could potentially be used to detect when the protocol is
+		// set or offer a different way to detect peers who speak the protocol we're
+		// looking for.
 		timeout := time.After(5 * time.Second)
 		for stream.Protocol() == "" {
 			select {
