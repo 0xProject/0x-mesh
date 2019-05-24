@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBatchValidate(t *testing.T) {
+func TestBatchValidateExpiredOrder(t *testing.T) {
 	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
 
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
@@ -57,6 +57,48 @@ func TestBatchValidate(t *testing.T) {
 	orderInfos := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, orderInfos, 1)
 	assert.Equal(t, Expired, orderInfos[orderHash].OrderStatus)
+	assert.Equal(t, signedOrder, orderInfos[orderHash].SignedOrder)
+}
+
+func TestBatchValidateSignatureInvalid(t *testing.T) {
+	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
+
+	signedOrder := &SignedOrder{
+		Order: &Order{
+			MakerAddress:          constants.GanacheAccount0,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
+			Salt:                  big.NewInt(1548619145450),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(300000000000000),
+			ExpirationTimeSeconds: big.NewInt(2850940800),
+			ExchangeAddress:       contractNameToAddress.Exchange,
+		},
+	}
+	// Add a correctly formatted signature that does not correspond to this order
+	signedOrder.Signature = common.Hex2Bytes("1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603")
+
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{
+		signedOrder,
+	}
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	require.NoError(t, err)
+
+	orderInfos := orderValidator.BatchValidate(signedOrders)
+	assert.Len(t, orderInfos, 1)
+	assert.Equal(t, SignatureInvalid, orderInfos[orderHash].OrderStatus)
 	assert.Equal(t, signedOrder, orderInfos[orderHash].SignedOrder)
 }
 

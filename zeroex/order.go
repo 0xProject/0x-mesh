@@ -25,6 +25,7 @@ const (
 	Expired
 	FullyFilled
 	Cancelled
+	SignatureInvalid
 )
 
 // Order represents an unsigned 0x order

@@ -34,6 +34,7 @@ const concurrencyLimit = 5
 type getOrdersAndTradersInfoParams struct {
 	TakerAddresses []common.Address
 	Orders         []wrappers.OrderWithoutExchangeAddress
+	Signatures     [][]byte
 }
 
 // OrderInfo represents the order information returned from OrderValidator methods.
@@ -76,6 +77,10 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	for i := 0; i < len(signedOrders); i++ {
 		orders = append(orders, signedOrders[i].ConvertToOrderWithoutExchangeAddress())
 	}
+	signatures := [][]byte{}
+	for i := 0; i < len(signedOrders); i++ {
+		signatures = append(signatures, signedOrders[i].Signature)
+	}
 
 	// Chunk into groups of chunkSize orders/takerAddresses for each call
 	chunks := []getOrdersAndTradersInfoParams{}
@@ -83,14 +88,17 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 		chunks = append(chunks, getOrdersAndTradersInfoParams{
 			TakerAddresses: takerAddresses[:chunkSize],
 			Orders:         orders[:chunkSize],
+			Signatures:     signatures[:chunkSize],
 		})
 		takerAddresses = takerAddresses[chunkSize:]
 		orders = orders[chunkSize:]
+		signatures = signatures[chunkSize:]
 	}
 	if len(orders) > 0 {
 		chunks = append(chunks, getOrdersAndTradersInfoParams{
 			TakerAddresses: takerAddresses,
 			Orders:         orders,
+			Signatures:     signatures,
 		})
 	}
 
@@ -125,7 +133,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					Pending: false,
 					Context: ctx,
 				}
-				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, params.Orders, params.TakerAddresses)
+				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, params.Orders, params.Signatures, params.TakerAddresses)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"err":            err.Error(),
@@ -149,14 +157,18 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 
 				for j, orderInfo := range results.OrdersInfo {
 					traderInfo := results.TradersInfo[j]
+					isValidSignature := results.IsValidSignature[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[chunkSize*i+j]
 					orderStatus := OrderStatus(orderInfo.OrderStatus)
+					if !isValidSignature {
+						orderStatus = SignatureInvalid
+					}
 					switch orderStatus {
 					// TODO(fabio): A future optimization would be to check that both the maker & taker
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
-					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled:
+					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled, SignatureInvalid:
 						orderHashToInfo[orderHash] = &OrderInfo{
 							OrderHash:                orderHash,
 							SignedOrder:              signedOrder,
