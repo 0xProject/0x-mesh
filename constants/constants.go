@@ -36,7 +36,7 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 	1: ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0x2240dab907db71e64d3e0dba4800c83b5c502d4e"),
 		ERC721Proxy:       common.HexToAddress("0x208e41fb445f1bb1b6780d58356e81405f3e6127"),
-		OrderValidator:    common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138"),
+		OrderValidator:    common.HexToAddress("0xdeb7a90cd9bcef85bc79d204cb96a18ecff99478"),
 		Exchange:          common.HexToAddress("0x4f833a24e1f95d70f028921e27040ca56e09ab0b"),
 		EthBalanceChecker: common.HexToAddress("0x9bc2c6ae8b1a8e3c375b6ccb55eb4273b2c3fbde"),
 	},
