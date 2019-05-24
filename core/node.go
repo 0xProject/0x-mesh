@@ -9,14 +9,21 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"sync"
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	crypto "github.com/libp2p/go-libp2p-crypto"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,19 +35,65 @@ const (
 	maxReceiveBatch = 100
 	// maxShareBatch is the maximum number of messages to share at once.
 	maxShareBatch = 10
+	// peerCountLow is the target number of peers to connect to at any given time.
+	peerCountLow = 100
+	// peerCountHigh is the maximum number of peers to be connected to. If the
+	// number of connections exceeds this number, we will prune connections until
+	// we reach peerCountLow.
+	peerCountHigh = 110
+	// peerGraceDuration is the amount of time a newly opened connection is given
+	// before it becomes subject to pruning.
+	peerGraceDuration = 10 * time.Second
+	// defaultNetworkTimeout is the default timeout for network requests (e.g.
+	// connecting to a new peer).
+	defaultNetworkTimeout = 5 * time.Second
+	// advertiseTTL is the TTL for our announcement to the discovery network.
+	advertiseTTL = 5 * time.Minute
+	// pubsubProtocolID is the protocol ID to use for pubsub.
+	pubsubProtocolID = protocol.ID("/0x-mesh-floodsub/0.0.1")
 )
+
+// bootstrapPeers is a list of peers to use for bootstrapping the DHT. Based on
+// the default IPFS bootstrap list but with some removals for peers which we
+// could not consistently connect to.
+// TODO(albrow): Replace this with our own bootstrap peer list.
+var bootstrapPeers []multiaddr.Multiaddr
+
+func init() {
+	for _, s := range []string{
+		"/ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",  // mars.i.ipfs.io
+		"/ip4/104.236.179.241/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM", // pluto.i.ipfs.io
+		"/ip4/128.199.219.111/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu", // saturn.i.ipfs.io
+		"/ip4/104.236.76.40/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64",   // venus.i.ipfs.io
+		// "/ip4/178.62.158.247/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd",            // earth.i.ipfs.io
+		"/ip6/2604:a880:1:20::203:d001/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM",  // pluto.i.ipfs.io
+		"/ip6/2400:6180:0:d0::151:6001/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",  // saturn.i.ipfs.io
+		"/ip6/2604:a880:800:10::4a:5001/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64", // venus.i.ipfs.io
+		// "/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd", // earth.i.ipfs.io
+	} {
+		ma, err := multiaddr.NewMultiaddr(s)
+		if err != nil {
+			panic(err)
+		}
+		bootstrapPeers = append(bootstrapPeers, ma)
+	}
+}
 
 // Node is the main type for the core package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
 // messages.
 type Node struct {
-	ctx            context.Context
-	cancel         context.CancelFunc
-	host           host.Host
-	pubsub         *pubsub.PubSub
-	sub            *pubsub.Subscription
-	config         Config
-	messageHandler MessageHandler
+	ctx              context.Context
+	cancel           context.CancelFunc
+	host             host.Host
+	dht              *dht.IpfsDHT
+	routingDiscovery discovery.Discovery
+	connManager      *connmgr.BasicConnMgr
+	pubsub           *pubsub.PubSub
+	sub              *pubsub.Subscription
+	config           Config
+	messageHandler   MessageHandler
+	notifee          p2pnet.Notifiee
 }
 
 // Config contains configuration options for a Node.
@@ -61,12 +114,24 @@ type Config struct {
 	// MessageHandler is an interface responsible for validating, storing, and
 	// finding new messages to share.
 	MessageHandler MessageHandler
+	// RendezvousString is a unique identifier for the rendezvous point. This node
+	// will attempt to find peers with the same Rendezvous string.
+	RendezvousString string
+	// UseBootstrapList determines whether or not to use the list of predetermined
+	// peers to bootstrap the DHT for peer discovery.
+	UseBootstrapList bool
 }
 
 // New creates a new Node with the given config.
 func New(config Config) (*Node, error) {
+	nodeCtx, cancel := context.WithCancel(context.Background())
+
 	if config.MessageHandler == nil {
+		cancel()
 		return nil, errors.New("config.MessageHandler is required")
+	} else if config.RendezvousString == "" {
+		cancel()
+		return nil, errors.New("config.RendezvousString is required")
 	}
 
 	// If the seed is zero, use real cryptographic randomness. Otherwise, use a
@@ -83,49 +148,69 @@ func New(config Config) (*Node, error) {
 	// to obtain a valid host ID.
 	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
 	// Set up the transport and the host.
 	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", config.ListenPort))
 	if err != nil {
+		cancel()
 		return nil, err
 	}
+	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(priv),
 		libp2p.DisableRelay(),
+		libp2p.ConnectionManager(connManager),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
 	}
-	basicHost, err := libp2p.New(context.Background(), opts...)
+	basicHost, err := libp2p.New(nodeCtx, opts...)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
+	// Set up DHT for peer discovery.
+	kadDHT, err := dht.New(nodeCtx, basicHost)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
+
 	// Set up pubsub.
 	// TODO: Replace with WeijieSub. Using FloodSub for now.
-	ps, err := pubsub.NewFloodSub(context.Background(), basicHost)
+	ps, err := pubsub.NewFloodsubWithProtocols(nodeCtx, basicHost, []protocol.ID{pubsubProtocolID})
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	sub, err := ps.Subscribe(config.Topic)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
 	// Create the Node.
-	ctx, cancel := context.WithCancel(context.Background())
 	node := &Node{
-		ctx:            ctx,
-		cancel:         cancel,
-		host:           basicHost,
-		config:         config,
-		pubsub:         ps,
-		sub:            sub,
-		messageHandler: config.MessageHandler,
+		ctx:              nodeCtx,
+		cancel:           cancel,
+		host:             basicHost,
+		dht:              kadDHT,
+		routingDiscovery: routingDiscovery,
+		connManager:      connManager,
+		config:           config,
+		pubsub:           ps,
+		sub:              sub,
+		messageHandler:   config.MessageHandler,
 	}
+
+	// Set up the notifee.
+	basicHost.Network().Notify(&notifee{node: node})
 
 	return node, nil
 }
@@ -143,7 +228,56 @@ func (n *Node) ID() peer.ID {
 // Start causes the Node to continuously send messages to and receive messages
 // from its peers. It blocks until an error is encountered or `Stop` is called.
 func (n *Node) Start() error {
+	// Note: dht.Bootstrap has a somewhat confusing name. It doesn't automatically
+	// connect to the bootstrap peers. It just starts the background process of
+	// searching for new peers.
+	if err := n.dht.Bootstrap(n.ctx); err != nil {
+		return err
+	}
+
+	// If needed, connect to all peers in the bootstrap list.
+	if n.config.UseBootstrapList {
+		if err := n.connectToBootstrapList(); err != nil {
+			return err
+		}
+	}
+
+	// Advertise ourselves for the purposes of peer discovery.
+	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
+
 	return n.mainLoop()
+}
+
+func (n *Node) connectToBootstrapList() error {
+	log.WithField("bootstrapPeers", bootstrapPeers).Info("connecting to bootstrap peers")
+	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
+	defer cancel()
+	wg := sync.WaitGroup{}
+	for _, addr := range bootstrapPeers {
+		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := n.host.Connect(connectCtx, *peerInfo); err != nil {
+				log.WithFields(map[string]interface{}{
+					"error":    err.Error(),
+					"peerInfo": peerInfo,
+				}).Warn("failed to connect to bootstrap peer")
+			}
+		}()
+	}
+	wg.Wait()
+
+	// It is recommended to wait for 2 seconds after connecting to all the
+	// bootstrap peers to give time for the relevant notifees to trigger and the
+	// DHT to fully initialize.
+	// See: https://github.com/0xProject/0x-mesh/pull/69#discussion_r286849679
+	time.Sleep(2 * time.Second)
+
+	return nil
 }
 
 // Connect ensures there is a connection between this host and the peer with
@@ -154,7 +288,6 @@ func (n *Node) Connect(ctx context.Context, peerInfo peerstore.PeerInfo) error {
 	if err != nil {
 		return err
 	}
-	log.WithField("peerInfo", peerInfo).Debug("connected to peer")
 	return nil
 }
 
@@ -175,6 +308,13 @@ func (n *Node) mainLoop() error {
 
 // runOnce runs a single iteration of the main loop.
 func (n *Node) runOnce() error {
+	peerCount := n.connManager.GetInfo().ConnCount
+	if peerCount < peerCountLow {
+		if err := n.findNewPeers(peerCountLow - peerCount); err != nil {
+			return err
+		}
+	}
+
 	// Receive up to maxReceiveBatch messages.
 	incoming, err := n.receiveBatch()
 	if err != nil {
@@ -188,6 +328,38 @@ func (n *Node) runOnce() error {
 	// Send up to maxSendBatch messages.
 	if err := n.shareBatch(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (n *Node) findNewPeers(max int) error {
+	log.WithFields(map[string]interface{}{
+		"max": max,
+	}).Trace("looking for new peers")
+	findPeersCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
+	defer cancel()
+	peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, n.config.RendezvousString, discovery.Limit(max))
+	if err != nil {
+		return err
+	}
+
+	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
+	defer cancel()
+	for peer := range peerChan {
+		if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
+			continue
+		}
+		log.WithFields(map[string]interface{}{
+			"peerInfo": peer,
+		}).Trace("found peer via rendezvous")
+		if err := n.host.Connect(connectCtx, peer); err != nil {
+			// If we fail to connect to a single peer we should still keep trying the
+			// others. Log instead of returning the error.
+			log.WithFields(map[string]interface{}{
+				"error":    err.Error(),
+				"peerInfo": peer,
+			}).Warn("could not connect to peer")
+		}
 	}
 	return nil
 }
@@ -253,6 +425,5 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 // Close closes the Node and any active connections.
 func (n *Node) Close() error {
 	n.cancel()
-	n.sub.Cancel()
 	return n.host.Close()
 }

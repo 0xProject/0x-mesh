@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	p2pnet "github.com/libp2p/go-libp2p-net"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +21,10 @@ import (
 // is created.
 var counter int64 = -1
 
-const testTopic = "0x-mesh-testing"
+const (
+	testTopic            = "0x-mesh-testing"
+	testRendezvousString = "0x-mesh-testing-rendezvous"
+)
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
 // messages valid and doesn't actually store or share any messages.
@@ -37,11 +42,11 @@ func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
 // purposes.
 func newTestNode(t *testing.T) *Node {
 	config := Config{
-		Topic:          testTopic,
-		ListenPort:     0, // Let OS randomly choose an open port.
-		Insecure:       true,
-		RandSeed:       atomic.AddInt64(&counter, 1),
-		MessageHandler: &dummyMessageHandler{},
+		Topic:            testTopic,
+		ListenPort:       0, // Let OS randomly choose an open port.
+		RandSeed:         atomic.AddInt64(&counter, 1),
+		MessageHandler:   &dummyMessageHandler{},
+		RendezvousString: testRendezvousString,
 	}
 	node, err := New(config)
 	require.NoError(t, err)
@@ -84,6 +89,12 @@ func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Dur
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for message")
+			return
+		default:
+		}
 		actual, err := node.receive(ctx)
 		require.NoError(t, err)
 		// We might receive other messages. Ignore anything that doesn't match the
@@ -256,4 +267,73 @@ func TestMessagesAreShared(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedAllMessages, node1.messageHandler.(*inMemoryMessageHandler).messages, "node1 should be storing all messages")
+}
+
+type testNotifee struct {
+	conns chan p2pnet.Conn
+}
+
+func (n *testNotifee) Listen(p2pnet.Network, ma.Multiaddr)                   {}
+func (n *testNotifee) ListenClose(p2pnet.Network, ma.Multiaddr)              {}
+func (n *testNotifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {}
+func (n *testNotifee) OpenedStream(p2pnet.Network, p2pnet.Stream)            {}
+func (n *testNotifee) ClosedStream(p2pnet.Network, p2pnet.Stream)            {}
+
+// Connected is called when a connection opened
+func (n *testNotifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
+	go func() {
+		n.conns <- conn
+	}()
+}
+
+func TestPeerDiscovery(t *testing.T) {
+	// Create three nodes: 0, 1, and 2.
+	//
+	//   - node0 is connected to node1
+	//   - node1 is ocnnected to node2
+	//   - node0 is not initially connected to node2
+	//
+	node0, node1 := createTwoConnectedTestNodes(t)
+	defer node0.Close()
+	defer node1.Close()
+	node2 := newTestNode(t)
+	defer node2.Close()
+	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := node2.Connect(connectCtx, peerstore.PeerInfo{
+		ID:    node1.host.ID(),
+		Addrs: node1.host.Addrs(),
+	})
+	require.NoError(t, err)
+
+	// Create a test notifee which will be used to detect new connections.
+	notif := &testNotifee{
+		conns: make(chan p2pnet.Conn),
+	}
+	node0.host.Network().Notify(notif)
+
+	// Start all the nodes (this also starts the peer discovery process).
+	go func() {
+		require.NoError(t, node0.Start())
+	}()
+	go func() {
+		require.NoError(t, node1.Start())
+	}()
+	go func() {
+		require.NoError(t, node2.Start())
+	}()
+
+	// Wait for node0 ande node2 to find each other
+	timeout := time.After(10 * time.Second)
+loop:
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("timed out waiting for node0 to discover node2")
+		case conn := <-notif.conns:
+			if conn.RemotePeer() == node2.ID() {
+				break loop
+			}
+		}
+	}
 }
