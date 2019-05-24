@@ -1,6 +1,6 @@
 // +build !js
 
-package core
+package p2p
 
 import (
 	"time"

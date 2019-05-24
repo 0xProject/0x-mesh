@@ -1,4 +1,4 @@
-package core
+package p2p
 
 import (
 	peer "github.com/libp2p/go-libp2p-peer"
