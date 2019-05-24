@@ -1,7 +1,7 @@
 .PHONY: deps
 deps:
-	dep ensure
-	yarn install
+	dep ensure --vendor-only
+	yarn install --frozen-lockfile
 
 
 .PHONY: test-all
@@ -21,3 +21,8 @@ test-wasm:
 .PHONY: lint
 lint:
 	golangci-lint run
+
+
+.PHONY: mesh
+mesh:
+	go install ./cmd/mesh
