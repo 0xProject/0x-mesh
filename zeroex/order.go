@@ -182,9 +182,18 @@ func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ecSignature, err := ethereum.ECSign(orderHash.Bytes(), o.MakerAddress, rpcClient)
-	if err != nil {
-		return nil, err
+
+	var ecSignature *ethereum.ECSignature
+	if rpcClient == nil {
+		ecSignature, err = ethereum.EthSignForTests(orderHash.Bytes(), o.MakerAddress)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ecSignature, err = ethereum.EthSign(orderHash.Bytes(), o.MakerAddress, rpcClient)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	signature := make([]byte, 66)
@@ -215,7 +224,21 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 	return orderWithoutExchangeAddress
 }
 
-// SignOrder converts an order to a signed 0x order
+// SignTestOrder converts a test 0x order to a signed 0x order
+func SignTestOrder(order *Order) (*SignedOrder, error) {
+	signature, err := order.ecSign(nil)
+	if err != nil {
+		return nil, err
+	}
+	signedOrder := &SignedOrder{
+		Order:     order,
+		Signature: signature,
+	}
+	return signedOrder, nil
+}
+
+// SignOrder converts a 0x order to a signed 0x order by fetching an order
+// signature via an `eth_sign` call
 func SignOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
 	signature, err := order.ecSign(rpcClient)
 	if err != nil {

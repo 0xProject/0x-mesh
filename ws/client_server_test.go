@@ -1,5 +1,3 @@
-// +build !js
-
 package ws
 
 import (
@@ -12,7 +10,6 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -84,9 +81,7 @@ var testOrder = &zeroex.Order{
 }
 
 func TestAddOrder(t *testing.T) {
-	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-	signedTestOrder, err := zeroex.SignOrder(testOrder, rpcClient)
+	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
 	require.NoError(t, err)
 
 	// Set up the dummy handler with an addOrderHandler
