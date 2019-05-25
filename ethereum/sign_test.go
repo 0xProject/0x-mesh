@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEthSign(t *testing.T) {
+func TestEthRPCSigner(t *testing.T) {
 	// Test parameters lifted from @0x/order-utils' `signature_utils_test.ts`
 	signerAddress := constants.GanacheAccount0
 	message := common.Hex2Bytes("6927e990021d23b1eb7b8789f6a6feaf98fe104bb0cf8259421b79f9a34222b0")
@@ -24,13 +24,14 @@ func TestEthSign(t *testing.T) {
 
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	actualSignature, err := EthSign(message, signerAddress, rpcClient)
+	ethRPCSigner := NewEthRPCSigner(rpcClient)
+	actualSignature, err := ethRPCSigner.Sign(message, signerAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedSignature, actualSignature)
 }
 
-func TestEthSignForTests(t *testing.T) {
+func TestTestSigner(t *testing.T) {
 	// Test parameters lifted from @0x/order-utils' `signature_utils_test.ts`
 	signerAddress := constants.GanacheAccount0
 	message := common.Hex2Bytes("6927e990021d23b1eb7b8789f6a6feaf98fe104bb0cf8259421b79f9a34222b0")
@@ -40,7 +41,8 @@ func TestEthSignForTests(t *testing.T) {
 		S: common.HexToHash("40349190569279751135161d22529dc25add4f6069af05be04cacbda2ace2254"),
 	}
 
-	actualSignature, err := EthSignForTests(message, signerAddress)
+	testSigner := NewTestSigner()
+	actualSignature, err := testSigner.Sign(message, signerAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedSignature, actualSignature)

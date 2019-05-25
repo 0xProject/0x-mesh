@@ -183,17 +183,15 @@ func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
 		return nil, err
 	}
 
-	var ecSignature *ethereum.ECSignature
+	var signer ethereum.Signer
 	if rpcClient == nil {
-		ecSignature, err = ethereum.EthSignForTests(orderHash.Bytes(), o.MakerAddress)
-		if err != nil {
-			return nil, err
-		}
+		signer = ethereum.NewTestSigner()
 	} else {
-		ecSignature, err = ethereum.EthSign(orderHash.Bytes(), o.MakerAddress, rpcClient)
-		if err != nil {
-			return nil, err
-		}
+		signer = ethereum.NewEthRPCSigner(rpcClient)
+	}
+	ecSignature, err := signer.Sign(orderHash.Bytes(), o.MakerAddress)
+	if err != nil {
+		return nil, err
 	}
 
 	signature := make([]byte, 66)
