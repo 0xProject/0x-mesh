@@ -25,7 +25,7 @@ func TestEthRPCSigner(t *testing.T) {
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 	ethRPCSigner := NewEthRPCSigner(rpcClient)
-	actualSignature, err := ethRPCSigner.Sign(message, signerAddress)
+	actualSignature, err := ethRPCSigner.EthSign(message, signerAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedSignature, actualSignature)
@@ -42,7 +42,7 @@ func TestTestSigner(t *testing.T) {
 	}
 
 	testSigner := NewTestSigner()
-	actualSignature, err := testSigner.Sign(message, signerAddress)
+	actualSignature, err := testSigner.EthSign(message, signerAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedSignature, actualSignature)

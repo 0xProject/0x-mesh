@@ -14,7 +14,7 @@ import (
 
 // Signer defines the methods needed to act as a elliptic curve signer
 type Signer interface {
-	Sign(message []byte, signerAddress common.Address) (*ECSignature, error)
+	EthSign(message []byte, signerAddress common.Address) (*ECSignature, error)
 }
 
 // ECSignature contains the parameters of an elliptic curve signature
@@ -37,8 +37,8 @@ func NewEthRPCSigner(rpcClient *rpc.Client) Signer {
 	}
 }
 
-// Sign signs a message via the `eth_sign` Ethereum JSON-RPC call
-func (e *EthRPCSigner) Sign(message []byte, signerAddress common.Address) (*ECSignature, error) {
+// EthSign signs a message via the `eth_sign` Ethereum JSON-RPC call
+func (e *EthRPCSigner) EthSign(message []byte, signerAddress common.Address) (*ECSignature, error) {
 	var signatureHex string
 	if err := e.rpcClient.Call(&signatureHex, "eth_sign", signerAddress.Hex(), common.Bytes2Hex(message)); err != nil {
 		return nil, err
@@ -78,13 +78,14 @@ func (l *LocalSigner) GetSignerAddress() common.Address {
 	return crypto.PubkeyToAddress(l.privateKey.PublicKey)
 }
 
-// Sign mimicks the signing of `eth_sign` locally its supplied private key
-func (l *LocalSigner) Sign(message []byte, signerAddress common.Address) (*ECSignature, error) {
+// EthSign mimicks the signing of `eth_sign` locally its supplied private key
+func (l *LocalSigner) EthSign(message []byte, signerAddress common.Address) (*ECSignature, error) {
 	expectedSignerAddress := l.GetSignerAddress()
 	if signerAddress != expectedSignerAddress {
 		return nil, fmt.Errorf("Cannot sign with signerAddress %s since LocalSigner contains private key for %s", signerAddress, expectedSignerAddress)
 	}
 
+	// Add message prefix: "\x19Ethereum Signed Message:\n"${message length}
 	messageWithPrefix, _ := accounts.TextAndHash(message)
 
 	// The produced signature is in the [R || S || V] format where V is 0 or 1.
@@ -118,9 +119,9 @@ func NewTestSigner() Signer {
 	return &TestSigner{}
 }
 
-// Sign generates an `eth_sign` equivalent signature using an public/private key
+// EthSign generates an `eth_sign` equivalent signature using an public/private key
 // pair hard-coded in the constants package.
-func (t *TestSigner) Sign(message []byte, signerAddress common.Address) (*ECSignature, error) {
+func (t *TestSigner) EthSign(message []byte, signerAddress common.Address) (*ECSignature, error) {
 	pkBytes, ok := constants.GanacheAccountToPrivateKey[signerAddress]
 	if !ok {
 		return nil, errors.New("Unrecognized Ganache account supplied to ECSignForTests")
@@ -131,5 +132,5 @@ func (t *TestSigner) Sign(message []byte, signerAddress common.Address) (*ECSign
 	}
 
 	localSigner := NewLocalSigner(privateKey)
-	return localSigner.Sign(message, signerAddress)
+	return localSigner.EthSign(message, signerAddress)
 }

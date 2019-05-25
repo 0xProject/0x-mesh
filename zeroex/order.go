@@ -189,11 +189,12 @@ func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
 	} else {
 		signer = ethereum.NewEthRPCSigner(rpcClient)
 	}
-	ecSignature, err := signer.Sign(orderHash.Bytes(), o.MakerAddress)
+	ecSignature, err := signer.EthSign(orderHash.Bytes(), o.MakerAddress)
 	if err != nil {
 		return nil, err
 	}
 
+	// Generate 0x EthSign Signature (append the signature type byte)
 	signature := make([]byte, 66)
 	signature[0] = ecSignature.V
 	copy(signature[1:33], ecSignature.R[:])
