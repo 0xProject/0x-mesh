@@ -242,26 +242,22 @@ func (app *App) SetupOrderStream(ctx context.Context) (*rpc.Subscription, error)
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		pollingInterval := 100 * time.Millisecond
-		ticker := time.NewTicker(pollingInterval)
-		for {
-			<-ticker.C
+		orderInfosChan := make(chan []*zeroex.OrderInfo)
+		orderWatcherSub := app.orderWatcher.Subscribe(orderInfosChan)
 
+		for {
 			select {
-			case <-rpcSub.Err():
-			case <-notifier.Closed():
-				return // Stop polling loop
-			default:
-				// TODO(fabio): GetEvents can only be called once... If there are multiple subscriptions
-				// to the OrderStream, will that cause issues? We might need to make sure multiple
-				// subscriptions can all read that data...
-				orderInfos := app.orderWatcher.GetEvents()
-				if len(orderInfos) != 0 {
-					err := notifier.Notify(rpcSub.ID, orderInfos)
-					if err != nil {
-						log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
-					}
+			case orderInfos := <-orderInfosChan:
+				err := notifier.Notify(rpcSub.ID, orderInfos)
+				if err != nil {
+					log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
 				}
+			case <-rpcSub.Err():
+				orderWatcherSub.Unsubscribe()
+				return
+			case <-notifier.Closed():
+				orderWatcherSub.Unsubscribe()
+				return
 			}
 		}
 	}()
