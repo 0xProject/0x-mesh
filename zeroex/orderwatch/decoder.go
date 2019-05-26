@@ -238,7 +238,7 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 		if !ok {
 			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
-		if eventName == "Deposit" || eventName == "Withdraw" {
+		if eventName == "Deposit" || eventName == "Withdrawal" {
 			return fmt.Sprintf("Weth%sEvent", eventName), nil
 		}
 		return fmt.Sprintf("ERC20%sEvent", eventName), nil
