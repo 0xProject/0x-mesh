@@ -1,6 +1,8 @@
 // +build !js
 
-package core
+// package p2p is a low-level library responsible for peer discovery and
+// sending/receiving messages.
+package p2p
 
 import (
 	"context"
@@ -79,7 +81,7 @@ func init() {
 	}
 }
 
-// Node is the main type for the core package. It represents a particpant in the
+// Node is the main type for the p2p package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
 // messages.
 type Node struct {

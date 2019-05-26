@@ -1,6 +1,6 @@
 // +build !js
 
-package ws
+package rpc
 
 import (
 	"errors"
