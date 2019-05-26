@@ -189,7 +189,7 @@ func (w *Watcher) GetEvents() []*zeroex.OrderInfo {
 	w.cachedOrderEventsMux.Lock()
 	cachedEvents := w.cachedOrderEvents
 	w.cachedOrderEvents = []*zeroex.OrderInfo{}
-	w.cachedOrderEventsMux.Lock()
+	w.cachedOrderEventsMux.Unlock()
 	return cachedEvents
 }
 
