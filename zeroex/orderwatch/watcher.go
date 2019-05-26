@@ -168,6 +168,10 @@ func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 		return err
 	}
 
+	w.cachedOrderEventsMux.Lock()
+	w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
+	w.cachedOrderEventsMux.Unlock()
+
 	return nil
 }
 
