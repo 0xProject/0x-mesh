@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"math/big"
 	"time"
 
@@ -51,11 +52,17 @@ func main() {
 		log.WithError(err).Fatal("could not create client")
 	}
 
+	ctx := context.Background()
+	orderInfosChan := make(chan []*zeroex.OrderInfo, 8000)
+	clientSubscription, err := client.SubscribeToOrderStream(ctx, orderInfosChan)
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
+	}
+
 	ethClient, err := ethrpc.Dial(env.EthereumRPCURL)
 	if err != nil {
 		log.WithError(err).Fatal("could not create Ethereum rpc client")
 	}
-
 	signedTestOrder, err := zeroex.SignOrder(testOrder, ethClient)
 	if err != nil {
 		log.WithError(err).Fatal("could not sign 0x order")
@@ -67,4 +74,9 @@ func main() {
 	} else {
 		log.Printf("added valid order: %s", hash.Hex())
 	}
+
+	orderInfos := <-orderInfosChan
+	log.Printf("Received order event: %+v\n", orderInfos[0])
+
+	clientSubscription.Unsubscribe()
 }

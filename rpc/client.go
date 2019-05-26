@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -48,4 +50,13 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return err
 	}
 	return nil
+}
+
+// SubscribeToOrderStream subscribes a stream of order events
+// From go-ethereum codebase: Slow subscribers will be dropped eventually. Client buffers up to
+// 8000 notifications before considering the subscriber dead. The subscription Err channel will
+// receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel or ensure
+// that the channel usually has at least one reader to prevent this issue.
+func (c *Client) SubscribeToOrderStream(ctx context.Context, ch chan<- []*zeroex.OrderInfo) (*rpc.ClientSubscription, error) {
+	return c.rpcClient.Subscribe(ctx, "mesh", ch, "orders")
 }

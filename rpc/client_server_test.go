@@ -3,6 +3,7 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"math/big"
 	"sync"
@@ -25,6 +26,7 @@ import (
 type dummyRPCHandler struct {
 	addOrderHandler func(order *zeroex.SignedOrder) error
 	addPeerHandler  func(peerInfo peerstore.PeerInfo) error
+	ordersHandler   func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrder(order *zeroex.SignedOrder) error {
@@ -39,6 +41,13 @@ func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return errors.New("dummyRPCHandler: no handler set for AddPeer")
 	}
 	return d.addPeerHandler(peerInfo)
+}
+
+func (d *dummyRPCHandler) Orders(ctx context.Context) (*rpc.Subscription, error) {
+	if d.ordersHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
+	}
+	return d.ordersHandler(ctx)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
@@ -143,5 +152,30 @@ func TestAddPeer(t *testing.T) {
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
 
 	// The WaitGroup signals that AddPeer was called on the server-side.
+	wg.Wait()
+}
+
+func TestOrdersSubscription(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up the dummy handler with a ordersHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		ordersHandler: func(ctx context.Context) (*rpc.Subscription, error) {
+			wg.Done()
+			return nil, nil
+		},
+	}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	orderInfoChan := make(chan []*zeroex.OrderInfo)
+	clientSubscription, err := client.SubscribeToOrderStream(ctx, orderInfoChan)
+	require.NoError(t, err)
+	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
+
+	// The WaitGroup signals that AddOrder was called on the server-side.
 	wg.Wait()
 }

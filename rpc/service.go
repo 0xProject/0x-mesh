@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -18,6 +21,13 @@ type RPCHandler interface {
 	AddOrder(order *zeroex.SignedOrder) error
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
+	// Orders is called when a client sends a Subscribe to orderStream request
+	Orders(ctx context.Context) (*rpc.Subscription, error)
+}
+
+// Orders calls rpcHandler.Orders and returns the rpc subscription.
+func (s *rpcService) Orders(ctx context.Context) (*rpc.Subscription, error) {
+	return s.rpcHandler.Orders(ctx)
 }
 
 // AddOrder calls rpcHandler.AddOrder and returns the computed order hash.
@@ -33,7 +43,7 @@ func (s *rpcService) AddOrder(order *zeroex.SignedOrder) (orderHashHex string, e
 	return orderHash.Hex(), nil
 }
 
-// AddOrder builds PeerInfo out of the given peer ID and multiaddresses and
+// AddPeer builds PeerInfo out of the given peer ID and multiaddresses and
 // calls rpcHandler.AddPeer. If there is an error, it returns it.
 func (s *rpcService) AddPeer(peerID string, multiaddrs []string) error {
 	// Parse peer ID.

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -69,4 +71,15 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return errInternal
 	}
 	return nil
+}
+
+// Orders is called when an RPC client subscribes (mesh_subscribe) to "orders"
+func (handler *rpcHandler) Orders(ctx context.Context) (*ethRpc.Subscription, error) {
+	log.Debug("received Subscribe request via RPC")
+	subscription, err := handler.app.SetupOrderStream(ctx)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in Subscribe RPC call")
+		return nil, errInternal
+	}
+	return subscription, nil
 }

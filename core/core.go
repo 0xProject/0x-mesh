@@ -219,7 +219,6 @@ func (app *App) AddOrder(order *zeroex.SignedOrder) error {
 		return err
 	}
 	if alreadyStored {
-		log.WithField("orderInfo", orderInfo).Debug("received local order but it is already stored")
 		return nil
 	}
 
@@ -231,6 +230,43 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 	ctx, cancel := context.WithTimeout(context.Background(), peerConnectTimeout)
 	defer cancel()
 	return app.node.Connect(ctx, peerInfo)
+}
+
+// SetupOrderStream sets up the order stream for a subscription
+func (app *App) SetupOrderStream(ctx context.Context) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		pollingInterval := 100 * time.Millisecond
+		ticker := time.NewTicker(pollingInterval)
+		for {
+			<-ticker.C
+
+			select {
+			case <-rpcSub.Err():
+			case <-notifier.Closed():
+				return // Stop polling loop
+			default:
+				// TODO(fabio): GetEvents can only be called once... If there are multiple subscriptions
+				// to the OrderStream, will that cause issues? We might need to make sure multiple
+				// subscriptions can all read that data...
+				orderInfos := app.orderWatcher.GetEvents()
+				if len(orderInfos) != 0 {
+					err := notifier.Notify(rpcSub.ID, orderInfos)
+					if err != nil {
+						log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
+					}
+				}
+			}
+		}
+	}()
+
+	return rpcSub, nil
 }
 
 func (app *App) Close() {
