@@ -423,7 +423,7 @@ func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
-		if err.Error() == "model not found" {
+		if err.Error() == "leveldb: not found" {
 			return // We will receive events from orders we aren't actively tracking
 		}
 		logger.WithFields(logger.Fields{
