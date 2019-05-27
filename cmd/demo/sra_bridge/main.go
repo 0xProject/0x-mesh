@@ -40,6 +40,7 @@ func main() {
 	ctx := context.Background()
 	orderInfosChan := make(chan []*zeroex.OrderInfo, 8000)
 	clientSubscription, err := client.SubscribeToOrderStream(ctx, orderInfosChan)
+	_ = clientSubscription
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
 	}
