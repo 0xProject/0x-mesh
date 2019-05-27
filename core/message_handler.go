@@ -145,7 +145,7 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 			log.WithFields(map[string]interface{}{
 				"orderInfo": orderInfo,
 				"from":      msg.From.String(),
-			}).Warn("not storing invalid order received from peer")
+			}).Trace("not storing invalid order received from peer")
 		}
 	}
 	return validMessages, nil
