@@ -24,9 +24,9 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler 			func(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
-	addPeerHandler           	func(peerInfo peerstore.PeerInfo) error
-	subscribeToOrdersHandler 	func(ctx context.Context) (*rpc.Subscription, error)
+	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
+	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
+	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
