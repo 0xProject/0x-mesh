@@ -42,23 +42,16 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 	return rpcServer.Listen()
 }
 
-// AddOrder is called when an RPC client calls AddOrder.
-func (handler *rpcHandler) AddOrder(order *zeroex.SignedOrder) error {
-	log.Debug("received AddOrder request via RPC")
-	if err := handler.app.AddOrder(order); err != nil {
-		if err == core.ErrInvalidOrder {
-			// If the order is invalid, we want to communicate the error back to the
-			// RPC client.
-			log.WithField("order", order).Warn("received invalid order via RPC")
-			return err
-		} else {
-			// All other error types are considered internal errors. We don't need to
-			// leak details to the RPC client.
-			log.WithField("error", err.Error()).Error("internal error in AddOrder RPC call")
-			return errInternal
-		}
+// AddOrders is called when an RPC client calls AddOrders.
+func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
+	log.Debug("received AddOrders request via RPC")
+	orderHashToSuccinctOrderInfo, err := handler.app.AddOrders(orders)
+	if err != nil {
+		// We don't want to leak internal error details to the RPC client.
+		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
+		return nil, errInternal
 	}
-	return nil
+	return orderHashToSuccinctOrderInfo, nil
 }
 
 // AddPeer is called when an RPC client calls AddPeer,

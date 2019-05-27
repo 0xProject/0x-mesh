@@ -1,8 +1,9 @@
 package rpc
 
 import (
+	"encoding/json"
+
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -26,14 +27,19 @@ func NewClient(addr string) (*Client, error) {
 	}, nil
 }
 
-// AddOrder adds the order to the 0x Mesh node and broadcasts it throughout the
+// AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrder(order *zeroex.SignedOrder) (common.Hash, error) {
-	var orderHashHex string
-	if err := c.rpcClient.Call(&orderHashHex, "mesh_addOrder", order); err != nil {
-		return common.Hash{}, err
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
+	var orderHashToSuccinctOrderInfoJSON string
+	if err := c.rpcClient.Call(&orderHashToSuccinctOrderInfoJSON, "mesh_addOrders", orders); err != nil {
+		return nil, err
 	}
-	return common.HexToHash(orderHashHex), nil
+	var orderHashToSuccinctOrderInfo zeroex.OrderHashToSuccinctOrderInfo
+	err := json.Unmarshal([]byte(orderHashToSuccinctOrderInfoJSON), &orderHashToSuccinctOrderInfo)
+	if err != nil {
+		return nil, err
+	}
+	return orderHashToSuccinctOrderInfo, nil
 }
 
 // AddPeer adds the peer to the node's list of peers. The node will attempt to
