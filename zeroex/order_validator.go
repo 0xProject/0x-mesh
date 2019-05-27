@@ -150,6 +150,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 						"err":            err.Error(),
 						"attempt":        b.Attempt(),
 						"orders":         params.Orders,
+						"signatures":     params.Signatures,
 						"takerAddresses": params.TakerAddresses,
 					}).Info("GetOrdersAndTradersInfo request failed")
 					d := b.Duration()
@@ -158,6 +159,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 						log.WithFields(log.Fields{
 							"err":            err.Error(),
 							"orders":         params.Orders,
+							"signatures":     params.Signatures,
 							"takerAddresses": params.TakerAddresses,
 						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
 						return // Give up after 4 attempts
