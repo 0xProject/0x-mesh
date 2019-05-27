@@ -81,16 +81,16 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 // retrieve.
 func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
 	takerAddresses := []common.Address{}
-	for i := 0; i < len(signedOrders); i++ {
-		takerAddresses = append(takerAddresses, signedOrders[i].TakerAddress)
+	for _, signedOrder := range signedOrders {
+		takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
 	}
 	orders := []wrappers.OrderWithoutExchangeAddress{}
-	for i := 0; i < len(signedOrders); i++ {
-		orders = append(orders, signedOrders[i].ConvertToOrderWithoutExchangeAddress())
+	for _, signedOrder := range signedOrders {
+		orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
 	}
 	signatures := [][]byte{}
-	for i := 0; i < len(signedOrders); i++ {
-		signatures = append(signatures, signedOrders[i].Signature)
+	for _, signedOrder := range signedOrders {
+		signatures = append(signatures, signedOrder.Signature)
 	}
 
 	// Chunk into groups of chunkSize orders/takerAddresses for each call
