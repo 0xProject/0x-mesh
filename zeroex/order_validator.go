@@ -60,7 +60,8 @@ type OrderHashToSuccinctOrderInfo map[common.Hash]*SuccinctOrderInfo
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
-	orderValidator *wrappers.OrderValidator
+	orderValidator   *wrappers.OrderValidator
+	assetDataDecoder *AssetDataDecoder
 }
 
 // NewOrderValidator instantiates a new order validator
@@ -71,8 +72,14 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 		return nil, err
 	}
 
+	assetDataDecoder, err := NewAssetDataDecoder()
+	if err != nil {
+		return nil, err
+	}
+
 	return &OrderValidator{
-		orderValidator: orderValidator,
+		orderValidator:   orderValidator,
+		assetDataDecoder: assetDataDecoder,
 	}, nil
 }
 
@@ -81,18 +88,22 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
+	if len(rawSignedOrders) == 0 {
+		return map[common.Hash]*OrderInfo{}
+	}
+	orderHashToInfo, schemaCheckedSignedOrders := o.BatchOffchainValidation(rawSignedOrders)
 	takerAddresses := []common.Address{}
-	for i := 0; i < len(signedOrders); i++ {
-		takerAddresses = append(takerAddresses, signedOrders[i].TakerAddress)
+	for _, signedOrder := range schemaCheckedSignedOrders {
+		takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
 	}
 	orders := []wrappers.OrderWithoutExchangeAddress{}
-	for i := 0; i < len(signedOrders); i++ {
-		orders = append(orders, signedOrders[i].ConvertToOrderWithoutExchangeAddress())
+	for _, signedOrder := range schemaCheckedSignedOrders {
+		orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
 	}
 	signatures := [][]byte{}
-	for i := 0; i < len(signedOrders); i++ {
-		signatures = append(signatures, signedOrders[i].Signature)
+	for _, signedOrder := range schemaCheckedSignedOrders {
+		signatures = append(signatures, signedOrder.Signature)
 	}
 
 	// Chunk into groups of chunkSize orders/takerAddresses for each call
@@ -118,7 +129,6 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
 
-	orderHashToInfo := map[common.Hash]*OrderInfo{}
 	wg := &sync.WaitGroup{}
 	for i, params := range chunks {
 		wg.Add(1)
@@ -170,7 +180,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					traderInfo := results.TradersInfo[j]
 					isValidSignature := results.IsValidSignature[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
-					signedOrder := signedOrders[chunkSize*i+j]
+					signedOrder := schemaCheckedSignedOrders[chunkSize*i+j]
 					orderStatus := OrderStatus(orderInfo.OrderStatus)
 					if !isValidSignature {
 						orderStatus = SignatureInvalid
@@ -206,6 +216,157 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 
 	wg.Wait()
 	return orderHashToInfo
+}
+
+// BatchOffchainValidation performs all off-chain validation checks on a batch of 0x orders.
+// These checks include:
+// - `MakerAssetAmount` and `TakerAssetAmount` cannot be 0
+// - `AssetData` fields contain properly encoded, and currently supported assetData (ERC20 & ERC721 for now)
+// - `Signature` contains a properly encoded 0x signature
+// - Validate that order isn't expired
+// Returns an orderHashToInfo mapping with all invalid orders added to it, and an array of the valid signedOrders
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (map[common.Hash]*OrderInfo, []*SignedOrder) {
+	orderHashToInfo := map[common.Hash]*OrderInfo{}
+	validSignedOrders := []*SignedOrder{}
+	for _, signedOrder := range signedOrders {
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			log.Panic("Computing the orderHash failed unexpectedly")
+		}
+		// TODO(fabio): Allow Mesh operator to specify an expirationBuffer (+/-)
+		// that they wish to tolerate. Use the same expirationBuffer as the ExpirationWatcher
+		now := big.NewInt(time.Now().UTC().Unix())
+		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              Expired,
+			}
+			continue
+		}
+
+		if signedOrder.MakerAssetAmount == big.NewInt(0) {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              InvalidMakerAssetAmount,
+			}
+			continue
+		}
+		if signedOrder.TakerAssetAmount == big.NewInt(0) {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              InvalidTakerAssetAmount,
+			}
+			continue
+		}
+
+		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
+		if !isMakerAssetDataSupported {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              InvalidMakerAssetData,
+			}
+			continue
+		}
+		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
+		if !isTakerAssetDataSupported {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              InvalidTakerAssetData,
+			}
+			continue
+		}
+
+		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
+		if !isSupportedSignature {
+			orderHashToInfo[orderHash] = &OrderInfo{
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(0),
+				OrderStatus:              SignatureInvalid,
+			}
+			continue
+		}
+
+		validSignedOrders = append(validSignedOrders, signedOrder)
+	}
+
+	return orderHashToInfo, validSignedOrders
+}
+
+func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
+	assetDataName, err := o.assetDataDecoder.GetName(assetData)
+	if err != nil {
+		return false
+	}
+	switch assetDataName {
+	case "ERC20Token":
+		var decodedAssetData ERC20AssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+	case "ERC721Token":
+		var decodedAssetData ERC721AssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+	case "MultiAsset":
+		// TODO(fabio): Once OrderValidator.sol supports validating orders involving multiAssetData,
+		// refactor this to add support.
+		return false
+	default:
+		return false
+	}
+	return true
+}
+
+func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
+	signatureType := SignatureType(signature[len(signature)-1])
+
+	switch signatureType {
+	case IllegalSignature:
+	case InvalidSignature:
+		return false
+
+	case EIP712Signature:
+		if len(signature) != 66 {
+			return false
+		}
+		// TODO(fabio): Do further validation by splitting into r,s,v and do ECRecover
+
+	case EthSignSignature:
+		if len(signature) != 66 {
+			return false
+		}
+		// TODO(fabio): Do further validation by splitting into r,s,v, add prefix to hash
+		// and do ECRecover
+
+	case ValidatorSignature:
+		if len(signature) < 21 {
+			return false
+		}
+
+	case WalletSignature:
+	case PreSignedSignature:
+		return true
+
+	default:
+		return false
+
+	}
+
+	return true
 }
 
 func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
