@@ -535,7 +535,7 @@ func (w *Watcher) handleDecodeErr(err error, eventType string) {
 			"eventType":       eventType,
 			"topics":          err.(UnsupportedEventError).Topics,
 			"contractAddress": err.(UnsupportedEventError).ContractAddress,
-		}).Warn("unsupported event found")
+		}).Trace("unsupported event found")
 
 	default:
 		logger.WithFields(logger.Fields{
