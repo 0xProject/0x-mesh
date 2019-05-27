@@ -73,7 +73,7 @@ func main() {
 			}
 		}
 
-		clientSubscription.Unsubscribe()
+		// clientSubscription.Unsubscribe()
 	}()
 
 	orderHashToWasSeen := map[common.Hash]bool{}
