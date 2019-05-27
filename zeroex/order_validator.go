@@ -233,8 +233,6 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (m
 		if err != nil {
 			log.Panic("Computing the orderHash failed unexpectedly")
 		}
-		// TODO(fabio): Allow Mesh operator to specify an expirationBuffer (+/-)
-		// that they wish to tolerate. Use the same expirationBuffer as the ExpirationWatcher
 		now := big.NewInt(time.Now().UTC().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
 			orderHashToInfo[orderHash] = &OrderInfo{
