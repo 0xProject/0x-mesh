@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/0xProject/0x-mesh/zeroex"
