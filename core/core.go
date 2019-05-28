@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
@@ -241,6 +242,13 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return app.node.Connect(ctx, peerInfo)
 }
 
+// SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
+func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderInfo) event.Subscription {
+	subscription := app.orderWatcher.Subscribe(sink)
+	return subscription
+}
+
+// Close closes the app
 func (app *App) Close() {
 	if err := app.node.Close(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing node")

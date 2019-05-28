@@ -3,6 +3,7 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"math/big"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -22,8 +24,9 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler func(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
-	addPeerHandler   func(peerInfo peerstore.PeerInfo) error
+	addOrdersHandler 			func(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
+	addPeerHandler           	func(peerInfo peerstore.PeerInfo) error
+	subscribeToOrdersHandler 	func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
@@ -38,6 +41,13 @@ func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return errors.New("dummyRPCHandler: no handler set for AddPeer")
 	}
 	return d.addPeerHandler(peerInfo)
+}
+
+func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error) {
+	if d.subscribeToOrdersHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
+	}
+	return d.subscribeToOrdersHandler(ctx)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
@@ -161,5 +171,30 @@ func TestAddPeer(t *testing.T) {
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
 
 	// The WaitGroup signals that AddPeer was called on the server-side.
+	wg.Wait()
+}
+
+func TestOrdersSubscription(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up the dummy handler with a subscribeToOrdersHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		subscribeToOrdersHandler: func(ctx context.Context) (*rpc.Subscription, error) {
+			wg.Done()
+			return nil, nil
+		},
+	}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	orderInfoChan := make(chan []*zeroex.OrderInfo)
+	clientSubscription, err := client.SubscribeToOrders(ctx, orderInfoChan)
+	require.NoError(t, err)
+	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
+
+	// The WaitGroup signals that AddOrder was called on the server-side.
 	wg.Wait()
 }

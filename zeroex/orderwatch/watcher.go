@@ -45,8 +45,8 @@ type Watcher struct {
 	blockSubscription          event.Subscription
 	contractNameToAddress      constants.ContractNameToAddress
 	expirationWatcher          *ExpirationWatcher
-	cachedOrderEvents          []*zeroex.OrderInfo
-	cachedOrderEventsMux       sync.RWMutex
+	orderFeed                  event.Feed
+	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	cleanupCtx                 context.Context
 	cleanupCancelFunc          context.CancelFunc
 	contractAddressToSeenCount map[common.Address]uint
@@ -76,7 +76,6 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
 		expirationWatcher:          NewExpirationWatcher(expirationBuffer),
-		cachedOrderEvents:          []*zeroex.OrderInfo{},
 		cleanupCtx:                 cleanupCtx,
 		cleanupCancelFunc:          cleanupCancelFunc,
 		contractAddressToSeenCount: map[common.Address]uint{},
@@ -168,6 +167,8 @@ func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 		return err
 	}
 
+	w.orderFeed.Send([]*zeroex.OrderInfo{orderInfo})
+
 	return nil
 }
 
@@ -184,13 +185,12 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder, order
 	return nil
 }
 
-// GetEvents fetches the latest order events emitted by the OrderWatcher.
-func (w *Watcher) GetEvents() []*zeroex.OrderInfo {
-	w.cachedOrderEventsMux.Lock()
-	cachedEvents := w.cachedOrderEvents
-	w.cachedOrderEvents = []*zeroex.OrderInfo{}
-	w.cachedOrderEventsMux.Lock()
-	return cachedEvents
+// Subscribe allows one to subscribe to the order events emitted by the OrderWatcher.
+// To unsubscribe, simply call `Unsubscribe` on the returned subscription.
+// The sink channel should have ample buffer space to avoid blocking other subscribers.
+// Slow subscribers are not dropped.
+func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderInfo) event.Subscription {
+	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
 func (w *Watcher) startCleanupWorker() {
@@ -249,9 +249,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 					OrderStatus:              zeroex.Expired,
 				}
 				w.unwatchOrder(order)
-				w.cachedOrderEventsMux.Lock()
-				w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
-				w.cachedOrderEventsMux.Unlock()
+				w.orderFeed.Send([]*zeroex.OrderInfo{orderInfo})
 			}
 		}
 	}()
@@ -425,7 +423,7 @@ func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
-		if err.Error() == "model not found" {
+		if err.Error() == "leveldb: not found" {
 			return // We will receive events from orders we aren't actively tracking
 		}
 		logger.WithFields(logger.Fields{
@@ -456,6 +454,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 		signedOrders = append(signedOrders, order.SignedOrder)
 	}
 	hashToOrderInfo := w.orderValidator.BatchValidate(signedOrders)
+	orderInfos := []*zeroex.OrderInfo{}
 	for _, order := range orders {
 		orderInfo, hasOrderInfo := hashToOrderInfo[order.Hash]
 		if !hasOrderInfo {
@@ -471,11 +470,10 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 			} else {
 				w.rewatchOrder(order, orderInfo)
 			}
-			w.cachedOrderEventsMux.Lock()
-			w.cachedOrderEvents = append(w.cachedOrderEvents, orderInfo)
-			w.cachedOrderEventsMux.Unlock()
+			orderInfos = append(orderInfos, orderInfo)
 		}
 	}
+	w.orderFeed.Send(orderInfos)
 }
 
 func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo) {

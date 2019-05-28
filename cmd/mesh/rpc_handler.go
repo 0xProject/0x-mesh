@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -62,4 +64,48 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return errInternal
 	}
 	return nil
+}
+
+// SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
+func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subscription, error) {
+	log.Debug("received order event subscription request via RPC")
+	subscription, err := SetupOrderStream(ctx, handler.app)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in `mesh_subscribe` to `orders` RPC call")
+		return nil, errInternal
+	}
+	return subscription, nil
+}
+
+// SetupOrderStream sets up the order stream for a subscription
+func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription, error) {
+	notifier, supported := ethRpc.NotifierFromContext(ctx)
+	if !supported {
+		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+	}
+
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		orderInfosChan := make(chan []*zeroex.OrderInfo)
+		orderWatcherSub := app.SubscribeToOrderEvents(orderInfosChan)
+
+		for {
+			select {
+			case orderInfos := <-orderInfosChan:
+				err := notifier.Notify(rpcSub.ID, orderInfos)
+				if err != nil {
+					log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
+				}
+			case <-rpcSub.Err():
+				orderWatcherSub.Unsubscribe()
+				return
+			case <-notifier.Closed():
+				orderWatcherSub.Unsubscribe()
+				return
+			}
+		}
+	}()
+
+	return rpcSub, nil
 }
