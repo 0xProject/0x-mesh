@@ -45,5 +45,25 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 // NullAddress is an Ethereum address with all zeroes.
 var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
 
-// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
-var GanacheAccount0 = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")
+var (
+	// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
+	GanacheAccount0           = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")
+	ganacheAccount0PrivateKey = common.Hex2Bytes("f2f48ee19680706196e2e339e5da3491186e0c4c5030670656b0e0164837257d")
+	// GanacheAccount1 is the first account exposed on the Ganache test Ethereum node
+	GanacheAccount1           = common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84")
+	ganacheAccount1PrivateKey = common.Hex2Bytes("df02719c4df8b9b8ac7f551fcb5d9ef48fa27eef7a66453879f4d8fdc6e78fb1")
+	// GanacheAccount2 is the first account exposed on the Ganache test Ethereum node
+	GanacheAccount2           = common.HexToAddress("0xe834ec434daba538cd1b9fe1582052b880bd7e63")
+	ganacheAccount2PrivateKey = common.Hex2Bytes("ff12e391b79415e941a94de3bf3a9aee577aed0731e297d5cfa0b8a1e02fa1d0")
+	// GanacheAccount3 is the first account exposed on the Ganache test Ethereum node
+	GanacheAccount3           = common.HexToAddress("0x78dc5d2d739606d31509c31d654056a45185ecb6")
+	ganacheAccount3PrivateKey = common.Hex2Bytes("752dd9cf65e68cfaba7d60225cbdbc1f4729dd5e5507def72815ed0d8abc6249")
+)
+
+// GanacheAccountToPrivateKey maps Ganache test Ethereum node accounts to their private key
+var GanacheAccountToPrivateKey = map[common.Address][]byte{
+	GanacheAccount0: ganacheAccount0PrivateKey,
+	GanacheAccount1: ganacheAccount1PrivateKey,
+	GanacheAccount2: ganacheAccount2PrivateKey,
+	GanacheAccount3: ganacheAccount3PrivateKey,
+}
