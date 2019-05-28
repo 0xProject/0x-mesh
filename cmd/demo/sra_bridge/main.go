@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/0xProject/0x-mesh/rpc"
@@ -27,6 +28,8 @@ type clientEnvVars struct {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	env := clientEnvVars{}
 	if err := envvar.Parse(&env); err != nil {
 		panic(err)
@@ -45,10 +48,13 @@ func main() {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
 	}
 
+	orderHashToSignedOrder := map[common.Hash]*zeroex.SignedOrder{}
+
 	go func() {
 		for {
 			select {
 			case orderInfos := <-orderInfosChan:
+				curr := time.Now().UTC()
 				for _, orderInfo := range orderInfos {
 					var orderStatus string
 					switch orderInfo.OrderStatus {
@@ -58,6 +64,10 @@ func main() {
 						orderStatus = "Fillable"
 					case zeroex.Expired:
 						orderStatus = "Expired"
+						signedOrder := orderHashToSignedOrder[orderInfo.OrderHash]
+						expiration := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0).UTC()
+						log.Printf("EVENT: %s status: %s remaining: %d Expiration: %s\n", orderInfo.OrderHash.Hex(), orderStatus, orderInfo.FillableTakerAssetAmount, expiration.Format("2006-01-02 15:04:05"))
+						continue
 					case zeroex.FullyFilled:
 						orderStatus = "FullyFilled"
 					case zeroex.Cancelled:
@@ -69,7 +79,7 @@ func main() {
 					case zeroex.InvalidTakerAssetAmount:
 						orderStatus = "InvalidTakerAssetAmount"
 					}
-					log.Printf("Order event: Hash: %s status: %s remaining: %d\n", orderInfo.OrderHash.Hex(), orderStatus, orderInfo.FillableTakerAssetAmount)
+					log.Printf("EVENT: %s status: %s remaining: %d -- %s\n", orderInfo.OrderHash.Hex(), orderStatus, orderInfo.FillableTakerAssetAmount, curr.Format("2006-01-02 15:04:05"))
 				}
 			}
 		}
@@ -77,7 +87,6 @@ func main() {
 		// clientSubscription.Unsubscribe()
 	}()
 
-	orderHashToWasSeen := map[common.Hash]bool{}
 	ticker := time.NewTicker(20 * time.Second)
 	chunkSize := 200
 	for {
@@ -85,12 +94,12 @@ func main() {
 		unseenSignedOrder := []*zeroex.SignedOrder{}
 		for _, signedorder := range signedOrders {
 			orderHash, _ := signedorder.ComputeOrderHash()
-			if _, ok := orderHashToWasSeen[orderHash]; !ok {
-				orderHashToWasSeen[orderHash] = true
+			if _, ok := orderHashToSignedOrder[orderHash]; !ok {
+				orderHashToSignedOrder[orderHash] = signedorder
 				unseenSignedOrder = append(unseenSignedOrder, signedorder)
 			}
 		}
-		fmt.Println("Found", len(unseenSignedOrder), " new orders!")
+		log.Println("Found", len(unseenSignedOrder), " new orders!")
 		chunks := [][]*zeroex.SignedOrder{}
 		for len(unseenSignedOrder) > chunkSize {
 			chunks = append(chunks, unseenSignedOrder[:chunkSize])
