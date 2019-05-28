@@ -90,6 +90,9 @@ func TestAddOrdersSuccess(t *testing.T) {
 	require.NoError(t, err)
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 
+	expectedOrderStatus := zeroex.Fillable
+	expectedFillableTakerAssetAmount := signedOrder.TakerAssetAmount
+
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -102,8 +105,8 @@ func TestAddOrdersSuccess(t *testing.T) {
 				require.NoError(t, err)
 				addOrdersResponse.Added = append(addOrdersResponse.Added, &zeroex.SuccinctOrderInfo{
 					OrderHash:                orderHash,
-					OrderStatus:              zeroex.OrderStatus(3),
-					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
+					OrderStatus:              expectedOrderStatus,
+					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
 				})
 			}
 			wg.Done()
@@ -118,10 +121,14 @@ func TestAddOrdersSuccess(t *testing.T) {
 	require.NoError(t, err)
 	expectedOrderHash, err := testOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	succinctOrderInfo := addOrdersResponse.Added[0]
+	assert.Len(t, addOrdersResponse.Invalid, 0)
+	assert.Len(t, addOrdersResponse.FailedToAdd, 0)
+	assert.Len(t, addOrdersResponse.Added, 1)
 
-	// TODO(fabio): Finish this! More assertions?
-	assert.Equal(t, expectedOrderHash, succinctOrderInfo.OrderHash, "returned orderHashes did not match")
+	succinctOrderInfo := addOrdersResponse.Added[0]
+	assert.Equal(t, expectedOrderHash, succinctOrderInfo.OrderHash, "orderHashes did not match")
+	assert.Equal(t, expectedOrderStatus, succinctOrderInfo.OrderStatus, "orderStatus did not match")
+	assert.Equal(t, expectedFillableTakerAssetAmount, succinctOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
 	// The WaitGroup signals that AddOrders was called on the server-side.
 	wg.Wait()
