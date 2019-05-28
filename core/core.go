@@ -5,7 +5,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -13,11 +12,12 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -88,7 +88,7 @@ func New(config Config) (*App, error) {
 	blockWatcherConfig := blockwatch.Config{
 		MeshDB:              db,
 		PollingInterval:     blockWatcherPollingInterval,
-		StartBlockDepth:     rpc.LatestBlockNumber,
+		StartBlockDepth:     ethrpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,
 		Topics:              topics,
@@ -191,39 +191,47 @@ func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 	return false, err
 }
 
-var ErrInvalidOrder = errors.New("invalid order")
+// AddOrders can be used to add orders to Mesh. It validates the given orders
+// and if they are valid, will store and eventually broadcast the orders to peers.
+func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*rpc.AddOrdersResponse, error) {
+	orderHashToOrderInfo := app.orderValidator.BatchValidate(orders)
+	addOrderResponse := &rpc.AddOrdersResponse{}
+	for _, order := range orders {
+		orderHash, err := order.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		orderInfo, ok := orderHashToOrderInfo[orderHash]
+		if !ok {
+			// Validation network request for this order failed
+			addOrderResponse.FailedToAdd = append(addOrderResponse.FailedToAdd, orderHash)
+			continue
+		}
+		succinctOrderInfo := &zeroex.SuccinctOrderInfo{
+			OrderHash:                orderInfo.OrderHash,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			OrderStatus:              orderInfo.OrderStatus,
+		}
+		if !zeroex.IsOrderValid(orderInfo) {
+			addOrderResponse.Invalid = append(addOrderResponse.Invalid, succinctOrderInfo)
+			continue
+		}
+		addOrderResponse.Added = append(addOrderResponse.Added, succinctOrderInfo)
 
-// AddOrder can be used to manually add an order. It validates the given order
-// and if it is valid, will store and eventually broadcast the order to peers.
-// It returns ErrInvalidOrder if the given order is not valid.
-func (app *App) AddOrder(order *zeroex.SignedOrder) error {
-	orderHash, err := order.ComputeOrderHash()
-	if err != nil {
-		return err
-	}
-	orderHashToOrderInfo := app.orderValidator.BatchValidate([]*zeroex.SignedOrder{order})
-	orderInfo, found := orderHashToOrderInfo[orderHash]
-	if !found {
-		return err
-	}
-	if !zeroex.IsOrderValid(orderInfo) {
-		// TODO(albrow): Provide more information to callers about why the order is
-		// invalid. This response is utlimately going to be communicated to either
-		// RPC clients or users in a browser so it is important to provide more
-		// context.
-		return ErrInvalidOrder
-	}
+		alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
+		if err != nil {
+			return nil, err
+		}
+		if alreadyStored {
+			continue
+		}
 
-	alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
-	if err != nil {
-		return err
+		err = app.orderWatcher.Watch(orderInfo)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if alreadyStored {
-		log.WithField("orderInfo", orderInfo).Debug("received local order but it is already stored")
-		return nil
-	}
-
-	return app.orderWatcher.Watch(orderInfo)
+	return addOrderResponse, nil
 }
 
 // AddPeer can be used to manually connect to a new peer.

@@ -45,6 +45,17 @@ type OrderInfo struct {
 	OrderStatus              OrderStatus
 }
 
+// SuccinctOrderInfo represents the necessary information about an order without including
+// the order itself
+type SuccinctOrderInfo struct {
+	OrderHash                common.Hash
+	FillableTakerAssetAmount *big.Int
+	OrderStatus              OrderStatus
+}
+
+// OrderHashToSuccinctOrderInfo maps orderHashes to their corresponding succinctOrderInfo
+type OrderHashToSuccinctOrderInfo map[common.Hash]*SuccinctOrderInfo
+
 // OrderValidator validates 0x orders
 type OrderValidator struct {
 	orderValidator *wrappers.OrderValidator

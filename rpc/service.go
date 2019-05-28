@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"encoding/json"
+
 	"github.com/0xProject/0x-mesh/zeroex"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -14,23 +16,20 @@ type rpcService struct {
 
 // RPCHandler is used to respond to incoming requests from the client.
 type RPCHandler interface {
-	// AddOrder is called when the client sends an AddOrder request.
-	AddOrder(order *zeroex.SignedOrder) error
+	// AddOrders is called when the client sends an AddOrders request.
+	AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
 }
 
-// AddOrder calls rpcHandler.AddOrder and returns the computed order hash.
-// TODO(albrow): Add the ability to send multiple orders at once.
-func (s *rpcService) AddOrder(order *zeroex.SignedOrder) (orderHashHex string, err error) {
-	orderHash, err := order.ComputeOrderHash()
+// AddOrders calls rpcHandler.AddOrders and returns the SuccinctOrderInfo for each order.
+func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (string, error) {
+	addOrdersResponse, err := s.rpcHandler.AddOrders(orders)
 	if err != nil {
 		return "", err
 	}
-	if err := s.rpcHandler.AddOrder(order); err != nil {
-		return "", err
-	}
-	return orderHash.Hex(), nil
+	addOrdersResponseBytes, err := json.Marshal(addOrdersResponse)
+	return string(addOrdersResponseBytes), nil
 }
 
 // AddOrder builds PeerInfo out of the given peer ID and multiaddresses and
