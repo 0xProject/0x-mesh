@@ -25,9 +25,27 @@ management and does not support Go modules.
 make deps
 ```
 
+### Installing the standalone Mesh node
+
+To install a standalone version of 0x Mesh that can be run from the command
+line, run:
+
+```
+make mesh
+```
+
+If you have `GOPATH/bin` in your `PATH`, you can now run 0x Mesh directly with:
+
+```
+mesh
+```
+
 ### Running tests
 
-Some of the tests depend on having a test Ethereum node running. Before running the tests, make sure you have [Docker](https://docs.docker.com/install/) installed locally and start [0xorg/mesh-ganache-cli](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli):
+Some of the tests depend on having a test Ethereum node running. Before running
+the tests, make sure you have [Docker](https://docs.docker.com/install/)
+installed locally and start
+[0xorg/mesh-ganache-cli](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli):
 
 ```
 docker pull 0xorg/mesh-ganache-cli

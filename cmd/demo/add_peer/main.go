@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/0xProject/0x-mesh/ws"
+	"github.com/0xProject/0x-mesh/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -39,7 +39,7 @@ func main() {
 		Addrs: []ma.Multiaddr{parsedMultiAddr},
 	}
 
-	client, err := ws.NewClient(env.RPCAddress)
+	client, err := rpc.NewClient(env.RPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}
