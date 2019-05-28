@@ -53,7 +53,7 @@ func (q *Query) Reverse() *Query {
 // ValueFilter returns a Filter which will match all models with an index value
 // equal to the given value.
 func (index *Index) ValueFilter(val []byte) *Filter {
-	prefix := []byte(fmt.Sprintf("%s:%s", index.prefix(), escape(val)))
+	prefix := []byte(fmt.Sprintf("%s:%s:", index.prefix(), escape(val)))
 	return &Filter{
 		index: index,
 		slice: util.BytesPrefix(prefix),
