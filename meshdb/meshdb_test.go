@@ -1,5 +1,3 @@
-// +build !js
-
 package meshdb
 
 import (
@@ -10,7 +8,6 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,9 +18,6 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
-
-	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
@@ -42,7 +36,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	signedOrder, err := zeroex.SignOrder(o, rpcClient)
+	signedOrder, err := zeroex.SignTestOrder(o)
 	require.NoError(t, err)
 
 	orderHash, err := o.ComputeOrderHash()
