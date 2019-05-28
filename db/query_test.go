@@ -38,6 +38,13 @@ func TestQueryWithValue(t *testing.T) {
 		require.NoError(t, col.Insert(model))
 	}
 
+	// Save one more model with an Age that is a prefix of the target age.
+	model := &testModel{
+		Name: "PersonWithPrefixAge",
+		Age:  420,
+	}
+	require.NoError(t, col.Insert(model))
+
 	filter := ageIndex.ValueFilter([]byte("42"))
 	testQueryWithFilter(t, col, filter, expected)
 }
@@ -276,8 +283,11 @@ func testQueryWithFilter(t *testing.T, col *Collection, filter *Filter, expected
 
 	for i, tc := range testCases {
 		var actual []*testModel
-		require.NoError(t, tc.query.Run(&actual))
+		require.NoError(t, tc.query.Run(&actual), "test case %d", i)
 		assert.Equal(t, tc.expected, actual, "test case %d", i)
+		actualCount, err := tc.query.Count()
+		require.NoError(t, err, "test case %d", i)
+		assert.Equal(t, len(tc.expected), actualCount, "test case %d", i)
 	}
 }
 
