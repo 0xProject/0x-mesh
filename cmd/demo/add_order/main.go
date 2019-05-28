@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
@@ -43,6 +44,8 @@ var testOrder = &zeroex.Order{
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	env := clientEnvVars{}
 	if err := envvar.Parse(&env); err != nil {
 		panic(err)
