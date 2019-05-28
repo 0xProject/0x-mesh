@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,7 +98,7 @@ func (c *Collection) Insert(model Model) error {
 		return err
 	} else if exists {
 		txn.Discard()
-		return fmt.Errorf("%s model with given ID already exists in database: %s", c.name, hex.Dump(model.ID()))
+		return AlreadyExistsError{ID: model.ID()}
 	}
 	if err := txn.Put(pk, data, nil); err != nil {
 		txn.Discard()
@@ -138,7 +137,7 @@ func (c *Collection) Update(model Model) error {
 		return err
 	} else if !exists {
 		txn.Discard()
-		return fmt.Errorf("can't update %s model because ID doesn't exist in database: %s", c.name, hex.Dump(model.ID()))
+		return NotFoundError{ID: model.ID()}
 	}
 
 	// Get the existing data for the model and delete any (now outdated) indexes.
@@ -170,20 +169,16 @@ func (c *Collection) Update(model Model) error {
 // package, model must be settable via reflect. Typically, this means you should
 // pass in a pointer.
 func (c *Collection) FindByID(id []byte, model Model) error {
-	pk := c.primaryKeyForID(id)
-	return c.findByKey(pk, model)
-}
-
-func (c *Collection) findByKey(key []byte, model Model) error {
 	if err := c.checkModelType(model); err != nil {
 		return err
 	}
-	data, err := c.db.ldb.Get(key, nil)
+	pk := c.primaryKeyForID(id)
+	data, err := c.db.ldb.Get(pk, nil)
 	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return NotFoundError{ID: id}
+		}
 		return err
-	}
-	if data == nil {
-		return errors.New("model not found")
 	}
 	return json.Unmarshal(data, model)
 }
@@ -230,21 +225,15 @@ func (c *Collection) Delete(id []byte) error {
 		return err
 	}
 
-	// Check if the model already exists and return an error if not.
-	pk := c.primaryKeyForID(id)
-	if exists, err := txn.Has(pk, nil); err != nil {
-		txn.Discard()
-		return err
-	} else if !exists {
-		txn.Discard()
-		return fmt.Errorf("can't delete %s model because ID doesn't exist in database: %s", c.name, hex.Dump(id))
-	}
-
 	// We need to get the latest data because the given model might be out of sync
 	// with the actual data in the database.
+	pk := c.primaryKeyForID(id)
 	latest, err := c.findExistingModelByPrimaryKey(txn, pk)
 	if err != nil {
 		txn.Discard()
+		if err == leveldb.ErrNotFound {
+			return NotFoundError{ID: id}
+		}
 		return err
 	}
 

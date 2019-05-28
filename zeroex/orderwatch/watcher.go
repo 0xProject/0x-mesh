@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/db"
+
 	"github.com/0xProject/0x-mesh/blockwatch"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -423,7 +425,7 @@ func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
-		if err.Error() == "leveldb: not found" {
+		if _, ok := err.(db.NotFoundError); ok {
 			return // We will receive events from orders we aren't actively tracking
 		}
 		logger.WithFields(logger.Fields{
