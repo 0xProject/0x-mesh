@@ -244,7 +244,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (m
 			continue
 		}
 
-		if signedOrder.MakerAssetAmount == big.NewInt(0) {
+		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			orderHashToInfo[orderHash] = &OrderInfo{
 				OrderHash:                orderHash,
 				SignedOrder:              signedOrder,
@@ -253,7 +253,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (m
 			}
 			continue
 		}
-		if signedOrder.TakerAssetAmount == big.NewInt(0) {
+		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			orderHashToInfo[orderHash] = &OrderInfo{
 				OrderHash:                orderHash,
 				SignedOrder:              signedOrder,
