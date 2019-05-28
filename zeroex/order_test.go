@@ -37,10 +37,10 @@ func TestGenerateOrderHash(t *testing.T) {
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
 }
 
-func TestECSignOrder(t *testing.T) {
+func TestSignOrder(t *testing.T) {
 	fakeExchangeContractAddress := common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
 
-	order := Order{
+	order := &Order{
 		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -55,10 +55,10 @@ func TestECSignOrder(t *testing.T) {
 		TakerAssetAmount:      big.NewInt(0),
 		ExpirationTimeSeconds: big.NewInt(0),
 	}
-	signatureBytes, err := order.ecSign(nil)
+	signedOrder, err := SignTestOrder(order)
 	require.NoError(t, err)
 
 	expectedSignature := "0x1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603"
-	actualSignature := fmt.Sprintf("0x%s", common.Bytes2Hex(signatureBytes))
+	actualSignature := fmt.Sprintf("0x%s", common.Bytes2Hex(signedOrder.Signature))
 	assert.Equal(t, expectedSignature, actualSignature)
 }

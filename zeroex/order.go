@@ -7,7 +7,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
@@ -177,19 +176,14 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	return hash, nil
 }
 
-func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
-	orderHash, err := o.ComputeOrderHash()
+// SignOrder signs the 0x order with the supplied Signer
+func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
+	orderHash, err := order.ComputeOrderHash()
 	if err != nil {
 		return nil, err
 	}
 
-	var signer ethereum.Signer
-	if rpcClient == nil {
-		signer = ethereum.NewTestSigner()
-	} else {
-		signer = ethereum.NewEthRPCSigner(rpcClient)
-	}
-	ecSignature, err := signer.EthSign(orderHash.Bytes(), o.MakerAddress)
+	ecSignature, err := signer.EthSign(orderHash.Bytes(), order.MakerAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +194,21 @@ func (o *Order) ecSign(rpcClient *rpc.Client) ([]byte, error) {
 	copy(signature[1:33], ecSignature.R[:])
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
-	return signature, nil
+	signedOrder := &SignedOrder{
+		Order:     order,
+		Signature: signature,
+	}
+	return signedOrder, nil
+}
+
+// SignTestOrder signs the 0x order with the local test signer
+func SignTestOrder(order *Order) (*SignedOrder, error) {
+	testSigner := ethereum.NewTestSigner()
+	signedOrder, err := SignOrder(testSigner, order)
+	if err != nil {
+		return nil, err
+	}
+	return signedOrder, nil
 }
 
 // ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
@@ -221,33 +229,6 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 		TakerAssetData:        s.TakerAssetData,
 	}
 	return orderWithoutExchangeAddress
-}
-
-// SignTestOrder converts a test 0x order to a signed 0x order
-func SignTestOrder(order *Order) (*SignedOrder, error) {
-	signature, err := order.ecSign(nil)
-	if err != nil {
-		return nil, err
-	}
-	signedOrder := &SignedOrder{
-		Order:     order,
-		Signature: signature,
-	}
-	return signedOrder, nil
-}
-
-// SignOrder converts a 0x order to a signed 0x order by fetching an order
-// signature via an `eth_sign` call
-func SignOrder(order *Order, rpcClient *rpc.Client) (*SignedOrder, error) {
-	signature, err := order.ecSign(rpcClient)
-	if err != nil {
-		return nil, err
-	}
-	signedOrder := &SignedOrder{
-		Order:     order,
-		Signature: signature,
-	}
-	return signedOrder, nil
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.
