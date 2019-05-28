@@ -103,16 +103,37 @@ func (q *Query) Run(models interface{}) error {
 	if q.reverse {
 		return getModelsWithIteratorReverse(iter, index, q.max, models)
 	}
-	return getModelsWithIteratorForwards(iter, index, q.max, models)
+	return getModelsWithIteratorForward(iter, index, q.max, models)
 }
 
-func getModelsWithIteratorForwards(iter iterator.Iterator, index *Index, max int, models interface{}) error {
+// Count returns the number of unique models that match the query. It does not
+// return an error if no models match the query. Note that this method *does*
+// respect q.Max. If the number of models that match the filter is greater than
+// q.Max, it will stop counting and return q.Max.
+func (q *Query) Count() (int, error) {
+	iter := q.col.db.ldb.NewIterator(q.filter.slice, nil)
+	defer iter.Release()
+	pkSet := stringset.New()
+	for iter.Next() && iter.Error() == nil {
+		pk := q.filter.index.primaryKeyFromIndexKey(iter.Key())
+		pkSet.Add(string(pk))
+		if q.max != 0 && len(pkSet) >= q.max {
+			break
+		}
+	}
+	if iter.Error() != nil {
+		return 0, iter.Error()
+	}
+	return len(pkSet), nil
+}
+
+func getModelsWithIteratorForward(iter iterator.Iterator, index *Index, max int, models interface{}) error {
 	// MultiIndexes can result in the same model being included more than once. To
 	// prevent this, we keep track of the primaryKeys we have already seen using
 	// pkSet.
 	pkSet := stringset.New()
 	modelsVal := reflect.ValueOf(models).Elem()
-	for iter.Next() {
+	for iter.Next() && iter.Error() == nil {
 		if err := getAndAppendModelIfUnique(index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
@@ -130,7 +151,7 @@ func getModelsWithIteratorReverse(iter iterator.Iterator, index *Index, max int,
 	// Prev instead of Next for each iteration of the for loop.
 	iter.Last()
 	iter.Next()
-	for iter.Prev() {
+	for iter.Prev() && iter.Error() == nil {
 		if err := getAndAppendModelIfUnique(index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
