@@ -15,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
+	"github.com/0xProject/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -56,7 +57,7 @@ type App struct {
 	db             *meshdb.MeshDB
 	node           *p2p.Node
 	blockWatcher   *blockwatch.Watcher
-	OrderWatcher   *orderwatch.Watcher
+	orderWatcher   *orderwatch.Watcher
 	ethWathcher    *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
 }
@@ -119,7 +120,7 @@ func New(config Config) (*App, error) {
 		config:         config,
 		db:             db,
 		blockWatcher:   blockWatcher,
-		OrderWatcher:   orderWatcher,
+		orderWatcher:   orderWatcher,
 		ethWathcher:    ethWatcher,
 		orderValidator: orderValidator,
 	}
@@ -164,7 +165,7 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started block watcher")
-	if err := app.OrderWatcher.Start(); err != nil {
+	if err := app.orderWatcher.Start(); err != nil {
 		return err
 	}
 	log.Info("started order watcher")
@@ -222,7 +223,7 @@ func (app *App) AddOrder(order *zeroex.SignedOrder) error {
 		return nil
 	}
 
-	return app.OrderWatcher.Watch(orderInfo)
+	return app.orderWatcher.Watch(orderInfo)
 }
 
 // AddPeer can be used to manually connect to a new peer.
@@ -232,12 +233,19 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return app.node.Connect(ctx, peerInfo)
 }
 
+// SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
+func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderInfo) event.Subscription {
+	subscription := app.orderWatcher.Subscribe(sink)
+	return subscription
+}
+
+// Close closes the app
 func (app *App) Close() {
 	if err := app.node.Close(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing node")
 	}
 	app.ethWathcher.Stop()
-	if err := app.OrderWatcher.Stop(); err != nil {
+	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
 	app.blockWatcher.StopPolling()

@@ -95,7 +95,7 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 
 	go func() {
 		orderInfosChan := make(chan []*zeroex.OrderInfo)
-		orderWatcherSub := app.OrderWatcher.Subscribe(orderInfosChan)
+		orderWatcherSub := app.SubscribeToOrderEvents(orderInfosChan)
 
 		for {
 			select {

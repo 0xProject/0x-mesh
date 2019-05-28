@@ -137,7 +137,7 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 					"from":      msg.From.String(),
 				}).Debug("storing valid order received from peer")
 				// Watch stores the message in the database.
-				if err := app.OrderWatcher.Watch(orderInfo); err != nil {
+				if err := app.orderWatcher.Watch(orderInfo); err != nil {
 					return nil, err
 				}
 			}
