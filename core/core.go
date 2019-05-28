@@ -56,7 +56,7 @@ type App struct {
 	db             *meshdb.MeshDB
 	node           *p2p.Node
 	blockWatcher   *blockwatch.Watcher
-	orderWatcher   *orderwatch.Watcher
+	OrderWatcher   *orderwatch.Watcher
 	ethWathcher    *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
 }
@@ -119,7 +119,7 @@ func New(config Config) (*App, error) {
 		config:         config,
 		db:             db,
 		blockWatcher:   blockWatcher,
-		orderWatcher:   orderWatcher,
+		OrderWatcher:   orderWatcher,
 		ethWathcher:    ethWatcher,
 		orderValidator: orderValidator,
 	}
@@ -164,7 +164,7 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started block watcher")
-	if err := app.orderWatcher.Start(); err != nil {
+	if err := app.OrderWatcher.Start(); err != nil {
 		return err
 	}
 	log.Info("started order watcher")
@@ -222,7 +222,7 @@ func (app *App) AddOrder(order *zeroex.SignedOrder) error {
 		return nil
 	}
 
-	return app.orderWatcher.Watch(orderInfo)
+	return app.OrderWatcher.Watch(orderInfo)
 }
 
 // AddPeer can be used to manually connect to a new peer.
@@ -232,45 +232,12 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return app.node.Connect(ctx, peerInfo)
 }
 
-// SetupOrderStream sets up the order stream for a subscription
-func (app *App) SetupOrderStream(ctx context.Context) (*rpc.Subscription, error) {
-	notifier, supported := rpc.NotifierFromContext(ctx)
-	if !supported {
-		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
-	}
-
-	rpcSub := notifier.CreateSubscription()
-
-	go func() {
-		orderInfosChan := make(chan []*zeroex.OrderInfo)
-		orderWatcherSub := app.orderWatcher.Subscribe(orderInfosChan)
-
-		for {
-			select {
-			case orderInfos := <-orderInfosChan:
-				err := notifier.Notify(rpcSub.ID, orderInfos)
-				if err != nil {
-					log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
-				}
-			case <-rpcSub.Err():
-				orderWatcherSub.Unsubscribe()
-				return
-			case <-notifier.Closed():
-				orderWatcherSub.Unsubscribe()
-				return
-			}
-		}
-	}()
-
-	return rpcSub, nil
-}
-
 func (app *App) Close() {
 	if err := app.node.Close(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing node")
 	}
 	app.ethWathcher.Stop()
-	if err := app.orderWatcher.Stop(); err != nil {
+	if err := app.OrderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
 	app.blockWatcher.StopPolling()
