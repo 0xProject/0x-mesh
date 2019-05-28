@@ -210,12 +210,14 @@ func getRadarOrders() []*zeroex.SignedOrder {
 		log.WithFields(map[string]interface{}{
 			"statusCode": resp.StatusCode,
 			"body":       string(body),
-		}).Fatal("Got non-200 status code back from RadarRelay")
+		}).Warn("Got non-200 status code back from RadarRelay")
+		return []*zeroex.SignedOrder{}
 	}
 	var ordersResponse ordersResponse
 	err = json.Unmarshal(body, &ordersResponse)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to parse body into OrdersResponse struct")
+		log.WithError(err).Warn("Failed to parse body into OrdersResponse struct")
+		return []*zeroex.SignedOrder{}
 	}
 
 	signedOrders := []*zeroex.SignedOrder{}
