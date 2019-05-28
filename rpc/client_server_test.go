@@ -24,9 +24,9 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrderHandler func(order *zeroex.SignedOrder) error
-	addPeerHandler  func(peerInfo peerstore.PeerInfo) error
-	ordersHandler   func(ctx context.Context) (*rpc.Subscription, error)
+	addOrderHandler          func(order *zeroex.SignedOrder) error
+	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
+	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrder(order *zeroex.SignedOrder) error {
@@ -43,11 +43,11 @@ func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return d.addPeerHandler(peerInfo)
 }
 
-func (d *dummyRPCHandler) Orders(ctx context.Context) (*rpc.Subscription, error) {
-	if d.ordersHandler == nil {
+func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error) {
+	if d.subscribeToOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
 	}
-	return d.ordersHandler(ctx)
+	return d.subscribeToOrdersHandler(ctx)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
@@ -158,11 +158,11 @@ func TestAddPeer(t *testing.T) {
 func TestOrdersSubscription(t *testing.T) {
 	ctx := context.Background()
 
-	// Set up the dummy handler with a ordersHandler
+	// Set up the dummy handler with a subscribeToOrdersHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		ordersHandler: func(ctx context.Context) (*rpc.Subscription, error) {
+		subscribeToOrdersHandler: func(ctx context.Context) (*rpc.Subscription, error) {
 			wg.Done()
 			return nil, nil
 		},
@@ -172,7 +172,7 @@ func TestOrdersSubscription(t *testing.T) {
 	defer server.Close()
 
 	orderInfoChan := make(chan []*zeroex.OrderInfo)
-	clientSubscription, err := client.SubscribeToOrderStream(ctx, orderInfoChan)
+	clientSubscription, err := client.SubscribeToOrders(ctx, orderInfoChan)
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 

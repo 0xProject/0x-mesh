@@ -21,13 +21,13 @@ type RPCHandler interface {
 	AddOrder(order *zeroex.SignedOrder) error
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
-	// Orders is called when a client sends a Subscribe to orderStream request
-	Orders(ctx context.Context) (*rpc.Subscription, error)
+	// SubscribeToOrders is called when a client sends a Subscribe to orderStream request
+	SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error)
 }
 
 // Orders calls rpcHandler.Orders and returns the rpc subscription.
 func (s *rpcService) Orders(ctx context.Context) (*rpc.Subscription, error) {
-	return s.rpcHandler.Orders(ctx)
+	return s.rpcHandler.SubscribeToOrders(ctx)
 }
 
 // AddOrder calls rpcHandler.AddOrder and returns the computed order hash.

@@ -73,8 +73,8 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return nil
 }
 
-// Orders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
-func (handler *rpcHandler) Orders(ctx context.Context) (*ethRpc.Subscription, error) {
+// SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
+func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subscription, error) {
 	log.Debug("received order event subscription request via RPC")
 	subscription, err := SetupOrderStream(ctx, handler.app)
 	if err != nil {
