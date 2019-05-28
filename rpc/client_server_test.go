@@ -91,7 +91,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 
 	expectedOrderStatus := zeroex.Fillable
-	expectedFillableTakerAssetAmount := signedOrder.TakerAssetAmount
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -105,8 +105,8 @@ func TestAddOrdersSuccess(t *testing.T) {
 				require.NoError(t, err)
 				addOrdersResponse.Added = append(addOrdersResponse.Added, &zeroex.SuccinctOrderInfo{
 					OrderHash:                orderHash,
-					OrderStatus:              expectedOrderStatus,
-					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
+					OrderStatus:              zeroex.Fillable,
+					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
 				})
 			}
 			wg.Done()
