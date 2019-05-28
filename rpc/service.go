@@ -17,19 +17,19 @@ type rpcService struct {
 // RPCHandler is used to respond to incoming requests from the client.
 type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
-	AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error)
+	AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
 }
 
 // AddOrders calls rpcHandler.AddOrders and returns the SuccinctOrderInfo for each order.
 func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (string, error) {
-	orderHashToSuccinctOrderInfo, err := s.rpcHandler.AddOrders(orders)
+	addOrdersResponse, err := s.rpcHandler.AddOrders(orders)
 	if err != nil {
 		return "", err
 	}
-	orderHashToSuccinctOrderInfoBytes, err := json.Marshal(orderHashToSuccinctOrderInfo)
-	return string(orderHashToSuccinctOrderInfoBytes), nil
+	addOrdersResponseBytes, err := json.Marshal(addOrdersResponse)
+	return string(addOrdersResponseBytes), nil
 }
 
 // AddOrder builds PeerInfo out of the given peer ID and multiaddresses and

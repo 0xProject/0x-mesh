@@ -61,10 +61,11 @@ func main() {
 		log.WithError(err).Fatal("could not sign 0x order")
 	}
 
-	orderHashToSuccinctOrderInfo, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
+	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
+	addOrdersResponse, err := client.AddOrders(signedTestOrders)
 	if err != nil {
 		log.WithError(err).Fatal("error from AddOrder")
 	} else {
-		log.Printf("submitted %d orders", len(orderHashToSuccinctOrderInfo))
+		log.Printf("submitted %d orders. Added: %d, Invalid: %d, FailedToAdd: %d", len(signedTestOrders), len(addOrdersResponse.Added), len(addOrdersResponse.Invalid), len(addOrdersResponse.FailedToAdd))
 	}
 }

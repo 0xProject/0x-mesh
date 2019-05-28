@@ -29,17 +29,17 @@ func NewClient(addr string) (*Client, error) {
 
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
-	var orderHashToSuccinctOrderInfoJSON string
-	if err := c.rpcClient.Call(&orderHashToSuccinctOrderInfoJSON, "mesh_addOrders", orders); err != nil {
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
+	var addOrdersResponseJSON string
+	if err := c.rpcClient.Call(&addOrdersResponseJSON, "mesh_addOrders", orders); err != nil {
 		return nil, err
 	}
-	var orderHashToSuccinctOrderInfo zeroex.OrderHashToSuccinctOrderInfo
-	err := json.Unmarshal([]byte(orderHashToSuccinctOrderInfoJSON), &orderHashToSuccinctOrderInfo)
+	var addOrdersResponse AddOrdersResponse
+	err := json.Unmarshal([]byte(addOrdersResponseJSON), &addOrdersResponse)
 	if err != nil {
 		return nil, err
 	}
-	return orderHashToSuccinctOrderInfo, nil
+	return &addOrdersResponse, nil
 }
 
 // AddPeer adds the peer to the node's list of peers. The node will attempt to

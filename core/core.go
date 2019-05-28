@@ -12,11 +12,12 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -87,7 +88,7 @@ func New(config Config) (*App, error) {
 	blockWatcherConfig := blockwatch.Config{
 		MeshDB:              db,
 		PollingInterval:     blockWatcherPollingInterval,
-		StartBlockDepth:     rpc.LatestBlockNumber,
+		StartBlockDepth:     ethrpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,
 		Topics:              topics,
@@ -192,19 +193,30 @@ func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
+func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*rpc.AddOrdersResponse, error) {
 	orderHashToOrderInfo := app.orderValidator.BatchValidate(orders)
-	orderHashToSuccinctOrderInfo := zeroex.OrderHashToSuccinctOrderInfo{}
-	for orderHash, orderInfo := range orderHashToOrderInfo {
+	addOrderResponse := &rpc.AddOrdersResponse{}
+	for _, order := range orders {
+		orderHash, err := order.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		orderInfo, ok := orderHashToOrderInfo[orderHash]
+		if !ok {
+			// Validation network request for this order failed
+			addOrderResponse.FailedToAdd = append(addOrderResponse.FailedToAdd, orderHash)
+			continue
+		}
 		succinctOrderInfo := &zeroex.SuccinctOrderInfo{
 			OrderHash:                orderInfo.OrderHash,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 			OrderStatus:              orderInfo.OrderStatus,
 		}
-		orderHashToSuccinctOrderInfo[orderHash] = succinctOrderInfo
 		if !zeroex.IsOrderValid(orderInfo) {
+			addOrderResponse.Invalid = append(addOrderResponse.Invalid, succinctOrderInfo)
 			continue
 		}
+		addOrderResponse.Added = append(addOrderResponse.Added, succinctOrderInfo)
 
 		alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
 		if err != nil {
@@ -219,7 +231,7 @@ func (app *App) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSucci
 			return nil, err
 		}
 	}
-	return orderHashToSuccinctOrderInfo, nil
+	return addOrderResponse, nil
 }
 
 // AddPeer can be used to manually connect to a new peer.

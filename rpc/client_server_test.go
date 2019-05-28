@@ -23,11 +23,11 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler func(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error)
+	addOrdersHandler func(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error)
 	addPeerHandler   func(peerInfo peerstore.PeerInfo) error
 }
 
-func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
+func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
@@ -83,7 +83,7 @@ var testOrder = &zeroex.Order{
 	ExchangeAddress:       constants.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 }
 
-func TestAddOrders(t *testing.T) {
+func TestAddOrdersSuccess(t *testing.T) {
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 	signedTestOrder, err := zeroex.SignOrder(testOrder, rpcClient)
@@ -94,31 +94,32 @@ func TestAddOrders(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrders []*zeroex.SignedOrder) (zeroex.OrderHashToSuccinctOrderInfo, error) {
+		addOrdersHandler: func(signedOrders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
 			assert.Equal(t, signedTestOrders, signedOrders, "AddOrders was called with an unexpected orders argument")
-			orderHashToSuccinctOrderInfo := zeroex.OrderHashToSuccinctOrderInfo{}
+			addOrdersResponse := &AddOrdersResponse{}
 			for _, signedOrder := range signedOrders {
 				orderHash, err := signedOrder.ComputeOrderHash()
 				require.NoError(t, err)
-				orderHashToSuccinctOrderInfo[orderHash] = &zeroex.SuccinctOrderInfo{
+				addOrdersResponse.Added = append(addOrdersResponse.Added, &zeroex.SuccinctOrderInfo{
 					OrderHash:                orderHash,
 					OrderStatus:              zeroex.OrderStatus(3),
 					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
-				}
+				})
 			}
 			wg.Done()
-			return orderHashToSuccinctOrderInfo, nil
+			return addOrdersResponse, nil
 		},
 	}
 
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
-	orderHashToSuccinctOrderInfo, err := client.AddOrders(signedTestOrders)
-	expectedOrderHash, err := testOrder.ComputeOrderHash()
-	succinctOrderInfo, ok := orderHashToSuccinctOrderInfo[expectedOrderHash]
-	assert.True(t, ok, "Expected entry to exist for orderHash")
+	addOrdersResponse, err := client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
+	expectedOrderHash, err := testOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	succinctOrderInfo := addOrdersResponse.Added[0]
+
 	// TODO(fabio): Finish this! More assertions?
 	assert.Equal(t, expectedOrderHash, succinctOrderInfo.OrderHash, "returned orderHashes did not match")
 
