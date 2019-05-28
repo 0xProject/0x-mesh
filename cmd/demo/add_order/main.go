@@ -70,6 +70,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("could not sign 0x order")
 	}
+	orderHash, _ := signedTestOrder.ComputeOrderHash()
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	addOrdersResponse, err := client.AddOrders(signedTestOrders)
