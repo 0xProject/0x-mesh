@@ -106,10 +106,10 @@ func main() {
 				log.WithError(err).Fatal("error from AddOrder")
 			} else {
 				log.Printf("submitted %d orders", len(orderHashToSuccinctOrderInfo))
-				invalidOrderHashes := []common.Hash{}
+				invalidOrderHashes := []string{}
 				for orderHash, succinctOrderInfo := range orderHashToSuccinctOrderInfo {
-					if succinctOrderInfo.FillableTakerAssetAmount == big.NewInt(0) {
-						invalidOrderHashes = append(invalidOrderHashes, orderHash)
+					if succinctOrderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+						invalidOrderHashes = append(invalidOrderHashes, orderHash.Hex())
 					}
 				}
 				log.Println(len(invalidOrderHashes), "invalid orders found:", invalidOrderHashes)
