@@ -292,7 +292,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							default:
 								logger.WithFields(logger.Fields{
-									"err": err.Error(),
+									"error": err.Error(),
 								}).Panic("unexpected event decoder error encountered")
 							}
 						}
@@ -400,7 +400,7 @@ func (w *Watcher) setupEventWatcher() {
 							orders, err := w.meshDB.FindOrdersByMakerAddressAndMaxSalt(exchangeCancelUpToEvent.MakerAddress, exchangeCancelUpToEvent.OrderEpoch)
 							if err != nil {
 								logger.WithFields(logger.Fields{
-									"err": err.Error(),
+									"error": err.Error(),
 								}).Panic("unexpected query error encountered")
 							}
 							w.generateOrderEventsIfChanged(orders)
@@ -438,7 +438,7 @@ func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress co
 	orders, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
-			"err": err.Error(),
+			"error": err.Error(),
 		}).Panic("unexpected query error encountered")
 	}
 	w.generateOrderEventsIfChanged(orders)
@@ -539,7 +539,7 @@ func (w *Watcher) handleDecodeErr(err error, eventType string) {
 
 	default:
 		logger.WithFields(logger.Fields{
-			"err": err.Error(),
+			"error": err.Error(),
 		}).Panic("unexpected event decoder error encountered")
 	}
 }

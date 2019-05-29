@@ -74,7 +74,7 @@ func (e *ETHWatcher) Start() error {
 
 			if err := e.updateBalances(); err != nil {
 				log.WithFields(log.Fields{
-					"err": err.Error(),
+					"error": err.Error(),
 				}).Error("unexpected error from ETHWatcher.updateBalances()")
 			}
 

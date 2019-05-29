@@ -147,7 +147,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, params.Orders, params.Signatures, params.TakerAddresses)
 				if err != nil {
 					log.WithFields(log.Fields{
-						"err":       err.Error(),
+						"error":     err.Error(),
 						"attempt":   b.Attempt(),
 						"numOrders": len(params.Orders),
 					}).Info("GetOrdersAndTradersInfo request failed")
@@ -155,7 +155,7 @@ func (o *OrderValidator) BatchValidate(signedOrders []*SignedOrder) map[common.H
 					if d == maxDuration {
 						<-semaphoreChan
 						log.WithFields(log.Fields{
-							"err":       err.Error(),
+							"error":     err.Error(),
 							"numOrders": len(params.Orders),
 						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
 						return // Give up after 4 attempts
