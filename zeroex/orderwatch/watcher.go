@@ -513,7 +513,13 @@ func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 			"order": order,
-		}).Panic("Unexpected error while attempting to delete an order")
+		}).Warn("Attempted to delete order that no longer exists")
+		// TODO(fabio): With the current way the OrderWatcher is written, it is possible for multiple
+		// events to trigger logic that updates the orders in the DB simultaneously. This is mostly
+		// benign but is a waste of computation, and causes processes to try and delete orders the
+		// have already been deleted. In order to fix this, we need to re-write the event handling logic
+		// to queue the processing of events so that they happen sequentially rather then in parallel.
+		return // Already deleted. Noop.
 	}
 
 	// After permanently deleting an order, we also remove it's assetData from the Decoder
