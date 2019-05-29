@@ -40,7 +40,7 @@ func unescape(value []byte) []byte {
 				// This is only possible if the value was not escaped properly. Should
 				// never happen.
 				log.WithFields(log.Fields{
-					"err":   err.Error(),
+					"error": err.Error(),
 					"value": hex.Dump(value),
 				}).Panic("unexpected error in unescape")
 			}
