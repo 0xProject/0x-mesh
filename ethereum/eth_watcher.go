@@ -137,15 +137,6 @@ func (e *ETHWatcher) Receive() <-chan Balance {
 	return e.balanceChan
 }
 
-// GetContractAddressesForNetworkID returns the contract name mapping for the given network.
-// It returns an error if the network doesn't exist.
-func GetContractAddressesForNetworkID(networkID int) (constants.ContractNameToAddress, error) {
-	if contractNameToAddress, ok := constants.NetworkIDToContractAddresses[networkID]; ok {
-		return contractNameToAddress, nil
-	}
-	return constants.ContractNameToAddress{}, fmt.Errorf("invalid network: %d", networkID)
-}
-
 func (e *ETHWatcher) updateBalances() {
 	e.addressToBalanceMu.Lock()
 	defer e.addressToBalanceMu.Unlock()
@@ -229,4 +220,13 @@ func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address
 	}
 	wg.Wait()
 	return addressToBalance, failedAddresses
+}
+
+// GetContractAddressesForNetworkID returns the contract name mapping for the given network.
+// It returns an error if the network doesn't exist.
+func GetContractAddressesForNetworkID(networkID int) (constants.ContractNameToAddress, error) {
+	if contractNameToAddress, ok := constants.NetworkIDToContractAddresses[networkID]; ok {
+		return contractNameToAddress, nil
+	}
+	return constants.ContractNameToAddress{}, fmt.Errorf("invalid network: %d", networkID)
 }
