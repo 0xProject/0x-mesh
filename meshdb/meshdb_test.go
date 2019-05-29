@@ -5,9 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xProject/0x-mesh/db"
-
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
