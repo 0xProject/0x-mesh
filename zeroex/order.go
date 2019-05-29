@@ -25,6 +25,8 @@ const (
 	FullyFilled
 	Cancelled
 	SignatureInvalid
+	InvalidMakerAssetData
+	InvalidTakerAssetData
 )
 
 // Order represents an unsigned 0x order
