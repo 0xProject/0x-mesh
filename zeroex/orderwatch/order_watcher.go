@@ -10,6 +10,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -68,7 +69,11 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		return nil, err
 	}
 	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+	contractNameToAddress, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+
 	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,

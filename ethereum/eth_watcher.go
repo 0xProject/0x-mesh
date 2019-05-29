@@ -47,7 +47,7 @@ type ETHWatcher struct {
 
 // NewETHWatcher creates a new instance of ETHWatcher
 func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, networkID int) (*ETHWatcher, error) {
-	contractNameToAddress, err := getContractAddressesForNetworkID(networkID)
+	contractNameToAddress, err := GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +137,9 @@ func (e *ETHWatcher) Receive() <-chan Balance {
 	return e.balanceChan
 }
 
-// getContractAddressesForNetworkID returns the contract name mapping for the given network.
+// GetContractAddressesForNetworkID returns the contract name mapping for the given network.
 // It returns an error if the network doesn't exist.
-func getContractAddressesForNetworkID(networkID int) (constants.ContractNameToAddress, error) {
+func GetContractAddressesForNetworkID(networkID int) (constants.ContractNameToAddress, error) {
 	if contractNameToAddress, ok := constants.NetworkIDToContractAddresses[networkID]; ok {
 		return contractNameToAddress, nil
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -178,7 +179,10 @@ type OrderValidator struct {
 
 // NewOrderValidator instantiates a new order validator
 func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+	contractNameToAddress, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
 	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractNameToAddress.OrderValidationUtils, ethClient)
 	if err != nil {
 		return nil, err
