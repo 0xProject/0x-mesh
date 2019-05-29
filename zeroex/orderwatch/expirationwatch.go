@@ -134,7 +134,7 @@ func (e *ExpirationWatcher) Receive() <-chan []ExpiredOrder {
 // to the caller
 func (e *ExpirationWatcher) prune() []ExpiredOrder {
 	pruned := []ExpiredOrder{}
-	currentTimestamp := time.Now().UTC().Unix()
+	currentTimestamp := time.Now().Unix()
 	for {
 		e.rbTreeMu.RLock()
 		key, value := e.rbTree.Min()

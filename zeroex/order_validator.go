@@ -233,7 +233,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (m
 		if err != nil {
 			log.Panic("Computing the orderHash failed unexpectedly")
 		}
-		now := big.NewInt(time.Now().UTC().Unix())
+		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
 			orderHashToInfo[orderHash] = &OrderInfo{
 				OrderHash:                orderHash,
