@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"os"
 	"time"
@@ -42,7 +41,7 @@ func main() {
 
 	ctx := context.Background()
 	orderInfosChan := make(chan []*zeroex.OrderInfo, 8000)
-	clientSubscription, err := client.SubscribeToOrderStream(ctx, orderInfosChan)
+	clientSubscription, err := client.SubscribeToOrders(ctx, orderInfosChan)
 	_ = clientSubscription
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
@@ -110,18 +109,11 @@ func main() {
 		}
 
 		for _, chunk := range chunks {
-			orderHashToSuccinctOrderInfo, err := client.AddOrders(chunk)
+			addOrdersResponse, err := client.AddOrders(chunk)
 			if err != nil {
 				log.WithError(err).Fatal("error from AddOrder")
 			} else {
-				log.Printf("submitted %d orders", len(orderHashToSuccinctOrderInfo))
-				invalidOrderHashes := []string{}
-				for orderHash, succinctOrderInfo := range orderHashToSuccinctOrderInfo {
-					if succinctOrderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-						invalidOrderHashes = append(invalidOrderHashes, orderHash.Hex())
-					}
-				}
-				log.Println(len(invalidOrderHashes), "invalid orders found:", invalidOrderHashes)
+				log.Printf("submitted %d orders. Added: %d, Invalid: %d, FailedToAdd: %d", len(chunk), len(addOrdersResponse.Added), len(addOrdersResponse.Invalid), len(addOrdersResponse.FailedToAdd))
 			}
 		}
 

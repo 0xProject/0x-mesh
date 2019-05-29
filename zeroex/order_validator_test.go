@@ -103,13 +103,10 @@ var testCases = []testCase{
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
-	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
 	for _, testCase := range testCases {
 		order := modifyOrder(t, testOrder, testCase.Field, testCase.Value)
 
-		signedOrder, err := SignOrder(&order, rpcClient)
+		signedOrder, err := SignTestOrder(&order)
 		require.NoError(t, err)
 
 		orderHash, err := order.ComputeOrderHash()
@@ -192,7 +189,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	order.TakerAssetAmount = takerAssetAmount
 	order.MakerAssetAmount = makerAssetAmount
 	order.MakerFee = makerFee
-	signedOrder, err := SignOrder(&order, rpcClient)
+	signedOrder, err := SignTestOrder(&order)
 	require.NoError(t, err)
 
 	orderHash, err := order.ComputeOrderHash()
