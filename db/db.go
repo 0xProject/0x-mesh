@@ -10,8 +10,8 @@ import (
 // particular model. It's value is the encoded data for that model. The format
 // for a primary key is: `model:<collection name>:<model ID>`.
 //
-// An "index key" is used in the FindWithValue and FindWithRange methods to find
-// models with specific indexed values. The format for an index key is:
+// An "index key" is used in queries to find models with specific indexed
+// values. The format for an index key is:
 // `index:<collection name>:<index name>:<value>:<model ID>`. Unlike primary
 // keys, index keys have no values and don't store any actual data. Instead, the
 // primary key can be extracted from an index key and then used to look up the

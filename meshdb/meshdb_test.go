@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -85,7 +86,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, meshDB.Orders.Delete(foundModifiedOrder.ID()))
 	nonExistentOrder := &Order{}
 	err = meshDB.Orders.FindByID(foundModifiedOrder.ID(), nonExistentOrder)
-	assert.Equal(t, "leveldb: not found", err.Error())
+	assert.IsType(t, db.NotFoundError{}, err)
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {

@@ -5,10 +5,10 @@ package core
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/blockwatch"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
@@ -179,14 +179,14 @@ func (app *App) Start() error {
 	return nil
 }
 
-// TODO(albrow): Either use the Exists method or check for a typed error after
-// updating the db package.
+// TODO(albrow): Use the more efficient Exists method instead of FindByID.
 func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 	var order meshdb.Order
 	err := app.db.Orders.FindByID(orderHash.Bytes(), &order)
 	if err == nil {
 		return true, nil
-	} else if strings.Contains(err.Error(), "not found") {
+	}
+	if _, ok := err.(db.NotFoundError); ok {
 		return false, nil
 	}
 	return false, err
