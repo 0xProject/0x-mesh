@@ -287,6 +287,14 @@ func testQueryWithFilter(t *testing.T, col *Collection, filter *Filter, expected
 			query:    col.NewQuery(filter).Offset(1).Max(safeMax - 1),
 			expected: expected[1:safeMax],
 		},
+		{
+			query:    col.NewQuery(filter).Offset(1).Reverse(),
+			expected: reverseExpected[1:],
+		},
+		{
+			query:    col.NewQuery(filter).Offset(1).Max(safeMax - 1).Reverse(),
+			expected: reverseExpected[1:safeMax],
+		},
 	}
 
 	for i, tc := range testCases {
