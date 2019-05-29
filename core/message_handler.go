@@ -47,9 +47,9 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// counting the number of models that satisfy some query and an `Offset` field
 	// for skipping some number of models.
 	// TODO: This will need to change when we add support for WeijieSub.
-	notDeletedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var allOrders []*meshdb.Order
-	if err := app.db.Orders.NewQuery(notDeletedFilter).Run(&allOrders); err != nil {
+	if err := app.db.Orders.NewQuery(notRemovedFilter).Run(&allOrders); err != nil {
 		return nil, err
 	}
 	if len(allOrders) == 0 {
