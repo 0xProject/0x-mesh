@@ -39,77 +39,64 @@ var testOrder = Order{
 }
 
 type testCase struct {
-	Field               string
-	Value               interface{}
+	Order               Order
 	ExpectedOrderStatus OrderStatus
 }
 
 var testCases = []testCase{
 	testCase{
-		Field:               "MakerAssetAmount",
-		Value:               big.NewInt(0),
+		Order:               orderWithCustomMakerAssetAmount(testOrder, big.NewInt(0)),
 		ExpectedOrderStatus: InvalidMakerAssetAmount,
 	},
 	testCase{
-		Field:               "MakerAssetAmount",
-		Value:               big.NewInt(1000000),
+		Order:               orderWithCustomMakerAssetAmount(testOrder, big.NewInt(1000000)),
 		ExpectedOrderStatus: Fillable,
 	},
 	testCase{
-		Field:               "TakerAssetAmount",
-		Value:               big.NewInt(0),
+		Order:               orderWithCustomTakerAssetAmount(testOrder, big.NewInt(0)),
 		ExpectedOrderStatus: InvalidTakerAssetAmount,
 	},
 	testCase{
-		Field:               "TakerAssetAmount",
-		Value:               big.NewInt(1000000),
+		Order:               orderWithCustomTakerAssetAmount(testOrder, big.NewInt(1000000)),
 		ExpectedOrderStatus: Fillable,
 	},
 	testCase{
-		Field:               "MakerAssetData",
-		Value:               multiAssetAssetData,
+		Order:               orderWithCustomMakerAssetData(testOrder, multiAssetAssetData),
 		ExpectedOrderStatus: InvalidMakerAssetData,
 	},
 	testCase{
-		Field:               "TakerAssetData",
-		Value:               multiAssetAssetData,
+		Order:               orderWithCustomTakerAssetData(testOrder, multiAssetAssetData),
 		ExpectedOrderStatus: InvalidTakerAssetData,
 	},
 	testCase{
-		Field:               "MakerAssetData",
-		Value:               malformedAssetData,
+		Order:               orderWithCustomMakerAssetData(testOrder, malformedAssetData),
 		ExpectedOrderStatus: InvalidMakerAssetData,
 	},
 	testCase{
-		Field:               "TakerAssetData",
-		Value:               malformedAssetData,
+		Order:               orderWithCustomTakerAssetData(testOrder, malformedAssetData),
 		ExpectedOrderStatus: InvalidTakerAssetData,
 	},
 	testCase{
-		Field:               "MakerAssetData",
-		Value:               unsupportedAssetData,
+		Order:               orderWithCustomMakerAssetData(testOrder, unsupportedAssetData),
 		ExpectedOrderStatus: InvalidMakerAssetData,
 	},
 	testCase{
-		Field:               "TakerAssetData",
-		Value:               unsupportedAssetData,
+		Order:               orderWithCustomTakerAssetData(testOrder, unsupportedAssetData),
 		ExpectedOrderStatus: InvalidTakerAssetData,
 	},
 	testCase{
-		Field:               "ExpirationTimeSeconds",
-		Value:               big.NewInt(time.Now().Add(-5 * time.Minute).Unix()),
+		Order:               orderWithCustomExpirationTimeSeconds(testOrder, big.NewInt(time.Now().Add(-5 * time.Minute).Unix())),
 		ExpectedOrderStatus: Expired,
 	},
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	for _, testCase := range testCases {
-		order := modifyOrder(t, testOrder, testCase.Field, testCase.Value)
 
-		signedOrder, err := SignTestOrder(&order)
+		signedOrder, err := SignTestOrder(&testCase.Order)
 		require.NoError(t, err)
 
-		orderHash, err := order.ComputeOrderHash()
+		orderHash, err := signedOrder.ComputeOrderHash()
 		require.NoError(t, err)
 
 		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
@@ -304,20 +291,23 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	assert.Equal(t, new(big.Int).Div(takerAssetAmount, big.NewInt(2)), remainingFillableTakerAssetAmount)
 }
 
-func modifyOrder(t *testing.T, order Order, field string, value interface{}) Order {
-	switch field {
-	case "MakerAssetData":
-		order.MakerAssetData = value.([]byte)
-	case "TakerAssetData":
-		order.TakerAssetData = value.([]byte)
-	case "MakerAssetAmount":
-		order.MakerAssetAmount = value.(*big.Int)
-	case "TakerAssetAmount":
-		order.TakerAssetAmount = value.(*big.Int)
-	case "ExpirationTimeSeconds":
-		order.ExpirationTimeSeconds = value.(*big.Int)
-	default:
-		t.Fatal("Unsupported order field: ", field)
-	}
+func orderWithCustomMakerAssetAmount(order Order, makerAssetAmount *big.Int) Order {
+	order.MakerAssetAmount = makerAssetAmount
+	return order
+}
+func orderWithCustomTakerAssetAmount(order Order, takerAssetAmount *big.Int) Order {
+	order.TakerAssetAmount = takerAssetAmount
+	return order
+}
+func orderWithCustomMakerAssetData(order Order, makerAssetData []byte) Order {
+	order.MakerAssetData = makerAssetData
+	return order
+}
+func orderWithCustomTakerAssetData(order Order, takerAssetData []byte) Order {
+	order.TakerAssetData = takerAssetData
+	return order
+}
+func orderWithCustomExpirationTimeSeconds(order Order, expirationTimeSeconds *big.Int) Order {
+	order.ExpirationTimeSeconds = expirationTimeSeconds
 	return order
 }
