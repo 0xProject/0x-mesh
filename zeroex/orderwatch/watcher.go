@@ -506,9 +506,8 @@ func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
 		}).Error("Failed to update order")
 	}
 
-	// If the order is being unwatched because it has expired, it will have been removed
-	// from the ExpirationWatcher immediately so that it can continue checking the remaining
-	// orders immediately
+	// If we unwatched the order but it didn't expire, we need to remove it from the expiration watcher. If
+	// it did expire, it will have already been removed so we don't need to remove it again.
 	if !didExpire {
 		w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 	}
