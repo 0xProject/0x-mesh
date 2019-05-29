@@ -43,7 +43,8 @@ type OrderInfo struct {
 	SignedOrder              *SignedOrder
 	FillableTakerAssetAmount *big.Int
 	OrderStatus              OrderStatus
-	TxHash                   common.Hash
+	// The hash of the Ethereum transaction that caused the order status to change
+	TxHash common.Hash
 }
 
 // SuccinctOrderInfo represents the necessary information about an order without including
