@@ -64,6 +64,7 @@ type OrdersCollection struct {
 	MakerAddressAndSaltIndex             *db.Index
 	MakerAddressTokenAddressTokenIDIndex *db.Index
 	LastUpdatedIndex                     *db.Index
+	IsRemovedIndex                       *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -125,11 +126,21 @@ func setupOrders(database *db.DB) *OrdersCollection {
 		return indexValues
 	})
 
+	isRemovedIndex := col.AddIndex("isRemoved", func(m db.Model) []byte {
+		order := m.(*Order)
+		// false = 0; true = 1
+		if order.IsRemoved {
+			return []byte{1}
+		}
+		return []byte{0}
+	})
+
 	return &OrdersCollection{
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
 		LastUpdatedIndex:                     lastUpdatedIndex,
+		IsRemovedIndex:                       isRemovedIndex,
 	}
 }
 
