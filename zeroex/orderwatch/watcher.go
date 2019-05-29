@@ -248,7 +248,8 @@ func (w *Watcher) setupExpirationWatcher() error {
 					FillableTakerAssetAmount: big.NewInt(0),
 					OrderStatus:              zeroex.Expired,
 				}
-				w.unwatchOrder(order)
+				didExpire := true
+				w.unwatchOrder(order, didExpire)
 				w.orderFeed.Send([]*zeroex.OrderInfo{orderInfo})
 			}
 		}
@@ -466,7 +467,8 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 		if order.FillableTakerAssetAmount.Cmp(orderInfo.FillableTakerAssetAmount) != 0 {
 			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
 			if isOrderUnfillable {
-				w.unwatchOrder(order)
+				didExpire := true
+				w.unwatchOrder(order, didExpire)
 			} else {
 				w.rewatchOrder(order, orderInfo)
 			}
@@ -492,7 +494,7 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo)
 	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 }
 
-func (w *Watcher) unwatchOrder(order *meshdb.Order) {
+func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = big.NewInt(0)
@@ -504,7 +506,12 @@ func (w *Watcher) unwatchOrder(order *meshdb.Order) {
 		}).Error("Failed to update order")
 	}
 
-	w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+	// If the order is being unwatched because it has expired, it will have been removed
+	// from the ExpirationWatcher immediately so that it can continue checking the remaining
+	// orders immediately
+	if !didExpire {
+		w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+	}
 }
 
 func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {
