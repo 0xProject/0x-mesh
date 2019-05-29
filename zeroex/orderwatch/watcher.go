@@ -463,7 +463,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order) {
 			// order fails to succeed (re-try steps included)
 			continue
 		}
-		if order.FillableTakerAssetAmount != orderInfo.FillableTakerAssetAmount {
+		if order.FillableTakerAssetAmount.Cmp(orderInfo.FillableTakerAssetAmount) != 0 {
 			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
 			if isOrderUnfillable {
 				w.unwatchOrder(order)
