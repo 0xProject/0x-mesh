@@ -45,11 +45,10 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// TODO(albrow): This could be made more efficient if the db package supported
 	// a `Count` method for counting the number of models in a collection or
 	// counting the number of models that satisfy some query.
-	// TODO(albrow): Add an index for IsDeleted and don't return messages that
-	// have already been deleted.
 	// TODO: This will need to change when we add support for WeijieSub.
+	notDeletedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var allOrders []*meshdb.Order
-	if err := app.db.Orders.FindAll(&allOrders); err != nil {
+	if err := app.db.Orders.NewQuery(notDeletedFilter).Run(&allOrders); err != nil {
 		return nil, err
 	}
 	if len(allOrders) == 0 {
