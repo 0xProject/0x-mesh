@@ -95,6 +95,15 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
 	for _, msg := range messages {
+		if err := validateMessageSize(msg); err != nil {
+			log.WithFields(map[string]interface{}{
+				"error":             err,
+				"from":              msg.From,
+				"maxSizeInBytes":    maxSizeInBytes,
+				"actualSizeInBytes": len(msg.Data),
+			}).Trace("received message that exceeds maximum size")
+			continue
+		}
 		order, err := decodeOrder(msg.Data)
 		if err != nil {
 			return nil, err
