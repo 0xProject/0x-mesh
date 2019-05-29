@@ -37,12 +37,13 @@ type getOrdersAndTradersInfoParams struct {
 	Signatures     [][]byte
 }
 
-// OrderInfo represents the order information returned from OrderValidator methods.
+// OrderInfo represents the order information emitted from Mesh
 type OrderInfo struct {
 	OrderHash                common.Hash
 	SignedOrder              *SignedOrder
 	FillableTakerAssetAmount *big.Int
 	OrderStatus              OrderStatus
+	TxHash                   common.Hash
 }
 
 // SuccinctOrderInfo represents the necessary information about an order without including
