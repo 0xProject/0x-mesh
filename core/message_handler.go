@@ -43,9 +43,8 @@ var _ p2p.MessageHandler = &App{}
 func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we just select a random set of orders from those we have stored.
 	// TODO(albrow): This could be made more efficient if the db package supported
-	// a `Count` method for counting the number of models in a collection for
-	// counting the number of models that satisfy some query and an `Offset` field
-	// for skipping some number of models.
+	// a `Count` method for counting the number of models in a collection that
+	// satisfy some query and an `Offset` for skipping some number of models.
 	// TODO: This will need to change when we add support for WeijieSub.
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var allOrders []*meshdb.Order
