@@ -77,6 +77,8 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 				"maxSizeInBytes":    maxSizeInBytes,
 				"actualSizeInBytes": len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
+			// TODO(albrow): Update peer scores via the Connection Manager. This
+			// incur a negative score.
 			continue
 		}
 		order, err := decodeOrder(msg.Data)
