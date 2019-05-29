@@ -179,7 +179,7 @@ func (app *App) Start() error {
 	return nil
 }
 
-// TODO(albrow): Uset the more efficient Exists method instead of FindByID.
+// TODO(albrow): Use the more efficient Exists method instead of FindByID.
 func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 	var order meshdb.Order
 	err := app.db.Orders.FindByID(orderHash.Bytes(), &order)
