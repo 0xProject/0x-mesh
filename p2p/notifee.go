@@ -3,6 +3,7 @@
 package p2p
 
 import (
+	"context"
 	"time"
 
 	p2pnet "github.com/libp2p/go-libp2p-net"
@@ -50,23 +51,10 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 // OpenedStream is called when a stream opened
 func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 	go func() {
-		// HACK(albrow): When the stream is initially opened, the protocol is not
-		// set. For now, we have to manually poll until it is set.
-		// https://github.com/libp2p/go-libp2p/issues/467 mentions an internal
-		// event bus which could potentially be used to detect when the protocol is
-		// set or offer a different way to detect peers who speak the protocol we're
-		// looking for.
-		timeout := time.After(5 * time.Second)
-		for stream.Protocol() == "" {
-			select {
-			case <-n.node.ctx.Done():
-				return
-			case <-timeout:
-				return
-			default:
-				time.Sleep(10 * time.Millisecond)
-			}
-		}
+		ctx, cancel := context.WithTimeout(n.node.ctx, 5*time.Second)
+		defer cancel()
+		waitForStreamProtocol(ctx, stream)
+
 		if stream.Protocol() == pubsubProtocolID {
 			// When we find a peer who speaks our protocol, we give them a slight
 			// positive score so the Connection Manager will be less likely to
@@ -83,3 +71,22 @@ func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 
 // ClosedStream is called when a stream closed
 func (n *notifee) ClosedStream(network p2pnet.Network, stream p2pnet.Stream) {}
+
+// waitForStreamProtocol blocks until the context is canceled or stream.Protocol
+// is not empty.
+func waitForStreamProtocol(ctx context.Context, stream p2pnet.Stream) {
+	// HACK(albrow): When the stream is initially opened, the protocol is not
+	// set. For now, we have to manually poll until it is set.
+	// https://github.com/libp2p/go-libp2p/issues/467 mentions an internal
+	// event bus which could potentially be used to detect when the protocol is
+	// set or offer a different way to detect peers who speak the protocol we're
+	// looking for.
+	for stream.Protocol() == "" {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
