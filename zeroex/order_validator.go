@@ -49,6 +49,7 @@ type OrderInfo struct {
 type RejectedOrderInfo struct {
 	OrderHash   common.Hash
 	SignedOrder *SignedOrder
+	Message     string
 	Kind        RejectedOrderKind
 	Code        RejectedOrderCode
 }
@@ -94,6 +95,34 @@ func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderCode RejectedOrderCode)
 	default:
 		// Catch-all returns Invalid OrderEventKind
 		return EKInvalid, false
+	}
+}
+
+// GetMessageForRejectOrderCode returns the corresponding message for the RejectedOrderCode
+func GetMessageForRejectOrderCode(rejectedOrderCode RejectedOrderCode) string {
+	switch rejectedOrderCode {
+	case RORequestFailed:
+		return "network request to Ethereum RPC endpoint failed"
+	case ROExpired:
+		return "order expired"
+	case ROFullyFilled:
+		return "order fully filled"
+	case ROCancelled:
+		return "order cancelled"
+	case ROUnfunded:
+		return "maker has insufficient balance or allowance for this order to be filled"
+	case ROInvalidMakerAssetAmount:
+		return "order makerAssetAmount cannot be 0"
+	case ROInvalidTakerAssetAmount:
+		return "order takerAssetAmount cannot be 0"
+	case ROInvalidMakerAssetData:
+		return "order makerAssetData must encode a supported assetData type"
+	case ROInvalidTakerAssetData:
+		return "order makerAssetData must encode a supported assetData type"
+	case ROSignatureInvalid:
+		return "order signature must be valid"
+	default:
+		return "invalid RejectedOrderCode found"
 	}
 }
 
@@ -221,11 +250,13 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								log.WithField("error", err).Panic("Unexpectedly failed to generate orderHash")
 								continue
 							}
+							code := RORequestFailed
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        MeshError,
-								Code:        RORequestFailed,
+								Code:        code,
+								Message:     GetMessageForRejectOrderCode(code),
 							})
 						}
 						return // Give up after 4 attempts
@@ -257,6 +288,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 							SignedOrder: signedOrder,
 							Kind:        ZeroExValidation,
 							Code:        code,
+							Message:     GetMessageForRejectOrderCode(code),
 						})
 						continue
 					case OSFillable:
@@ -271,6 +303,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								SignedOrder: signedOrder,
 								Kind:        ZeroExValidation,
 								Code:        code,
+								Message:     GetMessageForRejectOrderCode(code),
 							})
 						} else {
 							validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{
@@ -310,62 +343,74 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 		}
 		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
+			code := ROExpired
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROExpired,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
 
 		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+			code := ROInvalidMakerAssetAmount
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROInvalidMakerAssetAmount,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
 		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+			code := ROInvalidTakerAssetAmount
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROInvalidTakerAssetAmount,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
 
 		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
+			code := ROInvalidMakerAssetData
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROInvalidMakerAssetData,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
 		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
 		if !isTakerAssetDataSupported {
+			code := ROInvalidTakerAssetData
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROInvalidTakerAssetData,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
 
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
 		if !isSupportedSignature {
+			code := ROSignatureInvalid
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        ROSignatureInvalid,
+				Code:        code,
+				Message:     GetMessageForRejectOrderCode(code),
 			})
 			continue
 		}
