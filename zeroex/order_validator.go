@@ -71,7 +71,8 @@ type RejectedOrderCode uint8
 
 // RejectedOrderCode values
 const (
-	RORequestFailed RejectedOrderCode = iota
+	ROInvalid RejectedOrderCode = iota
+	RORequestFailed
 	ROInvalidMakerAssetAmount
 	ROInvalidTakerAssetAmount
 	ROExpired
@@ -84,6 +85,23 @@ const (
 	// balance or allowance set to fullfil the order.
 	ROUnfunded
 )
+
+// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
+func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderCode RejectedOrderCode) (OrderEventKind, bool) {
+	switch rejectedOrderCode {
+	case ROExpired:
+		return EKOrderExpired, true
+	case ROFullyFilled:
+		return EKOrderFullyFilled, true
+	case ROCancelled:
+		return EKOrderCancelled, true
+	case ROUnfunded:
+		return EKOrderBecameUnfunded, true
+	default:
+		// Catch-all returns Invalid OrderEventKind
+		return EKInvalid, false
+	}
+}
 
 // RejectedOrderKind enumerates all kinds of reasons an order could be rejected by Mesh
 type RejectedOrderKind uint8
@@ -235,22 +253,30 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					// TODO(fabio): A future optimization would be to check that both the maker & taker
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
+					code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
+					if !ok {
+						log.WithField("orderStatus", orderStatus).Panic("No RejectedOrderCode corresponding to supplied OrderStatus")
+					}
 					case OSInvalidTakerAssetAmount, OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
 						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 							OrderHash:   orderHash,
 							SignedOrder: signedOrder,
 							Kind:        ZeroExValidation,
-							Code:        ConvertOrderStatusToRejectOrderCode(orderStatus),
+							Code:        code,
 						})
 						continue
 					case OSFillable:
 						fillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+							code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
+							if !ok {
+								log.WithField("orderStatus", orderStatus).Panic("No RejectOrderCode corresponding to supplied OrderStatus")
+							}
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        ZeroExValidation,
-								Code:        ConvertOrderStatusToRejectOrderCode(orderStatus),
+								Code:        code,
 							})
 						} else {
 							validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{

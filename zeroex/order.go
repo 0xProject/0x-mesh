@@ -65,12 +65,17 @@ type OrderEventKind uint8
 
 // OrderEventKind values
 const (
-	EKOrderAdded OrderEventKind = iota
+	EKInvalid OrderEventKind = iota
+	EKOrderAdded
 	EKOrderFilled
 	EKOrderFullyFilled
 	EKOrderCancelled
 	EKOrderExpired
+	// An order becomes unfunded if the maker transfers the balance / changes their
+	// allowance backing an order
 	EKOrderBecameUnfunded
+	// Fillability for an order can increase if a previously processed fill event
+	// gets reverted, or if a maker tops up their balance/allowance backing an order
 	EKOrderFillabilityIncreased
 )
 

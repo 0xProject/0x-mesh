@@ -526,10 +526,14 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				// just trace log multi-calls to ExpirationWatcher.Remove()?
 				didExpire := false
 				w.unwatchOrder(order, didExpire)
+				kind, ok := zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Code)
+				if !ok {
+					logger.WithField("rejectedOrderCode", rejectedOrderInfo.Code).Panic("No OrderEventKind corresponding to RejectedOrderCode")
+				}
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:   rejectedOrderInfo.OrderHash,
 					SignedOrder: rejectedOrderInfo.SignedOrder,
-					Kind:        zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Code),
+					Kind:        kind,
 					TxHash:      txHash,
 				}
 				orderEvents = append(orderEvents, orderEvent)

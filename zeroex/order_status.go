@@ -22,55 +22,30 @@ const (
 	OSInvalidTakerAssetData
 )
 
-// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
-func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderCode RejectedOrderCode) OrderEventKind {
-	switch rejectedOrderCode {
-	case ROExpired:
-		return EKOrderExpired
-	case ROFullyFilled:
-		return EKOrderFullyFilled
-	case ROCancelled:
-		return EKOrderCancelled
-	case ROUnfunded:
-		return EKOrderBecameUnfunded
-	default:
-		panicMessage := "No OrderEventKind corresponding to supplied RejectOrderCode"
-		log.WithField("rejectedOrderCode", rejectedOrderCode).Panic(panicMessage)
-		// HACK(fabio): Go annoyingly complains about this function missing a return at the end
-		// unless I add this never-to-be-hit panic here because it cannot discern that Logrus
-		// panics when calling `.Panic()`
-		panic(panicMessage)
-	}
-}
-
 // ConvertOrderStatusToRejectOrderCode converts an OrderStatus returned from the 0x smart contract
 // validation into a Mesh-specific RejectOrderCode
-func ConvertOrderStatusToRejectOrderCode(orderStatus OrderStatus) RejectedOrderCode {
+func ConvertOrderStatusToRejectOrderCode(orderStatus OrderStatus) (RejectedOrderCode, bool) {
 	switch orderStatus {
 	case OSInvalidMakerAssetAmount:
-		return ROInvalidMakerAssetAmount
+		return ROInvalidMakerAssetAmount, true
 	case OSInvalidTakerAssetAmount:
-		return ROInvalidTakerAssetAmount
+		return ROInvalidTakerAssetAmount, true
 	case OSExpired:
-		return ROExpired
+		return ROExpired, true
 	case OSFullyFilled:
-		return ROFullyFilled
+		return ROFullyFilled, true
 	case OSCancelled:
-		return ROCancelled
+		return ROCancelled, true
 	case OSSignatureInvalid:
-		return ROSignatureInvalid
+		return ROSignatureInvalid, true
 	case OSInvalidMakerAssetData:
-		return ROInvalidMakerAssetData
+		return ROInvalidMakerAssetData, true
 	case OSInvalidTakerAssetData:
-		return ROInvalidTakerAssetData
+		return ROInvalidTakerAssetData, true
 	case OSFillable:
-		return ROUnfunded
+		return ROUnfunded, true
 	default:
-		panicMessage := "No RejectOrderCode corresponding to supplied OrderStatus"
-		log.WithField("orderStatus", orderStatus).Panic(panicMessage)
-		// HACK(fabio): Go annoyingly complains about this function missing a return at the end
-		// unless I add this never-to-be-hit panic here because it cannot discern that Logrus
-		// panics when calling `.Panic()`
-		panic(panicMessage)
+		// Catch-all returns Invalid RejectedOrderCode
+		return ROInvalid, false
 	}
 }
