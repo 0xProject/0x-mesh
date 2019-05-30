@@ -65,9 +65,12 @@ func (e *ExpirationWatcher) Remove(expirationTimeSeconds int64, orderHash common
 	defer e.rbTreeMu.Unlock()
 	value, ok := e.rbTree.Get(&key)
 	if !ok {
+		// Due to the asynchronous nature of the ExpirationWatcher and OrderWatcher, there are
+		// race-conditions where we try to remove an order from the ExpirationWatcher after it
+		// has already been removed.
 		log.WithFields(log.Fields{
 			"orderHash": orderHash,
-		}).Warning("Attempted to remove order from ExpirationWatcher that did not exist")
+		}).Trace("Attempted to remove order from ExpirationWatcher that no longer exists")
 		return // Noop
 	} else {
 		orderHashes := value.(map[common.Hash]struct{})

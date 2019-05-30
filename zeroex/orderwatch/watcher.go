@@ -250,8 +250,7 @@ func (w *Watcher) setupExpirationWatcher() error {
 					FillableTakerAssetAmount: big.NewInt(0),
 					OrderStatus:              zeroex.OSExpired,
 				}
-				didExpire := true
-				w.unwatchOrder(order, didExpire)
+				w.unwatchOrder(order)
 
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:   orderInfo.OrderHash,
@@ -521,11 +520,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				// Noop
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
-				// TODO(fabio): I realized this `didExpire` bool should actually be a
-				// `didExpirationWatcherEmitExpiredEvent` bool... Maybe we should remove it and
-				// just trace log multi-calls to ExpirationWatcher.Remove()?
-				didExpire := false
-				w.unwatchOrder(order, didExpire)
+				w.unwatchOrder(order)
 				kind, ok := zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Code)
 				if !ok {
 					logger.WithField("rejectedOrderCode", rejectedOrderInfo.Code).Panic("No OrderEventKind corresponding to RejectedOrderCode")
@@ -561,7 +556,7 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOr
 	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 }
 
-func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
+func (w *Watcher) unwatchOrder(order *meshdb.Order) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = big.NewInt(0)
@@ -573,11 +568,7 @@ func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
 		}).Error("Failed to update order")
 	}
 
-	// If we unwatched the order but it didn't expire, we need to remove it from the expiration watcher. If
-	// it did expire, it will have already been removed so we don't need to remove it again.
-	if !didExpire {
-		w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
-	}
+	w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 }
 
 func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {
