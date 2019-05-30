@@ -1,9 +1,5 @@
 package zeroex
 
-import (
-	log "github.com/sirupsen/logrus"
-)
-
 // OrderStatus represents the status of an order as returned from the 0x smart contracts
 // as part of OrderInfo
 type OrderStatus uint8
