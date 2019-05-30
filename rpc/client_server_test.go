@@ -188,8 +188,8 @@ func TestOrdersSubscription(t *testing.T) {
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
-	orderInfoChan := make(chan []*zeroex.OrderInfo)
-	clientSubscription, err := client.SubscribeToOrders(ctx, orderInfoChan)
+	orderEventChan := make(chan []*zeroex.OrderEvent)
+	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventChan)
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 

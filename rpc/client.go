@@ -62,6 +62,6 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 // buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
 //  channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
 // or ensure that the channel usually has at least one reader to prevent this issue.
-func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderInfo) (*rpc.ClientSubscription, error) {
+func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderEvent) (*rpc.ClientSubscription, error) {
 	return c.rpcClient.Subscribe(ctx, "mesh", ch, "orders")
 }
