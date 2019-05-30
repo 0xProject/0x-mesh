@@ -31,7 +31,7 @@ func (s *rpcService) Orders(ctx context.Context) (*rpc.Subscription, error) {
 	return s.rpcHandler.SubscribeToOrders(ctx)
 }
 
-// AddOrders calls rpcHandler.AddOrders and returns the SuccinctOrderInfo for each order.
+// AddOrders calls rpcHandler.AddOrders and returns the validation results.
 func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (string, error) {
 	ValidationResults, err := s.rpcHandler.AddOrders(orders)
 	if err != nil {
