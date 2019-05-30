@@ -31,12 +31,6 @@ const getOrdersAndTradersInfoTimeout = 15 * time.Second
 // Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
 
-type getOrdersAndTradersInfoParams struct {
-	TakerAddresses []common.Address
-	Orders         []wrappers.OrderWithoutExchangeAddress
-	Signatures     [][]byte
-}
-
 // OrderInfo represents the order information emitted from Mesh
 type OrderInfo struct {
 	OrderHash                common.Hash
