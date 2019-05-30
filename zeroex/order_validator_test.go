@@ -41,66 +41,74 @@ var testSignedOrder = SignedOrder{
 }
 
 type testCase struct {
-	SignedOrder         SignedOrder
-	ExpectedOrderStatus OrderStatus
+	SignedOrder               SignedOrder
+	IsValid                   bool
+	ExpectedRejectedOrderCode RejectedOrderCode
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
-			SignedOrder:         signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			ExpectedOrderStatus: InvalidMakerAssetAmount,
+			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			ExpectedOrderStatus: Fillable,
+			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			ExpectedOrderStatus: InvalidTakerAssetAmount,
+			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			ExpectedOrderStatus: Fillable,
+			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			ExpectedOrderStatus: InvalidMakerAssetData,
+			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			ExpectedOrderStatus: InvalidTakerAssetData,
+			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
-			ExpectedOrderStatus: InvalidMakerAssetData,
+			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
-			ExpectedOrderStatus: InvalidTakerAssetData,
+			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			ExpectedOrderStatus: InvalidMakerAssetData,
+			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			ExpectedOrderStatus: InvalidTakerAssetData,
+			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
-			ExpectedOrderStatus: Expired,
+			SignedOrder:               signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROExpired,
 		},
 		testCase{
-			SignedOrder:         signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
-			ExpectedOrderStatus: SignatureInvalid,
+			SignedOrder:               signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
+			IsValid:                   false,
+			ExpectedRejectedOrderCode: ROSignatureInvalid,
 		},
 	}
 
 	for _, testCase := range testCases {
-
-		orderHash, err := testCase.SignedOrder.ComputeOrderHash()
-
 		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 		require.NoError(t, err)
 
@@ -111,10 +119,12 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
 		require.NoError(t, err)
 
-		orderInfos := orderValidator.BatchValidate(signedOrders)
-		assert.Len(t, orderInfos, 1)
-		assert.Equal(t, testCase.ExpectedOrderStatus, orderInfos[orderHash].OrderStatus)
-		assert.Equal(t, &testCase.SignedOrder, orderInfos[orderHash].SignedOrder)
+		validationResults := orderValidator.BatchValidate(signedOrders)
+		isValid := len(validationResults.Accepted) == 1
+		assert.Equal(t, testCase.IsValid, isValid)
+		if !isValid {
+			assert.Equal(t, testCase.ExpectedRejectedOrderCode, validationResults.Rejected[0].Code)
+		}
 	}
 }
 
@@ -136,10 +146,11 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
-	orderInfos := orderValidator.BatchValidate(signedOrders)
-	assert.Len(t, orderInfos, 1)
-	assert.Equal(t, SignatureInvalid, orderInfos[orderHash].OrderStatus)
-	assert.Equal(t, signedOrder, orderInfos[orderHash].SignedOrder)
+	validationResults := orderValidator.BatchValidate(signedOrders)
+	assert.Len(t, validationResults.Accepted, 0)
+	assert.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ROSignatureInvalid, validationResults.Rejected[0].Code)
+	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
 func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
@@ -158,7 +169,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 
 	orderInfo := wrappers.OrderInfo{
 		OrderHash:                   orderHash,
-		OrderStatus:                 uint8(Fillable),
+		OrderStatus:                 uint8(OSFillable),
 		OrderTakerAssetFilledAmount: big.NewInt(0),
 	}
 
@@ -247,7 +258,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	// Order already half filled
 	orderInfo = wrappers.OrderInfo{
 		OrderHash:                   orderHash,
-		OrderStatus:                 uint8(Fillable),
+		OrderStatus:                 uint8(OSFillable),
 		OrderTakerAssetFilledAmount: new(big.Int).Div(takerAssetAmount, big.NewInt(2)),
 	}
 	// Sufficient balances & allowances

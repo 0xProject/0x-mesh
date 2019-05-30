@@ -64,10 +64,10 @@ func main() {
 	}
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
-	addOrdersResponse, err := client.AddOrders(signedTestOrders)
+	validationResults, err := client.AddOrders(signedTestOrders)
 	if err != nil {
 		log.WithError(err).Fatal("error from AddOrder")
 	} else {
-		log.Printf("submitted %d orders. Added: %d, Invalid: %d, FailedToAdd: %d", len(signedTestOrders), len(addOrdersResponse.Added), len(addOrdersResponse.Invalid), len(addOrdersResponse.FailedToAdd))
+		log.Printf("submitted %d orders. Accepted: %d, Rejected: %d", len(signedTestOrders), len(validationResults.Accepted), len(validationResults.Rejected))
 	}
 }
