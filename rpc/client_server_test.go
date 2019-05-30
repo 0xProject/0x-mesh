@@ -111,7 +111,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 				require.NoError(t, err)
 				validationResponse.Accepted = append(validationResponse.Accepted, &zeroex.AcceptedOrderInfo{
 					OrderHash:                orderHash,
-					SignedOrder: 				signedOrder,
+					SignedOrder:              signedOrder,
 					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
 				})
 			}
