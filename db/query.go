@@ -15,6 +15,7 @@ type Query struct {
 	col     *Collection
 	filter  *Filter
 	max     int
+	offset  int
 	reverse bool
 }
 
@@ -29,7 +30,9 @@ type Filter struct {
 // a query will return all models that match the filter in ascending byte order
 // according to their index values. The query offers methods that can be used to
 // change this (e.g. Reverse and Max). The query is lazily executed, i.e. it
-// does not actually touch the database until you call Run.
+// does not actually touch the database until they are run. In general, queries
+// have a runtime of O(N) where N is the number of models that are returned by
+// the query, but using some features may significantly change this.
 func (c *Collection) NewQuery(filter *Filter) *Query {
 	return &Query{
 		col:    c,
@@ -37,7 +40,9 @@ func (c *Collection) NewQuery(filter *Filter) *Query {
 	}
 }
 
-// Max causes the query to only return up to max results.
+// Max causes the query to only return up to max results. It is the analog of
+// the LIMIT keyword in SQL:
+// https://www.postgresql.org/docs/current/queries-limit.html
 func (q *Query) Max(max int) *Query {
 	q.max = max
 	return q
@@ -47,6 +52,19 @@ func (q *Query) Max(max int) *Query {
 // to their index values instead of the default (ascending byte order).
 func (q *Query) Reverse() *Query {
 	q.reverse = true
+	return q
+}
+
+// Offset causes the query to skip offset models when iterating through models
+// that match the query. Note that queries which use an offset have a runtime
+// of O(max(K, offset) + N), where N is the number of models returned by the
+// query and K is the total number of keys in the corresponding index. Queries
+// with a high offset can take a long time to run, regardless of the number of
+// models returned. This is due to limitations of the underlying database.
+// Offset is the analog of the OFFSET keyword in SQL:
+// https://www.postgresql.org/docs/current/queries-limit.html
+func (q *Query) Offset(offset int) *Query {
+	q.offset = offset
 	return q
 }
 
@@ -99,11 +117,10 @@ func (q *Query) Run(models interface{}) error {
 
 	iter := q.col.db.ldb.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
-	index := q.filter.index
 	if q.reverse {
-		return getModelsWithIteratorReverse(iter, index, q.max, models)
+		return q.getModelsWithIteratorReverse(iter, models)
 	}
-	return getModelsWithIteratorForward(iter, index, q.max, models)
+	return q.getModelsWithIteratorForward(iter, models)
 }
 
 // Count returns the number of unique models that match the query. It does not
@@ -114,7 +131,10 @@ func (q *Query) Count() (int, error) {
 	iter := q.col.db.ldb.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
 	pkSet := stringset.New()
-	for iter.Next() && iter.Error() == nil {
+	for i := 0; iter.Next() && iter.Error() == nil; i++ {
+		if i < q.offset {
+			continue
+		}
 		pk := q.filter.index.primaryKeyFromIndexKey(iter.Key())
 		pkSet.Add(string(pk))
 		if q.max != 0 && len(pkSet) >= q.max {
@@ -127,35 +147,41 @@ func (q *Query) Count() (int, error) {
 	return len(pkSet), nil
 }
 
-func getModelsWithIteratorForward(iter iterator.Iterator, index *Index, max int, models interface{}) error {
+func (q *Query) getModelsWithIteratorForward(iter iterator.Iterator, models interface{}) error {
 	// MultiIndexes can result in the same model being included more than once. To
 	// prevent this, we keep track of the primaryKeys we have already seen using
 	// pkSet.
 	pkSet := stringset.New()
 	modelsVal := reflect.ValueOf(models).Elem()
-	for iter.Next() && iter.Error() == nil {
-		if err := getAndAppendModelIfUnique(index, pkSet, iter.Key(), modelsVal); err != nil {
+	for i := 0; iter.Next() && iter.Error() == nil; i++ {
+		if i < q.offset {
+			continue
+		}
+		if err := getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
-		if max != 0 && modelsVal.Len() >= max {
+		if q.max != 0 && modelsVal.Len() >= q.max {
 			return iter.Error()
 		}
 	}
 	return iter.Error()
 }
 
-func getModelsWithIteratorReverse(iter iterator.Iterator, index *Index, max int, models interface{}) error {
+func (q *Query) getModelsWithIteratorReverse(iter iterator.Iterator, models interface{}) error {
 	pkSet := stringset.New()
 	modelsVal := reflect.ValueOf(models).Elem()
 	// Move the iterator to the last key and then iterate backwards by calling
 	// Prev instead of Next for each iteration of the for loop.
 	iter.Last()
 	iter.Next()
-	for iter.Prev() && iter.Error() == nil {
-		if err := getAndAppendModelIfUnique(index, pkSet, iter.Key(), modelsVal); err != nil {
+	for i := 0; iter.Prev() && iter.Error() == nil; i++ {
+		if i < q.offset {
+			continue
+		}
+		if err := getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
-		if max != 0 && modelsVal.Len() >= max {
+		if q.max != 0 && modelsVal.Len() >= q.max {
 			return iter.Error()
 		}
 	}
