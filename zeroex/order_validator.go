@@ -48,10 +48,10 @@ type OrderInfo struct {
 }
 
 // RejectedOrderInfo encapsulates all the needed information to understand _why_ a 0x order
-// was rejected (i.e. not added) to 0x Mesh. Since there are many potential reasons, some
-// Mesh-specific, others 0x-specific and others yet due to external factors (i.e., network
-// disruptions, etc...), we descibe the issue to humans with `Message`, categorize it with
-// `Kind` and identify it for machines with `Code`
+// was rejected (i.e. did not pass) order validation. Since there are many potential reasons, some
+// Mesh-specific, others 0x-specific and others due to external factors (i.e., network
+// disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
+// machines with a `Code`
 type RejectedOrderInfo struct {
 	OrderHash   common.Hash
 	SignedOrder *SignedOrder
@@ -71,7 +71,7 @@ type RejectedOrderCode uint8
 
 // RejectedOrderCode values
 const (
-	ROInvalid RejectedOrderCode = iota
+	ROInvalid RejectedOrderCode = iota // Not an actual RejectedOrderCode. Occupies default zero-value.
 	RORequestFailed
 	ROInvalidMakerAssetAmount
 	ROInvalidTakerAssetAmount

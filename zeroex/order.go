@@ -65,7 +65,7 @@ type OrderEventKind uint8
 
 // OrderEventKind values
 const (
-	EKInvalid OrderEventKind = iota
+	EKInvalid OrderEventKind = iota // Not an actual OrderEventKind. Occupies default zero-value.
 	EKOrderAdded
 	EKOrderFilled
 	EKOrderFullyFilled
