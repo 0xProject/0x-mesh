@@ -42,12 +42,12 @@ func (s *Server) Listen() error {
 	}
 	s.rpcServer = rpc.NewServer()
 	if err := s.rpcServer.RegisterName("mesh", rpcService); err != nil {
-		log.WithField("err", err.Error()).Fatal("could not register RPC service")
+		log.WithField("error", err.Error()).Fatal("could not register RPC service")
 	}
 	listener, err := net.Listen("tcp4", s.addr)
 	if err != nil {
 		s.mut.Unlock()
-		log.WithField("err", err.Error()).Fatal("could not start listener")
+		log.WithField("error", err.Error()).Fatal("could not start listener")
 	}
 	s.listener = listener
 	s.mut.Unlock()
