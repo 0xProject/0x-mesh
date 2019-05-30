@@ -259,10 +259,7 @@ type singleAssetData struct {
 
 func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleAssetData, error) {
 	singleAssetDatas := []singleAssetData{}
-	assetDataDecoder, err := zeroex.NewAssetDataDecoder()
-	if err != nil {
-		return nil, err
-	}
+	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
 	assetDataName, err := assetDataDecoder.GetName(assetData)
 	if err != nil {

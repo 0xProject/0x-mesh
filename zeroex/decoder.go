@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	log "github.com/sirupsen/logrus"
 )
 
 const erc20AssetDataId = "f47261b0"
@@ -46,18 +47,18 @@ type AssetDataDecoder struct {
 }
 
 // NewAssetDataDecoder instantiates a new asset data decoder
-func NewAssetDataDecoder() (*AssetDataDecoder, error) {
+func NewAssetDataDecoder() *AssetDataDecoder {
 	erc20AssetDataABI, err := abi.JSON(strings.NewReader(erc20AssetDataAbi))
 	if err != nil {
-		return nil, err
+		log.WithField("erc20AssetDataAbi", erc20AssetDataAbi).Panic("erc20AssetDataAbi should be ABI parsable")
 	}
 	erc721AssetDataABI, err := abi.JSON(strings.NewReader(erc721AssetDataAbi))
 	if err != nil {
-		return nil, err
+		log.WithField("erc20AssetDataAbi", erc20AssetDataAbi).Panic("erc20AssetDataAbi should be ABI parsable")
 	}
 	multiAssetDataABI, err := abi.JSON(strings.NewReader(multiAssetDataAbi))
 	if err != nil {
-		return nil, err
+		log.WithField("erc20AssetDataAbi", erc20AssetDataAbi).Panic("erc20AssetDataAbi should be ABI parsable")
 	}
 	idToAssetDataInfo := map[string]assetDataInfo{
 		erc20AssetDataId: assetDataInfo{
@@ -76,7 +77,7 @@ func NewAssetDataDecoder() (*AssetDataDecoder, error) {
 	decoder := &AssetDataDecoder{
 		idToAssetDataInfo: idToAssetDataInfo,
 	}
-	return decoder, nil
+	return decoder
 }
 
 // GetName returns the name of the assetData type

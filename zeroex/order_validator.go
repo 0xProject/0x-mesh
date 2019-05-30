@@ -71,11 +71,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	if err != nil {
 		return nil, err
 	}
-
-	assetDataDecoder, err := NewAssetDataDecoder()
-	if err != nil {
-		return nil, err
-	}
+	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
 		orderValidator:   orderValidator,
