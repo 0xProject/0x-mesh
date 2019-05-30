@@ -253,11 +253,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					// TODO(fabio): A future optimization would be to check that both the maker & taker
 					// amounts are non-zero locally rather then wait for the RPC call to catch these two
 					// failure cases.
-					code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
-					if !ok {
-						log.WithField("orderStatus", orderStatus).Panic("No RejectedOrderCode corresponding to supplied OrderStatus")
-					}
 					case OSInvalidTakerAssetAmount, OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
+						code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
+						if !ok {
+							log.WithField("orderStatus", orderStatus).Panic("No RejectedOrderCode corresponding to supplied OrderStatus")
+						}
 						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 							OrderHash:   orderHash,
 							SignedOrder: signedOrder,
