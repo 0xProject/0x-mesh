@@ -1,6 +1,7 @@
 package zeroex
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -48,7 +49,7 @@ type Order struct {
 
 // SignedOrder represents a signed 0x order
 type SignedOrder struct {
-	*Order
+	Order
 	Signature []byte `json:"signature"`
 }
 
@@ -180,6 +181,9 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 
 // SignOrder signs the 0x order with the supplied Signer
 func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
+	if order == nil {
+		return nil, errors.New("cannot sign nil order")
+	}
 	orderHash, err := order.ComputeOrderHash()
 	if err != nil {
 		return nil, err
@@ -197,7 +201,7 @@ func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
 	signedOrder := &SignedOrder{
-		Order:     order,
+		Order:     *order,
 		Signature: signature,
 	}
 	return signedOrder, nil
