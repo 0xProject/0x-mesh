@@ -31,8 +31,8 @@ type Filter struct {
 // according to their index values. The query offers methods that can be used to
 // change this (e.g. Reverse and Max). The query is lazily executed, i.e. it
 // does not actually touch the database until they are run. In general, queries
-// have a runtime of O(N) where N is the number of models that match the query,
-// but using some features may significantly change this.
+// have a runtime of O(N) where N is the number of models that are returned by
+// the query, but using some features may significantly change this.
 func (c *Collection) NewQuery(filter *Filter) *Query {
 	return &Query{
 		col:    c,
@@ -40,7 +40,9 @@ func (c *Collection) NewQuery(filter *Filter) *Query {
 	}
 }
 
-// Max causes the query to only return up to max results.
+// Max causes the query to only return up to max results. It is the analog of
+// the LIMIT keyword in SQL:
+// https://www.postgresql.org/docs/current/queries-limit.html
 func (q *Query) Max(max int) *Query {
 	q.max = max
 	return q
@@ -54,9 +56,13 @@ func (q *Query) Reverse() *Query {
 }
 
 // Offset causes the query to skip offset models when iterating through models
-// that match the query. Note that queries which use an offset have a runtime of
-// O(offset + N), where N is the number of models that match the query. This is
-// due to limitations of the underlying database.
+// that match the query. Note that queries which use an offset have a runtime
+// of O(max(K, offset) + N), where N is the number of models returned by the
+// query and K is the total number of keys in the corresponding index. Queries
+// with a high offset can take a long time to run, regardless of the number of
+// models returned. This is due to limitations of the underlying database.
+// Offset is the analog of the OFFSET keyword in SQL:
+// https://www.postgresql.org/docs/current/queries-limit.html
 func (q *Query) Offset(offset int) *Query {
 	q.offset = offset
 	return q
