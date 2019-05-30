@@ -62,10 +62,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 	if err != nil {
 		return nil, err
 	}
-	assetDataDecoder, err := zeroex.NewAssetDataDecoder()
-	if err != nil {
-		return nil, err
-	}
+	assetDataDecoder := zeroex.NewAssetDataDecoder()
 	orderValidator, err := zeroex.NewOrderValidator(ethClient, networkId)
 	if err != nil {
 		return nil, err
