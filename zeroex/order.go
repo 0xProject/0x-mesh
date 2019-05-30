@@ -53,14 +53,16 @@ const (
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {
-	OrderHash   common.Hash
-	SignedOrder *SignedOrder
-	Kind        OrderEventKind
+	OrderHash                common.Hash
+	SignedOrder              *SignedOrder
+	Kind                     OrderEventKind
+	FillableTakerAssetAmount *big.Int
 	// The hash of the Ethereum transaction that caused the order status to change
 	TxHash common.Hash
 }
 
 // OrderEventKind enumerates all the possible order event types
+//go:generate stringer -type=OrderEventKind
 type OrderEventKind uint8
 
 // OrderEventKind values

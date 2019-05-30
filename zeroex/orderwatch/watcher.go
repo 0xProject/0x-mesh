@@ -160,9 +160,10 @@ func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	}
 
 	orderEvent := &zeroex.OrderEvent{
-		OrderHash:   orderInfo.OrderHash,
-		SignedOrder: orderInfo.SignedOrder,
-		Kind:        zeroex.EKOrderAdded,
+		OrderHash:                orderInfo.OrderHash,
+		SignedOrder:              orderInfo.SignedOrder,
+		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+		Kind:                     zeroex.EKOrderAdded,
 	}
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
@@ -253,9 +254,10 @@ func (w *Watcher) setupExpirationWatcher() error {
 				w.unwatchOrder(order)
 
 				orderEvent := &zeroex.OrderEvent{
-					OrderHash:   orderInfo.OrderHash,
-					SignedOrder: orderInfo.SignedOrder,
-					Kind:        zeroex.EKOrderExpired,
+					OrderHash:                orderInfo.OrderHash,
+					SignedOrder:              orderInfo.SignedOrder,
+					FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+					Kind:                     zeroex.EKOrderExpired,
 				}
 				w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 			}
@@ -477,10 +479,11 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 			// Need to re-add order and emit an event
 			w.rewatchOrder(order, acceptedOrderInfo)
 			orderEvent := &zeroex.OrderEvent{
-				OrderHash:   acceptedOrderInfo.OrderHash,
-				SignedOrder: order.SignedOrder,
-				Kind:        zeroex.EKOrderAdded,
-				TxHash:      txHash,
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				Kind:                     zeroex.EKOrderAdded,
+				TxHash:                   txHash,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
@@ -489,10 +492,11 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event
 			orderEvent := &zeroex.OrderEvent{
-				OrderHash:   acceptedOrderInfo.OrderHash,
-				SignedOrder: order.SignedOrder,
-				Kind:        zeroex.EKOrderFilled,
-				TxHash:      txHash,
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				Kind:                     zeroex.EKOrderFilled,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				TxHash:                   txHash,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
@@ -500,10 +504,11 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 			// 1. A fill txn reverted (block-reorg)
 			// 2. Traders added missing balance/allowance increasing the order's fillability
 			orderEvent := &zeroex.OrderEvent{
-				OrderHash:   acceptedOrderInfo.OrderHash,
-				SignedOrder: order.SignedOrder,
-				Kind:        zeroex.EKOrderFillabilityIncreased,
-				TxHash:      txHash,
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				Kind:                     zeroex.EKOrderFillabilityIncreased,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				TxHash:                   txHash,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		}
@@ -526,10 +531,11 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 					logger.WithField("rejectedOrderCode", rejectedOrderInfo.Code).Panic("No OrderEventKind corresponding to RejectedOrderCode")
 				}
 				orderEvent := &zeroex.OrderEvent{
-					OrderHash:   rejectedOrderInfo.OrderHash,
-					SignedOrder: rejectedOrderInfo.SignedOrder,
-					Kind:        kind,
-					TxHash:      txHash,
+					OrderHash:                rejectedOrderInfo.OrderHash,
+					SignedOrder:              rejectedOrderInfo.SignedOrder,
+					FillableTakerAssetAmount: big.NewInt(0),
+					Kind:                     kind,
+					TxHash:                   txHash,
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			}
