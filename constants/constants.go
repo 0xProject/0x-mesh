@@ -39,7 +39,7 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
 		ERC721Proxy:       common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
 		Exchange:          common.HexToAddress("0x4530c0483a1633c7a1c97d2c53721caff2caaaaf"),
-		OrderValidator:    common.HexToAddress("0x2e28193025e17de6fb800e763ad310b42b544673"),
+		OrderValidator:    common.HexToAddress("0x1a2e18dee18cb537b8a24c622ca3443f8d16a73d"),
 		EthBalanceChecker: common.HexToAddress("0xd5d960219af544b6f2f3e14a8bfd03dec12292fa"),
 	},
 	// Kinkeby
@@ -47,7 +47,7 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0x3e809c563c15a295e832e37053798ddc8d6c8dab"),
 		ERC721Proxy:       common.HexToAddress("0x8e1ff02637cb5e39f2fa36c14706aa348b065b09"),
 		Exchange:          common.HexToAddress("0x22ebc052f43a88efa06379426120718170f2204e"),
-		OrderValidator:    common.HexToAddress("0x91e035d803b65dbe1313bdf35d2447361b8555f5"),
+		OrderValidator:    common.HexToAddress("0xcef93838cb7eabfffdb935fd4f4186baed552028"),
 		EthBalanceChecker: common.HexToAddress("0x08b71282431009022eda2dda8af0fbee535e1507"),
 	},
 	// Kovan
@@ -55,7 +55,7 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 		ERC721Proxy:       common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
 		Exchange:          common.HexToAddress("0x35dd2932454449b14cee11a94d3674a936d5d7b2"),
-		OrderValidator:    common.HexToAddress("0xc4e0709c1491662039cee30b04aec8f7b0da85c6"),
+		OrderValidator:    common.HexToAddress("0x409d3a965e5286c79c45058fa8bf8c05d519df83"),
 		EthBalanceChecker: common.HexToAddress("0x505aa534485bf80ee919339717cff90eb2e3364c"),
 	},
 	// Ganache snapshot
