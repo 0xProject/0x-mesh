@@ -23,7 +23,7 @@ var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var multiAssetAssetData = common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 var testSignedOrder = SignedOrder{
-	Order: &Order {
+	Order: Order{
 		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -41,58 +41,58 @@ var testSignedOrder = SignedOrder{
 }
 
 type testCase struct {
-	SignedOrder               SignedOrder
+	SignedOrder         SignedOrder
 	ExpectedOrderStatus OrderStatus
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			SignedOrder:         signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			ExpectedOrderStatus: InvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			SignedOrder:         signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
 			ExpectedOrderStatus: Fillable,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			SignedOrder:         signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			ExpectedOrderStatus: InvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			SignedOrder:         signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
 			ExpectedOrderStatus: Fillable,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			ExpectedOrderStatus: InvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			ExpectedOrderStatus: InvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
+			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
 			ExpectedOrderStatus: InvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
+			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
 			ExpectedOrderStatus: InvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			SignedOrder:         signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
 			ExpectedOrderStatus: InvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			SignedOrder:         signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
 			ExpectedOrderStatus: InvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5 * time.Minute).Unix())),
+			SignedOrder:         signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
 			ExpectedOrderStatus: Expired,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
+			SignedOrder:         signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
 			ExpectedOrderStatus: SignatureInvalid,
 		},
 	}
@@ -146,7 +146,7 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	takerAssetAmount := big.NewInt(200000000000000000)
 	makerAssetAmount := big.NewInt(100000000000000000)
 	makerFee := big.NewInt(10000000000000000)
-	order := copyOrder(*testSignedOrder.Order)
+	order := copyOrder(testSignedOrder.Order)
 	order.TakerAssetAmount = takerAssetAmount
 	order.MakerAssetAmount = makerAssetAmount
 	order.MakerFee = makerFee
@@ -266,51 +266,45 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 }
 
 func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.MakerAssetAmount = makerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(signedOrderCopy.Order)
+	signedOrder.MakerAssetAmount = makerAssetAmount
+	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
+
 func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder SignedOrder, takerAssetAmount *big.Int) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.TakerAssetAmount = takerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(signedOrderCopy.Order)
+	signedOrder.TakerAssetAmount = takerAssetAmount
+	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
+
 func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder SignedOrder, makerAssetData []byte) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.MakerAssetData = makerAssetData
-	signedOrderWithSignature, err := SignTestOrder(signedOrderCopy.Order)
+	signedOrder.MakerAssetData = makerAssetData
+	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
+
 func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder SignedOrder, takerAssetData []byte) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.TakerAssetData = takerAssetData
-	signedOrderWithSignature, err := SignTestOrder(signedOrderCopy.Order)
+	signedOrder.TakerAssetData = takerAssetData
+	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
+
 func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signedOrder SignedOrder, expirationTimeSeconds *big.Int) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.ExpirationTimeSeconds = expirationTimeSeconds
-	signedOrderWithSignature, err := SignTestOrder(signedOrderCopy.Order)
+	signedOrder.ExpirationTimeSeconds = expirationTimeSeconds
+	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
+
 func signedOrderWithCustomSignature(t *testing.T, signedOrder SignedOrder, signature []byte) SignedOrder {
-	signedOrderCopy := copySignedOrder(signedOrder)
-	signedOrderCopy.Signature = signature
-	return signedOrderCopy
+	signedOrder.Signature = signature
+	return signedOrder
 }
-func copySignedOrder(signedOrder SignedOrder) SignedOrder {
-	s := signedOrder
-	order := copyOrder(*signedOrder.Order)
-	s.Order = &order
-	return s
-}
+
 func copyOrder(order Order) Order {
 	return order
 }
