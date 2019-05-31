@@ -50,6 +50,24 @@ const (
 	NSignatureTypesSignature
 )
 
+// OrderStatus represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo
+type OrderStatus uint8
+
+// OrderStatus values
+const (
+	OSInvalid OrderStatus = iota
+	OSInvalidMakerAssetAmount
+	OSInvalidTakerAssetAmount
+	OSFillable
+	OSExpired
+	OSFullyFilled
+	OSCancelled
+	OSSignatureInvalid
+	OSInvalidMakerAssetData
+	OSInvalidTakerAssetData
+)
+
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {

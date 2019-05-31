@@ -276,13 +276,17 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 						orderStatus = OSSignatureInvalid
 					}
 					switch orderStatus {
-					// TODO(fabio): A future optimization would be to check that both the maker & taker
-					// amounts are non-zero locally rather then wait for the RPC call to catch these two
-					// failure cases.
-					case OSInvalidTakerAssetAmount, OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
-						code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
-						if !ok {
-							log.WithField("orderStatus", orderStatus).Panic("No RejectedOrderCode corresponding to supplied OrderStatus")
+					case OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
+						var code RejectedOrderCode
+						switch orderStatus {
+						case OSExpired:
+							code = ROExpired
+						case OSFullyFilled:
+							code = ROFullyFilled
+						case OSCancelled:
+							code = ROCancelled
+						case OSSignatureInvalid:
+							code = ROSignatureInvalid
 						}
 						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 							OrderHash:   orderHash,
@@ -295,10 +299,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					case OSFillable:
 						fillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-							code, ok := ConvertOrderStatusToRejectOrderCode(orderStatus)
-							if !ok {
-								log.WithField("orderStatus", orderStatus).Panic("No RejectOrderCode corresponding to supplied OrderStatus")
-							}
+							code := ROUnfunded // Order with remaining fillable amount of 0 but that is otherwise fillable
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
