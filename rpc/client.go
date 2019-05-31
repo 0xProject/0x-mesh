@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -31,13 +30,8 @@ func NewClient(addr string) (*Client, error) {
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
 func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	var validationResultsJSON string
-	if err := c.rpcClient.Call(&validationResultsJSON, "mesh_addOrders", orders); err != nil {
-		return nil, err
-	}
 	var validationResults zeroex.ValidationResults
-	err := json.Unmarshal([]byte(validationResultsJSON), &validationResults)
-	if err != nil {
+	if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders); err != nil {
 		return nil, err
 	}
 	return &validationResults, nil

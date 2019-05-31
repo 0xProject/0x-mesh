@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -32,13 +31,8 @@ func (s *rpcService) Orders(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
-func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (string, error) {
-	ValidationResults, err := s.rpcHandler.AddOrders(orders)
-	if err != nil {
-		return "", err
-	}
-	ValidationResultsBytes, err := json.Marshal(ValidationResults)
-	return string(ValidationResultsBytes), nil
+func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+	return s.rpcHandler.AddOrders(orders)
 }
 
 // AddPeer builds PeerInfo out of the given peer ID and multiaddresses and
