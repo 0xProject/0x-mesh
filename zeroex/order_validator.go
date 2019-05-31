@@ -68,43 +68,43 @@ type RejectedOrderStatus struct {
 
 // RejectedOrderStatus values
 var (
-	RORequestFailed RejectedOrderStatus = RejectedOrderStatus{
+	RORequestFailed = RejectedOrderStatus{
 		Code:    "NetworkRequestFailed",
 		Message: "network request to Ethereum RPC endpoint failed",
 	}
-	ROInvalidMakerAssetAmount RejectedOrderStatus = RejectedOrderStatus{
+	ROInvalidMakerAssetAmount = RejectedOrderStatus{
 		Code:    "OrderHasInvalidMakerAssetAmount",
 		Message: "order makerAssetAmount cannot be 0",
 	}
-	ROInvalidTakerAssetAmount RejectedOrderStatus = RejectedOrderStatus{
+	ROInvalidTakerAssetAmount = RejectedOrderStatus{
 		Code:    "OrderHasInvalidTakerAssetAmount",
 		Message: "order takerAssetAmount cannot be 0",
 	}
-	ROExpired RejectedOrderStatus = RejectedOrderStatus{
+	ROExpired = RejectedOrderStatus{
 		Code:    "OrderExpired",
 		Message: "order already expired",
 	}
-	ROFullyFilled RejectedOrderStatus = RejectedOrderStatus{
+	ROFullyFilled = RejectedOrderStatus{
 		Code:    "OrderFullyFilled",
 		Message: "order already fully filled",
 	}
-	ROCancelled RejectedOrderStatus = RejectedOrderStatus{
+	ROCancelled = RejectedOrderStatus{
 		Code:    "OrderCancelled",
 		Message: "order cancelled",
 	}
-	ROUnfunded RejectedOrderStatus = RejectedOrderStatus{
+	ROUnfunded = RejectedOrderStatus{
 		Code:    "OrderUnfunded",
 		Message: "maker has insufficient balance or allowance for this order to be filled",
 	}
-	ROInvalidMakerAssetData RejectedOrderStatus = RejectedOrderStatus{
+	ROInvalidMakerAssetData = RejectedOrderStatus{
 		Code:    "OrderHasInvalidMakerAssetData",
 		Message: "order makerAssetData must encode a supported assetData type",
 	}
-	ROInvalidTakerAssetData RejectedOrderStatus = RejectedOrderStatus{
+	ROInvalidTakerAssetData = RejectedOrderStatus{
 		Code:    "OrderHasInvalidTakerAssetData",
 		Message: "order takerAssetData must encode a supported assetData type",
 	}
-	ROInvalidSignature RejectedOrderStatus = RejectedOrderStatus{
+	ROInvalidSignature = RejectedOrderStatus{
 		Code:    "OrderHasInvalidSignature",
 		Message: "order signature must be valid",
 	}
