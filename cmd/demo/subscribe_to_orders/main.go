@@ -29,16 +29,16 @@ func main() {
 	}
 
 	ctx := context.Background()
-	orderInfosChan := make(chan []*zeroex.OrderInfo, 8000)
-	clientSubscription, err := client.SubscribeToOrders(ctx, orderInfosChan)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 8000)
+	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventsChan)
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
 	}
 	defer clientSubscription.Unsubscribe()
 
-	for orderInfos := range orderInfosChan {
-		for _, orderInfo := range orderInfos {
-			log.Printf("Received order event: %+v\n", orderInfo)
+	for orderEvents := range orderEventsChan {
+		for _, orderEvent := range orderEvents {
+			log.Printf("Received order event: %+v\n", orderEvent)
 		}
 	}
 }

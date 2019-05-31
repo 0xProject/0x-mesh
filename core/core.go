@@ -12,7 +12,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
-	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/common"
@@ -194,32 +193,10 @@ func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*rpc.AddOrdersResponse, error) {
-	orderHashToOrderInfo := app.orderValidator.BatchValidate(orders)
-	addOrderResponse := &rpc.AddOrdersResponse{}
-	for _, order := range orders {
-		orderHash, err := order.ComputeOrderHash()
-		if err != nil {
-			return nil, err
-		}
-		orderInfo, ok := orderHashToOrderInfo[orderHash]
-		if !ok {
-			// Validation network request for this order failed
-			addOrderResponse.FailedToAdd = append(addOrderResponse.FailedToAdd, orderHash)
-			continue
-		}
-		succinctOrderInfo := &zeroex.SuccinctOrderInfo{
-			OrderHash:                orderInfo.OrderHash,
-			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-			OrderStatus:              orderInfo.OrderStatus,
-		}
-		if !zeroex.IsOrderValid(orderInfo) {
-			addOrderResponse.Invalid = append(addOrderResponse.Invalid, succinctOrderInfo)
-			continue
-		}
-		addOrderResponse.Added = append(addOrderResponse.Added, succinctOrderInfo)
-
-		alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
+func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+	validationResults := app.orderValidator.BatchValidate(orders)
+	for _, acceptedOrderInfo := range validationResults.Accepted {
+		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
 		if err != nil {
 			return nil, err
 		}
@@ -227,12 +204,12 @@ func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*rpc.AddOrdersResponse,
 			continue
 		}
 
-		err = app.orderWatcher.Watch(orderInfo)
+		err = app.orderWatcher.Watch(acceptedOrderInfo)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return addOrderResponse, nil
+	return validationResults, nil
 }
 
 // AddPeer can be used to manually connect to a new peer.
@@ -243,7 +220,7 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
-func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderInfo) event.Subscription {
+func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.Subscription {
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
 }

@@ -118,43 +118,43 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 	}
 
 	// Validate the orders in a single batch.
-	orderHashToOrderInfo := app.orderValidator.BatchValidate(orders)
+	validationResults := app.orderValidator.BatchValidate(orders)
 
-	// Filter out the invalid messages (i.e. messages which correspond to invalid
-	// orders).
 	validMessages := []*p2p.Message{}
-	for orderHash, msg := range orderHashToMessage {
-		orderInfo, found := orderHashToOrderInfo[orderHash]
-		if !found {
-			continue
+	for _, acceptedOrderInfo := range validationResults.Accepted {
+		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
+		validMessages = append(validMessages, msg)
+
+		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
+		if err != nil {
+			return nil, err
 		}
-		if zeroex.IsOrderValid(orderInfo) {
-			validMessages = append(validMessages, msg)
-			alreadyStored, err := app.orderAlreadyStored(orderInfo.OrderHash)
-			if err != nil {
-				return nil, err
-			}
-			if alreadyStored {
-				log.WithFields(map[string]interface{}{
-					"orderInfo": orderInfo,
-					"from":      msg.From.String(),
-				}).Trace("order received from peer is valid but already stored")
-			} else {
-				log.WithFields(map[string]interface{}{
-					"orderInfo": orderInfo,
-					"from":      msg.From.String(),
-				}).Debug("storing valid order received from peer")
-				// Watch stores the message in the database.
-				if err := app.orderWatcher.Watch(orderInfo); err != nil {
-					return nil, err
-				}
-			}
+		if alreadyStored {
+			log.WithFields(map[string]interface{}{
+				"acceptedOrderInfo": acceptedOrderInfo,
+				"from":              msg.From.String(),
+			}).Trace("order received from peer is valid but already stored")
 		} else {
 			log.WithFields(map[string]interface{}{
-				"orderInfo": orderInfo,
-				"from":      msg.From.String(),
-			}).Warn("not storing invalid order received from peer")
+				"acceptedOrderInfo": acceptedOrderInfo,
+				"from":              msg.From.String(),
+			}).Debug("storing valid order received from peer")
+			// Watch stores the message in the database.
+			if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
+				return nil, err
+			}
 		}
+	}
+	for _, rejectedOrderInfo := range validationResults.Rejected {
+		// TODO(fabio): What should we do with orders that we fail to validate
+		// because of a MeshError (e.g., network disruption) while attempting to validate
+		// them? Currently we simply drop them, but perhaps we should re-try validation
+		// at a later time?
+		msg := orderHashToMessage[rejectedOrderInfo.OrderHash]
+		log.WithFields(map[string]interface{}{
+			"rejectedOrderInfo": rejectedOrderInfo,
+			"from":              msg.From.String(),
+		}).Warn("not storing rejected order received from peer")
 	}
 	return validMessages, nil
 }

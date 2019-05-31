@@ -45,15 +45,15 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*rpc.AddOrdersResponse, error) {
+func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
 	log.Debug("received AddOrders request via RPC")
-	addOrdersResponse, err := handler.app.AddOrders(orders)
+	validationResults, err := handler.app.AddOrders(orders)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
 		return nil, errInternal
 	}
-	return addOrdersResponse, nil
+	return validationResults, nil
 }
 
 // AddPeer is called when an RPC client calls AddPeer,
@@ -87,13 +87,13 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		orderInfosChan := make(chan []*zeroex.OrderInfo)
-		orderWatcherSub := app.SubscribeToOrderEvents(orderInfosChan)
+		orderEventsChan := make(chan []*zeroex.OrderEvent)
+		orderWatcherSub := app.SubscribeToOrderEvents(orderEventsChan)
 
 		for {
 			select {
-			case orderInfos := <-orderInfosChan:
-				err := notifier.Notify(rpcSub.ID, orderInfos)
+			case orderEvents := <-orderEventsChan:
+				err := notifier.Notify(rpcSub.ID, orderEvents)
 				if err != nil {
 					log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
 				}

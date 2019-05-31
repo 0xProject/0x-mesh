@@ -31,12 +31,6 @@ const getOrdersAndTradersInfoTimeout = 15 * time.Second
 // Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
 
-type getOrdersAndTradersInfoParams struct {
-	TakerAddresses []common.Address
-	Orders         []wrappers.OrderWithoutExchangeAddress
-	Signatures     [][]byte
-}
-
 // OrderInfo represents the order information emitted from Mesh
 type OrderInfo struct {
 	OrderHash                common.Hash
@@ -47,16 +41,110 @@ type OrderInfo struct {
 	TxHash common.Hash
 }
 
-// SuccinctOrderInfo represents the necessary information about an order without including
-// the order itself
-type SuccinctOrderInfo struct {
-	OrderHash                common.Hash
-	FillableTakerAssetAmount *big.Int
-	OrderStatus              OrderStatus
+// RejectedOrderInfo encapsulates all the needed information to understand _why_ a 0x order
+// was rejected (i.e. did not pass) order validation. Since there are many potential reasons, some
+// Mesh-specific, others 0x-specific and others due to external factors (i.e., network
+// disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
+// machines with a `Code`
+type RejectedOrderInfo struct {
+	OrderHash   common.Hash
+	SignedOrder *SignedOrder
+	Kind        RejectedOrderKind
+	Status      RejectedOrderStatus
 }
 
-// OrderHashToSuccinctOrderInfo maps orderHashes to their corresponding succinctOrderInfo
-type OrderHashToSuccinctOrderInfo map[common.Hash]*SuccinctOrderInfo
+// AcceptedOrderInfo represents an fillable order and how much it could be filled for
+type AcceptedOrderInfo struct {
+	OrderHash                common.Hash
+	SignedOrder              *SignedOrder
+	FillableTakerAssetAmount *big.Int
+}
+
+// RejectedOrderStatus enumerates all the unique reasons for an orders rejection
+type RejectedOrderStatus struct {
+	Code    string
+	Message string
+}
+
+// RejectedOrderStatus values
+var (
+	RORequestFailed = RejectedOrderStatus{
+		Code:    "NetworkRequestFailed",
+		Message: "network request to Ethereum RPC endpoint failed",
+	}
+	ROInvalidMakerAssetAmount = RejectedOrderStatus{
+		Code:    "OrderHasInvalidMakerAssetAmount",
+		Message: "order makerAssetAmount cannot be 0",
+	}
+	ROInvalidTakerAssetAmount = RejectedOrderStatus{
+		Code:    "OrderHasInvalidTakerAssetAmount",
+		Message: "order takerAssetAmount cannot be 0",
+	}
+	ROExpired = RejectedOrderStatus{
+		Code:    "OrderExpired",
+		Message: "order already expired",
+	}
+	ROFullyFilled = RejectedOrderStatus{
+		Code:    "OrderFullyFilled",
+		Message: "order already fully filled",
+	}
+	ROCancelled = RejectedOrderStatus{
+		Code:    "OrderCancelled",
+		Message: "order cancelled",
+	}
+	ROUnfunded = RejectedOrderStatus{
+		Code:    "OrderUnfunded",
+		Message: "maker has insufficient balance or allowance for this order to be filled",
+	}
+	ROInvalidMakerAssetData = RejectedOrderStatus{
+		Code:    "OrderHasInvalidMakerAssetData",
+		Message: "order makerAssetData must encode a supported assetData type",
+	}
+	ROInvalidTakerAssetData = RejectedOrderStatus{
+		Code:    "OrderHasInvalidTakerAssetData",
+		Message: "order takerAssetData must encode a supported assetData type",
+	}
+	ROInvalidSignature = RejectedOrderStatus{
+		Code:    "OrderHasInvalidSignature",
+		Message: "order signature must be valid",
+	}
+)
+
+// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
+func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (OrderEventKind, bool) {
+	switch rejectedOrderStatus {
+	case ROExpired:
+		return EKOrderExpired, true
+	case ROFullyFilled:
+		return EKOrderFullyFilled, true
+	case ROCancelled:
+		return EKOrderCancelled, true
+	case ROUnfunded:
+		return EKOrderBecameUnfunded, true
+	default:
+		// Catch-all returns Invalid OrderEventKind
+		return EKInvalid, false
+	}
+}
+
+// RejectedOrderKind enumerates all kinds of reasons an order could be rejected by Mesh
+type RejectedOrderKind string
+
+// RejectedOrderKind values
+const (
+	ZeroExValidation = RejectedOrderKind("ZEROEX_VALIDATION")
+	MeshError        = RejectedOrderKind("MESH_ERROR")
+)
+
+// ValidationResults defines the validation results returned from BatchValidate
+// Within this context, an order is `Accepted` if it passes all the 0x schema tests
+// and is fillable for a non-zero amount. An order is `Rejected` if it does not
+// satisfy these conditions OR if we were unable to complete the validation process
+// for whatever reason
+type ValidationResults struct {
+	Accepted []*AcceptedOrderInfo
+	Rejected []*RejectedOrderInfo
+}
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
@@ -84,51 +172,46 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[common.Hash]*OrderInfo {
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
-		return map[common.Hash]*OrderInfo{}
+		return &ValidationResults{}
 	}
-	orderHashToInfo, schemaCheckedSignedOrders := o.BatchOffchainValidation(rawSignedOrders)
-	takerAddresses := []common.Address{}
-	for _, signedOrder := range schemaCheckedSignedOrders {
-		takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
-	}
-	orders := []wrappers.OrderWithoutExchangeAddress{}
-	for _, signedOrder := range schemaCheckedSignedOrders {
-		orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
-	}
-	signatures := [][]byte{}
-	for _, signedOrder := range schemaCheckedSignedOrders {
-		signatures = append(signatures, signedOrder.Signature)
+	offchainValidSignedOrders, rejectedOrderInfos := o.BatchOffchainValidation(rawSignedOrders)
+	validationResults := &ValidationResults{
+		Accepted: []*AcceptedOrderInfo{},
+		Rejected: rejectedOrderInfos,
 	}
 
-	// Chunk into groups of chunkSize orders/takerAddresses for each call
-	chunks := []getOrdersAndTradersInfoParams{}
-	for len(orders) > chunkSize {
-		chunks = append(chunks, getOrdersAndTradersInfoParams{
-			TakerAddresses: takerAddresses[:chunkSize],
-			Orders:         orders[:chunkSize],
-			Signatures:     signatures[:chunkSize],
-		})
-		takerAddresses = takerAddresses[chunkSize:]
-		orders = orders[chunkSize:]
-		signatures = signatures[chunkSize:]
+	// Chunk into groups of chunkSize signedOrders for each call to the smart contract
+	signedOrderChunks := [][]*SignedOrder{}
+	for len(offchainValidSignedOrders) > chunkSize {
+		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders[:chunkSize])
+		offchainValidSignedOrders = offchainValidSignedOrders[chunkSize:]
 	}
-	if len(orders) > 0 {
-		chunks = append(chunks, getOrdersAndTradersInfoParams{
-			TakerAddresses: takerAddresses,
-			Orders:         orders,
-			Signatures:     signatures,
-		})
+	if len(offchainValidSignedOrders) > 0 {
+		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders)
 	}
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
 
 	wg := &sync.WaitGroup{}
-	for i, params := range chunks {
+	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
-		go func(params getOrdersAndTradersInfoParams, i int) {
+		go func(signedOrders []*SignedOrder, i int) {
+			takerAddresses := []common.Address{}
+			for _, signedOrder := range offchainValidSignedOrders {
+				takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
+			}
+			orders := []wrappers.OrderWithoutExchangeAddress{}
+			for _, signedOrder := range offchainValidSignedOrders {
+				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
+			}
+			signatures := [][]byte{}
+			for _, signedOrder := range offchainValidSignedOrders {
+				signatures = append(signatures, signedOrder.Signature)
+			}
+
 			defer wg.Done()
 
 			// Add one to the semaphore chan. If it already has concurrencyLimit values,
@@ -152,20 +235,33 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[commo
 					Pending: false,
 					Context: ctx,
 				}
-				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, params.Orders, params.Signatures, params.TakerAddresses)
+				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, orders, signatures, takerAddresses)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"error":     err.Error(),
 						"attempt":   b.Attempt(),
-						"numOrders": len(params.Orders),
+						"numOrders": len(orders),
 					}).Info("GetOrdersAndTradersInfo request failed")
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
 						log.WithFields(log.Fields{
 							"error":     err.Error(),
-							"numOrders": len(params.Orders),
+							"numOrders": len(orders),
 						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
+						for _, signedOrder := range signedOrders {
+							orderHash, err := signedOrder.ComputeOrderHash()
+							if err != nil { // Should never happen
+								log.WithField("error", err).Panic("Unexpectedly failed to generate orderHash")
+								continue
+							}
+							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+								OrderHash:   orderHash,
+								SignedOrder: signedOrder,
+								Kind:        MeshError,
+								Status:      RORequestFailed,
+							})
+						}
 						return // Give up after 4 attempts
 					}
 					time.Sleep(d)
@@ -176,29 +272,46 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[commo
 					traderInfo := results.TradersInfo[j]
 					isValidSignature := results.IsValidSignature[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
-					signedOrder := schemaCheckedSignedOrders[chunkSize*i+j]
+					signedOrder := offchainValidSignedOrders[chunkSize*i+j]
 					orderStatus := OrderStatus(orderInfo.OrderStatus)
 					if !isValidSignature {
-						orderStatus = SignatureInvalid
+						orderStatus = OSSignatureInvalid
 					}
 					switch orderStatus {
-					// TODO(fabio): A future optimization would be to check that both the maker & taker
-					// amounts are non-zero locally rather then wait for the RPC call to catch these two
-					// failure cases.
-					case InvalidMakerAssetAmount, InvalidTakerAssetAmount, Expired, FullyFilled, Cancelled, SignatureInvalid:
-						orderHashToInfo[orderHash] = &OrderInfo{
-							OrderHash:                orderHash,
-							SignedOrder:              signedOrder,
-							FillableTakerAssetAmount: big.NewInt(0),
-							OrderStatus:              orderStatus,
+					case OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
+						var status RejectedOrderStatus
+						switch orderStatus {
+						case OSExpired:
+							status = ROExpired
+						case OSFullyFilled:
+							status = ROFullyFilled
+						case OSCancelled:
+							status = ROCancelled
+						case OSSignatureInvalid:
+							status = ROInvalidSignature
 						}
+						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+							OrderHash:   orderHash,
+							SignedOrder: signedOrder,
+							Kind:        ZeroExValidation,
+							Status:      status,
+						})
 						continue
-					case Fillable:
-						orderHashToInfo[orderHash] = &OrderInfo{
-							OrderHash:                orderHash,
-							SignedOrder:              signedOrder,
-							FillableTakerAssetAmount: calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo),
-							OrderStatus:              orderStatus,
+					case OSFillable:
+						fillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
+						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+								OrderHash:   orderHash,
+								SignedOrder: signedOrder,
+								Kind:        ZeroExValidation,
+								Status:      ROUnfunded,
+							})
+						} else {
+							validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{
+								OrderHash:                orderHash,
+								SignedOrder:              signedOrder,
+								FillableTakerAssetAmount: fillableTakerAssetAmount,
+							})
 						}
 						continue
 					}
@@ -207,11 +320,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[commo
 				<-semaphoreChan
 				return
 			}
-		}(params, i)
+		}(signedOrders, i)
 	}
 
 	wg.Wait()
-	return orderHashToInfo
+	return validationResults
 }
 
 // BatchOffchainValidation performs all off-chain validation checks on a batch of 0x orders.
@@ -221,9 +334,9 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) map[commo
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
 // Returns an orderHashToInfo mapping with all invalid orders added to it, and an array of the valid signedOrders
-func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (map[common.Hash]*OrderInfo, []*SignedOrder) {
-	orderHashToInfo := map[common.Hash]*OrderInfo{}
-	validSignedOrders := []*SignedOrder{}
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
+	rejectedOrderInfos := []*RejectedOrderInfo{}
+	offchainValidSignedOrders := []*SignedOrder{}
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
@@ -231,70 +344,70 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) (m
 		}
 		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              Expired,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROExpired,
+			})
 			continue
 		}
 
 		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              InvalidMakerAssetAmount,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidMakerAssetAmount,
+			})
 			continue
 		}
 		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              InvalidTakerAssetAmount,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidTakerAssetAmount,
+			})
 			continue
 		}
 
 		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              InvalidMakerAssetData,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidMakerAssetData,
+			})
 			continue
 		}
 		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
 		if !isTakerAssetDataSupported {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              InvalidTakerAssetData,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidTakerAssetData,
+			})
 			continue
 		}
 
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
 		if !isSupportedSignature {
-			orderHashToInfo[orderHash] = &OrderInfo{
-				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
-				FillableTakerAssetAmount: big.NewInt(0),
-				OrderStatus:              SignatureInvalid,
-			}
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidSignature,
+			})
 			continue
 		}
 
-		validSignedOrders = append(validSignedOrders, signedOrder)
+		offchainValidSignedOrders = append(offchainValidSignedOrders, signedOrder)
 	}
 
-	return orderHashToInfo, validSignedOrders
+	return offchainValidSignedOrders, rejectedOrderInfos
 }
 
 func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
@@ -401,14 +514,4 @@ func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo w
 	}
 
 	return maxTakerAssetFillAmount
-}
-
-// IsOrderValid returns true if the OrderStatus is Fillable and the
-// FillableTakerAssetAmount is greater than 0, indicating that the order is
-// valid and can be filled. It returns false otherwise. Note that this only
-// considers the given OrderInfo and does not update it or send any calls to
-// Ethereum. Typically, you will need to call BatchValidate periodically in
-// order to get the latest OrderInfo.
-func IsOrderValid(orderInfo *OrderInfo) bool {
-	return orderInfo.OrderStatus == Fillable && orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 1
 }

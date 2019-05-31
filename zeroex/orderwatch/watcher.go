@@ -90,7 +90,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		return nil, err
 	}
 	for _, order := range orders {
-		err := w.setupInMemoryOrderState(order.SignedOrder, order.Hash)
+		err := w.setupInMemoryOrderState(order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -141,13 +141,7 @@ func (w *Watcher) Stop() error {
 }
 
 // Watch adds a 0x order to the DB and watches it for changes in fillability.
-func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
-	if !zeroex.IsOrderValid(orderInfo) {
-		logger.WithFields(logger.Fields{
-			"orderInfo": orderInfo,
-		}).Error("Attempted to add invalid order to OrderWatcher")
-		return errors.New("cannot watch invalid order")
-	}
+func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
@@ -160,20 +154,31 @@ func (w *Watcher) Watch(orderInfo *zeroex.OrderInfo) error {
 		return err
 	}
 
-	err = w.setupInMemoryOrderState(orderInfo.SignedOrder, orderInfo.OrderHash)
+	err = w.setupInMemoryOrderState(orderInfo.SignedOrder)
 	if err != nil {
 		return err
 	}
 
-	w.orderFeed.Send([]*zeroex.OrderInfo{orderInfo})
+	orderEvent := &zeroex.OrderEvent{
+		OrderHash:                orderInfo.OrderHash,
+		SignedOrder:              orderInfo.SignedOrder,
+		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+		Kind:                     zeroex.EKOrderAdded,
+	}
+	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
 	return nil
 }
 
-func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder, orderHash common.Hash) error {
+func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error {
+	orderHash, err := signedOrder.ComputeOrderHash()
+	if err != nil {
+		return err
+	}
+
 	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
 
-	err := w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
+	err = w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
 	if err != nil {
 		return err
 	}
@@ -187,7 +192,7 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder, order
 // To unsubscribe, simply call `Unsubscribe` on the returned subscription.
 // The sink channel should have ample buffer space to avoid blocking other subscribers.
 // Slow subscribers are not dropped.
-func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderInfo) event.Subscription {
+func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription {
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
@@ -244,11 +249,17 @@ func (w *Watcher) setupExpirationWatcher() error {
 					OrderHash:                expiredOrder.OrderHash,
 					SignedOrder:              order.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
-					OrderStatus:              zeroex.Expired,
+					OrderStatus:              zeroex.OSExpired,
 				}
-				didExpire := true
-				w.unwatchOrder(order, didExpire)
-				w.orderFeed.Send([]*zeroex.OrderInfo{orderInfo})
+				w.unwatchOrder(order)
+
+				orderEvent := &zeroex.OrderEvent{
+					OrderHash:                orderInfo.OrderHash,
+					SignedOrder:              orderInfo.SignedOrder,
+					FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+					Kind:                     zeroex.EKOrderExpired,
+				}
+				w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 			}
 		}
 	}()
@@ -445,39 +456,97 @@ func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress co
 
 func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash common.Hash) {
 	signedOrders := []*zeroex.SignedOrder{}
+	orderHashToOrder := map[common.Hash]*meshdb.Order{}
 	for _, order := range orders {
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
 			w.permanentlyDeleteOrder(order)
 			continue
 		}
 		signedOrders = append(signedOrders, order.SignedOrder)
+		orderHashToOrder[order.Hash] = order
 	}
-	hashToOrderInfo := w.orderValidator.BatchValidate(signedOrders)
-	orderInfos := []*zeroex.OrderInfo{}
-	for _, order := range orders {
-		orderInfo, hasOrderInfo := hashToOrderInfo[order.Hash]
-		if !hasOrderInfo {
-			// Skip orders where OrderInfo was not returned. This only happens if
-			// the Ethereum JSON-RPC request for the particular batch including this
-			// order fails to succeed (re-try steps included)
-			continue
-		}
-		orderInfo.TxHash = txHash
-		if order.FillableTakerAssetAmount.Cmp(orderInfo.FillableTakerAssetAmount) != 0 {
-			isOrderUnfillable := orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0
-			if isOrderUnfillable {
-				didExpire := false
-				w.unwatchOrder(order, didExpire)
-			} else {
-				w.rewatchOrder(order, orderInfo)
+	validationResults := w.orderValidator.BatchValidate(signedOrders)
+
+	orderEvents := []*zeroex.OrderEvent{}
+	for _, acceptedOrderInfo := range validationResults.Accepted {
+		order := orderHashToOrder[acceptedOrderInfo.OrderHash]
+		oldFillableAmount := order.FillableTakerAssetAmount
+		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
+		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
+		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
+			// A previous event caused this order to be removed from DB, but it has now
+			// been revived (e.g., block re-org causes order fill txn to get reverted)
+			// Need to re-add order and emit an event
+			w.rewatchOrder(order, acceptedOrderInfo)
+			orderEvent := &zeroex.OrderEvent{
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				Kind:                     zeroex.EKOrderAdded,
+				TxHash:                   txHash,
 			}
-			orderInfos = append(orderInfos, orderInfo)
+			orderEvents = append(orderEvents, orderEvent)
+		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
+			// No important state-change happened, ignore
+			// Noop
+		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+			// Order was filled, emit  event
+			orderEvent := &zeroex.OrderEvent{
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				Kind:                     zeroex.EKOrderFilled,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				TxHash:                   txHash,
+			}
+			orderEvents = append(orderEvents, orderEvent)
+		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
+			// The order is now fillable for more then it was before. E.g.:
+			// 1. A fill txn reverted (block-reorg)
+			// 2. Traders added missing balance/allowance increasing the order's fillability
+			orderEvent := &zeroex.OrderEvent{
+				OrderHash:                acceptedOrderInfo.OrderHash,
+				SignedOrder:              order.SignedOrder,
+				Kind:                     zeroex.EKOrderFillabilityIncreased,
+				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				TxHash:                   txHash,
+			}
+			orderEvents = append(orderEvents, orderEvent)
 		}
 	}
-	w.orderFeed.Send(orderInfos)
+	for _, rejectedOrderInfo := range validationResults.Rejected {
+		switch rejectedOrderInfo.Kind {
+		case zeroex.MeshError:
+			// TODO(fabio): Do we want to handle MeshErrors somehow here?
+		case zeroex.ZeroExValidation:
+			order := orderHashToOrder[rejectedOrderInfo.OrderHash]
+			oldFillableAmount := order.FillableTakerAssetAmount
+			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
+				// If the oldFillableAmount was already 0, this order is already flagged for removal
+				// Noop
+			} else {
+				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
+				w.unwatchOrder(order)
+				kind, ok := zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
+				if !ok {
+					logger.WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Panic("No OrderEventKind corresponding to RejectedOrderStatus")
+				}
+				orderEvent := &zeroex.OrderEvent{
+					OrderHash:                rejectedOrderInfo.OrderHash,
+					SignedOrder:              rejectedOrderInfo.SignedOrder,
+					FillableTakerAssetAmount: big.NewInt(0),
+					Kind:                     kind,
+					TxHash:                   txHash,
+				}
+				orderEvents = append(orderEvents, orderEvent)
+			}
+		default:
+			logger.WithField("kind", rejectedOrderInfo.Kind).Panic("Encountered unhandled rejectedOrderInfo.Kind value")
+		}
+	}
+	w.orderFeed.Send(orderEvents)
 }
 
-func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo) {
+func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOrderInfo) {
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
@@ -493,7 +562,7 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.OrderInfo)
 	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 }
 
-func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
+func (w *Watcher) unwatchOrder(order *meshdb.Order) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = big.NewInt(0)
@@ -505,11 +574,7 @@ func (w *Watcher) unwatchOrder(order *meshdb.Order, didExpire bool) {
 		}).Error("Failed to update order")
 	}
 
-	// If we unwatched the order but it didn't expire, we need to remove it from the expiration watcher. If
-	// it did expire, it will have already been removed so we don't need to remove it again.
-	if !didExpire {
-		w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
-	}
+	w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
 }
 
 func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {

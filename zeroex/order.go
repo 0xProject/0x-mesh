@@ -12,24 +12,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// OrderStatus represents the status of an order as returned from the 0x smart contracts
-// as part of OrderInfo
-type OrderStatus uint8
-
-// OrderStatus values
-const (
-	Invalid OrderStatus = iota
-	InvalidMakerAssetAmount
-	InvalidTakerAssetAmount
-	Fillable
-	Expired
-	FullyFilled
-	Cancelled
-	SignatureInvalid
-	InvalidMakerAssetData
-	InvalidTakerAssetData
-)
-
 // Order represents an unsigned 0x order
 type Order struct {
 	MakerAddress          common.Address `json:"makerAddress"`
@@ -66,6 +48,54 @@ const (
 	ValidatorSignature
 	PreSignedSignature
 	NSignatureTypesSignature
+)
+
+// OrderStatus represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo
+type OrderStatus uint8
+
+// OrderStatus values
+const (
+	OSInvalid OrderStatus = iota
+	OSInvalidMakerAssetAmount
+	OSInvalidTakerAssetAmount
+	OSFillable
+	OSExpired
+	OSFullyFilled
+	OSCancelled
+	OSSignatureInvalid
+	OSInvalidMakerAssetData
+	OSInvalidTakerAssetData
+)
+
+// OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
+// when calling JSON-RPC method `mesh_subscribe`
+type OrderEvent struct {
+	OrderHash                common.Hash
+	SignedOrder              *SignedOrder
+	Kind                     OrderEventKind
+	FillableTakerAssetAmount *big.Int
+	// The hash of the Ethereum transaction that caused the order status to change
+	TxHash common.Hash
+}
+
+// OrderEventKind enumerates all the possible order event types
+type OrderEventKind string
+
+// OrderEventKind values
+const (
+	EKInvalid          = OrderEventKind("INVALID")
+	EKOrderAdded       = OrderEventKind("ADDED")
+	EKOrderFilled      = OrderEventKind("FILLED")
+	EKOrderFullyFilled = OrderEventKind("FULLY_FILLED")
+	EKOrderCancelled   = OrderEventKind("CANCELLED")
+	EKOrderExpired     = OrderEventKind("EXPIRED")
+	// An order becomes unfunded if the maker transfers the balance / changes their
+	// allowance backing an order
+	EKOrderBecameUnfunded = OrderEventKind("UNFUNDED")
+	// Fillability for an order can increase if a previously processed fill event
+	// gets reverted, or if a maker tops up their balance/allowance backing an order
+	EKOrderFillabilityIncreased = OrderEventKind("FILLABILITY_INCREASED")
 )
 
 var eip712OrderTypes = signer.Types{

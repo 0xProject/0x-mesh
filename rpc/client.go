@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -30,17 +29,12 @@ func NewClient(addr string) (*Client, error) {
 
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*AddOrdersResponse, error) {
-	var addOrdersResponseJSON string
-	if err := c.rpcClient.Call(&addOrdersResponseJSON, "mesh_addOrders", orders); err != nil {
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+	var validationResults zeroex.ValidationResults
+	if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders); err != nil {
 		return nil, err
 	}
-	var addOrdersResponse AddOrdersResponse
-	err := json.Unmarshal([]byte(addOrdersResponseJSON), &addOrdersResponse)
-	if err != nil {
-		return nil, err
-	}
-	return &addOrdersResponse, nil
+	return &validationResults, nil
 }
 
 // AddPeer adds the peer to the node's list of peers. The node will attempt to
@@ -62,6 +56,6 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 // buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
 //  channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
 // or ensure that the channel usually has at least one reader to prevent this issue.
-func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderInfo) (*rpc.ClientSubscription, error) {
+func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderEvent) (*rpc.ClientSubscription, error) {
 	return c.rpcClient.Subscribe(ctx, "mesh", ch, "orders")
 }
