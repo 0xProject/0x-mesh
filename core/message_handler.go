@@ -42,24 +42,33 @@ var _ p2p.MessageHandler = &App{}
 
 func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we just select a random set of orders from those we have stored.
-	// TODO(albrow): This could be made more efficient if the db package supported
-	// a `Count` method for counting the number of models in a collection that
-	// satisfy some query and an `Offset` for skipping some number of models.
-	// TODO: This will need to change when we add support for WeijieSub.
+	// We might return less than max even if there are max or greater orders
+	// currently stored.
+	// TODO(albrow): If the db package supported transactions, we could gaurantee
+	// that max orders are returned if we have stored at least max orders. As it
+	// currently stands, orders could be added or removed in between when we call
+	// Count and when we call Run.
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	var allOrders []*meshdb.Order
-	if err := app.db.Orders.NewQuery(notRemovedFilter).Run(&allOrders); err != nil {
+	count, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	if err != nil {
 		return nil, err
 	}
-	if len(allOrders) == 0 {
+	if count == 0 {
 		return nil, nil
 	}
-	start := rand.Intn(len(allOrders))
-	end := start + max
-	if end > len(allOrders) {
-		end = len(allOrders)
+	// If count is less than max, we use an offset of 0 to simply return all
+	// orders we have stored.
+	offset := 0
+	if count > max {
+		// If count is greater than max, choose an offset such that we always try to
+		// return at least max orders.
+		offset = rand.Intn(count - max)
 	}
-	selectedOrders := allOrders[start:end]
+	var selectedOrders []*meshdb.Order
+	err = app.db.Orders.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
+	if err != nil {
+		return nil, err
+	}
 
 	log.WithFields(map[string]interface{}{
 		"maxNumberToShare":    max,
