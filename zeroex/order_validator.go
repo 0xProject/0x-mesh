@@ -137,6 +137,10 @@ const (
 )
 
 // ValidationResults defines the validation results returned from BatchValidate
+// Within this context, an order is `Accepted` if it passes all the 0x schema tests
+// and is fillable for a non-zero amount. An order is `Rejected` if it does not
+// satisfy these conditions OR if we were unable to complete the validation process
+// for whatever reason
 type ValidationResults struct {
 	Accepted []*AcceptedOrderInfo
 	Rejected []*RejectedOrderInfo
