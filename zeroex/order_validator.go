@@ -176,7 +176,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
-	rejectedOrderInfos, offchainValidSignedOrders := o.BatchOffchainValidation(rawSignedOrders)
+	offchainValidSignedOrders, rejectedOrderInfos := o.BatchOffchainValidation(rawSignedOrders)
 	validationResults := &ValidationResults{
 		Accepted: []*AcceptedOrderInfo{},
 		Rejected: rejectedOrderInfos,
@@ -334,7 +334,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
 // Returns an orderHashToInfo mapping with all invalid orders added to it, and an array of the valid signedOrders
-func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([]*RejectedOrderInfo, []*SignedOrder) {
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	offchainValidSignedOrders := []*SignedOrder{}
 	for _, signedOrder := range signedOrders {
@@ -407,7 +407,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 		offchainValidSignedOrders = append(offchainValidSignedOrders, signedOrder)
 	}
 
-	return rejectedOrderInfos, offchainValidSignedOrders
+	return offchainValidSignedOrders, rejectedOrderInfos
 }
 
 func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
