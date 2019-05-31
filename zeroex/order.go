@@ -1,12 +1,14 @@
 package zeroex
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/common"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
@@ -265,6 +267,86 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 		TakerAssetData:        s.TakerAssetData,
 	}
 	return orderWithoutExchangeAddress
+}
+
+type SignedOrderJSON struct {
+	MakerAddress          common.Address `json:"makerAddress"`
+	MakerAssetData        string         `json:"makerAssetData"`
+	MakerAssetAmount      string         `json:"makerAssetAmount"`
+	MakerFee              string         `json:"makerFee"`
+	TakerAddress          common.Address `json:"takerAddress"`
+	TakerAssetData        string         `json:"takerAssetData"`
+	TakerAssetAmount      string         `json:"takerAssetAmount"`
+	TakerFee              string         `json:"takerFee"`
+	SenderAddress         common.Address `json:"senderAddress"`
+	ExchangeAddress       common.Address `json:"exchangeAddress"`
+	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string         `json:"expirationTimeSeconds"`
+	Salt                  string         `json:"salt"`
+	Signature             string         `json:"signature"`
+}
+
+// MarshalJSON implements a custom JSON marshaller for the SignedOrder type
+func (s *SignedOrder) MarshalJSON() ([]byte, error) {
+	return json.Marshal(SignedOrderJSON{
+		MakerAddress:          s.MakerAddress,
+		MakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData)),
+		MakerAssetAmount:      s.MakerAssetAmount.String(),
+		MakerFee:              s.MakerFee.String(),
+		TakerAddress:          s.TakerAddress,
+		TakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData)),
+		TakerAssetAmount:      s.TakerAssetAmount.String(),
+		TakerFee:              s.TakerFee.String(),
+		SenderAddress:         s.SenderAddress,
+		ExchangeAddress:       s.ExchangeAddress,
+		FeeRecipientAddress:   s.FeeRecipientAddress,
+		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
+		Salt:                  s.Salt.String(),
+		Signature:             fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature)),
+	})
+}
+
+// UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
+func (s *SignedOrder) UnmarshalJSON(data []byte) error {
+	var signedOrderJSON SignedOrderJSON
+	err := json.Unmarshal(data, &signedOrderJSON)
+	if err != nil {
+		return err
+	}
+	s.MakerAddress = signedOrderJSON.MakerAddress
+	s.MakerAssetData = common.Hex2Bytes(signedOrderJSON.MakerAssetData[2:])
+	var ok bool
+	s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for MakerAssetAmount")
+	}
+	s.MakerFee, ok = math.ParseBig256(signedOrderJSON.MakerFee)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for MakerFee")
+	}
+	s.TakerAddress = signedOrderJSON.TakerAddress
+	s.TakerAssetData = common.Hex2Bytes(signedOrderJSON.TakerAssetData[2:])
+	s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for TakerAssetAmount")
+	}
+	s.TakerFee, ok = math.ParseBig256(signedOrderJSON.TakerFee)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for TakerFee")
+	}
+	s.SenderAddress = signedOrderJSON.SenderAddress
+	s.ExchangeAddress = signedOrderJSON.ExchangeAddress
+	s.FeeRecipientAddress = signedOrderJSON.FeeRecipientAddress
+	s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for ExpirationTimeSeconds")
+	}
+	s.Salt, ok = math.ParseBig256(signedOrderJSON.Salt)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for Salt")
+	}
+	s.Signature = common.Hex2Bytes(signedOrderJSON.Signature[2:])
+	return nil
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.
