@@ -62,23 +62,24 @@ type AcceptedOrderInfo struct {
 }
 
 // RejectedOrderCode enumerates all the unique reasons for an orders rejection
-type RejectedOrderCode uint8
+type RejectedOrderCode string
 
 // RejectedOrderCode values
 const (
-	ROInvalid RejectedOrderCode = iota // Not an actual RejectedOrderCode. Occupies default zero-value.
-	RORequestFailed
-	ROInvalidMakerAssetAmount
-	ROInvalidTakerAssetAmount
-	ROExpired
-	ROFullyFilled
-	ROCancelled
-	ROSignatureInvalid
-	ROInvalidMakerAssetData
-	ROInvalidTakerAssetData
+	// TODO(fabio): Remove ROInvalid once we remove switch
+	ROInvalid                 = RejectedOrderCode("INVALID_REJECTED_ORDER_CODE")
+	RORequestFailed           = RejectedOrderCode("ETH_RPC_REQUEST_FAILED")
+	ROInvalidMakerAssetAmount = RejectedOrderCode("ORDER_WITH_INVALID_MAKER_ASSET_AMOUNT")
+	ROInvalidTakerAssetAmount = RejectedOrderCode("ORDER_WITH_INVALID_TAKER_ASSET_AMOUNT")
+	ROExpired                 = RejectedOrderCode("ORDER_EXPIRED")
+	ROFullyFilled             = RejectedOrderCode("ORDER_FULLY_FILLED")
+	ROCancelled               = RejectedOrderCode("ORDER_CANCELLED")
+	ROSignatureInvalid        = RejectedOrderCode("ORDER_SIGNATURE_INVALID")
+	ROInvalidMakerAssetData   = RejectedOrderCode("ORDER_WITH_INVALID_MAKER_ASSET_DATA")
+	ROInvalidTakerAssetData   = RejectedOrderCode("ORDER_WITH_INVALID_TAKER_ASSET_DATA")
 	// ROUnfunded is a catch-all for when either the maker or taker have insufficient
 	// balance or allowance set to fullfil the order.
-	ROUnfunded
+	ROUnfunded = RejectedOrderCode("ORDER_UNFUNDED")
 )
 
 // ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
@@ -127,12 +128,12 @@ func GetMessageForRejectOrderCode(rejectedOrderCode RejectedOrderCode) string {
 }
 
 // RejectedOrderKind enumerates all kinds of reasons an order could be rejected by Mesh
-type RejectedOrderKind uint8
+type RejectedOrderKind string
 
 // RejectedOrderKind values
 const (
-	ZeroExValidation RejectedOrderKind = iota
-	MeshError
+	ZeroExValidation = RejectedOrderKind("ZEROEX_VALIDATION")
+	MeshError        = RejectedOrderKind("MESH_ERROR")
 )
 
 // ValidationResults defines the validation results returned from BatchValidate
