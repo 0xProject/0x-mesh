@@ -37,10 +37,10 @@ func main() {
 	// Start core.App.
 	app, err := core.New(coreConfig)
 	if err != nil {
-		log.WithField("err", err.Error()).Fatal("could not initialize app")
+		log.WithField("error", err.Error()).Fatal("could not initialize app")
 	}
 	if err := app.Start(); err != nil {
-		log.WithField("err", err.Error()).Fatal("fatal error while starting app")
+		log.WithField("error", err.Error()).Fatal("fatal error while starting app")
 	}
 	defer app.Close()
 
