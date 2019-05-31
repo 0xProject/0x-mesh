@@ -72,13 +72,12 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 	for _, msg := range messages {
 		if err := validateMessageSize(msg); err != nil {
 			log.WithFields(map[string]interface{}{
-				"error":             err,
-				"from":              msg.From,
-				"maxSizeInBytes":    maxSizeInBytes,
-				"actualSizeInBytes": len(msg.Data),
+				"error":               err,
+				"from":                msg.From,
+				"maxOrderSizeInBytes": maxOrderSizeInBytes,
+				"actualSizeInBytes":   len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
-			// TODO(albrow): Update peer scores via the Connection Manager. This
-			// incur a negative score.
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}
 		order, err := decodeOrder(msg.Data)
@@ -106,10 +105,13 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 	// Validate the orders in a single batch.
 	validationResults := app.orderValidator.BatchValidate(orders)
 
+	// Store the valid orders (as long as we haven't already stored them) and
+	// update the peer scores accordingly.
 	validMessages := []*p2p.Message{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
 		validMessages = append(validMessages, msg)
+		app.handlePeerScoreEvent(msg.From, psValidMessage)
 
 		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
 		if err != nil {
@@ -129,18 +131,25 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 			if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
 				return nil, err
 			}
+			// Update the peer's score
+			app.handlePeerScoreEvent(msg.From, psOrderStored)
 		}
 	}
 	for _, rejectedOrderInfo := range validationResults.Rejected {
-		// TODO(fabio): What should we do with orders that we fail to validate
-		// because of a MeshError (e.g., network disruption) while attempting to validate
-		// them? Currently we simply drop them, but perhaps we should re-try validation
-		// at a later time?
 		msg := orderHashToMessage[rejectedOrderInfo.OrderHash]
 		log.WithFields(map[string]interface{}{
 			"rejectedOrderInfo": rejectedOrderInfo,
 			"from":              msg.From.String(),
 		}).Warn("not storing rejected order received from peer")
+		switch rejectedOrderInfo.Status {
+		case ROInternalError, ROOrderAlreadyStored:
+			// Don't incur a negative score for these status types (it might not be
+			// their fault).
+		default:
+			// For other status types, we need to update the peer's score
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+		}
+
 	}
 	return validMessages, nil
 }

@@ -54,6 +54,9 @@ const (
 	// TODO(albrow): Is there a way to use a custom protocol ID with GossipSub?
 	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
 	pubsubProtocolID = pubsub.GossipSubID
+	// customScoreTag is a tag used by the connection manager whenever UpdatePeerRank
+	// is called.
+	customScoreTag = "custom-score"
 )
 
 // bootstrapPeers is a list of peers to use for bootstrapping the DHT. Based on
@@ -280,6 +283,12 @@ func (n *Node) connectToBootstrapList() error {
 	time.Sleep(2 * time.Second)
 
 	return nil
+}
+
+// UpdatePeerSCore can be used to update the score for a given peer. Peers that
+// end up with a low score will eventually be disconnected.
+func (n *Node) UpdatePeerScore(id peer.ID, diff int) {
+	n.connManager.UpsertTag(id, customScoreTag, func(current int) int { return current + diff })
 }
 
 // Connect ensures there is a connection between this host and the peer with
