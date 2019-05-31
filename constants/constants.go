@@ -26,19 +26,40 @@ type ContractNameToAddress struct {
 // NetworkIDToContractAddresses maps networkId to a mapping of contract name to Ethereum address
 // on that given network
 var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
-	50: ContractNameToAddress{
-		ERC20Proxy:        common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-		ERC721Proxy:       common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
-		OrderValidator:    common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15"),
-		Exchange:          common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
-		EthBalanceChecker: common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc"),
-	},
 	1: ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0x2240dab907db71e64d3e0dba4800c83b5c502d4e"),
 		ERC721Proxy:       common.HexToAddress("0x208e41fb445f1bb1b6780d58356e81405f3e6127"),
-		OrderValidator:    common.HexToAddress("0xdeb7a90cd9bcef85bc79d204cb96a18ecff99478"),
 		Exchange:          common.HexToAddress("0x4f833a24e1f95d70f028921e27040ca56e09ab0b"),
+		OrderValidator:    common.HexToAddress("0xdeb7a90cd9bcef85bc79d204cb96a18ecff99478"),
 		EthBalanceChecker: common.HexToAddress("0x9bc2c6ae8b1a8e3c375b6ccb55eb4273b2c3fbde"),
+	},
+	3: ContractNameToAddress{
+		ERC20Proxy:        common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
+		ERC721Proxy:       common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
+		Exchange:          common.HexToAddress("0x4530c0483a1633c7a1c97d2c53721caff2caaaaf"),
+		OrderValidator:    common.HexToAddress("0x2e28193025e17de6fb800e763ad310b42b544673"),
+		EthBalanceChecker: common.HexToAddress("0xd5d960219af544b6f2f3e14a8bfd03dec12292fa"),
+	},
+	4: ContractNameToAddress{
+		ERC20Proxy:        common.HexToAddress("0x3e809c563c15a295e832e37053798ddc8d6c8dab"),
+		ERC721Proxy:       common.HexToAddress("0x8e1ff02637cb5e39f2fa36c14706aa348b065b09"),
+		Exchange:          common.HexToAddress("0x22ebc052f43a88efa06379426120718170f2204e"),
+		OrderValidator:    common.HexToAddress("0x91e035d803b65dbe1313bdf35d2447361b8555f5"),
+		EthBalanceChecker: common.HexToAddress("0x08b71282431009022eda2dda8af0fbee535e1507"),
+	},
+	42: ContractNameToAddress{
+		ERC20Proxy:        common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
+		ERC721Proxy:       common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
+		Exchange:          common.HexToAddress("0x35dd2932454449b14cee11a94d3674a936d5d7b2"),
+		OrderValidator:    common.HexToAddress("0xc4e0709c1491662039cee30b04aec8f7b0da85c6"),
+		EthBalanceChecker: common.HexToAddress("0x505aa534485bf80ee919339717cff90eb2e3364c"),
+	},
+	50: ContractNameToAddress{
+		ERC20Proxy:        common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+		ERC721Proxy:       common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
+		Exchange:          common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
+		OrderValidator:    common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15"),
+		EthBalanceChecker: common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc"),
 	},
 }
 
