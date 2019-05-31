@@ -62,23 +62,22 @@ type OrderEvent struct {
 }
 
 // OrderEventKind enumerates all the possible order event types
-//go:generate stringer -type=OrderEventKind
-type OrderEventKind uint8
+type OrderEventKind string
 
 // OrderEventKind values
 const (
-	EKInvalid OrderEventKind = iota // Not an actual OrderEventKind. Occupies default zero-value.
-	EKOrderAdded
-	EKOrderFilled
-	EKOrderFullyFilled
-	EKOrderCancelled
-	EKOrderExpired
+	EKInvalid          = OrderEventKind("INVALID")
+	EKOrderAdded       = OrderEventKind("ADDED")
+	EKOrderFilled      = OrderEventKind("FILLED")
+	EKOrderFullyFilled = OrderEventKind("FULLY_FILLED")
+	EKOrderCancelled   = OrderEventKind("CANCELLED")
+	EKOrderExpired     = OrderEventKind("EXPIRED")
 	// An order becomes unfunded if the maker transfers the balance / changes their
 	// allowance backing an order
-	EKOrderBecameUnfunded
+	EKOrderBecameUnfunded = OrderEventKind("UNFUNDED")
 	// Fillability for an order can increase if a previously processed fill event
 	// gets reverted, or if a maker tops up their balance/allowance backing an order
-	EKOrderFillabilityIncreased
+	EKOrderFillabilityIncreased = OrderEventKind("FILLABILITY_INCREASED")
 )
 
 var eip712OrderTypes = signer.Types{
