@@ -49,9 +49,8 @@ type OrderInfo struct {
 type RejectedOrderInfo struct {
 	OrderHash   common.Hash
 	SignedOrder *SignedOrder
-	Message     string
 	Kind        RejectedOrderKind
-	Code        RejectedOrderCode
+	Status      RejectedOrderStatus
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
@@ -61,30 +60,59 @@ type AcceptedOrderInfo struct {
 	FillableTakerAssetAmount *big.Int
 }
 
-// RejectedOrderCode enumerates all the unique reasons for an orders rejection
-type RejectedOrderCode string
+// RejectedOrderStatus enumerates all the unique reasons for an orders rejection
+type RejectedOrderStatus struct {
+	Code    string
+	Message string
+}
 
-// RejectedOrderCode values
-const (
-	// TODO(fabio): Remove ROInvalid once we remove switch
-	ROInvalid                 = RejectedOrderCode("INVALID_REJECTED_ORDER_CODE")
-	RORequestFailed           = RejectedOrderCode("ETH_RPC_REQUEST_FAILED")
-	ROInvalidMakerAssetAmount = RejectedOrderCode("ORDER_WITH_INVALID_MAKER_ASSET_AMOUNT")
-	ROInvalidTakerAssetAmount = RejectedOrderCode("ORDER_WITH_INVALID_TAKER_ASSET_AMOUNT")
-	ROExpired                 = RejectedOrderCode("ORDER_EXPIRED")
-	ROFullyFilled             = RejectedOrderCode("ORDER_FULLY_FILLED")
-	ROCancelled               = RejectedOrderCode("ORDER_CANCELLED")
-	ROSignatureInvalid        = RejectedOrderCode("ORDER_SIGNATURE_INVALID")
-	ROInvalidMakerAssetData   = RejectedOrderCode("ORDER_WITH_INVALID_MAKER_ASSET_DATA")
-	ROInvalidTakerAssetData   = RejectedOrderCode("ORDER_WITH_INVALID_TAKER_ASSET_DATA")
-	// ROUnfunded is a catch-all for when either the maker or taker have insufficient
-	// balance or allowance set to fullfil the order.
-	ROUnfunded = RejectedOrderCode("ORDER_UNFUNDED")
+// RejectedOrderStatus values
+var (
+	RORequestFailed RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "NetworkRequestFailed",
+		Message: "network request to Ethereum RPC endpoint failed",
+	}
+	ROInvalidMakerAssetAmount RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderHasInvalidMakerAssetAmount",
+		Message: "order makerAssetAmount cannot be 0",
+	}
+	ROInvalidTakerAssetAmount RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderHasInvalidTakerAssetAmount",
+		Message: "order takerAssetAmount cannot be 0",
+	}
+	ROExpired RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderExpired",
+		Message: "order already expired",
+	}
+	ROFullyFilled RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderFullyFilled",
+		Message: "order already fully filled",
+	}
+	ROCancelled RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderCancelled",
+		Message: "order cancelled",
+	}
+	ROUnfunded RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderUnfunded",
+		Message: "maker has insufficient balance or allowance for this order to be filled",
+	}
+	ROInvalidMakerAssetData RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderHasInvalidMakerAssetData",
+		Message: "order makerAssetData must encode a supported assetData type",
+	}
+	ROInvalidTakerAssetData RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderHasInvalidTakerAssetData",
+		Message: "order takerAssetData must encode a supported assetData type",
+	}
+	ROInvalidSignature RejectedOrderStatus = RejectedOrderStatus{
+		Code:    "OrderHasInvalidSignature",
+		Message: "order signature must be valid",
+	}
 )
 
 // ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
-func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderCode RejectedOrderCode) (OrderEventKind, bool) {
-	switch rejectedOrderCode {
+func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (OrderEventKind, bool) {
+	switch rejectedOrderStatus {
 	case ROExpired:
 		return EKOrderExpired, true
 	case ROFullyFilled:
@@ -96,34 +124,6 @@ func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderCode RejectedOrderCode)
 	default:
 		// Catch-all returns Invalid OrderEventKind
 		return EKInvalid, false
-	}
-}
-
-// GetMessageForRejectOrderCode returns the corresponding message for the RejectedOrderCode
-func GetMessageForRejectOrderCode(rejectedOrderCode RejectedOrderCode) string {
-	switch rejectedOrderCode {
-	case RORequestFailed:
-		return "network request to Ethereum RPC endpoint failed"
-	case ROExpired:
-		return "order expired"
-	case ROFullyFilled:
-		return "order fully filled"
-	case ROCancelled:
-		return "order cancelled"
-	case ROUnfunded:
-		return "maker has insufficient balance or allowance for this order to be filled"
-	case ROInvalidMakerAssetAmount:
-		return "order makerAssetAmount cannot be 0"
-	case ROInvalidTakerAssetAmount:
-		return "order takerAssetAmount cannot be 0"
-	case ROInvalidMakerAssetData:
-		return "order makerAssetData must encode a supported assetData type"
-	case ROInvalidTakerAssetData:
-		return "order makerAssetData must encode a supported assetData type"
-	case ROSignatureInvalid:
-		return "order signature must be valid"
-	default:
-		return "invalid RejectedOrderCode found"
 	}
 }
 
@@ -255,13 +255,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								log.WithField("error", err).Panic("Unexpectedly failed to generate orderHash")
 								continue
 							}
-							code := RORequestFailed
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        MeshError,
-								Code:        code,
-								Message:     GetMessageForRejectOrderCode(code),
+								Status:      RORequestFailed,
 							})
 						}
 						return // Give up after 4 attempts
@@ -281,35 +279,32 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					}
 					switch orderStatus {
 					case OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
-						var code RejectedOrderCode
+						var status RejectedOrderStatus
 						switch orderStatus {
 						case OSExpired:
-							code = ROExpired
+							status = ROExpired
 						case OSFullyFilled:
-							code = ROFullyFilled
+							status = ROFullyFilled
 						case OSCancelled:
-							code = ROCancelled
+							status = ROCancelled
 						case OSSignatureInvalid:
-							code = ROSignatureInvalid
+							status = ROInvalidSignature
 						}
 						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 							OrderHash:   orderHash,
 							SignedOrder: signedOrder,
 							Kind:        ZeroExValidation,
-							Code:        code,
-							Message:     GetMessageForRejectOrderCode(code),
+							Status:      status,
 						})
 						continue
 					case OSFillable:
 						fillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-							code := ROUnfunded // Order with remaining fillable amount of 0 but that is otherwise fillable
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        ZeroExValidation,
-								Code:        code,
-								Message:     GetMessageForRejectOrderCode(code),
+								Status:      ROUnfunded,
 							})
 						} else {
 							validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{
@@ -349,74 +344,62 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 		}
 		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
-			code := ROExpired
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROExpired,
 			})
 			continue
 		}
 
 		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-			code := ROInvalidMakerAssetAmount
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROInvalidMakerAssetAmount,
 			})
 			continue
 		}
 		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-			code := ROInvalidTakerAssetAmount
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROInvalidTakerAssetAmount,
 			})
 			continue
 		}
 
 		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
-			code := ROInvalidMakerAssetData
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROInvalidMakerAssetData,
 			})
 			continue
 		}
 		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
 		if !isTakerAssetDataSupported {
-			code := ROInvalidTakerAssetData
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROInvalidTakerAssetData,
 			})
 			continue
 		}
 
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
 		if !isSupportedSignature {
-			code := ROSignatureInvalid
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Code:        code,
-				Message:     GetMessageForRejectOrderCode(code),
+				Status:      ROInvalidSignature,
 			})
 			continue
 		}

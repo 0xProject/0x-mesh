@@ -43,7 +43,7 @@ var testSignedOrder = SignedOrder{
 type testCase struct {
 	SignedOrder               SignedOrder
 	IsValid                   bool
-	ExpectedRejectedOrderCode RejectedOrderCode
+	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
@@ -51,7 +51,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		testCase{
 			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidMakerAssetAmount,
+			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
 			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
@@ -60,7 +60,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		testCase{
 			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidTakerAssetAmount,
+			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
 			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
@@ -69,42 +69,42 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		testCase{
 			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidMakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROInvalidTakerAssetData,
+			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROExpired,
+			ExpectedRejectedOrderStatus: ROExpired,
 		},
 		testCase{
 			SignedOrder:               signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
 			IsValid:                   false,
-			ExpectedRejectedOrderCode: ROSignatureInvalid,
+			ExpectedRejectedOrderStatus: ROInvalidSignature,
 		},
 	}
 
@@ -123,7 +123,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		isValid := len(validationResults.Accepted) == 1
 		assert.Equal(t, testCase.IsValid, isValid)
 		if !isValid {
-			assert.Equal(t, testCase.ExpectedRejectedOrderCode, validationResults.Rejected[0].Code)
+			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
 		}
 	}
 }
@@ -149,7 +149,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	validationResults := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, validationResults.Accepted, 0)
 	assert.Len(t, validationResults.Rejected, 1)
-	assert.Equal(t, ROSignatureInvalid, validationResults.Rejected[0].Code)
+	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
