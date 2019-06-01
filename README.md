@@ -1,4 +1,5 @@
-[![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueviolet.svg)](https://discord.gg/HF7fHwk)
+[![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-orange.svg)](https://discord.gg/HF7fHwk)
+[![HackMD](https://img.shields.io/badge/HackMD-Docs-blueviolet.svg)](https://hackmd.io/s/By4pSjATE)
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
 
