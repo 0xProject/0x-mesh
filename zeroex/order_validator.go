@@ -47,17 +47,17 @@ type OrderInfo struct {
 // disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
 // machines with a `Code`
 type RejectedOrderInfo struct {
-	OrderHash   common.Hash
-	SignedOrder *SignedOrder
-	Kind        RejectedOrderKind
-	Status      RejectedOrderStatus
+	OrderHash   common.Hash         `json:"orderHash"`
+	SignedOrder *SignedOrder        `json:"signedOrder"`
+	Kind        RejectedOrderKind   `json:"kind"`
+	Status      RejectedOrderStatus `json:"status"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
 type AcceptedOrderInfo struct {
-	OrderHash                common.Hash
-	SignedOrder              *SignedOrder
-	FillableTakerAssetAmount *big.Int
+	OrderHash                common.Hash  `json:"orderHash"`
+	SignedOrder              *SignedOrder `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
 }
 
 // RejectedOrderStatus enumerates all the unique reasons for an orders rejection
@@ -142,8 +142,8 @@ const (
 // satisfy these conditions OR if we were unable to complete the validation process
 // for whatever reason
 type ValidationResults struct {
-	Accepted []*AcceptedOrderInfo
-	Rejected []*RejectedOrderInfo
+	Accepted []*AcceptedOrderInfo `json:"accepted"`
+	Rejected []*RejectedOrderInfo `json:"rejected"`
 }
 
 // OrderValidator validates 0x orders
