@@ -8,8 +8,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
-	"github.com/0xProject/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
