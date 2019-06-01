@@ -269,7 +269,7 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 	return orderWithoutExchangeAddress
 }
 
-type SignedOrderJSON struct {
+type signedOrderJSON struct {
 	MakerAddress          common.Address `json:"makerAddress"`
 	MakerAssetData        string         `json:"makerAssetData"`
 	MakerAssetAmount      string         `json:"makerAssetAmount"`
@@ -288,7 +288,7 @@ type SignedOrderJSON struct {
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
 func (s *SignedOrder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(SignedOrderJSON{
+	return json.Marshal(signedOrderJSON{
 		MakerAddress:          s.MakerAddress,
 		MakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData)),
 		MakerAssetAmount:      s.MakerAssetAmount.String(),
@@ -308,7 +308,7 @@ func (s *SignedOrder) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
 func (s *SignedOrder) UnmarshalJSON(data []byte) error {
-	var signedOrderJSON SignedOrderJSON
+	var signedOrderJSON signedOrderJSON
 	err := json.Unmarshal(data, &signedOrderJSON)
 	if err != nil {
 		return err
