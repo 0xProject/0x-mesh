@@ -7,7 +7,7 @@ A peer-to-peer network for sharing orders
 ## Development
 
 If you are working on 0x-mesh, the root directory for the project must be at
-**\$GOPATH/src/github.com/0xProject/0x-mesh**. 0x Mesh uses Dep for dependency
+**\$GOPATH/src/github.com/0xProject/0x-mesh**. 0x Mesh uses [Dep](https://golang.github.io/dep/docs/installation.html) for dependency
 management and does not support Go modules.
 
 ### Prerequisites
