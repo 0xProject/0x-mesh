@@ -1,3 +1,5 @@
+[![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-brightgreen.svg)](https://discord.gg/HF7fHwk)
+
 # 0x-mesh
 
 A peer-to-peer network for sharing orders
