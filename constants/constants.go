@@ -42,7 +42,7 @@ var NetworkIDToContractAddresses = map[int]ContractNameToAddress{
 		OrderValidator:    common.HexToAddress("0x1a2e18dee18cb537b8a24c622ca3443f8d16a73d"),
 		EthBalanceChecker: common.HexToAddress("0xd5d960219af544b6f2f3e14a8bfd03dec12292fa"),
 	},
-	// Kinkeby
+	// Rinkeby
 	4: ContractNameToAddress{
 		ERC20Proxy:        common.HexToAddress("0x3e809c563c15a295e832e37053798ddc8d6c8dab"),
 		ERC721Proxy:       common.HexToAddress("0x8e1ff02637cb5e39f2fa36c14706aa348b065b09"),
