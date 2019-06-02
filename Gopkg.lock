@@ -61,16 +61,8 @@
   version = "v1.7.1"
 
 [[projects]]
-  digest = "1:edb569dd02419a41ddd98768cc0e7aec922ef19dae139731e5ca750afcf6f4c5"
-  name = "github.com/edsrzf/mmap-go"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "188cc3b666ba704534fa4f96e9e61f21f1e1ba7c"
-  version = "v1.0.0"
-
-[[projects]]
-  branch = "wasm_signer_core"
-  digest = "1:b84de869550b2ddc6574ce96b658a9d1010b52640e0555f012969b12474138b7"
+  branch = "wasm_and_cgo_changes"
+  digest = "1:c50accbaa609a0c0fb39268801d2964fd4d1be7f748c5219416cfd2a642c22db"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -78,63 +70,33 @@
     "accounts/abi",
     "accounts/abi/bind",
     "accounts/keystore",
-    "accounts/scwallet",
-    "accounts/usbwallet",
-    "accounts/usbwallet/trezor",
     "common",
-    "common/bitutil",
     "common/hexutil",
     "common/math",
     "common/mclock",
     "common/prque",
     "consensus",
     "consensus/clique",
-    "consensus/ethash",
     "consensus/misc",
-    "core",
-    "core/rawdb",
     "core/state",
     "core/types",
-    "core/vm",
     "crypto",
-    "crypto/bn256",
-    "crypto/bn256/cloudflare",
-    "crypto/bn256/google",
-    "crypto/ecies",
     "crypto/secp256k1",
-    "eth/downloader",
     "ethclient",
     "ethdb",
-    "ethdb/leveldb",
-    "ethdb/memorydb",
     "event",
-    "internal/ethapi",
     "log",
     "metrics",
-    "p2p",
-    "p2p/discover",
-    "p2p/discv5",
-    "p2p/enode",
-    "p2p/enr",
-    "p2p/nat",
     "p2p/netutil",
     "params",
     "rlp",
     "rpc",
-    "signer/core",
-    "signer/storage",
+    "signer/eip712",
     "trie",
   ]
   pruneopts = "T"
-  revision = "aa34e00ba93924332ca55155ac5bde205017544d"
+  revision = "db73c986c92626bbea67a0bdd47de642e0603322"
   source = "github.com/0xProject/go-ethereum"
-
-[[projects]]
-  digest = "1:c52ac440c00e8b404a713a2de487b7b5e0e93a89a758832d9fc15b2817d6d5d6"
-  name = "github.com/gballet/go-libpcsclite"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "312b5175032f98274685a4dd81935a92ad2412a5"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
@@ -154,17 +116,6 @@
   pruneopts = "UT"
   revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
   version = "v1.2.1"
-
-[[projects]]
-  digest = "1:a02bd86b9a3a64546d2d34b8c1082a41c5ed1f6621c15f66e7730606681f98e2"
-  name = "github.com/golang/protobuf"
-  packages = [
-    "proto",
-    "protoc-gen-go/descriptor",
-  ]
-  pruneopts = "UT"
-  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
-  version = "v1.3.1"
 
 [[projects]]
   digest = "1:e4f5819333ac698d294fe04dbf640f84719658d5c7ce195b10060cc37292ce79"
@@ -319,14 +270,6 @@
   pruneopts = "UT"
   revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
   version = "1.0.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:d08d4c0e972c3d12679c3990d09f0ebed9f73d1860cebe05f16964983c1f02f1"
-  name = "github.com/karalabe/hid"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "9e0a1cda727554082cdfce846792bdacf577b4f3"
 
 [[projects]]
   digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
@@ -939,14 +882,6 @@
   version = "v1.1"
 
 [[projects]]
-  branch = "develop"
-  digest = "1:6deccaba5762377091f2e5b26dba70e630e01edb3f95d1a6a59d9b098bd4358f"
-  name = "github.com/status-im/keycard-go"
-  packages = ["derivationpath"]
-  pruneopts = "UT"
-  revision = "d95853db0f480b9d6379009500acf44b21dc0be6"
-
-[[projects]]
   digest = "1:5da8ce674952566deae4dbc23d07c85caafc6cfa815b0b3e03e41979cedb8750"
   name = "github.com/stretchr/testify"
   packages = [
@@ -978,17 +913,6 @@
   pruneopts = "UT"
   revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
   source = "github.com/0xProject/goleveldb"
-
-[[projects]]
-  digest = "1:73e0d2644cf33beeafbfb79804143ac9738bed3c28a12fd5e61bd3b13ac95407"
-  name = "github.com/tyler-smith/go-bip39"
-  packages = [
-    ".",
-    "wordlists",
-  ]
-  pruneopts = "UT"
-  revision = "2af0a847066a4f2669040ccd44a79c8eca10806a"
-  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -1047,14 +971,6 @@
   revision = "cfcb2f1abfee846c430233aef0b630a946e0a5a6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:7dca0da64f5937af74f21618cdb812c8f16a7d042316dd5bf2f1dfd086be3fc6"
-  name = "github.com/wsddn/go-ecdh"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "48726bab92085232373de4ec5c51ce7b441c63a0"
-
-[[projects]]
   digest = "1:e99f8ec6e9c0ad99ad6615409ce6588c77df8645ad4a5d9fc559fec95d7cae49"
   name = "go.opencensus.io"
   packages = [
@@ -1073,19 +989,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f4278aecfdbfcf34fba3a17b252bf34d9eed5d024c51fefc2676578bb984e900"
+  digest = "1:e94d74873a3938473a979105eb657bd237595e6e7c77b8b6bc437b39795f9dbd"
   name = "golang.org/x/crypto"
   packages = [
     "blake2s",
     "blowfish",
-    "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
     "pbkdf2",
-    "ripemd160",
     "scrypt",
     "sha3",
-    "ssh/terminal",
   ]
   pruneopts = "UT"
   revision = "22d7a77e9e5f409e934ed268692e56707cd169e5"
@@ -1121,7 +1034,7 @@
   revision = "8097e1b27ff5e40620836729a9584e91b094b062"
 
 [[projects]]
-  digest = "1:7570a3e4daa14b7627089e77ad8c714f5f36b4cf1b7dfd8510df7d6935dc42a0"
+  digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"
   name = "golang.org/x/text"
   packages = [
     "encoding",
@@ -1138,14 +1051,11 @@
     "internal/language",
     "internal/language/compact",
     "internal/tag",
-    "internal/triegen",
-    "internal/ucd",
     "internal/utf8internal",
     "language",
     "runes",
     "transform",
     "unicode/cldr",
-    "unicode/norm",
   ]
   pruneopts = "UT"
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
@@ -1176,7 +1086,6 @@
   input-imports = [
     "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
-    "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
@@ -1186,7 +1095,7 @@
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
-    "github.com/ethereum/go-ethereum/signer/core",
+    "github.com/ethereum/go-ethereum/signer/eip712",
     "github.com/google/uuid",
     "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",

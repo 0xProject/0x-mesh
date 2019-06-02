@@ -8,7 +8,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
-	signer "github.com/ethereum/go-ethereum/signer/core"
+	"github.com/ethereum/go-ethereum/signer/eip712"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -98,7 +98,7 @@ const (
 	EKOrderFillabilityIncreased = OrderEventKind("FILLABILITY_INCREASED")
 )
 
-var eip712OrderTypes = signer.Types{
+var eip712OrderTypes = eip712.Types{
 	"EIP712Domain": {
 		{
 			Name: "name",
@@ -167,7 +167,7 @@ var eip712OrderTypes = signer.Types{
 
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
-	var domain = signer.TypedDataDomain{
+	var domain = eip712.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
 		VerifyingContract: o.ExchangeAddress.Hex(),
@@ -188,7 +188,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		"expirationTimeSeconds": o.ExpirationTimeSeconds,
 	}
 
-	var typedData = signer.TypedData{
+	var typedData = eip712.TypedData{
 		Types:       eip712OrderTypes,
 		PrimaryType: "Order",
 		Domain:      domain,
