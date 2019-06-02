@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,69 +43,73 @@ var testSignedOrder = SignedOrder{
 }
 
 type testCase struct {
-	SignedOrder               SignedOrder
-	IsValid                   bool
+	SignedOrder                 SignedOrder
+	IsValid                     bool
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
+	ethClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	signer := ethereum.NewEthRPCSigner(ethClient)
+
 	var testCases = []testCase{
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetAmount(t, signer, testSignedOrder, big.NewInt(0)),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, signer, testSignedOrder, big.NewInt(1000000)),
 			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetAmount(t, signer, testSignedOrder, big.NewInt(0)),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
+			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, signer, testSignedOrder, big.NewInt(1000000)),
 			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, signer, testSignedOrder, multiAssetAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, signer, testSignedOrder, multiAssetAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, signer, testSignedOrder, malformedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, signer, testSignedOrder, malformedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, signer, testSignedOrder, unsupportedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, signer, testSignedOrder, unsupportedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomExpirationTimeSeconds(t, signer, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROExpired,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
 		},
 	}
@@ -161,7 +167,10 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	order.TakerAssetAmount = takerAssetAmount
 	order.MakerAssetAmount = makerAssetAmount
 	order.MakerFee = makerFee
-	signedOrder, err := SignTestOrder(&order)
+	ethClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	signer := ethereum.NewEthRPCSigner(ethClient)
+	signedOrder, err := SignOrder(signer, &order)
 	require.NoError(t, err)
 
 	orderHash, err := order.ComputeOrderHash()
@@ -276,37 +285,37 @@ func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
 	assert.Equal(t, new(big.Int).Div(takerAssetAmount, big.NewInt(2)), remainingFillableTakerAssetAmount)
 }
 
-func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
+func signedOrderWithCustomMakerAssetAmount(t *testing.T, signer ethereum.Signer, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
 	signedOrder.MakerAssetAmount = makerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := SignOrder(signer, &signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder SignedOrder, takerAssetAmount *big.Int) SignedOrder {
+func signedOrderWithCustomTakerAssetAmount(t *testing.T, signer ethereum.Signer, signedOrder SignedOrder, takerAssetAmount *big.Int) SignedOrder {
 	signedOrder.TakerAssetAmount = takerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := SignOrder(signer, &signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder SignedOrder, makerAssetData []byte) SignedOrder {
+func signedOrderWithCustomMakerAssetData(t *testing.T, signer ethereum.Signer, signedOrder SignedOrder, makerAssetData []byte) SignedOrder {
 	signedOrder.MakerAssetData = makerAssetData
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := SignOrder(signer, &signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder SignedOrder, takerAssetData []byte) SignedOrder {
+func signedOrderWithCustomTakerAssetData(t *testing.T, signer ethereum.Signer, signedOrder SignedOrder, takerAssetData []byte) SignedOrder {
 	signedOrder.TakerAssetData = takerAssetData
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := SignOrder(signer, &signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signedOrder SignedOrder, expirationTimeSeconds *big.Int) SignedOrder {
+func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signer ethereum.Signer, signedOrder SignedOrder, expirationTimeSeconds *big.Int) SignedOrder {
 	signedOrder.ExpirationTimeSeconds = expirationTimeSeconds
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := SignOrder(signer, &signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
