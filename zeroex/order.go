@@ -237,16 +237,6 @@ func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
 	return signedOrder, nil
 }
 
-// SignTestOrder signs the 0x order with the local test signer
-func SignTestOrder(order *Order) (*SignedOrder, error) {
-	testSigner := ethereum.NewTestSigner()
-	signedOrder, err := SignOrder(testSigner, order)
-	if err != nil {
-		return nil, err
-	}
-	return signedOrder, nil
-}
-
 // ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
 // smart contracts.
 func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {

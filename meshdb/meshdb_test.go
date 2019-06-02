@@ -1,3 +1,5 @@
+// +build !js
+
 package meshdb
 
 import (
@@ -7,8 +9,10 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +41,11 @@ func TestOrderCRUDOperations(t *testing.T) {
 		ExpirationTimeSeconds: big.NewInt(1548619325),
 		ExchangeAddress:       contractNameToAddress.Exchange,
 	}
-	signedOrder, err := zeroex.SignTestOrder(o)
+
+	ethClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	signer := ethereum.NewEthRPCSigner(ethClient)
+	signedOrder, err := zeroex.SignOrder(signer, o)
 	require.NoError(t, err)
 
 	orderHash, err := o.ComputeOrderHash()

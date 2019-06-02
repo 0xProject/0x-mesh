@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -93,7 +94,10 @@ var testOrder = &zeroex.Order{
 }
 
 func TestAddOrdersSuccess(t *testing.T) {
-	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
+	ethClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	signer := ethereum.NewEthRPCSigner(ethClient)
+	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
 	require.NoError(t, err)
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 
