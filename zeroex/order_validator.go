@@ -200,15 +200,15 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		wg.Add(1)
 		go func(signedOrders []*SignedOrder, i int) {
 			takerAddresses := []common.Address{}
-			for _, signedOrder := range offchainValidSignedOrders {
+			for _, signedOrder := range signedOrders {
 				takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
 			}
 			orders := []wrappers.OrderWithoutExchangeAddress{}
-			for _, signedOrder := range offchainValidSignedOrders {
+			for _, signedOrder := range signedOrders {
 				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
 			}
 			signatures := [][]byte{}
-			for _, signedOrder := range offchainValidSignedOrders {
+			for _, signedOrder := range signedOrders {
 				signatures = append(signatures, signedOrder.Signature)
 			}
 
@@ -272,7 +272,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					traderInfo := results.TradersInfo[j]
 					isValidSignature := results.IsValidSignature[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
-					signedOrder := offchainValidSignedOrders[chunkSize*i+j]
+					signedOrder := signedOrders[j]
 					orderStatus := OrderStatus(orderInfo.OrderStatus)
 					if !isValidSignature {
 						orderStatus = OSSignatureInvalid
