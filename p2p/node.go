@@ -186,8 +186,6 @@ func New(config Config) (*Node, error) {
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub.
-	pubsub.GossipSubHistoryGossip = 10
-	pubsub.GossipSubHistoryLength = 20
 	ps, err := pubsub.NewGossipSub(nodeCtx, basicHost)
 	if err != nil {
 		cancel()
