@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  branch = "wasm_signer_core"
+  branch = "master_with_fix"
   source = "github.com/0xProject/go-ethereum"
   
 [[constraint]]
