@@ -66,7 +66,8 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	return messageData, nil
 }
 
-func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error) {
+func (app *App) HandleMessages(messages []*p2p.Message) error {
+	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
 	for _, msg := range messages {
@@ -91,13 +92,17 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 		}
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// Validate doesn't guarantee there are no duplicates so we keep track of
 		// which orders we've already seen.
 		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
 			continue
 		}
+
+		// If we've reached this point, the message is valid and we were able to
+		// decode it into an order. Append it to the list of orders to validate and
+		// update peer scores accordingly.
 		log.WithFields(map[string]interface{}{
 			"order":     order,
 			"orderHash": orderHash,
@@ -105,41 +110,31 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 		}).Trace("received order from peer")
 		orders = append(orders, order)
 		orderHashToMessage[orderHash] = msg
+		app.handlePeerScoreEvent(msg.From, psValidMessage)
 	}
 
-	// Validate the orders in a single batch.
-	validationResults := app.orderValidator.BatchValidate(orders)
+	// Next, we validate the orders.
+	validationResults, err := app.validateOrders(orders)
+	if err != nil {
+		return err
+	}
 
-	// Store the valid orders (as long as we haven't already stored them) and
-	// update the peer scores accordingly.
-	validMessages := []*p2p.Message{}
+	// Store any valid orders and update the peer scores.
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
-		validMessages = append(validMessages, msg)
-		app.handlePeerScoreEvent(msg.From, psValidMessage)
-
-		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
-		if err != nil {
-			return nil, err
+		log.WithFields(map[string]interface{}{
+			"acceptedOrderInfo": acceptedOrderInfo,
+			"from":              msg.From.String(),
+		}).Debug("storing valid order received from peer")
+		// Watch stores the message in the database.
+		if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
+			return err
 		}
-		if alreadyStored {
-			log.WithFields(map[string]interface{}{
-				"acceptedOrderInfo": acceptedOrderInfo,
-				"from":              msg.From.String(),
-			}).Trace("order received from peer is valid but already stored")
-		} else {
-			log.WithFields(map[string]interface{}{
-				"acceptedOrderInfo": acceptedOrderInfo,
-				"from":              msg.From.String(),
-			}).Debug("storing valid order received from peer")
-			// Watch stores the message in the database.
-			if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
-				return nil, err
-			}
-			// Update the peer's score
-			app.handlePeerScoreEvent(msg.From, psOrderStored)
-		}
+		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
+
+	// We don't store invalid orders, but in some cases still need to update peer
+	// scores.
 	for _, rejectedOrderInfo := range validationResults.Rejected {
 		msg := orderHashToMessage[rejectedOrderInfo.OrderHash]
 		log.WithFields(map[string]interface{}{
@@ -154,7 +149,6 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 			// For other status types, we need to update the peer's score
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 		}
-
 	}
-	return validMessages, nil
+	return nil
 }

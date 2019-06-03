@@ -30,8 +30,8 @@ const (
 // messages valid and doesn't actually store or share any messages.
 type dummyMessageHandler struct{}
 
-func (*dummyMessageHandler) ValidateAndStore(messages []*Message) ([]*Message, error) {
-	return messages, nil
+func (*dummyMessageHandler) HandleMessages(messages []*Message) error {
+	return nil
 }
 
 func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
@@ -197,21 +197,21 @@ func newInMemoryMessageHandler(validator func(*Message) (bool, error)) *inMemory
 	}
 }
 
-func (mh *inMemoryMessageHandler) ValidateAndStore(messages []*Message) ([]*Message, error) {
+func (mh *inMemoryMessageHandler) HandleMessages(messages []*Message) error {
 	validMessages := []*Message{}
 	for _, msg := range messages {
 		valid, err := mh.validator(msg)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if valid {
 			validMessages = append(validMessages, msg)
 		}
 	}
 	if err := mh.store(validMessages); err != nil {
-		return nil, err
+		return err
 	}
-	return validMessages, nil
+	return nil
 }
 
 func (mh *inMemoryMessageHandler) store(messages []*Message) error {

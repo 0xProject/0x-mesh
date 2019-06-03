@@ -344,8 +344,7 @@ func (n *Node) runOnce() error {
 	if err != nil {
 		return err
 	}
-	_, err = n.messageHandler.ValidateAndStore(incoming)
-	if err != nil {
+	if err := n.messageHandler.HandleMessages(incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
@@ -410,6 +409,9 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 				return messages, nil
 			}
 			return nil, err
+		}
+		if msg.From == n.host.ID() {
+			continue
 		}
 		messages = append(messages, msg)
 	}

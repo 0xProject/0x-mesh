@@ -14,11 +14,10 @@ type Message struct {
 // MessageHandler is an interface responsible for validating and storing
 // messages as well as selecting messages which are ready to be shared.
 type MessageHandler interface {
-	// ValidateAndStore validates the given messages and then stores and returns
-	// any that are valid. It should only return an error if there was a problem
-	// validating the messages. It should not return an error for invalid or
-	// duplicate messages.
-	ValidateAndStore([]*Message) ([]*Message, error)
+	// HandleMessages is called whenever new messages are received. It should only
+	// return an error if there was a problem handling the messages. It should not
+	// return an error for invalid or duplicate messages.
+	HandleMessages([]*Message) error
 	// GetMessagesToShare returns up to max messages to be shared with peers.
 	GetMessagesToShare(max int) ([][]byte, error)
 }
