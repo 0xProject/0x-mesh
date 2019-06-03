@@ -69,8 +69,8 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master_with_fix"
-  digest = "1:dd2e15ee36c195dcdc018c745ac3fd59a679331d1e8ca06ac72b28ede41ae788"
+  branch = "updated_wasm_signer_core"
+  digest = "1:57c7a97fda5024407fb7e5edb3ba578b2fead14e408e6be518bc096945fb8ab0"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -126,7 +126,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "018cc4c323bcac27ce585adf815fb4620a1cc153"
+  revision = "715ecba95505d2d558cea273a7c2a162370e0eb1"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
