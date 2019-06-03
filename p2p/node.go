@@ -23,7 +23,6 @@ import (
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
@@ -52,7 +51,9 @@ const (
 	// advertiseTTL is the TTL for our announcement to the discovery network.
 	advertiseTTL = 5 * time.Minute
 	// pubsubProtocolID is the protocol ID to use for pubsub.
-	pubsubProtocolID = protocol.ID("/0x-mesh-floodsub/0.0.1")
+	// TODO(albrow): Is there a way to use a custom protocol ID with GossipSub?
+	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
+	pubsubProtocolID = pubsub.GossipSubID
 )
 
 // bootstrapPeers is a list of peers to use for bootstrapping the DHT. Based on
@@ -185,8 +186,7 @@ func New(config Config) (*Node, error) {
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub.
-	// TODO: Replace with WeijieSub. Using FloodSub for now.
-	ps, err := pubsub.NewFloodsubWithProtocols(nodeCtx, basicHost, []protocol.ID{pubsubProtocolID})
+	ps, err := pubsub.NewGossipSub(nodeCtx, basicHost)
 	if err != nil {
 		cancel()
 		return nil, err

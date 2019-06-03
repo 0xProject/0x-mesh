@@ -38,9 +38,44 @@ func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
 	return nil, nil
 }
 
+// testNotifee can be used to listen for new connections and new streams.
+type testNotifee struct {
+	conns   chan p2pnet.Conn
+	streams chan p2pnet.Stream
+}
+
+func (n *testNotifee) Listen(p2pnet.Network, ma.Multiaddr)                   {}
+func (n *testNotifee) ListenClose(p2pnet.Network, ma.Multiaddr)              {}
+func (n *testNotifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {}
+func (n *testNotifee) ClosedStream(p2pnet.Network, p2pnet.Stream)            {}
+
+// Connected is called when a connection opened
+func (n *testNotifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
+	if n.conns == nil {
+		return
+	}
+	go func() {
+		n.conns <- conn
+	}()
+}
+
+// OpenedStream is called when a stream is opened.
+func (n *testNotifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
+	if n.streams == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		waitForStreamProtocol(ctx, stream)
+		n.streams <- stream
+	}()
+}
+
 // newTestNode creates and returns a Node which is suitable for testing
 // purposes.
 func newTestNode(t *testing.T) *Node {
+	t.Helper()
 	config := Config{
 		Topic:            testTopic,
 		ListenPort:       0, // Let OS randomly choose an open port.
@@ -53,11 +88,18 @@ func newTestNode(t *testing.T) *Node {
 	return node
 }
 
-func createTwoConnectedTestNodes(t *testing.T) (*Node, *Node) {
+func createTwoConnectedTestNodes(t *testing.T, notifee p2pnet.Notifiee) (*Node, *Node) {
+	t.Helper()
 	// Create two nodes and add each one to the other's peerstore and connect
 	// them.
 	node0 := newTestNode(t)
 	node1 := newTestNode(t)
+
+	// If notifee is not nil, set up *both* hosts to use it.
+	if notifee != nil {
+		node0.host.Network().Notify(notifee)
+		node1.host.Network().Notify(notifee)
+	}
 	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	node1PeerInfo := peerstore.PeerInfo{
@@ -69,9 +111,48 @@ func createTwoConnectedTestNodes(t *testing.T) (*Node, *Node) {
 }
 
 func TestPingPong(t *testing.T) {
-	node0, node1 := createTwoConnectedTestNodes(t)
+	t.Parallel()
+	// Create a test notifee which will be used to detect new streams.
+	notifee := &testNotifee{
+		streams: make(chan p2pnet.Stream),
+	}
+
+	node0, node1 := createTwoConnectedTestNodes(t, notifee)
 	defer node0.Close()
 	defer node1.Close()
+
+	// Wait for the nodes to open a GossipSub stream.
+	streamCtx, cancel := context.WithTimeout(node0.ctx, 5*time.Second)
+	defer cancel()
+	streamCount := 0
+loop:
+	for {
+		select {
+		case <-streamCtx.Done():
+			t.Fatal("timed out waiting for pubsub stream to open")
+		case stream := <-notifee.streams:
+			if stream.Protocol() == pubsubProtocolID {
+				// Note: due to the way pusbsub works, we expect two streams to be
+				// opened for each host (one for each side). Four streams should be
+				// opened in total:
+				//
+				//      number of streams x number of hosts
+				//    = 2 x 2
+				//    = 4
+				//
+				streamCount += 1
+				if streamCount == 4 {
+					break loop
+				}
+			}
+		}
+	}
+
+	// HACK(albrow): Even though the stream for GossipSub has already been
+	// opened on both sides, the ping message might *still* not be received by the
+	// other peer. Waiting for 1 second gives each peer enough time to finish
+	// setting up GossipSub. I couldn't find any way to avoid this hack :(
+	time.Sleep(1 * time.Second)
 
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
@@ -172,7 +253,8 @@ func (mh *inMemoryMessageHandler) GetMessagesToShare(max int) ([][]byte, error) 
 }
 
 func TestMessagesAreShared(t *testing.T) {
-	node0, node1 := createTwoConnectedTestNodes(t)
+	t.Parallel()
+	node0, node1 := createTwoConnectedTestNodes(t, nil)
 	defer node0.Close()
 	defer node1.Close()
 
@@ -269,48 +351,34 @@ func TestMessagesAreShared(t *testing.T) {
 	assert.Equal(t, expectedAllMessages, node1.messageHandler.(*inMemoryMessageHandler).messages, "node1 should be storing all messages")
 }
 
-type testNotifee struct {
-	conns chan p2pnet.Conn
-}
-
-func (n *testNotifee) Listen(p2pnet.Network, ma.Multiaddr)                   {}
-func (n *testNotifee) ListenClose(p2pnet.Network, ma.Multiaddr)              {}
-func (n *testNotifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {}
-func (n *testNotifee) OpenedStream(p2pnet.Network, p2pnet.Stream)            {}
-func (n *testNotifee) ClosedStream(p2pnet.Network, p2pnet.Stream)            {}
-
-// Connected is called when a connection opened
-func (n *testNotifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
-	go func() {
-		n.conns <- conn
-	}()
-}
-
 func TestPeerDiscovery(t *testing.T) {
+	t.Parallel()
+	// Create a test notifee which will be used to detect new connections.
+	notifee := &testNotifee{
+		conns: make(chan p2pnet.Conn),
+	}
+
 	// Create three nodes: 0, 1, and 2.
 	//
 	//   - node0 is connected to node1
 	//   - node1 is ocnnected to node2
 	//   - node0 is not initially connected to node2
 	//
-	node0, node1 := createTwoConnectedTestNodes(t)
+	node0, node1 := createTwoConnectedTestNodes(t, notifee)
 	defer node0.Close()
 	defer node1.Close()
 	node2 := newTestNode(t)
 	defer node2.Close()
-	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	// ctx is used throughout the test.
+	ctx, cancel := context.WithTimeout(node0.ctx, 10*time.Second)
 	defer cancel()
-	err := node2.Connect(connectCtx, peerstore.PeerInfo{
+
+	err := node2.Connect(ctx, peerstore.PeerInfo{
 		ID:    node1.host.ID(),
 		Addrs: node1.host.Addrs(),
 	})
 	require.NoError(t, err)
-
-	// Create a test notifee which will be used to detect new connections.
-	notif := &testNotifee{
-		conns: make(chan p2pnet.Conn),
-	}
-	node0.host.Network().Notify(notif)
 
 	// Start all the nodes (this also starts the peer discovery process).
 	go func() {
@@ -324,14 +392,13 @@ func TestPeerDiscovery(t *testing.T) {
 	}()
 
 	// Wait for node0 ande node2 to find each other
-	timeout := time.After(10 * time.Second)
 loop:
 	for {
 		select {
-		case <-timeout:
+		case <-ctx.Done():
 			t.Fatal("timed out waiting for node0 to discover node2")
-		case conn := <-notif.conns:
-			if conn.RemotePeer() == node2.ID() {
+		case conn := <-notifee.conns:
+			if conn.LocalPeer() == node0.ID() && conn.RemotePeer() == node2.ID() {
 				break loop
 			}
 		}
