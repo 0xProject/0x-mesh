@@ -17,6 +17,8 @@ type Collection struct {
 	writerTransactor dbWriterTransactor
 }
 
+// readOnlyCollection is responsible for all the read-only methods and actions
+// associated with a collection. It cannot insert or delete any models.
 type readOnlyCollection struct {
 	reader    dbReader
 	name      string

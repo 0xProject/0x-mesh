@@ -4,13 +4,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+// Snapshot is a frozen snapshot of a DB state at a particular point in time.
 type Snapshot struct {
 	readOnlyCollection
 	snapshot *leveldb.Snapshot
 }
 
-// GetSnapshot returns a latest snapshot of the underlying DB. A snapshot is a
-// frozen snapshot of a DB state at a particular point in time. The content of
+// GetSnapshot returns a latest snapshot of the underlying DB. The content of
 // snapshot are guaranteed to be consistent. The snapshot must be released after
 // use, by calling Release method.
 func (db *DB) GetSnapshot(col *Collection) (*Snapshot, error) {
