@@ -10,8 +10,11 @@ test-all: test-go test-wasm
 
 .PHONY: test-go
 test-go:
-	go test ./... -race
+	go test ./...
 
+.PHONY: test-go-race
+test-go-race:
+	go test ./... -race
 
 .PHONY: test-wasm
 test-wasm:
