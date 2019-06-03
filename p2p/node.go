@@ -52,7 +52,7 @@ const (
 	advertiseTTL = 5 * time.Minute
 	// pubsubProtocolID is the protocol ID to use for pubsub.
 	// TODO(albrow): Is there a way to use a custom protocol ID with GossipSub?
-	// pubsubProtocolID = protocol.ID("/0x-mesh-floodsub/0.0.1")
+	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
 	pubsubProtocolID = pubsub.GossipSubID
 )
 
