@@ -82,7 +82,12 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 		}
 		order, err := decodeOrder(msg.Data)
 		if err != nil {
-			return nil, err
+			log.WithFields(map[string]interface{}{
+				"error": err,
+				"from":  msg.From,
+			}).Trace("could not decode received message")
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+			continue
 		}
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
