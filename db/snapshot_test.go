@@ -29,7 +29,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// Take a snapshot.
-	snapshot, err := db.GetSnapshot(col)
+	snapshot, err := col.GetSnapshot()
 	require.NoError(t, err)
 	defer snapshot.Release()
 

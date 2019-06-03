@@ -6,20 +6,20 @@ import (
 
 // Snapshot is a frozen snapshot of a DB state at a particular point in time.
 type Snapshot struct {
-	readOnlyCollection
+	*readOnlyCollection
 	snapshot *leveldb.Snapshot
 }
 
 // GetSnapshot returns a latest snapshot of the underlying DB. The content of
 // snapshot are guaranteed to be consistent. The snapshot must be released after
 // use, by calling Release method.
-func (db *DB) GetSnapshot(col *Collection) (*Snapshot, error) {
-	snapshot, err := db.ldb.GetSnapshot()
+func (c *Collection) GetSnapshot() (*Snapshot, error) {
+	snapshot, err := c.ldb.GetSnapshot()
 	if err != nil {
 		return nil, err
 	}
 	return &Snapshot{
-		readOnlyCollection: col.readOnlyCollection,
+		readOnlyCollection: c.readOnlyCollection,
 		snapshot:           snapshot,
 	}, nil
 }

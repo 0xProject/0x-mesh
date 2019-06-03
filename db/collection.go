@@ -13,8 +13,9 @@ import (
 
 // Collection represents a set of a specific type of model.
 type Collection struct {
-	readOnlyCollection
-	writerTransactor dbWriterTransactor
+	*readOnlyCollection
+	*writeableCollection
+	ldb *leveldb.DB
 }
 
 // readOnlyCollection is responsible for all the read-only methods and actions
@@ -26,18 +27,30 @@ type readOnlyCollection struct {
 	indexes   []*Index
 }
 
+// writeableCollection is an extension of readonlyCollection which adds support
+// for inserting, updating, and deleting models in the database.
+type writeableCollection struct {
+	*readOnlyCollection
+	writerTransactor dbWriterTransactor
+}
+
 // NewCollection creates and returns a new collection with the given name and
 // model type. You should create exactly one collection for each model type. The
 // collection should typically be created once at the start of your application
 // and re-used.
 func (db *DB) NewCollection(name string, typ Model) *Collection {
+	readOnly := &readOnlyCollection{
+		reader:    db.ldb,
+		name:      name,
+		modelType: reflect.TypeOf(typ),
+	}
 	return &Collection{
-		readOnlyCollection: readOnlyCollection{
-			reader:    db.ldb,
-			name:      name,
-			modelType: reflect.TypeOf(typ),
+		readOnlyCollection: readOnly,
+		writeableCollection: &writeableCollection{
+			readOnlyCollection: readOnly,
+			writerTransactor:   db.ldb,
 		},
-		writerTransactor: db.ldb,
+		ldb: db.ldb,
 	}
 }
 
@@ -155,7 +168,7 @@ func (c *readOnlyCollection) findExistingModelByPrimaryKey(txn *leveldb.Transact
 
 // Insert inserts the given model into the database. It returns an error if a
 // model with the same id already exists.
-func (c *Collection) Insert(model Model) error {
+func (c *writeableCollection) Insert(model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't insert model with empty ID")
 	}
@@ -192,7 +205,7 @@ func (c *Collection) Insert(model Model) error {
 
 // Update updates an existing model in the database. It returns an error if the
 // given model doesn't already exist.
-func (c *Collection) Update(model Model) error {
+func (c *writeableCollection) Update(model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't update model with empty ID")
 	}
@@ -244,7 +257,7 @@ func (c *Collection) Update(model Model) error {
 
 // Delete deletes the model with the given ID from the database. It returns an
 // error if the model doesn't exist in the database.
-func (c *Collection) Delete(id []byte) error {
+func (c *writeableCollection) Delete(id []byte) error {
 	if len(id) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
@@ -282,7 +295,7 @@ func (c *Collection) Delete(id []byte) error {
 
 // deleteIndexesForModel deletes any indexes computed from the given model. It
 // *doesn't* discard the transaction if there is an error.
-func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model) error {
+func (c *writeableCollection) deleteIndexesForModel(txn *leveldb.Transaction, model Model) error {
 	for _, index := range c.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
@@ -294,7 +307,7 @@ func (c *Collection) deleteIndexesForModel(txn *leveldb.Transaction, model Model
 	return nil
 }
 
-func (c *Collection) saveIndexesForModel(txn *leveldb.Transaction, model Model) error {
+func (c *writeableCollection) saveIndexesForModel(txn *leveldb.Transaction, model Model) error {
 	for _, index := range c.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
