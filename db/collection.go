@@ -13,7 +13,12 @@ import (
 
 // Collection represents a set of a specific type of model.
 type Collection struct {
-	db        *DB
+	readOnlyCollection
+	writerTransactor dbWriterTransactor
+}
+
+type readOnlyCollection struct {
+	reader    dbReader
 	name      string
 	modelType reflect.Type
 	indexes   []*Index
@@ -25,34 +30,37 @@ type Collection struct {
 // and re-used.
 func (db *DB) NewCollection(name string, typ Model) *Collection {
 	return &Collection{
-		db:        db,
-		name:      name,
-		modelType: reflect.TypeOf(typ),
+		readOnlyCollection: readOnlyCollection{
+			reader:    db.ldb,
+			name:      name,
+			modelType: reflect.TypeOf(typ),
+		},
+		writerTransactor: db.ldb,
 	}
 }
 
 // Name returns the name of the collection.
-func (c *Collection) Name() string {
+func (c *readOnlyCollection) Name() string {
 	return c.name
 }
 
-func (c *Collection) prefix() []byte {
+func (c *readOnlyCollection) prefix() []byte {
 	return []byte(fmt.Sprintf("model:%s", c.name))
 }
 
-func (c *Collection) primaryKeyForModel(model Model) []byte {
+func (c *readOnlyCollection) primaryKeyForModel(model Model) []byte {
 	return c.primaryKeyForID(model.ID())
 }
 
-func (c *Collection) primaryKeyForID(id []byte) []byte {
+func (c *readOnlyCollection) primaryKeyForID(id []byte) []byte {
 	return []byte(fmt.Sprintf("%s:%s", c.prefix(), escape(id)))
 }
 
-func (c *Collection) primaryKeyForIDWithoutEscape(id []byte) []byte {
+func (c *readOnlyCollection) primaryKeyForIDWithoutEscape(id []byte) []byte {
 	return []byte(fmt.Sprintf("%s:%s", c.prefix(), id))
 }
 
-func (c *Collection) checkModelType(model Model) error {
+func (c *readOnlyCollection) checkModelType(model Model) error {
 	actualType := reflect.TypeOf(model)
 	if c.modelType != actualType {
 		if actualType.Kind() == reflect.Ptr {
@@ -66,13 +74,81 @@ func (c *Collection) checkModelType(model Model) error {
 	return nil
 }
 
-func (c *Collection) checkModelsType(models interface{}) error {
+func (c *readOnlyCollection) checkModelsType(models interface{}) error {
 	expectedType := reflect.PtrTo(reflect.SliceOf(c.modelType))
 	actualType := reflect.TypeOf(models)
 	if expectedType != actualType {
 		return fmt.Errorf("for %q collection: incorrect type for models (expected %s but got %s)", c.Name(), expectedType, actualType)
 	}
 	return nil
+}
+
+// FindByID finds the model with the given ID and scans the results into the
+// given model. As in the Unmarshal and Decode methods in the encoding/json
+// package, model must be settable via reflect. Typically, this means you should
+// pass in a pointer.
+func (c *readOnlyCollection) FindByID(id []byte, model Model) error {
+	if err := c.checkModelType(model); err != nil {
+		return err
+	}
+	pk := c.primaryKeyForID(id)
+	data, err := c.reader.Get(pk, nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return NotFoundError{ID: id}
+		}
+		return err
+	}
+	return json.Unmarshal(data, model)
+}
+
+// FindAll finds all models for the collection and scans the results into the
+// given models. models should be a pointer to an empty slice of a concrete
+// model type (e.g. *[]myModelType).
+func (c *readOnlyCollection) FindAll(models interface{}) error {
+	prefixRange := util.BytesPrefix(c.prefix())
+	iter := c.reader.NewIterator(prefixRange, nil)
+	return c.findWithIterator(iter, models)
+}
+
+func (c *readOnlyCollection) findWithIterator(iter iterator.Iterator, models interface{}) error {
+	defer iter.Release()
+	if err := c.checkModelsType(models); err != nil {
+		return err
+	}
+	modelsVal := reflect.ValueOf(models).Elem()
+	for iter.Next() {
+		// We assume that each value in the iterator is the encoded data for some
+		// model.
+		data := iter.Value()
+		model := reflect.New(c.modelType)
+		if err := json.Unmarshal(data, model.Interface()); err != nil {
+			return err
+		}
+		modelsVal.Set(reflect.Append(modelsVal, model.Elem()))
+	}
+	if err := iter.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// findExistingModelByPrimaryKey gets the latest data for the given primary key.
+// Useful in cases where the given model may be out of date with what is
+// currently stored in the database. It *doesn't* discard the transaction if
+// there is an error.
+func (c *readOnlyCollection) findExistingModelByPrimaryKey(txn *leveldb.Transaction, primaryKey []byte) (Model, error) {
+	data, err := txn.Get(primaryKey, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Use reflect to create a new reference for the model type.
+	modelRef := reflect.New(c.modelType).Interface()
+	if err := json.Unmarshal(data, modelRef); err != nil {
+		return nil, err
+	}
+	model := reflect.ValueOf(modelRef).Elem().Interface().(Model)
+	return model, nil
 }
 
 // Insert inserts the given model into the database. It returns an error if a
@@ -88,7 +164,7 @@ func (c *Collection) Insert(model Model) error {
 	if err != nil {
 		return err
 	}
-	txn, err := c.db.ldb.OpenTransaction()
+	txn, err := c.writerTransactor.OpenTransaction()
 	if err != nil {
 		return err
 	}
@@ -125,7 +201,7 @@ func (c *Collection) Update(model Model) error {
 	if err != nil {
 		return err
 	}
-	txn, err := c.db.ldb.OpenTransaction()
+	txn, err := c.writerTransactor.OpenTransaction()
 	if err != nil {
 		return err
 	}
@@ -164,63 +240,13 @@ func (c *Collection) Update(model Model) error {
 	return txn.Commit()
 }
 
-// FindByID finds the model with the given ID and scans the results into the
-// given model. As in the Unmarshal and Decode methods in the encoding/json
-// package, model must be settable via reflect. Typically, this means you should
-// pass in a pointer.
-func (c *Collection) FindByID(id []byte, model Model) error {
-	if err := c.checkModelType(model); err != nil {
-		return err
-	}
-	pk := c.primaryKeyForID(id)
-	data, err := c.db.ldb.Get(pk, nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return NotFoundError{ID: id}
-		}
-		return err
-	}
-	return json.Unmarshal(data, model)
-}
-
-// FindAll finds all models for the collection and scans the results into the
-// given models. models should be a pointer to an empty slice of a concrete
-// model type (e.g. *[]myModelType).
-func (c *Collection) FindAll(models interface{}) error {
-	prefixRange := util.BytesPrefix(c.prefix())
-	iter := c.db.ldb.NewIterator(prefixRange, nil)
-	return c.findWithIterator(iter, models)
-}
-
-func (c *Collection) findWithIterator(iter iterator.Iterator, models interface{}) error {
-	defer iter.Release()
-	if err := c.checkModelsType(models); err != nil {
-		return err
-	}
-	modelsVal := reflect.ValueOf(models).Elem()
-	for iter.Next() {
-		// We assume that each value in the iterator is the encoded data for some
-		// model.
-		data := iter.Value()
-		model := reflect.New(c.modelType)
-		if err := json.Unmarshal(data, model.Interface()); err != nil {
-			return err
-		}
-		modelsVal.Set(reflect.Append(modelsVal, model.Elem()))
-	}
-	if err := iter.Error(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Delete deletes the model with the given ID from the database. It returns an
 // error if the model doesn't exist in the database.
 func (c *Collection) Delete(id []byte) error {
 	if len(id) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
-	txn, err := c.db.ldb.OpenTransaction()
+	txn, err := c.writerTransactor.OpenTransaction()
 	if err != nil {
 		return err
 	}
@@ -276,22 +302,4 @@ func (c *Collection) saveIndexesForModel(txn *leveldb.Transaction, model Model) 
 		}
 	}
 	return nil
-}
-
-// findExistingModelByPrimaryKey gets the latest data for the given primary key.
-// Useful in cases where the given model may be out of date with what is
-// currently stored in the database. It *doesn't* discard the transaction if
-// there is an error.
-func (c *Collection) findExistingModelByPrimaryKey(txn *leveldb.Transaction, primaryKey []byte) (Model, error) {
-	data, err := txn.Get(primaryKey, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Use reflect to create a new reference for the model type.
-	modelRef := reflect.New(c.modelType).Interface()
-	if err := json.Unmarshal(data, modelRef); err != nil {
-		return nil, err
-	}
-	model := reflect.ValueOf(modelRef).Elem().Interface().(Model)
-	return model, nil
 }
