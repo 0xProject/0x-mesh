@@ -7,14 +7,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -178,32 +176,14 @@ func (app *App) Start() error {
 	return nil
 }
 
-// TODO(albrow): Use the more efficient Exists method instead of FindByID.
-func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
-	var order meshdb.Order
-	err := app.db.Orders.FindByID(orderHash.Bytes(), &order)
-	if err == nil {
-		return true, nil
-	}
-	if _, ok := err.(db.NotFoundError); ok {
-		return false, nil
-	}
-	return false, err
-}
-
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
 func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	validationResults := app.orderValidator.BatchValidate(orders)
+	validationResults, err := app.validateOrders(orders)
+	if err != nil {
+		return nil, err
+	}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
-		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
-		if err != nil {
-			return nil, err
-		}
-		if alreadyStored {
-			continue
-		}
-
 		err = app.orderWatcher.Watch(acceptedOrderInfo)
 		if err != nil {
 			return nil, err

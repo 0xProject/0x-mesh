@@ -282,6 +282,28 @@ func (n *Node) connectToBootstrapList() error {
 	return nil
 }
 
+// AddPeerScore adds diff to the current score for a given peer. Tag is a unique
+// identifier for the score. A peer's total score is the sum of the scores
+// associated with each tag. Peers that end up with a low total score will
+// eventually be disconnected.
+func (n *Node) AddPeerScore(id peer.ID, tag string, diff int) {
+	n.connManager.UpsertTag(id, tag, func(current int) int { return current + diff })
+}
+
+// SetPeerScore sets the current score for a given peer (overwriting any
+// previous value with the same tag). Tag is a unique identifier for the score.
+// A peer's total score is the sum of the scores associated with each tag. Peers
+// that end up with a low total score will eventually be disconnected.
+func (n *Node) SetPeerScore(id peer.ID, tag string, val int) {
+	n.connManager.TagPeer(id, tag, val)
+}
+
+// UnsetPeerScore removes any scores associated with the given tag for a peer
+// (i.e., they will no longer be counted toward the peers total score).
+func (n *Node) UnsetPeerScore(id peer.ID, tag string) {
+	n.connManager.UntagPeer(id, tag)
+}
+
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, or an error is returned.
@@ -322,8 +344,7 @@ func (n *Node) runOnce() error {
 	if err != nil {
 		return err
 	}
-	_, err = n.messageHandler.ValidateAndStore(incoming)
-	if err != nil {
+	if err := n.messageHandler.HandleMessages(incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
@@ -388,6 +409,9 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 				return messages, nil
 			}
 			return nil, err
+		}
+		if msg.From == n.host.ID() {
+			continue
 		}
 		messages = append(messages, msg)
 	}

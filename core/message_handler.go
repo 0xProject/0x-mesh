@@ -3,8 +3,6 @@
 package core
 
 import (
-	"encoding/json"
-	"fmt"
 	"math/rand"
 
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -13,29 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 )
-
-type orderMessage struct {
-	MessageType string
-	Order       *zeroex.SignedOrder
-}
-
-func encodeOrder(order *zeroex.SignedOrder) ([]byte, error) {
-	return json.Marshal(orderMessage{
-		MessageType: "order",
-		Order:       order,
-	})
-}
-
-func decodeOrder(data []byte) (*zeroex.SignedOrder, error) {
-	var orderMessage orderMessage
-	if err := json.Unmarshal(data, &orderMessage); err != nil {
-		return nil, err
-	}
-	if orderMessage.MessageType != "order" {
-		return nil, fmt.Errorf("unexpected message type: %q", orderMessage.MessageType)
-	}
-	return orderMessage.Order, nil
-}
 
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
@@ -91,23 +66,43 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	return messageData, nil
 }
 
-func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error) {
+func (app *App) HandleMessages(messages []*p2p.Message) error {
+	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
 	for _, msg := range messages {
+		if err := validateMessageSize(msg); err != nil {
+			log.WithFields(map[string]interface{}{
+				"error":               err,
+				"from":                msg.From,
+				"maxOrderSizeInBytes": maxOrderSizeInBytes,
+				"actualSizeInBytes":   len(msg.Data),
+			}).Trace("received message that exceeds maximum size")
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+			continue
+		}
 		order, err := decodeOrder(msg.Data)
 		if err != nil {
-			return nil, err
+			log.WithFields(map[string]interface{}{
+				"error": err,
+				"from":  msg.From,
+			}).Trace("could not decode received message")
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+			continue
 		}
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// Validate doesn't guarantee there are no duplicates so we keep track of
 		// which orders we've already seen.
 		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
 			continue
 		}
+
+		// If we've reached this point, the message is valid and we were able to
+		// decode it into an order. Append it to the list of orders to validate and
+		// update peer scores accordingly.
 		log.WithFields(map[string]interface{}{
 			"order":     order,
 			"orderHash": orderHash,
@@ -115,46 +110,45 @@ func (app *App) ValidateAndStore(messages []*p2p.Message) ([]*p2p.Message, error
 		}).Trace("received order from peer")
 		orders = append(orders, order)
 		orderHashToMessage[orderHash] = msg
+		app.handlePeerScoreEvent(msg.From, psValidMessage)
 	}
 
-	// Validate the orders in a single batch.
-	validationResults := app.orderValidator.BatchValidate(orders)
+	// Next, we validate the orders.
+	validationResults, err := app.validateOrders(orders)
+	if err != nil {
+		return err
+	}
 
-	validMessages := []*p2p.Message{}
+	// Store any valid orders and update the peer scores.
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
-		validMessages = append(validMessages, msg)
-
-		alreadyStored, err := app.orderAlreadyStored(acceptedOrderInfo.OrderHash)
-		if err != nil {
-			return nil, err
+		log.WithFields(map[string]interface{}{
+			"acceptedOrderInfo": acceptedOrderInfo,
+			"from":              msg.From.String(),
+		}).Debug("storing valid order received from peer")
+		// Watch stores the message in the database.
+		if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
+			return err
 		}
-		if alreadyStored {
-			log.WithFields(map[string]interface{}{
-				"acceptedOrderInfo": acceptedOrderInfo,
-				"from":              msg.From.String(),
-			}).Trace("order received from peer is valid but already stored")
-		} else {
-			log.WithFields(map[string]interface{}{
-				"acceptedOrderInfo": acceptedOrderInfo,
-				"from":              msg.From.String(),
-			}).Debug("storing valid order received from peer")
-			// Watch stores the message in the database.
-			if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
-				return nil, err
-			}
-		}
+		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
+
+	// We don't store invalid orders, but in some cases still need to update peer
+	// scores.
 	for _, rejectedOrderInfo := range validationResults.Rejected {
-		// TODO(fabio): What should we do with orders that we fail to validate
-		// because of a MeshError (e.g., network disruption) while attempting to validate
-		// them? Currently we simply drop them, but perhaps we should re-try validation
-		// at a later time?
 		msg := orderHashToMessage[rejectedOrderInfo.OrderHash]
 		log.WithFields(map[string]interface{}{
 			"rejectedOrderInfo": rejectedOrderInfo,
 			"from":              msg.From.String(),
 		}).Warn("not storing rejected order received from peer")
+		switch rejectedOrderInfo.Status {
+		case ROInternalError, ROOrderAlreadyStored, zeroex.RORequestFailed:
+			// Don't incur a negative score for these status types (it might not be
+			// their fault).
+		default:
+			// For other status types, we need to update the peer's score
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+		}
 	}
-	return validMessages, nil
+	return nil
 }
