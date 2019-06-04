@@ -69,8 +69,8 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "wasm_signer_core"
-  digest = "1:ab24cc688093e2a228d54637ba05f154e6512c3724cb10e4dcd26266ff8ca5ac"
+  branch = "wasm_signer_core_1"
+  digest = "1:0cbe3816c19b5e8def421e948377963a877b444e2fdd62126791998c2e27749a"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -126,15 +126,15 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "6d8ecdbbf27f2999296e481c289b645dac918e1a"
+  revision = "f0a71cf559354873939c1a5ea980288bac9a40f4"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
-  digest = "1:c52ac440c00e8b404a713a2de487b7b5e0e93a89a758832d9fc15b2817d6d5d6"
+  digest = "1:488fd8ad8e2a40f5a4dc76dd1fc8e90f850bc481d2991f34b4b9720f48fd2f48"
   name = "github.com/gballet/go-libpcsclite"
   packages = ["."]
   pruneopts = "UT"
-  revision = "312b5175032f98274685a4dd81935a92ad2412a5"
+  revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
@@ -756,6 +756,14 @@
   version = "v0.0.8"
 
 [[projects]]
+  digest = "1:0356f3312c9bd1cbeda81505b7fd437501d8e778ab66998ef69f00d7f9b3a0d7"
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3ee7d812e62a0804a7d0a324e0249ca2db3476d3"
+  version = "v0.0.4"
+
+[[projects]]
   branch = "master"
   digest = "1:130cefe87d7eeefc824978dcb78e35672d4c49a11f25c153fbf0cfd952756fa3"
   name = "github.com/minio/blake2b-simd"
@@ -844,6 +852,14 @@
   revision = "de6e2b48be337942e6298423f95725aba2152cea"
 
 [[projects]]
+  digest = "1:abcdbf03ca6ca13d3697e2186edc1f33863bbdac2b3a44dfa39015e8903f7409"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e6d60cf7ba1f42d86d54cdf5508611c4aafb3970"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:11e62d6050198055e6cd87ed57e5d8c669e84f839c16e16f192374d913d1a70d"
   name = "github.com/opentracing/opentracing-go"
   packages = [
@@ -886,6 +902,14 @@
   pruneopts = "UT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:1b8344715571e257101066e65d0bc8172715ecf09c8bd09b56763ec6389395e4"
+  name = "github.com/prometheus/tsdb"
+  packages = ["fileutil"]
+  pruneopts = "UT"
+  revision = "d48a5e2d5c34116dfcbc7b935c66157847b2d8b5"
+  version = "v0.8.0"
 
 [[projects]]
   digest = "1:31d83d1b1c288073c91abadee3caec87de2a1fb5dbe589039264a802e67a26b8"
@@ -945,6 +969,22 @@
   packages = ["derivationpath"]
   pruneopts = "UT"
   revision = "d95853db0f480b9d6379009500acf44b21dc0be6"
+
+[[projects]]
+  digest = "1:266e2f508feb9a9a765bfeb74d116a88514248b2f8428788dcce574bd026b9c0"
+  name = "github.com/steakknife/bloomfilter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "99ee86d9200fcc2ffde62f508329bd6627c0a307"
+  version = "1.0.4"
+
+[[projects]]
+  digest = "1:5ca4bdccd72e66aaba5b52f9c4a21f1021102f0919432fe138ad5d48abf06833"
+  name = "github.com/steakknife/hamming"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "003c143a81c25ea5e263d692919c611c7122ae6b"
+  version = "0.2.5"
 
 [[projects]]
   digest = "1:5da8ce674952566deae4dbc23d07c85caafc6cfa815b0b3e03e41979cedb8750"
