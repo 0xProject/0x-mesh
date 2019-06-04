@@ -37,7 +37,6 @@ jobs:
       - run:
           name: Run Go tests
           command: make test-go
-    # TODO(albrow): Re-enable Wasm tests after we fix issues with go-ethereum.  
-    #   - run:
-    #       name: Run WebAssembly tests
-    #       command: make test-wasm
+      - run:
+          name: Run WebAssembly tests
+          command: make test-wasm
