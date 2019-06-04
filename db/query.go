@@ -12,7 +12,7 @@ import (
 
 // Query is used to return certain results from the database.
 type Query struct {
-	col     *Collection
+	col     *readOnlyCollection
 	filter  *Filter
 	max     int
 	offset  int
@@ -33,7 +33,7 @@ type Filter struct {
 // does not actually touch the database until they are run. In general, queries
 // have a runtime of O(N) where N is the number of models that are returned by
 // the query, but using some features may significantly change this.
-func (c *Collection) NewQuery(filter *Filter) *Query {
+func (c *readOnlyCollection) NewQuery(filter *Filter) *Query {
 	return &Query{
 		col:    c,
 		filter: filter,
@@ -115,7 +115,7 @@ func (q *Query) Run(models interface{}) error {
 		return err
 	}
 
-	iter := q.col.db.ldb.NewIterator(q.filter.slice, nil)
+	iter := q.col.reader.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
 	if q.reverse {
 		return q.getModelsWithIteratorReverse(iter, models)
@@ -128,7 +128,7 @@ func (q *Query) Run(models interface{}) error {
 // respect q.Max. If the number of models that match the filter is greater than
 // q.Max, it will stop counting and return q.Max.
 func (q *Query) Count() (int, error) {
-	iter := q.col.db.ldb.NewIterator(q.filter.slice, nil)
+	iter := q.col.reader.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
 	pkSet := stringset.New()
 	for i := 0; iter.Next() && iter.Error() == nil; i++ {
@@ -198,7 +198,7 @@ func getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key []byte, mo
 		return nil
 	}
 	pkSet.Add(string(pk))
-	data, err := index.col.db.ldb.Get(pk, nil)
+	data, err := index.col.reader.Get(pk, nil)
 	if err != nil {
 		return err
 	}
