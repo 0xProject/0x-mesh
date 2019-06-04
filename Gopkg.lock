@@ -69,8 +69,8 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "updated_wasm_signer_core"
-  digest = "1:57c7a97fda5024407fb7e5edb3ba578b2fead14e408e6be518bc096945fb8ab0"
+  branch = "wasm_signer_core_1"
+  digest = "1:0cbe3816c19b5e8def421e948377963a877b444e2fdd62126791998c2e27749a"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -126,15 +126,15 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "715ecba95505d2d558cea273a7c2a162370e0eb1"
+  revision = "f0a71cf559354873939c1a5ea980288bac9a40f4"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
-  digest = "1:c52ac440c00e8b404a713a2de487b7b5e0e93a89a758832d9fc15b2817d6d5d6"
+  digest = "1:488fd8ad8e2a40f5a4dc76dd1fc8e90f850bc481d2991f34b4b9720f48fd2f48"
   name = "github.com/gballet/go-libpcsclite"
   packages = ["."]
   pruneopts = "UT"
-  revision = "312b5175032f98274685a4dd81935a92ad2412a5"
+  revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"

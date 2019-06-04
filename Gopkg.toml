@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  branch = "updated_wasm_signer_core"
+  branch = "wasm_signer_core_1"
   source = "github.com/0xProject/go-ethereum"
   
 [[constraint]]
@@ -97,6 +97,6 @@
 
 [[override]]
   name = "github.com/gballet/go-libpcsclite"
-  revision = "312b5175032f98274685a4dd81935a92ad2412a5"
+  revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
   [metadata]
     note = "go-ethereum depends on this package and they made a breaking API change"
