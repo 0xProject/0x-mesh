@@ -14,7 +14,7 @@ import (
 )
 
 // maxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
-// is more than 10x the size of a typical ERC20 order.
+// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
 const maxOrderSizeInBytes = 8192
 
 var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", maxOrderSizeInBytes)
