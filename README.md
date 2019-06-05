@@ -3,7 +3,6 @@
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
 
-
 # 0x-mesh
 
 A peer-to-peer network for sharing orders
@@ -44,6 +43,21 @@ If you have `GOPATH/bin` in your `PATH`, you can now run 0x Mesh directly with:
 
 ```
 mesh
+```
+
+### Generating private keys
+
+Mesh ships with a utility called `mesh-keygen` for generating private keys,
+which are used for signing messages sent to peers. Build the tool with:
+
+```
+make mesh-keygen
+```
+
+If you have `GOPATH/bin` in your `PATH`, you can now run it directly with:
+
+```
+mesh-keygen
 ```
 
 ### Running tests

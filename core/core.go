@@ -34,7 +34,7 @@ type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"2"`
 	// DatabaseDir is the directory to use for persisting the database.
-	DatabaseDir string `envvar:"DATABASE_DIR" default:"./0x_mesh_db"`
+	DatabaseDir string `envvar:"DATABASE_DIR" default:"./0x_mesh/db"`
 	// P2PListenPort is the port on which to listen for new peer connections. By
 	// default, 0x Mesh will let the OS select a randomly available port.
 	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
@@ -47,6 +47,10 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+	// PrivateKeyPath is the path to a Secp256k1 private key which will be
+	// used for signing messages and generating a peer ID. If empty, a randomly
+	// generated key will be used.
+	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"./0x_mesh/key/privkey"`
 }
 
 type App struct {
@@ -127,7 +131,7 @@ func New(config Config) (*App, error) {
 		Topic:            pubsubTopic,
 		ListenPort:       config.P2PListenPort,
 		Insecure:         false,
-		RandSeed:         0,
+		PrivateKeyPath:   config.PrivateKeyPath,
 		MessageHandler:   app,
 		RendezvousString: "/0x-mesh/0.0.1",
 		UseBootstrapList: config.UseBootstrapList,
