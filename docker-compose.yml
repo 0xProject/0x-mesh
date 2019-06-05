@@ -6,7 +6,8 @@ services:
     ports:
       - "8545:8545"
   mesh:
-    image: mesh:latest
+    build:
+      context: .
     links:
       - ganache
     ports:
@@ -37,6 +38,10 @@ services:
      - "9100:9100"
   grafana:
     image: grafana/grafana
+    volumes:
+      - ./promdemo/grafana/:/etc/grafana/provisioning/
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
     ports:
      - "3001:3000"
     depends_on:
