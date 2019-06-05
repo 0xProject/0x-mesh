@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 
+	"github.com/0xProject/0x-mesh/telemetry"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -32,12 +33,14 @@ func (s *rpcService) Orders(ctx context.Context) (*rpc.Subscription, error) {
 
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
 func (s *rpcService) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+	telemetry.AddOrdersRequests.Inc()
 	return s.rpcHandler.AddOrders(orders)
 }
 
 // AddPeer builds PeerInfo out of the given peer ID and multiaddresses and
 // calls rpcHandler.AddPeer. If there is an error, it returns it.
 func (s *rpcService) AddPeer(peerID string, multiaddrs []string) error {
+	telemetry.AddPeerRequests.Inc()
 	// Parse peer ID.
 	parsedPeerID, err := peer.IDB58Decode(peerID)
 	if err != nil {

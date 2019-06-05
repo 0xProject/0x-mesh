@@ -11,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/telemetry"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -47,6 +48,13 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+
+	// RunTelemetry is whether to expose mesh metrics
+	RunTelemetry bool `envvar:"RUN_TELEMETRY" default:"false"`
+
+	// TelemetryPort is the port on which metrics are exposed
+	// :<TelemetryPort>/metrics
+	TelemetryPort int `envvar:"TELEMETRY_PORT" default:"3000"`
 }
 
 type App struct {
@@ -132,6 +140,7 @@ func New(config Config) (*App, error) {
 		RendezvousString: "/0x-mesh/0.0.1",
 		UseBootstrapList: config.UseBootstrapList,
 	}
+
 	node, err := p2p.New(nodeConfig)
 	if err != nil {
 		return nil, err
@@ -153,6 +162,17 @@ func (app *App) Start() error {
 		"multiaddress": app.node.Multiaddrs(),
 		"peerID":       app.node.ID().String(),
 	}).Info("started core node")
+
+	// Initialize telemetry
+	if app.config.RunTelemetry {
+		go func() {
+			log.Info("starting telemetry")
+			err := telemetry.StartPrometheusServer(app.config.TelemetryPort)
+			if err != nil {
+				log.WithError(err).Error("telemetry server returned an error")
+			}
+		}()
+	}
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
 	// returns any fatal errors. As it currently stands, if one of these watchers

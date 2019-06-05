@@ -8,6 +8,7 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/telemetry"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
@@ -83,6 +84,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 			return nil, err
 		}
 		if alreadyStored {
+			telemetry.P2POrdersAlreadyStored.Inc()
 			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
