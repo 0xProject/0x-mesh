@@ -2,7 +2,7 @@
 FROM golang:1.12.1-alpine3.9 as mesh-builder
 
 
-RUN apk update && apk add ca-certificates nodejs-current npm make git dep
+RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
 RUN npm install -g yarn
 
 WORKDIR /go/src/github.com/0xProject/0x-mesh
@@ -12,7 +12,7 @@ ADD . ./
 
 RUN make deps
 
-RUN CGO_ENABLED=0 go build ./cmd/mesh
+RUN go build ./cmd/mesh
 
 # Final Image
 FROM alpine:3.9
