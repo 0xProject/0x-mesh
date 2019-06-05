@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"sort"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -78,8 +77,8 @@ func newTestNode(t *testing.T) *Node {
 	t.Helper()
 	config := Config{
 		Topic:            testTopic,
-		ListenPort:       0, // Let OS randomly choose an open port.
-		RandSeed:         atomic.AddInt64(&counter, 1),
+		ListenPort:       0,  // Let OS randomly choose an open port.
+		PrivateKeyPath:   "", // Randomly generate a new private key.
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
 	}

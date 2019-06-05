@@ -33,3 +33,12 @@ lint:
 .PHONY: mesh
 mesh:
 	go install ./cmd/mesh
+
+
+.PHONY: mesh-keygen
+mesh-keygen:
+	go install ./cmd/mesh-keygen
+
+
+.PHONY: all
+all: mesh mesh-keygen
