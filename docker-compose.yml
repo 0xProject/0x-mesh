@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  ganache:
+    image: 0xorg/mesh-ganache-cli
+    ports:
+      - "8545:8545"
+  mesh:
+    image: mesh:latest
+    links:
+      - ganache
+    ports:
+      - "8080:60557"
+      - "3000:3000"
+    environment:
+      - ETHEREUM_NETWORK_ID=50
+      - ETHEREUM_RPC_URL=http://ganache:8545
+      - VERBOSITY=5
+      - RUN_TELEMETRY=true
+  prom:
+    image: quay.io/prometheus/prometheus:latest
+    links:
+      - mesh
+    volumes:
+     - ./promdemo/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: ["--config.file=/etc/prometheus/prometheus.yml",
+              "--storage.tsdb.path=/prometheus",
+              "--storage.tsdb.retention=60d"]
+    ports:
+     - 9090:9090
+    depends_on:
+     - exporter
+     - mesh
+  exporter:
+    image: prom/node-exporter:latest
+    ports:
+     - "9100:9100"
+  grafana:
+    image: grafana/grafana
+    ports:
+     - "3001:3000"
+    depends_on:
+      - prom
