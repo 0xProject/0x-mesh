@@ -9,14 +9,13 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
-	mrand "math/rand"
+	"io/ioutil"
 	"sync"
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -110,10 +109,10 @@ type Config struct {
 	// Insecure controls whether or not messages should be encrypted. It should
 	// always be set to false in production.
 	Insecure bool
-	// RandSeed is a random seed used to generate a private key. If the same seed
-	// is used, the same private key will be generated. It can be set to 0 to use
-	// no seed and generate a cryptographically secure private key.
-	RandSeed int64
+	// PrivateKeyPath is the path to a private key which will be used for signing
+	// messages and generating a peer ID. If empty, a randomly generated key will
+	// be used.
+	PrivateKeyPath string
 	// MessageHandler is an interface responsible for validating, storing, and
 	// finding new messages to share.
 	MessageHandler MessageHandler
@@ -137,19 +136,8 @@ func New(config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
-	// If the seed is zero, use real cryptographic randomness. Otherwise, use a
-	// deterministic randomness source to make generated keys stay the same
-	// across multiple runs
-	var r io.Reader
-	if config.RandSeed == 0 {
-		r = rand.Reader
-	} else {
-		r = mrand.New(mrand.NewSource(config.RandSeed))
-	}
-
-	// Generate a key pair for this host. We will use it at least
-	// to obtain a valid host ID.
-	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
+	// Parse or generate a private key.
+	privKey, err := getPrivateKey(config.PrivateKeyPath)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -164,7 +152,7 @@ func New(config Config) (*Node, error) {
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(hostAddr),
-		libp2p.Identity(priv),
+		libp2p.Identity(privKey),
 		libp2p.DisableRelay(),
 		libp2p.ConnectionManager(connManager),
 	}
@@ -215,6 +203,32 @@ func New(config Config) (*Node, error) {
 	basicHost.Network().Notify(&notifee{node: node})
 
 	return node, nil
+}
+
+func getPrivateKey(path string) (p2pcrypto.PrivKey, error) {
+	if path == "" {
+		// If path is empty, generate a new key.
+		priv, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+		return priv, nil
+	}
+
+	// Otherwise parse the key at the path given.
+	keyBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	decodedKey, err := p2pcrypto.ConfigDecodeKey(string(keyBytes))
+	if err != nil {
+		return nil, err
+	}
+	priv, err := p2pcrypto.UnmarshalPrivateKey(decodedKey)
+	if err != nil {
+		return nil, err
+	}
+	return priv, nil
 }
 
 // Multiaddrs returns all multi addresses at which the node is dialable.
