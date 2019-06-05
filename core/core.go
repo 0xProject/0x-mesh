@@ -47,6 +47,9 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+	// OrderExpirationBuffer is the number of seconds before the order's stipulated expiration time
+	// that you'd want it pruned from the Mesh node.
+	OrderExpirationBuffer int64 `envvar:"ORDER_EXPIRATION_BUFFER" default:"10"`
 }
 
 type App struct {
@@ -95,7 +98,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID)
+	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
