@@ -47,7 +47,7 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
-	// PrivateKeyPath is the path to a to a Secp256k1 private key which will be
+	// PrivateKeyPath is the path to a Secp256k1 private key which will be
 	// used for signing messages and generating a peer ID. If empty, a randomly
 	// generated key will be used.
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"./0x_mesh/key/privkey"`
