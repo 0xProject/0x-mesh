@@ -11,7 +11,7 @@ import (
 )
 
 func TestPrunesExpiredOrders(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
@@ -34,7 +34,7 @@ func TestPrunesExpiredOrders(t *testing.T) {
 }
 
 func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
@@ -63,7 +63,7 @@ func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
 }
 
 func TestKeepsUnexpiredOrder(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	orderHash := common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e")
@@ -75,7 +75,7 @@ func TestKeepsUnexpiredOrder(t *testing.T) {
 }
 
 func TestReturnsEmptyIfNoOrders(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pruned := watcher.prune()
@@ -83,7 +83,7 @@ func TestReturnsEmptyIfNoOrders(t *testing.T) {
 }
 
 func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
@@ -106,7 +106,7 @@ func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	current := time.Now().Unix()
@@ -131,7 +131,7 @@ func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
 }
 
 func TestStartsAndStopsPoller(t *testing.T) {
-	var expirationBuffer int64
+	expirationBuffer := 0 * time.Second
 	watcher := NewExpirationWatcher(expirationBuffer)
 
 	pollingInterval := 50 * time.Millisecond

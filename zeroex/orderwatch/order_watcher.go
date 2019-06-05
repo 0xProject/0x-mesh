@@ -57,7 +57,7 @@ type Watcher struct {
 }
 
 // New instantiates a new order watcher
-func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, networkID int, expirationBuffer int64) (*Watcher, error) {
+func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err

@@ -47,9 +47,9 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
-	// OrderExpirationBuffer is the number of seconds before the order's stipulated expiration time
+	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
-	OrderExpirationBuffer int64 `envvar:"ORDER_EXPIRATION_BUFFER" default:"10"`
+	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 }
 
 type App struct {
