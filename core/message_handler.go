@@ -19,12 +19,14 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we just select a random set of orders from those we have stored.
 	// We might return less than max even if there are max or greater orders
 	// currently stored.
-	// TODO(albrow): If the db package supported transactions, we could gaurantee
-	// that max orders are returned if we have stored at least max orders. As it
-	// currently stands, orders could be added or removed in between when we call
-	// Count and when we call Run.
+	// Use a snapshot to make sure state doesn't change between our two queries.
+	ordersSnapshot, err := app.db.Orders.GetSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	defer ordersSnapshot.Release()
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	count, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	count, err := ordersSnapshot.NewQuery(notRemovedFilter).Count()
 	if err != nil {
 		return nil, err
 	}
@@ -35,12 +37,12 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	// orders we have stored.
 	offset := 0
 	if count > max {
-		// If count is greater than max, choose an offset such that we always try to
-		// return at least max orders.
+		// If count is greater than max, choose an offset such that we always return
+		// at least max orders.
 		offset = rand.Intn(count - max)
 	}
 	var selectedOrders []*meshdb.Order
-	err = app.db.Orders.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
+	err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +142,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		log.WithFields(map[string]interface{}{
 			"rejectedOrderInfo": rejectedOrderInfo,
 			"from":              msg.From.String(),
-		}).Warn("not storing rejected order received from peer")
+		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
 		case ROInternalError, ROOrderAlreadyStored, zeroex.RORequestFailed:
 			// Don't incur a negative score for these status types (it might not be
