@@ -2,16 +2,13 @@ package db
 
 import (
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 // dbReader is an interface that encapsulates read-only functionality.
 type dbReader interface {
-	Get(key []byte, ro *opt.ReadOptions) (value []byte, err error)
+	leveldb.Reader
 	Has(key []byte, ro *opt.ReadOptions) (ret bool, err error)
-	NewIterator(slice *util.Range, ro *opt.ReadOptions) iterator.Iterator
 }
 
 // dbWriter is an interface that encapsulates write/update functionality.
