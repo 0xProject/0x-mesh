@@ -8,9 +8,9 @@ import (
 // Index can be used to search for specific values or specific ranges of values
 // for a collection.
 type Index struct {
-	col    *Collection
-	name   string
-	getter func(m Model) [][]byte
+	colInfo *colInfo
+	name    string
+	getter  func(m Model) [][]byte
 }
 
 // AddIndex creates and returns a new index. name is an arbitrary, unique name
@@ -38,14 +38,14 @@ func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
 // will *not* be indexed. Note that in order to function correctly, indexes must
 // be based on data that is actually saved to the database (e.g. exported struct fields).
 func (c *Collection) AddMultiIndex(name string, getter func(Model) [][]byte) *Index {
-	c.indexMut.Lock()
-	defer c.indexMut.Unlock()
+	c.info.indexMut.Lock()
+	defer c.info.indexMut.Unlock()
 	index := &Index{
-		col:    c,
-		name:   name,
-		getter: getter,
+		colInfo: c.info,
+		name:    name,
+		getter:  getter,
 	}
-	c.indexes = append(c.indexes, index)
+	c.info.indexes = append(c.info.indexes, index)
 	return index
 }
 
@@ -55,7 +55,7 @@ func (index *Index) Name() string {
 }
 
 func (index *Index) prefix() []byte {
-	return []byte(fmt.Sprintf("index:%s:%s", index.col.name, index.name))
+	return []byte(fmt.Sprintf("index:%s:%s", index.colInfo.name, index.name))
 }
 
 func (index *Index) keysForModel(model Model) [][]byte {
@@ -72,5 +72,5 @@ func (index *Index) keysForModel(model Model) [][]byte {
 func (index *Index) primaryKeyFromIndexKey(key []byte) []byte {
 	pkAndVal := strings.TrimPrefix(string(key), string(index.prefix()))
 	split := strings.Split(pkAndVal, ":")
-	return index.col.primaryKeyForIDWithoutEscape([]byte(split[2]))
+	return index.colInfo.primaryKeyForIDWithoutEscape([]byte(split[2]))
 }

@@ -21,9 +21,3 @@ type dbWriter interface {
 type dbTransactor interface {
 	OpenTransaction() (*leveldb.Transaction, error)
 }
-
-// dbWriterTransactor combines dbWriter and dbTransactor.
-type dbWriterTransactor interface {
-	dbWriter
-	dbTransactor
-}
