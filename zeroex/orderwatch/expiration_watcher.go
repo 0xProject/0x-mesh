@@ -22,7 +22,7 @@ type ExpirationWatcher struct {
 	expiredOrders    chan []ExpiredOrder
 	rbTreeMu         sync.RWMutex
 	rbTree           *rbt.RbTree
-	expirationBuffer int64
+	expirationBuffer time.Duration
 	ticker           *time.Ticker
 	isWatching       bool
 	wasStartedOnce   bool
@@ -34,7 +34,7 @@ type ExpirationWatcher struct {
 // UTC time. A positive expirationBuffer will make the order expire sooner then UTC, and a negative buffer after.
 // A relayer might want to use a positive buffer to ensure all orders on their orderbook are fillable, and a market
 // maker might use a negative buffer when tracking their orders to make sure expired orders are truly unfillable.
-func NewExpirationWatcher(expirationBuffer int64) *ExpirationWatcher {
+func NewExpirationWatcher(expirationBuffer time.Duration) *ExpirationWatcher {
 	rbTree := rbt.NewRbTree()
 	return &ExpirationWatcher{
 		expiredOrders:    make(chan []ExpiredOrder, 10),
@@ -137,7 +137,6 @@ func (e *ExpirationWatcher) Receive() <-chan []ExpiredOrder {
 // to the caller
 func (e *ExpirationWatcher) prune() []ExpiredOrder {
 	pruned := []ExpiredOrder{}
-	currentTimestamp := time.Now().Unix()
 	for {
 		e.rbTreeMu.RLock()
 		key, value := e.rbTree.Min()
@@ -146,7 +145,8 @@ func (e *ExpirationWatcher) prune() []ExpiredOrder {
 			break
 		}
 		expirationTimeSeconds := reflect.ValueOf(key).Elem().Int()
-		if expirationTimeSeconds > currentTimestamp+e.expirationBuffer {
+		currentTimePlusBuffer := time.Now().Add(e.expirationBuffer)
+		if expirationTimeSeconds > currentTimePlusBuffer.Unix() {
 			break
 		}
 		orderHashes := value.(map[common.Hash]struct{})

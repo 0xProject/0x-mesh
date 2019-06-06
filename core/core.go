@@ -51,6 +51,9 @@ type Config struct {
 	// used for signing messages and generating a peer ID. If empty, a randomly
 	// generated key will be used.
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"./0x_mesh/key/privkey"`
+	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
+	// that you'd want it pruned from the Mesh node.
+	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 }
 
 type App struct {
@@ -99,7 +102,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID)
+	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
