@@ -11,8 +11,7 @@ import (
 )
 
 func TestPrunesExpiredOrders(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	current := time.Now().Unix()
 	expiryEntryOne := ExpiredOrder{
@@ -34,8 +33,7 @@ func TestPrunesExpiredOrders(t *testing.T) {
 }
 
 func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	current := time.Now().Unix()
 	expiration := current - 3
@@ -63,8 +61,7 @@ func TestPrunesTwoExpiredOrdersWithSameExpiration(t *testing.T) {
 }
 
 func TestKeepsUnexpiredOrder(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	orderHash := common.HexToHash("0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e")
 	current := time.Now().Unix()
@@ -75,16 +72,14 @@ func TestKeepsUnexpiredOrder(t *testing.T) {
 }
 
 func TestReturnsEmptyIfNoOrders(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	pruned := watcher.prune()
 	assert.Len(t, pruned, 0, "Returns empty array when no orders tracked")
 }
 
 func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	current := time.Now().Unix()
 	expiryEntryOne := ExpiredOrder{
@@ -106,8 +101,7 @@ func TestRemoveOnlyOrderWithSpecificExpirationTime(t *testing.T) {
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	current := time.Now().Unix()
 	singleExpirationTimeSeconds := current - 3
@@ -131,8 +125,7 @@ func TestRemoveOrderWhichSharesExpirationTimeWithOtherOrders(t *testing.T) {
 }
 
 func TestStartsAndStopsPoller(t *testing.T) {
-	expirationBuffer := 0 * time.Second
-	watcher := NewExpirationWatcher(expirationBuffer)
+	watcher := NewExpirationWatcher(0)
 
 	pollingInterval := 50 * time.Millisecond
 	require.NoError(t, watcher.Start(pollingInterval))
