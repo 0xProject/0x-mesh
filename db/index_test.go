@@ -9,6 +9,7 @@ import (
 )
 
 func TestInsertWithIndex(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	col.AddIndex("age", func(m Model) []byte {
@@ -25,6 +26,7 @@ func TestInsertWithIndex(t *testing.T) {
 }
 
 func TestUpdateWithIndex(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	col.AddIndex("age", func(m Model) []byte {

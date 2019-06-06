@@ -10,6 +10,7 @@ import (
 )
 
 func TestInsert(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	expected := &testModel{
@@ -23,6 +24,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestFindByID(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	expected := &testModel{
@@ -36,6 +38,7 @@ func TestFindByID(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	original := &testModel{
@@ -54,6 +57,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestFindAll(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	expected := []*testModel{}
@@ -71,6 +75,7 @@ func TestFindAll(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	col.AddIndex("age", func(m Model) []byte {
@@ -95,6 +100,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDeleteAfterUpdate(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	col.AddIndex("age", func(m Model) []byte {

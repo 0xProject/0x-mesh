@@ -10,6 +10,7 @@ import (
 )
 
 func TestSnapshot(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 
