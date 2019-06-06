@@ -38,6 +38,8 @@ func (c *Collection) AddIndex(name string, getter func(Model) []byte) *Index {
 // will *not* be indexed. Note that in order to function correctly, indexes must
 // be based on data that is actually saved to the database (e.g. exported struct fields).
 func (c *Collection) AddMultiIndex(name string, getter func(Model) [][]byte) *Index {
+	c.indexMut.Lock()
+	defer c.indexMut.Unlock()
 	index := &Index{
 		col:    c,
 		name:   name,

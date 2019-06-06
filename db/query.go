@@ -157,7 +157,7 @@ func (q *Query) getModelsWithIteratorForward(iter iterator.Iterator, models inte
 		if i < q.offset {
 			continue
 		}
-		if err := getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
+		if err := q.getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
 		if q.max != 0 && modelsVal.Len() >= q.max {
@@ -178,7 +178,7 @@ func (q *Query) getModelsWithIteratorReverse(iter iterator.Iterator, models inte
 		if i < q.offset {
 			continue
 		}
-		if err := getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
+		if err := q.getAndAppendModelIfUnique(q.filter.index, pkSet, iter.Key(), modelsVal); err != nil {
 			return err
 		}
 		if q.max != 0 && modelsVal.Len() >= q.max {
@@ -188,7 +188,7 @@ func (q *Query) getModelsWithIteratorReverse(iter iterator.Iterator, models inte
 	return iter.Error()
 }
 
-func getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key []byte, modelsVal reflect.Value) error {
+func (q *Query) getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key []byte, modelsVal reflect.Value) error {
 	// We assume that each key in the iterator consists of an index prefix, the
 	// value for a particular model, and the model ID. We can extract a primary
 	// key from this key and use it to get the encoded data for the model
@@ -198,11 +198,11 @@ func getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key []byte, mo
 		return nil
 	}
 	pkSet.Add(string(pk))
-	data, err := index.col.reader.Get(pk, nil)
+	data, err := q.col.reader.Get(pk, nil)
 	if err != nil {
 		return err
 	}
-	model := reflect.New(index.col.modelType)
+	model := reflect.New(q.col.modelType)
 	if err := json.Unmarshal(data, model.Interface()); err != nil {
 		return err
 	}

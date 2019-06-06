@@ -18,9 +18,18 @@ func (c *Collection) GetSnapshot() (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.indexMut.RLock()
+	indexes := make([]*Index, len(c.indexes))
+	copy(indexes, c.indexes)
+	c.indexMut.RUnlock()
 	return &Snapshot{
-		readOnlyCollection: c.readOnlyCollection,
-		snapshot:           snapshot,
+		readOnlyCollection: &readOnlyCollection{
+			reader:    snapshot,
+			name:      c.name,
+			modelType: c.modelType,
+			indexes:   indexes,
+		},
+		snapshot: snapshot,
 	}, nil
 }
 

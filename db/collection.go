@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -25,6 +26,8 @@ type readOnlyCollection struct {
 	name      string
 	modelType reflect.Type
 	indexes   []*Index
+	// indexMut protects the indexes slice.
+	indexMut sync.RWMutex
 }
 
 // writeableCollection is an extension of readonlyCollection which adds support
@@ -296,6 +299,8 @@ func (c *writeableCollection) Delete(id []byte) error {
 // deleteIndexesForModel deletes any indexes computed from the given model. It
 // *doesn't* discard the transaction if there is an error.
 func (c *writeableCollection) deleteIndexesForModel(txn *leveldb.Transaction, model Model) error {
+	c.indexMut.RLock()
+	defer c.indexMut.RUnlock()
 	for _, index := range c.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
@@ -308,6 +313,8 @@ func (c *writeableCollection) deleteIndexesForModel(txn *leveldb.Transaction, mo
 }
 
 func (c *writeableCollection) saveIndexesForModel(txn *leveldb.Transaction, model Model) error {
+	c.indexMut.RLock()
+	defer c.indexMut.RUnlock()
 	for _, index := range c.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
