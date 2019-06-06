@@ -21,7 +21,7 @@ func (c *Collection) GetSnapshot() (*Snapshot, error) {
 	c.indexMut.RLock()
 	indexes := make([]*Index, len(c.indexes))
 	copy(indexes, c.indexes)
-	defer c.indexMut.RUnlock()
+	c.indexMut.RUnlock()
 	return &Snapshot{
 		readOnlyCollection: &readOnlyCollection{
 			reader:    snapshot,
