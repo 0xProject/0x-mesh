@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
@@ -95,7 +96,22 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 			case orderEvents := <-orderEventsChan:
 				err := notifier.Notify(rpcSub.ID, orderEvents)
 				if err != nil {
-					log.WithField("error", err.Error()).Error("error while calling notifier.Notify")
+					// TODO(fabio): The current implementation of `notifier.Notify` returns a
+					// `write: broken pipe` error when it is called _after_ the client has
+					// disconnected but before the corresponding error is received on the
+					// `rpcSub.Err()` channel. This race-condition is not problematic beyond
+					// the unnecessary computation and log spam resulting from it. Once this is
+					// fixed upstream, give all logs an `Error` severity.
+					logEntry := log.WithFields(map[string]interface{}{
+						"error":       err.Error(),
+						"orderEvents": len(orderEvents),
+					})
+					message := "error while calling notifier.Notify"
+					if strings.Contains(err.Error(), "write: broken pipe") {
+						logEntry.Trace(message)
+					} else {
+						logEntry.Error(message)
+					}
 				}
 			case err := <-rpcSub.Err():
 				log.WithField("err", err).Error("rpcSub returned an error")
