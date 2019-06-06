@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// colInfo is a set of information/metadata about a collection.
 type colInfo struct {
 	name      string
 	modelType reflect.Type
@@ -14,53 +15,55 @@ type colInfo struct {
 	indexMut sync.RWMutex
 }
 
-func (c *colInfo) copy() *colInfo {
-	c.indexMut.RLock()
-	indexes := make([]*Index, len(c.indexes))
-	copy(indexes, c.indexes)
-	c.indexMut.RUnlock()
+// copy returns a copy of the colInfo. Any changes made to the original (e.g.
+// adding a new index) will not affect the copy.
+func (info *colInfo) copy() *colInfo {
+	info.indexMut.RLock()
+	indexes := make([]*Index, len(info.indexes))
+	copy(indexes, info.indexes)
+	info.indexMut.RUnlock()
 	return &colInfo{
-		name:      c.name,
-		modelType: c.modelType,
+		name:      info.name,
+		modelType: info.modelType,
 		indexes:   indexes,
 	}
 }
 
-func (c *colInfo) prefix() []byte {
-	return []byte(fmt.Sprintf("model:%s", c.name))
+func (info *colInfo) prefix() []byte {
+	return []byte(fmt.Sprintf("model:%s", info.name))
 }
 
-func (c *colInfo) primaryKeyForModel(model Model) []byte {
-	return c.primaryKeyForID(model.ID())
+func (info *colInfo) primaryKeyForModel(model Model) []byte {
+	return info.primaryKeyForID(model.ID())
 }
 
-func (c *colInfo) primaryKeyForID(id []byte) []byte {
-	return []byte(fmt.Sprintf("%s:%s", c.prefix(), escape(id)))
+func (info *colInfo) primaryKeyForID(id []byte) []byte {
+	return []byte(fmt.Sprintf("%s:%s", info.prefix(), escape(id)))
 }
 
-func (c *colInfo) primaryKeyForIDWithoutEscape(id []byte) []byte {
-	return []byte(fmt.Sprintf("%s:%s", c.prefix(), id))
+func (info *colInfo) primaryKeyForIDWithoutEscape(id []byte) []byte {
+	return []byte(fmt.Sprintf("%s:%s", info.prefix(), id))
 }
 
-func (c *colInfo) checkModelType(model Model) error {
+func (info *colInfo) checkModelType(model Model) error {
 	actualType := reflect.TypeOf(model)
-	if c.modelType != actualType {
+	if info.modelType != actualType {
 		if actualType.Kind() == reflect.Ptr {
-			if c.modelType == actualType.Elem() {
+			if info.modelType == actualType.Elem() {
 				// Pointers to the expected type are allowed here.
 				return nil
 			}
 		}
-		return fmt.Errorf("for %q collection: incorrect type for model (expected %s but got %s)", c.name, c.modelType, actualType)
+		return fmt.Errorf("for %q collection: incorrect type for model (expected %s but got %s)", info.name, info.modelType, actualType)
 	}
 	return nil
 }
 
-func (c *colInfo) checkModelsType(models interface{}) error {
-	expectedType := reflect.PtrTo(reflect.SliceOf(c.modelType))
+func (info *colInfo) checkModelsType(models interface{}) error {
+	expectedType := reflect.PtrTo(reflect.SliceOf(info.modelType))
 	actualType := reflect.TypeOf(models)
 	if expectedType != actualType {
-		return fmt.Errorf("for %q collection: incorrect type for models (expected %s but got %s)", c.name, expectedType, actualType)
+		return fmt.Errorf("for %q collection: incorrect type for models (expected %s but got %s)", info.name, expectedType, actualType)
 	}
 	return nil
 }

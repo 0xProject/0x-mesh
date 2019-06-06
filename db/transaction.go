@@ -2,11 +2,22 @@ package db
 
 import "github.com/syndtr/goleveldb/leveldb"
 
+// Transaction is an atomic database transaction.
 type Transaction struct {
 	colInfo *colInfo
 	txn     *leveldb.Transaction
 }
 
+// OpenTransaction opens an atomic DB transaction. Only one transaction can be
+// opened at a time. All write operations (e.g. Insert, Update, or Delete) will
+// be blocked until in-flight transaction is committed or discarded. The
+// returned transaction is safe for concurrent use.
+//
+// Transaction is expensive and can overwhelm compaction, especially if
+// transaction size is small. Use with caution.
+//
+// The transaction must be closed once done, either by committing or discarding
+// the transaction. Closing the DB will discard any open transactions.
 func (c *Collection) OpenTransaction() (*Transaction, error) {
 	txn, err := c.ldb.OpenTransaction()
 	if err != nil {
@@ -18,10 +29,17 @@ func (c *Collection) OpenTransaction() (*Transaction, error) {
 	}, nil
 }
 
+// Commit commits the transaction. If error is not nil, then the transaction is
+// not committed, it can then either be retried or discarded.
+//
+// Other methods should not be called after transaction has been committed.
 func (txn *Transaction) Commit() error {
 	return txn.txn.Commit()
 }
 
+// Discard discards the transaction.
+//
+// Other methods should not be called after transaction has been discarded.
 func (txn *Transaction) Discard() {
 	txn.txn.Discard()
 }

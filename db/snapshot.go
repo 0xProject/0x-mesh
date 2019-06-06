@@ -4,7 +4,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-// Snapshot is a frozen snapshot of a DB state at a particular point in time.
+// Snapshot is a frozen, read-only snapshot of a DB state at a particular point
+// in time.
 type Snapshot struct {
 	colInfo  *colInfo
 	snapshot *leveldb.Snapshot
