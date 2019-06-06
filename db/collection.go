@@ -26,7 +26,8 @@ type readOnlyCollection struct {
 	name      string
 	modelType reflect.Type
 	indexes   []*Index
-	indexMut  sync.RWMutex
+	// indexMut protects the indexes slice.
+	indexMut sync.RWMutex
 }
 
 // writeableCollection is an extension of readonlyCollection which adds support
