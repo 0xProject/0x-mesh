@@ -33,18 +33,28 @@ func TestSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	defer snapshot.Release()
 
-	// Any models we add after taking the snapshot should not be included in the
-	// query.
+	// Any models we add after taking the snapshot should not affect the query.
 	for i := 0; i < 5; i++ {
 		model := &testModel{
 			Name: "OtherPerson_" + strconv.Itoa(i),
-			Age:  i,
+			Age:  42,
 		}
 		require.NoError(t, col.Insert(model))
 	}
 
-	// Make sure that only models we inserted before taking the snapshot are
-	// included in the query results.
+	// Any models we delete after taking the snapshot should not affect the query.
+	for _, model := range expected {
+		require.NoError(t, col.Delete(model.ID()))
+	}
+
+	// Any new indexes we add should not affect indexes in the snapshot.
+	col.AddIndex("name", func(m Model) []byte {
+		return []byte(m.(*testModel).Name)
+	})
+	assert.Equal(t, []*Index{ageIndex}, snapshot.indexes)
+
+	// Make sure that the query only return results that match the state at the
+	// time the snapshot was taken.
 	filter := ageIndex.ValueFilter([]byte("42"))
 	query := snapshot.NewQuery(filter)
 	var actual []*testModel
