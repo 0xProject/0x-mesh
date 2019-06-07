@@ -17,7 +17,7 @@ func (tm *testModel) ID() []byte {
 	return []byte(tm.Name)
 }
 
-func newTestDB(t *testing.T) *DB {
+func newTestDB(t require.TestingT) *DB {
 	db, err := Open("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	return db
