@@ -53,12 +53,12 @@ func findWithIterator(info *colInfo, iter iterator.Iterator, models interface{})
 	return nil
 }
 
-// findExistingModelByPrimaryKey gets the latest data for the given primary key.
-// Useful in cases where the given model may be out of date with what is
-// currently stored in the database. It *doesn't* discard the transaction if
-// there is an error.
-func findExistingModelByPrimaryKey(info *colInfo, txn *leveldb.Transaction, primaryKey []byte) (Model, error) {
-	data, err := txn.Get(primaryKey, nil)
+// findExistingModelByPrimaryKeyWithTransaction gets the latest data for the
+// given primary key. Useful in cases where the given model may be out of date
+// with what is currently stored in the database. It *doesn't* discard the
+// transaction if there is an error.
+func findExistingModelByPrimaryKeyWithTransaction(info *colInfo, txn *Transaction, primaryKey []byte) (Model, error) {
+	data, err := txn.readerWithBatch.Get(primaryKey, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,18 +71,7 @@ func findExistingModelByPrimaryKey(info *colInfo, txn *leveldb.Transaction, prim
 	return model, nil
 }
 
-func insert(info *colInfo, transactor dbTransactor, model Model) error {
-	txn, err := transactor.OpenTransaction()
-	if err != nil {
-		return err
-	}
-	if err := insertWithTransaction(info, txn, model); err != nil {
-		txn.Discard()
-	}
-	return txn.Commit()
-}
-
-func insertWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model) error {
+func insertWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't insert model with empty ID")
 	}
@@ -94,12 +83,12 @@ func insertWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model)
 		return err
 	}
 	pk := info.primaryKeyForModel(model)
-	if exists, err := txn.Has(pk, nil); err != nil {
+	if exists, err := txn.readerWithBatch.Has(pk, nil); err != nil {
 		return err
 	} else if exists {
 		return AlreadyExistsError{ID: model.ID()}
 	}
-	if err := txn.Put(pk, data, nil); err != nil {
+	if err := txn.readerWithBatch.Put(pk, data, nil); err != nil {
 		return err
 	}
 	if err := saveIndexesWithTransaction(info, txn, model); err != nil {
@@ -108,19 +97,7 @@ func insertWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model)
 	return nil
 }
 
-func update(info *colInfo, transactor dbTransactor, model Model) error {
-	txn, err := transactor.OpenTransaction()
-	if err != nil {
-		return err
-	}
-	if err := updateWithTransaction(info, txn, model); err != nil {
-		txn.Discard()
-		return err
-	}
-	return txn.Commit()
-}
-
-func updateWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model) error {
+func updateWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't update model with empty ID")
 	}
@@ -130,14 +107,14 @@ func updateWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model)
 
 	// Check if the model already exists and return an error if not.
 	pk := info.primaryKeyForModel(model)
-	if exists, err := txn.Has(pk, nil); err != nil {
+	if exists, err := txn.readerWithBatch.Has(pk, nil); err != nil {
 		return err
 	} else if !exists {
 		return NotFoundError{ID: model.ID()}
 	}
 
 	// Get the existing data for the model and delete any (now outdated) indexes.
-	existingModel, err := findExistingModelByPrimaryKey(info, txn, pk)
+	existingModel, err := findExistingModelByPrimaryKeyWithTransaction(info, txn, pk)
 	if err != nil {
 		return err
 	}
@@ -150,7 +127,7 @@ func updateWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model)
 	if err != nil {
 		return err
 	}
-	if err := txn.Put(pk, newData, nil); err != nil {
+	if err := txn.readerWithBatch.Put(pk, newData, nil); err != nil {
 		return err
 	}
 	if err := saveIndexesWithTransaction(info, txn, model); err != nil {
@@ -159,19 +136,7 @@ func updateWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model)
 	return nil
 }
 
-func delete(info *colInfo, transactor dbTransactor, id []byte) error {
-	txn, err := transactor.OpenTransaction()
-	if err != nil {
-		return err
-	}
-	if err := deleteWithTransaction(info, txn, id); err != nil {
-		txn.Discard()
-		return err
-	}
-	return txn.Commit()
-}
-
-func deleteWithTransaction(info *colInfo, txn *leveldb.Transaction, id []byte) error {
+func deleteWithTransaction(info *colInfo, txn *Transaction, id []byte) error {
 	if len(id) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
@@ -179,9 +144,8 @@ func deleteWithTransaction(info *colInfo, txn *leveldb.Transaction, id []byte) e
 	// We need to get the latest data because the given model might be out of sync
 	// with the actual data in the database.
 	pk := info.primaryKeyForID(id)
-	latest, err := findExistingModelByPrimaryKey(info, txn, pk)
+	latest, err := findExistingModelByPrimaryKeyWithTransaction(info, txn, pk)
 	if err != nil {
-		txn.Discard()
 		if err == leveldb.ErrNotFound {
 			return NotFoundError{ID: id}
 		}
@@ -189,7 +153,7 @@ func deleteWithTransaction(info *colInfo, txn *leveldb.Transaction, id []byte) e
 	}
 
 	// Delete the primary key.
-	if err := txn.Delete(pk, nil); err != nil {
+	if err := txn.readerWithBatch.Delete(pk, nil); err != nil {
 		return err
 	}
 
@@ -201,13 +165,13 @@ func deleteWithTransaction(info *colInfo, txn *leveldb.Transaction, id []byte) e
 	return nil
 }
 
-func saveIndexesWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model) error {
+func saveIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	info.indexMut.RLock()
 	defer info.indexMut.RUnlock()
 	for _, index := range info.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
-			if err := txn.Put(key, nil, nil); err != nil {
+			if err := txn.readerWithBatch.Put(key, nil, nil); err != nil {
 				return err
 			}
 		}
@@ -217,13 +181,13 @@ func saveIndexesWithTransaction(info *colInfo, txn *leveldb.Transaction, model M
 
 // deleteIndexesForModel deletes any indexes computed from the given model. It
 // *doesn't* discard the transaction if there is an error.
-func deleteIndexesWithTransaction(info *colInfo, txn *leveldb.Transaction, model Model) error {
+func deleteIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	info.indexMut.RLock()
 	defer info.indexMut.RUnlock()
 	for _, index := range info.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
-			if err := txn.Delete(key, nil); err != nil {
+			if err := txn.readerWithBatch.Delete(key, nil); err != nil {
 				return err
 			}
 		}

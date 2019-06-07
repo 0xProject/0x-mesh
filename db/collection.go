@@ -2,6 +2,7 @@ package db
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -21,6 +22,7 @@ func (db *DB) NewCollection(name string, typ Model) *Collection {
 		info: &colInfo{
 			name:      name,
 			modelType: reflect.TypeOf(typ),
+			writeMut:  &sync.Mutex{},
 		},
 		ldb: db.ldb,
 	}
@@ -49,19 +51,31 @@ func (c *Collection) FindAll(models interface{}) error {
 // Insert inserts the given model into the database. It returns an error if a
 // model with the same id already exists.
 func (c *Collection) Insert(model Model) error {
-	return insert(c.info, c.ldb, model)
+	txn := c.OpenTransaction()
+	if err := insertWithTransaction(c.info, txn, model); err != nil {
+		_ = txn.Discard()
+	}
+	return txn.Commit()
 }
 
 // Update updates an existing model in the database. It returns an error if the
 // given model doesn't already exist.
 func (c *Collection) Update(model Model) error {
-	return update(c.info, c.ldb, model)
+	txn := c.OpenTransaction()
+	if err := updateWithTransaction(c.info, txn, model); err != nil {
+		_ = txn.Discard()
+	}
+	return txn.Commit()
 }
 
 // Delete deletes the model with the given ID from the database. It returns an
 // error if the model doesn't exist in the database.
 func (c *Collection) Delete(id []byte) error {
-	return delete(c.info, c.ldb, id)
+	txn := c.OpenTransaction()
+	if err := deleteWithTransaction(c.info, txn, id); err != nil {
+		_ = txn.Discard()
+	}
+	return txn.Commit()
 }
 
 // New Query creates and returns a new query with the given filter. By default,

@@ -31,9 +31,13 @@ func TestTransaction(t *testing.T) {
 	}
 
 	// Open a transaction.
-	txn, err := col.OpenTransaction()
-	require.NoError(t, err)
-	defer txn.Discard()
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
 
 	// The WaitGroup will be used to wait for all goroutines to finish.
 	wg := &sync.WaitGroup{}
@@ -65,25 +69,10 @@ func TestTransaction(t *testing.T) {
 	})
 	assert.Equal(t, []*Index{ageIndex}, txn.colInfo.indexes)
 
-	// Any models inserted or deleted withinin the transaction after is is opened
-	// *should* affect the query.
-	for i := 5; i < 10; i++ {
-		model := &testModel{
-			Name: "ExpectedPerson_" + strconv.Itoa(i),
-			Age:  42,
-		}
-		require.NoError(t, txn.Insert(model))
-		expected = append(expected, model)
-	}
-	// Delete the first and last model.
-	require.NoError(t, txn.Delete(expected[len(expected)-1].ID()))
-	require.NoError(t, txn.Delete(expected[0].ID()))
-	expected = expected[1 : len(expected)-1]
-
 	// Make sure that the query only return results that match the state inside
 	// the transaction.
 	filter := ageIndex.ValueFilter([]byte("42"))
-	query := txn.NewQuery(filter)
+	query := col.NewQuery(filter)
 	var actual []*testModel
 	require.NoError(t, query.Run(&actual))
 	assert.Equal(t, expected, actual)

@@ -13,10 +13,14 @@ type colInfo struct {
 	indexes   []*Index
 	// indexMut protects the indexes slice.
 	indexMut sync.RWMutex
+	// writeMut is used by transactions to prevent other goroutines from writing
+	// until the transaction is committed or discarded.
+	writeMut *sync.Mutex
 }
 
 // copy returns a copy of the colInfo. Any changes made to the original (e.g.
-// adding a new index) will not affect the copy.
+// adding a new index) will not affect the copy. The copy and the original share
+// the same writeMut.
 func (info *colInfo) copy() *colInfo {
 	info.indexMut.RLock()
 	indexes := make([]*Index, len(info.indexes))
@@ -26,6 +30,7 @@ func (info *colInfo) copy() *colInfo {
 		name:      info.name,
 		modelType: info.modelType,
 		indexes:   indexes,
+		writeMut:  info.writeMut,
 	}
 }
 
