@@ -5,6 +5,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
@@ -33,6 +34,10 @@ var (
 		Code:    "OrderAlreadyStored",
 		Message: "order is already stored",
 	}
+	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
+		Code:    "OrderForIncorrectNetwork",
+		Message: "order was created for a different network then the one this Mesh node is configured to support",
+	}
 )
 
 // RejectedOrderKind values
@@ -45,6 +50,7 @@ const (
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
 	results := &zeroex.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
+	contractAddresses := constants.NetworkIDToContractAddresses[app.networkID]
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
@@ -54,6 +60,15 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				SignedOrder: order,
 				Kind:        zeroex.MeshError,
 				Status:      ROInternalError,
+			})
+			continue
+		}
+		if order.ExchangeAddress != contractAddresses.Exchange {
+			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        MeshValidation,
+				Status:      ROIncorrectNetwork,
 			})
 			continue
 		}
