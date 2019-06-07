@@ -542,7 +542,9 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 			logger.WithField("kind", rejectedOrderInfo.Kind).Panic("Encountered unhandled rejectedOrderInfo.Kind value")
 		}
 	}
-	w.orderFeed.Send(orderEvents)
+	if len(orderEvents) > 0 {
+		w.orderFeed.Send(orderEvents)
+	}
 }
 
 func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOrderInfo) {
