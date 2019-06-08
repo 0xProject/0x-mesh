@@ -5,6 +5,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -21,7 +22,6 @@ import (
 )
 
 const (
-	pubsubTopic                 = "/0x-orders/0.0.1"
 	blockWatcherPollingInterval = 5 * time.Second
 	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
@@ -131,12 +131,12 @@ func New(config Config) (*App, error) {
 
 	// Initialize the p2p node.
 	nodeConfig := p2p.Config{
-		Topic:            pubsubTopic,
+		Topic:            getPubSubTopic(config.EthereumNetworkID),
 		ListenPort:       config.P2PListenPort,
 		Insecure:         false,
 		PrivateKeyPath:   config.PrivateKeyPath,
 		MessageHandler:   app,
-		RendezvousString: "/0x-mesh/0.0.1",
+		RendezvousString: getRendezvous(config.EthereumNetworkID),
 		UseBootstrapList: config.UseBootstrapList,
 	}
 	node, err := p2p.New(nodeConfig)
@@ -146,6 +146,14 @@ func New(config Config) (*App, error) {
 	app.node = node
 
 	return app, nil
+}
+
+func getPubSubTopic(networkID int) string {
+	return fmt.Sprintf("/0x-orders/network/%d/version/0.0.1", networkID)
+}
+
+func getRendezvous(networkID int) string {
+	return fmt.Sprintf("/0x-mesh/network/%d/version/0.0.1", networkID)
 }
 
 func (app *App) Start() error {
