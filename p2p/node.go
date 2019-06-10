@@ -144,7 +144,8 @@ func New(config Config) (*Node, error) {
 	}
 
 	// Set up the transport and the host.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", config.ListenPort))
+	// Note: 0.0.0.0 will use all available addresses.
+	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
 	if err != nil {
 		cancel()
 		return nil, err
@@ -153,7 +154,6 @@ func New(config Config) (*Node, error) {
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(privKey),
-		libp2p.DisableRelay(),
 		libp2p.ConnectionManager(connManager),
 	}
 	if config.Insecure {

@@ -14,10 +14,12 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
+	"github.com/albrow/stringset"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,6 +29,7 @@ const (
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	ethWatcherPollingInterval   = 5 * time.Second
 	peerConnectTimeout          = 60 * time.Second
+	checkNewAddrInterval        = 20 * time.Second
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -160,14 +163,16 @@ func (app *App) Start() error {
 	go func() {
 		err := app.node.Start()
 		if err != nil {
-			log.WithField("error", err.Error()).Error("core node returned error")
+			log.WithField("error", err.Error()).Error("p2p node returned error")
 			app.Close()
 		}
 	}()
+	addrs := app.node.Multiaddrs()
+	go app.periodicallyCheckForNewAddrs(addrs)
 	log.WithFields(map[string]interface{}{
-		"multiaddress": app.node.Multiaddrs(),
-		"peerID":       app.node.ID().String(),
-	}).Info("started core node")
+		"addresses": addrs,
+		"peerID":    app.node.ID().String(),
+	}).Info("started p2p node")
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
 	// returns any fatal errors. As it currently stands, if one of these watchers
@@ -189,6 +194,27 @@ func (app *App) Start() error {
 	log.Info("started ETH balance watcher")
 
 	return nil
+}
+
+func (app *App) periodicallyCheckForNewAddrs(startingAddrs []ma.Multiaddr) {
+	seenAddrs := stringset.New()
+	for _, addr := range startingAddrs {
+		seenAddrs.Add(addr.String())
+	}
+	// TODO: There might be a more efficient way to do this if we have access to
+	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
+	for {
+		time.Sleep(checkNewAddrInterval)
+		newAddrs := app.node.Multiaddrs()
+		for _, addr := range newAddrs {
+			if !seenAddrs.Contains(addr.String()) {
+				log.WithFields(map[string]interface{}{
+					"address": addr,
+				}).Info("found new listen address")
+				seenAddrs.Add(addr.String())
+			}
+		}
+	}
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
