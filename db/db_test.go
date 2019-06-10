@@ -24,6 +24,7 @@ func newTestDB(t *testing.T) *DB {
 }
 
 func TestOpen(t *testing.T) {
+	t.Parallel()
 	db, err := Open("/tmp/leveldb_testing")
 	require.NoError(t, err)
 	require.NoError(t, db.Close())

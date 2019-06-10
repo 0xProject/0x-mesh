@@ -12,7 +12,8 @@ import (
 
 // Query is used to return certain results from the database.
 type Query struct {
-	col     *readOnlyCollection
+	colInfo *colInfo
+	reader  dbReader
 	filter  *Filter
 	max     int
 	offset  int
@@ -26,17 +27,11 @@ type Filter struct {
 	slice *util.Range
 }
 
-// New Query creates and returns a new query with the given filter. By default,
-// a query will return all models that match the filter in ascending byte order
-// according to their index values. The query offers methods that can be used to
-// change this (e.g. Reverse and Max). The query is lazily executed, i.e. it
-// does not actually touch the database until they are run. In general, queries
-// have a runtime of O(N) where N is the number of models that are returned by
-// the query, but using some features may significantly change this.
-func (c *readOnlyCollection) NewQuery(filter *Filter) *Query {
+func newQuery(colInfo *colInfo, reader dbReader, filter *Filter) *Query {
 	return &Query{
-		col:    c,
-		filter: filter,
+		colInfo: colInfo,
+		reader:  reader,
+		filter:  filter,
 	}
 }
 
@@ -111,11 +106,11 @@ func (index *Index) All() *Filter {
 // returns an error if models is the wrong type or there was a problem reading
 // from the database. It does not return an error if no models match the query.
 func (q *Query) Run(models interface{}) error {
-	if err := q.col.checkModelsType(models); err != nil {
+	if err := q.colInfo.checkModelsType(models); err != nil {
 		return err
 	}
 
-	iter := q.col.reader.NewIterator(q.filter.slice, nil)
+	iter := q.reader.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
 	if q.reverse {
 		return q.getModelsWithIteratorReverse(iter, models)
@@ -128,7 +123,7 @@ func (q *Query) Run(models interface{}) error {
 // respect q.Max. If the number of models that match the filter is greater than
 // q.Max, it will stop counting and return q.Max.
 func (q *Query) Count() (int, error) {
-	iter := q.col.reader.NewIterator(q.filter.slice, nil)
+	iter := q.reader.NewIterator(q.filter.slice, nil)
 	defer iter.Release()
 	pkSet := stringset.New()
 	for i := 0; iter.Next() && iter.Error() == nil; i++ {
@@ -198,11 +193,11 @@ func (q *Query) getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key
 		return nil
 	}
 	pkSet.Add(string(pk))
-	data, err := q.col.reader.Get(pk, nil)
+	data, err := q.reader.Get(pk, nil)
 	if err != nil {
 		return err
 	}
-	model := reflect.New(q.col.modelType)
+	model := reflect.New(q.colInfo.modelType)
 	if err := json.Unmarshal(data, model.Interface()); err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 )
 
 func TestSnapshot(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 
@@ -51,7 +52,7 @@ func TestSnapshot(t *testing.T) {
 	col.AddIndex("name", func(m Model) []byte {
 		return []byte(m.(*testModel).Name)
 	})
-	assert.Equal(t, []*Index{ageIndex}, snapshot.indexes)
+	assert.Equal(t, []*Index{ageIndex}, snapshot.colInfo.indexes)
 
 	// Make sure that the query only return results that match the state at the
 	// time the snapshot was taken.

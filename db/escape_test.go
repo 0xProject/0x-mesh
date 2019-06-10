@@ -26,6 +26,7 @@ var trickyByteValues = [][]byte{
 }
 
 func TestEscapeUnescape(t *testing.T) {
+	t.Parallel()
 	for _, expected := range trickyByteValues {
 		actual := unescape(escape(expected))
 		assert.Equal(t, expected, actual)
@@ -33,6 +34,7 @@ func TestEscapeUnescape(t *testing.T) {
 }
 
 func TestFindWithValueWithEscape(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	col := db.NewCollection("people", &testModel{})
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
