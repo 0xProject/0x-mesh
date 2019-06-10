@@ -63,6 +63,7 @@ type App struct {
 	config         Config
 	db             *meshdb.MeshDB
 	node           *p2p.Node
+	networkID      int
 	blockWatcher   *blockwatch.Watcher
 	orderWatcher   *orderwatch.Watcher
 	ethWathcher    *ethereum.ETHWatcher
@@ -126,6 +127,7 @@ func New(config Config) (*App, error) {
 	app := &App{
 		config:         config,
 		db:             db,
+		networkID:      config.EthereumNetworkID,
 		blockWatcher:   blockWatcher,
 		orderWatcher:   orderWatcher,
 		ethWathcher:    ethWatcher,
