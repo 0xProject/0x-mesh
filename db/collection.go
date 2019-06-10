@@ -55,7 +55,11 @@ func (c *Collection) Insert(model Model) error {
 	if err := insertWithTransaction(c.info, txn, model); err != nil {
 		_ = txn.Discard()
 	}
-	return txn.Commit()
+	if err := txn.Commit(); err != nil {
+		_ = txn.Discard()
+		return err
+	}
+	return nil
 }
 
 // Update updates an existing model in the database. It returns an error if the
@@ -65,7 +69,11 @@ func (c *Collection) Update(model Model) error {
 	if err := updateWithTransaction(c.info, txn, model); err != nil {
 		_ = txn.Discard()
 	}
-	return txn.Commit()
+	if err := txn.Commit(); err != nil {
+		_ = txn.Discard()
+		return err
+	}
+	return nil
 }
 
 // Delete deletes the model with the given ID from the database. It returns an
@@ -75,7 +83,11 @@ func (c *Collection) Delete(id []byte) error {
 	if err := deleteWithTransaction(c.info, txn, id); err != nil {
 		_ = txn.Discard()
 	}
-	return txn.Commit()
+	if err := txn.Commit(); err != nil {
+		_ = txn.Discard()
+		return err
+	}
+	return nil
 }
 
 // New Query creates and returns a new query with the given filter. By default,

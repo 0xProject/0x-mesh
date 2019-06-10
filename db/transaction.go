@@ -69,14 +69,16 @@ func (txn *Transaction) unsafeCheckState() error {
 // Other methods should not be called after transaction has been committed.
 func (txn *Transaction) Commit() error {
 	txn.mut.Lock()
+	defer txn.mut.Unlock()
 	if err := txn.unsafeCheckState(); err != nil {
-		txn.mut.Unlock()
+		return err
+	}
+	if err := txn.batchWriter.Write(txn.readerWithBatch.batch, nil); err != nil {
 		return err
 	}
 	txn.committed = true
-	txn.mut.Unlock()
-	defer txn.colInfo.writeMut.Unlock()
-	return txn.batchWriter.Write(txn.readerWithBatch.batch, nil)
+	txn.colInfo.writeMut.Unlock()
+	return nil
 }
 
 // Discard discards the transaction.
