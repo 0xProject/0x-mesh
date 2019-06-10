@@ -65,7 +65,7 @@ mesh-keygen
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/mesh-ganache-cli](https://butt.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli):
+[0xorg/mesh-ganache-cli](https://hub.docker.com/r/0xorg/mesh-ganache-cli):
 
 ```
 docker pull 0xorg/mesh-ganache-cli
