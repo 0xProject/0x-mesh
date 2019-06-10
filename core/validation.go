@@ -36,7 +36,7 @@ var (
 	}
 	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
 		Code:    "OrderForIncorrectNetwork",
-		Message: "order was created for a different network then the one this Mesh node is configured to support",
+		Message: "order was created for a different network than the one this Mesh node is configured to support",
 	}
 )
 
