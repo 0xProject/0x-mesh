@@ -136,6 +136,6 @@ func TestGetContractAddresses(t *testing.T) {
 	require.NoError(t, err)
 
 	// an invalid network returns an error stating the desired network id
-	_, err = NewETHWatcher(pollingInterval, ethClient, 42)
-	assert.EqualError(t, err, "invalid network: 42")
+	_, err = NewETHWatcher(pollingInterval, ethClient, -1)
+	assert.EqualError(t, err, "invalid network: -1")
 }
