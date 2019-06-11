@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -60,7 +60,10 @@ const (
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
 	results := &zeroex.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses := constants.NetworkIDToContractAddresses[app.networkID]
+	contractAddresses := ethereum.GetContractAddressesForNetworkID(app.networkID)
+	if err != nil {
+		return nil, err
+	}
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
