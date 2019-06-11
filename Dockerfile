@@ -1,4 +1,4 @@
-  # mesh-builder produces a statically linked binary
+# mesh-builder produces a statically linked binary
 FROM golang:1.12.1-alpine3.9 as mesh-builder
 
 
@@ -25,6 +25,9 @@ COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh /usr/mesh/mes
 
 ENV RPC_PORT=60557
 EXPOSE 60557
+
+ENV P2P_LISTEN_PORT=60558
+EXPOSE 60558
 
 RUN chmod +x ./mesh
 
