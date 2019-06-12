@@ -424,9 +424,11 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 			return false
 		}
 	case "MultiAsset":
-		// TODO(fabio): Once OrderValidator.sol supports validating orders involving multiAssetData,
-		// refactor this to add support.
-		return false
+		var decodedAssetData MultiAssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
 	default:
 		return false
 	}

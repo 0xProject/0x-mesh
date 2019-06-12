@@ -68,12 +68,11 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		testCase{
 			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
+			ExpectedRejectedOrderStatus: ROUnfunded,
 		},
 		testCase{
-			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
+			SignedOrder: signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			IsValid:     true,
 		},
 		testCase{
 			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
@@ -120,7 +119,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 
 		validationResults := orderValidator.BatchValidate(signedOrders)
 		isValid := len(validationResults.Accepted) == 1
-		assert.Equal(t, testCase.IsValid, isValid)
+		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
 			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
 		}
