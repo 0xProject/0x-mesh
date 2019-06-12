@@ -6,8 +6,5 @@ package wrappers
 // OrderWithoutExchangeAddress is a 0x order representation expected by the smart contracts.
 type OrderWithoutExchangeAddress = Struct0
 
-// TraderInfo contains all the order-relevant trader balances & allowances.
-type TraderInfo = Struct1
-
 // OrderInfo contains the status and filled amount of an order.
-type OrderInfo = Struct2
+type OrderInfo = Struct1

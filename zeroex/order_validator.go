@@ -148,22 +148,22 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
-	orderValidator   *wrappers.OrderValidator
-	assetDataDecoder *AssetDataDecoder
+	orderValidationUtils *wrappers.OrderValidationUtils
+	assetDataDecoder     *AssetDataDecoder
 }
 
 // NewOrderValidator instantiates a new order validator
 func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
 	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
-	orderValidator, err := wrappers.NewOrderValidator(contractNameToAddress.OrderValidator, ethClient)
+	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractNameToAddress.OrderValidationUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
-		orderValidator:   orderValidator,
-		assetDataDecoder: assetDataDecoder,
+		orderValidationUtils: orderValidationUtils,
+		assetDataDecoder:     assetDataDecoder,
 	}, nil
 }
 
@@ -199,10 +199,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*SignedOrder, i int) {
-			takerAddresses := []common.Address{}
-			for _, signedOrder := range signedOrders {
-				takerAddresses = append(takerAddresses, signedOrder.TakerAddress)
-			}
 			orders := []wrappers.OrderWithoutExchangeAddress{}
 			for _, signedOrder := range signedOrders {
 				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
@@ -235,7 +231,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					Pending: false,
 					Context: ctx,
 				}
-				results, err := o.orderValidator.GetOrdersAndTradersInfo(opts, orders, signatures, takerAddresses)
+				results, err := o.orderValidationUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"error":     err.Error(),
@@ -269,8 +265,8 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 				}
 
 				for j, orderInfo := range results.OrdersInfo {
-					traderInfo := results.TradersInfo[j]
 					isValidSignature := results.IsValidSignature[j]
+					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[j]
 					orderStatus := OrderStatus(orderInfo.OrderStatus)
@@ -298,7 +294,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 						})
 						continue
 					case OSFillable:
-						fillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
 						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
@@ -474,44 +469,4 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	}
 
 	return true
-}
-
-func calculateRemainingFillableTakerAmount(signedOrder *SignedOrder, orderInfo wrappers.OrderInfo, traderInfo wrappers.TraderInfo) *big.Int {
-	minSet := []*big.Int{}
-
-	// Calculate min of balance & allowance of makers makerAsset -> translate into takerAsset amount
-	var maxMakerAssetFillAmount *big.Int
-	if traderInfo.MakerBalance.Cmp(traderInfo.MakerAllowance) == -1 {
-		maxMakerAssetFillAmount = traderInfo.MakerBalance
-	} else {
-		maxMakerAssetFillAmount = traderInfo.MakerAllowance
-	}
-	maxTakerAssetFillAmountGivenMakerConstraints := new(big.Int).Div(new(big.Int).Mul(maxMakerAssetFillAmount, signedOrder.TakerAssetAmount), signedOrder.MakerAssetAmount)
-
-	minSet = append(minSet, maxTakerAssetFillAmountGivenMakerConstraints)
-
-	// Calculate min of balance & allowance of maker's ZRX -> translate into takerAsset amount
-	if signedOrder.MakerFee.Cmp(big.NewInt(0)) != 0 {
-		var makerZRXAvailable *big.Int
-		if traderInfo.MakerZrxBalance.Cmp(traderInfo.MakerZrxAllowance) == -1 {
-			makerZRXAvailable = traderInfo.MakerZrxBalance
-		} else {
-			makerZRXAvailable = traderInfo.MakerZrxAllowance
-		}
-		maxTakerAssetFillAmountGivenMakerZRXConstraints := new(big.Int).Div(new(big.Int).Mul(makerZRXAvailable, signedOrder.TakerAssetAmount), signedOrder.MakerFee)
-		minSet = append(minSet, maxTakerAssetFillAmountGivenMakerZRXConstraints)
-	}
-
-	// Add the remaining takerAsset fill amount to the minSet
-	remainingTakerAssetFillAmount := new(big.Int).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
-	minSet = append(minSet, remainingTakerAssetFillAmount)
-
-	var maxTakerAssetFillAmount *big.Int
-	for _, minVal := range minSet {
-		if maxTakerAssetFillAmount == nil || maxTakerAssetFillAmount.Cmp(minVal) != -1 {
-			maxTakerAssetFillAmount = minVal
-		}
-	}
-
-	return maxTakerAssetFillAmount
 }
