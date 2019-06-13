@@ -223,7 +223,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 			}
 
 			for {
-				// Pass a context with a 15 second timeout to `GetOrdersAndTradersInfo` in order to avoid
+				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
 				// any one request from taking longer then 15 seconds
 				ctx, cancel := context.WithTimeout(context.Background(), getOrdersAndTradersInfoTimeout)
 				defer cancel()
@@ -237,14 +237,14 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 						"error":     err.Error(),
 						"attempt":   b.Attempt(),
 						"numOrders": len(orders),
-					}).Info("GetOrdersAndTradersInfo request failed")
+					}).Info("GetOrderRelevantStates request failed")
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
 						log.WithFields(log.Fields{
 							"error":     err.Error(),
 							"numOrders": len(orders),
-						}).Warning("Gave up on GetOrdersAndTradersInfo request after backoff limit reached")
+						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
 							if err != nil { // Should never happen
