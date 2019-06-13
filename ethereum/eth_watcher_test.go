@@ -21,7 +21,7 @@ import (
 
 // Values taken from Ganache snapshot
 var firstAccount = constants.GanacheAccount0
-var firstAccountBalance, _ = math.ParseBig256("99943793318000000000")
+var firstAccountBalance, _ = math.ParseBig256("99931715680000000000")
 var secondAccount = common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb")
 var secondAccountBalance, _ = math.ParseBig256("49999822428000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")

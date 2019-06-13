@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
@@ -41,16 +40,16 @@ var testSignedOrder = SignedOrder{
 }
 
 type testCase struct {
-	SignedOrder               SignedOrder
-	IsValid                   bool
+	SignedOrder                 SignedOrder
+	IsValid                     bool
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
@@ -58,8 +57,8 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
@@ -67,43 +66,42 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			IsValid:                     false,
+			ExpectedRejectedOrderStatus: ROUnfunded,
+		},
+		testCase{
+			SignedOrder: signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			IsValid:     true,
+		},
+		testCase{
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, malformedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, malformedAssetData),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomMakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			IsValid:                   false,
-			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
-		},
-		testCase{
-			SignedOrder:               signedOrderWithCustomTakerAssetData(t, testSignedOrder, unsupportedAssetData),
-			IsValid:                   false,
-			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
-		},
-		testCase{
-			SignedOrder:               signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROExpired,
 		},
 		testCase{
-			SignedOrder:               signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
-			IsValid:                   false,
+			SignedOrder:                 signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
+			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
 		},
 	}
@@ -121,7 +119,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 
 		validationResults := orderValidator.BatchValidate(signedOrders)
 		isValid := len(validationResults.Accepted) == 1
-		assert.Equal(t, testCase.IsValid, isValid)
+		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
 			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
 		}
@@ -151,129 +149,6 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	assert.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-}
-
-func TestCalculateRemainingFillableTakerAmount(t *testing.T) {
-	takerAssetAmount := big.NewInt(200000000000000000)
-	makerAssetAmount := big.NewInt(100000000000000000)
-	makerFee := big.NewInt(10000000000000000)
-	order := copyOrder(testSignedOrder.Order)
-	order.TakerAssetAmount = takerAssetAmount
-	order.MakerAssetAmount = makerAssetAmount
-	order.MakerFee = makerFee
-	signedOrder, err := SignTestOrder(&order)
-	require.NoError(t, err)
-
-	orderHash, err := order.ComputeOrderHash()
-	require.NoError(t, err)
-
-	orderInfo := wrappers.OrderInfo{
-		OrderHash:                   orderHash,
-		OrderStatus:                 uint8(OSFillable),
-		OrderTakerAssetFilledAmount: big.NewInt(0),
-	}
-
-	testCases := [...]struct {
-		expectedRemainingAmount *big.Int
-		traderInfo              wrappers.TraderInfo
-	}{
-		// No balances or allowances
-		{
-			expectedRemainingAmount: big.NewInt(0),
-			traderInfo: wrappers.TraderInfo{
-				MakerBalance:      big.NewInt(0),
-				MakerAllowance:    big.NewInt(0),
-				TakerBalance:      big.NewInt(0),
-				TakerAllowance:    big.NewInt(0),
-				MakerZrxBalance:   big.NewInt(0),
-				MakerZrxAllowance: big.NewInt(0),
-				TakerZrxBalance:   big.NewInt(0),
-				TakerZrxAllowance: big.NewInt(0),
-			},
-		},
-		// Sufficient balances & allowances
-		{
-			expectedRemainingAmount: big.NewInt(200000000000000000),
-			traderInfo: wrappers.TraderInfo{
-				MakerBalance:      makerAssetAmount,
-				MakerAllowance:    makerAssetAmount,
-				TakerBalance:      takerAssetAmount,
-				TakerAllowance:    takerAssetAmount,
-				MakerZrxBalance:   makerFee,
-				MakerZrxAllowance: big.NewInt(10000000000000000),
-				TakerZrxBalance:   big.NewInt(10000000000000000),
-				TakerZrxAllowance: big.NewInt(10000000000000000),
-			},
-		},
-		// Taker only has half the required amount BUT takerAddress is NULL address so it's
-		// ignored.
-		{
-			expectedRemainingAmount: big.NewInt(200000000000000000),
-			traderInfo: wrappers.TraderInfo{
-				MakerBalance:      makerAssetAmount,
-				MakerAllowance:    makerAssetAmount,
-				TakerBalance:      new(big.Int).Div(takerAssetAmount, big.NewInt(2)),
-				TakerAllowance:    takerAssetAmount,
-				MakerZrxBalance:   makerFee,
-				MakerZrxAllowance: big.NewInt(10000000000000000),
-				TakerZrxBalance:   big.NewInt(10000000000000000),
-				TakerZrxAllowance: big.NewInt(10000000000000000),
-			},
-		},
-		// Maker only has half the required balance
-		{
-			expectedRemainingAmount: big.NewInt(100000000000000000),
-			traderInfo: wrappers.TraderInfo{
-				MakerBalance:      new(big.Int).Div(makerAssetAmount, big.NewInt(2)),
-				MakerAllowance:    makerAssetAmount,
-				TakerBalance:      takerAssetAmount,
-				TakerAllowance:    takerAssetAmount,
-				MakerZrxBalance:   makerFee,
-				MakerZrxAllowance: big.NewInt(10000000000000000),
-				TakerZrxBalance:   big.NewInt(10000000000000000),
-				TakerZrxAllowance: big.NewInt(10000000000000000),
-			},
-		},
-		// Maker only has half the required ZRX balance
-		{
-			expectedRemainingAmount: big.NewInt(100000000000000000),
-			traderInfo: wrappers.TraderInfo{
-				MakerBalance:      makerAssetAmount,
-				MakerAllowance:    makerAssetAmount,
-				TakerBalance:      takerAssetAmount,
-				TakerAllowance:    takerAssetAmount,
-				MakerZrxBalance:   new(big.Int).Div(makerFee, big.NewInt(2)),
-				MakerZrxAllowance: makerFee,
-				TakerZrxBalance:   big.NewInt(10000000000000000),
-				TakerZrxAllowance: big.NewInt(10000000000000000),
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		remainingFillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, testCase.traderInfo)
-		assert.Equal(t, testCase.expectedRemainingAmount, remainingFillableTakerAssetAmount)
-	}
-
-	// Order already half filled
-	orderInfo = wrappers.OrderInfo{
-		OrderHash:                   orderHash,
-		OrderStatus:                 uint8(OSFillable),
-		OrderTakerAssetFilledAmount: new(big.Int).Div(takerAssetAmount, big.NewInt(2)),
-	}
-	// Sufficient balances & allowances
-	traderInfo := wrappers.TraderInfo{
-		MakerBalance:      makerAssetAmount,
-		MakerAllowance:    makerAssetAmount,
-		TakerBalance:      takerAssetAmount,
-		TakerAllowance:    takerAssetAmount,
-		MakerZrxBalance:   makerFee,
-		MakerZrxAllowance: big.NewInt(10000000000000000),
-		TakerZrxBalance:   big.NewInt(10000000000000000),
-		TakerZrxAllowance: big.NewInt(10000000000000000),
-	}
-	remainingFillableTakerAssetAmount := calculateRemainingFillableTakerAmount(signedOrder, orderInfo, traderInfo)
-	assert.Equal(t, new(big.Int).Div(takerAssetAmount, big.NewInt(2)), remainingFillableTakerAssetAmount)
 }
 
 func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
