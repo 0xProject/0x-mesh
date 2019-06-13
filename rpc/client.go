@@ -54,8 +54,18 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 // SubscribeToOrders subscribes a stream of order events
 // Note copied from `go-ethereum` codebase: Slow subscribers will be dropped eventually. Client
 // buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
-//  channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
+// channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
 // or ensure that the channel usually has at least one reader to prevent this issue.
 func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderEvent) (*rpc.ClientSubscription, error) {
 	return c.rpcClient.Subscribe(ctx, "mesh", ch, "orders")
+}
+
+// SubscribeToHeartbeat subscribes a stream of heartbeats in order to have certainty that the WS
+// connection is still alive.
+// Note copied from `go-ethereum` codebase: Slow subscribers will be dropped eventually. Client
+// buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
+// channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
+// or ensure that the channel usually has at least one reader to prevent this issue.
+func (c *Client) SubscribeToHeartbeat(ctx context.Context, ch chan<- string) (*rpc.ClientSubscription, error) {
+	return c.rpcClient.Subscribe(ctx, "mesh", ch, "heartbeat")
 }

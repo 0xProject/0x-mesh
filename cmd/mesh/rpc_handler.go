@@ -79,6 +79,65 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subsc
 	return subscription, nil
 }
 
+// SubscribeToHeartbeat is called when an RPC client sends a `mesh_subscribe` request with the `heartbeat` topic parameter
+func (handler *rpcHandler) SubscribeToHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
+	log.Debug("received heartbeat subscription request via RPC")
+	subscription, err := SetupHeartbeat(ctx)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in `mesh_subscribe` to `heartbeat` RPC call")
+		return nil, errInternal
+	}
+	return subscription, nil
+}
+
+// SetupHeartbeat sets up the heartbeat for a subscription
+func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
+	notifier, supported := ethRpc.NotifierFromContext(ctx)
+	if !supported {
+		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+	}
+
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+
+		for {
+			select {
+			case <-ticker.C:
+				err := notifier.Notify(rpcSub.ID, "tick")
+				if err != nil {
+					// TODO(fabio): The current implementation of `notifier.Notify` returns a
+					// `write: broken pipe` error when it is called _after_ the client has
+					// disconnected but before the corresponding error is received on the
+					// `rpcSub.Err()` channel. This race-condition is not problematic beyond
+					// the unnecessary computation and log spam resulting from it. Once this is
+					// fixed upstream, give all logs an `Error` severity.
+					logEntry := log.WithFields(map[string]interface{}{
+						"error":            err.Error(),
+						"subscriptionType": "heartbeat",
+					})
+					message := "error while calling notifier.Notify"
+					if strings.Contains(err.Error(), "write: broken pipe") {
+						logEntry.Trace(message)
+					} else {
+						logEntry.Error(message)
+					}
+				}
+			case err := <-rpcSub.Err():
+				log.WithField("err", err).Error("rpcSub returned an error")
+				ticker.Stop()
+				return
+			case <-notifier.Closed():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	return rpcSub, nil
+}
+
 // SetupOrderStream sets up the order stream for a subscription
 func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription, error) {
 	notifier, supported := ethRpc.NotifierFromContext(ctx)
@@ -104,8 +163,9 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 					// the unnecessary computation and log spam resulting from it. Once this is
 					// fixed upstream, give all logs an `Error` severity.
 					logEntry := log.WithFields(map[string]interface{}{
-						"error":       err.Error(),
-						"orderEvents": len(orderEvents),
+						"error":            err.Error(),
+						"subscriptionType": "orders",
+						"orderEvents":      len(orderEvents),
 					})
 					message := "error while calling notifier.Notify"
 					// If the network connection disconnects for longer then ~2mins and then comes

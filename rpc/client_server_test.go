@@ -24,9 +24,10 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
-	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
-	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
+	addOrdersHandler            func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
+	addPeerHandler              func(peerInfo peerstore.PeerInfo) error
+	subscribeToOrdersHandler    func(ctx context.Context) (*rpc.Subscription, error)
+	subscribeToHeartbeatHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
@@ -48,6 +49,13 @@ func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscript
 		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
 	}
 	return d.subscribeToOrdersHandler(ctx)
+}
+
+func (d *dummyRPCHandler) SubscribeToHeartbeat(ctx context.Context) (*rpc.Subscription, error) {
+	if d.subscribeToHeartbeatHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for Heartbeat")
+	}
+	return d.subscribeToHeartbeatHandler(ctx)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
@@ -194,5 +202,30 @@ func TestOrdersSubscription(t *testing.T) {
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
 	// The WaitGroup signals that AddOrder was called on the server-side.
+	wg.Wait()
+}
+
+func TestHeartbeatSubscription(t *testing.T) {
+	ctx := context.Background()
+
+	// Set up the dummy handler with a subscribeToHeartbeatHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		subscribeToHeartbeatHandler: func(ctx context.Context) (*rpc.Subscription, error) {
+			wg.Done()
+			return nil, nil
+		},
+	}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	heartbeatChan := make(chan string)
+	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)
+	require.NoError(t, err)
+	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
+
+	// The WaitGroup signals that Heartbeat was called on the server-side.
 	wg.Wait()
 }
