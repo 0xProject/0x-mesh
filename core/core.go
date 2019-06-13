@@ -61,6 +61,11 @@ type Config struct {
 	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
 	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
+	// MaxOrdersInStorage is the maximum number of orders to keep in storage.
+	// After this number is reached, orders with the lowest proportional ETH
+	// backing will be removed. Defaults to 1 million, which corresponds to
+	// a maximum of about 8GB if all orders are the maximum order size.
+	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"1000000"`
 }
 
 type App struct {

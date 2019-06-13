@@ -2,6 +2,7 @@ package meshdb
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -45,11 +46,23 @@ func (o Order) ID() []byte {
 	return o.Hash.Bytes()
 }
 
+type ETHBacking struct {
+	MakerAddress common.Address
+	OrderCount   int
+	ETHBalance   *big.Int
+}
+
+func (eb *ETHBacking) ID() []byte {
+	return eb.MakerAddress.Bytes()
+}
+
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
 	database    *db.DB
+	maxOrders   int
 	MiniHeaders *MiniHeadersCollection
 	Orders      *OrdersCollection
+	ETHBackings *ETHBackingsCollection
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
@@ -67,8 +80,13 @@ type OrdersCollection struct {
 	IsRemovedIndex                       *db.Index
 }
 
+type ETHBackingsCollection struct {
+	*db.Collection
+	ETHPerOrderIndex *db.Index
+}
+
 // NewMeshDB instantiates a new MeshDB instance
-func NewMeshDB(path string) (*MeshDB, error) {
+func NewMeshDB(path string, maxOrders int) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err
@@ -84,10 +102,17 @@ func NewMeshDB(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
+	ethBackings, err := setupETHBackings(database)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MeshDB{
 		database:    database,
+		maxOrders:   maxOrders,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
+		ETHBackings: ethBackings,
 	}, nil
 }
 
@@ -170,6 +195,37 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 	}, nil
 }
 
+func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
+	col, err := database.NewCollection("ethBackings", &ETHBacking{})
+	if err != nil {
+		return nil, err
+	}
+	ethPerOrderIndex := col.AddIndex("ethPerOrder", func(model db.Model) []byte {
+		ethBacking := model.(*ETHBacking)
+		return ratToBytes(ethBacking.ethPerOrder())
+	})
+
+	return &ETHBackingsCollection{
+		Collection:       col,
+		ETHPerOrderIndex: ethPerOrderIndex,
+	}, nil
+}
+
+func ratToBytes(rat *big.Rat) []byte {
+	// Recall that we must ensure the length of the numbers is always the same
+	// for indexes. Here, we have allowed 5 digits of precision after the
+	// decimal point. We pad with zeroes such that the length of the number is
+	// always 86. (80 characters before the decimal point, followed by the
+	// decimal point itself, followed by 5 characters after the decimal point).
+	return []byte(fmt.Sprintf("%080.5s", rat.FloatString(5)))
+}
+
+func (eb *ETHBacking) ethPerOrder() *big.Rat {
+	ethPerOrder := big.NewRat(0, 0)
+	ethPerOrder.SetFrac(eb.ETHBalance, big.NewInt(int64(eb.OrderCount)))
+	return ethPerOrder
+}
+
 // Close closes the database connection
 func (m *MeshDB) Close() {
 	m.database.Close()
@@ -199,6 +255,198 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 		return nil, nil
 	}
 	return miniHeaders[0], nil
+}
+
+func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([]*ETHBacking, error) {
+	filter := m.ETHBackings.ETHPerOrderIndex.RangeFilter([]byte{}, ratToBytes(target))
+	query := m.ETHBackings.NewQuery(filter).Max(max)
+	var result []*ETHBacking
+	if err := query.Run(&result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// ISSUES/QUESTIONS:
+// - Difficult to maintain consistency because there are two collections involved. (Could fix by adding global transactions to db package?)
+// - Either meshdb or orderwatch package needs to know how to retrieve balances. Violates separation of concerns.
+// - Is there a way to batch balance requests?
+// - Writes within the transaction don't take effect until after transaction is committed. Need to duplicate some work in memory.
+// - How to count orders with IsRemoved = true?
+// - Figuring out which orders to delete is insanely complicated. Each order we insert/delete changes the calculation for the ETH per order, so we have to recompute it every time.
+//
+
+func (m *MeshDB) InsertOrders(orders []*Order) error {
+	ordersTxn := m.Orders.OpenTransaction()
+	defer ordersTxn.Discard()
+	ethBackingsTxn := m.ETHBackings.OpenTransaction()
+	defer ethBackingsTxn.Discard()
+
+	// TODO(albrow): This query has runtime of O(N) where N is the number of
+	// orders stored. Could be optimized.
+	totalExistingOrders, err := m.Orders.NewQuery(m.Orders.IsRemovedIndex.All()).Count()
+	if err != nil {
+		return err
+	}
+
+	// Create a map of maker address to orders for that maker address.
+	ordersByMakerAddress := map[string][]*Order{}
+	for _, order := range orders {
+		makerAddress := order.SignedOrder.MakerAddress
+		if orders, found := ordersByMakerAddress[makerAddress.String()]; found {
+			orders = append(orders, order)
+			ordersByMakerAddress[makerAddress.String()] = orders
+		} else {
+			ordersByMakerAddress[makerAddress.String()] = []*Order{order}
+		}
+	}
+
+	if totalExistingOrders+len(orders) > m.maxOrders {
+		// In this case, we are going to hit the storage limit. We cannot store all
+		// the given orders without first deleting some existing ones.
+
+		// Find all ETH backings for the given orders.
+		makerAddressToEthBacking := map[string]*ETHBacking{}
+		leastBacking := big.NewRat(math.MaxInt64, 1)
+		for makerAddressStr, orders := range ordersByMakerAddress {
+			makerAddress := common.HexToAddress(makerAddressStr)
+			// Check if this maker address has an existing ETH backing.
+			var existingETHBacking ETHBacking
+			if err := m.ETHBackings.FindByID(makerAddress.Bytes(), &existingETHBacking); err != nil {
+				if _, ok := err.(db.NotFoundError); !ok {
+					// An unexpected error occurred. Return it.
+					return err
+				}
+				// No backing has been stored for this maker address. Make a new one.
+				// TODO(albrow): Get the actual initial balance.
+				// TODO(albrow): Add this maker address to the ETH watcher.
+				ethBacking := &ETHBacking{
+					MakerAddress: makerAddress,
+					OrderCount:   len(orders),
+					ETHBalance:   big.NewInt(0),
+				}
+				makerAddressToEthBacking[makerAddressStr] = ethBacking
+				if ethPerOrder := ethBacking.ethPerOrder(); ethPerOrder.Cmp(leastBacking) == -1 {
+					leastBacking = ethPerOrder
+				}
+			} else {
+				// A backing was stored for this maker address. Update it.
+				ethBacking := &ETHBacking{
+					MakerAddress: makerAddress,
+					OrderCount:   existingETHBacking.OrderCount + len(orders),
+					ETHBalance:   existingETHBacking.ETHBalance,
+				}
+				makerAddressToEthBacking[makerAddressStr] = ethBacking
+				if ethPerOrder := ethBacking.ethPerOrder(); ethPerOrder.Cmp(leastBacking) == -1 {
+					leastBacking = ethPerOrder
+				}
+			}
+		}
+
+		// Find any existing orders with a lower backing than the least backing in
+		// the given orders. These need to be deleted.
+		backingsToDelete, err := m.findEthBackingsWithLessEthPerOrder(leastBacking, len(orders))
+		if err != nil {
+			return err
+		}
+		numberOfOrdersToDelete := 0
+		for _, backingToDelete := range backingsToDelete {
+			numberOfOrdersToDelete += backingToDelete.OrderCount
+		}
+		if numberOfOrdersToDelete == 0 {
+			// There are no orders with a lesser ETH backing than the given orders.
+			// In other words, *none* of the given orders have enough ETH backing to
+			// be stored, so we don't store any of them. Just return immediately.
+			return nil
+		} else if numberOfOrdersToDelete >= len(orders) {
+			// The number of orders which could be deleted is *greater than* the
+			// number of orders we are trying to store. This means we can store all
+			// the given orders and delete up to len(orders) from the set of orders
+			// that have a lesser ETH backing.
+
+			// Queue operations to delete any existing orders with a lesser ETH
+			// backing.
+			// TODO(albrow): How can we do this correctly?
+			// for _, backingToDelete := range backingsToDelete {
+			//
+			// }
+
+			// Queue operations to store all the given orders and insert/update their
+			// corresponding ETH backings.
+			for _, order := range orders {
+				if err := ordersTxn.Insert(order); err != nil {
+					return err
+				}
+			}
+			for _, ethBacking := range makerAddressToEthBacking {
+				var eb ETHBacking
+				if err := m.ETHBackings.FindByID(ethBacking.MakerAddress.Bytes(), &eb); err != nil {
+					if _, notFound := err.(db.NotFoundError); notFound {
+						// The backing *doesn't* exist in the db yet; we need to insert it.
+						if err := ethBackingsTxn.Insert(ethBacking); err != nil {
+							return err
+						}
+					} else {
+						return err
+					}
+				} else {
+					// The backing *does* exist in the db already; we need to update it.
+					if err := ethBackingsTxn.Update(ethBacking); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			// The number of orders which could be deleted is *less than* the number
+			// of orders we are trying to store. This means we can store some of the
+			// given orders but not all of them.
+		}
+
+	} else {
+		// In this case, we can insert all the given orders without hitting the
+		// storage limit.
+		for makerAddressStr, orders := range ordersByMakerAddress {
+			makerAddress := common.HexToAddress(makerAddressStr)
+			// Check if this maker address has an existing ETH backing.
+			var existingETHBacking ETHBacking
+			if err := m.ETHBackings.FindByID(makerAddress.Bytes(), &existingETHBacking); err != nil {
+				if _, ok := err.(db.NotFoundError); !ok {
+					// An unexpected error occurred. Return it.
+					return err
+				}
+				// No backing has been stored for this maker address. Insert a new one.
+				// TODO(albrow): Get the actual initial balance.
+				// TODO(albrow): Add this maker address to the ETH watcher.
+				ethBackingsTxn.Insert(&ETHBacking{
+					MakerAddress: makerAddress,
+					OrderCount:   len(orders),
+					ETHBalance:   big.NewInt(0),
+				})
+			} else {
+				// A backing was found for this maker address. We need to update it.
+				existingETHBacking.OrderCount += len(orders)
+				ethBackingsTxn.Update(&existingETHBacking)
+			}
+
+			// Queue an operation to insert each order.
+			for _, order := range orders {
+				if err := ordersTxn.Insert(order); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Commit each transaction.
+	if err := ethBackingsTxn.Commit(); err != nil {
+		// TODO(albrow): We lose consistency guarantees if this happens.
+		panic(err)
+	}
+	if err := ordersTxn.Commit(); err != nil {
+		// TODO(albrow): We lose consistency guarantees if this happens.
+		panic(err)
+	}
+	return nil
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address
