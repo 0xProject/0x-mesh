@@ -36,9 +36,14 @@ func main() {
 	}
 	defer clientSubscription.Unsubscribe()
 
-	for orderEvents := range orderEventsChan {
-		for _, orderEvent := range orderEvents {
-			log.Printf("Received order event: %+v\n", orderEvent)
+	for {
+		select {
+		case orderEvents := <-orderEventsChan:
+			for _, orderEvent := range orderEvents {
+				log.Printf("Received order event: %+v\n", orderEvent)
+			}
+		case err := <-clientSubscription.Err():
+			log.Fatal(err)
 		}
 	}
 }
