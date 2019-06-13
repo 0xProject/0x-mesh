@@ -127,7 +127,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		log.WithFields(map[string]interface{}{
 			"acceptedOrderInfo": acceptedOrderInfo,
 			"from":              msg.From.String(),
-		}).Debug("storing valid order received from peer")
+		}).Trace("storing valid order received from peer")
 		// Watch stores the message in the database.
 		if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
 			return err
