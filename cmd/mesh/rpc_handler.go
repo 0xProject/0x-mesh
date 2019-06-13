@@ -20,6 +20,9 @@ import (
 
 var errInternal = errors.New("internal error")
 
+// heartbeatInterval specifies the interval at which to emit heartbeat events to a subscriber
+var heartbeatInterval = 5 * time.Second
+
 type rpcHandler struct {
 	app *core.App
 }
@@ -100,7 +103,7 @@ func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(heartbeatInterval)
 
 		for {
 			select {
