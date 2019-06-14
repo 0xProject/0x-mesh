@@ -32,9 +32,9 @@ const (
 	// receiveTimeout is the maximum amount of time to wait for receiving new messages.
 	receiveTimeout = 1 * time.Second
 	// maxReceiveBatch is the maximum number of new messages to receive at once.
-	maxReceiveBatch = 100
+	maxReceiveBatch = 500
 	// maxShareBatch is the maximum number of messages to share at once.
-	maxShareBatch = 10
+	maxShareBatch = 100
 	// peerCountLow is the target number of peers to connect to at any given time.
 	peerCountLow = 100
 	// peerCountHigh is the maximum number of peers to be connected to. If the
