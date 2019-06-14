@@ -276,6 +276,14 @@ func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([
 // - Figuring out which orders to delete is insanely complicated. Each order we insert/delete changes the calculation for the ETH per order, so we have to recompute it every time.
 //
 
+// TODO(albrow):
+// 1. Multi-collection or global transactions.
+// 2. More effecient count method (cache in a key).
+// 3. Check ETH balances upon receipt of the orders before doing on-chain validation.
+// 4. Insert orders one at a time. This simplifies the algorithm at the cost of effeciency. We can sort incoming orders by ETH backing per order which should help.
+// 5. In the core package, receive events from ETH balance watcher and update all ETHBackings in a single transaction.
+// 6. Update ETHBackings when we remove an order.
+
 func (m *MeshDB) InsertOrders(orders []*Order) error {
 	ordersTxn := m.Orders.OpenTransaction()
 	defer ordersTxn.Discard()
