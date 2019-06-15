@@ -4,6 +4,8 @@ package core
 
 import (
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -17,6 +19,10 @@ import (
 // maxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
 // is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
 const maxOrderSizeInBytes = 8192
+
+// maxOrderExpirationDuration is the maximum duration between the current time and the expiration
+// set on an order that will be accepted by Mesh
+const maxOrderExpirationDuration = 30 * 24 * time.Hour
 
 var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", maxOrderSizeInBytes)
 
@@ -33,6 +39,10 @@ var (
 	ROOrderAlreadyStored = zeroex.RejectedOrderStatus{
 		Code:    "OrderAlreadyStored",
 		Message: "order is already stored",
+	}
+	ROMaxExpirationExceeded = zeroex.RejectedOrderStatus{
+		Code:    "OrderMaxExpirationExceeded",
+		Message: "order expiration too far in the future",
 	}
 	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
 		Code:    "OrderForIncorrectNetwork",
@@ -69,6 +79,16 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				SignedOrder: order,
 				Kind:        MeshValidation,
 				Status:      ROIncorrectNetwork,
+			})
+			continue
+		}
+		maxExpiration := big.NewInt(time.Now().Add(maxOrderExpirationDuration).Unix())
+		if order.ExpirationTimeSeconds.Cmp(maxExpiration) > 0 {
+			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        MeshValidation,
+				Status:      ROMaxExpirationExceeded,
 			})
 			continue
 		}
