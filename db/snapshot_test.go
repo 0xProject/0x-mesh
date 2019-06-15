@@ -61,4 +61,7 @@ func TestSnapshot(t *testing.T) {
 	var actual []*testModel
 	require.NoError(t, query.Run(&actual))
 	assert.Equal(t, expected, actual)
+	actualCount, err := snapshot.Count()
+	require.NoError(t, err)
+	assert.Equal(t, len(expected), actualCount)
 }

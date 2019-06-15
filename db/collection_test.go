@@ -74,6 +74,50 @@ func TestFindAll(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestCount(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	col := db.NewCollection("people", &testModel{})
+
+	// Insert some test models and make sure Count is equal to the number of
+	// models inserted.
+	expected := []*testModel{}
+	for i := 0; i < 5; i++ {
+		model := &testModel{
+			Name: "Person_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, col.Insert(model))
+		expected = append(expected, model)
+	}
+	{
+		actualCount, err := col.Count()
+		require.NoError(t, err)
+		assert.Equal(t, len(expected), actualCount, "Count returned wrong results")
+	}
+
+	// Delete a model and then check that the count decremented by 1.
+	require.NoError(t, col.Delete(expected[0].ID()))
+	{
+		actualCount, err := col.Count()
+		require.NoError(t, err)
+		assert.Equal(t, len(expected)-1, actualCount, "Count returned wrong results")
+	}
+
+	// Delete all remaining models and check that the countKey was deleted.
+	for _, model := range expected[1:] {
+		require.NoError(t, col.Delete(model.ID()))
+	}
+	{
+		actualCount, err := col.Count()
+		require.NoError(t, err)
+		assert.Equal(t, 0, actualCount, "Count returned wrong results")
+		countKeyExists, err := col.ldb.Has(col.info.countKey(), nil)
+		require.NoError(t, err)
+		require.False(t, countKeyExists, "expected countKey to be deleted but it was not")
+	}
+}
+
 func TestDelete(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)

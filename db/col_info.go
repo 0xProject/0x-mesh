@@ -35,7 +35,13 @@ func (info *colInfo) copy() *colInfo {
 }
 
 func (info *colInfo) prefix() []byte {
-	return []byte(fmt.Sprintf("model:%s", info.name))
+	return []byte(fmt.Sprintf("model:%s", escape([]byte(info.name))))
+}
+
+// countKey returns the key used to store a count of the number of models in the
+// collection.
+func (info *colInfo) countKey() []byte {
+	return []byte(fmt.Sprintf("count:%s", escape([]byte(info.name))))
 }
 
 func (info *colInfo) primaryKeyForModel(model Model) []byte {
