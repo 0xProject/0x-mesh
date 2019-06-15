@@ -115,7 +115,7 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 					// endlessly re-occuring, we unsubscribe and return for encountering this type of
 					// error.
 					if _, ok := err.(*net.OpError); ok {
-						logEntry.Error(message)
+						logEntry.Trace(message)
 						orderWatcherSub.Unsubscribe()
 						return
 					}
