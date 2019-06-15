@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -107,6 +108,17 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 						"orderEvents": len(orderEvents),
 					})
 					message := "error while calling notifier.Notify"
+					// If the network connection disconnects for longer then ~2mins and then comes
+					// back up, we've noticed the call to `notifier.Notify` return `i/o timeout`
+					// `net.OpError` errors everytime it's called and no values are sent over
+					// `rpcSub.Err()` nor `notifier.Closed()`. In order to stop the error from
+					// endlessly re-occuring, we unsubscribe and return for encountering this type of
+					// error.
+					if _, ok := err.(*net.OpError); ok {
+						logEntry.Error(message)
+						orderWatcherSub.Unsubscribe()
+						return
+					}
 					if strings.Contains(err.Error(), "write: broken pipe") {
 						logEntry.Trace(message)
 					} else {
