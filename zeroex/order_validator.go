@@ -68,8 +68,8 @@ type RejectedOrderStatus struct {
 
 // RejectedOrderStatus values
 var (
-	RORequestFailed = RejectedOrderStatus{
-		Code:    "NetworkRequestFailed",
+	ROEthRPCRequestFailed = RejectedOrderStatus{
+		Code:    "EthRPCRequestFailed",
 		Message: "network request to Ethereum RPC endpoint failed",
 	}
 	ROInvalidMakerAssetAmount = RejectedOrderStatus{
@@ -255,7 +255,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        MeshError,
-								Status:      RORequestFailed,
+								Status:      ROEthRPCRequestFailed,
 							})
 						}
 						return // Give up after 4 attempts
