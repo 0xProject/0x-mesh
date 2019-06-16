@@ -33,7 +33,7 @@ const chunkSize = 500
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
 
 // The context timeout length to use for requests to getCoordinatorEndpoint
-const getCoordinatorEndpointTimeout = 5 * time.Second
+const getCoordinatorEndpointTimeout = 10 * time.Second
 
 // Specifies the max number of eth_call requests we want to make concurrently.
 // Additional requests will block until an ongoing request has completed.
@@ -86,7 +86,7 @@ var (
 	}
 	ROCoordinatorSoftCancelled = RejectedOrderStatus{
 		Code:    "CoordinatorSoftCancelled",
-		Message: "order was soft-cancelled via the Coordinator server",
+		Message: "order was soft-cancelled via the coordinator server",
 	}
 	ROCoordinatorEndpointNotFound = RejectedOrderStatus{
 		Code:    "CoordinatorEndpointNotFound",
@@ -400,7 +400,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 					})
 					continue
 				}
-				fmt.Println("endpoint", endpoint)
+				// CoordinatorRegistry lookup returns empty string if endpoint not found for the feeRecipientAddress
 				if endpoint == "" {
 					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 						OrderHash:   orderHash,
@@ -422,7 +422,6 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 
 	for endpoint, signedOrders := range endpointToSignedOrders {
 		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
-		log.WithField("requestURL", requestURL).Info("Got requestURL")
 		orderHashToSignedOrder := map[common.Hash]*SignedOrder{}
 		orderHashes := []common.Hash{}
 		for _, signedOrder := range signedOrders {

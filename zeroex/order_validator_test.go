@@ -128,7 +128,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		isValid := len(validationResults.Accepted) == 1
 		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
-			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status, testCase.ExpectedRejectedOrderStatus.Message)
+			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
 		}
 	}
 }
@@ -201,7 +201,8 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	// generate a test server so we can capture and inspect the request
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(200)
-		res.Write([]byte(fmt.Sprintf("{\"orderHashes\": [\"%s\"]}", orderHash.Hex())))
+		_, err := res.Write([]byte(fmt.Sprintf("{\"orderHashes\": [\"%s\"]}", orderHash.Hex())))
+		require.NoError(t, err)
 	}))
 	defer func() { testServer.Close() }()
 

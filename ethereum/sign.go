@@ -90,6 +90,8 @@ func (l *LocalSigner) EthSign(message []byte, signerAddress common.Address) (*EC
 	return ecSignature, nil
 }
 
+// Sign signs the message with the corresponding private key to the supplied signerAddress and returns
+// the raw signature byte array
 func (l *LocalSigner) simpleSign(message []byte, signerAddress common.Address) ([]byte, error) {
 	expectedSignerAddress := l.GetSignerAddress()
 	if signerAddress != expectedSignerAddress {
@@ -105,7 +107,8 @@ func (l *LocalSigner) simpleSign(message []byte, signerAddress common.Address) (
 	return signatureBytes, nil
 }
 
-// Sign signs the message with the corresponding private key to the supplied signerAddress
+// Sign signs the message with the corresponding private key to the supplied signerAddress and returns
+// the parsed V, R, S values
 func (l *LocalSigner) sign(message []byte, signerAddress common.Address) (*ECSignature, error) {
 	signatureBytes, err := l.simpleSign(message, signerAddress)
 	if err != nil {
