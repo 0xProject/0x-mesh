@@ -80,16 +80,34 @@ func (l *LocalSigner) GetSignerAddress() common.Address {
 
 // EthSign mimicks the signing of `eth_sign` locally its supplied private key
 func (l *LocalSigner) EthSign(message []byte, signerAddress common.Address) (*ECSignature, error) {
+	// Add message prefix: "\x19Ethereum Signed Message:\n"${message length}
+	messageWithPrefix, _ := accounts.TextAndHash(message)
+
+	ecSignature, err := l.sign(messageWithPrefix, signerAddress)
+	if err != nil {
+		return nil, err
+	}
+	return ecSignature, nil
+}
+
+func (l *LocalSigner) simpleSign(message []byte, signerAddress common.Address) ([]byte, error) {
 	expectedSignerAddress := l.GetSignerAddress()
 	if signerAddress != expectedSignerAddress {
 		return nil, fmt.Errorf("Cannot sign with signerAddress %s since LocalSigner contains private key for %s", signerAddress, expectedSignerAddress)
 	}
 
-	// Add message prefix: "\x19Ethereum Signed Message:\n"${message length}
-	messageWithPrefix, _ := accounts.TextAndHash(message)
-
 	// The produced signature is in the [R || S || V] format where V is 0 or 1.
-	signatureBytes, err := crypto.Sign(messageWithPrefix, l.privateKey)
+	signatureBytes, err := crypto.Sign(message, l.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return signatureBytes, nil
+}
+
+// Sign signs the message with the corresponding private key to the supplied signerAddress
+func (l *LocalSigner) sign(message []byte, signerAddress common.Address) (*ECSignature, error) {
+	signatureBytes, err := l.simpleSign(message, signerAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -133,4 +151,25 @@ func (t *TestSigner) EthSign(message []byte, signerAddress common.Address) (*ECS
 
 	localSigner := NewLocalSigner(privateKey)
 	return localSigner.EthSign(message, signerAddress)
+}
+
+// SignTx signs an Ethereum transaction with a public/private key pair hard-coded in the constants package.
+// It returns the transaction signature.
+func (t *TestSigner) SignTx(message []byte, signerAddress common.Address) ([]byte, error) {
+	pkBytes, ok := constants.GanacheAccountToPrivateKey[signerAddress]
+	if !ok {
+		return nil, errors.New("Unrecognized Ganache account supplied to ECSignForTests")
+	}
+	privateKey, err := crypto.ToECDSA(pkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	localSigner := NewLocalSigner(privateKey)
+	signature, err := localSigner.(*LocalSigner).simpleSign(message, signerAddress)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return signature, nil
 }

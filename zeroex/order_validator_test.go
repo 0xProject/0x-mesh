@@ -5,12 +5,19 @@
 package zeroex
 
 import (
+	"context"
+	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +33,7 @@ var testSignedOrder = SignedOrder{
 		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
-		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+		FeeRecipientAddress:   common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb"),
 		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		Salt:                  big.NewInt(1548619145450),
@@ -121,7 +128,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		isValid := len(validationResults.Accepted) == 1
 		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
-			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
+			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status, testCase.ExpectedRejectedOrderStatus.Message)
 		}
 	}
 }
@@ -148,6 +155,78 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	assert.Len(t, validationResults.Accepted, 0)
 	assert.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
+	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
+
+func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
+	signedOrder := &testSignedOrder
+	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	// Address for which there is no entry in the Coordinator registry
+	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
+
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{
+		signedOrder,
+	}
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	require.NoError(t, err)
+
+	validationResults := orderValidator.BatchValidate(signedOrders)
+	assert.Len(t, validationResults.Accepted, 0)
+	assert.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
+	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
+
+func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
+	signedOrder := &testSignedOrder
+	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	signedOrders := []*SignedOrder{
+		signedOrder,
+	}
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	require.NoError(t, err)
+
+	// generate a test server so we can capture and inspect the request
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(200)
+		res.Write([]byte(fmt.Sprintf("{\"orderHashes\": [\"%s\"]}", orderHash.Hex())))
+	}))
+	defer func() { testServer.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	opts := &bind.TransactOpts{
+		From:    signedOrder.FeeRecipientAddress,
+		Context: ctx,
+		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			testSigner := ethereum.NewTestSigner()
+			signature, err := testSigner.(*ethereum.TestSigner).SignTx(signer.Hash(tx).Bytes(), address)
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
+		},
+	}
+	tx, err := orderValidator.coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
+	require.NoError(t, err)
+	fmt.Println("tx", tx)
+
+	validationResults := orderValidator.BatchValidate(signedOrders)
+	assert.Len(t, validationResults.Accepted, 0)
+	assert.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
