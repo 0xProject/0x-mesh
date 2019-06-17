@@ -82,6 +82,9 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 
 // GetName returns the name of the assetData type
 func (a *AssetDataDecoder) GetName(assetData []byte) (string, error) {
+	if len(assetData) < 4 {
+		return "", errors.New("assetData must be at least 4 bytes long")
+	}
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
@@ -93,6 +96,9 @@ func (a *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 
 // Decode decodes an encoded asset data into it's sub-components
 func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}) error {
+	if len(assetData) < 4 {
+		return errors.New("assetData must be at least 4 bytes long")
+	}
 	id := assetData[:4]
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
