@@ -47,6 +47,11 @@ func (s *Snapshot) FindAll(models interface{}) error {
 	return findAll(s.colInfo, s.snapshot, models)
 }
 
+// Count returns the number of models in the collection.
+func (s *Snapshot) Count() (int, error) {
+	return count(s.colInfo, s.snapshot)
+}
+
 // New Query creates and returns a new query with the given filter. By default,
 // a query will return all models that match the filter in ascending byte order
 // according to their index values. The query offers methods that can be used to

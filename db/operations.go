@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strconv"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -94,6 +95,9 @@ func insertWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	if err := saveIndexesWithTransaction(info, txn, model); err != nil {
 		return err
 	}
+	if err := updateCountWithTransaction(info, txn, 1); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -162,6 +166,11 @@ func deleteWithTransaction(info *colInfo, txn *Transaction, id []byte) error {
 		return err
 	}
 
+	// Decrement the model count by 1.
+	if err := updateCountWithTransaction(info, txn, -1); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -193,4 +202,44 @@ func deleteIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) 
 		}
 	}
 	return nil
+}
+
+func count(info *colInfo, reader dbReader) (int, error) {
+	encodedCount, err := reader.Get(info.countKey(), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			// If countKey doesn't exist, assume no models have been inserted and
+			// return a count of 0.
+			return 0, nil
+		}
+		return 0, err
+	}
+	count, err := decodeInt(encodedCount)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func updateCountWithTransaction(info *colInfo, txn *Transaction, diff int) error {
+	existingCount, err := count(info, txn.readerWithBatch)
+	if err != nil {
+		return err
+	}
+	newCount := existingCount + diff
+	if newCount == 0 {
+		return txn.readerWithBatch.Delete(info.countKey(), nil)
+	} else {
+		return txn.readerWithBatch.Put(info.countKey(), encodeInt(newCount), nil)
+	}
+}
+
+func encodeInt(i int) []byte {
+	// TODO(albrow): Could potentially be optimized.
+	return []byte(strconv.Itoa(i))
+}
+
+func decodeInt(b []byte) (int, error) {
+	// TODO(albrow): Could potentially be optimized.
+	return strconv.Atoi(string(b))
 }

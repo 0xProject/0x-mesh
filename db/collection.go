@@ -48,6 +48,11 @@ func (c *Collection) FindAll(models interface{}) error {
 	return findAll(c.info, c.ldb, models)
 }
 
+// Count returns the number of models in the collection.
+func (c *Collection) Count() (int, error) {
+	return count(c.info, c.ldb)
+}
+
 // Insert inserts the given model into the database. It returns an error if a
 // model with the same id already exists.
 func (c *Collection) Insert(model Model) error {
