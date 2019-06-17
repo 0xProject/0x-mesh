@@ -65,8 +65,8 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 func TestUpdateBalancesETHWatcher(t *testing.T) {
 	blockchainLifecycle, err := NewBlockchainLifecycle(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	blockchainLifecycle.Start()
-	defer blockchainLifecycle.Revert()
+	blockchainLifecycle.Start(t)
+	defer blockchainLifecycle.Revert(t)
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)

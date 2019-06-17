@@ -2,9 +2,10 @@ package ethereum
 
 import (
 	"context"
-	"fmt"
+	"testing"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/stretchr/testify/require"
 )
 
 type BlockchainLifecycle struct {
@@ -23,19 +24,20 @@ func NewBlockchainLifecycle(rpcURL string) (*BlockchainLifecycle, error) {
 	}, nil
 }
 
-func (b *BlockchainLifecycle) Start() {
+func (b *BlockchainLifecycle) Start(t *testing.T) {
 	var snapshotId string
-	b.rpcClient.Call(&snapshotId, "evm_snapshot")
+	err := b.rpcClient.Call(&snapshotId, "evm_snapshot")
+	require.NoError(t, err)
 	b.snapshotIdStack = append(b.snapshotIdStack, snapshotId)
 }
 
-func (b *BlockchainLifecycle) Revert() error {
+func (b *BlockchainLifecycle) Revert(t *testing.T) {
 	latestSnapshot := b.snapshotIdStack[len(b.snapshotIdStack)-1]
 	b.snapshotIdStack = b.snapshotIdStack[:len(b.snapshotIdStack)-1]
 	var didRevert bool
-	b.rpcClient.Call(didRevert, "evm_revert", latestSnapshot)
+	err := b.rpcClient.Call(&didRevert, "evm_revert", latestSnapshot)
+	require.NoError(t, err)
 	if !didRevert {
-		return fmt.Errorf("Failed to revert snapshot with ID: %s", latestSnapshot)
+		t.Errorf("Failed to revert snapshot with ID: %s", latestSnapshot)
 	}
-	return nil
 }
