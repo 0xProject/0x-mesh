@@ -135,7 +135,7 @@ func (e *ETHWatcher) Receive() <-chan Balance {
 
 func (e *ETHWatcher) updateBalances() {
 	e.addressToBalanceMu.Lock()
-	e.addressToBalanceMu.Unlock()
+	defer e.addressToBalanceMu.Unlock()
 	addresses := []common.Address{}
 	for address := range e.addressToBalance {
 		addresses = append(addresses, address)
