@@ -363,6 +363,12 @@ type softCancelResponse struct {
 	OrderHashes []common.Hash `json:"orderHashes"`
 }
 
+/**
+ * batchValidateSoftCancelled validates any order specifying the Coordinator contract as the `senderAddress` to ensure
+ * that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
+ * given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
+ * been soft cancelled.
+ */
 func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	validSignedOrders := []*SignedOrder{}
@@ -372,56 +378,57 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 	for _, signedOrder := range signedOrders {
 		if signedOrder.SenderAddress != contractNameToAddress.Coordinator {
 			validSignedOrders = append(validSignedOrders, signedOrder)
-		} else {
-			orderHash, err := signedOrder.ComputeOrderHash()
+			continue
+		}
+
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+		}
+		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
+		if !ok {
+			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
+			defer cancel()
+			opts := &bind.CallOpts{
+				Pending: false,
+				Context: ctx,
+			}
+			var err error
+			// Look-up the coordinator endpoint in the CoordinatorRegistry by the order's `feeRecipientAddress`
+			endpoint, err = o.coordinatorRegistry.GetCoordinatorEndpoint(opts, signedOrder.FeeRecipientAddress)
 			if err != nil {
-				log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+				log.WithFields(log.Fields{
+					"error":               err.Error(),
+					"feeRecipientAddress": signedOrder.FeeRecipientAddress,
+				}).Info("GetCoordinatorEndpoint request failed")
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROEthRPCRequestFailed,
+				})
+				continue
 			}
-			endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
-			if !ok {
-				ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
-				defer cancel()
-				opts := &bind.CallOpts{
-					Pending: false,
-					Context: ctx,
-				}
-				var err error
-				endpoint, err = o.coordinatorRegistry.GetCoordinatorEndpoint(opts, signedOrder.FeeRecipientAddress)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"error":               err.Error(),
-						"feeRecipientAddress": signedOrder.FeeRecipientAddress,
-					}).Info("GetCoordinatorEndpoint request failed")
-					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        MeshError,
-						Status:      ROEthRPCRequestFailed,
-					})
-					continue
-				}
-				// CoordinatorRegistry lookup returns empty string if endpoint not found for the feeRecipientAddress
-				if endpoint == "" {
-					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        CoordinatorError,
-						Status:      ROCoordinatorEndpointNotFound,
-					})
-					continue
-				}
+			// CoordinatorRegistry lookup returns empty string if endpoint not found for the feeRecipientAddress
+			if endpoint == "" {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        CoordinatorError,
+					Status:      ROCoordinatorEndpointNotFound,
+				})
+				continue
 			}
-			existingOrders, ok := endpointToSignedOrders[endpoint]
-			if !ok {
-				endpointToSignedOrders[endpoint] = []*SignedOrder{signedOrder}
-			} else {
-				endpointToSignedOrders[endpoint] = append(existingOrders, signedOrder)
-			}
+		}
+		existingOrders, ok := endpointToSignedOrders[endpoint]
+		if !ok {
+			endpointToSignedOrders[endpoint] = []*SignedOrder{signedOrder}
+		} else {
+			endpointToSignedOrders[endpoint] = append(existingOrders, signedOrder)
 		}
 	}
 
 	for endpoint, signedOrders := range endpointToSignedOrders {
-		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
 		orderHashToSignedOrder := map[common.Hash]*SignedOrder{}
 		orderHashes := []common.Hash{}
 		for _, signedOrder := range signedOrders {
@@ -436,6 +443,8 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 		if err != nil {
 			log.WithField("orderHashes", orderHashes).Panic("Unable to marshal `orderHashes` into JSON")
 		}
+		// Check if the orders have been soft-cancelled by querying the Coordinator server
+		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
 		payload := strings.NewReader(string(orderHashesBytes))
 		resp, err := http.Post(requestURL, "application/json", payload)
 		if err != nil {
@@ -505,7 +514,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			})
 		}
 		for orderHash, signedOrder := range orderHashToSignedOrder {
-			// If uncancelled order
+			// If order hasn't been soft-cancelled
 			if _, ok := softCancelledOrderHashMap[orderHash]; !ok {
 				validSignedOrders = append(validSignedOrders, signedOrder)
 			}
