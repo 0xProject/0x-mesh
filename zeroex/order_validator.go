@@ -1,13 +1,13 @@
 package zeroex
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -439,19 +439,19 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			orderHashToSignedOrder[orderHash] = signedOrder
 			orderHashes = append(orderHashes, orderHash)
 		}
-		orderHashesBytes, err := json.Marshal(orderHashes)
+		payload := &bytes.Buffer{}
+		err := json.NewEncoder(payload).Encode(orderHashes)
 		if err != nil {
 			log.WithField("orderHashes", orderHashes).Panic("Unable to marshal `orderHashes` into JSON")
 		}
 		// Check if the orders have been soft-cancelled by querying the Coordinator server
 		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
-		payload := strings.NewReader(string(orderHashesBytes))
 		resp, err := http.Post(requestURL, "application/json", payload)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"endpoint":  endpoint,
 				"requstURL": requestURL,
-				"payload":   string(orderHashesBytes),
+				"payload":   orderHashes,
 			}).Warn("failed to send request to Coordinator server")
 			for orderHash, signedOrder := range orderHashToSignedOrder {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
@@ -483,7 +483,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		var response softCancelResponse
-		err = json.Unmarshal(body, &response)
+		err = json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
