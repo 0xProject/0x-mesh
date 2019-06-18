@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,5 +83,76 @@ func TestTransaction(t *testing.T) {
 	require.NoError(t, txn.Commit())
 
 	// Wait for any goroutines to finish.
+	wg.Wait()
+}
+
+// TestTransactionExclusion is designed to test whether a collection-based
+// transaction has exclusive write access for the collection while open.
+func TestTransactionExclusion(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	col0, err := db.NewCollection("people0", &testModel{})
+	require.NoError(t, err)
+	col1, err := db.NewCollection("people1", &testModel{})
+	require.NoError(t, err)
+
+	txn := col0.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	// discardSignal is fired right before the original transaction on col0 is
+	// discarded.
+	discardSignal := make(chan struct{}, 1)
+	// col0TxnOpenSignal is fired when a transaction on col0 is opened.
+	col0TxnOpenSignal := make(chan struct{}, 1)
+	// col1TxnOpenSignal is fired when a transaction on col1 is opened.
+	col1TxnOpenSignal := make(chan struct{}, 1)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		col1TxnWasOpened := false
+		for {
+			select {
+			case <-discardSignal:
+				assert.True(t, col1TxnWasOpened, "expected col1 transaction to open before col0 transaction was committed/discarded")
+				return
+			case <-col0TxnOpenSignal:
+				t.Error("a new transaction was opened on col0 before the first transaction was committed/discarded")
+			case <-col1TxnOpenSignal:
+				// col1 transactions should be independent of col0 transactions and do
+				// not need to wait for the col0 transaction to be committed/discarded.
+				col1TxnWasOpened = true
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		txn := col0.OpenTransaction()
+		col0TxnOpenSignal <- struct{}{}
+		defer func() {
+			_ = txn.Discard()
+		}()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		txn := col1.OpenTransaction()
+		col1TxnOpenSignal <- struct{}{}
+		defer func() {
+			_ = txn.Discard()
+		}()
+	}()
+
+	// A short sleep is necessary to ensure that the goroutines have time to run.
+	time.Sleep(1 * time.Millisecond)
+	discardSignal <- struct{}{}
+	require.NoError(t, txn.Discard())
+
 	wg.Wait()
 }
