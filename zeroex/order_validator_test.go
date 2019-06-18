@@ -204,7 +204,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
 		require.NoError(t, err)
 	}))
-	defer func() { testServer.Close() }()
+	defer testServer.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
