@@ -220,9 +220,8 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 			return tx.WithSignature(signer, signature)
 		},
 	}
-	tx, err := orderValidator.coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
+	_, err = orderValidator.coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
 	require.NoError(t, err)
-	fmt.Println("tx", tx)
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, validationResults.Accepted, 0)
