@@ -462,8 +462,9 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
 		if resp.StatusCode != 200 {
+			// fabio: We intentionally ignore this error because this is already a failure case
+			body, _ := ioutil.ReadAll(resp.Body)
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
 				"statusCode": resp.StatusCode,
@@ -481,8 +482,10 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		var response softCancelResponse
-		err = json.Unmarshal(body, &response)
+		err = json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
+			// fabio: We intentionally ignore this error because this is already a failure case
+			body, _ := ioutil.ReadAll(resp.Body)
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
 				"statusCode": resp.StatusCode,
