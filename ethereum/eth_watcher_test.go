@@ -25,7 +25,7 @@ import (
 // Values taken from Ganache snapshot
 var firstAccount = constants.GanacheAccount0
 var firstAccountBalance, _ = math.ParseBig256("99931715680000000000")
-var secondAccount = common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb")
+var secondAccount = constants.GanacheAccount1
 var secondAccountBalance, _ = math.ParseBig256("49999822428000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
 var randomAccount = common.HexToAddress("0x49fea72f146d41bfc5b9329e4ebbc3c382589f37")
@@ -33,7 +33,6 @@ var randomAccount = common.HexToAddress("0x49fea72f146d41bfc5b9329e4ebbc3c382589
 var ethAccountToBalance = map[common.Address]*big.Int{
 	firstAccount:              firstAccountBalance,
 	secondAccount:             secondAccountBalance,
-	constants.GanacheAccount1: hundredEth,
 	constants.GanacheAccount2: hundredEth,
 	constants.GanacheAccount3: hundredEth,
 	common.HexToAddress("0xa8dda8d7f5310e4a9e24f8eba77e091ac264f872"): hundredEth,
@@ -45,7 +44,7 @@ var ethAccountToBalance = map[common.Address]*big.Int{
 
 var pollingInterval = 100 * time.Millisecond
 
-func TestAddingAddressToETHWatcher(t *testing.T) {
+func TestAddingAddressesToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 

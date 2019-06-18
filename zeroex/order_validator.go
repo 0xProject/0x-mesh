@@ -1,8 +1,13 @@
 package zeroex
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"sync"
 	"time"
 
@@ -26,6 +31,9 @@ const chunkSize = 500
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
+
+// The context timeout length to use for requests to getCoordinatorEndpoint
+const getCoordinatorEndpointTimeout = 10 * time.Second
 
 // Specifies the max number of eth_call requests we want to make concurrently.
 // Additional requests will block until an ongoing request has completed.
@@ -68,9 +76,21 @@ type RejectedOrderStatus struct {
 
 // RejectedOrderStatus values
 var (
-	RORequestFailed = RejectedOrderStatus{
-		Code:    "NetworkRequestFailed",
+	ROEthRPCRequestFailed = RejectedOrderStatus{
+		Code:    "EthRPCRequestFailed",
 		Message: "network request to Ethereum RPC endpoint failed",
+	}
+	ROCoordinatorRequestFailed = RejectedOrderStatus{
+		Code:    "CoordinatorRequestFailed",
+		Message: "network request to coordinator server endpoint failed",
+	}
+	ROCoordinatorSoftCancelled = RejectedOrderStatus{
+		Code:    "CoordinatorSoftCancelled",
+		Message: "order was soft-cancelled via the coordinator server",
+	}
+	ROCoordinatorEndpointNotFound = RejectedOrderStatus{
+		Code:    "CoordinatorEndpointNotFound",
+		Message: "corresponding coordinator endpoint not found in CoordinatorRegistry contract",
 	}
 	ROInvalidMakerAssetAmount = RejectedOrderStatus{
 		Code:    "OrderHasInvalidMakerAssetAmount",
@@ -134,6 +154,7 @@ type RejectedOrderKind string
 const (
 	ZeroExValidation = RejectedOrderKind("ZEROEX_VALIDATION")
 	MeshError        = RejectedOrderKind("MESH_ERROR")
+	CoordinatorError = RejectedOrderKind("COORDINATOR_ERROR")
 )
 
 // ValidationResults defines the validation results returned from BatchValidate
@@ -148,8 +169,11 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
-	orderValidationUtils *wrappers.OrderValidationUtils
-	assetDataDecoder     *AssetDataDecoder
+	orderValidationUtils         *wrappers.OrderValidationUtils
+	coordinatorRegistry          *wrappers.CoordinatorRegistry
+	assetDataDecoder             *AssetDataDecoder
+	networkID                    int
+	cachedFeeRecipientToEndpoint map[common.Address]string
 }
 
 // NewOrderValidator instantiates a new order validator
@@ -159,11 +183,18 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	if err != nil {
 		return nil, err
 	}
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractNameToAddress.CoordinatorRegistry, ethClient)
+	if err != nil {
+		return nil, err
+	}
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
-		orderValidationUtils: orderValidationUtils,
-		assetDataDecoder:     assetDataDecoder,
+		orderValidationUtils:         orderValidationUtils,
+		coordinatorRegistry:          coordinatorRegistry,
+		assetDataDecoder:             assetDataDecoder,
+		networkID:                    networkID,
+		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 	}, nil
 }
 
@@ -182,14 +213,20 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		Rejected: rejectedOrderInfos,
 	}
 
+	// Validate Coordinator orders for soft-cancels
+	signedOrders, coordinatorRejectedOrderInfos := o.batchValidateSoftCancelled(offchainValidSignedOrders)
+	for _, rejectedOrderInfo := range coordinatorRejectedOrderInfos {
+		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
+	}
+
 	// Chunk into groups of chunkSize signedOrders for each call to the smart contract
 	signedOrderChunks := [][]*SignedOrder{}
-	for len(offchainValidSignedOrders) > chunkSize {
-		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders[:chunkSize])
-		offchainValidSignedOrders = offchainValidSignedOrders[chunkSize:]
+	for len(signedOrders) > chunkSize {
+		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
+		signedOrders = signedOrders[chunkSize:]
 	}
-	if len(offchainValidSignedOrders) > 0 {
-		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders)
+	if len(signedOrders) > 0 {
+		signedOrderChunks = append(signedOrderChunks, signedOrders)
 	}
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -255,7 +292,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
 								Kind:        MeshError,
-								Status:      RORequestFailed,
+								Status:      ROEthRPCRequestFailed,
 							})
 						}
 						return // Give up after 4 attempts
@@ -322,6 +359,184 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 	return validationResults
 }
 
+type softCancelResponse struct {
+	OrderHashes []common.Hash `json:"orderHashes"`
+}
+
+// batchValidateSoftCancelled validates any order specifying the Coordinator contract as the `senderAddress` to ensure
+// that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
+// given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
+// been soft cancelled.
+func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
+	rejectedOrderInfos := []*RejectedOrderInfo{}
+	validSignedOrders := []*SignedOrder{}
+
+	endpointToSignedOrders := map[string][]*SignedOrder{}
+	contractNameToAddress := constants.NetworkIDToContractAddresses[o.networkID]
+	for _, signedOrder := range signedOrders {
+		if signedOrder.SenderAddress != contractNameToAddress.Coordinator {
+			validSignedOrders = append(validSignedOrders, signedOrder)
+			continue
+		}
+
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+		}
+		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
+		if !ok {
+			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
+			defer cancel()
+			opts := &bind.CallOpts{
+				Pending: false,
+				Context: ctx,
+			}
+			var err error
+			// Look-up the coordinator endpoint in the CoordinatorRegistry by the order's `feeRecipientAddress`
+			endpoint, err = o.coordinatorRegistry.GetCoordinatorEndpoint(opts, signedOrder.FeeRecipientAddress)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error":               err.Error(),
+					"feeRecipientAddress": signedOrder.FeeRecipientAddress,
+				}).Info("GetCoordinatorEndpoint request failed")
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROEthRPCRequestFailed,
+				})
+				continue
+			}
+			// CoordinatorRegistry lookup returns empty string if endpoint not found for the feeRecipientAddress
+			if endpoint == "" {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        CoordinatorError,
+					Status:      ROCoordinatorEndpointNotFound,
+				})
+				continue
+			}
+		}
+		existingOrders, ok := endpointToSignedOrders[endpoint]
+		if !ok {
+			endpointToSignedOrders[endpoint] = []*SignedOrder{signedOrder}
+		} else {
+			endpointToSignedOrders[endpoint] = append(existingOrders, signedOrder)
+		}
+	}
+
+	for endpoint, signedOrders := range endpointToSignedOrders {
+		orderHashToSignedOrder := map[common.Hash]*SignedOrder{}
+		orderHashes := []common.Hash{}
+		for _, signedOrder := range signedOrders {
+			orderHash, err := signedOrder.ComputeOrderHash()
+			if err != nil {
+				log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+			}
+			orderHashToSignedOrder[orderHash] = signedOrder
+			orderHashes = append(orderHashes, orderHash)
+		}
+		payload := &bytes.Buffer{}
+		err := json.NewEncoder(payload).Encode(orderHashes)
+		if err != nil {
+			log.WithField("orderHashes", orderHashes).Panic("Unable to marshal `orderHashes` into JSON")
+		}
+		// Check if the orders have been soft-cancelled by querying the Coordinator server
+		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
+		resp, err := http.Post(requestURL, "application/json", payload)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"endpoint":  endpoint,
+				"requstURL": requestURL,
+				"payload":   orderHashes,
+			}).Warn("failed to send request to Coordinator server")
+			for orderHash, signedOrder := range orderHashToSignedOrder {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROCoordinatorRequestFailed,
+				})
+			}
+			continue
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"endpoint":   endpoint,
+				"statusCode": resp.StatusCode,
+				"requstURL":  requestURL,
+			}).Warn("Failed to read body received from Coordinator server")
+			for orderHash, signedOrder := range orderHashToSignedOrder {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROCoordinatorRequestFailed,
+				})
+			}
+			continue
+		}
+		if resp.StatusCode != 200 {
+			log.WithFields(map[string]interface{}{
+				"endpoint":   endpoint,
+				"statusCode": resp.StatusCode,
+				"requstURL":  requestURL,
+				"body":       string(body),
+			}).Warn("Got non-200 status code from Coordinator server")
+			for orderHash, signedOrder := range orderHashToSignedOrder {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROCoordinatorRequestFailed,
+				})
+			}
+			continue
+		}
+		var response softCancelResponse
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"endpoint":   endpoint,
+				"statusCode": resp.StatusCode,
+				"requstURL":  requestURL,
+				"body":       string(body),
+			}).Warn("Unable to unmarshal body returned from Coordinator server")
+			for orderHash, signedOrder := range orderHashToSignedOrder {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROCoordinatorRequestFailed,
+				})
+			}
+			continue
+		}
+		softCancelledOrderHashes := response.OrderHashes
+		softCancelledOrderHashMap := map[common.Hash]interface{}{}
+		for _, orderHash := range softCancelledOrderHashes {
+			softCancelledOrderHashMap[orderHash] = struct{}{}
+			signedOrder := orderHashToSignedOrder[orderHash]
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        MeshError,
+				Status:      ROCoordinatorSoftCancelled,
+			})
+		}
+		for orderHash, signedOrder := range orderHashToSignedOrder {
+			// If order hasn't been soft-cancelled
+			if _, ok := softCancelledOrderHashMap[orderHash]; !ok {
+				validSignedOrders = append(validSignedOrders, signedOrder)
+			}
+		}
+	}
+	return validSignedOrders, rejectedOrderInfos
+}
+
 // BatchOffchainValidation performs all off-chain validation checks on a batch of 0x orders.
 // These checks include:
 // - `MakerAssetAmount` and `TakerAssetAmount` cannot be 0
@@ -335,7 +550,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
-			log.Panic("Computing the orderHash failed unexpectedly")
+			log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
 		}
 		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {

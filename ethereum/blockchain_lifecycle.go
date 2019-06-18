@@ -16,6 +16,7 @@ type BlockchainLifecycle struct {
 	snapshotIdStack []string
 }
 
+// NewBlockchainLifecycle instantiates a new blockchainLifecycle instance
 func NewBlockchainLifecycle(rpcURL string) (*BlockchainLifecycle, error) {
 	rpcClient, err := rpc.DialContext(context.Background(), rpcURL)
 	if err != nil {
@@ -27,6 +28,8 @@ func NewBlockchainLifecycle(rpcURL string) (*BlockchainLifecycle, error) {
 	}, nil
 }
 
+// Start creates a snapshot of the blockchain state at that point in time
+// and adds it's snapshotId to a stack
 func (b *BlockchainLifecycle) Start(t *testing.T) {
 	var snapshotId string
 	err := b.rpcClient.Call(&snapshotId, "evm_snapshot")
@@ -34,6 +37,7 @@ func (b *BlockchainLifecycle) Start(t *testing.T) {
 	b.snapshotIdStack = append(b.snapshotIdStack, snapshotId)
 }
 
+// Revert reverts the latest snapshot of blockchain state created
 func (b *BlockchainLifecycle) Revert(t *testing.T) {
 	latestSnapshot := b.snapshotIdStack[len(b.snapshotIdStack)-1]
 	b.snapshotIdStack = b.snapshotIdStack[:len(b.snapshotIdStack)-1]
