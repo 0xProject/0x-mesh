@@ -29,7 +29,7 @@ const chunkSize = 3500 // 7,475,648 gas
 // Balance represents a single Ethereum addresses Ether balance
 type Balance struct {
 	Address common.Address
-	Balance *big.Int
+	Amount  *big.Int
 }
 
 // ETHWatcher allows for watching a set of Ethereum addresses for ETH balance
@@ -72,11 +72,7 @@ func (e *ETHWatcher) Start() error {
 		for {
 			start := time.Now()
 
-			if err := e.updateBalances(); err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Error("unexpected error from ETHWatcher.updateBalances()")
-			}
+			e.updateBalances()
 
 			// Wait minPollingInterval before calling updateBalances again. Since
 			// we only start sleeping _after_ updateBalances completes, we will never
@@ -95,19 +91,22 @@ func (e *ETHWatcher) Stop() {
 	e.isWatching = false
 }
 
-// Add adds a new Ethereum address we'd like to track for balance changes
-func (e *ETHWatcher) Add(address common.Address, initialBalance *big.Int) {
+// Add adds new Ethereum addresses we'd like to track for balance changes and returns a map of added
+// address to balance, and an array of addresses that it failed to add due to failed network requests
+func (e *ETHWatcher) Add(addresses []common.Address) (addressToBalance map[common.Address]*big.Int, failedAddresses []common.Address) {
 	e.addressToBalanceMu.Lock()
 	defer e.addressToBalanceMu.Unlock()
-	if existingBalance, ok := e.addressToBalance[address]; ok {
-		log.WithFields(log.Fields{
-			"address":         address.Hex(),
-			"initialBalance":  initialBalance,
-			"existingBalance": existingBalance,
-		}).Warn("tried to add address to ETHWatcher that already exists")
-		return // Noop. Already exists and we bias towards our existing balance
+	newAddresses := []common.Address{}
+	for _, address := range addresses {
+		if _, ok := e.addressToBalance[address]; !ok {
+			newAddresses = append(newAddresses, address)
+		}
 	}
-	e.addressToBalance[address] = initialBalance
+	addressToBalance, failedAddresses = e.getBalances(newAddresses)
+	for address, balance := range addressToBalance {
+		e.addressToBalance[address] = balance
+	}
+	return addressToBalance, failedAddresses
 }
 
 // Remove removes a new Ethereum address we no longer want to track for balance changes
@@ -134,14 +133,41 @@ func (e *ETHWatcher) Receive() <-chan Balance {
 	return e.balanceChan
 }
 
-func (e *ETHWatcher) updateBalances() error {
+func (e *ETHWatcher) updateBalances() {
 	e.addressToBalanceMu.Lock()
+	defer e.addressToBalanceMu.Unlock()
 	addresses := []common.Address{}
 	for address := range e.addressToBalance {
 		addresses = append(addresses, address)
 	}
-	e.addressToBalanceMu.Unlock()
+	// Intentionally ignore addresses we failed to fetch balances for
+	// and simply attempt them again at the next polling interval
+	addressToAmount, _ := e.getBalances(addresses)
+	for address, newAmount := range addressToAmount {
+		if cachedBalance, ok := e.addressToBalance[address]; ok {
+			if cachedBalance.Cmp(newAmount) != 0 {
+				e.addressToBalance[address] = newAmount
+				updatedBalance := Balance{
+					Address: address,
+					Amount:  newAmount,
+				}
+				go func() {
+					e.balanceChan <- updatedBalance
+				}()
+			}
+		} else {
+			// Due to the asynchronous nature of the ethWatcher, there are race-conditions
+			// where we try to update the balance of an address after it has been removed from the
+			// ethWatcher.
+			log.WithFields(log.Fields{
+				"address": address,
+				"balance": newAmount,
+			}).Trace("Attempted to update an ETH balance from ethWatcher that is no longer tracked")
+		}
+	}
+}
 
+func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address]*big.Int, []common.Address) {
 	chunks := [][]common.Address{}
 	// Chunk into groups of chunkSize addresses for the call
 	for len(addresses) > chunkSize {
@@ -151,6 +177,9 @@ func (e *ETHWatcher) updateBalances() error {
 	if len(addresses) > 0 {
 		chunks = append(chunks, addresses)
 	}
+
+	addressToBalance := map[common.Address]*big.Int{}
+	failedAddresses := []common.Address{}
 
 	wg := &sync.WaitGroup{}
 	for _, chunk := range chunks {
@@ -170,34 +199,21 @@ func (e *ETHWatcher) updateBalances() error {
 			}
 			balances, err := e.ethBalanceChecker.GetEthBalances(opts, chunk)
 			if err != nil {
+				for _, address := range chunk {
+					failedAddresses = append(failedAddresses, address)
+				}
 				log.WithFields(log.Fields{
 					"error":     err.Error(),
 					"addresses": chunk,
 				}).Info("ether batch balance check failed")
-				return // Noop on failure, simply wait for next polling interval
+				return // Noop on failure
 			}
 			for i, address := range chunk {
-				e.addressToBalanceMu.Lock()
-				if balance, ok := e.addressToBalance[address]; ok {
-					if balance.Cmp(balances[i]) != 0 {
-						e.addressToBalance[address] = balances[i]
-						updatedBalance := Balance{
-							Address: address,
-							Balance: balances[i],
-						}
-						go func() {
-							e.balanceChan <- updatedBalance
-						}()
-					}
-				} else {
-					log.WithFields(log.Fields{
-						"address": address,
-					}).Error("address unexpectedly missing from addressToBalance map")
-				}
-				e.addressToBalanceMu.Unlock()
+				newBalance := balances[i]
+				addressToBalance[address] = newBalance
 			}
 		}(chunk)
 	}
 	wg.Wait()
-	return nil
+	return addressToBalance, failedAddresses
 }

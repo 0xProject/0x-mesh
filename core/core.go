@@ -27,7 +27,7 @@ const (
 	blockWatcherPollingInterval = 5 * time.Second
 	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
-	ethWatcherPollingInterval   = 5 * time.Second
+	ethWatcherPollingInterval   = 1 * time.Minute
 	peerConnectTimeout          = 60 * time.Second
 	checkNewAddrInterval        = 20 * time.Second
 )

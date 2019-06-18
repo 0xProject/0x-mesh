@@ -7,6 +7,7 @@
 package ethereum
 
 import (
+	"context"
 	"math/big"
 	"testing"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,13 +28,14 @@ var firstAccountBalance, _ = math.ParseBig256("99931715680000000000")
 var secondAccount = common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb")
 var secondAccountBalance, _ = math.ParseBig256("49999822428000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
+var randomAccount = common.HexToAddress("0x49fea72f146d41bfc5b9329e4ebbc3c382589f37")
 
 var ethAccountToBalance = map[common.Address]*big.Int{
-	firstAccount:  firstAccountBalance,
-	secondAccount: secondAccountBalance,
-	common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84"): hundredEth,
-	common.HexToAddress("0xe834ec434daba538cd1b9fe1582052b880bd7e63"): hundredEth,
-	common.HexToAddress("0x78dc5d2d739606d31509c31d654056a45185ecb6"): hundredEth,
+	firstAccount:              firstAccountBalance,
+	secondAccount:             secondAccountBalance,
+	constants.GanacheAccount1: hundredEth,
+	constants.GanacheAccount2: hundredEth,
+	constants.GanacheAccount3: hundredEth,
 	common.HexToAddress("0xa8dda8d7f5310e4a9e24f8eba77e091ac264f872"): hundredEth,
 	common.HexToAddress("0x06cef8e666768cc40cc78cf93d9611019ddcb628"): hundredEth,
 	common.HexToAddress("0x4404ac8bd8f9618d27ad2f1485aa1b2cfd82482d"): hundredEth,
@@ -48,101 +52,78 @@ func TestAddingAddressToETHWatcher(t *testing.T) {
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
-	for address := range ethAccountToBalance {
-		ethWatcher.Add(address, big.NewInt(0))
-	}
-
 	addresses := []common.Address{}
-	for address := range ethWatcher.addressToBalance {
+	for address := range ethAccountToBalance {
 		addresses = append(addresses, address)
 	}
+	addressToBalance, failedAddresses := ethWatcher.Add(addresses)
 
-	expectedCount := 10
-	assert.Equal(t, expectedCount, len(addresses))
+	assert.Len(t, failedAddresses, 0)
+	assert.Equal(t, ethAccountToBalance, addressToBalance)
 }
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
+	blockchainLifecycle, err := NewBlockchainLifecycle(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	blockchainLifecycle.Start(t)
+	defer blockchainLifecycle.Revert(t)
+
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
 	require.NoError(t, err)
 
+	addresses := []common.Address{}
 	for address := range ethAccountToBalance {
-		// Set initial balances to 0 so that when the watcher is started an event will be emitted
-		// for each tracked address with the correct balance.
-		ethWatcher.Add(address, big.NewInt(0))
+		addresses = append(addresses, address)
 	}
+	addressToInitialBalance, failedAddresses := ethWatcher.Add(addresses)
+	assert.Len(t, failedAddresses, 0)
+	assert.Len(t, addressToInitialBalance, len(ethAccountToBalance))
 
-	go func() {
-		require.NoError(t, ethWatcher.updateBalances())
-	}()
-
-	for i := 0; i < len(ethAccountToBalance); i++ {
-		select {
-		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
-
-		case <-time.After(3 * time.Second):
-			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
-		}
-	}
-}
-func TestUpdateChangedBalancesOnlyETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
-	require.NoError(t, err)
-
-	// Add the first account with the correct initial balance. We expect no event to be emitted for
-	// this account since the watcher already has the most up-to-date
-	ethWatcher.Add(firstAccount, firstAccountBalance)
-
-	// Add the second account with an incorrect balance, so that an event will be emitted for it
-	// when running updateBalances()
-	ethWatcher.Add(secondAccount, big.NewInt(0))
-
-	go func() {
-		require.NoError(t, ethWatcher.updateBalances())
-	}()
-
-	for i := 0; i < 1; i++ {
-		select {
-		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, secondAccountBalance, balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
-			assert.Equal(t, secondAccount, balance.Address)
-
-		case <-time.After(3 * time.Second):
-			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
-		}
-	}
-}
-func TestStartStopETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
-	require.NoError(t, err)
-
-	for address := range ethAccountToBalance {
-		// Set initial balances to 0 so that when the watcher is started an event will be emitted
-		// for each tracked address with the correct balance.
-		ethWatcher.Add(address, big.NewInt(0))
-	}
+	amount := big.NewInt(int64(1000000))
+	transferFunds(t, ethClient, constants.GanacheAccount0, randomAccount, amount)
 
 	require.NoError(t, ethWatcher.Start())
 
-	for i := 0; i < len(ethAccountToBalance); i++ {
-		select {
-		case balance := <-ethWatcher.Receive():
-			assert.Equal(t, ethAccountToBalance[balance.Address], balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
+	select {
+	case balance := <-ethWatcher.Receive():
+		assert.Equal(t, constants.GanacheAccount0, balance.Address)
+		assert.NotEqual(t, addressToInitialBalance[balance.Address], balance.Amount, "wrong balance for account: %s", balance.Address.Hex())
 
-		case <-time.After(3 * time.Second):
-			t.Fatal("Timed out waiting for balance channel to deliver expected balances")
-		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Timed out waiting for balance channel to deliver expected balances")
 	}
 
 	ethWatcher.Stop()
 	assert.False(t, ethWatcher.isWatching, "Calling Stop() should stop the ethWatcher poller")
+}
+
+func transferFunds(t *testing.T, client *ethclient.Client, from, to common.Address, value *big.Int) {
+	pkBytes, ok := constants.GanacheAccountToPrivateKey[from]
+	if !ok {
+		t.Errorf("no corresponding private key found for: %s", from.Hex())
+	}
+	privateKey, err := crypto.ToECDSA(pkBytes)
+
+	nonce, err := client.NonceAt(context.Background(), from, nil)
+	require.NoError(t, err)
+	gasLimit := uint64(21000)
+	gasPrice := big.NewInt(10000000)
+	rawTx := types.NewTransaction(nonce, to, value, gasLimit, gasPrice, []byte{})
+	require.NoError(t, err)
+
+	signer := types.HomesteadSigner{}
+	signature, err := crypto.Sign(signer.Hash(rawTx).Bytes(), privateKey)
+	require.NoError(t, err)
+	signedTx, err := rawTx.WithSignature(signer, signature)
+	require.NoError(t, err)
+
+	err = client.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	// Make sure transaction did not revert
+	txReceipt, err := client.TransactionReceipt(context.Background(), signedTx.Hash())
+	assert.Equal(t, uint64(1), txReceipt.Status)
 }
