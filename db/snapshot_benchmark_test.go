@@ -10,7 +10,8 @@ import (
 func BenchmarkGetSnapshot(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	for i := 0; i < 1000; i++ {
 		model := &testModel{
 			Name: fmt.Sprintf("person_%d", i),
@@ -31,7 +32,8 @@ func BenchmarkGetSnapshot(b *testing.B) {
 func BenchmarkSnapshotFindByID(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	model := &testModel{
 		Name: "foo",
 		Age:  42,

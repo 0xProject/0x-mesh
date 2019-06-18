@@ -13,7 +13,8 @@ import (
 func TestTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
