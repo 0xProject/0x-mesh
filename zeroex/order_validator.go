@@ -462,9 +462,24 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"endpoint":   endpoint,
+				"statusCode": resp.StatusCode,
+				"requstURL":  requestURL,
+			}).Warn("Failed to read body received from Coordinator server")
+			for orderHash, signedOrder := range orderHashToSignedOrder {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        MeshError,
+					Status:      ROCoordinatorRequestFailed,
+				})
+			}
+			continue
+		}
 		if resp.StatusCode != 200 {
-			// fabio: We intentionally ignore this error because this is already a failure case
-			body, _ := ioutil.ReadAll(resp.Body)
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
 				"statusCode": resp.StatusCode,
@@ -482,10 +497,8 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		var response softCancelResponse
-		err = json.NewDecoder(resp.Body).Decode(&response)
+		err = json.Unmarshal(body, &response)
 		if err != nil {
-			// fabio: We intentionally ignore this error because this is already a failure case
-			body, _ := ioutil.ReadAll(resp.Body)
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
 				"statusCode": resp.StatusCode,
