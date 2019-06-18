@@ -483,7 +483,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 			continue
 		}
 		var response softCancelResponse
-		err = json.NewDecoder(resp.Body).Decode(&response)
+		err = json.Unmarshal(body, &response)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"endpoint":   endpoint,
