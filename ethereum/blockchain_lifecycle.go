@@ -8,11 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-/**
- * BlockchainLifecycle is a testing utility for taking snapshots of the blockchain
- * state on Ganache and reverting those snapshots at a later point in time. Ganache
- * supports performing multiple snapshots that can then be reverted in LIFO order.
- */
+// BlockchainLifecycle is a testing utility for taking snapshots of the blockchain
+// state on Ganache and reverting those snapshots at a later point in time. Ganache
+// supports performing multiple snapshots that can then be reverted in LIFO order.
 type BlockchainLifecycle struct {
 	rpcClient       *rpc.Client
 	snapshotIdStack []string
