@@ -31,7 +31,7 @@ type Transaction struct {
 //
 //     (1) The transaction will succeed and *all* queued operations will be
 //     applied, or
-//     (2) the transaction will be fail or be discarded, in which case *none* of
+//     (2) the transaction will fail or be discarded, in which case *none* of
 //     the queued operations will be applied.
 //
 // The transaction must be closed once done, either by committing or discarding
@@ -72,7 +72,8 @@ func (txn *Transaction) unsafeCheckState() error {
 }
 
 // Commit commits the transaction. If error is not nil, then the transaction is
-// not committed, it can then either be retried or discarded.
+// not committed, and a new transaction must be created if you wish to retry the
+// operations.
 //
 // Other methods should not be called after transaction has been committed.
 func (txn *Transaction) Commit() error {
