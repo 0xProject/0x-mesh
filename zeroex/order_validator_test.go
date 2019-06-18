@@ -153,7 +153,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, validationResults.Accepted, 0)
-	assert.Len(t, validationResults.Rejected, 1)
+	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
@@ -179,7 +179,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, validationResults.Accepted, 0)
-	assert.Len(t, validationResults.Rejected, 1)
+	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
@@ -225,7 +225,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
 	assert.Len(t, validationResults.Accepted, 0)
-	assert.Len(t, validationResults.Rejected, 1)
+	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
