@@ -29,7 +29,7 @@ const chunkSize = 3500 // 7,475,648 gas
 // Balance represents a single Ethereum addresses Ether balance
 type Balance struct {
 	Address common.Address
-	Balance *big.Int
+	Amount  *big.Int
 }
 
 // ETHWatcher allows for watching a set of Ethereum addresses for ETH balance
@@ -142,14 +142,14 @@ func (e *ETHWatcher) updateBalances() {
 	}
 	// Intentionally ignore addresses we failed to fetch balances for
 	// and simply attempt them again at the next polling interval
-	addressToBalance, _ := e.getBalances(addresses)
-	for address, newBalance := range addressToBalance {
+	addressToAmount, _ := e.getBalances(addresses)
+	for address, newAmount := range addressToAmount {
 		if cachedBalance, ok := e.addressToBalance[address]; ok {
-			if cachedBalance.Cmp(newBalance) != 0 {
-				e.addressToBalance[address] = newBalance
+			if cachedBalance.Cmp(newAmount) != 0 {
+				e.addressToBalance[address] = newAmount
 				updatedBalance := Balance{
 					Address: address,
-					Balance: newBalance,
+					Amount:  newAmount,
 				}
 				go func() {
 					e.balanceChan <- updatedBalance
@@ -160,8 +160,8 @@ func (e *ETHWatcher) updateBalances() {
 			// where we try to update the balance of an address after it has been removed from the
 			// ethWatcher.
 			log.WithFields(log.Fields{
-				"address":    address,
-				"newBalance": newBalance,
+				"address": address,
+				"balance": newAmount,
 			}).Trace("Attempted to update an ETH balance from ethWatcher that is no longer tracked")
 		}
 	}

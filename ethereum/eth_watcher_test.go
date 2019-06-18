@@ -90,7 +90,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	select {
 	case balance := <-ethWatcher.Receive():
 		assert.Equal(t, constants.GanacheAccount0, balance.Address)
-		assert.NotEqual(t, addressToInitialBalance[balance.Address], balance.Balance, "wrong balance for account: %s", balance.Address.Hex())
+		assert.NotEqual(t, addressToInitialBalance[balance.Address], balance.Amount, "wrong balance for account: %s", balance.Address.Hex())
 
 	case <-time.After(3 * time.Second):
 		t.Fatal("Timed out waiting for balance channel to deliver expected balances")
