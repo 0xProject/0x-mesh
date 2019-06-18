@@ -363,12 +363,10 @@ type softCancelResponse struct {
 	OrderHashes []common.Hash `json:"orderHashes"`
 }
 
-/**
- * batchValidateSoftCancelled validates any order specifying the Coordinator contract as the `senderAddress` to ensure
- * that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
- * given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
- * been soft cancelled.
- */
+// batchValidateSoftCancelled validates any order specifying the Coordinator contract as the `senderAddress` to ensure
+// that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
+// given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
+// been soft cancelled.
 func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	validSignedOrders := []*SignedOrder{}
