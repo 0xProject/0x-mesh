@@ -201,7 +201,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	// generate a test server so we can capture and inspect the request
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(200)
-		_, err := res.Write([]byte(fmt.Sprintf("{\"orderHashes\": [\"%s\"]}", orderHash.Hex())))
+		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
 		require.NoError(t, err)
 	}))
 	defer func() { testServer.Close() }()
