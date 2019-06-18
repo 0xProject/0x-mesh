@@ -52,6 +52,14 @@ type testCase struct {
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
+var blockchainLifecycle *ethereum.BlockchainLifecycle
+
+func TestSetup(t *testing.T) {
+	var err error
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
+	require.NoError(t, err)
+}
+
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
@@ -114,6 +122,8 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
+		teardownSubTest := setupSubTest(t)
+
 		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 		require.NoError(t, err)
 
@@ -130,10 +140,15 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		if !isValid {
 			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
 		}
+
+		teardownSubTest(t)
 	}
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
 	signedOrder := &testSignedOrder
 	// Add a correctly formatted signature that does not correspond to this order
 	signedOrder.Signature = common.Hex2Bytes("1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603")
@@ -159,6 +174,9 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 }
 
 func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
 	signedOrder := &testSignedOrder
 	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
@@ -185,6 +203,9 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 }
 
 func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
 	signedOrder := &testSignedOrder
 	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -228,6 +249,13 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
+
+func setupSubTest(t *testing.T) func(t *testing.T) {
+	blockchainLifecycle.Start(t)
+	return func(t *testing.T) {
+		blockchainLifecycle.Revert(t)
+	}
 }
 
 func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
