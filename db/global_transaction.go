@@ -74,7 +74,7 @@ func (txn *GlobalTransaction) unsafeCheckState() error {
 }
 
 // Commit commits the transaction. If error is not nil, then the transaction is
-// not committed, and a new transaction must be created if you wish to retry the
+// discarded. A new transaction must be created if you wish to retry the
 // operations.
 //
 // Other methods should not be called after transaction has been committed.
@@ -88,10 +88,12 @@ func (txn *GlobalTransaction) Commit() error {
 	// that was touched.
 	for col, internalCount := range txn.internalCounts {
 		if err := updateCountWithTransaction(col.info, txn.readWriter, int(internalCount)); err != nil {
+			_ = txn.Discard()
 			return err
 		}
 	}
 	if err := txn.batchWriter.Write(txn.readWriter.batch, nil); err != nil {
+		_ = txn.Discard()
 		return err
 	}
 	txn.committed = true
