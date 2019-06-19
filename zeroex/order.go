@@ -81,6 +81,17 @@ type OrderEvent struct {
 	TxHash common.Hash `json:"txHash"`
 }
 
+// MarshalJSON implements a custom JSON marshaller for the SignedOrder type
+func (o *OrderEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"orderHash":                o.OrderHash.Hex(),
+		"signedOrder":              o.SignedOrder,
+		"kind":                     o.Kind,
+		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
+		"txHash":                   o.TxHash.Hex(),
+	})
+}
+
 // OrderEventKind enumerates all the possible order event types
 type OrderEventKind string
 
