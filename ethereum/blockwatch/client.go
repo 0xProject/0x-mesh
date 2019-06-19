@@ -2,14 +2,18 @@ package blockwatch
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Client defines the methods needed to satisfy the client expected when
@@ -22,14 +26,29 @@ type Client interface {
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
+	rpcClient      *rpc.Client
 	client         *ethclient.Client
 	requestTimeout time.Duration
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(ethClient *ethclient.Client, requestTimeout time.Duration) (*RpcClient, error) {
-	return &RpcClient{ethClient, requestTimeout}, nil
+func NewRpcClient(rpcURL string, requestTimeout time.Duration) (*RpcClient, error) {
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	rpcClient, err := rpc.Dial(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	return &RpcClient{rpcClient, ethClient, requestTimeout}, nil
+}
+
+type GetBlockByNumberResponse struct {
+	Hash       common.Hash `json:"hash"`
+	ParentHash common.Hash `json:"parentHash"`
+	Number     string      `json:"number"`
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
@@ -37,14 +56,32 @@ func NewRpcClient(ethClient *ethclient.Client, requestTimeout time.Duration) (*R
 func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
 	defer cancel()
-	header, err := rc.client.HeaderByNumber(ctx, number)
+
+	var blockParam string
+	if number == nil {
+		blockParam = "latest"
+	} else {
+		blockParam = fmt.Sprintf("0x%s", common.Bytes2Hex(number.Bytes()))
+	}
+	shouldIncludeTransactions := false
+
+	var header GetBlockByNumberResponse
+	err := rc.rpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
 	}
+
+	if len(header.Number) < 2 {
+		return nil, errors.New("Block number returned by eth_getBlockByNumber too short")
+	}
+	blockNum, ok := math.ParseBig256(header.Number)
+	if !ok {
+		return nil, errors.New("Failed to parse big.Int value from hex-encoded block number returned from eth_getBlockByNumber")
+	}
 	miniHeader := &meshdb.MiniHeader{
-		Hash:   header.Hash(),
+		Hash:   header.Hash,
 		Parent: header.ParentHash,
-		Number: header.Number,
+		Number: blockNum,
 	}
 	return miniHeader, nil
 }
