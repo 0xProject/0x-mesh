@@ -118,8 +118,8 @@ func (w *Watcher) startPollingLoop() {
 	}
 }
 
-// StopPolling stops the block poller
-func (w *Watcher) StopPolling() {
+// stopPolling stops the block poller
+func (w *Watcher) stopPolling() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.isWatching = false
@@ -132,7 +132,7 @@ func (w *Watcher) StopPolling() {
 // Stop stops the BlockWatcher
 func (w *Watcher) Stop() {
 	if w.isWatching {
-		w.StopPolling()
+		w.stopPolling()
 	}
 	close(w.Errors)
 }
