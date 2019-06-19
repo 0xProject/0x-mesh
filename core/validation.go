@@ -60,7 +60,7 @@ const (
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
 	results := &zeroex.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses := ethereum.GetContractAddressesForNetworkID(app.networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
 	if err != nil {
 		return nil, err
 	}

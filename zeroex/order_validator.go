@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -376,9 +375,12 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 	validSignedOrders := []*SignedOrder{}
 
 	endpointToSignedOrders := map[string][]*SignedOrder{}
-	contractNameToAddress := constants.NetworkIDToContractAddresses[o.networkID]
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(o.networkID)
+	if err != nil {
+		log.WithField("error", err.Error()).Panic("Could not find contracts for configured network ID")
+	}
 	for _, signedOrder := range signedOrders {
-		if signedOrder.SenderAddress != contractNameToAddress.Coordinator {
+		if signedOrder.SenderAddress != contractAddresses.Coordinator {
 			validSignedOrders = append(validSignedOrders, signedOrder)
 			continue
 		}
