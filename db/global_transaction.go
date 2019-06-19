@@ -13,10 +13,10 @@ type GlobalTransaction struct {
 	readWriter  *readerWithBatchWriter
 	committed   bool
 	discarded   bool
-	// internalCount keeps track of the number of models inserted/deleted within
-	// the transaction for each collection. An Insert increments internalCount and
-	// a Delete decrements it. When the transaction is committed, internalCount is
-	// added to the current count.
+	// internalCounts keeps track of the number of models inserted/deleted within
+	// the transaction for each collection. An Insert increments the count and
+	// a Delete decrements it. When the transaction is committed, the
+	// internal count is added to the current count for each collection.
 	internalCounts map[*Collection]int
 }
 
