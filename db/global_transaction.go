@@ -1,6 +1,8 @@
 package db
 
-import "sync"
+import (
+	"sync"
+)
 
 // GlobalTransaction is an atomic database transaction across all collections
 // which can be used to guarantee consistency.
@@ -11,6 +13,11 @@ type GlobalTransaction struct {
 	readWriter  *readerWithBatchWriter
 	committed   bool
 	discarded   bool
+	// internalCount keeps track of the number of models inserted/deleted within
+	// the transaction for each collection. An Insert increments internalCount and
+	// a Delete decrements it. When the transaction is committed, internalCount is
+	// added to the current count.
+	internalCounts map[*Collection]int
 }
 
 // OpenGlobalTransaction opens and returns a new global transaction. While the
@@ -40,9 +47,10 @@ func (db *DB) OpenGlobalTransaction() *GlobalTransaction {
 	db.globalWriteLock.Lock()
 	db.colLock.Lock()
 	return &GlobalTransaction{
-		db:          db,
-		batchWriter: db.ldb,
-		readWriter:  newReaderWithBatchWriter(db.ldb),
+		db:             db,
+		batchWriter:    db.ldb,
+		readWriter:     newReaderWithBatchWriter(db.ldb),
+		internalCounts: map[*Collection]int{},
 	}
 }
 
@@ -75,6 +83,13 @@ func (txn *GlobalTransaction) Commit() error {
 	defer txn.mut.Unlock()
 	if err := txn.unsafeCheckState(); err != nil {
 		return err
+	}
+	// Right before we commit, we need to update the count for each collection
+	// that was touched.
+	for col, internalCount := range txn.internalCounts {
+		if err := updateCountWithTransaction(col.info, txn.readWriter, int(internalCount)); err != nil {
+			return err
+		}
 	}
 	if err := txn.batchWriter.Write(txn.readWriter.batch, nil); err != nil {
 		return err
@@ -111,7 +126,11 @@ func (txn *GlobalTransaction) Insert(col *Collection, model Model) error {
 	if err := txn.checkState(); err != nil {
 		return err
 	}
-	return insertWithTransaction(col.info, txn.readWriter, model)
+	if err := insertWithTransaction(col.info, txn.readWriter, model); err != nil {
+		return err
+	}
+	txn.updateInternalCount(col, 1)
+	return nil
 }
 
 // Update queues an operation to update an existing model in the given
@@ -132,5 +151,19 @@ func (txn *GlobalTransaction) Delete(col *Collection, id []byte) error {
 	if err := txn.checkState(); err != nil {
 		return err
 	}
-	return deleteWithTransaction(col.info, txn.readWriter, id)
+	if err := deleteWithTransaction(col.info, txn.readWriter, id); err != nil {
+		return err
+	}
+	txn.updateInternalCount(col, -1)
+	return nil
+}
+
+func (txn *GlobalTransaction) updateInternalCount(col *Collection, diff int) {
+	txn.mut.Lock()
+	defer txn.mut.Unlock()
+	if existingCount, found := txn.internalCounts[col]; found {
+		txn.internalCounts[col] = existingCount + diff
+	} else {
+		txn.internalCounts[col] = diff
+	}
 }

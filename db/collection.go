@@ -73,6 +73,7 @@ func (c *Collection) Insert(model Model) error {
 		_ = txn.Discard()
 		return err
 	}
+	txn.updateInternalCount(1)
 	if err := txn.Commit(); err != nil {
 		_ = txn.Discard()
 		return err
@@ -103,6 +104,7 @@ func (c *Collection) Delete(id []byte) error {
 		_ = txn.Discard()
 		return err
 	}
+	txn.updateInternalCount(-1)
 	if err := txn.Commit(); err != nil {
 		_ = txn.Discard()
 		return err

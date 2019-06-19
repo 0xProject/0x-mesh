@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -20,6 +21,11 @@ type Transaction struct {
 	readWriter  *readerWithBatchWriter
 	committed   bool
 	discarded   bool
+	// internalCount keeps track of the number of models inserted/deleted within
+	// the transaction. An Insert increments internalCount and a Delete decrements
+	// it. When the transaction is committed, internalCount is added to the
+	// current count.
+	internalCount int64
 }
 
 // OpenTransaction opens and returns a new transaction for the collection. While
@@ -82,6 +88,10 @@ func (txn *Transaction) Commit() error {
 	if err := txn.unsafeCheckState(); err != nil {
 		return err
 	}
+	// Right before we commit, we need to update the count with txn.internalCount.
+	if err := updateCountWithTransaction(txn.colInfo, txn.readWriter, int(txn.internalCount)); err != nil {
+		return err
+	}
 	if err := txn.batchWriter.Write(txn.readWriter.batch, nil); err != nil {
 		return err
 	}
@@ -117,7 +127,11 @@ func (txn *Transaction) Insert(model Model) error {
 	if err := txn.checkState(); err != nil {
 		return err
 	}
-	return insertWithTransaction(txn.colInfo, txn.readWriter, model)
+	if err := insertWithTransaction(txn.colInfo, txn.readWriter, model); err != nil {
+		return err
+	}
+	txn.updateInternalCount(1)
+	return nil
 }
 
 // Update queues an operation to update an existing model in the database. It
@@ -137,5 +151,13 @@ func (txn *Transaction) Delete(id []byte) error {
 	if err := txn.checkState(); err != nil {
 		return err
 	}
-	return deleteWithTransaction(txn.colInfo, txn.readWriter, id)
+	if err := deleteWithTransaction(txn.colInfo, txn.readWriter, id); err != nil {
+		return err
+	}
+	txn.updateInternalCount(-1)
+	return nil
+}
+
+func (txn *Transaction) updateInternalCount(diff int64) {
+	atomic.AddInt64(&txn.internalCount, diff)
 }

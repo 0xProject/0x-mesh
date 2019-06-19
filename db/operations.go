@@ -95,9 +95,6 @@ func insertWithTransaction(info *colInfo, readWriter dbReadWriter, model Model) 
 	if err := saveIndexesWithTransaction(info, readWriter, model); err != nil {
 		return err
 	}
-	if err := updateCountWithTransaction(info, readWriter, 1); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -163,11 +160,6 @@ func deleteWithTransaction(info *colInfo, readWriter dbReadWriter, id []byte) er
 
 	// Delete any index entries.
 	if err := deleteIndexesWithTransaction(info, readWriter, latest); err != nil {
-		return err
-	}
-
-	// Decrement the model count by 1.
-	if err := updateCountWithTransaction(info, readWriter, -1); err != nil {
 		return err
 	}
 
