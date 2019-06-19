@@ -42,7 +42,7 @@ func NewRpcClient(rpcURL string, requestTimeout time.Duration) (*RpcClient, erro
 	if err != nil {
 		return nil, err
 	}
-	return &RpcClient{rpcClient, ethClient, requestTimeout}, nil
+	return &RpcClient{rpcClient: rpcClient, client: ethClient, requestTimeout: requestTimeout}, nil
 }
 
 type GetBlockByNumberResponse struct {
