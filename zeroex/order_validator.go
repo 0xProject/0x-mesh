@@ -178,15 +178,15 @@ type OrderValidator struct {
 
 // NewOrderValidator instantiates a new order validator
 func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
-	contractNameToAddress, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
 	}
-	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractNameToAddress.OrderValidationUtils, ethClient)
+	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractAddresses.OrderValidationUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractNameToAddress.CoordinatorRegistry, ethClient)
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractAddresses.CoordinatorRegistry, ethClient)
 	if err != nil {
 		return nil, err
 	}

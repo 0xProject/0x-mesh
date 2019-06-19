@@ -45,11 +45,11 @@ type ETHWatcher struct {
 
 // NewETHWatcher creates a new instance of ETHWatcher
 func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, networkID int) (*ETHWatcher, error) {
-	contractNameToAddress, err := GetContractAddressesForNetworkID(networkID)
+	contractAddresses, err := GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
 	}
-	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(contractNameToAddress.EthBalanceChecker, ethClient)
+	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(contractAddresses.EthBalanceChecker, ethClient)
 	if err != nil {
 		return nil, err
 	}

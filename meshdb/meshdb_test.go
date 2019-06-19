@@ -19,7 +19,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	contractNameToAddress, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
 	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
@@ -37,7 +37,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       contractNameToAddress.Exchange,
+		ExchangeAddress:       contractAddresses.Exchange,
 	}
 	signedOrder, err := zeroex.SignTestOrder(o)
 	require.NoError(t, err)
