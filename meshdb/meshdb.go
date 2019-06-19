@@ -79,7 +79,10 @@ func NewMeshDB(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
-	orders := setupOrders(database)
+	orders, err := setupOrders(database)
+	if err != nil {
+		return nil, err
+	}
 
 	return &MeshDB{
 		database:    database,
@@ -88,8 +91,11 @@ func NewMeshDB(path string) (*MeshDB, error) {
 	}, nil
 }
 
-func setupOrders(database *db.DB) *OrdersCollection {
-	col := database.NewCollection("order", &Order{})
+func setupOrders(database *db.DB) (*OrdersCollection, error) {
+	col, err := database.NewCollection("order", &Order{})
+	if err != nil {
+		return nil, err
+	}
 	lastUpdatedIndex := col.AddIndex("lastUpdated", func(m db.Model) []byte {
 		index := []byte(m.(*Order).LastUpdated.UTC().Format(time.RFC3339Nano))
 		return index
@@ -141,11 +147,14 @@ func setupOrders(database *db.DB) *OrdersCollection {
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
 		LastUpdatedIndex:                     lastUpdatedIndex,
 		IsRemovedIndex:                       isRemovedIndex,
-	}
+	}, nil
 }
 
 func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
-	col := database.NewCollection("miniHeader", &MiniHeader{})
+	col, err := database.NewCollection("miniHeader", &MiniHeader{})
+	if err != nil {
+		return nil, err
+	}
 	numberIndex := col.AddIndex("number", func(model db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an

@@ -23,7 +23,8 @@ func benchmarkTransactionInsert(b *testing.B, count int) {
 	b.Helper()
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		txn := col.OpenTransaction()

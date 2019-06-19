@@ -11,7 +11,8 @@ import (
 func BenchmarkInsert(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -30,7 +31,8 @@ func BenchmarkInsert(b *testing.B) {
 func BenchmarkFindByIDHot(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	model := &testModel{
 		Name: "foo",
 		Age:  42,
@@ -49,7 +51,8 @@ func BenchmarkFindByIDHot(b *testing.B) {
 func BenchmarkFindByIDCold(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -70,7 +73,8 @@ func BenchmarkFindByIDCold(b *testing.B) {
 func BenchmarkUpdateHot(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	original := &testModel{
 		Name: "person_0",
 		Age:  0,
@@ -94,7 +98,8 @@ func BenchmarkUpdateHot(b *testing.B) {
 func BenchmarkUpdateCold(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -127,7 +132,8 @@ func benchmarkFindAll(b *testing.B, count int) {
 	b.Helper()
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	expected := []*testModel{}
 	for i := 0; i < count; i++ {
 		model := &testModel{
@@ -150,7 +156,8 @@ func benchmarkFindAll(b *testing.B, count int) {
 func BenchmarkDelete(b *testing.B) {
 	db := newTestDB(b)
 	defer db.Close()
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()

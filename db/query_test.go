@@ -12,7 +12,8 @@ import (
 
 func TestQueryWithValue(t *testing.T) {
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
@@ -51,7 +52,8 @@ func TestQueryWithValue(t *testing.T) {
 
 func TestQueryWithRange(t *testing.T) {
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
@@ -74,7 +76,8 @@ func TestQueryWithRange(t *testing.T) {
 
 func TestQueryWithPrefix(t *testing.T) {
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
@@ -131,7 +134,8 @@ func TestQueryWithPrefix(t *testing.T) {
 
 func TestFindWithValueWithMultiIndex(t *testing.T) {
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {
 		person := m.(*testModel)
 		indexValues := make([][]byte, len(person.Nicknames))
@@ -191,7 +195,8 @@ func TestFindWithValueWithMultiIndex(t *testing.T) {
 
 func TestFindWithRangeWithMultiIndex(t *testing.T) {
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {
 		person := m.(*testModel)
 		indexValues := make([][]byte, len(person.Nicknames))
