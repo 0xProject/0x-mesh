@@ -106,11 +106,11 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 	go func() {
 		for {
-			select {
-			case err := <-blockWatcher.Errors:
+			err, isOpen := <-blockWatcher.Errors
+			if isOpen {
 				log.WithField("error", err).Error("BlockWatcher error encountered")
-			default:
-				// Noop
+			} else {
+				return // Exit when the error channel is closed
 			}
 		}
 	}()

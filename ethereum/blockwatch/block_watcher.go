@@ -126,6 +126,7 @@ func (w *Watcher) StopPolling() {
 	if w.ticker != nil {
 		w.ticker.Stop()
 	}
+	close(w.Errors)
 	w.ticker = nil
 }
 
