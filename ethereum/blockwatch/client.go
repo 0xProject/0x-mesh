@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"time"
+	"reflect"
 
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
@@ -74,6 +75,10 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	err := rc.rpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
+	}
+	// If it returned an empty struct, return NotFound error
+	if reflect.DeepEqual(header, reflect.Zero(reflect.TypeOf(header)).Interface()) {
+		return nil, ethereum.NotFound
 	}
 
 	blockNum, ok := math.ParseBig256(header.Number)
