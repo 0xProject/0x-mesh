@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	blockWatcherPollingInterval = 5 * time.Second
+	blockWatcherPollingInterval = 2 * time.Second
 	blockWatcherRetentionLimit  = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	ethWatcherPollingInterval   = 1 * time.Minute
