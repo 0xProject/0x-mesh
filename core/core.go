@@ -267,6 +267,6 @@ func (app *App) Close() {
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
-	app.blockWatcher.StopPolling()
+	app.blockWatcher.Stop()
 	app.db.Close()
 }

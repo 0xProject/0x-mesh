@@ -126,8 +126,15 @@ func (w *Watcher) StopPolling() {
 	if w.ticker != nil {
 		w.ticker.Stop()
 	}
-	close(w.Errors)
 	w.ticker = nil
+}
+
+// Stop stops the BlockWatcher
+func (w *Watcher) Stop() {
+	if w.isWatching {
+		w.StopPolling()
+	}
+	close(w.Errors)
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
