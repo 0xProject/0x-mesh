@@ -153,6 +153,108 @@ func TestGlobalTransaction(t *testing.T) {
 	assert.Equal(t, 5, col1PostTxnCount)
 }
 
+func TestGlobalTransactionCount(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+
+	// insertedBeforeTransaction is a set of testModels inserted before the
+	// transaction is opened.
+	insertedBeforeTransaction := []*testModel{}
+	for i := 0; i < 10; i++ {
+		model := &testModel{
+			Name: "Before_Transaction_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, col.Insert(model))
+		insertedBeforeTransaction = append(insertedBeforeTransaction, model)
+	}
+
+	// Open a global transaction.
+	txn := db.OpenGlobalTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+
+	// Insert some models inside the transaction.
+	for i := 0; i < 7; i++ {
+		model := &testModel{
+			Name: "Inside_Transaction_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, txn.Insert(col, model))
+	}
+
+	// The WaitGroup will be used to wait for all goroutines to finish.
+	wg := &sync.WaitGroup{}
+
+	// Insert some models outside the transaction.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 4; i++ {
+			model := &testModel{
+				Name: "Outside_Transaction_" + strconv.Itoa(i),
+				Age:  42,
+			}
+			require.NoError(t, col.Insert(model))
+		}
+	}()
+
+	// Delete some models inside of the transaction.
+	idsToDeleteInside := [][]byte{
+		insertedBeforeTransaction[0].ID(),
+		insertedBeforeTransaction[1].ID(),
+		insertedBeforeTransaction[2].ID(),
+	}
+	for _, id := range idsToDeleteInside {
+		require.NoError(t, txn.Delete(col, id))
+	}
+
+	// Delete some models outside of the transaction.
+	idsToDeleteOutside := [][]byte{
+		insertedBeforeTransaction[3].ID(),
+		insertedBeforeTransaction[4].ID(),
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, id := range idsToDeleteOutside {
+			require.NoError(t, col.Delete(id))
+		}
+	}()
+
+	// Make sure that prior to commiting the transaction, Count only includes the
+	// models inserted/deleted before the transaction was open.
+	expectedPreCommitCount := 10
+	actualPreCommitCount, err := col.Count()
+	require.NoError(t, err)
+	assert.Equal(t, expectedPreCommitCount, actualPreCommitCount)
+
+	// Commit the transaction.
+	require.NoError(t, txn.Commit())
+
+	// Wait for any goroutines to finish.
+	wg.Wait()
+
+	// Make sure that after commiting the transaction, Count includes the models
+	// inserted/deleted in the transaction and outside of the transaction.
+	//   10 before transaction.
+	//   +7 inserted inside transaction
+	//   +4 inserted outside transaction
+	//   -3 deleted inside transaction
+	//   -2 deleted outside transaction
+	// = 16 total
+	expectedPostCommitCount := 16
+	actualPostCommitCount, err := col.Count()
+	require.NoError(t, err)
+	assert.Equal(t, expectedPostCommitCount, actualPostCommitCount)
+}
+
 // TestGlobalTransactionExclusion is designed to test whether a global
 // transaction has exclusive write access for all collections while open.
 func TestGlobalTransactionExclusion(t *testing.T) {
