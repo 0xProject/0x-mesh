@@ -65,6 +65,11 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	}
 	shouldIncludeTransactions := false
 
+	// Note(fabio): We use a raw RPC call here instead of `EthClient`'s `BlockByNumber()` method because block
+	// hashes are computed differently on Kovan vs. mainnet, resulting in the wrong block hash being returned by
+	// `BlockByNumber` when using Kovan. By doing a raw RPC call, we can simply use the blockHash returned in the
+	// RPC response rather then re-compute it from the block header.
+	// Source: https://github.com/ethereum/go-ethereum/pull/18166
 	var header GetBlockByNumberResponse
 	err := rc.rpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
