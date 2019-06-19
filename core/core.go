@@ -89,7 +89,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient, ethereumRPCRequestTimeout)
+	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +104,16 @@ func New(config Config) (*App, error) {
 		Client:              blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
+	go func() {
+		for {
+			select {
+			case err := <-blockWatcher.Errors:
+				log.WithField("error", err).Error("BlockWatcher error encountered")
+			default:
+				// Noop
+			}
+		}
+	}()
 
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID, config.OrderExpirationBuffer)
