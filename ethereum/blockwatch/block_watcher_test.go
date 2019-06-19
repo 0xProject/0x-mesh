@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// The max number of orders to store for each MeshDB instance throughout these
+// tests.
+const testingMaxOrders = 100
+
 func TestWatcher(t *testing.T) {
 	fakeClient, err := newFakeClient()
 	if err != nil {
@@ -19,7 +23,7 @@ func TestWatcher(t *testing.T) {
 	}
 
 	// Polling interval unused because we hijack the ticker for this test
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/"+uuid.New().String(), testingMaxOrders)
 	require.NoError(t, err)
 	config := Config{
 		MeshDB:              meshDB,
@@ -72,7 +76,7 @@ func TestWatcherStartStop(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/"+uuid.New().String(), testingMaxOrders)
 	require.NoError(t, err)
 	config := Config{
 		MeshDB:              meshDB,

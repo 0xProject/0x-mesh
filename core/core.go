@@ -86,7 +86,7 @@ func New(config Config) (*App, error) {
 	log.WithField("config", config).Info("creating new App with config")
 
 	// Initialize db
-	db, err := meshdb.NewMeshDB(config.DatabaseDir)
+	db, err := meshdb.NewMeshDB(config.DatabaseDir, config.MaxOrdersInStorage)
 	if err != nil {
 		return nil, err
 	}

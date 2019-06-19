@@ -15,8 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// The max number of orders to store for each MeshDB instance throughout these
+// tests.
+const testingMaxOrders = 100
+
 func TestOrderCRUDOperations(t *testing.T) {
-	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := NewMeshDB("/tmp/meshdb_testing/"+uuid.New().String(), testingMaxOrders)
 	require.NoError(t, err)
 
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)

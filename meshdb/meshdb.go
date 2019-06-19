@@ -1,8 +1,8 @@
 package meshdb
 
 import (
+	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 
@@ -284,189 +284,117 @@ func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([
 // 5. In the core package, receive events from ETH balance watcher and update all ETHBackings in a single transaction.
 // 6. Update ETHBackings when we remove an order.
 
-func (m *MeshDB) InsertOrders(orders []*Order) error {
-	ordersTxn := m.Orders.OpenTransaction()
-	defer ordersTxn.Discard()
-	ethBackingsTxn := m.ETHBackings.OpenTransaction()
-	defer ethBackingsTxn.Discard()
+func (m *MeshDB) InsertOrder(order *Order) error {
+	txn := m.database.OpenGlobalTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
 
-	// TODO(albrow): This query has runtime of O(N) where N is the number of
-	// orders stored. Could be optimized.
-	totalExistingOrders, err := m.Orders.NewQuery(m.Orders.IsRemovedIndex.All()).Count()
+	totalExistingOrders, err := m.Orders.Count()
 	if err != nil {
 		return err
 	}
 
-	// Create a map of maker address to orders for that maker address.
-	ordersByMakerAddress := map[string][]*Order{}
-	for _, order := range orders {
-		makerAddress := order.SignedOrder.MakerAddress
-		if orders, found := ordersByMakerAddress[makerAddress.String()]; found {
-			orders = append(orders, order)
-			ordersByMakerAddress[makerAddress.String()] = orders
-		} else {
-			ordersByMakerAddress[makerAddress.String()] = []*Order{order}
-		}
-	}
-
-	if totalExistingOrders+len(orders) > m.maxOrders {
-		// In this case, we are going to hit the storage limit. We cannot store all
-		// the given orders without first deleting some existing ones.
-
-		// Find all ETH backings for the given orders.
-		makerAddressToEthBacking := map[string]*ETHBacking{}
-		leastBacking := big.NewRat(math.MaxInt64, 1)
-		for makerAddressStr, orders := range ordersByMakerAddress {
-			makerAddress := common.HexToAddress(makerAddressStr)
-			// Check if this maker address has an existing ETH backing.
-			var existingETHBacking ETHBacking
-			if err := m.ETHBackings.FindByID(makerAddress.Bytes(), &existingETHBacking); err != nil {
-				if _, ok := err.(db.NotFoundError); !ok {
-					// An unexpected error occurred. Return it.
-					return err
-				}
-				// No backing has been stored for this maker address. Make a new one.
-				// TODO(albrow): Get the actual initial balance.
-				// TODO(albrow): Add this maker address to the ETH watcher.
-				ethBacking := &ETHBacking{
-					MakerAddress: makerAddress,
-					OrderCount:   len(orders),
-					ETHBalance:   big.NewInt(0),
-				}
-				makerAddressToEthBacking[makerAddressStr] = ethBacking
-				if ethPerOrder := ethBacking.ethPerOrder(); ethPerOrder.Cmp(leastBacking) == -1 {
-					leastBacking = ethPerOrder
-				}
-			} else {
-				// A backing was stored for this maker address. Update it.
-				ethBacking := &ETHBacking{
-					MakerAddress: makerAddress,
-					OrderCount:   existingETHBacking.OrderCount + len(orders),
-					ETHBalance:   existingETHBacking.ETHBalance,
-				}
-				makerAddressToEthBacking[makerAddressStr] = ethBacking
-				if ethPerOrder := ethBacking.ethPerOrder(); ethPerOrder.Cmp(leastBacking) == -1 {
-					leastBacking = ethPerOrder
-				}
-			}
-		}
-
-		// Find any existing orders with a lower backing than the least backing in
-		// the given orders. These need to be deleted.
-		backingsToDelete, err := m.findEthBackingsWithLessEthPerOrder(leastBacking, len(orders))
+	if totalExistingOrders > m.maxOrders {
+		// This should never happen and indicates a bug in meshdb or the db package.
+		// It is hard to fix the problem because we can't efficiently remove more
+		// than one order with the lowest ETH backing per order.
+		return fmt.Errorf("invalid database state: total number of orders (%d) is greater than max orders (%d)", totalExistingOrders, m.maxOrders)
+	} else if totalExistingOrders == m.maxOrders {
+		log.WithField("maxOrders", m.maxOrders).Trace("Maximum order limit reached; deleting an order to make room")
+		// In this case, we are going to hit the storage limit. Delete the order
+		// with the lowest ETH backing in order to make room.
+		lowestETHBacking, err := m.getLowestETHBacking()
 		if err != nil {
 			return err
 		}
-		numberOfOrdersToDelete := 0
-		for _, backingToDelete := range backingsToDelete {
-			numberOfOrdersToDelete += backingToDelete.OrderCount
-		}
-		if numberOfOrdersToDelete == 0 {
-			// There are no orders with a lesser ETH backing than the given orders.
-			// In other words, *none* of the given orders have enough ETH backing to
-			// be stored, so we don't store any of them. Just return immediately.
+		if lowestETHBacking.MakerAddress.Hex() == order.SignedOrder.MakerAddress.Hex() {
+			// As a special case, if the order we are trying to insert has the same
+			// MakerAddress as the maker with the lowest ETH backing per order, we
+			// don't do anything.
 			return nil
-		} else if numberOfOrdersToDelete >= len(orders) {
-			// The number of orders which could be deleted is *greater than* the
-			// number of orders we are trying to store. This means we can store all
-			// the given orders and delete up to len(orders) from the set of orders
-			// that have a lesser ETH backing.
+		}
+		log.WithField("makerAddress", lowestETHBacking.MakerAddress.Hex()).Trace("Found maker with lowest ETH backing per order")
+		randomOrderForMaker, err := m.getRandomOrderForMaker(lowestETHBacking.MakerAddress)
+		if err != nil {
+			return err
+		}
+		// Delete the order and decrement the OrderCount for the corresponding ETH
+		// backing.
+		if err := txn.Delete(m.Orders.Collection, randomOrderForMaker.ID()); err != nil {
+			return err
+		}
+		lowestETHBacking.OrderCount = lowestETHBacking.OrderCount - 1
+		if err := txn.Update(m.ETHBackings.Collection, lowestETHBacking); err != nil {
+			return err
+		}
+	}
 
-			// Queue operations to delete any existing orders with a lesser ETH
-			// backing.
-			// TODO(albrow): How can we do this correctly?
-			// for _, backingToDelete := range backingsToDelete {
-			//
-			// }
-
-			// Queue operations to store all the given orders and insert/update their
-			// corresponding ETH backings.
-			for _, order := range orders {
-				if err := ordersTxn.Insert(order); err != nil {
-					return err
-				}
-			}
-			for _, ethBacking := range makerAddressToEthBacking {
-				var eb ETHBacking
-				if err := m.ETHBackings.FindByID(ethBacking.MakerAddress.Bytes(), &eb); err != nil {
-					if _, notFound := err.(db.NotFoundError); notFound {
-						// The backing *doesn't* exist in the db yet; we need to insert it.
-						if err := ethBackingsTxn.Insert(ethBacking); err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				} else {
-					// The backing *does* exist in the db already; we need to update it.
-					if err := ethBackingsTxn.Update(ethBacking); err != nil {
-						return err
-					}
-				}
-			}
+	// Insert the order and update the ETH backing for the corresponding maker
+	if err := txn.Insert(m.Orders.Collection, order); err != nil {
+		return err
+	}
+	var ethBackingForMaker ETHBacking
+	if err := m.ETHBackings.FindByID(order.SignedOrder.MakerAddress.Bytes(), &ethBackingForMaker); err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// This should never happen because the ETHWatcher should have already
+			// been notified about this incoming order. We can't fix the problem here
+			// because meshdb doesn't know about the ETHWatcher (if it did it would
+			// violate separation of concerns).
+			return fmt.Errorf("invalid database state: could not find ETHBacking for maker address: %s", order.SignedOrder.MakerAddress.Hex())
 		} else {
-			// The number of orders which could be deleted is *less than* the number
-			// of orders we are trying to store. This means we can store some of the
-			// given orders but not all of them.
-		}
-
-	} else {
-		// In this case, we can insert all the given orders without hitting the
-		// storage limit.
-		for makerAddressStr, orders := range ordersByMakerAddress {
-			makerAddress := common.HexToAddress(makerAddressStr)
-			// Check if this maker address has an existing ETH backing.
-			var existingETHBacking ETHBacking
-			if err := m.ETHBackings.FindByID(makerAddress.Bytes(), &existingETHBacking); err != nil {
-				if _, ok := err.(db.NotFoundError); !ok {
-					// An unexpected error occurred. Return it.
-					return err
-				}
-				// No backing has been stored for this maker address. Insert a new one.
-				// TODO(albrow): Get the actual initial balance.
-				// TODO(albrow): Add this maker address to the ETH watcher.
-				ethBackingsTxn.Insert(&ETHBacking{
-					MakerAddress: makerAddress,
-					OrderCount:   len(orders),
-					ETHBalance:   big.NewInt(0),
-				})
-			} else {
-				// A backing was found for this maker address. We need to update it.
-				existingETHBacking.OrderCount += len(orders)
-				ethBackingsTxn.Update(&existingETHBacking)
-			}
-
-			// Queue an operation to insert each order.
-			for _, order := range orders {
-				if err := ordersTxn.Insert(order); err != nil {
-					return err
-				}
-			}
+			return err
 		}
 	}
+	ethBackingForMaker.OrderCount += 1
+	if err := txn.Update(m.ETHBackings.Collection, &ethBackingForMaker); err != nil {
+		return err
+	}
 
-	// Commit each transaction.
-	if err := ethBackingsTxn.Commit(); err != nil {
-		// TODO(albrow): We lose consistency guarantees if this happens.
-		panic(err)
+	// Commit the transaction.
+	return txn.Commit()
+}
+
+func (m *MeshDB) getLowestETHBacking() (*ETHBacking, error) {
+	filter := m.ETHBackings.ETHPerOrderIndex.All()
+	queryResults := []*ETHBacking{}
+	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
+		return nil, err
 	}
-	if err := ordersTxn.Commit(); err != nil {
-		// TODO(albrow): We lose consistency guarantees if this happens.
-		panic(err)
+	if len(queryResults) == 0 {
+		return nil, errors.New("query for lowest ETHBacking returned no results")
 	}
-	return nil
+	return queryResults[0], nil
+}
+
+func (m *MeshDB) getRandomOrderForMaker(makerAddress common.Address) (*Order, error) {
+	// TODO(albrow): Currently this always returns the order with the lowest hash,
+	// but ideally it should be completely random.
+	query := m.newQueryForOrdersByMakerAddress(makerAddress)
+	orders := []*Order{}
+	if err := query.Max(1).Run(&orders); err != nil {
+		return nil, err
+	}
+	if len(orders) == 0 {
+		return nil, errors.New("query for orders by maker addressreturned no results")
+	}
+	return orders[0], nil
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address
 func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order, error) {
-	prefix := []byte(makerAddress.Hex() + "|")
-	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	query := m.newQueryForOrdersByMakerAddress(makerAddress)
 	orders := []*Order{}
-	err := m.Orders.NewQuery(filter).Run(&orders)
-	if err != nil {
+	if err := query.Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (m *MeshDB) newQueryForOrdersByMakerAddress(makerAddress common.Address) *db.Query {
+	prefix := []byte(makerAddress.Hex() + "|")
+	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	return m.Orders.NewQuery(filter)
 }
 
 // FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
