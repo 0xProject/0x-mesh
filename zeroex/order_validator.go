@@ -174,6 +174,7 @@ type OrderValidator struct {
 	assetDataDecoder             *AssetDataDecoder
 	networkID                    int
 	cachedFeeRecipientToEndpoint map[common.Address]string
+	contractAddresses            ethereum.ContractAddresses
 }
 
 // NewOrderValidator instantiates a new order validator
@@ -198,6 +199,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 		assetDataDecoder:             assetDataDecoder,
 		networkID:                    networkID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
+		contractAddresses:            contractAddresses,
 	}, nil
 }
 
@@ -375,12 +377,8 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 	validSignedOrders := []*SignedOrder{}
 
 	endpointToSignedOrders := map[string][]*SignedOrder{}
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(o.networkID)
-	if err != nil {
-		log.WithField("error", err.Error()).Panic("Could not find contracts for configured network ID")
-	}
 	for _, signedOrder := range signedOrders {
-		if signedOrder.SenderAddress != contractAddresses.Coordinator {
+		if signedOrder.SenderAddress != o.contractAddresses.Coordinator {
 			validSignedOrders = append(validSignedOrders, signedOrder)
 			continue
 		}
