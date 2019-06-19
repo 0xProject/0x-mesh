@@ -87,5 +87,5 @@ func TestWatcherStartStop(t *testing.T) {
 	require.NoError(t, watcher.StartPolling())
 	watcher.stopPolling()
 	require.NoError(t, watcher.StartPolling())
-	watcher.stopPolling()
+	watcher.Stop()
 }
