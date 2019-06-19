@@ -76,9 +76,6 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 		return nil, err
 	}
 
-	if len(header.Number) < 2 {
-		return nil, errors.New("Block number returned by eth_getBlockByNumber too short")
-	}
 	blockNum, ok := math.ParseBig256(header.Number)
 	if !ok {
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block number returned from eth_getBlockByNumber")
