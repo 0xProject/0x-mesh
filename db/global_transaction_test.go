@@ -57,7 +57,7 @@ func TestGlobalTransaction(t *testing.T) {
 		}
 	}()
 
-	// Any models we add to col0 after within the transaction should not affect
+	// Any models we add to col0 within the transaction should not affect
 	// the database state until after it is committed.
 	insideTransaction := []*testModel{}
 	for i := 0; i < 5; i++ {
