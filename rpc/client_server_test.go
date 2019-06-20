@@ -24,10 +24,9 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler            func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
-	addPeerHandler              func(peerInfo peerstore.PeerInfo) error
-	subscribeToOrdersHandler    func(ctx context.Context) (*rpc.Subscription, error)
-	subscribeToHeartbeatHandler func(ctx context.Context) (*rpc.Subscription, error)
+	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
+	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
+	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
@@ -49,13 +48,6 @@ func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscript
 		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
 	}
 	return d.subscribeToOrdersHandler(ctx)
-}
-
-func (d *dummyRPCHandler) SubscribeToHeartbeat(ctx context.Context) (*rpc.Subscription, error) {
-	if d.subscribeToHeartbeatHandler == nil {
-		return nil, errors.New("dummyRPCHandler: no handler set for Heartbeat")
-	}
-	return d.subscribeToHeartbeatHandler(ctx)
 }
 
 // newTestServerAndClient returns a server and client which have been connected
