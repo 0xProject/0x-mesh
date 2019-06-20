@@ -208,27 +208,17 @@ func TestOrdersSubscription(t *testing.T) {
 func TestHeartbeatSubscription(t *testing.T) {
 	ctx := context.Background()
 
-	rpcHandlerCalled := make(chan struct{}, 1)
-	rpcHandler := &dummyRPCHandler{
-		subscribeToHeartbeatHandler: func(ctx context.Context) (*rpc.Subscription, error) {
-			rpcHandlerCalled <- struct{}{}
-			return nil, nil
-		},
-	}
+	rpcHandler := &dummyRPCHandler{}
 
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
 	heartbeatChan := make(chan string)
 	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)
+	defer clientSubscription.Unsubscribe()
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
-	// The select statement allows us to timeout sooner than the default test timeout.
-	select {
-	case <-time.After(5 * time.Second):
-		t.Error("timed out waiting for rpcHandler to be called")
-	case <-rpcHandlerCalled:
-		break
-	}
+	heartbeat := <-heartbeatChan
+	assert.Equal(t, "tick", heartbeat)
 }

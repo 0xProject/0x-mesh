@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -18,10 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var errInternal = errors.New("internal error")
-
-// heartbeatInterval specifies the interval at which to emit heartbeat events to a subscriber
-var heartbeatInterval = 5 * time.Second
 
 type rpcHandler struct {
 	app *core.App
@@ -56,7 +52,7 @@ func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.Vali
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
-		return nil, errInternal
+		return nil, constants.ErrInternal
 	}
 	return validationResults, nil
 }
@@ -66,7 +62,7 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 	log.Debug("received AddPeer request via RPC")
 	if err := handler.app.AddPeer(peerInfo); err != nil {
 		log.WithField("error", err.Error()).Error("internal error in AddPeer RPC call")
-		return errInternal
+		return constants.ErrInternal
 	}
 	return nil
 }
@@ -77,68 +73,9 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subsc
 	subscription, err := SetupOrderStream(ctx, handler.app)
 	if err != nil {
 		log.WithField("error", err.Error()).Error("internal error in `mesh_subscribe` to `orders` RPC call")
-		return nil, errInternal
+		return nil, constants.ErrInternal
 	}
 	return subscription, nil
-}
-
-// SubscribeToHeartbeat is called when an RPC client sends a `mesh_subscribe` request with the `heartbeat` topic parameter
-func (handler *rpcHandler) SubscribeToHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
-	log.Debug("received heartbeat subscription request via RPC")
-	subscription, err := SetupHeartbeat(ctx)
-	if err != nil {
-		log.WithField("error", err.Error()).Error("internal error in `mesh_subscribe` to `heartbeat` RPC call")
-		return nil, errInternal
-	}
-	return subscription, nil
-}
-
-// SetupHeartbeat sets up the heartbeat for a subscription
-func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
-	notifier, supported := ethRpc.NotifierFromContext(ctx)
-	if !supported {
-		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
-	}
-
-	rpcSub := notifier.CreateSubscription()
-
-	go func() {
-		ticker := time.NewTicker(heartbeatInterval)
-
-		for {
-			select {
-			case <-ticker.C:
-				err := notifier.Notify(rpcSub.ID, "tick")
-				if err != nil {
-					// TODO(fabio): The current implementation of `notifier.Notify` returns a
-					// `write: broken pipe` error when it is called _after_ the client has
-					// disconnected but before the corresponding error is received on the
-					// `rpcSub.Err()` channel. This race-condition is not problematic beyond
-					// the unnecessary computation and log spam resulting from it. Once this is
-					// fixed upstream, give all logs an `Error` severity.
-					logEntry := log.WithFields(map[string]interface{}{
-						"error":            err.Error(),
-						"subscriptionType": "heartbeat",
-					})
-					message := "error while calling notifier.Notify"
-					if strings.Contains(err.Error(), "write: broken pipe") {
-						logEntry.Trace(message)
-					} else {
-						logEntry.Error(message)
-					}
-				}
-			case err := <-rpcSub.Err():
-				log.WithField("err", err).Error("rpcSub returned an error")
-				ticker.Stop()
-				return
-			case <-notifier.Closed():
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	return rpcSub, nil
 }
 
 // SetupOrderStream sets up the order stream for a subscription
