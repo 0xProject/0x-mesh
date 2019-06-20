@@ -65,6 +65,9 @@ type Config struct {
     // P2PListenPort is the port on which to listen for new peer connections. By
     // default, 0x Mesh will let the OS select a randomly available port.
     P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
+    // RPCPort is the port to use for the JSON RPC API over WebSockets. By
+	// default, 0x Mesh will let the OS select a randomly available port.
+	RPCPort int `envvar:"RPC_PORT" default:"0"`
     // EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
     // API.
     EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
