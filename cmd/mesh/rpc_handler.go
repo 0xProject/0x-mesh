@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -18,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var errInternal = errors.New("internal error")
 
 type rpcHandler struct {
 	app *core.App
@@ -53,7 +52,7 @@ func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.Vali
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
-		return nil, errInternal
+		return nil, constants.ErrInternal
 	}
 	return validationResults, nil
 }
@@ -63,7 +62,7 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 	log.Debug("received AddPeer request via RPC")
 	if err := handler.app.AddPeer(peerInfo); err != nil {
 		log.WithField("error", err.Error()).Error("internal error in AddPeer RPC call")
-		return errInternal
+		return constants.ErrInternal
 	}
 	return nil
 }
@@ -74,7 +73,7 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subsc
 	subscription, err := SetupOrderStream(ctx, handler.app)
 	if err != nil {
 		log.WithField("error", err.Error()).Error("internal error in `mesh_subscribe` to `orders` RPC call")
-		return nil, errInternal
+		return nil, constants.ErrInternal
 	}
 	return subscription, nil
 }
@@ -104,8 +103,9 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 					// the unnecessary computation and log spam resulting from it. Once this is
 					// fixed upstream, give all logs an `Error` severity.
 					logEntry := log.WithFields(map[string]interface{}{
-						"error":       err.Error(),
-						"orderEvents": len(orderEvents),
+						"error":            err.Error(),
+						"subscriptionType": "orders",
+						"orderEvents":      len(orderEvents),
 					})
 					message := "error while calling notifier.Notify"
 					// If the network connection disconnects for longer then ~2mins and then comes

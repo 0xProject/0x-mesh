@@ -197,3 +197,21 @@ func TestOrdersSubscription(t *testing.T) {
 	// The WaitGroup signals that AddOrder was called on the server-side.
 	wg.Wait()
 }
+
+func TestHeartbeatSubscription(t *testing.T) {
+	ctx := context.Background()
+
+	rpcHandler := &dummyRPCHandler{}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	heartbeatChan := make(chan string)
+	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)
+	defer clientSubscription.Unsubscribe()
+	require.NoError(t, err)
+	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
+
+	heartbeat := <-heartbeatChan
+	assert.Equal(t, "tick", heartbeat)
+}
