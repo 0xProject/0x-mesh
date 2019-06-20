@@ -76,8 +76,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	if err != nil {
 		return nil, err
 	}
-	// If it returned an empty struct, return NotFound error
-	if reflect.DeepEqual(header, reflect.Zero(reflect.TypeOf(header)).Interface()) {
+	// If it returned an empty struct
+	if header.Number == "" {
 		return nil, ethereum.NotFound
 	}
 
