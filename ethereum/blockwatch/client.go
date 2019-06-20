@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"time"
-	"reflect"
 
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
