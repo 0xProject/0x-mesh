@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -174,16 +174,20 @@ type OrderValidator struct {
 	assetDataDecoder             *AssetDataDecoder
 	networkID                    int
 	cachedFeeRecipientToEndpoint map[common.Address]string
+	contractAddresses            ethereum.ContractAddresses
 }
 
 // NewOrderValidator instantiates a new order validator
 func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
-	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractNameToAddress.OrderValidationUtils, ethClient)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractNameToAddress.CoordinatorRegistry, ethClient)
+	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractAddresses.OrderValidationUtils, ethClient)
+	if err != nil {
+		return nil, err
+	}
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractAddresses.CoordinatorRegistry, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +199,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 		assetDataDecoder:             assetDataDecoder,
 		networkID:                    networkID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
+		contractAddresses:            contractAddresses,
 	}, nil
 }
 
@@ -372,9 +377,8 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 	validSignedOrders := []*SignedOrder{}
 
 	endpointToSignedOrders := map[string][]*SignedOrder{}
-	contractNameToAddress := constants.NetworkIDToContractAddresses[o.networkID]
 	for _, signedOrder := range signedOrders {
-		if signedOrder.SenderAddress != contractNameToAddress.Coordinator {
+		if signedOrder.SenderAddress != o.contractAddresses.Coordinator {
 			validSignedOrders = append(validSignedOrders, signedOrder)
 			continue
 		}

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -44,7 +44,7 @@ type Watcher struct {
 	eventDecoder               *Decoder
 	assetDataDecoder           *zeroex.AssetDataDecoder
 	blockSubscription          event.Subscription
-	contractNameToAddress      constants.ContractNameToAddress
+	contractAddresses          ethereum.ContractAddresses
 	expirationWatcher          *ExpirationWatcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -67,8 +67,12 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 	if err != nil {
 		return nil, err
 	}
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
 	cleanupCtx, cleanupCancelFunc := context.WithCancel(context.Background())
-	contractNameToAddress := constants.NetworkIDToContractAddresses[networkID]
+
 	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
@@ -79,7 +83,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 		orderValidator:             orderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
-		contractNameToAddress:      contractNameToAddress,
+		contractAddresses:          contractAddresses,
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
@@ -323,7 +327,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalEvent.Spender != w.contractNameToAddress.ERC20Proxy {
+							if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil, log.TxHash)
@@ -345,7 +349,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalEvent.Approved != w.contractNameToAddress.ERC721Proxy {
+							if approvalEvent.Approved != w.contractAddresses.ERC721Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId, log.TxHash)
@@ -358,7 +362,7 @@ func (w *Watcher) setupEventWatcher() {
 								continue
 							}
 							// Ignores approvals set to anyone except the AssetProxy
-							if approvalForAllEvent.Operator != w.contractNameToAddress.ERC721Proxy {
+							if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
 								continue
 							}
 							w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil, log.TxHash)

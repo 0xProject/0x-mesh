@@ -42,7 +42,7 @@ var testSignedOrder = SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       constants.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	},
 }
 
@@ -178,7 +178,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	defer teardownSubTest(t)
 
 	signedOrder := &testSignedOrder
-	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
 	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
 
@@ -207,7 +207,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	defer teardownSubTest(t)
 
 	signedOrder := &testSignedOrder
-	signedOrder.SenderAddress = constants.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	signedOrders := []*SignedOrder{
