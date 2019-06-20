@@ -8,7 +8,7 @@ A peer-to-peer network for sharing orders
 
 ### [Read the Documentation](https://github.com/0xProject/0x-mesh/blob/master/DOCUMENTATION.md)
 
-:no_entry: WARNING: This project is still under construction and is not ready for use :no_entry:
+:no_entry: WARNING: This project is still under construction. Expect changes before the release. :no_entry:
 
 ## Development
 
