@@ -24,12 +24,11 @@ import (
 )
 
 const (
-	blockWatcherPollingInterval = 2 * time.Second
-	blockWatcherRetentionLimit  = 20
-	ethereumRPCRequestTimeout   = 30 * time.Second
-	ethWatcherPollingInterval   = 1 * time.Minute
-	peerConnectTimeout          = 60 * time.Second
-	checkNewAddrInterval        = 20 * time.Second
+	blockWatcherRetentionLimit = 20
+	ethereumRPCRequestTimeout  = 30 * time.Second
+	ethWatcherPollingInterval  = 1 * time.Minute
+	peerConnectTimeout         = 60 * time.Second
+	checkNewAddrInterval       = 20 * time.Second
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -57,6 +56,11 @@ type Config struct {
 	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
+	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
+	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
+	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
+	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
+	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
 }
 
 type App struct {
@@ -96,7 +100,7 @@ func New(config Config) (*App, error) {
 	topics := orderwatch.GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{
 		MeshDB:              db,
-		PollingInterval:     blockWatcherPollingInterval,
+		PollingInterval:     config.BlockPollingInterval,
 		StartBlockDepth:     ethrpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
 		WithLogs:            true,

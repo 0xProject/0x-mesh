@@ -75,6 +75,10 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	if err != nil {
 		return nil, err
 	}
+	// If it returned an empty struct
+	if header.Number == "" {
+		return nil, ethereum.NotFound
+	}
 
 	blockNum, ok := math.ParseBig256(header.Number)
 	if !ok {
