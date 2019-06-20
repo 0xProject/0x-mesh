@@ -1,11 +1,12 @@
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
-[![HackMD](https://img.shields.io/badge/HackMD-Docs-orange.svg)](https://hackmd.io/s/By4pSjATE)
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
 
 # 0x-mesh
 
 A peer-to-peer network for sharing orders
+
+## [Read the Documentation](https://github.com/0xProject/0x-mesh/blob/master/DOCUMENTATION.md)
 
 :no_entry: WARNING: This project is still under construction and is not ready for use :no_entry:
 
