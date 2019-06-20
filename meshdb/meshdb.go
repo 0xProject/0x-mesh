@@ -3,6 +3,7 @@ package meshdb
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -221,7 +222,11 @@ func ratToBytes(rat *big.Rat) []byte {
 }
 
 func (eb *ETHBacking) ethPerOrder() *big.Rat {
-	ethPerOrder := big.NewRat(0, 0)
+	if eb.OrderCount == 0 {
+		// We can't divide by zero. Instead return a really big rational number.
+		return big.NewRat(math.MaxInt64, 1)
+	}
+	ethPerOrder := big.NewRat(0, 1)
 	ethPerOrder.SetFrac(eb.ETHBalance, big.NewInt(int64(eb.OrderCount)))
 	return ethPerOrder
 }
@@ -267,23 +272,12 @@ func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([
 	return result, nil
 }
 
-// ISSUES/QUESTIONS:
-// - Difficult to maintain consistency because there are two collections involved. (Could fix by adding global transactions to db package?)
-// - Either meshdb or orderwatch package needs to know how to retrieve balances. Violates separation of concerns.
-// - Is there a way to batch balance requests?
-// - Writes within the transaction don't take effect until after transaction is committed. Need to duplicate some work in memory.
-// - How to count orders with IsRemoved = true?
-// - Figuring out which orders to delete is insanely complicated. Each order we insert/delete changes the calculation for the ETH per order, so we have to recompute it every time.
-//
-
-// TODO(albrow):
-// 1. Multi-collection or global transactions.
-// 2. More effecient count method (cache in a key).
-// 3. Check ETH balances upon receipt of the orders before doing on-chain validation.
-// 4. Insert orders one at a time. This simplifies the algorithm at the cost of effeciency. We can sort incoming orders by ETH backing per order which should help.
-// 5. In the core package, receive events from ETH balance watcher and update all ETHBackings in a single transaction.
-// 6. Update ETHBackings when we remove an order.
-
+// InsertOrder atomically inserts the given order and updates any relevant ETH
+// backings. It also removes the order with the lowest ETH backing if needed in
+// order to make room. If order storage is full and the given order does not
+// have a high enough ETH backing, it will not be stored (this is not considered
+// an error). InsertOrder will return an error if any corresponding ETH backings
+// cannot be found.
 func (m *MeshDB) InsertOrder(order *Order) error {
 	txn := m.database.OpenGlobalTransaction()
 	defer func() {
@@ -294,13 +288,34 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	if err != nil {
 		return err
 	}
-
 	if totalExistingOrders > m.maxOrders {
 		// This should never happen and indicates a bug in meshdb or the db package.
 		// It is hard to fix the problem because we can't efficiently remove more
 		// than one order with the lowest ETH backing per order.
 		return fmt.Errorf("invalid database state: total number of orders (%d) is greater than max orders (%d)", totalExistingOrders, m.maxOrders)
-	} else if totalExistingOrders == m.maxOrders {
+	}
+
+	var ethBackingForIncomingOrder ETHBacking
+	if err := m.ETHBackings.FindByID(order.SignedOrder.MakerAddress.Bytes(), &ethBackingForIncomingOrder); err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// This should never happen because the ETHWatcher should have already
+			// been notified about this incoming order. We can't fix the problem here
+			// because meshdb doesn't know about the ETHWatcher (if it did it would
+			// violate separation of concerns).
+			return fmt.Errorf("invalid database state: could not find ETHBacking for maker address: %s", order.SignedOrder.MakerAddress.Hex())
+		} else {
+			return err
+		}
+	}
+	// updatedETHBacking is the hypothetical new ETHBacking for the incoming
+	// order. It includes the order itself in the OrderCount.
+	updatedETHBacking := &ETHBacking{
+		MakerAddress: ethBackingForIncomingOrder.MakerAddress,
+		OrderCount:   ethBackingForIncomingOrder.OrderCount + 1,
+		ETHBalance:   ethBackingForIncomingOrder.ETHBalance,
+	}
+
+	if totalExistingOrders == m.maxOrders {
 		log.WithField("maxOrders", m.maxOrders).Trace("Maximum order limit reached; deleting an order to make room")
 		// In this case, we are going to hit the storage limit. Delete the order
 		// with the lowest ETH backing in order to make room.
@@ -308,10 +323,9 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 		if err != nil {
 			return err
 		}
-		if lowestETHBacking.MakerAddress.Hex() == order.SignedOrder.MakerAddress.Hex() {
-			// As a special case, if the order we are trying to insert has the same
-			// MakerAddress as the maker with the lowest ETH backing per order, we
-			// don't do anything.
+		if updatedETHBacking.ethPerOrder().Cmp(lowestETHBacking.ethPerOrder()) != 1 {
+			// If the incoming order is associated with an ETH backing that is not
+			// greater than the current lowest ETH backing, don't store it.
 			return nil
 		}
 		log.WithField("makerAddress", lowestETHBacking.MakerAddress.Hex()).Trace("Found maker with lowest ETH backing per order")
@@ -334,20 +348,7 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	if err := txn.Insert(m.Orders.Collection, order); err != nil {
 		return err
 	}
-	var ethBackingForMaker ETHBacking
-	if err := m.ETHBackings.FindByID(order.SignedOrder.MakerAddress.Bytes(), &ethBackingForMaker); err != nil {
-		if _, ok := err.(db.NotFoundError); ok {
-			// This should never happen because the ETHWatcher should have already
-			// been notified about this incoming order. We can't fix the problem here
-			// because meshdb doesn't know about the ETHWatcher (if it did it would
-			// violate separation of concerns).
-			return fmt.Errorf("invalid database state: could not find ETHBacking for maker address: %s", order.SignedOrder.MakerAddress.Hex())
-		} else {
-			return err
-		}
-	}
-	ethBackingForMaker.OrderCount += 1
-	if err := txn.Update(m.ETHBackings.Collection, &ethBackingForMaker); err != nil {
+	if err := txn.Update(m.ETHBackings.Collection, updatedETHBacking); err != nil {
 		return err
 	}
 

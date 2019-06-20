@@ -1,7 +1,10 @@
 package meshdb
 
 import (
+	"bytes"
+	"fmt"
 	"math/big"
+	"sort"
 	"testing"
 	"time"
 
@@ -134,5 +137,432 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 		expectedSingleAssetData := expectedSingleAssetDatas[i]
 		assert.Equal(t, expectedSingleAssetData.Address, singleAssetData.Address)
 		assert.Equal(t, expectedSingleAssetData.TokenID, singleAssetData.TokenID)
+	}
+}
+
+type insertOrdersTestCase struct {
+	maxOrders           int
+	initialOrders       []*testOrder
+	initialETHBackings  []*ETHBacking
+	incomingOrder       *testOrder
+	expectedOrders      []*testOrder
+	expectedETHBackings []*ETHBacking
+}
+
+func TestInsertOrder(t *testing.T) {
+	t.Parallel()
+
+	testCases := []insertOrdersTestCase{
+		{
+			// No orders should be inserted because we are already at the max and the
+			// incoming order has the same maker address as the order with the lowest
+			// ETH backing per order.
+			maxOrders: 1,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount0).
+				withSalt(big.NewInt(1)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+		},
+		{
+			// One order should be inserted because we are not yet at the max. All ETH
+			// backings should be updated.
+			maxOrders: 2,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount0).
+				withSalt(big.NewInt(1)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(1)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   2,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+		},
+		{
+			// One order should be inserted because we are not yet at the max. All ETH
+			// backings should be updated. For this case we use different maker
+			// addresses for the two orders so we expect two different ETH backings.
+			maxOrders: 2,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   0,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount1).
+				withSalt(big.NewInt(1)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount1).
+					withSalt(big.NewInt(1)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+		},
+		{
+			// One order should be inserted and one order should be removed. All ETH
+			// backings should be updated accordingly. Account0 has a lower ETH
+			// backing than Account1 so we will replace its order with the incoming
+			// order.
+			maxOrders: 1,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(50),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   0,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount1).
+				withSalt(big.NewInt(1)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount1).
+					withSalt(big.NewInt(1)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   0,
+					ETHBalance:   big.NewInt(50),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+			},
+		},
+		{
+			// No orders should be inserted/removed and no ETH backings should be
+			// changed. Account0 has a higher ETH backing than Account1 so the
+			// incoming order should not replace its order.
+			maxOrders: 1,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   0,
+					ETHBalance:   big.NewInt(50),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount1).
+				withSalt(big.NewInt(1)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   0,
+					ETHBalance:   big.NewInt(50),
+				},
+			},
+		},
+		{
+			// A more complicated case with more orders and more accounts. One order
+			// should be inserted and one order should be removed. All ETH
+			// backings should be updated accordingly.
+			maxOrders: 5,
+			initialOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(1)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount1).
+					withSalt(big.NewInt(2)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount1).
+					withSalt(big.NewInt(3)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount2).
+					withSalt(big.NewInt(4)),
+			},
+			initialETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   2,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   2,
+					ETHBalance:   big.NewInt(50),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount2,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(75),
+				},
+			},
+			incomingOrder: newTestOrder().
+				withMakerAddress(constants.GanacheAccount2).
+				withSalt(big.NewInt(5)),
+			expectedOrders: []*testOrder{
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(0)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount0).
+					withSalt(big.NewInt(1)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount1).
+					withSalt(big.NewInt(3)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount2).
+					withSalt(big.NewInt(4)),
+				newTestOrder().
+					withMakerAddress(constants.GanacheAccount2).
+					withSalt(big.NewInt(5)),
+			},
+			expectedETHBackings: []*ETHBacking{
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   2,
+					ETHBalance:   big.NewInt(100),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   1,
+					ETHBalance:   big.NewInt(50),
+				},
+				&ETHBacking{
+					MakerAddress: constants.GanacheAccount2,
+					OrderCount:   2,
+					ETHBalance:   big.NewInt(75),
+				},
+			},
+		},
+	}
+	for caseNumber, testCase := range testCases {
+		testInsertOrdersCase(t, testCase, caseNumber)
+	}
+}
+
+func testInsertOrdersCase(t *testing.T, testCase insertOrdersTestCase, caseNumber int) {
+	t.Helper()
+	testInfo := fmt.Sprintf("(test case %d)", caseNumber)
+	meshDB, err := NewMeshDB("/tmp/meshdb_testing/"+uuid.New().String(), testCase.maxOrders)
+	require.NoError(t, err, testInfo)
+
+	// Set up the initial state.
+	ordersTxn := meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersTxn.Discard()
+	}()
+	for _, order := range testCase.initialOrders {
+		dbOrder := order.toDBOrder(t)
+		require.NoError(t, ordersTxn.Insert(dbOrder), testInfo)
+	}
+	require.NoError(t, ordersTxn.Commit(), testInfo)
+
+	backingsTxn := meshDB.ETHBackings.OpenTransaction()
+	defer func() {
+		_ = backingsTxn.Discard()
+	}()
+	for _, backing := range testCase.initialETHBackings {
+		require.NoError(t, backingsTxn.Insert(backing), testInfo)
+	}
+	require.NoError(t, backingsTxn.Commit(), testInfo)
+
+	// Insert the new order.
+	dbOrder := testCase.incomingOrder.toDBOrder(t)
+	require.NoError(t, meshDB.InsertOrder(dbOrder), testInfo)
+
+	// Make sure that the state after inserting the order is equal to the expected
+	// state. Here we sort all the results so we can do a direct comparison.
+	var actualOrders []*Order
+	require.NoError(t, meshDB.Orders.FindAll(&actualOrders), testInfo)
+	sort.Sort(ordersByHash(actualOrders))
+	expectedDBOrders := make([]*Order, len(testCase.expectedOrders))
+	for i, order := range testCase.expectedOrders {
+		expectedDBOrders[i] = order.toDBOrder(t)
+	}
+	sort.Sort(ordersByHash(expectedDBOrders))
+	assert.Equal(t, expectedDBOrders, actualOrders, testInfo)
+
+	var actualBackings []*ETHBacking
+	require.NoError(t, meshDB.ETHBackings.FindAll(&actualBackings), testInfo)
+	sort.Sort(ethBackingsByMakerAddress(actualBackings))
+	sort.Sort(ethBackingsByMakerAddress(testCase.expectedETHBackings))
+	assert.Equal(t, testCase.expectedETHBackings, actualBackings, testInfo)
+}
+
+type ordersByHash []*Order
+
+// Len is the number of elements in the collection.
+func (orders ordersByHash) Len() int {
+	return len(orders)
+}
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (orders ordersByHash) Less(i, j int) bool {
+	return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
+}
+
+// Swap swaps the elements with indexes i and j.
+func (orders ordersByHash) Swap(i, j int) {
+	orders[i], orders[j] = orders[j], orders[i]
+}
+
+type ethBackingsByMakerAddress []*ETHBacking
+
+// Len is the number of elements in the collection.
+func (backings ethBackingsByMakerAddress) Len() int {
+	return len(backings)
+}
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (backings ethBackingsByMakerAddress) Less(i, j int) bool {
+	return bytes.Compare(backings[i].MakerAddress.Bytes(), backings[j].MakerAddress.Bytes()) == -1
+}
+
+// Swap swaps the elements with indexes i and j.
+func (backings ethBackingsByMakerAddress) Swap(i, j int) {
+	backings[i], backings[j] = backings[j], backings[i]
+}
+
+type testOrder zeroex.Order
+
+func newTestOrder() *testOrder {
+	return (*testOrder)(&zeroex.Order{
+		MakerAddress:          constants.NullAddress,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
+		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+		Salt:                  big.NewInt(0),
+		MakerFee:              big.NewInt(0),
+		TakerFee:              big.NewInt(0),
+		MakerAssetAmount:      big.NewInt(3551808554499581700),
+		TakerAssetAmount:      big.NewInt(1),
+		ExpirationTimeSeconds: big.NewInt(1548619325),
+		ExchangeAddress:       constants.NullAddress,
+	})
+}
+
+func (order *testOrder) withMakerAddress(address common.Address) *testOrder {
+	order.MakerAddress = address
+	return order
+}
+
+func (order *testOrder) withSalt(salt *big.Int) *testOrder {
+	order.Salt = salt
+	return order
+}
+
+func (order *testOrder) toDBOrder(t *testing.T) *Order {
+	t.Helper()
+	signedOrder, err := zeroex.SignTestOrder((*zeroex.Order)(order))
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	return &Order{
+		Hash:                     orderHash,
+		SignedOrder:              signedOrder,
+		FillableTakerAssetAmount: big.NewInt(1),
+		LastUpdated:              time.Date(1992, time.September, 29, 8, 0, 0, 0, time.UTC),
+		IsRemoved:                false,
 	}
 }
