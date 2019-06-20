@@ -58,7 +58,7 @@ type Config struct {
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
 	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
-	// networks have different block producing intervals: POW networks are typicall slower (e.g., Mainnet)
+	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
 	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
 }
