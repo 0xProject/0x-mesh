@@ -208,12 +208,10 @@ func TestOrdersSubscription(t *testing.T) {
 func TestHeartbeatSubscription(t *testing.T) {
 	ctx := context.Background()
 
-	// Set up the dummy handler with a subscribeToHeartbeatHandler
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	rpcHandlerCalled := make(chan struct{}, 1)
 	rpcHandler := &dummyRPCHandler{
 		subscribeToHeartbeatHandler: func(ctx context.Context) (*rpc.Subscription, error) {
-			wg.Done()
+			rpcHandlerCalled <- struct{}{}
 			return nil, nil
 		},
 	}
@@ -226,6 +224,11 @@ func TestHeartbeatSubscription(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
-	// The WaitGroup signals that Heartbeat was called on the server-side.
-	wg.Wait()
+	// The select statement allows us to timeout sooner than the default test timeout.
+	select {
+	case <-time.After(5 * time.Second):
+		t.Error("timed out waiting for rpcHandler to be called")
+	case <-rpcHandlerCalled:
+		break
+	}
 }
