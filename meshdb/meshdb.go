@@ -14,6 +14,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// MeshDB instantiates the DB connection and creates all the collections used by the application
+type MeshDB struct {
+	Database    *db.DB
+	maxOrders   int
+	MiniHeaders *MiniHeadersCollection
+	Orders      *OrdersCollection
+	ETHBackings *ETHBackingsCollection
+}
+
 // MiniHeader is the database representation of a succinct Ethereum block headers
 type MiniHeader struct {
 	Hash   common.Hash
@@ -50,20 +59,11 @@ func (o Order) ID() []byte {
 type ETHBacking struct {
 	MakerAddress common.Address
 	OrderCount   int
-	ETHBalance   *big.Int
+	ETHAmount    *big.Int
 }
 
 func (eb *ETHBacking) ID() []byte {
 	return eb.MakerAddress.Bytes()
-}
-
-// MeshDB instantiates the DB connection and creates all the collections used by the application
-type MeshDB struct {
-	database    *db.DB
-	maxOrders   int
-	MiniHeaders *MiniHeadersCollection
-	Orders      *OrdersCollection
-	ETHBackings *ETHBackingsCollection
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
@@ -83,6 +83,7 @@ type OrdersCollection struct {
 
 type ETHBackingsCollection struct {
 	*db.Collection
+	ETHAmountIndex   *db.Index
 	ETHPerOrderIndex *db.Index
 }
 
@@ -109,7 +110,7 @@ func NewMeshDB(path string, maxOrders int) (*MeshDB, error) {
 	}
 
 	return &MeshDB{
-		database:    database,
+		Database:    database,
 		maxOrders:   maxOrders,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
@@ -201,13 +202,18 @@ func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
 	if err != nil {
 		return nil, err
 	}
+	amountIndex := col.AddIndex("amount", func(model db.Model) []byte {
+		amount := model.(*ETHBacking).ETHAmount
+		return []byte(fmt.Sprintf("%080s", amount.String()))
+	})
 	ethPerOrderIndex := col.AddIndex("ethPerOrder", func(model db.Model) []byte {
 		ethBacking := model.(*ETHBacking)
-		return ratToBytes(ethBacking.ethPerOrder())
+		return ratToBytes(ethBacking.ETHPerOrder())
 	})
 
 	return &ETHBackingsCollection{
 		Collection:       col,
+		ETHAmountIndex:   amountIndex,
 		ETHPerOrderIndex: ethPerOrderIndex,
 	}, nil
 }
@@ -221,19 +227,19 @@ func ratToBytes(rat *big.Rat) []byte {
 	return []byte(fmt.Sprintf("%080.5s", rat.FloatString(5)))
 }
 
-func (eb *ETHBacking) ethPerOrder() *big.Rat {
+func (eb *ETHBacking) ETHPerOrder() *big.Rat {
 	if eb.OrderCount == 0 {
 		// We can't divide by zero. Instead return a really big rational number.
 		return big.NewRat(math.MaxInt64, 1)
 	}
 	ethPerOrder := big.NewRat(0, 1)
-	ethPerOrder.SetFrac(eb.ETHBalance, big.NewInt(int64(eb.OrderCount)))
+	ethPerOrder.SetFrac(eb.ETHAmount, big.NewInt(int64(eb.OrderCount)))
 	return ethPerOrder
 }
 
 // Close closes the database connection
 func (m *MeshDB) Close() {
-	m.database.Close()
+	m.Database.Close()
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
@@ -279,7 +285,7 @@ func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([
 // an error). InsertOrder will return an error if any corresponding ETH backings
 // cannot be found.
 func (m *MeshDB) InsertOrder(order *Order) error {
-	txn := m.database.OpenGlobalTransaction()
+	txn := m.Database.OpenGlobalTransaction()
 	defer func() {
 		_ = txn.Discard()
 	}()
@@ -312,18 +318,18 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	updatedETHBacking := &ETHBacking{
 		MakerAddress: ethBackingForIncomingOrder.MakerAddress,
 		OrderCount:   ethBackingForIncomingOrder.OrderCount + 1,
-		ETHBalance:   ethBackingForIncomingOrder.ETHBalance,
+		ETHAmount:    ethBackingForIncomingOrder.ETHAmount,
 	}
 
 	if totalExistingOrders == m.maxOrders {
 		log.WithField("maxOrders", m.maxOrders).Trace("Maximum order limit reached; deleting an order to make room")
 		// In this case, we are going to hit the storage limit. Delete the order
 		// with the lowest ETH backing in order to make room.
-		lowestETHBacking, err := m.getLowestETHBacking()
+		lowestETHBacking, err := m.GetETHBackingWithLowestETHPerOrder()
 		if err != nil {
 			return err
 		}
-		if updatedETHBacking.ethPerOrder().Cmp(lowestETHBacking.ethPerOrder()) != 1 {
+		if updatedETHBacking.ETHPerOrder().Cmp(lowestETHBacking.ETHPerOrder()) != 1 {
 			// If the incoming order is associated with an ETH backing that is not
 			// greater than the current lowest ETH backing, don't store it.
 			return nil
@@ -356,14 +362,26 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	return txn.Commit()
 }
 
-func (m *MeshDB) getLowestETHBacking() (*ETHBacking, error) {
+func (m *MeshDB) GetETHBackingWithLowestETHPerOrder() (*ETHBacking, error) {
 	filter := m.ETHBackings.ETHPerOrderIndex.All()
 	queryResults := []*ETHBacking{}
 	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
 		return nil, err
 	}
 	if len(queryResults) == 0 {
-		return nil, errors.New("query for lowest ETHBacking returned no results")
+		return nil, errors.New("query for lowest ETHBacking by ETH per order returned no results")
+	}
+	return queryResults[0], nil
+}
+
+func (m *MeshDB) GetETHBackingWithLowestETHAmount() (*ETHBacking, error) {
+	filter := m.ETHBackings.ETHAmountIndex.All()
+	queryResults := []*ETHBacking{}
+	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
+		return nil, err
+	}
+	if len(queryResults) == 0 {
+		return nil, errors.New("query for lowest ETHBacking by ETH amount returned no results")
 	}
 	return queryResults[0], nil
 }
