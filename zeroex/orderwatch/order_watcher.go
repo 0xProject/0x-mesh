@@ -152,7 +152,7 @@ func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
-	err := w.meshDB.Orders.Insert(order)
+	err := w.meshDB.InsertOrder(order)
 	if err != nil {
 		return err
 	}

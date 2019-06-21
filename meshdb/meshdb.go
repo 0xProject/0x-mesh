@@ -202,6 +202,7 @@ func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO(albrow): Remove amount index if we don't end up needing it.
 	amountIndex := col.AddIndex("amount", func(model db.Model) []byte {
 		amount := model.(*ETHBacking).ETHAmount
 		return []byte(fmt.Sprintf("%080s", amount.String()))

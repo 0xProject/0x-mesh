@@ -141,9 +141,11 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 	results.Rejected = append(results.Rejected, rejectedOffchainOrders...)
 
 	// Check ETH Balance for each maker in the set of remaining orders.
+	ordersWithSufficientBacking, ordersWithInsufficientBacking := app.validateETHBacking(validOffchainOrders)
+	results.Rejected = append(results.Rejected, ordersWithInsufficientBacking...)
 
 	// Perform 0x on-chain validation.
-	zeroexResults := app.orderValidator.BatchValidate(validOffchainOrders)
+	zeroexResults := app.orderValidator.BatchValidate(ordersWithSufficientBacking)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil
 }
@@ -289,6 +291,12 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		valid = append(valid, orders...)
 	}
 
+	if err := txn.Commit(); err != nil {
+		// If we couldn't save any new ETHBackings, we have no choice but to
+		// consider all incoming orders invalid.
+		log.WithField("error", err).Error("Could not commit transaction to insert new ETH backings")
+		rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, orders)...)
+	}
 	return valid, rejected
 }
 
