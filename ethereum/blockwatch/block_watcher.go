@@ -79,8 +79,8 @@ func New(config Config) *Watcher {
 	return bs
 }
 
-// StartPolling starts the block poller
-func (w *Watcher) StartPolling() error {
+// Start starts the BlockWatcher
+func (w *Watcher) Start() error {
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()

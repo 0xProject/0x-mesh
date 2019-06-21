@@ -84,8 +84,8 @@ func TestWatcherStartStop(t *testing.T) {
 		Client:              fakeClient,
 	}
 	watcher := New(config)
-	require.NoError(t, watcher.StartPolling())
+	require.NoError(t, watcher.Start())
 	watcher.stopPolling()
-	require.NoError(t, watcher.StartPolling())
+	require.NoError(t, watcher.Start())
 	watcher.Stop()
 }
