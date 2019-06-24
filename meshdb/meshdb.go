@@ -269,16 +269,6 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 	return miniHeaders[0], nil
 }
 
-func (m *MeshDB) findEthBackingsWithLeastEthPerOrder(target *big.Rat, max int) ([]*ETHBacking, error) {
-	filter := m.ETHBackings.ETHPerOrderIndex.RangeFilter([]byte{}, ratToBytes(target))
-	query := m.ETHBackings.NewQuery(filter).Max(max)
-	var result []*ETHBacking
-	if err := query.Run(&result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 // InsertOrder atomically inserts the given order and updates any relevant ETH
 // backings. It also removes the order with the lowest ETH backing if needed in
 // order to make room. If order storage is full and the given order does not

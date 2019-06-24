@@ -214,7 +214,7 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	rejected := []*zeroex.RejectedOrderInfo{}
 	for _, failedAddress := range failedAddresses {
 		orders := ordersByMakerAddress[failedAddress]
-		rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROEthRPCRequestFailed, orders)...)
+		rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, orders)...)
 	}
 
 	// We need to open a global transaction in order to ensure that the balances
