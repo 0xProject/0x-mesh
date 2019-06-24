@@ -479,7 +479,8 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 	})
 	if err != nil {
 		// Too many logs returned, so we split the block range into two separate queries
-		if err.Error() == "query returned more than 1000 results" {
+		// TODO(fabio): Figure out what error is returned by Parity/Geth/Alchemy
+		if err.Error() == "query returned more than 10000 results" {
 			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
 			// blocks contain more then 1000 logs. This has supposedly been fixed but we keep
 			// this logic here just in case.
