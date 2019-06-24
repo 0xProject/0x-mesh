@@ -269,7 +269,7 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 	return miniHeaders[0], nil
 }
 
-func (m *MeshDB) findEthBackingsWithLessEthPerOrder(target *big.Rat, max int) ([]*ETHBacking, error) {
+func (m *MeshDB) findEthBackingsWithLeastEthPerOrder(target *big.Rat, max int) ([]*ETHBacking, error) {
 	filter := m.ETHBackings.ETHPerOrderIndex.RangeFilter([]byte{}, ratToBytes(target))
 	query := m.ETHBackings.NewQuery(filter).Max(max)
 	var result []*ETHBacking
