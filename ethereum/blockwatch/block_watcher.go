@@ -2,6 +2,7 @@ package blockwatch
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -9,10 +10,20 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
 )
+
+// Number of concurrent JSON RPC requests to allow while fast-syncing logs
+const concurrencyLimit = 3
+
+// maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
+// a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
+// we need to try and stay below it. The number of logs returned depend on the topics we filter by.
+// TODO(fabio): Check if there are more stringent limits on Parity, Geth or Alchemy
+var maxBlocksInGetLogsQuery = int64(60)
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
 // and added to our representation of the chain. During a block re-org, a block previously stored
@@ -81,6 +92,11 @@ func New(config Config) *Watcher {
 
 // Start starts the BlockWatcher
 func (w *Watcher) Start() error {
+	err := w.backfillMissedEventsIfNeeded()
+	if err != nil {
+		return err
+	}
+
 	// We need the mutex to reliably start/stop the update loop
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -289,4 +305,208 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 	}
 	header.Logs = logs
 	return header, nil
+}
+
+// Mesh might have been offline for some time due to network disruptions, crashes or because it was
+// taken offline by the operator. When coming back online, if the latest block in storage is different
+// from the latestBlock fetched via RPC, we batch backfill the missing blocks and emit their events.
+func (w *Watcher) backfillMissedEventsIfNeeded() error {
+	latestRetainedBlock, err := w.stack.Peek()
+	if err != nil {
+		return err
+	}
+	// No blocks stored, nowhere to backfill to
+	if latestRetainedBlock == nil {
+		return nil
+	}
+	latestBlock, err := w.client.HeaderByNumber(nil)
+	if err != nil {
+		return err
+	}
+	blocksElapsed := big.NewInt(0).Sub(latestBlock.Number, latestRetainedBlock.Number)
+	if blocksElapsed.Int64() > 0 {
+		startBlockNum := latestRetainedBlock.Number.Int64() + 1
+		endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
+		logs, furthestBlockNumProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
+		if furthestBlockNumProcessed > latestRetainedBlock.Number.Int64() {
+			// Remove all blocks from the DB
+			headers, err := w.InspectRetainedBlocks()
+			if err != nil {
+				return err
+			}
+			for i := 0; i < len(headers); i++ {
+				_, err := w.stack.Pop()
+				if err != nil {
+					return err
+				}
+			}
+			// Add furthest block processed into the DB
+			latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockNumProcessed))
+			if err != nil {
+				return err
+			}
+			w.stack.Push(latestHeader)
+
+			// Emit events for all the logs
+			if len(logs) > 0 {
+				hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
+				for _, log := range logs {
+					blockHeader, ok := hashToBlockHeader[log.BlockHash]
+					if !ok {
+						blockHeader = &meshdb.MiniHeader{
+							Hash:   log.BlockHash,
+							Number: big.NewInt(0).SetUint64(log.BlockNumber),
+							Logs:   []types.Log{},
+							// TODO(fabio): What about `Parent`?
+						}
+						hashToBlockHeader[log.BlockHash] = blockHeader
+					}
+					blockHeader.Logs = append(blockHeader.Logs, log)
+				}
+				events := []*Event{}
+				for _, blockHeader := range hashToBlockHeader {
+					events = append(events, &Event{
+						Type:        Added,
+						BlockHeader: blockHeader,
+					})
+				}
+				w.blockFeed.Send(events)
+			}
+		}
+	}
+	return nil
+}
+
+// getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
+// all logs in the range, it simply returns them. If it fails to retrieve some of the blocks,
+// it returns all the logs it did find, along with the block number at which no further logs
+// were retrieved.
+func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
+	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)
+
+	mu := sync.Mutex{}
+	orderIndexTologChunk := map[int][]types.Log{}
+	var furthestBlockNumProcessed int64
+
+	semaphoreChan := make(chan struct{}, concurrencyLimit)
+	defer close(semaphoreChan)
+
+	wg := &sync.WaitGroup{}
+	for i, chunk := range chunks {
+		wg.Add(1)
+		go func(index int, chunk *blockRange) {
+			defer wg.Done()
+
+			// Add one to the semaphore chan. If it already has concurrencyLimit values,
+			// the request blocks here until one frees up.
+			semaphoreChan <- struct{}{}
+
+			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
+			mu.Lock()
+			if err != nil {
+				log.WithField("error", err).Warn("Failed to fast-sync blocks, falling back to polling them individually")
+				if furthestBlockNumProcessed == 0 || furthestBlockNumProcessed < chunk.FromBlock-1 {
+					furthestBlockNumProcessed = chunk.FromBlock - 1
+				}
+			} else {
+				if furthestBlockNumProcessed == 0 || furthestBlockNumProcessed < chunk.ToBlock {
+					furthestBlockNumProcessed = chunk.ToBlock
+				}
+			}
+			orderIndexTologChunk[index] = logs
+			mu.Unlock()
+			<-semaphoreChan
+		}(i, chunk)
+	}
+
+	// Wait for all log requests to complete
+	wg.Wait()
+
+	logs := []types.Log{}
+	for i := range chunks {
+		logs = append(logs, orderIndexTologChunk[i]...)
+	}
+
+	return logs, furthestBlockNumProcessed
+}
+
+type blockRange struct {
+	FromBlock int64
+	ToBlock   int64
+}
+
+func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
+	chunks := []*blockRange{}
+	numBlocksLeft := int64(to - from)
+	if numBlocksLeft < chunkSize {
+		chunks = append(chunks, &blockRange{
+			FromBlock: from,
+			ToBlock:   to,
+		})
+	} else {
+		blocks := []int64{}
+		for i := int64(0); i <= numBlocksLeft; i++ {
+			blocks = append(blocks, from+i)
+		}
+		numChunks := numBlocksLeft / chunkSize
+		remainder := numBlocksLeft % chunkSize
+		if remainder > 0 {
+			numChunks = numChunks + 1
+		}
+
+		for i := int64(0); i < numChunks; i = i + 1 {
+			fromIndex := i * chunkSize
+			toIndex := fromIndex + chunkSize
+			if toIndex >= int64(len(blocks)-1) {
+				toIndex = int64(len(blocks))
+			}
+			bs := blocks[fromIndex:toIndex]
+			chunks = append(chunks, &blockRange{
+				FromBlock: bs[0],
+				ToBlock:   bs[len(bs)-1],
+			})
+		}
+	}
+	return chunks
+}
+
+func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([]types.Log, error) {
+	numBlocks := to - from
+	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
+		FromBlock: big.NewInt(from),
+		ToBlock:   big.NewInt(to),
+		Topics:    [][]common.Hash{w.topics},
+	})
+	if err != nil {
+		// Too many logs returned, so we split the block range into two separate queries
+		if err.Error() == "query returned more than 1000 results" {
+			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
+			// blocks contain more then 1000 logs. This has supposedly been fixed but we keep
+			// this logic here just in case.
+			// Source: https://community.infura.io/t/getlogs-error-query-returned-more-than-1000-results/358/10
+			if from == to {
+				return allLogs, fmt.Errorf("Unable to get the logs for block #%d, because it contains too many logs", from)
+			}
+
+			r := numBlocks % 2
+			firstBatchSize := numBlocks / 2
+			secondBatchSize := firstBatchSize
+			if r == 1 {
+				secondBatchSize = secondBatchSize + 1
+			}
+
+			endFirstHalf := from + firstBatchSize
+			startSecondHalf := endFirstHalf + 1
+			allLogs, err := w.filterLogsRecurisively(from, endFirstHalf, allLogs)
+			if err != nil {
+				return allLogs, err
+			}
+			allLogs, err = w.filterLogsRecurisively(startSecondHalf, to, allLogs)
+			return allLogs, err
+		} else {
+			return allLogs, err
+		}
+	}
+	allLogs = append(allLogs, logs...)
+	return allLogs, nil
 }
