@@ -275,6 +275,7 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 // have a high enough ETH backing, it will not be stored (this is not considered
 // an error). InsertOrder will return an error if any corresponding ETH backings
 // cannot be found.
+// TODO: return hash of order that was deleted.
 func (m *MeshDB) InsertOrder(order *Order) error {
 	txn := m.Database.OpenGlobalTransaction()
 	defer func() {
@@ -295,10 +296,10 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	var ethBackingForIncomingOrder ETHBacking
 	if err := m.ETHBackings.FindByID(order.SignedOrder.MakerAddress.Bytes(), &ethBackingForIncomingOrder); err != nil {
 		if _, ok := err.(db.NotFoundError); ok {
-			// This should never happen because the ETHWatcher should have already
-			// been notified about this incoming order. We can't fix the problem here
-			// because meshdb doesn't know about the ETHWatcher (if it did it would
-			// violate separation of concerns).
+			// This should never happen because the ETHBacking should have already
+			// been stored. We can't fix the problem here because meshdb doesn't know
+			// about ETHWatcher and can't send the call to get new balances (if it did
+			// it would violate separation of concerns).
 			return fmt.Errorf("invalid database state: could not find ETHBacking for maker address: %s", order.SignedOrder.MakerAddress.Hex())
 		} else {
 			return err
@@ -363,6 +364,15 @@ func (m *MeshDB) GetETHBackingWithLowestETHPerOrder() (*ETHBacking, error) {
 		return nil, errors.New("query for lowest ETHBacking by ETH per order returned no results")
 	}
 	return queryResults[0], nil
+}
+
+func (m *MeshDB) GetETHBackingsWithLowestETHPerOrder(count int) ([]*ETHBacking, error) {
+	filter := m.ETHBackings.ETHPerOrderIndex.All()
+	queryResults := []*ETHBacking{}
+	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
+		return nil, err
+	}
+	return queryResults, nil
 }
 
 func (m *MeshDB) GetETHBackingWithLowestETHAmount() (*ETHBacking, error) {

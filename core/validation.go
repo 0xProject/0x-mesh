@@ -50,7 +50,7 @@ var (
 	}
 	ROInsufficientETHBacking = zeroex.RejectedOrderStatus{
 		Code:    "InsufficientETHBacking",
-		Message: "the order's maker address does not meet the minimum required ETH backing for storing the order",
+		Message: "the maker address does not meet the minimum required ETH backing for storing the order",
 	}
 )
 
@@ -194,110 +194,126 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	}
 
 	// Group orders by their maker address.
-	ordersByMakerAddress := map[common.Address][]*zeroex.SignedOrder{}
+	makerAddressToOrders := map[common.Address][]*zeroex.SignedOrder{}
 	for _, order := range orders {
-		if _, found := ordersByMakerAddress[order.MakerAddress]; found {
-			ordersByMakerAddress[order.MakerAddress] = append(ordersByMakerAddress[order.MakerAddress], order)
+		if _, found := makerAddressToOrders[order.MakerAddress]; found {
+			makerAddressToOrders[order.MakerAddress] = append(makerAddressToOrders[order.MakerAddress], order)
 		} else {
-			ordersByMakerAddress[order.MakerAddress] = []*zeroex.SignedOrder{order}
+			makerAddressToOrders[order.MakerAddress] = []*zeroex.SignedOrder{order}
 		}
 	}
 	var makerAddresses []common.Address
-	for makerAddress := range ordersByMakerAddress {
+	for makerAddress := range makerAddressToOrders {
 		makerAddresses = append(makerAddresses, makerAddress)
 	}
 
+	// TODO(albrow): Uncomment this.
 	// Get the current ETH balance for each maker.
-	addressToBalance, failedAddresses := app.ethWathcher.Add(makerAddresses)
+	// makerAddressToBalance, failedBalanceMakerAddresses := app.ethWathcher.Add(makerAddresses)
 
-	// Add any failedAddresses to RejectedOrderInfo.
-	rejected := []*zeroex.RejectedOrderInfo{}
-	for _, failedAddress := range failedAddresses {
-		orders := ordersByMakerAddress[failedAddress]
-		rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, orders)...)
-	}
+	// Call the helper function.
+	// TODO(albrow): Actually build the heap and pass in the correct arguments. This is just a placeholder.
+	valid, rejected := validateETHBackingsWithHeap(0, &ETHBackingHeap{}, orders)
 
-	// We need to open a global transaction in order to ensure that the balances
-	// and number of orders per maker don't change while we're making our
-	// calculations. We're also going to potentially insert some ETHBackings for
-	// new maker addresses and don't want to overwrite any ETHBackings that get
-	// inserted in the middle of our calculations.
-	txn := app.db.Database.OpenGlobalTransaction()
-	defer func() {
-		_ = txn.Discard()
-	}()
+	// TODO(albrow): Uncomment this.
+	// Add any orders for maker addresses for which we failed to get the balance
+	// to the set of rejected orders.
+	// for _, failedAddress := range failedBalanceMakerAddresses {
+	// 	orders := makerAddressToOrders[failedAddress]
+	// 	rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, orders)...)
+	// }
 
-	// Find the current lowest ETHBacking by amount and amount per order.
-	lowestETHBacking, err := app.db.GetETHBackingWithLowestETHPerOrder()
-	if err != nil {
-		log.WithField("error", err).Error("Could not get lowest ETH backing")
-	}
-	lowestETHPerOrder := lowestETHBacking.ETHPerOrder()
-
-	// We iterate through each maker and classify all orders for that maker as
-	// either valid or invalid.
-	valid := []*zeroex.SignedOrder{}
-	for makerAddress, ethAmount := range addressToBalance {
-		// First check if there is an ETH backing for this maker already stored in
-		// the database.
-		var ethBacking meshdb.ETHBacking
-		if err := app.db.ETHBackings.FindByID(makerAddress.Bytes(), &ethBacking); err != nil {
-			if _, ok := err.(db.NotFoundError); !ok {
-				// Some unexpected error occurred (not a NotFoundError). Log an error
-				// and add the orders for this maker to the set of rejected orders.
-				log.WithField("error", err).Error("Could not find existing ETH backing for maker address")
-				orders := ordersByMakerAddress[makerAddress]
-				rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, orders)...)
-				continue
-			}
-
-			// If the ETHBacking was not found, insert a new one with the current
-			// balance for this maker. Note that we do this regardless of whether the
-			// maker has the minimum required ETH backing.
-			ethBacking = meshdb.ETHBacking{
-				MakerAddress: makerAddress,
-				// Start with an OrderCount of 0. This will only change if and when we
-				// actually insert an order.
-				OrderCount: 0,
-				ETHAmount:  ethAmount,
-			}
-			if err := txn.Insert(app.db.ETHBackings.Collection, &ethBacking); err != nil {
-				// Log an error and add the orders for this maker to the set of rejected
-				// orders.
-				log.WithField("error", err).Error("Could not store ETH backing")
-				orders := ordersByMakerAddress[makerAddress]
-				rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, orders)...)
-				continue
-			}
-		}
-
-		// Check whether the maker would have sufficient backing if we were to
-		// insert one additional order.
-		ethBacking.OrderCount += 1
-		if ethBacking.ETHPerOrder().Cmp(lowestETHPerOrder) != 1 {
-			// The ETH per order for this maker if we inserted one more order would
-			// not be greater than the lowest currently stored ETH backing. I.e. the
-			// maker doesn't have sufficient balance and all their orders are invalid.
-			orders := ordersByMakerAddress[makerAddress]
-			rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROInsufficientETHBacking, orders)...)
-		}
-
-		// If we reached here, all orders for the maker should be considered valid.
-		// Note that this doesn't mean that the maker has enough backing to store
-		// all orders. It only means that it has enough backing to store *at least
-		// one* order. We need to keep going through the validation process in order
-		// to determine which orders to store (if any).
-		orders := ordersByMakerAddress[makerAddress]
-		valid = append(valid, orders...)
-	}
-
-	if err := txn.Commit(); err != nil {
-		// If we couldn't save any new ETHBackings, we have no choice but to
-		// consider all incoming orders invalid.
-		log.WithField("error", err).Error("Could not commit transaction to insert new ETH backings")
-		rejected = append(rejected, rejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, orders)...)
-	}
 	return valid, rejected
+}
+
+func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHeap, orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
+	valid := []*zeroex.SignedOrder{}
+	rejected := []*zeroex.RejectedOrderInfo{}
+	for i := len(valid); i < len(orders); i++ {
+		incomingOrder := orders[i]
+
+		// If we have spare capacity left, consider all orders valid for now.
+		if len(valid) < spareCapacity {
+			valid = append(valid, incomingOrder)
+			ethBackingHeap.UpdateByMakerAddress(incomingOrder.MakerAddress, 1)
+			continue
+		}
+
+		// If we don't have any spare capacity, check if the ETH backing per order
+		// corresponding to this order's maker address is greater than the current
+		// lowest ETH backing per order.
+		lowestBacking := ethBackingHeap.Peek()
+		thisBacking, _ := ethBackingHeap.FindByMakerAddress(incomingOrder.MakerAddress)
+		potentialBacking := copyETHBacking(thisBacking)
+		potentialBacking.OrderCount += 1
+		potentialETHPerOrder := potentialBacking.ETHPerOrder()
+		if potentialETHPerOrder.Cmp(lowestBacking.ETHPerOrder()) != 1 {
+			// If we don't have the required ETH backing, this order is considered
+			// invalid. We don't need to update the heap.
+			orderHash, err := incomingOrder.ComputeOrderHash()
+			if err != nil {
+				log.WithField("error", err).Panic("Could not compute order hash")
+			}
+			rejectedOrderInfo := &zeroex.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: incomingOrder,
+				Kind:        MeshValidation,
+				Status:      ROInsufficientETHBacking,
+			}
+			rejected = append(rejected, rejectedOrderInfo)
+			continue
+		}
+
+		// If we do have the required ETH backing, we need to replace an order
+		// which was previously considered valid with this one and update the heap.
+		orderToRemove, indexToReplace := findOrderByMakerAddress(lowestBacking.MakerAddress, valid)
+		if indexToReplace != -1 {
+			// If the order which would be removed is in the set of valid orders so
+			// far, we need to replace it.
+			valid[indexToReplace] = incomingOrder
+			// In this case we also need to add the order to the set of
+			// rejectedOrderInfos.
+			orderHash, err := orderToRemove.ComputeOrderHash()
+			if err != nil {
+				log.WithField("error", err).Panic("Could not compute order hash")
+			}
+			rejectedOrderInfo := &zeroex.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: orderToRemove,
+				Kind:        MeshValidation,
+				Status:      ROInsufficientETHBacking,
+			}
+			rejected = append(rejected, rejectedOrderInfo)
+		} else {
+			// If the order which would be removed is *not* in the set of valid orders
+			// so far, don't remove any. Just add the incoming order to the valid
+			// orders so far.
+			valid = append(valid, incomingOrder)
+		}
+		ethBackingHeap.UpdateByMakerAddress(incomingOrder.MakerAddress, 1)
+		ethBackingHeap.UpdateLowest(-1)
+	}
+
+	return valid, rejected
+}
+
+func copyETHBacking(backing *meshdb.ETHBacking) *meshdb.ETHBacking {
+	return &meshdb.ETHBacking{
+		MakerAddress: backing.MakerAddress,
+		OrderCount:   backing.OrderCount,
+		ETHAmount:    backing.ETHAmount,
+	}
+}
+
+func findOrderByMakerAddress(makerAddress common.Address, orders []*zeroex.SignedOrder) (*zeroex.SignedOrder, int) {
+	// TODO(albrow): We could potentially optimize this by maintaining a map of
+	// maker address to orders for that maker.
+	for i, order := range orders {
+		if order.MakerAddress.Hex() == makerAddress.Hex() {
+			return order, i
+		}
+	}
+	return nil, -1
 }
 
 func rejectedOrderInfoForOrders(kind zeroex.RejectedOrderKind, status zeroex.RejectedOrderStatus, orders []*zeroex.SignedOrder) []*zeroex.RejectedOrderInfo {
