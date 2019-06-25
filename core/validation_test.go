@@ -218,7 +218,110 @@ func TestValidateETHBackings(t *testing.T) {
 				},
 			},
 		},
-		// TODO(albrow): Add more test cases.
+		{
+			// A more complicated case with more orders and more accounts. This time
+			// we do have a spare capacity of 1. Two orders should be valid and one
+			// order should be rejected.
+			spareCapacity: 1,
+			ethBackings: []*meshdb.ETHBacking{
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   2,
+					ETHAmount:    big.NewInt(100),
+				},
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   2,
+					ETHAmount:    big.NewInt(50),
+				},
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount2,
+					OrderCount:   1,
+					ETHAmount:    big.NewInt(75),
+				},
+			},
+			incomingOrders: []*testOrder{
+				testOrders[constants.GanacheAccount0][0],
+				testOrders[constants.GanacheAccount1][0],
+				testOrders[constants.GanacheAccount2][0],
+			},
+			expectedValid: []*testOrder{
+				testOrders[constants.GanacheAccount0][0],
+				testOrders[constants.GanacheAccount2][0],
+			},
+			expectedRejected: []*zeroex.RejectedOrderInfo{
+				{
+					OrderHash:   testOrders[constants.GanacheAccount1][0].hash(t),
+					SignedOrder: testOrders[constants.GanacheAccount1][0].toSignedOrder(t),
+					Kind:        MeshValidation,
+					Status:      ROInsufficientETHBacking,
+				},
+			},
+		},
+		{
+			// The most complicated test case of all.
+			//
+			// spare capacity = 2
+			// total capacity = 7
+			// # incoming orders = 5
+			//
+			// solution:
+			//
+			//     account0 100 ETH / 3 orders = 33.3
+			//     account1  40 ETH / 1 order = 40
+			//     account2  80 ETH / 3 orders = 26.7
+			//
+			// 6 incoming. 3 should be valid. 3 should be invalid.
+			//
+			// - 1 order from account0 is valid
+			// - 0 orders from account1 are valid
+			// - 2 orders from account2 is valid
+			//
+			spareCapacity: 2,
+			ethBackings: []*meshdb.ETHBacking{
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount0,
+					OrderCount:   2,
+					ETHAmount:    big.NewInt(100),
+				},
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount1,
+					OrderCount:   2,
+					ETHAmount:    big.NewInt(40),
+				},
+				&meshdb.ETHBacking{
+					MakerAddress: constants.GanacheAccount2,
+					OrderCount:   1,
+					ETHAmount:    big.NewInt(80),
+				},
+			},
+			incomingOrders: []*testOrder{
+				testOrders[constants.GanacheAccount0][0],
+				testOrders[constants.GanacheAccount1][0],
+				testOrders[constants.GanacheAccount1][1],
+				testOrders[constants.GanacheAccount2][0],
+				testOrders[constants.GanacheAccount2][1],
+			},
+			expectedValid: []*testOrder{
+				testOrders[constants.GanacheAccount0][0],
+				testOrders[constants.GanacheAccount2][0],
+				testOrders[constants.GanacheAccount2][1],
+			},
+			expectedRejected: []*zeroex.RejectedOrderInfo{
+				{
+					OrderHash:   testOrders[constants.GanacheAccount1][0].hash(t),
+					SignedOrder: testOrders[constants.GanacheAccount1][0].toSignedOrder(t),
+					Kind:        MeshValidation,
+					Status:      ROInsufficientETHBacking,
+				},
+				{
+					OrderHash:   testOrders[constants.GanacheAccount1][1].hash(t),
+					SignedOrder: testOrders[constants.GanacheAccount1][1].toSignedOrder(t),
+					Kind:        MeshValidation,
+					Status:      ROInsufficientETHBacking,
+				},
+			},
+		},
 	}
 
 	for i, testCase := range testCases {
@@ -227,7 +330,7 @@ func TestValidateETHBackings(t *testing.T) {
 }
 
 func testValidateETHBackingCase(t *testing.T, testCase validateETHBackingTestCase, caseNumber int) {
-	testInfo := fmt.Sprintf("(test case %d)", caseNumber)
+	testInfo := fmt.Sprintf("(test case %d) Addresses: [%s, %s, %s]", caseNumber, constants.GanacheAccount0.Hex(), constants.GanacheAccount1.Hex(), constants.GanacheAccount2.Hex())
 
 	// Build the arguments we need to pass to the validation function.
 	ethBackingHeap := ETHBackingHeap(testCase.ethBackings)
@@ -333,19 +436,19 @@ func (order *testOrder) withSalt(salt *big.Int) *testOrder {
 	return order
 }
 
-func (order *testOrder) hash(t *testing.T) common.Hash {
+func (order *testOrder) hash(t require.TestingT) common.Hash {
 	orderHash, err := order.toSignedOrder(t).ComputeOrderHash()
 	require.NoError(t, err)
 	return orderHash
 }
 
-func (order *testOrder) toSignedOrder(t *testing.T) *zeroex.SignedOrder {
+func (order *testOrder) toSignedOrder(t require.TestingT) *zeroex.SignedOrder {
 	signedOrder, err := zeroex.SignTestOrder((*zeroex.Order)(order))
 	require.NoError(t, err)
 	return signedOrder
 }
 
-func testOrdersToSignedOrders(t *testing.T, testOrders []*testOrder) []*zeroex.SignedOrder {
+func testOrdersToSignedOrders(t require.TestingT, testOrders []*testOrder) []*zeroex.SignedOrder {
 	signedOrders := make([]*zeroex.SignedOrder, len(testOrders))
 	for i, testOrder := range testOrders {
 		signedOrders[i] = testOrder.toSignedOrder(t)
@@ -353,8 +456,7 @@ func testOrdersToSignedOrders(t *testing.T, testOrders []*testOrder) []*zeroex.S
 	return signedOrders
 }
 
-func (order *testOrder) toDBOrder(t *testing.T) *meshdb.Order {
-	t.Helper()
+func (order *testOrder) toDBOrder(t require.TestingT) *meshdb.Order {
 	signedOrder := order.toSignedOrder(t)
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
