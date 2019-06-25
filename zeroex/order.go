@@ -29,6 +29,13 @@ type Order struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
+
+	// hash caches the result of ComputeOrderHash and is initially nil. Should
+	// not be set or read except for in the ComputeOrderHash method.
+	// TODO(albrow): This implementation is finicky and will result in the
+	// incorrect hash if any of the fields of the order changed. We should remove
+	// it in favor of something that is less of a footgun.
+	hash *common.Hash
 }
 
 // SignedOrder represents a signed 0x order
@@ -180,6 +187,9 @@ var eip712OrderTypes = signer.Types{
 
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
+	if o.hash != nil {
+		return *o.hash, nil
+	}
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
@@ -219,6 +229,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	rawData := []byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash)))
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
+	o.hash = &hash
 	return hash, nil
 }
 

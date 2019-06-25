@@ -68,27 +68,51 @@ func TestOrderCRUDOperations(t *testing.T) {
 	// Find
 	foundOrder := &Order{}
 	require.NoError(t, meshDB.Orders.FindByID(order.ID(), foundOrder))
+	// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+	// unexported hash field.
+	_, _ = foundOrder.SignedOrder.ComputeOrderHash()
 	assert.Equal(t, order, foundOrder)
 
 	// Check Indexes
 	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, salt)
 	require.NoError(t, err)
+	for _, foundOrder := range orders {
+		// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+		// unexported hash field.
+		_, _ = foundOrder.SignedOrder.ComputeOrderHash()
+	}
 	assert.Equal(t, []*Order{order}, orders)
 
 	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
 	require.NoError(t, err)
+	for _, foundOrder := range orders {
+		// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+		// unexported hash field.
+		_, _ = foundOrder.SignedOrder.ComputeOrderHash()
+	}
 	assert.Equal(t, []*Order{order}, orders)
 
 	orders, err = meshDB.FindOrdersLastUpdatedBefore(fiveMinutesFromNow)
 	require.NoError(t, err)
+	for _, foundOrder := range orders {
+		// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+		// unexported hash field.
+		_, _ = foundOrder.SignedOrder.ComputeOrderHash()
+	}
 	assert.Equal(t, []*Order{order}, orders)
 
 	// Update
 	modifiedOrder := foundOrder
 	modifiedOrder.FillableTakerAssetAmount = big.NewInt(0)
+	// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+	// unexported hash field.
+	_, _ = modifiedOrder.SignedOrder.ComputeOrderHash()
 	require.NoError(t, meshDB.Orders.Update(modifiedOrder))
 	foundModifiedOrder := &Order{}
 	require.NoError(t, meshDB.Orders.FindByID(modifiedOrder.ID(), foundModifiedOrder))
+	// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+	// unexported hash field.
+	_, _ = foundModifiedOrder.SignedOrder.ComputeOrderHash()
 	assert.Equal(t, modifiedOrder, foundModifiedOrder)
 
 	// Delete
@@ -477,6 +501,11 @@ func testInsertOrdersCase(t *testing.T, testCase insertOrdersTestCase, caseNumbe
 		expectedDBOrders[i] = order.toDBOrder(t)
 	}
 	sort.Sort(ordersByHash(expectedDBOrders))
+	for _, foundOrder := range actualOrders {
+		// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+		// unexported hash field.
+		_, _ = foundOrder.SignedOrder.ComputeOrderHash()
+	}
 	assert.Equal(t, expectedDBOrders, actualOrders, testInfo)
 
 	var actualBackings []*ETHBacking

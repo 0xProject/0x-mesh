@@ -105,6 +105,11 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
 		addOrdersHandler: func(signedOrders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+			for _, order := range signedOrders {
+				// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+				// unexported hash field.
+				_, _ = order.ComputeOrderHash()
+			}
 			assert.Equal(t, signedTestOrders, signedOrders, "AddOrders was called with an unexpected orders argument")
 			validationResponse := &zeroex.ValidationResults{}
 			for _, signedOrder := range signedOrders {
@@ -133,6 +138,9 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	acceptedOrderInfo := validationResponse.Accepted[0]
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
+	// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+	// unexported hash field.
+	_, _ = acceptedOrderInfo.SignedOrder.ComputeOrderHash()
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
 	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
