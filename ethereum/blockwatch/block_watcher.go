@@ -472,10 +472,14 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 
 func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([]types.Log, error) {
 	numBlocks := to - from
+	topics := [][]common.Hash{}
+	if len(w.topics) > 0 {
+		topics = append(topics, w.topics)
+	}
 	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
 		FromBlock: big.NewInt(from),
 		ToBlock:   big.NewInt(to),
-		Topics:    [][]common.Hash{w.topics},
+		Topics:    topics,
 	})
 	if err != nil {
 		// Too many logs returned, so we split the block range into two separate queries
