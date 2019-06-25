@@ -1,3 +1,8 @@
+// +build !js
+
+// TODO(albrow): Some tests don't require any network calls and should be able
+// to run in a Wasm/JavaScript environment.
+
 package core
 
 import (
