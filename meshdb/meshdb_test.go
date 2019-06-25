@@ -191,7 +191,7 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -206,7 +206,7 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 		},
@@ -223,7 +223,7 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -241,7 +241,7 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 		},
@@ -259,12 +259,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -282,12 +282,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 		},
@@ -306,12 +306,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -326,12 +326,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   0,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 			},
 		},
@@ -349,12 +349,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -369,12 +369,12 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 			},
 		},
@@ -404,17 +404,17 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   2,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount2,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(75),
+					ETHAmount:    75,
 				},
 			},
 			incomingOrder: newTestOrder().
@@ -441,17 +441,17 @@ func TestInsertOrder(t *testing.T) {
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    big.NewInt(100),
+					ETHAmount:    100,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   1,
-					ETHAmount:    big.NewInt(50),
+					ETHAmount:    50,
 				},
 				&ETHBacking{
 					MakerAddress: constants.GanacheAccount2,
 					OrderCount:   2,
-					ETHAmount:    big.NewInt(75),
+					ETHAmount:    75,
 				},
 			},
 		},

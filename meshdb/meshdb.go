@@ -59,7 +59,7 @@ func (o Order) ID() []byte {
 type ETHBacking struct {
 	MakerAddress common.Address
 	OrderCount   int
-	ETHAmount    *big.Int
+	ETHAmount    int
 }
 
 func (eb *ETHBacking) ID() []byte {
@@ -205,11 +205,11 @@ func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
 	// TODO(albrow): Remove amount index if we don't end up needing it.
 	amountIndex := col.AddIndex("amount", func(model db.Model) []byte {
 		amount := model.(*ETHBacking).ETHAmount
-		return []byte(fmt.Sprintf("%080s", amount.String()))
+		return []byte(fmt.Sprintf("%080d", amount))
 	})
 	ethPerOrderIndex := col.AddIndex("ethPerOrder", func(model db.Model) []byte {
 		ethBacking := model.(*ETHBacking)
-		return ratToBytes(ethBacking.ETHPerOrder())
+		return float64ToBytes(ethBacking.ETHPerOrder())
 	})
 
 	return &ETHBackingsCollection{
@@ -219,23 +219,21 @@ func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
 	}, nil
 }
 
-func ratToBytes(rat *big.Rat) []byte {
+func float64ToBytes(number float64) []byte {
 	// Recall that we must ensure the length of the numbers is always the same
 	// for indexes. Here, we have allowed 5 digits of precision after the
 	// decimal point. We pad with zeroes such that the length of the number is
 	// always 86. (80 characters before the decimal point, followed by the
 	// decimal point itself, followed by 5 characters after the decimal point).
-	return []byte(fmt.Sprintf("%080.5s", rat.FloatString(5)))
+	return []byte(fmt.Sprintf("%080.5f", number))
 }
 
-func (eb *ETHBacking) ETHPerOrder() *big.Rat {
+func (eb *ETHBacking) ETHPerOrder() float64 {
 	if eb.OrderCount == 0 {
-		// We can't divide by zero. Instead return a really big rational number.
-		return big.NewRat(math.MaxInt64, 1)
+		// We can't divide by zero. Instead return max float.
+		return math.MaxFloat64
 	}
-	ethPerOrder := big.NewRat(0, 1)
-	ethPerOrder.SetFrac(eb.ETHAmount, big.NewInt(int64(eb.OrderCount)))
-	return ethPerOrder
+	return float64(eb.ETHAmount) / float64(eb.OrderCount)
 }
 
 // Close closes the database connection
@@ -321,7 +319,7 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 		if err != nil {
 			return err
 		}
-		if updatedETHBacking.ETHPerOrder().Cmp(lowestETHBacking.ETHPerOrder()) != 1 {
+		if updatedETHBacking.ETHPerOrder() <= lowestETHBacking.ETHPerOrder() {
 			// If the incoming order is associated with an ETH backing that is not
 			// greater than the current lowest ETH backing, don't store it.
 			return nil

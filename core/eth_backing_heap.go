@@ -14,7 +14,7 @@ var _ heap.Interface = &ETHBackingHeap{}
 type ETHBackingHeap []*meshdb.ETHBacking
 
 func (h ETHBackingHeap) Len() int           { return len(h) }
-func (h ETHBackingHeap) Less(i, j int) bool { return h[i].ETHPerOrder().Cmp(h[j].ETHPerOrder()) == -1 }
+func (h ETHBackingHeap) Less(i, j int) bool { return h[i].ETHPerOrder() < h[j].ETHPerOrder() }
 func (h ETHBackingHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 
 func (h *ETHBackingHeap) Push(x interface{}) {

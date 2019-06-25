@@ -247,7 +247,7 @@ func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHe
 		potentialBacking := copyETHBacking(thisBacking)
 		potentialBacking.OrderCount += 1
 		potentialETHPerOrder := potentialBacking.ETHPerOrder()
-		if potentialETHPerOrder.Cmp(lowestBacking.ETHPerOrder()) != 1 {
+		if potentialETHPerOrder <= lowestBacking.ETHPerOrder() {
 			// If we don't have the required ETH backing, this order is considered
 			// invalid. We don't need to update the heap.
 			orderHash, err := incomingOrder.ComputeOrderHash()

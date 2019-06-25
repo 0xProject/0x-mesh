@@ -34,7 +34,7 @@ func generateETHBackingHeap(t assert.TestingT, makerAddresses []common.Address) 
 		ethBackings[i] = &meshdb.ETHBacking{
 			MakerAddress: makerAdress,
 			OrderCount:   rand.Intn(100),
-			ETHAmount:    big.NewInt(rand.Int63n(1000)),
+			ETHAmount:    rand.Intn(1000),
 		}
 	}
 	ethBackingHeap := ETHBackingHeap(ethBackings)
