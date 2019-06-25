@@ -21,8 +21,8 @@ const concurrencyLimit = 3
 
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
-// we need to try and stay below it. The number of logs returned depend on the topics we filter by.
-// TODO(fabio): Check if there are more stringent limits on Parity, Geth or Alchemy
+// we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
+// the number of logs returned so Infura is the limiting factor here.
 var maxBlocksInGetLogsQuery = int64(60)
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
@@ -307,9 +307,10 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 	return header, nil
 }
 
-// Mesh might have been offline for some time due to network disruptions, crashes or because it was
-// taken offline by the operator. When coming back online, if the latest block in storage is different
-// from the latestBlock fetched via RPC, we batch backfill the missing blocks and emit their events.
+// backfillMissedEventsIfNeeded backfills missed events that might have occured while the Mesh node was
+// offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
+// If the stored block is older then the latest block, it batch backfills the events for missing blocks,
+// emits them, and re-sets the stored blocks to start at the latest block.
 func (w *Watcher) backfillMissedEventsIfNeeded() error {
 	latestRetainedBlock, err := w.stack.Peek()
 	if err != nil {
@@ -379,7 +380,7 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 
 // getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
 // all logs in the range, it simply returns them. If it fails to retrieve some of the blocks,
-// it returns all the logs it did find, along with the block number at which no further logs
+// it returns all the logs it did find, along with the block number after which no further logs
 // were retrieved.
 func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)
@@ -435,6 +436,9 @@ type blockRange struct {
 	ToBlock   int64
 }
 
+// getBlockRangeChunks breaks up the block range into chunks of chunkSize. `eth_getLogs`
+// requests are inclusive to both the start and end blocks specified and so we need to
+// make the ranges exclusive of one another to avoid fetching the same blocks' logs twice.
 func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 	chunks := []*blockRange{}
 	numBlocksLeft := int64(to - from)
@@ -488,7 +492,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 		// similar errors of this nature from them.
 		if err.Error() == "context deadline exceeded" || err.Error() == "query returned more than 10000 results" {
 			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
-			// blocks contain more then 1000 logs. This has supposedly been fixed but we keep
+			// blocks contain more then 10,000 logs. This has supposedly been fixed but we keep
 			// this logic here just in case.
 			// Source: https://community.infura.io/t/getlogs-error-query-returned-more-than-1000-results/358/10
 			if from == to {
