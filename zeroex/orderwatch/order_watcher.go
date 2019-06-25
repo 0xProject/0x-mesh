@@ -118,8 +118,6 @@ func (w *Watcher) Start() error {
 		return err
 	}
 
-	w.startCleanupWorker()
-
 	w.isSetup = true
 	return nil
 }
@@ -201,7 +199,11 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
-func (w *Watcher) startCleanupWorker() {
+// StartCleanupWorker starts the OrderWatcher's cleanup worker which re-validates orders all
+// orders that haven't been updated in the last `lastUpdatedBuffer` amount of time. This ensures
+// that no invalid orders remain stored even if the block event that changed their validity was
+// missed.
+func (w *Watcher) StartCleanupWorker() {
 	go func() {
 		for {
 			select {
@@ -222,7 +224,13 @@ func (w *Watcher) startCleanupWorker() {
 				}).Panic("Failed to find orders by LastUpdatedBefore")
 			}
 
-			w.generateOrderEventsIfChanged(orders, common.Hash{})
+			hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
+			for _, order := range orders {
+				hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
+					Order: order,
+				}
+			}
+			w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
 
 			// Wait MinCleanupInterval before calling ValidateOrders again. Since
 			// we only start sleeping _after_ ValidateOrders completes, we will never
@@ -272,6 +280,11 @@ func (w *Watcher) setupExpirationWatcher() error {
 	return w.expirationWatcher.Start(expirationPollingInterval)
 }
 
+type OrderWithTxHashes struct {
+	Order    *meshdb.Order
+	TxHashes map[common.Hash]interface{}
+}
+
 func (w *Watcher) setupEventWatcher() {
 	blockEvents := make(chan []*blockwatch.Event, 10)
 	w.blockSubscription = w.blockWatcher.Subscribe(blockEvents)
@@ -292,6 +305,7 @@ func (w *Watcher) setupEventWatcher() {
 				return
 
 			case events := <-blockEvents:
+				hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 				for _, event := range events {
 					for _, log := range event.BlockHeader.Logs {
 						eventType, err := w.eventDecoder.FindEventType(log)
@@ -311,6 +325,7 @@ func (w *Watcher) setupEventWatcher() {
 								}).Panic("unexpected event decoder error encountered")
 							}
 						}
+						var orders []*meshdb.Order
 						switch eventType {
 						case "ERC20TransferEvent":
 							var transferEvent ERC20TransferEvent
@@ -319,7 +334,7 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, nil, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, nil)
 
 						case "ERC20ApprovalEvent":
 							var approvalEvent ERC20ApprovalEvent
@@ -332,7 +347,7 @@ func (w *Watcher) setupEventWatcher() {
 							if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil)
 
 						case "ERC721TransferEvent":
 							var transferEvent ERC721TransferEvent
@@ -341,7 +356,7 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, transferEvent.TokenId, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, transferEvent.TokenId)
 
 						case "ERC721ApprovalEvent":
 							var approvalEvent ERC721ApprovalEvent
@@ -354,7 +369,7 @@ func (w *Watcher) setupEventWatcher() {
 							if approvalEvent.Approved != w.contractAddresses.ERC721Proxy {
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
 
 						case "ERC721ApprovalForAllEvent":
 							var approvalForAllEvent ERC721ApprovalForAllEvent
@@ -367,7 +382,7 @@ func (w *Watcher) setupEventWatcher() {
 							if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil)
 
 						case "WethWithdrawalEvent":
 							var withdrawalEvent WethWithdrawalEvent
@@ -376,7 +391,7 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(withdrawalEvent.Owner, log.Address, nil, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(withdrawalEvent.Owner, log.Address, nil)
 
 						case "WethDepositEvent":
 							var depositEvent WethDepositEvent
@@ -385,7 +400,7 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrdersAndGenerateOrderEvents(depositEvent.Owner, log.Address, nil, log.TxHash)
+							orders = w.findOrdersAndGenerateOrderEvents(depositEvent.Owner, log.Address, nil)
 
 						case "ExchangeFillEvent":
 							var exchangeFillEvent ExchangeFillEvent
@@ -394,7 +409,11 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrderAndGenerateOrderEvents(exchangeFillEvent.OrderHash, log.TxHash)
+							orders = []*meshdb.Order{}
+							order, ok := w.findOrderAndGenerateOrderEvents(exchangeFillEvent.OrderHash)
+							if ok {
+								orders = append(orders, order)
+							}
 
 						case "ExchangeCancelEvent":
 							var exchangeCancelEvent ExchangeCancelEvent
@@ -403,7 +422,11 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							w.findOrderAndGenerateOrderEvents(exchangeCancelEvent.OrderHash, log.TxHash)
+							orders = []*meshdb.Order{}
+							order, ok := w.findOrderAndGenerateOrderEvents(exchangeCancelEvent.OrderHash)
+							if ok {
+								orders = append(orders, order)
+							}
 
 						case "ExchangeCancelUpToEvent":
 							var exchangeCancelUpToEvent ExchangeCancelUpToEvent
@@ -412,69 +435,87 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							orders, err := w.meshDB.FindOrdersByMakerAddressAndMaxSalt(exchangeCancelUpToEvent.MakerAddress, exchangeCancelUpToEvent.OrderEpoch)
+							orders, err = w.meshDB.FindOrdersByMakerAddressAndMaxSalt(exchangeCancelUpToEvent.MakerAddress, exchangeCancelUpToEvent.OrderEpoch)
 							if err != nil {
 								logger.WithFields(logger.Fields{
 									"error": err.Error(),
 								}).Panic("unexpected query error encountered")
 							}
-							w.generateOrderEventsIfChanged(orders, log.TxHash)
-
 						default:
 							logger.WithFields(logger.Fields{
 								"eventType": eventType,
 								"log":       log,
 							}).Panic("unknown eventType encountered")
 						}
+						for _, order := range orders {
+							orderWithTxHashes, ok := hashToOrderWithTxHashes[order.Hash]
+							if !ok {
+								hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
+									Order: order,
+									TxHashes: map[common.Hash]interface{}{
+										log.TxHash: struct{}{},
+									},
+								}
+							} else {
+								orderWithTxHashes.TxHashes[log.TxHash] = struct{}{}
+							}
+						}
 					}
 				}
+				w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
 			}
 		}
-
 	}()
 }
 
-func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash, txHash common.Hash) {
+func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) (*meshdb.Order, bool) {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
 		if _, ok := err.(db.NotFoundError); ok {
-			return // We will receive events from orders we aren't actively tracking
+			return nil, false // We will receive events from orders we aren't actively tracking
 		}
 		logger.WithFields(logger.Fields{
 			"error":     err.Error(),
 			"orderHash": orderHash,
 		}).Warning("Unexpected error using FindByID for order")
 	}
-	w.generateOrderEventsIfChanged([]*meshdb.Order{&order}, txHash)
+	return &order, true
 }
 
-func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress common.Address, tokenID *big.Int, txHash common.Hash) {
+func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress common.Address, tokenID *big.Int) []*meshdb.Order {
 	orders, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Panic("unexpected query error encountered")
 	}
-	w.generateOrderEventsIfChanged(orders, txHash)
+	return orders
 }
 
-func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash common.Hash) {
+func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[common.Hash]*OrderWithTxHashes) {
 	signedOrders := []*zeroex.SignedOrder{}
-	orderHashToOrder := map[common.Hash]*meshdb.Order{}
-	for _, order := range orders {
+	for _, orderWithTxHashes := range hashToOrderWithTxHashes {
+		order := orderWithTxHashes.Order
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
 			w.permanentlyDeleteOrder(order)
 			continue
 		}
 		signedOrders = append(signedOrders, order.SignedOrder)
-		orderHashToOrder[order.Hash] = order
+	}
+	if len(signedOrders) == 0 {
+		return // Noop
 	}
 	validationResults := w.orderValidator.BatchValidate(signedOrders)
 
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
-		order := orderHashToOrder[acceptedOrderInfo.OrderHash]
+		orderWithTxHashes := hashToOrderWithTxHashes[acceptedOrderInfo.OrderHash]
+		txHashes := []common.Hash{}
+		for txHash := range orderWithTxHashes.TxHashes {
+			txHashes = append(txHashes, txHash)
+		}
+		order := orderWithTxHashes.Order
 		oldFillableAmount := order.FillableTakerAssetAmount
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
@@ -488,7 +529,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				SignedOrder:              order.SignedOrder,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 				Kind:                     zeroex.EKOrderAdded,
-				TxHash:                   txHash,
+				TxHashes:                 txHashes,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
@@ -501,7 +542,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				SignedOrder:              order.SignedOrder,
 				Kind:                     zeroex.EKOrderFilled,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				TxHash:                   txHash,
+				TxHashes:                 txHashes,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
@@ -513,7 +554,7 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				SignedOrder:              order.SignedOrder,
 				Kind:                     zeroex.EKOrderFillabilityIncreased,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				TxHash:                   txHash,
+				TxHashes:                 txHashes,
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		}
@@ -523,7 +564,8 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 		case zeroex.MeshError:
 			// TODO(fabio): Do we want to handle MeshErrors somehow here?
 		case zeroex.ZeroExValidation:
-			order := orderHashToOrder[rejectedOrderInfo.OrderHash]
+			orderWithTxHashes := hashToOrderWithTxHashes[rejectedOrderInfo.OrderHash]
+			order := orderWithTxHashes.Order
 			oldFillableAmount := order.FillableTakerAssetAmount
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal
@@ -535,12 +577,16 @@ func (w *Watcher) generateOrderEventsIfChanged(orders []*meshdb.Order, txHash co
 				if !ok {
 					logger.WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Panic("No OrderEventKind corresponding to RejectedOrderStatus")
 				}
+				txHashes := []common.Hash{}
+				for txHash := range orderWithTxHashes.TxHashes {
+					txHashes = append(txHashes, txHash)
+				}
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
 					Kind:                     kind,
-					TxHash:                   txHash,
+					TxHashes:                 txHashes,
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			}

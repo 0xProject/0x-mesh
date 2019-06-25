@@ -223,14 +223,20 @@ func (app *App) Start() error {
 	// returns any fatal errors. As it currently stands, if one of these watchers
 	// experiences a fatal error or crashes, it is difficult for us to tear down
 	// correctly.
-	if err := app.blockWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started block watcher")
 	if err := app.orderWatcher.Start(); err != nil {
 		return err
 	}
 	log.Info("started order watcher")
+	if err := app.blockWatcher.Start(); err != nil {
+		return err
+	}
+	log.Info("started block watcher")
+	// We exceptionally start the OrderWatcher's cleanup worker after the blockWatcher is
+	// started so that the block watcher has a change to fast-sync to the latest block, emit
+	// the missed events and have orders re-validated with the corresponding txHashes before
+	// the cleanup worker does it's first run.
+	app.orderWatcher.StartCleanupWorker()
+	log.Info("started order watcher's cleanup worker")
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
 	if err := app.ethWatcher.Start(); err != nil {
