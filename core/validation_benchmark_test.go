@@ -42,7 +42,18 @@ func generateETHBackingHeap(t assert.TestingT, makerAddresses []common.Address) 
 	return &ethBackingHeap
 }
 
-var testAccounts = []common.Address{constants.GanacheAccount0, constants.GanacheAccount1, constants.GanacheAccount2, constants.GanacheAccount3, constants.GanacheAccount4}
+var testAccounts = []common.Address{
+	constants.GanacheAccount0,
+	constants.GanacheAccount1,
+	constants.GanacheAccount2,
+	constants.GanacheAccount3,
+	constants.GanacheAccount4,
+	constants.GanacheAccount5,
+	constants.GanacheAccount6,
+	constants.GanacheAccount7,
+	constants.GanacheAccount8,
+	constants.GanacheAccount9,
+}
 
 func BenchmarkValidateETHBackings1Account100Orders(b *testing.B) {
 	benchmarkValidateETHBackings(b, testAccounts[0:1], 100)
@@ -55,15 +66,37 @@ func BenchmarkValidateETHBackings1Account10000Orders(b *testing.B) {
 	benchmarkValidateETHBackings(b, testAccounts[0:1], 10000)
 }
 
+func BenchmarkValidateETHBackings2Accounts100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:2], 100)
+}
+
+func BenchmarkValidateETHBackings2Accounts1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:2], 1000)
+}
+func BenchmarkValidateETHBackings2Accounts10000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:2], 10000)
+}
+
 func BenchmarkValidateETHBackings5Accounts100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts, 100)
+	benchmarkValidateETHBackings(b, testAccounts[0:5], 100)
 }
 
 func BenchmarkValidateETHBackings5Accounts1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts, 1000)
+	benchmarkValidateETHBackings(b, testAccounts[0:5], 1000)
 }
 func BenchmarkValidateETHBackings5Accounts10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts, 10000)
+	benchmarkValidateETHBackings(b, testAccounts[0:5], 10000)
+}
+
+func BenchmarkValidateETHBackings10Accounts100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:9], 100)
+}
+
+func BenchmarkValidateETHBackings10Accounts1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:9], 1000)
+}
+func BenchmarkValidateETHBackings10Accounts10000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, testAccounts[0:9], 10000)
 }
 
 func benchmarkValidateETHBackings(b *testing.B, makerAddresses []common.Address, count int) {
