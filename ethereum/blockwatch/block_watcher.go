@@ -325,58 +325,60 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 		return err
 	}
 	blocksElapsed := big.NewInt(0).Sub(latestBlock.Number, latestRetainedBlock.Number)
-	if blocksElapsed.Int64() > 0 {
-		log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
-		startBlockNum := latestRetainedBlock.Number.Int64() + 1
-		endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
-		logs, furthestBlockNumProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
-		if furthestBlockNumProcessed > latestRetainedBlock.Number.Int64() {
-			// Remove all blocks from the DB
-			headers, err := w.InspectRetainedBlocks()
-			if err != nil {
-				return err
-			}
-			for i := 0; i < len(headers); i++ {
-				_, err := w.stack.Pop()
-				if err != nil {
-					return err
-				}
-			}
-			// Add furthest block processed into the DB
-			latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockNumProcessed))
-			if err != nil {
-				return err
-			}
-			err := w.stack.Push(latestHeader)
-			if err != nil {
-				return err
-			}
+	if blocksElapsed.Int64() == 0 {
+		return nil
+	}
 
-			// Emit events for all the logs
-			if len(logs) > 0 {
-				hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
-				for _, log := range logs {
-					blockHeader, ok := hashToBlockHeader[log.BlockHash]
-					if !ok {
-						blockHeader = &meshdb.MiniHeader{
-							Hash:   log.BlockHash,
-							Number: big.NewInt(0).SetUint64(log.BlockNumber),
-							Logs:   []types.Log{},
-							// TODO(fabio): What about `Parent`?
-						}
-						hashToBlockHeader[log.BlockHash] = blockHeader
-					}
-					blockHeader.Logs = append(blockHeader.Logs, log)
-				}
-				events := []*Event{}
-				for _, blockHeader := range hashToBlockHeader {
-					events = append(events, &Event{
-						Type:        Added,
-						BlockHeader: blockHeader,
-					})
-				}
-				w.blockFeed.Send(events)
+	log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
+	startBlockNum := latestRetainedBlock.Number.Int64() + 1
+	endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
+	logs, furthestBlockNumProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
+	if furthestBlockNumProcessed > latestRetainedBlock.Number.Int64() {
+		// Remove all blocks from the DB
+		headers, err := w.InspectRetainedBlocks()
+		if err != nil {
+			return err
+		}
+		for i := 0; i < len(headers); i++ {
+			_, err := w.stack.Pop()
+			if err != nil {
+				return err
 			}
+		}
+		// Add furthest block processed into the DB
+		latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockNumProcessed))
+		if err != nil {
+			return err
+		}
+		err = w.stack.Push(latestHeader)
+		if err != nil {
+			return err
+		}
+
+		// Emit events for all the logs
+		if len(logs) > 0 {
+			hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
+			for _, log := range logs {
+				blockHeader, ok := hashToBlockHeader[log.BlockHash]
+				if !ok {
+					blockHeader = &meshdb.MiniHeader{
+						Hash:   log.BlockHash,
+						Number: big.NewInt(0).SetUint64(log.BlockNumber),
+						Logs:   []types.Log{},
+						// TODO(fabio): What about `Parent`?
+					}
+					hashToBlockHeader[log.BlockHash] = blockHeader
+				}
+				blockHeader.Logs = append(blockHeader.Logs, log)
+			}
+			events := []*Event{}
+			for _, blockHeader := range hashToBlockHeader {
+				events = append(events, &Event{
+					Type:        Added,
+					BlockHeader: blockHeader,
+				})
+			}
+			w.blockFeed.Send(events)
 		}
 	}
 	return nil
