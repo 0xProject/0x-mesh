@@ -332,8 +332,8 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 	log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
 	startBlockNum := latestRetainedBlock.Number.Int64() + 1
 	endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
-	logs, furthestBlockNumProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
-	if furthestBlockNumProcessed > latestRetainedBlock.Number.Int64() {
+	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
+	if furthestBlockProcessed > latestRetainedBlock.Number.Int64() {
 		// Remove all blocks from the DB
 		headers, err := w.InspectRetainedBlocks()
 		if err != nil {
@@ -346,7 +346,7 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 			}
 		}
 		// Add furthest block processed into the DB
-		latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockNumProcessed))
+		latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockProcessed))
 		if err != nil {
 			return err
 		}
@@ -389,6 +389,12 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 	return nil
 }
 
+type logRequestResult struct {
+	Logs                   []types.Log
+	Err                    error
+	FurthestBlockProcessed int64
+}
+
 // getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
 // all logs in the range, it simply returns them. If it fails to retrieve some of the blocks,
 // it returns all the logs it did find, along with the block number after which no further logs
@@ -397,8 +403,8 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)
 
 	mu := sync.Mutex{}
-	orderIndexTologChunk := map[int][]types.Log{}
-	var furthestBlockNumProcessed int64
+	indexToLogResult := map[int]logRequestResult{}
+	didARequestFail := false
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	defer close(semaphoreChan)
@@ -412,20 +418,26 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 			// Add one to the semaphore chan. If it already has concurrencyLimit values,
 			// the request blocks here until one frees up.
 			semaphoreChan <- struct{}{}
-
-			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
-			mu.Lock()
-			if err != nil {
-				log.WithField("error", err).Warn("Failed to fast-sync blocks, falling back to polling them individually")
-				if furthestBlockNumProcessed == 0 || furthestBlockNumProcessed < chunk.FromBlock-1 {
-					furthestBlockNumProcessed = chunk.FromBlock - 1
-				}
-			} else {
-				if furthestBlockNumProcessed == 0 || furthestBlockNumProcessed < chunk.ToBlock {
-					furthestBlockNumProcessed = chunk.ToBlock
-				}
+			// If a previous request failed, we noop all subsequent requests
+			if didARequestFail {
+				<-semaphoreChan
+				return
 			}
-			orderIndexTologChunk[index] = logs
+
+			furthestBlockProcessed := chunk.FromBlock - 1
+			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
+			if err != nil {
+				log.WithField("error", err).Trace("Failed to fetch logs for ", chunk.FromBlock, " to ", chunk.ToBlock)
+				didARequestFail = true
+			} else {
+				furthestBlockProcessed = chunk.ToBlock
+			}
+			mu.Lock()
+			indexToLogResult[index] = logRequestResult{
+				Err:                    err,
+				Logs:                   logs,
+				FurthestBlockProcessed: furthestBlockProcessed,
+			}
 			mu.Unlock()
 			<-semaphoreChan
 		}(i, chunk)
@@ -435,11 +447,17 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 	wg.Wait()
 
 	logs := []types.Log{}
+	furthestBlockProcessed := from - 1
 	for i := range chunks {
-		logs = append(logs, orderIndexTologChunk[i]...)
+		logRequestResult := indexToLogResult[i]
+		furthestBlockProcessed = logRequestResult.FurthestBlockProcessed
+		if logRequestResult.Err != nil {
+			break
+		}
+		logs = append(logs, logRequestResult.Logs...)
 	}
 
-	return logs, furthestBlockNumProcessed
+	return logs, furthestBlockProcessed
 }
 
 type blockRange struct {
@@ -522,12 +540,12 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 			startSecondHalf := endFirstHalf + 1
 			allLogs, err := w.filterLogsRecurisively(from, endFirstHalf, allLogs)
 			if err != nil {
-				return allLogs, err
+				return nil, err
 			}
 			allLogs, err = w.filterLogsRecurisively(startSecondHalf, to, allLogs)
-			return allLogs, err
+			return nil, err
 		} else {
-			return allLogs, err
+			return nil, err
 		}
 	}
 	allLogs = append(allLogs, logs...)
