@@ -347,7 +347,10 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 			if err != nil {
 				return err
 			}
-			w.stack.Push(latestHeader)
+			err := w.stack.Push(latestHeader)
+			if err != nil {
+				return err
+			}
 
 			// Emit events for all the logs
 			if len(logs) > 0 {
