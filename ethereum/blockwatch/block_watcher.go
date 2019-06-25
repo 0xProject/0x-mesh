@@ -355,31 +355,36 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 			return err
 		}
 
-		// Emit events for all the logs
-		if len(logs) > 0 {
-			hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
-			for _, log := range logs {
-				blockHeader, ok := hashToBlockHeader[log.BlockHash]
-				if !ok {
-					blockHeader = &meshdb.MiniHeader{
-						Hash:   log.BlockHash,
-						Number: big.NewInt(0).SetUint64(log.BlockNumber),
-						Logs:   []types.Log{},
-						// TODO(fabio): What about `Parent`?
-					}
-					hashToBlockHeader[log.BlockHash] = blockHeader
-				}
-				blockHeader.Logs = append(blockHeader.Logs, log)
-			}
-			events := []*Event{}
-			for _, blockHeader := range hashToBlockHeader {
-				events = append(events, &Event{
-					Type:        Added,
-					BlockHeader: blockHeader,
-				})
-			}
-			w.blockFeed.Send(events)
+		// If not logs found, noop
+		if len(logs) == 0 {
+			return nil
 		}
+
+		// Emit events for all the logs
+		hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
+		for _, log := range logs {
+			blockHeader, ok := hashToBlockHeader[log.BlockHash]
+			if !ok {
+				// TODO(fabio): Find a way to include the parent hash for the block as well.
+				// It's currently not an issue to omit it since we don't use the parent hash
+				// when processing block events in OrderWatcher.
+				blockHeader = &meshdb.MiniHeader{
+					Hash:   log.BlockHash,
+					Number: big.NewInt(0).SetUint64(log.BlockNumber),
+					Logs:   []types.Log{},
+				}
+				hashToBlockHeader[log.BlockHash] = blockHeader
+			}
+			blockHeader.Logs = append(blockHeader.Logs, log)
+		}
+		events := []*Event{}
+		for _, blockHeader := range hashToBlockHeader {
+			events = append(events, &Event{
+				Type:        Added,
+				BlockHeader: blockHeader,
+			})
+		}
+		w.blockFeed.Send(events)
 	}
 	return nil
 }
