@@ -54,7 +54,7 @@ func (h *ETHBackingHeap) UpdateByMakerAddress(address common.Address, diff int) 
 }
 
 func (h *ETHBackingHeap) UpdateLowest(diff int) {
-	lowest := heap.Pop(h).(*meshdb.ETHBacking)
+	lowest := (*h)[0]
 	lowest.OrderCount += diff
-	heap.Push(h, lowest)
+	heap.Fix(h, 0)
 }
