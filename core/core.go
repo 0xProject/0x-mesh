@@ -65,8 +65,11 @@ type Config struct {
 	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
 	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
-	// DropDB instructs Mesh to drop the database before starting up. This is helpful during testing when
-	// you always want to re-start Mesh without any persistent state
+	// DropDB instructs Mesh to drop the database before starting up. If it's been a long time since you ran
+	// Mesh and there've been 1000's of Ethereum blocks mined since then, many of your orders are probably no
+	// longer valid and it's maybe not worth fast-syncing 1000's of blocks to emit order events for them.
+	// Instead, you might want to drop the DB and start from scratch. This feature is also useful during testing
+	// when you don't want state to persist between runs.
 	DropDB bool `envvar:"DROP_DB" default:"false"`
 }
 
