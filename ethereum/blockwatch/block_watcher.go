@@ -326,6 +326,7 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 	}
 	blocksElapsed := big.NewInt(0).Sub(latestBlock.Number, latestRetainedBlock.Number)
 	if blocksElapsed.Int64() > 0 {
+		log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
 		startBlockNum := latestRetainedBlock.Number.Int64() + 1
 		endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
 		logs, furthestBlockNumProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
@@ -475,6 +476,7 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 }
 
 func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([]types.Log, error) {
+	log.Info("Fetch block logs from ", from, " to ", to)
 	numBlocks := to - from
 	topics := [][]common.Hash{}
 	if len(w.topics) > 0 {
