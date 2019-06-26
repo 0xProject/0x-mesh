@@ -42,3 +42,9 @@ mesh-keygen:
 
 .PHONY: all
 all: mesh mesh-keygen
+
+
+.PHONY: profile
+profile:
+	go test ./$(PACKAGE) -run NONE -bench $(BENCHMARK) -cpuprofile profile.out
+	go tool pprof -http=:8080 profile.out
