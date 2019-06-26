@@ -532,7 +532,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 		if err.Error() == infuraTooManyResultsErrMsg {
 			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
 			// blocks contain more then 10,000 logs. This has supposedly been fixed but we keep
-			// this logic here just in case.
+			// this logic here just in case. It helps us avoid infinite recursion.
 			// Source: https://community.infura.io/t/getlogs-error-query-returned-more-than-1000-results/358/10
 			if from == to {
 				return allLogs, fmt.Errorf("Unable to get the logs for block #%d, because it contains too many logs", from)

@@ -50,7 +50,7 @@ func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
 	return res.Logs, res.Err
 }
 
-// Count returns the number of time FilterLogs was called
+// Count returns the number of times FilterLogs was called
 func (fc *fakeLogClient) Count() int {
 	return int(fc.count)
 }

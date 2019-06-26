@@ -199,7 +199,7 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
-// StartCleanupWorker starts the OrderWatcher's cleanup worker which re-validates orders all
+// StartCleanupWorker starts the OrderWatcher's cleanup worker which re-validates all
 // orders that haven't been updated in the last `lastUpdatedBuffer` amount of time. This ensures
 // that no invalid orders remain stored even if the block event that changed their validity was
 // missed.
