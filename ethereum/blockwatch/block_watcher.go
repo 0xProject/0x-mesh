@@ -507,6 +507,8 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 	return chunks
 }
 
+const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
+
 func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([]types.Log, error) {
 	log.Info("Fetch block logs from ", from, " to ", to)
 	numBlocks := to - from
@@ -523,7 +525,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 		// Infura caps the logs returned to 10,000 per request, if our request exceeds this limit, split it
 		// into two requests. Parity, Geth and Alchemy all have much higher limits (if any at all), so no need
 		// to expect any similar errors of this nature from them.
-		if err.Error() == "query returned more than 10000 results" {
+		if err.Error() == infuraTooManyResultsErrMsg {
 			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
 			// blocks contain more then 10,000 logs. This has supposedly been fixed but we keep
 			// this logic here just in case.
@@ -546,7 +548,10 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 				return nil, err
 			}
 			allLogs, err = w.filterLogsRecurisively(startSecondHalf, to, allLogs)
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+			return allLogs, nil
 		} else {
 			return nil, err
 		}
