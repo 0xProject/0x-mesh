@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -20,9 +20,8 @@ type filterLogsResponse struct {
 
 // fakeLogClient is a fake Client for testing purposes.
 type fakeLogClient struct {
-	count           int
+	count           int64
 	rangeToResponse map[string]filterLogsResponse
-	Mu              sync.Mutex
 }
 
 // newFakeLogClient instantiates a fakeLogClient for testing log fetching
@@ -42,15 +41,18 @@ func (fc *fakeLogClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, err
 
 // FilterLogs returns the logs that satisfy the supplied filter query
 func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	fc.Mu.Lock()
-	defer fc.Mu.Unlock()
 	// Add a slight delay to simulate an actual network request. This also gives
 	// BlockWatcher.getLogsInBlockRange multi-requests to hit the concurrent request
 	// limit semaphore and simulate more realistic conditions.
 	<-time.Tick(5 * time.Millisecond)
 	res := fc.rangeToResponse[toRange(q.FromBlock, q.ToBlock)]
-	fc.count = fc.count + 1
+	atomic.AddInt64(&fc.count, 1)
 	return res.Logs, res.Err
+}
+
+// Count returns the number of time FilterLogs was called
+func (fc *fakeLogClient) Count() int {
+	return int(fc.count)
 }
 
 func toRange(from, to *big.Int) string {

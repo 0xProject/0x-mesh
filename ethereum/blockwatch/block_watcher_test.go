@@ -352,7 +352,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		logs, err := watcher.filterLogsRecurisively(from, to, []types.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
-		assert.Equal(t, len(testCase.rangeToFilterLogsResponse), fakeLogClient.count)
+		assert.Equal(t, len(testCase.rangeToFilterLogsResponse), fakeLogClient.Count())
 	}
 }
 
@@ -458,7 +458,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
-		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.count)
+		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())
 	}
 }
 
