@@ -2,6 +2,7 @@ package blockwatch
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -459,5 +460,10 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.count)
 	}
+}
+
+func toR(from, to int) string {
+	r := fmt.Sprintf("%d-%d", from, to)
+	return r
 }
 

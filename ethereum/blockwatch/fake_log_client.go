@@ -57,8 +57,3 @@ func toRange(from, to *big.Int) string {
 	r := fmt.Sprintf("%s-%s", from, to)
 	return r
 }
-
-func toR(from, to int) string {
-	r := fmt.Sprintf("%d-%d", from, to)
-	return r
-}
