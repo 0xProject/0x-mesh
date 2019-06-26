@@ -7,17 +7,17 @@ package core
 
 import (
 	"container/heap"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 )
 
-func generateTestOrders(t assert.TestingT, makerAddresses []common.Address, count int) []*testOrder {
+func generateTestOrders(makerAddresses []common.Address, count int) []*testOrder {
 	testOrders := make([]*testOrder, count)
 	for i := 0; i < count; i++ {
 		makerAddress := makerAddresses[i%len(makerAddresses)]
@@ -28,7 +28,7 @@ func generateTestOrders(t assert.TestingT, makerAddresses []common.Address, coun
 	return testOrders
 }
 
-func generateETHBackingHeap(t assert.TestingT, makerAddresses []common.Address) *ETHBackingHeap {
+func generateETHBackingHeap(makerAddresses []common.Address) *ETHBackingHeap {
 	ethBackings := make([]*meshdb.ETHBacking, len(makerAddresses))
 	for i, makerAdress := range makerAddresses {
 		ethBackings[i] = &meshdb.ETHBacking{
@@ -42,70 +42,69 @@ func generateETHBackingHeap(t assert.TestingT, makerAddresses []common.Address) 
 	return &ethBackingHeap
 }
 
-var testAccounts = []common.Address{
-	constants.GanacheAccount0,
-	constants.GanacheAccount1,
-	constants.GanacheAccount2,
-	constants.GanacheAccount3,
-	constants.GanacheAccount4,
-	constants.GanacheAccount5,
-	constants.GanacheAccount6,
-	constants.GanacheAccount7,
-	constants.GanacheAccount8,
-	constants.GanacheAccount9,
+func generateMakerAddresses(count int) []common.Address {
+	addresses := make([]common.Address, count)
+	for i := 0; i < count; i++ {
+		addressHex := fmt.Sprintf("%040x", i)
+		address := common.HexToAddress(addressHex)
+		addresses = append(addresses, address)
+	}
+	return addresses
 }
 
-func BenchmarkValidateETHBackings1Account100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:1], 100)
+func BenchmarkValidateETHBackings1Address100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 1, 100)
 }
 
-func BenchmarkValidateETHBackings1Account1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:1], 1000)
-}
-func BenchmarkValidateETHBackings1Account10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:1], 10000)
+func BenchmarkValidateETHBackings1Address1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 1, 1000)
 }
 
-func BenchmarkValidateETHBackings2Accounts100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:2], 100)
+func BenchmarkValidateETHBackings10Addresses100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 10, 100)
 }
 
-func BenchmarkValidateETHBackings2Accounts1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:2], 1000)
-}
-func BenchmarkValidateETHBackings2Accounts10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:2], 10000)
+func BenchmarkValidateETHBackings10Addresses1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 10, 1000)
 }
 
-func BenchmarkValidateETHBackings5Accounts100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:5], 100)
+func BenchmarkValidateETHBackings100Addresses100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 100, 100)
 }
 
-func BenchmarkValidateETHBackings5Accounts1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:5], 1000)
-}
-func BenchmarkValidateETHBackings5Accounts10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:5], 10000)
+func BenchmarkValidateETHBackings100Addresses1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 100, 1000)
 }
 
-func BenchmarkValidateETHBackings10Accounts100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:10], 100)
+func BenchmarkValidateETHBackings1000Addresses100Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 1000, 100)
 }
 
-func BenchmarkValidateETHBackings10Accounts1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:10], 1000)
-}
-func BenchmarkValidateETHBackings10Accounts10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:10], 10000)
+func BenchmarkValidateETHBackings1000Addresses1000Orders(b *testing.B) {
+	benchmarkValidateETHBackings(b, 1000, 1000)
 }
 
-func benchmarkValidateETHBackings(b *testing.B, makerAddresses []common.Address, count int) {
-	orders := testOrdersToSignedOrders(b, generateTestOrders(b, makerAddresses, count))
+func benchmarkValidateETHBackings(b *testing.B, addressCount int, orderCount int) {
+	makerAddresses := generateMakerAddresses(addressCount)
+	orders := testOrdersToFakeSignedOrders(generateTestOrders(makerAddresses, orderCount))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		ethBackingHeap := generateETHBackingHeap(b, makerAddresses)
+		ethBackingHeap := generateETHBackingHeap(makerAddresses)
 		b.StartTimer()
 		validateETHBackingsWithHeap(0, ethBackingHeap, orders)
 	}
+}
+
+// converts a testOrder to a *zeroex.SignedOrder with an empty signature. This
+// won't pass signature validation but is fine for benchmarking.
+func testOrdersToFakeSignedOrders(testOrders []*testOrder) []*zeroex.SignedOrder {
+	signedOrders := make([]*zeroex.SignedOrder, len(testOrders))
+	for i, testOrder := range testOrders {
+		signedOrders[i] = &zeroex.SignedOrder{
+			Order:     (zeroex.Order)(*testOrder),
+			Signature: []byte{},
+		}
+	}
+	return signedOrders
 }
