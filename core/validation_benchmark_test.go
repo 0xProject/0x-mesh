@@ -33,8 +33,8 @@ func generateETHBackingHeap(makerAddresses []common.Address) *ETHBackingHeap {
 	for i, makerAdress := range makerAddresses {
 		ethBackings[i] = &meshdb.ETHBacking{
 			MakerAddress: makerAdress,
-			OrderCount:   rand.Intn(100),
-			ETHAmount:    rand.Intn(1000),
+			OrderCount:   rand.Intn(100000),
+			ETHAmount:    rand.Intn(1000000),
 		}
 	}
 	ethBackingHeap := ETHBackingHeap(ethBackings)
