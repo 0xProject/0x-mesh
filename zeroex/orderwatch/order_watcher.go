@@ -473,12 +473,14 @@ func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) (*meshd
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
 		if _, ok := err.(db.NotFoundError); ok {
-			return nil, false // We will receive events from orders we aren't actively tracking
+			// short-circuit. We expect to receive events from orders we aren't actively tracking
+			return nil, false
 		}
 		logger.WithFields(logger.Fields{
 			"error":     err.Error(),
 			"orderHash": orderHash,
 		}).Warning("Unexpected error using FindByID for order")
+		return nil, false
 	}
 	return &order, true
 }
