@@ -222,6 +222,24 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	assert.Equal(t, big.NewInt(5), headers[0].Number)
 }
 
+var logStub = types.Log{
+	Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
+	Topics: []common.Hash{
+		common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
+		common.HexToHash("0x0000000000000000000000004d8a4aa1f304f9632cf3877473445d85c577fe5d"),
+		common.HexToHash("0x0000000000000000000000004bdd0d16cfa18e33860470fc4d65c6f5cee60959"),
+	},
+	Data:        common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000337ad34c0"),
+	BlockNumber: uint64(30),
+	TxHash:      common.HexToHash("0xd9bb5f9e888ee6f74bedcda811c2461230f247c205849d6f83cb6c3925e54586"),
+	TxIndex:     uint(0),
+	BlockHash:   common.HexToHash("0x6bbf9b6e836207ab25379c20e517a89090cbbaf8877746f6ed7fb6820770816b"),
+	Index:       uint(0),
+	Removed:     false,
+}
+
+var errUnexpected = errors.New("Something unexpected")
+
 type filterLogsRecusivelyTestCase struct {
 	Label               string
 	FilterLogsResponses []filterLogsResponse
@@ -230,32 +248,17 @@ type filterLogsRecusivelyTestCase struct {
 }
 
 func TestFilterLogsRecursively(t *testing.T) {
-	log := types.Log{
-		Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
-		Topics: []common.Hash{
-			common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
-			common.HexToHash("0x0000000000000000000000004d8a4aa1f304f9632cf3877473445d85c577fe5d"),
-			common.HexToHash("0x0000000000000000000000004bdd0d16cfa18e33860470fc4d65c6f5cee60959"),
-		},
-		Data:        common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000337ad34c0"),
-		BlockNumber: uint64(30),
-		TxHash:      common.HexToHash("0xd9bb5f9e888ee6f74bedcda811c2461230f247c205849d6f83cb6c3925e54586"),
-		TxIndex:     uint(0),
-		BlockHash:   common.HexToHash("0x6bbf9b6e836207ab25379c20e517a89090cbbaf8877746f6ed7fb6820770816b"),
-		Index:       uint(0),
-		Removed:     false,
-	}
 	testCases := []filterLogsRecusivelyTestCase{
 		filterLogsRecusivelyTestCase{
 			Label: "HAPPY_PATH",
 			FilterLogsResponses: []filterLogsResponse{
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 			},
-			Logs: []types.Log{log},
+			Logs: []types.Log{logStub},
 		},
 		filterLogsRecusivelyTestCase{
 			Label: "TOO_MANY_RESULTS_INFURA_ERROR",
@@ -265,16 +268,16 @@ func TestFilterLogsRecursively(t *testing.T) {
 				},
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 			},
-			Logs: []types.Log{log, log},
+			Logs: []types.Log{logStub, logStub},
 		},
 		filterLogsRecusivelyTestCase{
 			Label: "TOO_MANY_RESULTS_INFURA_ERROR_DEEPER_RECURSION",
@@ -284,7 +287,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 				},
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 				filterLogsResponse{
@@ -292,25 +295,25 @@ func TestFilterLogsRecursively(t *testing.T) {
 				},
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 				filterLogsResponse{
 					Logs: []types.Log{
-						log,
+						logStub,
 					},
 				},
 			},
-			Logs: []types.Log{log, log, log},
+			Logs: []types.Log{logStub, logStub, logStub},
 		},
 		filterLogsRecusivelyTestCase{
 			Label: "UNEXPECTED_ERROR",
 			FilterLogsResponses: []filterLogsResponse{
 				filterLogsResponse{
-					Err: errors.New("Something unexpected"),
+					Err: errUnexpected,
 				},
 			},
-			Err: errors.New("Something unexpected"),
+			Err: errUnexpected,
 		},
 	}
 
@@ -327,5 +330,111 @@ func TestFilterLogsRecursively(t *testing.T) {
 		logs, err := watcher.filterLogsRecurisively(int64(10), int64(20), []types.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
+		assert.Equal(t, len(testCase.FilterLogsResponses), fakeLogClient.count)
 	}
 }
+
+type logsInBlockRangeTestCase struct {
+	Label                  string
+	From                   int64
+	To                     int64
+	FilterLogsResponses    []filterLogsResponse
+	Logs                   []types.Log
+	FurthestBlockProcessed int64
+}
+
+func TestGetLogsInBlockRange(t *testing.T) {
+	from := int64(10)
+	testCases := []logsInBlockRangeTestCase{
+		logsInBlockRangeTestCase{
+			Label: "HAPPY_PATH",
+			From:  from,
+			To:    from + 10,
+			FilterLogsResponses: []filterLogsResponse{
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+			},
+			Logs:                   []types.Log{logStub},
+			FurthestBlockProcessed: 20,
+		},
+		logsInBlockRangeTestCase{
+			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
+			From:  from,
+			To:    from + maxBlocksInGetLogsQuery + 10,
+			FilterLogsResponses: []filterLogsResponse{
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+			},
+			Logs:                   []types.Log{logStub, logStub},
+			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery + 10,
+		},
+		logsInBlockRangeTestCase{
+			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
+			From:  from,
+			To:    from + (maxBlocksInGetLogsQuery * (concurrencyLimit + 1)),
+			FilterLogsResponses: []filterLogsResponse{
+				// Same number of responses as the concurrencyLimit since the
+				// error response will stop any further requests.
+				filterLogsResponse{
+					Err: errUnexpected,
+				},
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+			},
+			Logs:                   []types.Log{},
+			FurthestBlockProcessed: from - 1,
+		},
+		logsInBlockRangeTestCase{
+			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
+			From:  from,
+			To:    from + maxBlocksInGetLogsQuery + 10,
+			FilterLogsResponses: []filterLogsResponse{
+				filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+				filterLogsResponse{
+					Err: errUnexpected,
+				}},
+			Logs:                   []types.Log{logStub},
+			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery - 1,
+		},
+	}
+
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	config.MeshDB = meshDB
+
+	for _, testCase := range testCases {
+		fakeLogClient, err := newFakeLogClient(testCase.FilterLogsResponses)
+		require.NoError(t, err)
+		config.Client = fakeLogClient
+		watcher := New(config)
+
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
+		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
+		require.Equal(t, testCase.Logs, logs, testCase.Label)
+		assert.Equal(t, len(testCase.FilterLogsResponses), fakeLogClient.count)
+	}
+}
+

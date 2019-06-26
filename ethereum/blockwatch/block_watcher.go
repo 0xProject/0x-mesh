@@ -394,6 +394,8 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 }
 
 type logRequestResult struct {
+	From                   int64
+	To                     int64
 	Logs                   []types.Log
 	Err                    error
 	FurthestBlockProcessed int64
@@ -423,24 +425,27 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 			// the request blocks here until one frees up.
 			semaphoreChan <- struct{}{}
 			// If a previous request failed, we noop all subsequent requests
+			mu.Lock()
 			if didARequestFail {
+				mu.Unlock()
 				<-semaphoreChan
 				return
 			}
+			mu.Unlock()
 
-			furthestBlockProcessed := chunk.FromBlock - 1
 			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
 			if err != nil {
 				log.WithField("error", err).Trace("Failed to fetch logs for ", chunk.FromBlock, " to ", chunk.ToBlock)
+				mu.Lock()
 				didARequestFail = true
-			} else {
-				furthestBlockProcessed = chunk.ToBlock
+				mu.Unlock()
 			}
 			mu.Lock()
 			indexToLogResult[index] = logRequestResult{
-				Err:                    err,
-				Logs:                   logs,
-				FurthestBlockProcessed: furthestBlockProcessed,
+				From: chunk.FromBlock,
+				To:   chunk.ToBlock,
+				Err:  err,
+				Logs: logs,
 			}
 			mu.Unlock()
 			<-semaphoreChan
@@ -451,17 +456,15 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 	wg.Wait()
 
 	logs := []types.Log{}
-	furthestBlockProcessed := from - 1
 	for i := range chunks {
 		logRequestResult := indexToLogResult[i]
-		furthestBlockProcessed = logRequestResult.FurthestBlockProcessed
 		if logRequestResult.Err != nil {
-			break
+			// Stop at first error, return logs found up until this point
+			return logs, logRequestResult.From - 1
 		}
 		logs = append(logs, logRequestResult.Logs...)
 	}
-
-	return logs, furthestBlockProcessed
+	return logs, to
 }
 
 type blockRange struct {

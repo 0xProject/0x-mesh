@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
@@ -41,6 +42,10 @@ func (fc *fakeLogClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, err
 // FilterLogs returns the logs that satisfy the supplied filter query
 func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 	fc.Mu.Lock()
+	// Add a slight delay to simulate an actual network request. This also gives
+	// BlockWatcher.getLogsInBlockRange multi-requests to hit the concurrent request
+	// limit semaphore and simulate more realistic conditions.
+	<-time.Tick(5 * time.Millisecond)
 	defer fc.Mu.Unlock()
 	res := fc.responses[fc.count]
 	fc.count = fc.count + 1
