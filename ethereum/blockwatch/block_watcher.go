@@ -92,9 +92,12 @@ func New(config Config) *Watcher {
 
 // Start starts the BlockWatcher
 func (w *Watcher) Start() error {
-	err := w.backfillMissedEventsIfNeeded()
+	events, err := w.getMissedEventsToBackfill()
 	if err != nil {
 		return err
+	}
+	if len(events) > 0 {
+		w.blockFeed.Send(events)
 	}
 
 	// We need the mutex to reliably start/stop the update loop
@@ -307,26 +310,28 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 	return header, nil
 }
 
-// backfillMissedEventsIfNeeded backfills missed events that might have occured while the Mesh node was
+// getMissedEventsToBackfill finds missed events that might have occured while the Mesh node was
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch backfills the events for missing blocks,
 // emits them, and re-sets the stored blocks to start at the latest block.
-func (w *Watcher) backfillMissedEventsIfNeeded() error {
+func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
+	events := []*Event{}
+
 	latestRetainedBlock, err := w.stack.Peek()
 	if err != nil {
-		return err
+		return events, err
 	}
 	// No blocks stored, nowhere to backfill to
 	if latestRetainedBlock == nil {
-		return nil
+		return events, nil
 	}
 	latestBlock, err := w.client.HeaderByNumber(nil)
 	if err != nil {
-		return err
+		return events, err
 	}
 	blocksElapsed := big.NewInt(0).Sub(latestBlock.Number, latestRetainedBlock.Number)
 	if blocksElapsed.Int64() == 0 {
-		return nil
+		return events, nil
 	}
 
 	log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
@@ -337,27 +342,27 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 		// Remove all blocks from the DB
 		headers, err := w.InspectRetainedBlocks()
 		if err != nil {
-			return err
+			return events, err
 		}
 		for i := 0; i < len(headers); i++ {
 			_, err := w.stack.Pop()
 			if err != nil {
-				return err
+				return events, err
 			}
 		}
 		// Add furthest block processed into the DB
 		latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockProcessed))
 		if err != nil {
-			return err
+			return events, err
 		}
 		err = w.stack.Push(latestHeader)
 		if err != nil {
-			return err
+			return events, err
 		}
 
 		// If not logs found, noop
 		if len(logs) == 0 {
-			return nil
+			return events, nil
 		}
 
 		// Emit events for all the logs
@@ -377,16 +382,15 @@ func (w *Watcher) backfillMissedEventsIfNeeded() error {
 			}
 			blockHeader.Logs = append(blockHeader.Logs, log)
 		}
-		events := []*Event{}
 		for _, blockHeader := range hashToBlockHeader {
 			events = append(events, &Event{
 				Type:        Added,
 				BlockHeader: blockHeader,
 			})
 		}
-		w.blockFeed.Send(events)
+		return events, nil
 	}
-	return nil
+	return events, nil
 }
 
 type logRequestResult struct {

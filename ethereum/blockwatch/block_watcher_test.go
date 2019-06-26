@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"math/big"
 	"testing"
 	"time"
 
@@ -165,3 +166,66 @@ func TestGetBlockRangeChunks(t *testing.T) {
 	}
 }
 
+func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
+	// Fixture will return block 30 as the tip of the chain
+	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	// Add block number 5 as the last block seen by BlockWatcher
+	lastBlockSeen := &meshdb.MiniHeader{
+		Number: big.NewInt(5),
+		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+	}
+	meshDB.MiniHeaders.Insert(lastBlockSeen)
+
+	config.MeshDB = meshDB
+	config.Client = fakeClient
+	watcher := New(config)
+
+	events, err := watcher.getMissedEventsToBackfill()
+	require.NoError(t, err)
+	assert.Len(t, events, 1)
+
+	// Check that block 30 is now in the DB, and block 5 was removed.
+	headers, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	require.Len(t, headers, 1)
+	assert.Equal(t, big.NewInt(30), headers[0].Number)
+}
+
+func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
+	// Fixture will return block 5 as the tip of the chain
+	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	// Add block number 5 as the last block seen by BlockWatcher
+	lastBlockSeen := &meshdb.MiniHeader{
+		Number: big.NewInt(5),
+		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+	}
+	meshDB.MiniHeaders.Insert(lastBlockSeen)
+
+	config.MeshDB = meshDB
+	config.Client = fakeClient
+	watcher := New(config)
+
+	events, err := watcher.getMissedEventsToBackfill()
+	require.NoError(t, err)
+	assert.Len(t, events, 0)
+
+	// Check that block 5 is still in the DB
+	headers, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	require.Len(t, headers, 1)
+	assert.Equal(t, big.NewInt(5), headers[0].Number)
+}
