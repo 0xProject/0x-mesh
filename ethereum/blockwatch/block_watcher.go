@@ -520,11 +520,10 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 		Topics:    topics,
 	})
 	if err != nil {
-		// If the request context deadline exceeded, the range was probably too large to send as a single request,
-		// split it. Likewise, Infura caps the logs returned to 10,000 per request, if our request exceeds this limit,
-		// split it. Parity, Geth and Alchemy all have much higher limits (if any at all), so no need to expect any
-		// similar errors of this nature from them.
-		if err.Error() == "context deadline exceeded" || err.Error() == "query returned more than 10000 results" {
+		// Infura caps the logs returned to 10,000 per request, if our request exceeds this limit, split it
+		// into two requests. Parity, Geth and Alchemy all have much higher limits (if any at all), so no need
+		// to expect any similar errors of this nature from them.
+		if err.Error() == "query returned more than 10000 results" {
 			// HACK(fabio): Infura limits the returned results to 10,000 logs, BUT some single
 			// blocks contain more then 10,000 logs. This has supposedly been fixed but we keep
 			// this logic here just in case.
