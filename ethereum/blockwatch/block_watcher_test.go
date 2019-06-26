@@ -20,8 +20,10 @@ var config = Config{
 	Topics:              []common.Hash{},
 }
 
+var basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
+
 func TestWatcher(t *testing.T) {
-	fakeClient, err := newFakeClient()
+	fakeClient, err := newFakeClient("testdata/fake_client_block_poller_fixtures.json")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -68,7 +70,7 @@ func TestWatcher(t *testing.T) {
 }
 
 func TestWatcherStartStop(t *testing.T) {
-	fakeClient, err := newFakeClient()
+	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -147,7 +149,7 @@ func TestGetBlockRangeChunks(t *testing.T) {
 		},
 	}
 
-	fakeClient, err := newFakeClient()
+	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
