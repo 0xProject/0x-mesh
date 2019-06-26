@@ -312,8 +312,8 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 
 // getMissedEventsToBackfill finds missed events that might have occured while the Mesh node was
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
-// If the stored block is older then the latest block, it batch backfills the events for missing blocks,
-// emits them, and re-sets the stored blocks to start at the latest block.
+// If the stored block is older then the latest block, it batch fetches the events for missing blocks,
+// re-sets the stored blocks and returns the block events found.
 func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 	events := []*Event{}
 
@@ -360,12 +360,13 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 			return events, err
 		}
 
-		// If not logs found, noop
+		// If no logs found, noop
 		if len(logs) == 0 {
 			return events, nil
 		}
 
-		// Emit events for all the logs
+		// Create the block events from all the logs found by grouping
+		// them into blockHeaders
 		hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
 		for _, log := range logs {
 			blockHeader, ok := hashToBlockHeader[log.BlockHash]
@@ -402,8 +403,8 @@ type logRequestResult struct {
 }
 
 // getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
-// all logs in the range, it simply returns them. If it fails to retrieve some of the blocks,
-// it returns all the logs it did find, along with the block number after which no further logs
+// all logs in the range, it returns them. If it fails to retrieve some of the blocks, it
+// returns all the logs it did find, along with the block number after which no further logs
 // were retrieved.
 func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)

@@ -248,7 +248,7 @@ func (app *App) Start() error {
 	}
 	log.Info("started block watcher")
 	// We exceptionally start the OrderWatcher's cleanup worker after the blockWatcher is
-	// started so that the block watcher has a change to fast-sync to the latest block, emit
+	// started so that the block watcher has a chance to fast-sync to the latest block, emit
 	// the missed events and have orders re-validated with the corresponding txHashes before
 	// the cleanup worker does it's first run.
 	app.orderWatcher.StartCleanupWorker()
