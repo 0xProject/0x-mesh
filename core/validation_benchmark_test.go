@@ -89,14 +89,14 @@ func BenchmarkValidateETHBackings5Accounts10000Orders(b *testing.B) {
 }
 
 func BenchmarkValidateETHBackings10Accounts100Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:9], 100)
+	benchmarkValidateETHBackings(b, testAccounts[0:10], 100)
 }
 
 func BenchmarkValidateETHBackings10Accounts1000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:9], 1000)
+	benchmarkValidateETHBackings(b, testAccounts[0:10], 1000)
 }
 func BenchmarkValidateETHBackings10Accounts10000Orders(b *testing.B) {
-	benchmarkValidateETHBackings(b, testAccounts[0:9], 10000)
+	benchmarkValidateETHBackings(b, testAccounts[0:10], 10000)
 }
 
 func benchmarkValidateETHBackings(b *testing.B, makerAddresses []common.Address, count int) {

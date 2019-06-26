@@ -229,7 +229,15 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHeap, orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	valid := []*zeroex.SignedOrder{}
 	rejected := []*zeroex.RejectedOrderInfo{}
-	for i := len(valid); i < len(orders); i++ {
+	//
+	// TOOD(albrow): Optimization can reduce time by at least one half:
+	//
+	// 1. Accept a list of ETHBackings instead of a heap.
+	// 2. Add all incoming orders to the list of ETHBackings.
+	// 3. *Then* initialize the heap in one go.
+	// 4. In each iteration, update one element in the heap (the lowest).
+	//
+	for i := 0; i < len(orders); i++ {
 		incomingOrder := orders[i]
 
 		// If we have spare capacity left, consider all orders valid for now.
@@ -244,9 +252,7 @@ func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHe
 		// lowest ETH backing per order.
 		lowestBacking := ethBackingHeap.Peek()
 		thisBacking, _ := ethBackingHeap.FindByMakerAddress(incomingOrder.MakerAddress)
-		potentialBacking := copyETHBacking(thisBacking)
-		potentialBacking.OrderCount += 1
-		potentialETHPerOrder := potentialBacking.ETHPerOrder()
+		potentialETHPerOrder := float64(thisBacking.ETHAmount) / float64(thisBacking.OrderCount+1)
 		if potentialETHPerOrder <= lowestBacking.ETHPerOrder() {
 			// If we don't have the required ETH backing, this order is considered
 			// invalid. We don't need to update the heap.
@@ -309,7 +315,7 @@ func findOrderByMakerAddress(makerAddress common.Address, orders []*zeroex.Signe
 	// TODO(albrow): We could potentially optimize this by maintaining a map of
 	// maker address to orders for that maker.
 	for i, order := range orders {
-		if order.MakerAddress.Hex() == makerAddress.Hex() {
+		if order.MakerAddress == makerAddress {
 			return order, i
 		}
 	}
