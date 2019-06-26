@@ -243,18 +243,20 @@ var logStub = types.Log{
 var errUnexpected = errors.New("Something unexpected")
 
 type filterLogsRecusivelyTestCase struct {
-	Label               string
-	FilterLogsResponses []filterLogsResponse
-	Err                 error
-	Logs                []types.Log
+	Label                     string
+	rangeToFilterLogsResponse map[string]filterLogsResponse
+	Err                       error
+	Logs                      []types.Log
 }
 
 func TestFilterLogsRecursively(t *testing.T) {
+	from := int64(10)
+	to := int64(20)
 	testCases := []filterLogsRecusivelyTestCase{
 		filterLogsRecusivelyTestCase{
 			Label: "HAPPY_PATH",
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			rangeToFilterLogsResponse: map[string]filterLogsResponse{
+				"10-20": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -264,16 +266,16 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 		filterLogsRecusivelyTestCase{
 			Label: "TOO_MANY_RESULTS_INFURA_ERROR",
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			rangeToFilterLogsResponse: map[string]filterLogsResponse{
+				"10-20": filterLogsResponse{
 					Err: errors.New(infuraTooManyResultsErrMsg),
 				},
-				filterLogsResponse{
+				"10-15": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				"16-20": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -283,24 +285,24 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 		filterLogsRecusivelyTestCase{
 			Label: "TOO_MANY_RESULTS_INFURA_ERROR_DEEPER_RECURSION",
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			rangeToFilterLogsResponse: map[string]filterLogsResponse{
+				"10-20": filterLogsResponse{
 					Err: errors.New(infuraTooManyResultsErrMsg),
 				},
-				filterLogsResponse{
+				"10-15": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				"16-20": filterLogsResponse{
 					Err: errors.New(infuraTooManyResultsErrMsg),
 				},
-				filterLogsResponse{
+				"16-18": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				"19-20": filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -309,9 +311,26 @@ func TestFilterLogsRecursively(t *testing.T) {
 			Logs: []types.Log{logStub, logStub, logStub},
 		},
 		filterLogsRecusivelyTestCase{
+			Label: "TOO_MANY_RESULTS_INFURA_ERROR_DEEPER_RECURSION_FAILURE",
+			rangeToFilterLogsResponse: map[string]filterLogsResponse{
+				"10-20": filterLogsResponse{
+					Err: errors.New(infuraTooManyResultsErrMsg),
+				},
+				"10-15": filterLogsResponse{
+					Logs: []types.Log{
+						logStub,
+					},
+				},
+				"16-20": filterLogsResponse{
+					Err: errUnexpected,
+				},
+			},
+			Err: errUnexpected,
+		},
+		filterLogsRecusivelyTestCase{
 			Label: "UNEXPECTED_ERROR",
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			rangeToFilterLogsResponse: map[string]filterLogsResponse{
+				"10-20": filterLogsResponse{
 					Err: errUnexpected,
 				},
 			},
@@ -324,102 +343,104 @@ func TestFilterLogsRecursively(t *testing.T) {
 	config.MeshDB = meshDB
 
 	for _, testCase := range testCases {
-		fakeLogClient, err := newFakeLogClient(testCase.FilterLogsResponses)
+		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
 		require.NoError(t, err)
 		config.Client = fakeLogClient
 		watcher := New(config)
 
-		logs, err := watcher.filterLogsRecurisively(int64(10), int64(20), []types.Log{})
+		logs, err := watcher.filterLogsRecurisively(from, to, []types.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
-		assert.Equal(t, len(testCase.FilterLogsResponses), fakeLogClient.count)
+		assert.Equal(t, len(testCase.rangeToFilterLogsResponse), fakeLogClient.count)
 	}
 }
 
 type logsInBlockRangeTestCase struct {
-	Label                  string
-	From                   int64
-	To                     int64
-	FilterLogsResponses    []filterLogsResponse
-	Logs                   []types.Log
-	FurthestBlockProcessed int64
+	Label                     string
+	From                      int64
+	To                        int64
+	RangeToFilterLogsResponse map[string]filterLogsResponse
+	Logs                      []types.Log
+	FurthestBlockProcessed    int64
 }
 
 func TestGetLogsInBlockRange(t *testing.T) {
-	from := int64(10)
+	from := 10
+	to := 20
+	maxBlocksInQuery := int(maxBlocksInGetLogsQuery)
 	testCases := []logsInBlockRangeTestCase{
 		logsInBlockRangeTestCase{
 			Label: "HAPPY_PATH",
-			From:  from,
-			To:    from + 10,
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			From:  int64(from),
+			To:    int64(to),
+			RangeToFilterLogsResponse: map[string]filterLogsResponse{
+				toR(from, to): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
 			},
 			Logs:                   []types.Log{logStub},
-			FurthestBlockProcessed: 20,
+			FurthestBlockProcessed: int64(to),
 		},
 		logsInBlockRangeTestCase{
 			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
-			From:  from,
-			To:    from + maxBlocksInGetLogsQuery + 10,
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			From:  int64(from),
+			To:    int64(from + maxBlocksInQuery + 10),
+			RangeToFilterLogsResponse: map[string]filterLogsResponse{
+				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				toR(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
 			},
 			Logs:                   []types.Log{logStub, logStub},
-			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery + 10,
+			FurthestBlockProcessed: int64(from + maxBlocksInQuery + 10),
 		},
 		logsInBlockRangeTestCase{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
-			From:  from,
-			To:    from + (maxBlocksInGetLogsQuery * (concurrencyLimit + 1)),
-			FilterLogsResponses: []filterLogsResponse{
+			From:  int64(from),
+			To:    int64(from + (maxBlocksInQuery * (concurrencyLimit + 1))),
+			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				// Same number of responses as the concurrencyLimit since the
 				// error response will stop any further requests.
-				filterLogsResponse{
+				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Err: errUnexpected,
 				},
-				filterLogsResponse{
+				toR(from+maxBlocksInQuery, from+(maxBlocksInQuery*2)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				toR(from+(maxBlocksInQuery*2), from+(maxBlocksInQuery*3)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
 			},
 			Logs:                   []types.Log{},
-			FurthestBlockProcessed: from - 1,
+			FurthestBlockProcessed: int64(from) - 1,
 		},
 		logsInBlockRangeTestCase{
 			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
-			From:  from,
-			To:    from + maxBlocksInGetLogsQuery + 10,
-			FilterLogsResponses: []filterLogsResponse{
-				filterLogsResponse{
+			From:  int64(from),
+			To:    int64(from + maxBlocksInQuery + 10),
+			RangeToFilterLogsResponse: map[string]filterLogsResponse{
+				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				filterLogsResponse{
+				toR(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
 					Err: errUnexpected,
 				}},
 			Logs:                   []types.Log{logStub},
-			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery - 1,
+			FurthestBlockProcessed: int64(from) + maxBlocksInGetLogsQuery - 1,
 		},
 	}
 
@@ -428,7 +449,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	config.MeshDB = meshDB
 
 	for _, testCase := range testCases {
-		fakeLogClient, err := newFakeLogClient(testCase.FilterLogsResponses)
+		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		require.NoError(t, err)
 		config.Client = fakeLogClient
 		watcher := New(config)
@@ -436,7 +457,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
-		assert.Equal(t, len(testCase.FilterLogsResponses), fakeLogClient.count)
+		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.count)
 	}
 }
 
