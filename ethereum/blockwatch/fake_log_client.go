@@ -45,7 +45,11 @@ func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
 	// BlockWatcher.getLogsInBlockRange multi-requests to hit the concurrent request
 	// limit semaphore and simulate more realistic conditions.
 	<-time.Tick(5 * time.Millisecond)
-	res := fc.rangeToResponse[toRange(q.FromBlock, q.ToBlock)]
+	r := toRange(q.FromBlock, q.ToBlock)
+	res, ok := fc.rangeToResponse[r]
+	if !ok {
+		return nil, fmt.Errorf("Didn't find response for range %s but  was expecting it to exist", r)
+	}
 	atomic.AddInt64(&fc.count, 1)
 	return res.Logs, res.Err
 }
