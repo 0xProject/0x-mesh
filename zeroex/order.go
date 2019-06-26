@@ -185,6 +185,10 @@ var eip712OrderTypes = signer.Types{
 	},
 }
 
+func (o *Order) ResetOrderHash() {
+	o.hash = nil
+}
+
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	if o.hash != nil {

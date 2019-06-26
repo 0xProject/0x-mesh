@@ -428,11 +428,13 @@ func newTestOrder() *testOrder {
 
 func (order *testOrder) withMakerAddress(address common.Address) *testOrder {
 	order.MakerAddress = address
+	(*zeroex.Order)(order).ResetOrderHash()
 	return order
 }
 
 func (order *testOrder) withSalt(salt *big.Int) *testOrder {
 	order.Salt = salt
+	(*zeroex.Order)(order).ResetOrderHash()
 	return order
 }
 
