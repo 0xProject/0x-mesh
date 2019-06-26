@@ -358,8 +358,8 @@ func TestFilterLogsRecursively(t *testing.T) {
 
 type logsInBlockRangeTestCase struct {
 	Label                     string
-	From                      int64
-	To                        int64
+	From                      int
+	To                        int
 	RangeToFilterLogsResponse map[string]filterLogsResponse
 	Logs                      []types.Log
 	FurthestBlockProcessed    int64
@@ -372,8 +372,8 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	testCases := []logsInBlockRangeTestCase{
 		logsInBlockRangeTestCase{
 			Label: "HAPPY_PATH",
-			From:  int64(from),
-			To:    int64(to),
+			From:  from,
+			To:    to,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				toR(from, to): filterLogsResponse{
 					Logs: []types.Log{
@@ -386,8 +386,8 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 		logsInBlockRangeTestCase{
 			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
-			From:  int64(from),
-			To:    int64(from + maxBlocksInQuery + 10),
+			From:  from,
+			To:    from + maxBlocksInQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
@@ -405,8 +405,8 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 		logsInBlockRangeTestCase{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
-			From:  int64(from),
-			To:    int64(from + (maxBlocksInQuery * (concurrencyLimit + 1))),
+			From:  from,
+			To:    from + (maxBlocksInQuery * (concurrencyLimit + 1)),
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				// Same number of responses as the concurrencyLimit since the
 				// error response will stop any further requests.
@@ -429,8 +429,8 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 		logsInBlockRangeTestCase{
 			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
-			From:  int64(from),
-			To:    int64(from + maxBlocksInQuery + 10),
+			From:  from,
+			To:    from + maxBlocksInQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
@@ -455,7 +455,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		config.Client = fakeLogClient
 		watcher := New(config)
 
-		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(int64(testCase.From), int64(testCase.To))
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())
