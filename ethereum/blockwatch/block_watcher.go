@@ -22,7 +22,7 @@ const concurrencyLimit = 3
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
-// the number of logs returned so Infura is the limiting factor here.
+// the number of logs returned so Infura is by far the limiting factor.
 var maxBlocksInGetLogsQuery = int64(60)
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
