@@ -2,3 +2,6 @@ vendor/
 node_modules/
 TODO.md
 0x_mesh/
+core.test
+profile.out
+memprofile.out
