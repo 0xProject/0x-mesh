@@ -3,6 +3,7 @@
 package core
 
 import (
+	"container/heap"
 	"fmt"
 	"math/big"
 	"time"
@@ -212,7 +213,7 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 
 	// Call the helper function.
 	// TODO(albrow): Actually build the heap and pass in the correct arguments. This is just a placeholder.
-	valid, rejected := validateETHBackingsWithHeap(0, &ETHBackingHeap{}, orders)
+	valid, rejected := validateETHBackingsWithHeap(0, []*meshdb.ETHBacking{}, orders)
 
 	// TODO(albrow): Uncomment this.
 	// Add any orders for maker addresses for which we failed to get the balance
@@ -225,10 +226,18 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	return valid, rejected
 }
 
-func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHeap, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
+func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBacking, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
+	// Initialize a heap which will keep track of the maker address with the
+	// lowest ETH per order.
+	ethBackingHeap := ETHBackingHeap(ethBackings)
+	heap.Init(&ethBackingHeap)
+
+	// rejected will store the RejectedOrderInfo for any incoming orders that are rejected.
 	rejected := []*zeroex.RejectedOrderInfo{}
 
-	makerAddressToValidOrders := make(map[common.Address][]*zeroex.SignedOrder, ethBackingHeap.Len())
+	// Create a mapping of maker address to valid orders (so far) for that maker
+	// address.
+	makerAddressToValidOrders := map[common.Address][]*zeroex.SignedOrder{}
 	remainingOrders := incomingOrders[spareCapacity:]
 	// If we have spare capacity left, consider all orders valid for now.
 	for i := 0; i < spareCapacity; i++ {
@@ -241,8 +250,8 @@ func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHe
 		ethBackingHeap.UpdateByMakerAddress(order.MakerAddress, 1)
 	}
 
-	// Group incoming orders by makerAddress
-	makerAddressToOrders := make(map[common.Address][]*zeroex.SignedOrder, ethBackingHeap.Len())
+	// Group remaining orders by makerAddress. Some of them will become valid.
+	makerAddressToOrders := map[common.Address][]*zeroex.SignedOrder{}
 	for _, order := range remainingOrders {
 		if _, found := makerAddressToOrders[order.MakerAddress]; found {
 			makerAddressToOrders[order.MakerAddress] = append(makerAddressToOrders[order.MakerAddress], order)

@@ -6,7 +6,6 @@
 package core
 
 import (
-	"container/heap"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -28,7 +27,7 @@ func generateTestOrders(makerAddresses []common.Address, count int) []*testOrder
 	return testOrders
 }
 
-func generateETHBackingHeap(makerAddresses []common.Address) *ETHBackingHeap {
+func generateETHBackings(makerAddresses []common.Address) []*meshdb.ETHBacking {
 	ethBackings := make([]*meshdb.ETHBacking, len(makerAddresses))
 	for i, makerAdress := range makerAddresses {
 		ethBackings[i] = &meshdb.ETHBacking{
@@ -37,9 +36,7 @@ func generateETHBackingHeap(makerAddresses []common.Address) *ETHBackingHeap {
 			ETHAmount:    rand.Intn(1000000),
 		}
 	}
-	ethBackingHeap := ETHBackingHeap(ethBackings)
-	heap.Init(&ethBackingHeap)
-	return &ethBackingHeap
+	return ethBackings
 }
 
 func generateMakerAddresses(count int) []common.Address {
@@ -90,9 +87,9 @@ func benchmarkValidateETHBackings(b *testing.B, addressCount int, orderCount int
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		ethBackingHeap := generateETHBackingHeap(makerAddresses)
+		ethBackings := generateETHBackings(makerAddresses)
 		b.StartTimer()
-		validateETHBackingsWithHeap(0, ethBackingHeap, orders)
+		validateETHBackingsWithHeap(0, ethBackings, orders)
 	}
 }
 

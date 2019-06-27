@@ -6,7 +6,6 @@ package core
 
 import (
 	"bytes"
-	"container/heap"
 	"fmt"
 	"math/big"
 	"sort"
@@ -333,12 +332,10 @@ func testValidateETHBackingCase(t *testing.T, testCase validateETHBackingTestCas
 	testInfo := fmt.Sprintf("(test case %d) Addresses: [%s, %s, %s]", caseNumber, constants.GanacheAccount0.Hex(), constants.GanacheAccount1.Hex(), constants.GanacheAccount2.Hex())
 
 	// Build the arguments we need to pass to the validation function.
-	ethBackingHeap := ETHBackingHeap(testCase.ethBackings)
-	heap.Init(&ethBackingHeap)
 	incomingOrders := testOrdersToSignedOrders(t, testCase.incomingOrders)
 
 	// Call the validateETHBackingsWithHeap function. and check the results
-	actualValid, actualRejected := validateETHBackingsWithHeap(testCase.spareCapacity, &ethBackingHeap, incomingOrders)
+	actualValid, actualRejected := validateETHBackingsWithHeap(testCase.spareCapacity, testCase.ethBackings, incomingOrders)
 
 	sort.Sort(ordersByHash(actualValid))
 	expectedValid := testOrdersToSignedOrders(t, testCase.expectedValid)
