@@ -181,7 +181,6 @@ func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
 	return false, err
 }
 
-// TODO(albrow): This function needs to be rigorously tested.
 func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	totalExistingOrders, err := app.db.Orders.Count()
 	if err != nil {
@@ -226,115 +225,95 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	return valid, rejected
 }
 
-func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHeap, orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
-	valid := []*zeroex.SignedOrder{}
+func validateETHBackingsWithHeap(spareCapacity int, ethBackingHeap *ETHBackingHeap, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	rejected := []*zeroex.RejectedOrderInfo{}
-	//
-	// TOOD(albrow): Optimization can reduce time by at least one half:
-	//
-	// 1. Accept a list of ETHBackings instead of a heap.
-	// 2. Add all incoming orders to the list of ETHBackings.
-	// 3. *Then* initialize the heap in one go.
-	// 4. In each iteration, update one element in the heap (the lowest).
-	//
-	for i := 0; i < len(orders); i++ {
-		incomingOrder := orders[i]
 
-		// If we have spare capacity left, consider all orders valid for now.
-		if len(valid) < spareCapacity {
-			valid = append(valid, incomingOrder)
-			ethBackingHeap.UpdateByMakerAddress(incomingOrder.MakerAddress, 1)
-			continue
-		}
-
-		// If we don't have any spare capacity, check if the ETH backing per order
-		// corresponding to this order's maker address is greater than the current
-		// lowest ETH backing per order.
-		lowestBacking := ethBackingHeap.Peek()
-		thisBacking, _ := ethBackingHeap.FindByMakerAddress(incomingOrder.MakerAddress)
-		potentialETHPerOrder := float64(thisBacking.ETHAmount) / float64(thisBacking.OrderCount+1)
-		if potentialETHPerOrder <= lowestBacking.ETHPerOrder() {
-			// If we don't have the required ETH backing, this order is considered
-			// invalid. We don't need to update the heap.
-			orderHash, err := incomingOrder.ComputeOrderHash()
-			if err != nil {
-				log.WithField("error", err).Panic("Could not compute order hash")
-			}
-			rejectedOrderInfo := &zeroex.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: incomingOrder,
-				Kind:        MeshValidation,
-				Status:      ROInsufficientETHBacking,
-			}
-			rejected = append(rejected, rejectedOrderInfo)
-			continue
-		}
-
-		// If we do have the required ETH backing, we need to replace an order
-		// which was previously considered valid with this one and update the heap.
-		orderToRemove, indexToReplace := findOrderByMakerAddress(lowestBacking.MakerAddress, valid)
-		if indexToReplace != -1 {
-			// If the order which would be removed is in the set of valid orders so
-			// far, we need to replace it.
-			valid[indexToReplace] = incomingOrder
-			// In this case we also need to add the order to the set of
-			// rejectedOrderInfos.
-			orderHash, err := orderToRemove.ComputeOrderHash()
-			if err != nil {
-				log.WithField("error", err).Panic("Could not compute order hash")
-			}
-			rejectedOrderInfo := &zeroex.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: orderToRemove,
-				Kind:        MeshValidation,
-				Status:      ROInsufficientETHBacking,
-			}
-			rejected = append(rejected, rejectedOrderInfo)
+	makerAddressToValidOrders := make(map[common.Address][]*zeroex.SignedOrder, ethBackingHeap.Len())
+	remainingOrders := incomingOrders[spareCapacity:]
+	// If we have spare capacity left, consider all orders valid for now.
+	for i := 0; i < spareCapacity; i++ {
+		order := incomingOrders[i]
+		if _, found := makerAddressToValidOrders[order.MakerAddress]; found {
+			makerAddressToValidOrders[order.MakerAddress] = append(makerAddressToValidOrders[order.MakerAddress], order)
 		} else {
-			// If the order which would be removed is *not* in the set of valid orders
-			// so far, don't remove any. Just add the incoming order to the valid
-			// orders so far.
-			valid = append(valid, incomingOrder)
+			makerAddressToValidOrders[order.MakerAddress] = []*zeroex.SignedOrder{order}
 		}
-		ethBackingHeap.UpdateByMakerAddress(incomingOrder.MakerAddress, 1)
-		ethBackingHeap.UpdateLowest(-1)
+		ethBackingHeap.UpdateByMakerAddress(order.MakerAddress, 1)
 	}
 
-	return valid, rejected
+	// Group incoming orders by makerAddress
+	makerAddressToOrders := make(map[common.Address][]*zeroex.SignedOrder, ethBackingHeap.Len())
+	for _, order := range remainingOrders {
+		if _, found := makerAddressToOrders[order.MakerAddress]; found {
+			makerAddressToOrders[order.MakerAddress] = append(makerAddressToOrders[order.MakerAddress], order)
+		} else {
+			makerAddressToOrders[order.MakerAddress] = []*zeroex.SignedOrder{order}
+		}
+	}
+
+	for makerAddress, orders := range makerAddressToOrders {
+		backingForMaker, _ := ethBackingHeap.FindByMakerAddress(makerAddress)
+		validOrdersForMaker := []*zeroex.SignedOrder{}
+		for i, incomingOrder := range orders {
+			// If we don't have any spare capacity, check if the ETH backing per order
+			// corresponding to this order's maker address is greater than the current
+			// lowest ETH backing per order.
+			lowestBacking := ethBackingHeap.Peek()
+			potentialETHPerOrder := float64(backingForMaker.ETHAmount) / float64(backingForMaker.OrderCount+1)
+			if potentialETHPerOrder <= lowestBacking.ETHPerOrder() {
+				// If we don't have the required ETH backing, this order and all other
+				// orders for this maker are considered invalid. We don't need to update
+				// the heap.
+				rejected = appendRejectedOrderInfoForOrders(MeshValidation, ROInsufficientETHBacking, rejected, orders[i:])
+				break
+			}
+
+			// If we do have the required ETH backing, we need to remove one order
+			// from the maker with the lowest backing.
+			if ordersForLowestMaker, found := makerAddressToValidOrders[lowestBacking.MakerAddress]; found && len(ordersForLowestMaker) != 0 {
+				// If the maker with the lowest backing was previously included in the
+				// set of valid orders, we need to remove one order from it.
+				makerAddressToValidOrders[lowestBacking.MakerAddress] = ordersForLowestMaker[1:]
+				rejected = append(rejected, rejectedOrderInfoForOrder(MeshValidation, ROInsufficientETHBacking, ordersForLowestMaker[0]))
+			}
+
+			validOrdersForMaker = append(validOrdersForMaker, incomingOrder)
+			ethBackingHeap.UpdateByMakerAddress(incomingOrder.MakerAddress, 1)
+			ethBackingHeap.UpdateLowest(-1)
+		}
+
+		// Add this makers orders to the set of valid orders.
+		if _, found := makerAddressToValidOrders[makerAddress]; found {
+			makerAddressToValidOrders[makerAddress] = append(makerAddressToValidOrders[makerAddress], validOrdersForMaker...)
+		} else {
+			makerAddressToValidOrders[makerAddress] = validOrdersForMaker
+		}
+	}
+
+	// Add the valid orders for each maker to the final result.
+	allValid := []*zeroex.SignedOrder{}
+	for _, validOrders := range makerAddressToValidOrders {
+		allValid = append(allValid, validOrders...)
+	}
+	return allValid, rejected
 }
 
-func copyETHBacking(backing *meshdb.ETHBacking) *meshdb.ETHBacking {
-	return &meshdb.ETHBacking{
-		MakerAddress: backing.MakerAddress,
-		OrderCount:   backing.OrderCount,
-		ETHAmount:    backing.ETHAmount,
+func rejectedOrderInfoForOrder(kind zeroex.RejectedOrderKind, status zeroex.RejectedOrderStatus, order *zeroex.SignedOrder) *zeroex.RejectedOrderInfo {
+	orderHash, err := order.ComputeOrderHash()
+	if err != nil {
+		log.WithField("error", err).Panic("Could not compute order hash")
+	}
+	return &zeroex.RejectedOrderInfo{
+		OrderHash:   orderHash,
+		SignedOrder: order,
+		Kind:        kind,
+		Status:      status,
 	}
 }
 
-func findOrderByMakerAddress(makerAddress common.Address, orders []*zeroex.SignedOrder) (*zeroex.SignedOrder, int) {
-	// TODO(albrow): We could potentially optimize this by maintaining a map of
-	// maker address to orders for that maker.
-	for i, order := range orders {
-		if order.MakerAddress == makerAddress {
-			return order, i
-		}
-	}
-	return nil, -1
-}
-
-func rejectedOrderInfoForOrders(kind zeroex.RejectedOrderKind, status zeroex.RejectedOrderStatus, orders []*zeroex.SignedOrder) []*zeroex.RejectedOrderInfo {
-	rejected := make([]*zeroex.RejectedOrderInfo, len(orders))
-	for i, order := range orders {
-		orderHash, err := order.ComputeOrderHash()
-		if err != nil {
-			log.WithField("error", err).Panic("Could not compute order hash")
-		}
-		rejected[i] = &zeroex.RejectedOrderInfo{
-			OrderHash:   orderHash,
-			SignedOrder: order,
-			Kind:        kind,
-			Status:      status,
-		}
+func appendRejectedOrderInfoForOrders(kind zeroex.RejectedOrderKind, status zeroex.RejectedOrderStatus, rejected []*zeroex.RejectedOrderInfo, orders []*zeroex.SignedOrder) []*zeroex.RejectedOrderInfo {
+	for _, order := range orders {
+		rejected = append(rejected, rejectedOrderInfoForOrder(kind, status, order))
 	}
 	return rejected
 }
