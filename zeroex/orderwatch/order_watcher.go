@@ -118,6 +118,8 @@ func (w *Watcher) Start() error {
 		return err
 	}
 
+	w.startCleanupWorker()
+
 	w.isSetup = true
 	return nil
 }
@@ -199,12 +201,9 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
-// StartCleanupWorker starts the OrderWatcher's cleanup worker which re-validates all
-// orders that haven't been updated in the last `lastUpdatedBuffer` amount of time. This ensures
-// that no invalid orders remain stored even if the block event that changed their validity was
-// missed.
-func (w *Watcher) StartCleanupWorker() {
+func (w *Watcher) startCleanupWorker() {
 	go func() {
+		start := time.Now()
 		for {
 			select {
 			case <-w.cleanupCtx.Done():
@@ -212,7 +211,12 @@ func (w *Watcher) StartCleanupWorker() {
 			default:
 			}
 
-			start := time.Now()
+			// Wait MinCleanupInterval before calling ValidateOrders again. Since
+			// we only start sleeping _after_ ValidateOrders completes, we will never
+			// have multiple calls to ValidateOrders running in parallel
+			time.Sleep(minCleanupInterval - time.Since(start))
+
+			start = time.Now()
 
 			// We do not re-validate orders that have been updated within the last `lastUpdatedBuffer` time
 			lastUpdatedCutOff := start.Add(-lastUpdatedBuffer)
@@ -231,11 +235,6 @@ func (w *Watcher) StartCleanupWorker() {
 				}
 			}
 			w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
-
-			// Wait MinCleanupInterval before calling ValidateOrders again. Since
-			// we only start sleeping _after_ ValidateOrders completes, we will never
-			// have multiple calls to ValidateOrders running in parallel
-			time.Sleep(minCleanupInterval - time.Since(start))
 		}
 	}()
 }
