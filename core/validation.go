@@ -211,6 +211,12 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		}
 	}
 
+	// Open a transaction for checking and inserting ETHBackings.
+	txn := app.db.ETHBackings.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
 	// Get the lowest N ETH backings where N is the number of incoming orders. Add
 	// them to makerInfos.
 	lowestETHBackings, err := app.db.GetETHBackingsWithLowestETHPerOrder(len(orders))
@@ -228,7 +234,11 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 
 	// For any makers for which there is not an existing ETH backing in the
 	// database, use ethWatcher to get the current ETH balance and create a new
-	// ETHBacking with a starting order count of 0.
+	// ETHBacking with a starting order count of 0. We also insert this backing
+	// into the database even if there are ultimately no valid orders for this
+	// maker. (Doing so makes it faster to validate orders from this maker in the
+	// future.)
+	rejected := []*zeroex.RejectedOrderInfo{}
 	makerAddressesWithoutKnownBalance := []common.Address{}
 	for makerAddress, ethBacking := range makerInfos {
 		if ethBacking == nil {
@@ -237,27 +247,61 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	}
 	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWathcher.Add(makerAddressesWithoutKnownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
-		makerInfos[makerAddress].ethBacking = &meshdb.ETHBacking{
+		ethBacking := &meshdb.ETHBacking{
 			MakerAddress: makerAddress,
 			OrderCount:   0,
 			// TODO(albrow): Use big.Int for ETHAmount.
 			ETHAmount: int(makerBalance.Int64()),
 		}
+		makerInfos[makerAddress].ethBacking = ethBacking
+		if err := txn.Insert(ethBacking); err != nil {
+			// If we can't save the ETH backing for this maker, we have no choice but
+			// to consider all its orders invalid. We might get a chance to try again
+			// in the future. This shouldn't happen often.
+			rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, makerInfos[makerAddress].orders)
+			delete(makerInfos, makerAddress)
+		}
 	}
 
-	// Call the helper function.
-	valid, rejected := validateETHBackingsWithHeap(0, []*meshdb.ETHBacking{}, orders)
+	// At this point we can go ahead and commit the transaction. We won't be
+	// inserting any additional ETH backings and the ones we need to retreive are
+	// already in memory.
+	if err := txn.Commit(); err != nil {
+		// If we can't save the ETH backings at all, just bail and consider all
+		// incoming orders invalid. We might get a chance to try again in the
+		// future. This shouldn't happen often.
+		allRejected := []*zeroex.RejectedOrderInfo{}
+		allRejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, orders)
+		return nil, allRejected
+	}
 
 	// Add any orders for maker addresses for which we failed to get the balance
 	// to the set of rejected orders.
 	for _, failedAddress := range failedBalanceMakerAddresses {
 		orders := makerInfos[failedAddress].orders
 		rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, rejected, orders)
+		delete(makerInfos, failedAddress)
 	}
+
+	// Get all the remaining orders and ETH backings. (Some entries in makerInfos
+	// may have been deleted above.)
+	remainingOrders := []*zeroex.SignedOrder{}
+	remainingETHBackings := []*meshdb.ETHBacking{}
+	for _, info := range makerInfos {
+		remainingOrders = append(remainingOrders, info.orders...)
+		remainingETHBackings = append(remainingETHBackings, info.ethBacking)
+	}
+
+	// Call the core algorithm for validating ETH backings.
+	spareCapacity := app.config.MaxOrdersInStorage - totalExistingOrders
+	valid, rejected := validateETHBackingsWithHeap(spareCapacity, remainingETHBackings, remainingOrders)
 
 	return valid, rejected
 }
 
+// validateETHBackingsWithHeap is the core algorithm for validating ETH
+// backings. It is a pure function whose output depends only on its input. It
+// doesn't make any network requests or read from/write to the database.
 func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBacking, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	// Initialize a heap which will keep track of the maker address with the
 	// lowest ETH per order.
