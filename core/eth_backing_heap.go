@@ -10,7 +10,7 @@ import (
 // Ensure that ETHBackingHeap implements heap.Interface
 var _ heap.Interface = &ETHBackingHeap{}
 
-// An ETHBackingHeap is a min-heap of ETHBackings sorted by ETH per order.
+// An ETHBackingHeap is a min-heap of ETHBackings sorted by Wei per order.
 type ETHBackingHeap []*meshdb.ETHBacking
 
 func (h ETHBackingHeap) Len() int           { return len(h) }
