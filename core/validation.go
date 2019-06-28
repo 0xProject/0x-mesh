@@ -187,6 +187,9 @@ type makerInfo struct {
 	orders     []*zeroex.SignedOrder
 }
 
+// TODO(albrow): If we need to optimize further, we can look into reducing the
+// number of new map allocations. After DB lookups and network requests,
+// memory/GC pressure is likely the bottleneck.
 func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	totalExistingOrders, err := app.db.Orders.Count()
 	if err != nil {
