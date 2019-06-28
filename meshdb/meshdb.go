@@ -59,7 +59,12 @@ func (o Order) ID() []byte {
 type ETHBacking struct {
 	MakerAddress common.Address
 	OrderCount   int
-	ETHAmount    int
+	// Note(albrow): The maximum value for float64 is ~1.8e308. The amount of Wei
+	// in circulation is ~1e26. Technically we might lose some precision by
+	// representing amounts in float64 (especially if we allow backing with other
+	// tokens in the future), but it should be good enough for the purposes of ETH
+	// backing validation.
+	AmountInWei float64
 }
 
 func (eb *ETHBacking) ID() []byte {
@@ -83,8 +88,7 @@ type OrdersCollection struct {
 
 type ETHBackingsCollection struct {
 	*db.Collection
-	ETHAmountIndex   *db.Index
-	ETHPerOrderIndex *db.Index
+	WeiPerOrderIndex *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -202,14 +206,14 @@ func setupETHBackings(database *db.DB) (*ETHBackingsCollection, error) {
 	if err != nil {
 		return nil, err
 	}
-	ethPerOrderIndex := col.AddIndex("ethPerOrder", func(model db.Model) []byte {
+	weiPerOrderIndex := col.AddIndex("weiPerOrder", func(model db.Model) []byte {
 		ethBacking := model.(*ETHBacking)
-		return float64ToBytes(ethBacking.ETHPerOrder())
+		return float64ToBytes(ethBacking.WeiPerOrder())
 	})
 
 	return &ETHBackingsCollection{
 		Collection:       col,
-		ETHPerOrderIndex: ethPerOrderIndex,
+		WeiPerOrderIndex: weiPerOrderIndex,
 	}, nil
 }
 
@@ -222,12 +226,12 @@ func float64ToBytes(number float64) []byte {
 	return []byte(fmt.Sprintf("%080.5f", number))
 }
 
-func (eb *ETHBacking) ETHPerOrder() float64 {
+func (eb *ETHBacking) WeiPerOrder() float64 {
 	if eb.OrderCount == 0 {
 		// We can't divide by zero. Instead return max float.
 		return math.MaxFloat64
 	}
-	return float64(eb.ETHAmount) / float64(eb.OrderCount)
+	return float64(eb.AmountInWei) / float64(eb.OrderCount)
 }
 
 // Close closes the database connection
@@ -302,7 +306,7 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 	updatedETHBacking := &ETHBacking{
 		MakerAddress: ethBackingForIncomingOrder.MakerAddress,
 		OrderCount:   ethBackingForIncomingOrder.OrderCount + 1,
-		ETHAmount:    ethBackingForIncomingOrder.ETHAmount,
+		AmountInWei:  ethBackingForIncomingOrder.AmountInWei,
 	}
 
 	if totalExistingOrders == m.maxOrders {
@@ -313,7 +317,7 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 		if err != nil {
 			return err
 		}
-		if updatedETHBacking.ETHPerOrder() <= lowestETHBacking.ETHPerOrder() {
+		if updatedETHBacking.WeiPerOrder() <= lowestETHBacking.WeiPerOrder() {
 			// If the incoming order is associated with an ETH backing that is not
 			// greater than the current lowest ETH backing, don't store it.
 			return nil
@@ -347,7 +351,7 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 }
 
 func (m *MeshDB) GetETHBackingWithLowestETHPerOrder() (*ETHBacking, error) {
-	filter := m.ETHBackings.ETHPerOrderIndex.All()
+	filter := m.ETHBackings.WeiPerOrderIndex.All()
 	queryResults := []*ETHBacking{}
 	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
 		return nil, err
@@ -359,24 +363,12 @@ func (m *MeshDB) GetETHBackingWithLowestETHPerOrder() (*ETHBacking, error) {
 }
 
 func (m *MeshDB) GetETHBackingsWithLowestETHPerOrder(count int) ([]*ETHBacking, error) {
-	filter := m.ETHBackings.ETHPerOrderIndex.All()
+	filter := m.ETHBackings.WeiPerOrderIndex.All()
 	queryResults := []*ETHBacking{}
 	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
 		return nil, err
 	}
 	return queryResults, nil
-}
-
-func (m *MeshDB) GetETHBackingWithLowestETHAmount() (*ETHBacking, error) {
-	filter := m.ETHBackings.ETHAmountIndex.All()
-	queryResults := []*ETHBacking{}
-	if err := m.ETHBackings.NewQuery(filter).Max(1).Run(&queryResults); err != nil {
-		return nil, err
-	}
-	if len(queryResults) == 0 {
-		return nil, errors.New("query for lowest ETHBacking by ETH amount returned no results")
-	}
-	return queryResults[0], nil
 }
 
 func (m *MeshDB) getRandomOrderForMaker(makerAddress common.Address) (*Order, error) {

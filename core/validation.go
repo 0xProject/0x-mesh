@@ -272,11 +272,20 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	// future.)
 	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWathcher.Add(makerAddressesWithoutKnownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
+		amountFloat, accuracy := new(big.Float).SetInt(makerBalance).Float64()
+		if accuracy != big.Exact {
+			// It should be fine if we can't represent balances with exact precision,
+			// as long as we are close enough. We still want to log a warning to
+			// understand how often this happens (if ever).
+			log.WithFields(map[string]interface{}{
+				"bigInt":  makerBalance,
+				"float64": amountFloat,
+			}).Warn("Could not accurately represent maker balance as a float64")
+		}
 		ethBacking := &meshdb.ETHBacking{
 			MakerAddress: makerAddress,
 			OrderCount:   0,
-			// TODO(albrow): Use big.Int for ETHAmount.
-			ETHAmount: int(makerBalance.Int64()),
+			AmountInWei:  amountFloat,
 		}
 		makerInfos[makerAddress].ethBacking = ethBacking
 		if err := txn.Insert(ethBacking); err != nil {
@@ -380,8 +389,8 @@ func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBac
 			// corresponding to this order's maker address is greater than the current
 			// lowest ETH backing per order.
 			lowestBacking := ethBackingHeap.Peek()
-			potentialETHPerOrder := float64(backingForMaker.ETHAmount) / float64(backingForMaker.OrderCount+1)
-			if potentialETHPerOrder <= lowestBacking.ETHPerOrder() {
+			potentialETHPerOrder := backingForMaker.AmountInWei / float64(backingForMaker.OrderCount+1)
+			if potentialETHPerOrder <= lowestBacking.WeiPerOrder() {
 				// If we don't have the required ETH backing, this order and all other
 				// orders for this maker are considered invalid. We don't need to update
 				// the heap.

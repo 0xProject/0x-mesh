@@ -66,7 +66,7 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -92,12 +92,12 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    50,
+					AmountInWei:  50,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -121,12 +121,12 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    150,
+					AmountInWei:  150,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -144,7 +144,7 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -163,12 +163,12 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   1,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   0,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -188,17 +188,17 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   2,
-					ETHAmount:    50,
+					AmountInWei:  50,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount2,
 					OrderCount:   1,
-					ETHAmount:    75,
+					AmountInWei:  75,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -226,17 +226,17 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   2,
-					ETHAmount:    50,
+					AmountInWei:  50,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount2,
 					OrderCount:   1,
-					ETHAmount:    75,
+					AmountInWei:  75,
 				},
 			},
 			incomingOrders: []*testOrder{
@@ -281,17 +281,17 @@ func TestValidateETHBackings(t *testing.T) {
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount0,
 					OrderCount:   2,
-					ETHAmount:    100,
+					AmountInWei:  100,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount1,
 					OrderCount:   2,
-					ETHAmount:    40,
+					AmountInWei:  40,
 				},
 				&meshdb.ETHBacking{
 					MakerAddress: constants.GanacheAccount2,
 					OrderCount:   1,
-					ETHAmount:    80,
+					AmountInWei:  80,
 				},
 			},
 			incomingOrders: []*testOrder{

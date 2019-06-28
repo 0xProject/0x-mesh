@@ -33,7 +33,7 @@ func generateETHBackings(makerAddresses []common.Address) []*meshdb.ETHBacking {
 		ethBackings[i] = &meshdb.ETHBacking{
 			MakerAddress: makerAdress,
 			OrderCount:   rand.Intn(100000),
-			ETHAmount:    rand.Intn(1000000),
+			AmountInWei:  float64(rand.Intn(1000000)),
 		}
 	}
 	return ethBackings
