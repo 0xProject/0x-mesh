@@ -235,19 +235,41 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		}
 	}
 
+	// Lookup the ETH backing in the database (if it exists) for any remaining
+	// makers in the set of incoming orders.
+	rejected := []*zeroex.RejectedOrderInfo{}
+	makerAddressesWithoutKnownBalance := []common.Address{}
+	for makerAddress, ethBacking := range makerInfos {
+		if ethBacking != nil {
+			continue
+		}
+		var ethBackingFromDB meshdb.ETHBacking
+		if err := app.db.ETHBackings.FindByID(makerAddress.Bytes(), &ethBackingFromDB); err != nil {
+			if _, ok := err.(db.NotFoundError); ok {
+				// If there was a NotFoundError it just means we haven't stored the ETH
+				// backing for this maker yet. Add it to the list of makers for which we
+				// don't know the balance.
+				makerAddressesWithoutKnownBalance = append(makerAddressesWithoutKnownBalance, makerAddress)
+				continue
+			}
+			// If there was a different kind of db error, we have no choice but to
+			// consider all its orders invalid. We might get a chance to try again in
+			// the future. This shouldn't happen often.
+			log.WithFields(map[string]interface{}{
+				"error":        err,
+				"makerAddress": makerAddress,
+			}).Error("Unexpected error while looking for ETHBacking in database")
+			rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, makerInfos[makerAddress].orders)
+			delete(makerInfos, makerAddress)
+		}
+	}
+
 	// For any makers for which there is not an existing ETH backing in the
 	// database, use ethWatcher to get the current ETH balance and create a new
 	// ETHBacking with a starting order count of 0. We also insert this backing
 	// into the database even if there are ultimately no valid orders for this
 	// maker. (Doing so makes it faster to validate orders from this maker in the
 	// future.)
-	rejected := []*zeroex.RejectedOrderInfo{}
-	makerAddressesWithoutKnownBalance := []common.Address{}
-	for makerAddress, ethBacking := range makerInfos {
-		if ethBacking == nil {
-			makerAddressesWithoutKnownBalance = append(makerAddressesWithoutKnownBalance, makerAddress)
-		}
-	}
 	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWathcher.Add(makerAddressesWithoutKnownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
 		ethBacking := &meshdb.ETHBacking{
@@ -261,6 +283,10 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 			// If we can't save the ETH backing for this maker, we have no choice but
 			// to consider all its orders invalid. We might get a chance to try again
 			// in the future. This shouldn't happen often.
+			log.WithFields(map[string]interface{}{
+				"error":        err,
+				"makerAddress": ethBacking.MakerAddress,
+			}).Error("Unexpected error while inserting new ETHBacking in database")
 			rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, makerInfos[makerAddress].orders)
 			delete(makerInfos, makerAddress)
 		}
@@ -273,6 +299,7 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		// If we can't save the ETH backings at all, just bail and consider all
 		// incoming orders invalid. We might get a chance to try again in the
 		// future. This shouldn't happen often.
+		log.WithField("error", err).Error("Could not commit transaction for inserting ETHBackings")
 		allRejected := []*zeroex.RejectedOrderInfo{}
 		allRejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, orders)
 		return nil, allRejected
@@ -281,6 +308,10 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	// Add any orders for maker addresses for which we failed to get the balance
 	// to the set of rejected orders.
 	for _, failedAddress := range failedBalanceMakerAddresses {
+		log.WithFields(map[string]interface{}{
+			"error":        err,
+			"makerAddress": failedAddress,
+		}).Error("Could not commit transaction for inserting ETHBackings")
 		orders := makerInfos[failedAddress].orders
 		rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, rejected, orders)
 		delete(makerInfos, failedAddress)
