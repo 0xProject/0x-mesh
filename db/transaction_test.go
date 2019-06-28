@@ -252,7 +252,7 @@ func TestTransactionExclusion(t *testing.T) {
 	}()
 
 	// A short sleep is necessary to ensure that the goroutines have time to run.
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	discardSignal <- struct{}{}
 	require.NoError(t, txn.Discard())
 
