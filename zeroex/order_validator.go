@@ -27,7 +27,7 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
 // The most orders we can validate in a single eth_call without having the request timeout
-const chunkSize = 500
+const chunkSize = 300
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
