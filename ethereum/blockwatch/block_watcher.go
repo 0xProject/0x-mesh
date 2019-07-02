@@ -285,7 +285,7 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 		Topics:    [][]common.Hash{w.topics},
 	})
 	if err != nil {
-		return nil, err
+		return header, err
 	}
 	header.Logs = logs
 	return header, nil
