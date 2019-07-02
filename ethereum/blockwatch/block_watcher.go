@@ -202,6 +202,16 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		nextHeader, err := w.addLogs(nextHeader)
 		if err != nil {
+			// Due to block re-orgs & Ethereum node services load-balancing requests across multiple nodes
+			// a block header might be returned, but when fetching it's logs, an "unknown block" error is
+			// returned. This is expected to happen sometimes, and we simply return the events gathered so
+			// far and pick back up where we left off on the next polling interval.
+			if err.Error() == "unknown block" {
+				log.WithFields(log.Fields{
+					"blockNumber": nextHeader.Hash.Hex(),
+				}).Trace("failed to get logs for block")
+				return events, nil
+			}
 			return events, err
 		}
 		err = w.stack.Push(nextHeader)
@@ -242,6 +252,16 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 	}
 	nextHeader, err = w.addLogs(nextHeader)
 	if err != nil {
+		// Due to block re-orgs & Ethereum node services load-balancing requests across multiple nodes
+		// a block header might be returned, but when fetching it's logs, an "unknown block" error is
+		// returned. This is expected to happen sometimes, and we simply return the events gathered so
+		// far and pick back up where we left off on the next polling interval.
+		if err.Error() == "unknown block" {
+			log.WithFields(log.Fields{
+				"blockNumber": nextHeader.Hash.Hex(),
+			}).Trace("failed to get logs for block")
+			return events, nil
+		}
 		return events, err
 	}
 	err = w.stack.Push(nextHeader)
