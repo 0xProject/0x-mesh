@@ -208,7 +208,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 			// far and pick back up where we left off on the next polling interval.
 			if err.Error() == "unknown block" {
 				log.WithFields(log.Fields{
-					"blockNumber": nextHeader.Hash.Hex(),
+					"nextHeader": nextHeader,
 				}).Trace("failed to get logs for block")
 				return events, nil
 			}
@@ -258,7 +258,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		// far and pick back up where we left off on the next polling interval.
 		if err.Error() == "unknown block" {
 			log.WithFields(log.Fields{
-				"blockNumber": nextHeader.Hash.Hex(),
+				"nextHeader": nextHeader,
 			}).Trace("failed to get logs for block")
 			return events, nil
 		}
