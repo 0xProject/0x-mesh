@@ -70,8 +70,8 @@ type AcceptedOrderInfo struct {
 
 // RejectedOrderStatus enumerates all the unique reasons for an orders rejection
 type RejectedOrderStatus struct {
-	Code    string
-	Message string
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // RejectedOrderStatus values
