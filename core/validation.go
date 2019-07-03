@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // maxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
@@ -48,12 +49,57 @@ var (
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
 	}
+	ROInvalidSchema = zeroex.RejectedOrderStatus{
+		Code:    "OrderFailedSchemaValidation",
+		Message: "order did not pass JSON-schema validation",
+	}
+)
+
+// JSON-schema schemas
+var (
+	addressSchemaLoader     = gojsonschema.NewStringLoader(`{"id":"/addressSchema","type":"string","pattern":"^0x[0-9a-fA-F]{40}$"}`)
+	wholeNumberSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/wholeNumberSchema","anyOf":[{"type":"string","pattern":"^\\d+$"},{"type":"integer"}]}`)
+	hexSchemaLoader         = gojsonschema.NewStringLoader(`{"id":"/hexSchema","type":"string","pattern":"^0x(([0-9a-fA-F][0-9a-fA-F])+)?$"}`)
+	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"exchangeAddress":{"$ref":"/addressSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","salt","exchangeAddress","feeRecipientAddress","expirationTimeSeconds"],"type":"object"}`)
+	signedOrderSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/signedOrderSchema","allOf":[{"$ref":"/orderSchema"},{"properties":{"signature":{"$ref":"/hexSchema"}},"required":["signature"]}]}`)
 )
 
 // RejectedOrderKind values
 const (
 	MeshValidation = zeroex.RejectedOrderKind("MESH_VALIDATION")
 )
+
+func setupSchemaValidator() (*gojsonschema.Schema, error) {
+	sl := gojsonschema.NewSchemaLoader()
+	if err := sl.AddSchemas(addressSchemaLoader); err != nil {
+		return nil, err
+	}
+	if err := sl.AddSchemas(wholeNumberSchemaLoader); err != nil {
+		return nil, err
+	}
+	if err := sl.AddSchemas(hexSchemaLoader); err != nil {
+		return nil, err
+	}
+	if err := sl.AddSchemas(orderSchemaLoader); err != nil {
+		return nil, err
+	}
+	schema, err := sl.Compile(signedOrderSchemaLoader)
+	if err != nil {
+		return nil, err
+	}
+	return schema, nil
+}
+
+func (app *App) schemaValidateOrder(o []byte) (*gojsonschema.Result, error) {
+	orderLoader := gojsonschema.NewStringLoader(string(o))
+
+	result, err := app.jsonSchema.Validate(orderLoader)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
 
 // validateOrders applies general 0x validation and Mesh-specific validation to
 // the given orders.

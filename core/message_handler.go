@@ -72,6 +72,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
+
 	for _, msg := range messages {
 		if err := validateMessageSize(msg); err != nil {
 			log.WithFields(map[string]interface{}{
@@ -83,6 +84,25 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}
+
+		result, err := app.schemaValidateOrder(msg.Data)
+		if err != nil {
+			log.WithFields(map[string]interface{}{
+				"error": err,
+				"from":  msg.From,
+			}).Trace("could not schema validate message")
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+			continue
+		}
+		if !result.Valid() {
+			log.WithFields(map[string]interface{}{
+				"errors": result.Errors(),
+				"from":   msg.From,
+			}).Trace("order schema validation failed for message")
+			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
+			continue
+		}
+
 		order, err := decodeOrder(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{

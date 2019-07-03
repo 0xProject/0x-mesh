@@ -100,3 +100,7 @@
   revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
   [metadata]
     note = "go-ethereum depends on this package and they made a breaking API change"
+
+[[constraint]]
+  name = "github.com/xeipuuv/gojsonschema"
+  version = "1.1.0"
