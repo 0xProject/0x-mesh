@@ -147,8 +147,9 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 
 	// Perform 0x on-chain validation.
 	zeroexResults := app.orderValidator.BatchValidate(ordersWithSufficientBacking)
-	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
-	return zeroexResults, nil
+	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
+	results.Accepted = zeroexResults.Accepted
+	return results, nil
 }
 
 func validateMessageSize(message *p2p.Message) error {
@@ -234,8 +235,13 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		return nil, rejected
 	}
 	for _, ethBacking := range lowestETHBackings {
-		makerInfos[ethBacking.MakerAddress] = &makerInfo{
-			ethBacking: ethBacking,
+		info, found := makerInfos[ethBacking.MakerAddress]
+		if found {
+			info.ethBacking = ethBacking
+		} else {
+			makerInfos[ethBacking.MakerAddress] = &makerInfo{
+				ethBacking: ethBacking,
+			}
 		}
 	}
 
@@ -383,9 +389,11 @@ func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) (valid []*ze
 			appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, ordersForMaker)
 			continue
 		}
+		// The ETH backing is already stored. Consider all orders for this maker
+		// "valid".
+		valid = append(valid, ordersForMaker...)
 	}
 
-	// TODO(albrow): Handle addresses which we failed to lookup.
 	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWatcher.Add(makerAddressesWithUnkownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
 		amountFloat, accuracy := new(big.Float).SetInt(makerBalance).Float64()
@@ -490,6 +498,10 @@ func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBac
 				// If we don't have the required ETH backing, this order and all other
 				// orders for this maker are considered invalid. We don't need to update
 				// the heap.
+				log.WithFields(map[string]interface{}{
+					"makerAddress":       incomingOrder.MakerAddress,
+					"invalidOrdersCount": len(orders[i:]),
+				}).Trace("Maker has insufficient ETH backing")
 				rejected = appendRejectedOrderInfoForOrders(MeshValidation, ROInsufficientETHBacking, rejected, orders[i:])
 				break
 			}
