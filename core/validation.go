@@ -450,6 +450,10 @@ func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) (valid []*ze
 // backings. It is a pure function whose output depends only on its input. It
 // doesn't make any network requests or read from/write to the database.
 func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBacking, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
+	if len(incomingOrders) == 0 {
+		return nil, nil
+	}
+
 	// Initialize a heap which will keep track of the maker address with the
 	// lowest ETH per order.
 	ethBackingHeap := ETHBackingHeap(ethBackings)
