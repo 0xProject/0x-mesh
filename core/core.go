@@ -6,6 +6,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -69,13 +70,15 @@ type Config struct {
 }
 
 type App struct {
+	ctx            context.Context
+	cancel         func()
 	config         Config
 	db             *meshdb.MeshDB
 	node           *p2p.Node
 	networkID      int
 	blockWatcher   *blockwatch.Watcher
 	orderWatcher   *orderwatch.Watcher
-	ethWatcher    *ethereum.ETHWatcher
+	ethWatcher     *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
 }
 
@@ -143,13 +146,16 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	app := &App{
+		ctx:            ctx,
+		cancel:         cancel,
 		config:         config,
 		db:             db,
 		networkID:      config.EthereumNetworkID,
 		blockWatcher:   blockWatcher,
 		orderWatcher:   orderWatcher,
-		ethWatcher:    ethWatcher,
+		ethWatcher:     ethWatcher,
 		orderValidator: orderValidator,
 	}
 
@@ -213,6 +219,7 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started ETH balance watcher")
+	go app.listenForBalanceUpdates()
 
 	return nil
 }
@@ -269,6 +276,8 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 
 // Close closes the app
 func (app *App) Close() {
+	app.cancel()
+
 	if err := app.node.Close(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing node")
 	}
@@ -278,4 +287,59 @@ func (app *App) Close() {
 	}
 	app.blockWatcher.Stop()
 	app.db.Close()
+}
+
+func (app *App) listenForBalanceUpdates() {
+	for {
+		select {
+		case <-app.ctx.Done():
+			return
+		case balance := <-app.ethWatcher.Receive():
+			app.updateBalance(balance)
+		}
+	}
+}
+
+func (app *App) updateBalance(balance ethereum.Balance) {
+	txn := app.db.ETHBackings.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	var existingBacking meshdb.ETHBacking
+	if err := app.db.ETHBackings.FindByID(balance.Address.Bytes(), &existingBacking); err != nil {
+		log.WithFields(map[string]interface{}{
+			"error":   err,
+			"balance": balance,
+		}).Error("Could not find existing ETHBacking for maker address")
+		return
+	}
+	oldBalance := existingBacking.AmountInWei
+
+	// TODO(albrow): de-dupe code for converting from big.Int to float.
+	amountFloat, accuracy := new(big.Float).SetInt(balance.Amount).Float64()
+	if accuracy != big.Exact {
+		// It should be fine if we can't represent balances with exact precision,
+		// as long as we are close enough. We still want to log a warning to
+		// understand how often this happens (if ever).
+		log.WithFields(map[string]interface{}{
+			"bigInt":  balance.Amount,
+			"float64": amountFloat,
+		}).Warn("Could not accurately represent maker balance as a float64")
+	}
+
+	existingBacking.AmountInWei = amountFloat
+	if err := txn.Update(&existingBacking); err != nil {
+		log.WithFields(map[string]interface{}{
+			"error":      err,
+			"ethBacking": existingBacking,
+		}).Error("Could not update balance for ETHBacking")
+		return
+	}
+
+	log.WithFields(map[string]interface{}{
+		"makerAddress": existingBacking.MakerAddress,
+		"oldBalance":   oldBalance,
+		"newBalance":   amountFloat,
+	}).Trace("Updated balance for ETHBacking")
 }
