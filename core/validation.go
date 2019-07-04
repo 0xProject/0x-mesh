@@ -197,9 +197,12 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	}
 	if totalExistingOrders+len(orders) <= app.config.MaxOrdersInStorage {
 		// If we haven't yet reached our storage limit, all orders are considered
-		// valid in terms of their ETH backing.
-		app.safeInsertETHBackings(orders)
-		return orders, nil
+		// valid in terms of their ETH backing. We still need to insert ETH backings
+		// in the database for any new maker addresses among the incoming orders. In
+		// this case, the only way an order can be considered "invalid" is if we
+		// could not check the ETH balance or insert the corresponding ETH backing.
+		valid, rejected := app.safeInsertETHBackings(orders)
+		return valid, rejected
 	}
 
 	// Set up a map of maker address to maker info.
@@ -321,9 +324,8 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	// to the set of rejected orders.
 	for _, failedAddress := range failedBalanceMakerAddresses {
 		log.WithFields(map[string]interface{}{
-			"error":        err,
 			"makerAddress": failedAddress,
-		}).Error("Could not commit transaction for inserting ETHBackings")
+		}).Error("Could not get balance for maker address")
 		orders := makerInfos[failedAddress].orders
 		rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, rejected, orders)
 		delete(makerInfos, failedAddress)
@@ -349,14 +351,14 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 // new makerAddresses among the given orders and does not do any further
 // validation. It assumes all the given orders are valid. It looks up the
 // current balance via app.ethWatcher as needed.
-func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) {
+// TODO(albrow): de-dupe this code if possible.
+func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) (valid []*zeroex.SignedOrder, rejected []*zeroex.RejectedOrderInfo) {
 	// Open a transaction for checking and inserting ETHBackings.
 	txn := app.db.ETHBackings.OpenTransaction()
 	defer func() {
 		_ = txn.Discard()
 	}()
 
-	// TODO(albrow): de-dupe this code if possible.
 	makerAddressToOrders := map[common.Address][]*zeroex.SignedOrder{}
 	for _, order := range orders {
 		if _, found := makerAddressToOrders[order.MakerAddress]; found {
@@ -367,20 +369,24 @@ func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) {
 	}
 
 	makerAddressesWithUnkownBalance := []common.Address{}
-	for makerAddress, _ := range makerAddressToOrders {
+	for makerAddress, ordersForMaker := range makerAddressToOrders {
 		var existingBacking meshdb.ETHBacking
 		if err := app.db.ETHBackings.FindByID(makerAddress.Bytes(), &existingBacking); err != nil {
 			if _, ok := err.(db.NotFoundError); ok {
 				makerAddressesWithUnkownBalance = append(makerAddressesWithUnkownBalance, makerAddress)
 				continue
 			}
-			// TODO(albrow): Handle error.
-			log.WithField("error", err).Panic("Unexpected error")
+			log.WithFields(map[string]interface{}{
+				"error":        err,
+				"makerAddress": makerAddress,
+			}).Error("Could not look up existing ETHBacking")
+			appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, ordersForMaker)
+			continue
 		}
 	}
 
 	// TODO(albrow): Handle addresses which we failed to lookup.
-	makerAddressToBalance, _ := app.ethWatcher.Add(makerAddressesWithUnkownBalance)
+	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWatcher.Add(makerAddressesWithUnkownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
 		amountFloat, accuracy := new(big.Float).SetInt(makerBalance).Float64()
 		if accuracy != big.Exact {
@@ -404,16 +410,32 @@ func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) {
 			log.WithFields(map[string]interface{}{
 				"error":        err,
 				"makerAddress": ethBacking.MakerAddress,
-			}).Panic("Unexpected error while inserting new ETHBacking in database")
+			}).Error("Unexpected error while inserting new ETHBacking in database")
+			appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, makerAddressToOrders[makerAddress])
+			continue
 		} else {
 			log.WithField("makerAddress", ethBacking.MakerAddress.Hex()).Info("Inserted ETHBacking for makerAddress")
+			valid = append(valid, makerAddressToOrders[makerAddress]...)
 		}
 	}
 
-	if err := txn.Commit(); err != nil {
-		// TODO(albrow): Handle error.
-		log.WithField("error", err).Panic("Unexpected error")
+	// Add any orders for maker addresses for which we failed to get the balance
+	// to the set of rejected orders.
+	for _, failedAddress := range failedBalanceMakerAddresses {
+		log.WithFields(map[string]interface{}{
+			"makerAddress": failedAddress,
+		}).Error("Could not get balance for maker address")
+		rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, zeroex.ROEthRPCRequestFailed, rejected, makerAddressToOrders[failedAddress])
 	}
+
+	if err := txn.Commit(); err != nil {
+		log.WithField("error", err).Error("Unexpected error while inserting new ETHBackings")
+		allRejected := []*zeroex.RejectedOrderInfo{}
+		appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, allRejected, orders)
+		return nil, allRejected
+	}
+
+	return valid, rejected
 }
 
 // validateETHBackingsWithHeap is the core algorithm for validating ETH
