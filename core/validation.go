@@ -249,8 +249,8 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	// makers in the set of incoming orders.
 	rejected := []*zeroex.RejectedOrderInfo{}
 	makerAddressesWithoutKnownBalance := []common.Address{}
-	for makerAddress, ethBacking := range makerInfos {
-		if ethBacking != nil {
+	for makerAddress, info := range makerInfos {
+		if info.ethBacking != nil {
 			continue
 		}
 		var ethBackingFromDB meshdb.ETHBacking
