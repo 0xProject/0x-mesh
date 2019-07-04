@@ -595,3 +595,94 @@ func (order *testOrder) toDBOrder(t *testing.T) *Order {
 		IsRemoved:                false,
 	}
 }
+
+func TestDeleteOrder(t *testing.T) {
+	meshDB, err := NewMeshDB("/tmp/meshdb_testing/"+uuid.New().String(), testingMaxOrders)
+	require.NoError(t, err)
+
+	// Set up the initial orders state.
+	initialOrders := []*testOrder{
+		newTestOrder().
+			withMakerAddress(constants.GanacheAccount0).
+			withSalt(big.NewInt(0)),
+		newTestOrder().
+			withMakerAddress(constants.GanacheAccount0).
+			withSalt(big.NewInt(1)),
+		newTestOrder().
+			withMakerAddress(constants.GanacheAccount1).
+			withSalt(big.NewInt(0)),
+		newTestOrder().
+			withMakerAddress(constants.GanacheAccount1).
+			withSalt(big.NewInt(1)),
+	}
+	ordersTxn := meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersTxn.Discard()
+	}()
+	for _, order := range initialOrders {
+		dbOrder := order.toDBOrder(t)
+		require.NoError(t, ordersTxn.Insert(dbOrder))
+	}
+	require.NoError(t, ordersTxn.Commit())
+
+	// Set up the initial ETH backings state.
+	initialETHBackings := []*ETHBacking{
+		{
+			MakerAddress: constants.GanacheAccount0,
+			OrderCount:   2,
+			AmountInWei:  100,
+		},
+		{
+			MakerAddress: constants.GanacheAccount1,
+			OrderCount:   2,
+			AmountInWei:  200,
+		},
+	}
+	backingsTxn := meshDB.ETHBackings.OpenTransaction()
+	defer func() {
+		_ = backingsTxn.Discard()
+	}()
+	for _, backing := range initialETHBackings {
+		require.NoError(t, backingsTxn.Insert(backing))
+	}
+	require.NoError(t, backingsTxn.Commit())
+
+	// Call the DeleteOrder method.
+	require.NoError(t, meshDB.DeleteOrder(initialOrders[3].toDBOrder(t)))
+
+	// Check that the new state of the databse is what we expect.
+
+	var actualOrders []*Order
+	require.NoError(t, meshDB.Orders.FindAll(&actualOrders))
+	sort.Sort(ordersByHash(actualOrders))
+	expectedOrders := initialOrders[0:3]
+	expectedDBOrders := make([]*Order, len(expectedOrders))
+	for i, order := range expectedOrders {
+		expectedDBOrders[i] = order.toDBOrder(t)
+	}
+	sort.Sort(ordersByHash(expectedDBOrders))
+	for _, foundOrder := range actualOrders {
+		// HACK(albrow): We need to call ComputeOrderHash in order to populate the
+		// unexported hash field.
+		_, _ = foundOrder.SignedOrder.ComputeOrderHash()
+	}
+	assert.Equal(t, expectedDBOrders, actualOrders)
+
+	var actualBackings []*ETHBacking
+	require.NoError(t, meshDB.ETHBackings.FindAll(&actualBackings))
+	expectedETHBackings := []*ETHBacking{
+		{
+			MakerAddress: constants.GanacheAccount0,
+			OrderCount:   2,
+			AmountInWei:  100,
+		},
+		{
+			MakerAddress: constants.GanacheAccount1,
+			OrderCount:   1,
+			AmountInWei:  200,
+		},
+	}
+	sort.Sort(ethBackingsByMakerAddress(actualBackings))
+	sort.Sort(ethBackingsByMakerAddress(expectedETHBackings))
+	assert.Equal(t, expectedETHBackings, actualBackings)
+}

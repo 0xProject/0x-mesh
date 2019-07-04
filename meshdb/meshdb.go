@@ -266,12 +266,15 @@ func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 }
 
 // InsertOrder atomically inserts the given order and updates any relevant ETH
-// backings. It also removes the order with the lowest ETH backing if needed in
-// order to make room. If order storage is full and the given order does not
-// have a high enough ETH backing, it will not be stored (this is not considered
-// an error). InsertOrder will return an error if any corresponding ETH backings
-// cannot be found.
-// TODO: return hash of order that was deleted.
+// backings.  It *must* be called instead of calling Orders.Insert directly. It
+// also removes the order with the lowest ETH backing if needed in order to make
+// room. If order storage is full and the given order does not have a high
+// enough ETH backing, it will not be stored (this is not considered an error).
+// InsertOrder will return an error if any corresponding ETH backings cannot be
+// found.
+// TODO(albrow): return hash of order that was deleted.
+// TODO(albrow): find some way to communicate cases where the order could not be
+//               stored due to not having sufficient ETH backing.
 func (m *MeshDB) InsertOrder(order *Order) error {
 	txn := m.Database.OpenGlobalTransaction()
 	defer func() {
@@ -343,6 +346,41 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 		return err
 	}
 	if err := txn.Update(m.ETHBackings.Collection, updatedETHBacking); err != nil {
+		return err
+	}
+
+	// Commit the transaction.
+	return txn.Commit()
+}
+
+// DeleteOrder atomically deletes the given order and updates any relevant ETH
+// backings. It *must* be called instead of calling Orders.Delete directly.
+func (m *MeshDB) DeleteOrder(order *Order) error {
+	txn := m.Database.OpenGlobalTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	// Look up the ETHBacking for this order.
+	var ethBackingForOrder ETHBacking
+	if err := m.ETHBackings.FindByID(order.SignedOrder.MakerAddress.Bytes(), &ethBackingForOrder); err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// This should never happen because the ETHBacking should have already
+			// been stored. We can't fix the problem here because meshdb doesn't know
+			// about ETHWatcher and can't send the call to get new balances (if it did
+			// it would violate separation of concerns).
+			return fmt.Errorf("invalid database state: could not find ETHBacking for maker address: %s", order.SignedOrder.MakerAddress.Hex())
+		} else {
+			return err
+		}
+	}
+
+	// Delete the order and update the ETH backing for the corresponding maker
+	if err := txn.Delete(m.Orders.Collection, order.ID()); err != nil {
+		return err
+	}
+	ethBackingForOrder.OrderCount -= 1
+	if err := txn.Update(m.ETHBackings.Collection, &ethBackingForOrder); err != nil {
 		return err
 	}
 
