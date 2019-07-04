@@ -70,7 +70,7 @@ type App struct {
 	networkID      int
 	blockWatcher   *blockwatch.Watcher
 	orderWatcher   *orderwatch.Watcher
-	ethWathcher    *ethereum.ETHWatcher
+	ethWatcher    *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
 }
 
@@ -144,7 +144,7 @@ func New(config Config) (*App, error) {
 		networkID:      config.EthereumNetworkID,
 		blockWatcher:   blockWatcher,
 		orderWatcher:   orderWatcher,
-		ethWathcher:    ethWatcher,
+		ethWatcher:    ethWatcher,
 		orderValidator: orderValidator,
 	}
 
@@ -204,7 +204,7 @@ func (app *App) Start() error {
 	log.Info("started order watcher")
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
-	if err := app.ethWathcher.Start(); err != nil {
+	if err := app.ethWatcher.Start(); err != nil {
 		return err
 	}
 	log.Info("started ETH balance watcher")
@@ -267,7 +267,7 @@ func (app *App) Close() {
 	if err := app.node.Close(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing node")
 	}
-	app.ethWathcher.Stop()
+	app.ethWatcher.Stop()
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
