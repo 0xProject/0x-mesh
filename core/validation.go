@@ -21,8 +21,8 @@ import (
 const maxOrderSizeInBytes = 8192
 
 // maxOrderExpirationDuration is the maximum duration between the current time and the expiration
-// set on an order that will be accepted by Mesh
-const maxOrderExpirationDuration = 30 * 24 * time.Hour
+// set on an order that will be accepted by Mesh.
+const maxOrderExpirationDuration = 9 * 30 * 24 * time.Hour // 9 months
 
 var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", maxOrderSizeInBytes)
 
