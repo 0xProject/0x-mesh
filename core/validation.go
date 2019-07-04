@@ -270,7 +270,7 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	// into the database even if there are ultimately no valid orders for this
 	// maker. (Doing so makes it faster to validate orders from this maker in the
 	// future.)
-	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWathcher.Add(makerAddressesWithoutKnownBalance)
+	makerAddressToBalance, failedBalanceMakerAddresses := app.ethWatcher.Add(makerAddressesWithoutKnownBalance)
 	for makerAddress, makerBalance := range makerAddressToBalance {
 		amountFloat, accuracy := new(big.Float).SetInt(makerBalance).Float64()
 		if accuracy != big.Exact {
