@@ -29,8 +29,8 @@ docker run \
 -e ETHEREUM_RPC_URL="https://mainnet.infura.io/v3/a9a23d2566e542629179d6372ace13c9" \
 -e VERBOSITY=5 \
 -e PRIVATE_KEY_PATH="" \
--e USE_BOOTSTRAP_LIST=false 
--e BLOCK_POLLING_INTERVAL="5s"
+-e USE_BOOTSTRAP_LIST=false \
+-e BLOCK_POLLING_INTERVAL="5s" \
 0xorg/mesh:latest
 ```
 
