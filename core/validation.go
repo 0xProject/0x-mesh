@@ -198,6 +198,7 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	if totalExistingOrders+len(orders) <= app.config.MaxOrdersInStorage {
 		// If we haven't yet reached our storage limit, all orders are considered
 		// valid in terms of their ETH backing.
+		app.safeInsertETHBackings(orders)
 		return orders, nil
 	}
 
@@ -298,6 +299,8 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 			}).Error("Unexpected error while inserting new ETHBacking in database")
 			rejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, rejected, makerInfos[makerAddress].orders)
 			delete(makerInfos, makerAddress)
+		} else {
+			log.WithField("makerAddress", ethBacking.MakerAddress).Info("Inserted ETHBacking for makerAddress")
 		}
 	}
 
@@ -340,6 +343,77 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 	valid, rejected := validateETHBackingsWithHeap(spareCapacity, remainingETHBackings, remainingOrders)
 
 	return valid, rejected
+}
+
+// safeInsertETHBackings *only* inserts an ETHBacking in the database for any
+// new makerAddresses among the given orders and does not do any further
+// validation. It assumes all the given orders are valid. It looks up the
+// current balance via app.ethWatcher as needed.
+func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) {
+	// Open a transaction for checking and inserting ETHBackings.
+	txn := app.db.ETHBackings.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	// TODO(albrow): de-dupe this code if possible.
+	makerAddressToOrders := map[common.Address][]*zeroex.SignedOrder{}
+	for _, order := range orders {
+		if _, found := makerAddressToOrders[order.MakerAddress]; found {
+			makerAddressToOrders[order.MakerAddress] = append(makerAddressToOrders[order.MakerAddress], order)
+		} else {
+			makerAddressToOrders[order.MakerAddress] = []*zeroex.SignedOrder{order}
+		}
+	}
+
+	makerAddressesWithUnkownBalance := []common.Address{}
+	for makerAddress, _ := range makerAddressToOrders {
+		var existingBacking meshdb.ETHBacking
+		if err := app.db.ETHBackings.FindByID(makerAddress.Bytes(), &existingBacking); err != nil {
+			if _, ok := err.(db.NotFoundError); ok {
+				makerAddressesWithUnkownBalance = append(makerAddressesWithUnkownBalance, makerAddress)
+				continue
+			}
+			// TODO(albrow): Handle error.
+			log.WithField("error", err).Panic("Unexpected error")
+		}
+	}
+
+	// TODO(albrow): Handle addresses which we failed to lookup.
+	makerAddressToBalance, _ := app.ethWatcher.Add(makerAddressesWithUnkownBalance)
+	for makerAddress, makerBalance := range makerAddressToBalance {
+		amountFloat, accuracy := new(big.Float).SetInt(makerBalance).Float64()
+		if accuracy != big.Exact {
+			// It should be fine if we can't represent balances with exact precision,
+			// as long as we are close enough. We still want to log a warning to
+			// understand how often this happens (if ever).
+			log.WithFields(map[string]interface{}{
+				"bigInt":  makerBalance,
+				"float64": amountFloat,
+			}).Warn("Could not accurately represent maker balance as a float64")
+		}
+		ethBacking := &meshdb.ETHBacking{
+			MakerAddress: makerAddress,
+			OrderCount:   0,
+			AmountInWei:  amountFloat,
+		}
+		if err := txn.Insert(ethBacking); err != nil {
+			// If we can't save the ETH backing for this maker, we have no choice but
+			// to consider all its orders invalid. We might get a chance to try again
+			// in the future. This shouldn't happen often.
+			log.WithFields(map[string]interface{}{
+				"error":        err,
+				"makerAddress": ethBacking.MakerAddress,
+			}).Panic("Unexpected error while inserting new ETHBacking in database")
+		} else {
+			log.WithField("makerAddress", ethBacking.MakerAddress.Hex()).Info("Inserted ETHBacking for makerAddress")
+		}
+	}
+
+	if err := txn.Commit(); err != nil {
+		// TODO(albrow): Handle error.
+		log.WithField("error", err).Panic("Unexpected error")
+	}
 }
 
 // validateETHBackingsWithHeap is the core algorithm for validating ETH
