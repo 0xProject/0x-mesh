@@ -154,6 +154,10 @@ func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	}
 	err := w.meshDB.InsertOrder(order)
 	if err != nil {
+		logger.WithFields(map[string]interface{}{
+			"error": err,
+			"order": order,
+		}).Error("OrderWatcher Could not insert order")
 		return err
 	}
 

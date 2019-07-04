@@ -192,6 +192,10 @@ type makerInfo struct {
 // number of new map allocations. After DB lookups and network requests,
 // memory/GC pressure is likely the bottleneck.
 func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
+	if len(orders) == 0 {
+		return ordersWithSufficientBacking, rejectedOrders
+	}
+
 	totalExistingOrders, err := app.db.Orders.Count()
 	if err != nil {
 		return nil, nil
@@ -204,6 +208,17 @@ func (app *App) validateETHBacking(orders []*zeroex.SignedOrder) (ordersWithSuff
 		// could not check the ETH balance or insert the corresponding ETH backing.
 		valid, rejected := app.safeInsertETHBackings(orders)
 		return valid, rejected
+	} else if totalExistingOrders > app.config.MaxOrdersInStorage {
+		// Can only ever happen if MaxOrdersInStorage is changed between runs.
+		// Should be rare. Easy workaround is to consider all incoming orders
+		// invalid.
+		log.WithFields(map[string]interface{}{
+			"totalExistingOrders": totalExistingOrders,
+			"maxOrdersInStorage":  app.config.MaxOrdersInStorage,
+		}).Error("total existing orders exceeds config.MaxOrdersInStorage")
+		allRejected := []*zeroex.RejectedOrderInfo{}
+		allRejected = appendRejectedOrderInfoForOrders(zeroex.MeshError, ROInternalError, allRejected, orders)
+		return nil, allRejected
 	}
 
 	// Set up a map of maker address to maker info.
@@ -451,7 +466,7 @@ func (app *App) safeInsertETHBackings(orders []*zeroex.SignedOrder) (valid []*ze
 // doesn't make any network requests or read from/write to the database.
 func validateETHBackingsWithHeap(spareCapacity int, ethBackings []*meshdb.ETHBacking, incomingOrders []*zeroex.SignedOrder) (ordersWithSufficientBacking []*zeroex.SignedOrder, rejectedOrders []*zeroex.RejectedOrderInfo) {
 	if len(incomingOrders) == 0 {
-		return nil, nil
+		return ordersWithSufficientBacking, rejectedOrders
 	}
 
 	// Initialize a heap which will keep track of the maker address with the
