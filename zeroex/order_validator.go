@@ -4,21 +4,30 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
+
+var getOrderRelevantStatesNumParams = 2
+
+var getOrderRelevantStatesMethodName = "getOrderRelevantStates"
 
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
 var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
@@ -26,8 +35,11 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
-// The most orders we can validate in a single eth_call without having the request timeout
-const chunkSize = 300
+// The Max request Content-length allowed by the backing Ethereum node. Defaults to Geth/Infura max.
+var maxRequestContentLength = int64(1024 * 512)
+
+// 1800 (data) - 8 (methodID) - ((64 (ABI head) + 64 (ABI array len val)) * getOrderRelevantStatesNumParams)
+var encodedNonMultiAssetOrderSizeBytes = int64(1536)
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
@@ -169,6 +181,7 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
+	orderValidationUtilsABI      abi.ABI
 	orderValidationUtils         *wrappers.OrderValidationUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
 	assetDataDecoder             *AssetDataDecoder
@@ -183,6 +196,10 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	if err != nil {
 		return nil, err
 	}
+	orderValidationUtilsABI, err := abi.JSON(strings.NewReader(wrappers.OrderValidationUtilsABI))
+	if err != nil {
+		return nil, err
+	}
 	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractAddresses.OrderValidationUtils, ethClient)
 	if err != nil {
 		return nil, err
@@ -194,6 +211,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
+		orderValidationUtilsABI:      orderValidationUtilsABI,
 		orderValidationUtils:         orderValidationUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
@@ -224,14 +242,27 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
 	}
 
-	// Chunk into groups of chunkSize signedOrders for each call to the smart contract
+	// Group into chunks of signedOrders for each call to the smart contract
+	numBasicOrdersEncodable := o.computeNumBasicOrdersEncodable()
 	signedOrderChunks := [][]*SignedOrder{}
-	for len(signedOrders) > chunkSize {
+	for len(signedOrders) > 0 {
+		tentativeAmount := numBasicOrdersEncodable
+		numOrders := int64(len(signedOrders))
+		if numOrders < numBasicOrdersEncodable {
+			tentativeAmount = numOrders
+		}
+		// If the tentativeAmount which is <= numBasicOrdersEncodable, is below the max content length,
+		// we simply create a chunk of that size.
+		if o.isBelowMaxContentLength(signedOrders[:tentativeAmount]) {
+			signedOrderChunks = append(signedOrderChunks, signedOrders[:tentativeAmount])
+			signedOrders = signedOrders[tentativeAmount:]
+			continue
+		}
+		// If it's above the max content length, we fall-back to a binary-search between 1-tentativeAmount
+		// to find a chunk size that is below the max content amount
+		chunkSize:= o.findChunkSize(signedOrders[:tentativeAmount])
 		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
 		signedOrders = signedOrders[chunkSize:]
-	}
-	if len(signedOrders) > 0 {
-		signedOrderChunks = append(signedOrderChunks, signedOrders)
 	}
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -273,6 +304,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					Pending: false,
 					Context: ctx,
 				}
+
 				results, err := o.orderValidationUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
@@ -652,6 +684,104 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		return false
 	}
 	return true
+}
+
+// findChunkSize uses binary-search to find a chunk size that is less then the max content length
+func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
+	if o.isBelowMaxContentLength(signedOrders) {
+		return int64(len(signedOrders))
+	}
+
+	// Determine the lowest and highest possible signedOrders limits to binary search in between
+	lo := int64(0)
+	hi := int64(len(signedOrders))
+	min := int64(1)
+
+	// Execute the binary search and hone in on an executable payload size of signedOrders
+	maxBinarySearchDepth := 7
+	depth := 0
+	for lo+1 < hi {
+		depth++
+		mid := (hi + lo) / 2
+		if o.isBelowMaxContentLength(signedOrders[:mid]) {
+			lo = mid
+		} else {
+			hi = mid
+		}
+		if depth == maxBinarySearchDepth {
+			break
+		}
+	}
+
+	if !o.isBelowMaxContentLength(signedOrders[:hi]) {
+		// Reject the signedOrders if it still fails at the lowest allowance
+		if hi == min {
+			// We don't ever expect this to happen since the maxOrderSizeInBytes is much smaller then the
+			// maxRequestContentLength. This error requires a single order to be larger then the 
+			// maxRequestContentLength, which would only happen if someone set the maxRequestContentLength
+			// to a tiny number.
+			err := errors.New("A single signedOrder was found that was larger then the maxRequestContentLength. Increase the maxRequestContentLength")
+			log.WithField("SignedOrder", signedOrders[0]).Panic(err)
+		}
+		hi = lo
+	}
+
+	return hi
+}
+
+// isBelowMaxContentLength checks if the signedOrders once encoded into a payload is
+// below the max content length.
+func (o *OrderValidator) isBelowMaxContentLength(signedOrders []*SignedOrder) bool {
+	orders := []wrappers.OrderWithoutExchangeAddress{}
+	for _, signedOrder := range signedOrders {
+		orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
+	}
+	signatures := [][]byte{}
+	for _, signedOrder := range signedOrders {
+		signatures = append(signatures, signedOrder.Signature)
+	}
+
+	payloadSize, err := o.computePayloadSize(getOrderRelevantStatesMethodName, orders, signatures)
+	if err != nil {
+		return false
+	}
+	return payloadSize < maxRequestContentLength
+}
+
+func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int64, error) {
+	data, err := o.orderValidationUtilsABI.Pack(method, params...)
+	if err != nil {
+		return int64(0), err
+	}
+	data = []byte{}
+	payload := map[string]interface{}{
+		"id":      2,
+		"jsonrpc": "2.0",
+		"method":  "eth_call",
+	}
+	payload["params"] = []interface{}{
+		map[string]interface{}{
+			"data": hexutil.Bytes(data),
+			"from": constants.NullAddress,
+			"to":   constants.NullAddress,
+		},
+		"latest",
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return int64(0), err
+	}
+	return int64(len(payloadBytes)), nil
+}
+
+// computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders 
+// that can be sent in a payload of max content size. Unlike "basic" orders, those involving the 
+// MultiAssetProxy can be of arbitrary size.
+func (o *OrderValidator) computeNumBasicOrdersEncodable() int64 {
+	// We can safely ignore the following error because we are passing in known empty arrays as params
+	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
+	numBasicOrders := (maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * 128) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
+	return numBasicOrders
 }
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
