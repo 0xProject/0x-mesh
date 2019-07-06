@@ -687,10 +687,6 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 
 // findChunkSize uses binary-search to find a chunk size that is less then the max content length
 func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
-	if o.isBelowMaxContentLength(signedOrders) {
-		return int64(len(signedOrders))
-	}
-
 	// Determine the lowest and highest possible signedOrders limits to binary search in between
 	lo := int64(0)
 	hi := int64(len(signedOrders))
