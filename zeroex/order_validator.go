@@ -35,9 +35,6 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
-// The Max request Content-length allowed by the backing Ethereum node. Defaults to Geth/Infura max.
-var maxRequestContentLength = int64(1024 * 512)
-
 // 1800 (data) - 8 (methodID) - ((64 (ABI head) + 64 (ABI array len val)) * getOrderRelevantStatesNumParams)
 var encodedNonMultiAssetOrderSizeBytes = int64(1536)
 
@@ -181,6 +178,7 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
+	maxRequestContentLength int64
 	orderValidationUtilsABI      abi.ABI
 	orderValidationUtils         *wrappers.OrderValidationUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
@@ -191,7 +189,7 @@ type OrderValidator struct {
 }
 
 // NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
+func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int64) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
@@ -211,6 +209,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
+		maxRequestContentLength: maxRequestContentLength,
 		orderValidationUtilsABI:      orderValidationUtilsABI,
 		orderValidationUtils:         orderValidationUtils,
 		coordinatorRegistry:          coordinatorRegistry,
@@ -745,7 +744,7 @@ func (o *OrderValidator) isBelowMaxContentLength(signedOrders []*SignedOrder) bo
 	if err != nil {
 		return false
 	}
-	return payloadSize < maxRequestContentLength
+	return payloadSize < o.maxRequestContentLength
 }
 
 func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int64, error) {
@@ -780,7 +779,7 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 func (o *OrderValidator) computeNumBasicOrdersEncodable() int64 {
 	// We can safely ignore the following error because we are passing in known empty arrays as params
 	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
-	numBasicOrders := (maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * 128) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
+	numBasicOrders := (o.maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * 128) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
 	return numBasicOrders
 }
 

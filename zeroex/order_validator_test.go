@@ -131,7 +131,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 		require.NoError(t, err)
 
 		validationResults := orderValidator.BatchValidate(signedOrders)
@@ -163,7 +163,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
@@ -192,7 +192,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
@@ -216,7 +216,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request

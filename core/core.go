@@ -64,6 +64,13 @@ type Config struct {
 	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
 	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
+	// EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
+	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
+	// and Alchemy have much higher limits. When batch validating 0x orders, we will fit as many orders into a
+	// request without crossing the max content length. The default value is appropriate for operators using Geth
+	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
+	// number of RPC calls made by Mesh.
+	EthereumRPCMaxContentLength int64 `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 }
 
 type App struct {
@@ -97,6 +104,12 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize the order validator
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
+	if err != nil {
+		return nil, err
+	}	
+
 	// Initialize block watcher (but don't start it yet).
 	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout)
 	if err != nil {
@@ -125,7 +138,7 @@ func New(config Config) (*App, error) {
 	}()
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(db, blockWatcher, ethClient, config.EthereumNetworkID, config.OrderExpirationBuffer)
+	orderWatcher, err := orderwatch.New(db, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +149,6 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	// TODO(albrow): Call Add for all existing makers/signers in the database.
-
-	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID)
-	if err != nil {
-		return nil, err
-	}
 
 	orderJSONSchema, err := setupOrderSchemaValidator()
 	if err != nil {
