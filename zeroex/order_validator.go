@@ -178,7 +178,7 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
-	maxRequestContentLength int64
+	maxRequestContentLength      int64
 	orderValidationUtilsABI      abi.ABI
 	orderValidationUtils         *wrappers.OrderValidationUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
@@ -209,7 +209,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
-		maxRequestContentLength: maxRequestContentLength,
+		maxRequestContentLength:      maxRequestContentLength,
 		orderValidationUtilsABI:      orderValidationUtilsABI,
 		orderValidationUtils:         orderValidationUtils,
 		coordinatorRegistry:          coordinatorRegistry,
@@ -259,7 +259,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		}
 		// If it's above the max content length, we fall-back to a binary-search between 1-tentativeAmount
 		// to find a chunk size that is below the max content amount
-		chunkSize:= o.findChunkSize(signedOrders[:tentativeAmount])
+		chunkSize := o.findChunkSize(signedOrders[:tentativeAmount])
 		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
 		signedOrders = signedOrders[chunkSize:]
 	}
@@ -712,7 +712,7 @@ func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
 		// Reject the signedOrders if it still fails at the lowest allowance
 		if hi == min {
 			// We don't ever expect this to happen since the maxOrderSizeInBytes is much smaller then the
-			// maxRequestContentLength. This error requires a single order to be larger then the 
+			// maxRequestContentLength. This error requires a single order to be larger then the
 			// maxRequestContentLength, which would only happen if someone set the maxRequestContentLength
 			// to a tiny number.
 			err := errors.New("A single signedOrder was found that was larger then the maxRequestContentLength. Increase the maxRequestContentLength")
@@ -748,7 +748,6 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 	if err != nil {
 		return int64(0), err
 	}
-	data = []byte{}
 	payload := map[string]interface{}{
 		"id":      2,
 		"jsonrpc": "2.0",
@@ -769,8 +768,8 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 	return int64(len(payloadBytes)), nil
 }
 
-// computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders 
-// that can be sent in a payload of max content size. Unlike "basic" orders, those involving the 
+// computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders
+// that can be sent in a payload of max content size. Unlike "basic" orders, those involving the
 // MultiAssetProxy can be of arbitrary size.
 func (o *OrderValidator) computeNumBasicOrdersEncodable() int64 {
 	// We can safely ignore the following error because we are passing in known empty arrays as params
