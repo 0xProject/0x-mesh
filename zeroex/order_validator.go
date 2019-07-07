@@ -716,7 +716,7 @@ func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
 			// maxRequestContentLength, which would only happen if someone set the maxRequestContentLength
 			// to a tiny number.
 			err := errors.New("A single signedOrder was found that was larger then the maxRequestContentLength. Increase the maxRequestContentLength")
-			log.WithField("SignedOrder", signedOrders[0]).Panic(err)
+			log.Panic(err)
 		}
 		hi = lo
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -249,6 +250,154 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
+
+const singleOrderPayloadSize = int64(1980)
+
+func TestComputePayloadSize(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+	require.NoError(t, err)
+
+	orders := []wrappers.OrderWithoutExchangeAddress{signedOrder.ConvertToOrderWithoutExchangeAddress()}
+	signatures := [][]byte{signedOrder.Signature}
+
+	expectedPayloadSize := singleOrderPayloadSize
+
+	payloadSize, err := orderValidator.computePayloadSize(getOrderRelevantStatesMethodName, orders, signatures)
+	require.NoError(t, err)
+	assert.Equal(t, expectedPayloadSize, payloadSize)
+}
+
+func TestIsBelowMaxContentLengthFailure(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLengthBelowSingleOrder := int64(1500)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthBelowSingleOrder)
+	require.NoError(t, err)
+
+	expectedIsBelow := false
+	isBelow := orderValidator.isBelowMaxContentLength([]*SignedOrder{signedOrder})
+	require.NoError(t, err)
+	assert.Equal(t, expectedIsBelow, isBelow)
+}
+
+func TestIsBelowMaxContentLengthSuccess(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLengthAboveSingleOrder := singleOrderPayloadSize + 1
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthAboveSingleOrder)
+	require.NoError(t, err)
+
+	expectedIsBelow := true
+	isBelow := orderValidator.isBelowMaxContentLength([]*SignedOrder{signedOrder})
+	require.NoError(t, err)
+	assert.Equal(t, expectedIsBelow, isBelow)
+}
+
+func TestFindChunkSizeReturnLow(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLengthFitsThreeOrders := singleOrderPayloadSize * 3
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthFitsThreeOrders)
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{}
+	for i := 0; i < 5; i++ {
+		signedOrders = append(signedOrders, signedOrder)
+	}
+
+	expectedChunkSize := int64(3)
+	chunkSize := orderValidator.findChunkSize(signedOrders)
+	require.NoError(t, err)
+	assert.Equal(t, expectedChunkSize, chunkSize)
+}
+
+func TestFindChunkSizeReturnHigh(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLengthFitsFourOrders := singleOrderPayloadSize * 4
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthFitsFourOrders)
+	require.NoError(t, err)
+
+	// When number of orders in below maxContentLength, the binary-search always sets hi to mid. Hi then
+	// contains the final result.
+	signedOrders := []*SignedOrder{}
+	for i := 0; i < 2; i++ {
+		signedOrders = append(signedOrders, signedOrder)
+	}
+
+	expectedChunkSize := int64(2)
+	chunkSize := orderValidator.findChunkSize(signedOrders)
+	require.NoError(t, err)
+	assert.Equal(t, expectedChunkSize, chunkSize)
+}
+
+// TODO: Catch throw?
+func TestFindChunkSizeFails(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected findChunkSize() to panic if maxContentLength doesn't fit even a single order")
+		}
+	}()
+
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLengthFitsZeroOrders := singleOrderPayloadSize - 100
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthFitsZeroOrders)
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{}
+	for i := 0; i < 5; i++ {
+		signedOrders = append(signedOrders, signedOrder)
+	}
+
+	expectedChunkSize := int64(0)
+	chunkSize := orderValidator.findChunkSize(signedOrders)
+	assert.Equal(t, expectedChunkSize, chunkSize)
+}
+
+func TestComputeNumBasicOrdersEncodable(t *testing.T) {
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+	require.NoError(t, err)
+
+	expectedNumBasicOrders := int64(340)
+
+	numBasicOrders := orderValidator.computeNumBasicOrdersEncodable()
+	assert.Equal(t, expectedNumBasicOrders, numBasicOrders)
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
