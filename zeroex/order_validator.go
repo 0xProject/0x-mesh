@@ -685,7 +685,8 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 	return true
 }
 
-// findChunkSize uses binary-search to find a chunk size that is less then the max content length
+// findChunkSize uses a limited-depth binary-search to find a chunk size that is less then the
+// max content length
 func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
 	// Determine the lowest and highest possible signedOrders limits to binary search in between
 	lo := int64(0)
@@ -768,13 +769,21 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 	return int64(len(payloadBytes)), nil
 }
 
+// abiHeadByteLen is the number of bytes taken up by the ABI encoded "head"
+// Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
+const abiHeadByteLen = int64(64)
+
+// abiArrayLenByteLen is the number of bytes taken up to describe the length of an encoded array
+// Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
+const abiArrayLenByteLen = int64(64)
+
 // computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders
 // that can be sent in a payload of max content size. Unlike "basic" orders, those involving the
 // MultiAssetProxy can be of arbitrary size.
 func (o *OrderValidator) computeNumBasicOrdersEncodable() int64 {
 	// We can safely ignore the following error because we are passing in known empty arrays as params
 	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
-	numBasicOrders := (o.maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * 128) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
+	numBasicOrders := (o.maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * (abiHeadByteLen + abiArrayLenByteLen)) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
 	return numBasicOrders
 }
 
