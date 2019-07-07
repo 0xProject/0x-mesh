@@ -15,7 +15,6 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
