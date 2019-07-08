@@ -91,7 +91,7 @@ func setupSchemaValidator() (*gojsonschema.Schema, error) {
 }
 
 func (app *App) schemaValidateOrder(o []byte) (*gojsonschema.Result, error) {
-	orderLoader := gojsonschema.NewStringLoader(string(o))
+	orderLoader := gojsonschema.NewBytesLoader(o)
 
 	result, err := app.jsonSchema.Validate(orderLoader)
 	if err != nil {
