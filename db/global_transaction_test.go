@@ -329,7 +329,7 @@ func TestGlobalTransactionExclusion(t *testing.T) {
 		}()
 	}()
 
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	discardSignal <- struct{}{}
 	require.NoError(t, txn.Discard())
 
