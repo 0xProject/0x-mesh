@@ -11,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,7 +46,7 @@ type Watcher struct {
 	assetDataDecoder           *zeroex.AssetDataDecoder
 	blockSubscription          event.Subscription
 	contractAddresses          ethereum.ContractAddresses
-	expirationWatcher          *ExpirationWatcher
+	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	cleanupCtx                 context.Context
@@ -76,7 +77,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *eth
 	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
-		expirationWatcher:          NewExpirationWatcher(expirationBuffer),
+		expirationWatcher:          expirationwatch.New(expirationBuffer),
 		cleanupCtx:                 cleanupCtx,
 		cleanupCancelFunc:          cleanupCancelFunc,
 		contractAddressToSeenCount: map[common.Address]uint{},
@@ -186,7 +187,8 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error
 		return err
 	}
 
-	w.expirationWatcher.Add(signedOrder.ExpirationTimeSeconds.Int64(), orderHash)
+	expirationTimestamp := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
+	w.expirationWatcher.Add(expirationTimestamp, orderHash.Hex())
 
 	return nil
 }
@@ -240,16 +242,16 @@ func (w *Watcher) setupExpirationWatcher() error {
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
 				order := &meshdb.Order{}
-				err := w.meshDB.Orders.FindByID(expiredOrder.OrderHash.Bytes(), order)
+				err := w.meshDB.Orders.FindByID(common.HexToHash(expiredOrder.ID).Bytes(), order)
 				if err != nil {
 					logger.WithFields(logger.Fields{
 						"error":     err.Error(),
-						"orderHash": expiredOrder.OrderHash,
+						"orderHash": expiredOrder.ID,
 					}).Warning("Order expired that was no longer in DB")
 					continue
 				}
 				orderInfo := &zeroex.OrderInfo{
-					OrderHash:                expiredOrder.OrderHash,
+					OrderHash:                common.HexToHash(expiredOrder.ID),
 					SignedOrder:              order.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
 					OrderStatus:              zeroex.OSExpired,
@@ -564,7 +566,8 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOr
 	}
 
 	// Re-add order to expiration watcher
-	w.expirationWatcher.Add(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+	expirationTimestamp := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
 func (w *Watcher) unwatchOrder(order *meshdb.Order) {
@@ -579,7 +582,8 @@ func (w *Watcher) unwatchOrder(order *meshdb.Order) {
 		}).Error("Failed to update order")
 	}
 
-	w.expirationWatcher.Remove(order.SignedOrder.ExpirationTimeSeconds.Int64(), order.Hash)
+	expirationTimestamp := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
 func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) {
