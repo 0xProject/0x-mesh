@@ -29,6 +29,8 @@ type rpcService struct {
 type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
 	AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
+	// GetOrders is called when the clients sends a GetOrders request
+	GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
 	// SubscribeToOrders is called when a client sends a Subscribe to `orders` request
@@ -116,6 +118,11 @@ func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
 func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
 	return s.rpcHandler.AddOrders(signedOrdersRaw)
+}
+
+// GetOrders calls rpcHandler.GetOrders and returns the validation results.
+func (s *rpcService) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+	return s.rpcHandler.GetOrders(page, perPage, snapshotID)
 }
 
 // AddPeer builds PeerInfo out of the given peer ID and multiaddresses and

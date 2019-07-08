@@ -9,19 +9,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
+	dbPkg "github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -35,6 +40,7 @@ const (
 	ethWatcherPollingInterval  = 1 * time.Minute
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
+	expirationPollingInterval  = 50 * time.Millisecond
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -73,16 +79,24 @@ type Config struct {
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 }
 
+type snapshotInfo struct {
+	Snapshot            *dbPkg.Snapshot
+	ExpirationTimestamp time.Time
+}
+
 type App struct {
-	config          Config
-	db              *meshdb.MeshDB
-	node            *p2p.Node
-	networkID       int
-	blockWatcher    *blockwatch.Watcher
-	orderWatcher    *orderwatch.Watcher
-	ethWatcher      *ethereum.ETHWatcher
-	orderValidator  *zeroex.OrderValidator
-	orderJSONSchema *gojsonschema.Schema
+	config                    Config
+	db                        *meshdb.MeshDB
+	node                      *p2p.Node
+	networkID                 int
+	blockWatcher              *blockwatch.Watcher
+	orderWatcher              *orderwatch.Watcher
+	ethWatcher                *ethereum.ETHWatcher
+	orderValidator            *zeroex.OrderValidator
+	orderJSONSchema           *gojsonschema.Schema
+	snapshotExpirationWatcher *expirationwatch.Watcher
+	muIdToSnapshotInfo        sync.Mutex
+	idToSnapshotInfo          map[string]snapshotInfo
 }
 
 func New(config Config) (*App, error) {
@@ -154,20 +168,24 @@ func New(config Config) (*App, error) {
 	}
 	// TODO(albrow): Call Add for all existing makers/signers in the database.
 
+	snapshotExpirationWatcher := expirationwatch.New(0 * time.Second)
+
 	orderJSONSchema, err := setupOrderSchemaValidator()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	app := &App{
-		config:          config,
-		db:              db,
-		networkID:       config.EthereumNetworkID,
-		blockWatcher:    blockWatcher,
-		orderWatcher:    orderWatcher,
-		ethWatcher:      ethWatcher,
-		orderValidator:  orderValidator,
-		orderJSONSchema: orderJSONSchema,
+		config:                    config,
+		db:                        db,
+		networkID:                 config.EthereumNetworkID,
+		blockWatcher:              blockWatcher,
+		orderWatcher:              orderWatcher,
+		ethWatcher:                ethWatcher,
+		orderValidator:            orderValidator,
+		orderJSONSchema:           orderJSONSchema,
+		snapshotExpirationWatcher: snapshotExpirationWatcher,
+		idToSnapshotInfo:          map[string]snapshotInfo{},
 	}
 
 	// Initialize the p2p node.
@@ -249,6 +267,20 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started ETH balance watcher")
+	go func() {
+		expiredSnapshotsChan := app.snapshotExpirationWatcher.Receive()
+		for expiredSnapshots := range expiredSnapshotsChan {
+			for _, expiredSnapshot := range expiredSnapshots {
+				app.muIdToSnapshotInfo.Lock()
+				delete(app.idToSnapshotInfo, expiredSnapshot.ID)
+				app.muIdToSnapshotInfo.Unlock()
+			}
+		}
+	}()
+	if err := app.snapshotExpirationWatcher.Start(expirationPollingInterval); err != nil {
+		return err
+	}
+	log.Info("started snapshot expiration watcher")
 
 	return nil
 }
@@ -272,6 +304,86 @@ func (app *App) periodicallyCheckForNewAddrs(startingAddrs []ma.Multiaddr) {
 			}
 		}
 	}
+}
+
+// ErrSnapshotNotFound is the error returned when a snapshot not found with a particular id
+type ErrSnapshotNotFound struct {
+	id string
+}
+
+func (e ErrSnapshotNotFound) Error() string {
+	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
+}
+
+// GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
+// string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
+// continue to make requests supplying the `snapshotID` returned from the first request.
+func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
+	ordersInfos := []*zeroex.AcceptedOrderInfo{}
+	if perPage <= 0 {
+		return &rpc.GetOrdersResponse{
+			OrdersInfos: ordersInfos,
+			SnapshotID:  snapshotID,
+		}, nil
+	}
+
+	var snapshot *dbPkg.Snapshot
+	if snapshotID == "" {
+		// Create a new snapshot
+		snapshotID = uuid.New().String()
+		var err error
+		snapshot, err = app.db.Orders.GetSnapshot()
+		if err != nil {
+			return nil, err
+		}
+		expirationTimestamp := time.Now().Add(1 * time.Minute)
+		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
+		app.muIdToSnapshotInfo.Lock()
+		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
+			Snapshot:            snapshot,
+			ExpirationTimestamp: expirationTimestamp,
+		}
+		app.muIdToSnapshotInfo.Unlock()
+	} else {
+		// Try and find an existing snapshot
+		app.muIdToSnapshotInfo.Lock()
+		info, ok := app.idToSnapshotInfo[snapshotID]
+		if !ok {
+			app.muIdToSnapshotInfo.Unlock()
+			return nil, ErrSnapshotNotFound{id: snapshotID}
+		}
+		snapshot = info.Snapshot
+		// Reset the snapshot's expiry
+		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
+		expirationTimestamp := time.Now().Add(1 * time.Minute)
+		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
+		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
+			Snapshot:            snapshot,
+			ExpirationTimestamp: expirationTimestamp,
+		}
+		app.muIdToSnapshotInfo.Unlock()
+	}
+
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	var selectedOrders []*meshdb.Order
+	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
+	if err != nil {
+		return nil, err
+	}
+	for _, order := range selectedOrders {
+		ordersInfos = append(ordersInfos, &zeroex.AcceptedOrderInfo{
+			OrderHash:                order.Hash,
+			SignedOrder:              order.SignedOrder,
+			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+		})
+	}
+
+	getOrdersResponse := &rpc.GetOrdersResponse{
+		SnapshotID:  snapshotID,
+		OrdersInfos: ordersInfos,
+	}
+
+	return getOrdersResponse, nil
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
