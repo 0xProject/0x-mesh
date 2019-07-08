@@ -16,7 +16,7 @@ import (
 
 type envVars struct {
 	// PrivateKeyPath is the path where the private key will be written.
-	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"./0x_mesh/key/privkey"`
+	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
 }
 
 func main() {

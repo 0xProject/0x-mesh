@@ -6,6 +6,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -35,8 +36,9 @@ const (
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"2"`
-	// DatabaseDir is the directory to use for persisting the database.
-	DatabaseDir string `envvar:"DATABASE_DIR" default:"./0x_mesh/db"`
+	// DataDir is the directory to use for persisting all data, including the
+	// database and private key files.
+	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
 	// P2PListenPort is the port on which to listen for new peer connections. By
 	// default, 0x Mesh will let the OS select a randomly available port.
 	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
@@ -49,10 +51,6 @@ type Config struct {
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
-	// PrivateKeyPath is the path to a Secp256k1 private key which will be
-	// used for signing messages and generating a peer ID. If empty, a randomly
-	// generated key will be used.
-	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"./0x_mesh/key/privkey"`
 	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
@@ -70,7 +68,7 @@ type App struct {
 	networkID      int
 	blockWatcher   *blockwatch.Watcher
 	orderWatcher   *orderwatch.Watcher
-	ethWatcher    *ethereum.ETHWatcher
+	ethWatcher     *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
 }
 
@@ -81,7 +79,8 @@ func New(config Config) (*App, error) {
 	log.WithField("config", config).Info("creating new App with config")
 
 	// Initialize db
-	db, err := meshdb.NewMeshDB(config.DatabaseDir)
+	databasePath := filepath.Join(config.DataDir, "db")
+	db, err := meshdb.NewMeshDB(databasePath)
 	if err != nil {
 		return nil, err
 	}
@@ -144,16 +143,17 @@ func New(config Config) (*App, error) {
 		networkID:      config.EthereumNetworkID,
 		blockWatcher:   blockWatcher,
 		orderWatcher:   orderWatcher,
-		ethWatcher:    ethWatcher,
+		ethWatcher:     ethWatcher,
 		orderValidator: orderValidator,
 	}
 
 	// Initialize the p2p node.
+	privateKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
 	nodeConfig := p2p.Config{
 		Topic:            getPubSubTopic(config.EthereumNetworkID),
 		ListenPort:       config.P2PListenPort,
 		Insecure:         false,
-		PrivateKeyPath:   config.PrivateKeyPath,
+		PrivateKeyPath:   privateKeyPath,
 		MessageHandler:   app,
 		RendezvousString: getRendezvous(config.EthereumNetworkID),
 		UseBootstrapList: config.UseBootstrapList,
