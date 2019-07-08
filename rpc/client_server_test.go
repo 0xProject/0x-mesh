@@ -26,6 +26,7 @@ import (
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
 	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
+	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
@@ -35,6 +36,13 @@ func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.Valid
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
 	return d.addOrdersHandler(orders)
+}
+
+func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+	if d.getOrdersHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for GetOrders")
+	}
+	return d.getOrdersHandler(page, perPage, snapshotID)
 }
 
 func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
@@ -135,6 +143,62 @@ func TestAddOrdersSuccess(t *testing.T) {
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
 	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+
+	// The WaitGroup signals that AddOrders was called on the server-side.
+	wg.Wait()
+}
+
+func TestGetOrdersSuccess(t *testing.T) {
+	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
+	require.NoError(t, err)
+
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
+
+	expectedPage := 0
+	expectedPerPage := 5
+	expectedSnapshotID := ""
+	returnedSnapshotID := "0x123"
+
+	// Set up the dummy handler with an addOrdersHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		getOrdersHandler: func(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+			assert.Equal(t, expectedPage, page)
+			assert.Equal(t, expectedPerPage, perPage)
+			assert.Equal(t, expectedSnapshotID, snapshotID)
+			orderHash, err := signedTestOrder.ComputeOrderHash()
+			require.NoError(t, err)
+			ordersInfos := []*zeroex.AcceptedOrderInfo{
+				&zeroex.AcceptedOrderInfo{
+					OrderHash:                orderHash,
+					SignedOrder:              signedTestOrder,
+					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
+				},
+			}
+			wg.Done()
+			return &GetOrdersResponse{
+				SnapshotID:  returnedSnapshotID,
+				OrdersInfos: ordersInfos,
+			}, nil
+		},
+	}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
+	require.NoError(t, err)
+	expectedOrderHash, err := testOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
+
+	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
+
+	orderInfo := getOrdersResponse.OrdersInfos[0]
+	assert.Equal(t, expectedOrderHash, orderInfo.OrderHash, "orderHashes did not match")
+	assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
+	assert.Equal(t, expectedFillableTakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
 	// The WaitGroup signals that AddOrders was called on the server-side.
 	wg.Wait()

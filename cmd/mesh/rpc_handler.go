@@ -18,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-
 type rpcHandler struct {
 	app *core.App
 }
@@ -45,9 +44,28 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 	return rpcServer.Listen()
 }
 
+// GetOrders is called when an RPC client calls GetOrders.
+func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
+	log.WithFields(map[string]interface{}{
+		"page":       page,
+		"perPage":    perPage,
+		"snapshotID": snapshotID,
+	}).Debug("received GetOrders request via RPC")
+	getOrdersResponse, err := handler.app.GetOrders(page, perPage, snapshotID)
+	if err != nil {
+		if _, ok := err.(core.ErrSnapshotNotFound); ok {
+			return nil, err
+		}
+		// We don't want to leak internal error details to the RPC client.
+		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
+		return nil, constants.ErrInternal
+	}
+	return getOrdersResponse, nil
+}
+
 // AddOrders is called when an RPC client calls AddOrders.
 func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	log.Debug("received AddOrders request via RPC")
+	log.WithField("count", len(orders)).Debug("received AddOrders request via RPC")
 	validationResults, err := handler.app.AddOrders(orders)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
