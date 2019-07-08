@@ -278,7 +278,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			if err != nil {
 				signedOrder = nil
 			}
-			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempted to validate signedOrderJSON against schema")
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
 				SignedOrder: signedOrder,
 				Kind:        MeshValidation,
