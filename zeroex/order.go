@@ -287,16 +287,6 @@ func SignTestOrder(order *Order) (*SignedOrder, error) {
 	return signedOrder, nil
 }
 
-// NewSignedOrder creates a new SignedOrder struct from the signedOrderBytes
-func NewSignedOrder(signedOrderBytes []byte) (*SignedOrder, error) {
-	signedOrder := &SignedOrder{}
-	err := signedOrder.UnmarshalJSON(signedOrderBytes)
-	if err != nil {
-		return nil, err
-	}
-	return signedOrder, nil
-}
-
 // ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
 // smart contracts.
 func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {

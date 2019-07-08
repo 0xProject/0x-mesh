@@ -108,7 +108,8 @@ func TestAddOrdersSuccess(t *testing.T) {
 			require.Len(t, signedOrdersRaw, 1)
 			validationResponse := &zeroex.ValidationResults{}
 			for _, signedOrderRaw := range signedOrdersRaw {
-				signedOrder, err := zeroex.NewSignedOrder([]byte(*signedOrderRaw))
+				signedOrder := &zeroex.SignedOrder{}
+				err := signedOrder.UnmarshalJSON([]byte(*signedOrderRaw))
 				require.NoError(t, err)
 				orderHash, err := signedOrder.ComputeOrderHash()
 				require.NoError(t, err)

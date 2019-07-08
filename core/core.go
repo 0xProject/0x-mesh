@@ -274,8 +274,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		signedOrderBytes := []byte(*signedOrderRaw)
 		result, err := app.schemaValidateOrder(signedOrderBytes)
 		if err != nil {
-			signedOrder, err := zeroex.NewSignedOrder(signedOrderBytes)
-			if err != nil {
+			signedOrder := &zeroex.SignedOrder{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
@@ -290,8 +290,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
 			status := ROInvalidSchema
 			status.Message = fmt.Sprintf("%s: %s", status.Message, result.Errors())
-			signedOrder, err := zeroex.NewSignedOrder(signedOrderBytes)
-			if err != nil {
+			signedOrder := &zeroex.SignedOrder{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
@@ -302,8 +302,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			continue
 		}
 
-		signedOrder, err := zeroex.NewSignedOrder(signedOrderBytes)
-		if err != nil {
+		signedOrder := &zeroex.SignedOrder{}
+		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 			log.WithField("signedOrderRaw", string(*signedOrderRaw)).Info("Failed to unmarshal SignedOrderRaw into SignedOrder struct")
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
 				Kind:   MeshValidation,
