@@ -62,9 +62,9 @@ All possible env vars are detailed in the [Config](https://godoc.org/github.com/
 type Config struct {
     // Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
     Verbosity int `envvar:"VERBOSITY" default:"2"`
-	// DataDir is the directory to use for persisting all data, including the
-	// database and private key files.
-	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
+    // DataDir is the directory to use for persisting all data, including the
+    // database and private key files.
+    DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
     // P2PListenPort is the port on which to listen for new peer connections. By
     // default, 0x Mesh will let the OS select a randomly available port.
     P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
