@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/0xProject/0x-mesh/keys"
-
 	"github.com/plaid/go-envvar/envvar"
 )
 
