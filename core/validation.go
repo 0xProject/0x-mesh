@@ -49,11 +49,9 @@ var (
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
 	}
-	ROInvalidSchema = zeroex.RejectedOrderStatus{
-		Code:    "OrderFailedSchemaValidation",
-		Message: "order did not pass JSON-schema validation",
-	}
 )
+
+const ROInvalidSchemaCode = "InvalidSchema"
 
 // JSON-schema schemas
 var (

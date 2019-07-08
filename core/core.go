@@ -282,14 +282,19 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
 				SignedOrder: signedOrder,
 				Kind:        MeshValidation,
-				Status:      ROInvalidSchema,
+				Status: zeroex.RejectedOrderStatus{
+					Code:    ROInvalidSchemaCode,
+					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
+				},
 			})
 			continue
 		}
 		if !result.Valid() {
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
-			status := ROInvalidSchema
-			status.Message = fmt.Sprintf("%s: %s", status.Message, result.Errors())
+			status := zeroex.RejectedOrderStatus{
+				Code:    ROInvalidSchemaCode,
+				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
+			}
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
@@ -304,12 +309,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 
 		signedOrder := &zeroex.SignedOrder{}
 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
-			log.WithField("signedOrderRaw", string(*signedOrderRaw)).Info("Failed to unmarshal SignedOrderRaw into SignedOrder struct")
-			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
-				Kind:   MeshValidation,
-				Status: ROInvalidSchema,
-			})
-			continue
+			// This error should never happen since the signedOrder already passed the JSON schema validation above
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Panic("Failed to unmarshal SignedOrder")
 		}
 		schemaValidOrders = append(schemaValidOrders, signedOrder)
 	}
