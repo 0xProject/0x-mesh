@@ -109,10 +109,9 @@ type Config struct {
 	// Insecure controls whether or not messages should be encrypted. It should
 	// always be set to false in production.
 	Insecure bool
-	// PrivateKeyPath is the path to a private key which will be used for signing
-	// messages and generating a peer ID. If empty, a randomly generated key will
-	// be used.
-	PrivateKeyPath string
+	// PrivateKey is the private key which will be used for signing messages and
+	// generating a peer ID.
+	PrivateKey p2pcrypto.PrivKey
 	// MessageHandler is an interface responsible for validating, storing, and
 	// finding new messages to share.
 	MessageHandler MessageHandler
@@ -136,13 +135,6 @@ func New(config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
-	// Parse or generate a private key.
-	privKey, err := getPrivateKey(config.PrivateKeyPath)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
 	// Set up the transport and the host.
 	// Note: 0.0.0.0 will use all available addresses.
 	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
@@ -153,7 +145,7 @@ func New(config Config) (*Node, error) {
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(hostAddr),
-		libp2p.Identity(privKey),
+		libp2p.Identity(config.PrivateKey),
 		libp2p.ConnectionManager(connManager),
 	}
 	if config.Insecure {
