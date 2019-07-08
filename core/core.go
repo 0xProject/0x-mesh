@@ -75,7 +75,7 @@ type App struct {
 	orderWatcher   *orderwatch.Watcher
 	ethWatcher     *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
-	jsonSchema     *gojsonschema.Schema
+	orderJSONSchema     *gojsonschema.Schema
 }
 
 func New(config Config) (*App, error) {
@@ -143,7 +143,7 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	jsonSchema, err := setupSchemaValidator()
+	orderJSONSchema, err := setupOrderSchemaValidator()
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func New(config Config) (*App, error) {
 		orderWatcher:   orderWatcher,
 		ethWatcher:     ethWatcher,
 		orderValidator: orderValidator,
-		jsonSchema:     jsonSchema,
+		orderJSONSchema:     orderJSONSchema,
 	}
 
 	// Initialize the p2p node.

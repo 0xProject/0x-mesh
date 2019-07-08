@@ -67,7 +67,7 @@ const (
 	MeshValidation = zeroex.RejectedOrderKind("MESH_VALIDATION")
 )
 
-func setupSchemaValidator() (*gojsonschema.Schema, error) {
+func setupOrderSchemaValidator() (*gojsonschema.Schema, error) {
 	sl := gojsonschema.NewSchemaLoader()
 	if err := sl.AddSchemas(addressSchemaLoader); err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func setupSchemaValidator() (*gojsonschema.Schema, error) {
 func (app *App) schemaValidateOrder(o []byte) (*gojsonschema.Result, error) {
 	orderLoader := gojsonschema.NewBytesLoader(o)
 
-	result, err := app.jsonSchema.Validate(orderLoader)
+	result, err := app.orderJSONSchema.Validate(orderLoader)
 	if err != nil {
 		return nil, err
 	}
