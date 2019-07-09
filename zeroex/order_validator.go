@@ -709,7 +709,7 @@ func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *Sig
 }
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
-// is before the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
+// is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
 // encodes signedOrders one at a time until the computed payload size is as close to the
 // maxRequestContentLength as possible.
 func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) []int {
@@ -738,13 +738,6 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 
 	return chunkSizes
 }
-
-/**
-- Call `o.orderValidationUtilsABI.Pack` on every order one at a time.
-- Subtract common elements of result (methodID, head, len)
-- Add 'em to total that starts with "restOfPayload" + (methodId, head, len)
-- Once total bytes as close to max as possible, take that many orders and ABI encode them into final payload
-*/
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	signatureType := SignatureType(signature[len(signature)-1])
