@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -25,8 +24,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var getOrderRelevantStatesNumParams = 2
-
 var getOrderRelevantStatesMethodName = "getOrderRelevantStates"
 
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
@@ -34,9 +31,6 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
-
-// 1800 (data) - 8 (methodID) - ((64 (ABI head) + 64 (ABI array len val)) * getOrderRelevantStatesNumParams)
-var encodedNonMultiAssetOrderSizeBytes = 1536
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
@@ -241,25 +235,9 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
 	}
 
-	// Group into chunks of signedOrders for each call to the smart contract
-	numBasicOrdersEncodable := o.computeNumBasicOrdersEncodable()
 	signedOrderChunks := [][]*SignedOrder{}
-	for len(signedOrders) > 0 {
-		tentativeAmount := numBasicOrdersEncodable
-		numOrders := len(signedOrders)
-		if numOrders < numBasicOrdersEncodable {
-			tentativeAmount = numOrders
-		}
-		// If the tentativeAmount which is <= numBasicOrdersEncodable, is below the max content length,
-		// we simply create a chunk of that size.
-		if o.isBelowMaxContentLength(signedOrders[:tentativeAmount]) {
-			signedOrderChunks = append(signedOrderChunks, signedOrders[:tentativeAmount])
-			signedOrders = signedOrders[tentativeAmount:]
-			continue
-		}
-		// If it's above the max content length, we fall-back to a binary-search between 1-tentativeAmount
-		// to find a chunk size that is below the max content amount
-		chunkSize := o.findChunkSize(signedOrders[:tentativeAmount])
+	chunkSizes := o.computeOptimalChunkSizes(signedOrders)
+	for _, chunkSize := range chunkSizes {
 		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
 		signedOrders = signedOrders[chunkSize:]
 	}
@@ -685,63 +663,17 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 	return true
 }
 
-// findChunkSize uses a limited-depth binary-search to find a chunk size that is less then the
-// max content length
-func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int {
-	// Determine the lowest and highest possible signedOrders limits to binary search in between
-	lo := 0
-	hi := len(signedOrders)
-	min := 1
-
-	// Execute the binary search and hone in on an executable payload size of signedOrders
-	maxBinarySearchDepth := 7
-	depth := 0
-	for lo+1 < hi {
-		depth++
-		mid := (hi + lo) / 2
-		if o.isBelowMaxContentLength(signedOrders[:mid]) {
-			lo = mid
-		} else {
-			hi = mid
-		}
-		if depth == maxBinarySearchDepth {
-			break
-		}
-	}
-
-	if !o.isBelowMaxContentLength(signedOrders[:hi]) {
-		// Reject the signedOrders if it still fails at the lowest allowance
-		if hi == min {
-			// We don't ever expect this to happen since the maxOrderSizeInBytes is much smaller then the
-			// maxRequestContentLength. This error requires a single order to be larger then the
-			// maxRequestContentLength, which would only happen if someone set the maxRequestContentLength
-			// to a tiny number.
-			err := errors.New("A single signedOrder was found that was larger then the maxRequestContentLength. Increase the maxRequestContentLength")
-			log.Panic(err)
-		}
-		hi = lo
-	}
-
-	return hi
-}
-
-// isBelowMaxContentLength checks if the signedOrders once encoded into a payload is
-// below the max content length.
-func (o *OrderValidator) isBelowMaxContentLength(signedOrders []*SignedOrder) bool {
-	orders := []wrappers.OrderWithoutExchangeAddress{}
-	for _, signedOrder := range signedOrders {
-		orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
-	}
-	signatures := [][]byte{}
-	for _, signedOrder := range signedOrders {
-		signatures = append(signatures, signedOrder.Signature)
-	}
-
-	payloadSize, err := o.computePayloadSize(getOrderRelevantStatesMethodName, orders, signatures)
+func (o *OrderValidator) computeDataSize(method string, params ...interface{}) (int, error) {
+	data, err := o.orderValidationUtilsABI.Pack(method, params...)
 	if err != nil {
-		return false
+		return 0, err
 	}
-	return payloadSize < o.maxRequestContentLength
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return 0, err
+	}
+	return len(encodedData), nil
 }
 
 func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int, error) {
@@ -769,23 +701,60 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 	return len(payloadBytes), nil
 }
 
-// abiHeadByteLen is the number of bytes taken up by the ABI encoded "head"
+// abiEncodingOverheadForMethodCall includes all the bytes in the encoded `calldata` field that isn't specific to
+// the orders being encoded, but are overhead bytes required to call the getOrderRelevantStates method. As such
+// this is what needs to get subtracted from the encoded `calldata` in order to remain with the bytes taken up by
+// an order.
+// abiEncodingOverheadForMethodCall = quotes + hexPrefix + methodID + (numParams * (abiHead + abiArrayLen))
 // Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
-const abiHeadByteLen = 64
+const abiEncodingOverheadForMethodCall = 270
 
-// abiArrayLenByteLen is the number of bytes taken up to describe the length of an encoded array
-// Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
-const abiArrayLenByteLen = 64
+// computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
+// is before the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
+// encodes signedOrders one at a time until the computed payload size is as close to the
+// maxRequestContentLength as possible.
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) []int {
 
-// computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders
-// that can be sent in a payload of max content size. Unlike "basic" orders, those involving the
-// MultiAssetProxy can be of arbitrary size.
-func (o *OrderValidator) computeNumBasicOrdersEncodable() int {
-	// We can safely ignore the following error because we are passing in known empty arrays as params
+	chunkSizes := []int{}
+
 	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
-	numBasicOrders := (o.maxRequestContentLength - (getOrderRelevantStatesNumParams * (abiHeadByteLen + abiArrayLenByteLen)) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
-	return numBasicOrders
+
+	payloadSize := restOfPayload
+	nextChunkSize := 0
+	for _, signedOrder := range signedOrders {
+		orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+		encodedDataSize, _ := o.computeDataSize(
+			getOrderRelevantStatesMethodName,
+			[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
+			[][]byte{signedOrder.Signature},
+		)
+		encodedOrderSize := encodedDataSize - abiEncodingOverheadForMethodCall
+		if payloadSize+encodedOrderSize < o.maxRequestContentLength {
+			payloadSize += encodedOrderSize
+			nextChunkSize++
+		} else {
+			if nextChunkSize == 0 {
+				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
+				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+			}
+			chunkSizes = append(chunkSizes, nextChunkSize)
+			nextChunkSize = 1
+			payloadSize = restOfPayload + encodedOrderSize
+		}
+	}
+	if nextChunkSize != 0 {
+		chunkSizes = append(chunkSizes, nextChunkSize)
+	}
+
+	return chunkSizes
 }
+
+/**
+- Call `o.orderValidationUtilsABI.Pack` on every order one at a time.
+- Subtract common elements of result (methodID, head, len)
+- Add 'em to total that starts with "restOfPayload" + (methodId, head, len)
+- Once total bytes as close to max as possible, take that many orders and ABI encode them into final payload
+*/
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	signatureType := SignatureType(signature[len(signature)-1])
