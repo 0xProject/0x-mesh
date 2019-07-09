@@ -504,7 +504,6 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
 		for i := 0; i < numChunks; i = i + 1 {
 			fromIndex := i * chunkSize
 			toIndex := fromIndex + chunkSize
-			// TODO(fabio): Do we need this conditional?
 			if toIndex > len(blocks) {
 				toIndex = len(blocks)
 			}
@@ -513,7 +512,6 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
 				FromBlock: bs[0],
 				ToBlock:   bs[len(bs)-1],
 			}
-			fmt.Printf("%+v\n", blockRange)
 			chunks = append(chunks, blockRange)
 		}
 	}
