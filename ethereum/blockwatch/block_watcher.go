@@ -127,6 +127,11 @@ func (w *Watcher) startPollingLoop() {
 
 		err := w.pollNextBlock()
 		if err != nil {
+			w.mu.Lock()
+			if !w.isWatching {
+				return
+			}
+			w.mu.Unlock()
 			// Attempt to send errors but if buffered channel is full, we assume there is no
 			// interested consumer and drop them. The Watcher recovers gracefully from errors.
 			select {
