@@ -1,107 +1,26 @@
-# 0x Mesh Docs
+# 0x Mesh Usage Guide
 
-Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) documentation! 0x Mesh is a peer-to-peer network for sharing orders that adhere to the [0x order message format](https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md#order-message-format).
+Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Usage
+Guide! This guide will help you interact with 0x Mesh via a JSON-RPC API once
+you have it up and running.
 
-Some resources:
+## Similarities to the Ethereum JSON-RPC API
 
-- [Announcement blog post](https://blog.0xproject.com/0x-roadmap-2019-part-3-networked-liquidity-0x-mesh-9a24026202b3)
-- [MVP architecture doc](https://drive.google.com/file/d/1dAVTEND7e1sISO9VZSOou0DN-igoUi9z/view)
-- [Github repo](https://github.com/0xProject/0x-mesh/)
+Our JSON-RPC API is very similar to the
+[Ethereum JSON-RPC API](https://github.com/ethereum/wiki/wiki/JSON-RPC); we even
+use a lot of the same code from `go-ethereum`.
 
-### Supported networks
-
-- Mainnet
-- Kovan
-- Ropsten
-- Rinkeby
-- [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli)
-
-## Running Mesh
-
-Make sure you have Docker installed. Then run:
-
-```bash
-docker run \
--it \
---rm \
--p 60557:60557 \
--p 60558:60558 \
--e ETHEREUM_NETWORK_ID="1" \
--e ETHEREUM_RPC_URL="https://mainnet.infura.io/v3/a9a23d2566e542629179d6372ace13c9" \
--e VERBOSITY=5 \
--e USE_BOOTSTRAP_LIST=false \
--e BLOCK_POLLING_INTERVAL="5s" \
-0xorg/mesh:latest
-```
-
-**Notes:**
-
-- `60557` is the `RPC_PORT` and `60558` is the `P2P_LISTEN_PORT`
-- In order to enable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `true`.
-- Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
-- If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
-
-### Persisting State
-
-If you want the Mesh state to persist across Docker container re-starts, mount a local `0x_mesh` directory to your container. Add the following to the `docker run` command above:
-
-```
--v {abs_local_path}/0x_mesh:/usr/mesh/0x_mesh
-```
-
-**Note:** Replace `{abs_local_path}` with the absolute path to the desired `0x_mesh` directory on the host machine.
-
-The Mesh database will now be stored within `0x_mesh/db`.
-
-## Possible environment variables
-
-All possible env vars are detailed in the [Config](https://godoc.org/github.com/0xProject/0x-mesh/core#Config) struct. They are copied here for convenience, although the source code is authoritative.
-
-```go
-type Config struct {
-    // Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
-    Verbosity int `envvar:"VERBOSITY" default:"2"`
-    // DataDir is the directory to use for persisting all data, including the
-    // database and private key files.
-    DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-    // P2PListenPort is the port on which to listen for new peer connections. By
-    // default, 0x Mesh will let the OS select a randomly available port.
-    P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
-    // RPCPort is the port to use for the JSON RPC API over WebSockets. By
-    // default, 0x Mesh will let the OS select a randomly available port.
-    RPCPort int `envvar:"RPC_PORT" default:"0"`
-    // EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
-    // API.
-    EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
-    // EthereumNetworkID is the network ID to use when communicating with
-    // Ethereum.
-    EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
-    // UseBootstrapList is whether to use the predetermined list of peers to
-    // bootstrap the DHT and peer discovery.
-    UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
-    // OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
-    // that you'd want it pruned from the Mesh node.
-    OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
-    // BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
-    // that might contain transactions that impact the fillability of orders stored by Mesh. Different
-    // networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
-    // and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
-    BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
-}
-```
-
-## JSON-RPC API
-
-Our JSON-RPC API is very similar to the [Ethereum JSON-RPC API](https://github.com/ethereum/wiki/wiki/JSON-RPC), we even use a bunch of `go-ethereum`'s code to generate it.
-
-#### Some differences:
+Some key differences:
 
 - It is **only accessible via a WebSocket connection**
 - uint256 amounts should not be hex encoded, but rather sent as numerical strings
 
-Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification), you can use any JSON-RPC 2.0 compliant client in the language of your choice. The clients made for Ethereum work even better since they extend the standard to include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB).
+Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification),
+you can use any JSON-RPC 2.0 compliant client in the language of your choice.
+The clients made for Ethereum work even better since they extend the standard to
+include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB).
 
-#### Recommended clients:
+### Recommended Clients:
 
 - Javascript/Typescript: [Web3-providers](https://www.npmjs.com/package/web3-providers)
   - See our [example Mesh WS client](https://github.com/0xProject/0x-mesh-demo-client-javascript) built with it
@@ -109,7 +28,7 @@ Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specifi
 - Go: Mesh ships with a [Mesh RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
   - see the [demos](https://github.com/0xProject/0x-mesh/tree/master/cmd/demo) for example usage
 
-### Methods
+## API
 
 ### `mesh_addOrders`
 
