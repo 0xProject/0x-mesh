@@ -516,7 +516,10 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
 const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
 func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]types.Log, error) {
-	log.Info("Fetch block logs from ", from, " to ", to)
+	log.WithFields(map[string]interface{}{
+	    "from": from,
+	    "to": to,
+	}).Info("Fetching block logs")
 	numBlocks := to - from
 	topics := [][]common.Hash{}
 	if len(w.topics) > 0 {
