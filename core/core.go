@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"os/exec"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -65,12 +64,6 @@ type Config struct {
 	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
 	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
-	// DropDB instructs Mesh to drop the database before starting up. If it's been a long time since you ran
-	// Mesh and there've been 10,000's of Ethereum blocks mined since then, many of your orders are probably no
-	// longer valid and it's maybe not worth fast-syncing 10,000's of blocks to emit order events for them.
-	// Instead, you might want to drop the DB and start from scratch. This feature is also useful during testing
-	// when you don't want state to persist between runs.
-	DropDB bool `envvar:"DROP_DB" default:"false"`
 }
 
 type App struct {
@@ -90,15 +83,6 @@ func New(config Config) (*App, error) {
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithField("config", config).Info("creating new App with config")
-
-	// Drop DB if requested
-	if config.DropDB {
-		cmd := exec.Command("rm", "-rf", config.DatabaseDir)
-		err := cmd.Run()
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
