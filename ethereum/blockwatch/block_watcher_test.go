@@ -380,7 +380,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			From:  from,
 			To:    to,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				toR(from, to): filterLogsResponse{
+				aRange(from, to): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -394,12 +394,12 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			From:  from,
 			To:    from + maxBlocksInQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				toR(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -415,15 +415,15 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				// Same number of responses as the concurrencyLimit since the
 				// error response will stop any further requests.
-				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Err: errUnexpected,
 				},
-				toR(from+maxBlocksInQuery, from+(maxBlocksInQuery*2)-1): filterLogsResponse{
+				aRange(from+maxBlocksInQuery, from+(maxBlocksInQuery*2)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				toR(from+(maxBlocksInQuery*2), from+(maxBlocksInQuery*3)-1): filterLogsResponse{
+				aRange(from+(maxBlocksInQuery*2), from+(maxBlocksInQuery*3)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -437,12 +437,12 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			From:  from,
 			To:    from + maxBlocksInQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				toR(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				toR(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
 					Err: errUnexpected,
 				}},
 			Logs:                   []types.Log{logStub},
@@ -468,7 +468,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	}
 }
 
-func toR(from, to int) string {
+func aRange(from, to int) string {
 	r := fmt.Sprintf("%d-%d", from, to)
 	return r
 }
