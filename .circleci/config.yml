@@ -41,5 +41,5 @@ jobs:
           name: Run WebAssembly tests
           command: make test-wasm
       - run:
-          name: Test installing Mesh with CGO
+          name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
