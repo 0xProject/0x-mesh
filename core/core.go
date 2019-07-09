@@ -91,6 +91,10 @@ func New(config Config) (*App, error) {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithField("config", config).Info("creating new App with config")
 
+	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
+	}
+
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
 	db, err := meshdb.NewMeshDB(databasePath)
