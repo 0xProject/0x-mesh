@@ -381,7 +381,7 @@ type logsInBlockRangeTestCase struct {
 func TestGetLogsInBlockRange(t *testing.T) {
 	from := 10
 	to := 20
-	maxBlocksInQuery := int(maxBlocksInGetLogsQuery)
+	maxBlocksInQuery := maxBlocksInGetLogsQuery
 	testCases := []logsInBlockRangeTestCase{
 		logsInBlockRangeTestCase{
 			Label: "HAPPY_PATH",
