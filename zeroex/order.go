@@ -81,15 +81,42 @@ type OrderEvent struct {
 	TxHash common.Hash `json:"txHash"`
 }
 
+type orderEventJSON struct {
+	OrderHash                string         `json:"orderHash"`
+	SignedOrder              *SignedOrder   `json:"signedOrder"`
+	Kind                     OrderEventKind `json:"kind"`
+	FillableTakerAssetAmount string         `json:"fillableTakerAssetAmount"`
+	TxHash                   string         `json:"txHash"`
+}
+
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
-func (o *OrderEvent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"orderHash":                o.OrderHash.Hex(),
-		"signedOrder":              o.SignedOrder,
-		"kind":                     o.Kind,
-		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"txHash":                   o.TxHash.Hex(),
+func (o OrderEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(orderEventJSON{
+		OrderHash:                o.OrderHash.Hex(),
+		SignedOrder:              o.SignedOrder,
+		Kind:                     o.Kind,
+		FillableTakerAssetAmount: o.FillableTakerAssetAmount.String(),
+		TxHash:                   o.TxHash.Hex(),
 	})
+}
+
+func (o *OrderEvent) UnmarshalJSON(data []byte) error {
+	var orderEventJSON orderEventJSON
+	err := json.Unmarshal(data, &orderEventJSON)
+	if err != nil {
+		return err
+	}
+
+	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
+	o.SignedOrder = orderEventJSON.SignedOrder
+	o.Kind = orderEventJSON.Kind
+	var ok bool
+	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
+	}
+	o.TxHash = common.HexToHash(orderEventJSON.OrderHash)
+	return nil
 }
 
 // OrderEventKind enumerates all the possible order event types
@@ -298,7 +325,7 @@ type signedOrderJSON struct {
 }
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
-func (s *SignedOrder) MarshalJSON() ([]byte, error) {
+func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(signedOrderJSON{
 		MakerAddress:          s.MakerAddress,
 		MakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData)),
