@@ -135,12 +135,6 @@ func New(config Config) (*App, error) {
 		}
 	}()
 
-	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
-	if err != nil {
-		return nil, err
-	}
-
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(db, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
@@ -153,6 +147,12 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	// TODO(albrow): Call Add for all existing makers/signers in the database.
+
+	// Initialize the order validator
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
+	if err != nil {
+		return nil, err
+	}
 
 	orderJSONSchema, err := setupOrderSchemaValidator()
 	if err != nil {
