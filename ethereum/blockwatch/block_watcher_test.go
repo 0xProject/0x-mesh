@@ -33,6 +33,7 @@ func TestWatcher(t *testing.T) {
 	// Polling interval unused because we hijack the ticker for this test
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
@@ -77,6 +78,7 @@ func TestWatcherStartStop(t *testing.T) {
 
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
@@ -153,6 +155,7 @@ func TestGetBlockRangeChunks(t *testing.T) {
 	require.NoError(t, err)
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
@@ -170,6 +173,7 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &meshdb.MiniHeader{
 		Number: big.NewInt(5),
@@ -201,6 +205,7 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &meshdb.MiniHeader{
 		Number: big.NewInt(5),
@@ -447,6 +452,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 
 	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 
 	for _, testCase := range testCases {
