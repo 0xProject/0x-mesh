@@ -334,7 +334,7 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 		return events, nil
 	}
 
-	log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
+	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling events")
 	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
 	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
 	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
