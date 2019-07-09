@@ -358,14 +358,7 @@ func TestFindChunkSizeReturnHigh(t *testing.T) {
 	assert.Equal(t, expectedChunkSize, chunkSize)
 }
 
-// TODO: Catch throw?
 func TestFindChunkSizeFails(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected findChunkSize() to panic if maxContentLength doesn't fit even a single order")
-		}
-	}()
-
 	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
@@ -382,9 +375,9 @@ func TestFindChunkSizeFails(t *testing.T) {
 		signedOrders = append(signedOrders, signedOrder)
 	}
 
-	expectedChunkSize := 0
-	chunkSize := orderValidator.findChunkSize(signedOrders)
-	assert.Equal(t, expectedChunkSize, chunkSize)
+	assert.Panics(t, func() {
+		orderValidator.findChunkSize(signedOrders)
+	})
 }
 
 func TestComputeNumBasicOrdersEncodable(t *testing.T) {
