@@ -672,7 +672,7 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 
 
 // jsonRPCPayloadByteLength is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
-// passed in. The `data` still includes the methodID, encodes the param head, and both param array lengths of with values of 0
+// passed in. The `data` includes the empty `getOrderRelevantStates` calldata.
 /*
 {
     "id": 2,
@@ -714,15 +714,14 @@ func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *Sig
 // encodes signedOrders one at a time until the computed payload size is as close to the
 // maxRequestContentLength as possible.
 func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) []int {
-
 	chunkSizes := []int{}
 
-	payloadSize := jsonRPCPayloadByteLength
+	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
 		encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
-		if payloadSize+encodedSignedOrderByteLength < o.maxRequestContentLength {
-			payloadencodedDataSizeSize += encodedSignedOrderByteLength
+		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++
 		} else {
 			if nextChunkSize == 0 {
@@ -731,7 +730,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1
-			payloadSize = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
+			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
 		}
 	}
 	if nextChunkSize != 0 {
