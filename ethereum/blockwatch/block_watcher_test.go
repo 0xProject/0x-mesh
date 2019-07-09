@@ -113,6 +113,10 @@ func TestGetBlockRangeChunks(t *testing.T) {
 			expectedBlockRanges: []*blockRange{
 				&blockRange{
 					FromBlock: 10,
+					ToBlock:   15,
+				},
+				&blockRange{
+					FromBlock: 16,
 					ToBlock:   16,
 				},
 			},
@@ -127,6 +131,10 @@ func TestGetBlockRangeChunks(t *testing.T) {
 				},
 				&blockRange{
 					FromBlock: 16,
+					ToBlock:   21,
+				},
+				&blockRange{
+					FromBlock: 22,
 					ToBlock:   22,
 				},
 			},
