@@ -408,7 +408,6 @@ func (w *Watcher) setupEventWatcher() {
 								w.handleDecodeErr(err, eventType)
 								continue
 							}
-							orders = []*meshdb.Order{}
 							order := w.findOrderAndGenerateOrderEvents(exchangeFillEvent.OrderHash)
 							if order != nil {
 								orders = append(orders, order)
@@ -467,7 +466,7 @@ func (w *Watcher) setupEventWatcher() {
 	}()
 }
 
-func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) (*meshdb.Order) {
+func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) *meshdb.Order {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
