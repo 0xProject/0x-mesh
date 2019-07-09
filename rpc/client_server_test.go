@@ -4,6 +4,7 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/big"
 	"sync"
@@ -25,16 +26,16 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
+	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
-func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
-	return d.addOrdersHandler(orders)
+	return d.addOrdersHandler(signedOrdersRaw)
 }
 
 func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
@@ -96,7 +97,6 @@ var testOrder = &zeroex.Order{
 func TestAddOrdersSuccess(t *testing.T) {
 	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
 	require.NoError(t, err)
-	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 
@@ -104,10 +104,13 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-			assert.Equal(t, signedTestOrders, signedOrders, "AddOrders was called with an unexpected orders argument")
+		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+			require.Len(t, signedOrdersRaw, 1)
 			validationResponse := &zeroex.ValidationResults{}
-			for _, signedOrder := range signedOrders {
+			for _, signedOrderRaw := range signedOrdersRaw {
+				signedOrder := &zeroex.SignedOrder{}
+				err := signedOrder.UnmarshalJSON([]byte(*signedOrderRaw))
+				require.NoError(t, err)
 				orderHash, err := signedOrder.ComputeOrderHash()
 				require.NoError(t, err)
 				validationResponse.Accepted = append(validationResponse.Accepted, &zeroex.AcceptedOrderInfo{
@@ -124,6 +127,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
+	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	validationResponse, err := client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
 	expectedOrderHash, err := testOrder.ComputeOrderHash()

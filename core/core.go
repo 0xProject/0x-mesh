@@ -5,6 +5,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -73,6 +75,7 @@ type App struct {
 	orderWatcher   *orderwatch.Watcher
 	ethWatcher     *ethereum.ETHWatcher
 	orderValidator *zeroex.OrderValidator
+	orderJSONSchema     *gojsonschema.Schema
 }
 
 func New(config Config) (*App, error) {
@@ -140,6 +143,10 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	orderJSONSchema, err := setupOrderSchemaValidator()
+	if err != nil {
+		return nil, err
+	}
 	app := &App{
 		config:         config,
 		db:             db,
@@ -148,6 +155,7 @@ func New(config Config) (*App, error) {
 		orderWatcher:   orderWatcher,
 		ethWatcher:     ethWatcher,
 		orderValidator: orderValidator,
+		orderJSONSchema:     orderJSONSchema,
 	}
 
 	// Initialize the p2p node.
@@ -256,18 +264,75 @@ func (app *App) periodicallyCheckForNewAddrs(startingAddrs []ma.Multiaddr) {
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	validationResults, err := app.validateOrders(orders)
+func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+	allValidationResults := &zeroex.ValidationResults{
+		Accepted: []*zeroex.AcceptedOrderInfo{},
+		Rejected: []*zeroex.RejectedOrderInfo{},
+	}
+	schemaValidOrders := []*zeroex.SignedOrder{}
+	for _, signedOrderRaw := range signedOrdersRaw {
+		signedOrderBytes := []byte(*signedOrderRaw)
+		result, err := app.schemaValidateOrder(signedOrderBytes)
+		if err != nil {
+			signedOrder := &zeroex.SignedOrder{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+				signedOrder = nil
+			}
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+				SignedOrder: signedOrder,
+				Kind:        MeshValidation,
+				Status: zeroex.RejectedOrderStatus{
+					Code:    ROInvalidSchemaCode,
+					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
+				},
+			})
+			continue
+		}
+		if !result.Valid() {
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
+			status := zeroex.RejectedOrderStatus{
+				Code:    ROInvalidSchemaCode,
+				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
+			}
+			signedOrder := &zeroex.SignedOrder{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+				signedOrder = nil
+			}
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+				SignedOrder: signedOrder,
+				Kind:        MeshValidation,
+				Status:      status,
+			})
+			continue
+		}
+
+		signedOrder := &zeroex.SignedOrder{}
+		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+			// This error should never happen since the signedOrder already passed the JSON schema validation above
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Panic("Failed to unmarshal SignedOrder")
+		}
+		schemaValidOrders = append(schemaValidOrders, signedOrder)
+	}
+
+	validationResults, err := app.validateOrders(schemaValidOrders)
 	if err != nil {
 		return nil, err
 	}
-	for _, acceptedOrderInfo := range validationResults.Accepted {
+	for _, orderInfo := range validationResults.Accepted {
+		allValidationResults.Accepted = append(allValidationResults.Accepted, orderInfo)
+	}
+	for _, orderInfo := range validationResults.Rejected {
+		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
+	}
+
+	for _, acceptedOrderInfo := range allValidationResults.Accepted {
 		err = app.orderWatcher.Watch(acceptedOrderInfo)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return validationResults, nil
+	return allValidationResults, nil
 }
 
 // AddPeer can be used to manually connect to a new peer.

@@ -307,83 +307,112 @@ func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWitho
 	return orderWithoutExchangeAddress
 }
 
-type signedOrderJSON struct {
-	MakerAddress          common.Address `json:"makerAddress"`
-	MakerAssetData        string         `json:"makerAssetData"`
-	MakerAssetAmount      string         `json:"makerAssetAmount"`
-	MakerFee              string         `json:"makerFee"`
-	TakerAddress          common.Address `json:"takerAddress"`
-	TakerAssetData        string         `json:"takerAssetData"`
-	TakerAssetAmount      string         `json:"takerAssetAmount"`
-	TakerFee              string         `json:"takerFee"`
-	SenderAddress         common.Address `json:"senderAddress"`
-	ExchangeAddress       common.Address `json:"exchangeAddress"`
-	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds string         `json:"expirationTimeSeconds"`
-	Salt                  string         `json:"salt"`
-	Signature             string         `json:"signature"`
+// SignedOrderJSON is an unmodified JSON representation of a SignedOrder
+type SignedOrderJSON struct {
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
 func (s SignedOrder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(signedOrderJSON{
-		MakerAddress:          s.MakerAddress,
-		MakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData)),
+	makerAssetData := ""
+	if len(s.MakerAssetData) != 0 {
+		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
+	}
+	takerAssetData := ""
+	if len(s.TakerAssetData) != 0 {
+		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
+	}
+	signature := ""
+	if len(s.Signature) != 0 {
+		signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
+	}
+
+	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
+		MakerAddress:          s.MakerAddress.Hex(),
+		MakerAssetData:        makerAssetData,
 		MakerAssetAmount:      s.MakerAssetAmount.String(),
 		MakerFee:              s.MakerFee.String(),
-		TakerAddress:          s.TakerAddress,
-		TakerAssetData:        fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData)),
+		TakerAddress:          s.TakerAddress.Hex(),
+		TakerAssetData:        takerAssetData,
 		TakerAssetAmount:      s.TakerAssetAmount.String(),
 		TakerFee:              s.TakerFee.String(),
-		SenderAddress:         s.SenderAddress,
-		ExchangeAddress:       s.ExchangeAddress,
-		FeeRecipientAddress:   s.FeeRecipientAddress,
+		SenderAddress:         s.SenderAddress.Hex(),
+		ExchangeAddress:       s.ExchangeAddress.Hex(),
+		FeeRecipientAddress:   s.FeeRecipientAddress.Hex(),
 		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
 		Salt:                  s.Salt.String(),
-		Signature:             fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature)),
+		Signature:             signature,
 	})
+	return signedOrderBytes, err
 }
+
+const addressHexLength = 42
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
 func (s *SignedOrder) UnmarshalJSON(data []byte) error {
-	var signedOrderJSON signedOrderJSON
+	var signedOrderJSON SignedOrderJSON
 	err := json.Unmarshal(data, &signedOrderJSON)
 	if err != nil {
 		return err
 	}
-	s.MakerAddress = signedOrderJSON.MakerAddress
-	s.MakerAssetData = common.Hex2Bytes(signedOrderJSON.MakerAssetData[2:])
+	s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
+	s.MakerAssetData = common.FromHex(signedOrderJSON.MakerAssetData)
 	var ok bool
-	s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for MakerAssetAmount")
+	if signedOrderJSON.MakerAssetAmount != "" {
+		s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
+		if !ok {
+			s.MakerAssetAmount = nil
+		}
 	}
-	s.MakerFee, ok = math.ParseBig256(signedOrderJSON.MakerFee)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for MakerFee")
+	if signedOrderJSON.MakerFee != "" {
+		s.MakerFee, ok = math.ParseBig256(signedOrderJSON.MakerFee)
+		if !ok {
+			s.MakerFee = nil
+		}
 	}
-	s.TakerAddress = signedOrderJSON.TakerAddress
-	s.TakerAssetData = common.Hex2Bytes(signedOrderJSON.TakerAssetData[2:])
-	s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for TakerAssetAmount")
+	s.TakerAddress = common.HexToAddress(signedOrderJSON.TakerAddress)
+	s.TakerAssetData = common.FromHex(signedOrderJSON.TakerAssetData)
+	if signedOrderJSON.TakerAssetAmount != "" {
+		s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
+		if !ok {
+			s.TakerAssetAmount = nil
+		}
 	}
-	s.TakerFee, ok = math.ParseBig256(signedOrderJSON.TakerFee)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for TakerFee")
+	if signedOrderJSON.TakerFee != "" {
+		s.TakerFee, ok = math.ParseBig256(signedOrderJSON.TakerFee)
+		if !ok {
+			s.TakerFee = nil
+		}
 	}
-	s.SenderAddress = signedOrderJSON.SenderAddress
-	s.ExchangeAddress = signedOrderJSON.ExchangeAddress
-	s.FeeRecipientAddress = signedOrderJSON.FeeRecipientAddress
-	s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for ExpirationTimeSeconds")
+	s.SenderAddress = common.HexToAddress(signedOrderJSON.SenderAddress)
+	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
+	s.FeeRecipientAddress = common.HexToAddress(signedOrderJSON.FeeRecipientAddress)
+	if signedOrderJSON.ExpirationTimeSeconds != "" {
+		s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
+		if !ok {
+			s.ExpirationTimeSeconds = nil
+		}
 	}
-	s.Salt, ok = math.ParseBig256(signedOrderJSON.Salt)
-	if !ok {
-		return errors.New("Invalid uint256 number encountered for Salt")
+	if signedOrderJSON.Salt != "" {
+		s.Salt, ok = math.ParseBig256(signedOrderJSON.Salt)
+		if !ok {
+			s.Salt = nil
+		}
 	}
-	s.Signature = common.Hex2Bytes(signedOrderJSON.Signature[2:])
+	s.Signature = common.FromHex(signedOrderJSON.Signature)
 	return nil
 }
 

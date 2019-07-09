@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
-
 
 type rpcHandler struct {
 	app *core.App
@@ -46,9 +46,9 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
 	log.Debug("received AddOrders request via RPC")
-	validationResults, err := handler.app.AddOrders(orders)
+	validationResults, err := handler.app.AddOrders(signedOrdersRaw)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
