@@ -368,12 +368,8 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(signedOrderJSON.MakerAddress) >= addressHexLength && signedOrderJSON.MakerAddress[:2] == "0x" {
-		s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
-	}
-	if len(signedOrderJSON.MakerAssetData) >= 2 && signedOrderJSON.MakerAssetData[:2] == "0x" {
-		s.MakerAssetData = common.Hex2Bytes(signedOrderJSON.MakerAssetData[2:])
-	}
+	s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
+	s.MakerAssetData = common.FromHex(signedOrderJSON.MakerAssetData)
 	var ok bool
 	if signedOrderJSON.MakerAssetAmount != "" {
 		s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
@@ -387,12 +383,8 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 			s.MakerFee = nil
 		}
 	}
-	if len(signedOrderJSON.TakerAddress) >= addressHexLength && signedOrderJSON.TakerAddress[:2] == "0x" {
-		s.TakerAddress = common.HexToAddress(signedOrderJSON.TakerAddress)
-	}
-	if len(signedOrderJSON.TakerAssetData) >= 2 && signedOrderJSON.TakerAssetData[:2] == "0x" {
-		s.TakerAssetData = common.Hex2Bytes(signedOrderJSON.TakerAssetData[2:])
-	}
+	s.TakerAddress = common.HexToAddress(signedOrderJSON.TakerAddress)
+	s.TakerAssetData = common.FromHex(signedOrderJSON.TakerAssetData)
 	if signedOrderJSON.TakerAssetAmount != "" {
 		s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
 		if !ok {
@@ -405,15 +397,9 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 			s.TakerFee = nil
 		}
 	}
-	if len(signedOrderJSON.SenderAddress) >= addressHexLength && signedOrderJSON.SenderAddress[:2] == "0x" {
-		s.SenderAddress = common.HexToAddress(signedOrderJSON.SenderAddress)
-	}
-	if len(signedOrderJSON.ExchangeAddress) >= addressHexLength && signedOrderJSON.ExchangeAddress[:2] == "0x" {
-		s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
-	}
-	if len(signedOrderJSON.FeeRecipientAddress) >= addressHexLength && signedOrderJSON.FeeRecipientAddress[:2] == "0x" {
-		s.FeeRecipientAddress = common.HexToAddress(signedOrderJSON.FeeRecipientAddress)
-	}
+	s.SenderAddress = common.HexToAddress(signedOrderJSON.SenderAddress)
+	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
+	s.FeeRecipientAddress = common.HexToAddress(signedOrderJSON.FeeRecipientAddress)
 	if signedOrderJSON.ExpirationTimeSeconds != "" {
 		s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
 		if !ok {
@@ -426,9 +412,7 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 			s.Salt = nil
 		}
 	}
-	if len(signedOrderJSON.Signature) >= 2 && signedOrderJSON.Signature[:2] == "0x" {
-		s.Signature = common.Hex2Bytes(signedOrderJSON.Signature[2:])
-	}
+	s.Signature = common.FromHex(signedOrderJSON.Signature)
 	return nil
 }
 
