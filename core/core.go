@@ -6,11 +6,13 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -19,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -149,11 +152,15 @@ func New(config Config) (*App, error) {
 
 	// Initialize the p2p node.
 	privateKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
+	privKey, err := initPrivateKey(privateKeyPath)
+	if err != nil {
+		return nil, err
+	}
 	nodeConfig := p2p.Config{
 		Topic:            getPubSubTopic(config.EthereumNetworkID),
 		ListenPort:       config.P2PListenPort,
 		Insecure:         false,
-		PrivateKeyPath:   privateKeyPath,
+		PrivateKey:       privKey,
 		MessageHandler:   app,
 		RendezvousString: getRendezvous(config.EthereumNetworkID),
 		UseBootstrapList: config.UseBootstrapList,
@@ -173,6 +180,20 @@ func getPubSubTopic(networkID int) string {
 
 func getRendezvous(networkID int) string {
 	return fmt.Sprintf("/0x-mesh/network/%d/version/0.0.1", networkID)
+}
+
+func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
+	privKey, err := keys.GetPrivateKeyFromPath(path)
+	if err == nil {
+		return privKey, nil
+	} else if os.IsNotExist(err) {
+		// If the private key doesn't exist, generate one.
+		log.Info("No private key found. Generating a new one.")
+		return keys.GenerateAndSavePrivateKey(path)
+	}
+
+	// For any other type of error, return it.
+	return nil, err
 }
 
 func (app *App) Start() error {
