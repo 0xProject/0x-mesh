@@ -252,7 +252,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
-const singleOrderPayloadSize = int64(1980)
+const singleOrderPayloadSize = 1980
 
 func TestComputePayloadSize(t *testing.T) {
 	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
@@ -281,7 +281,7 @@ func TestIsBelowMaxContentLengthFailure(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	maxContentLengthBelowSingleOrder := int64(1500)
+	maxContentLengthBelowSingleOrder := 1500
 
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLengthBelowSingleOrder)
 	require.NoError(t, err)
@@ -327,7 +327,7 @@ func TestFindChunkSizeReturnLow(t *testing.T) {
 		signedOrders = append(signedOrders, signedOrder)
 	}
 
-	expectedChunkSize := int64(3)
+	expectedChunkSize := 3
 	chunkSize := orderValidator.findChunkSize(signedOrders)
 	require.NoError(t, err)
 	assert.Equal(t, expectedChunkSize, chunkSize)
@@ -352,7 +352,7 @@ func TestFindChunkSizeReturnHigh(t *testing.T) {
 		signedOrders = append(signedOrders, signedOrder)
 	}
 
-	expectedChunkSize := int64(2)
+	expectedChunkSize := 2
 	chunkSize := orderValidator.findChunkSize(signedOrders)
 	require.NoError(t, err)
 	assert.Equal(t, expectedChunkSize, chunkSize)
@@ -382,7 +382,7 @@ func TestFindChunkSizeFails(t *testing.T) {
 		signedOrders = append(signedOrders, signedOrder)
 	}
 
-	expectedChunkSize := int64(0)
+	expectedChunkSize := 0
 	chunkSize := orderValidator.findChunkSize(signedOrders)
 	assert.Equal(t, expectedChunkSize, chunkSize)
 }
@@ -394,7 +394,7 @@ func TestComputeNumBasicOrdersEncodable(t *testing.T) {
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
-	expectedNumBasicOrders := int64(340)
+	expectedNumBasicOrders := 340
 
 	numBasicOrders := orderValidator.computeNumBasicOrdersEncodable()
 	assert.Equal(t, expectedNumBasicOrders, numBasicOrders)

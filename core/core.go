@@ -70,7 +70,7 @@ type Config struct {
 	// request without crossing the max content length. The default value is appropriate for operators using Geth
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
-	EthereumRPCMaxContentLength int64 `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 }
 
 type App struct {
@@ -108,7 +108,7 @@ func New(config Config) (*App, error) {
 	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
 	if err != nil {
 		return nil, err
-	}	
+	}
 
 	// Initialize block watcher (but don't start it yet).
 	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout)

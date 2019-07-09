@@ -2,6 +2,7 @@ package constants
 
 import (
 	"errors"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -49,4 +50,4 @@ var GanacheAccountToPrivateKey = map[common.Address][]byte{
 var ErrInternal = errors.New("internal error")
 
 // TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
-var TestMaxContentLength = int64(1024 * 512)
+var TestMaxContentLength = 1024 * 512

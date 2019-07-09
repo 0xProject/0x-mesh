@@ -36,7 +36,7 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
 // 1800 (data) - 8 (methodID) - ((64 (ABI head) + 64 (ABI array len val)) * getOrderRelevantStatesNumParams)
-var encodedNonMultiAssetOrderSizeBytes = int64(1536)
+var encodedNonMultiAssetOrderSizeBytes = 1536
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
@@ -178,7 +178,7 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
-	maxRequestContentLength      int64
+	maxRequestContentLength      int
 	orderValidationUtilsABI      abi.ABI
 	orderValidationUtils         *wrappers.OrderValidationUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
@@ -189,7 +189,7 @@ type OrderValidator struct {
 }
 
 // NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int64) (*OrderValidator, error) {
+func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 	signedOrderChunks := [][]*SignedOrder{}
 	for len(signedOrders) > 0 {
 		tentativeAmount := numBasicOrdersEncodable
-		numOrders := int64(len(signedOrders))
+		numOrders := len(signedOrders)
 		if numOrders < numBasicOrdersEncodable {
 			tentativeAmount = numOrders
 		}
@@ -687,11 +687,11 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 
 // findChunkSize uses a limited-depth binary-search to find a chunk size that is less then the
 // max content length
-func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int64 {
+func (o *OrderValidator) findChunkSize(signedOrders []*SignedOrder) int {
 	// Determine the lowest and highest possible signedOrders limits to binary search in between
-	lo := int64(0)
-	hi := int64(len(signedOrders))
-	min := int64(1)
+	lo := 0
+	hi := len(signedOrders)
+	min := 1
 
 	// Execute the binary search and hone in on an executable payload size of signedOrders
 	maxBinarySearchDepth := 7
@@ -744,10 +744,10 @@ func (o *OrderValidator) isBelowMaxContentLength(signedOrders []*SignedOrder) bo
 	return payloadSize < o.maxRequestContentLength
 }
 
-func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int64, error) {
+func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int, error) {
 	data, err := o.orderValidationUtilsABI.Pack(method, params...)
 	if err != nil {
-		return int64(0), err
+		return 0, err
 	}
 	payload := map[string]interface{}{
 		"id":      2,
@@ -764,26 +764,26 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return int64(0), err
+		return 0, err
 	}
-	return int64(len(payloadBytes)), nil
+	return len(payloadBytes), nil
 }
 
 // abiHeadByteLen is the number of bytes taken up by the ABI encoded "head"
 // Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
-const abiHeadByteLen = int64(64)
+const abiHeadByteLen = 64
 
 // abiArrayLenByteLen is the number of bytes taken up to describe the length of an encoded array
 // Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
-const abiArrayLenByteLen = int64(64)
+const abiArrayLenByteLen = 64
 
 // computeNumBasicOrdersEncodable calculates the number of "basic" (e.g., non-multiAsset) 0x orders
 // that can be sent in a payload of max content size. Unlike "basic" orders, those involving the
 // MultiAssetProxy can be of arbitrary size.
-func (o *OrderValidator) computeNumBasicOrdersEncodable() int64 {
+func (o *OrderValidator) computeNumBasicOrdersEncodable() int {
 	// We can safely ignore the following error because we are passing in known empty arrays as params
 	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
-	numBasicOrders := (o.maxRequestContentLength - (int64(getOrderRelevantStatesNumParams) * (abiHeadByteLen + abiArrayLenByteLen)) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
+	numBasicOrders := (o.maxRequestContentLength - (getOrderRelevantStatesNumParams * (abiHeadByteLen + abiArrayLenByteLen)) - restOfPayload) / encodedNonMultiAssetOrderSizeBytes
 	return numBasicOrders
 }
 
