@@ -23,7 +23,7 @@ const concurrencyLimit = 3
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
 // the number of logs returned so Infura is by far the limiting factor.
-var maxBlocksInGetLogsQuery = int64(60)
+var maxBlocksInGetLogsQuery = 60
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
 // and added to our representation of the chain. During a block re-org, a block previously stored
@@ -335,10 +335,10 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 	}
 
 	log.Info(blocksElapsed.Int64(), " blocks elapsed since last boot. Backfilling events...")
-	startBlockNum := latestRetainedBlock.Number.Int64() + 1
-	endBlockNum := latestRetainedBlock.Number.Int64() + blocksElapsed.Int64()
+	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
+	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
 	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
-	if furthestBlockProcessed > latestRetainedBlock.Number.Int64() {
+	if int64(furthestBlockProcessed) > latestRetainedBlock.Number.Int64() {
 		// Remove all blocks from the DB
 		headers, err := w.InspectRetainedBlocks()
 		if err != nil {
@@ -351,7 +351,7 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 			}
 		}
 		// Add furthest block processed into the DB
-		latestHeader, err := w.client.HeaderByNumber(big.NewInt(furthestBlockProcessed))
+		latestHeader, err := w.client.HeaderByNumber(big.NewInt(int64(furthestBlockProcessed)))
 		if err != nil {
 			return events, err
 		}
@@ -395,18 +395,18 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 }
 
 type logRequestResult struct {
-	From                   int64
-	To                     int64
+	From                   int
+	To                     int
 	Logs                   []types.Log
 	Err                    error
-	FurthestBlockProcessed int64
+	FurthestBlockProcessed int
 }
 
 // getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
 // all logs in the range, it returns them. If it fails to retrieve some of the blocks, it
 // returns all the logs it did find, along with the block number after which no further logs
 // were retrieved.
-func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
+func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
 	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)
 
 	mu := sync.Mutex{}
@@ -469,24 +469,24 @@ func (w *Watcher) getLogsInBlockRange(from, to int64) ([]types.Log, int64) {
 }
 
 type blockRange struct {
-	FromBlock int64
-	ToBlock   int64
+	FromBlock int
+	ToBlock   int
 }
 
 // getBlockRangeChunks breaks up the block range into chunks of chunkSize. `eth_getLogs`
 // requests are inclusive to both the start and end blocks specified and so we need to
 // make the ranges exclusive of one another to avoid fetching the same blocks' logs twice.
-func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
+func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
 	chunks := []*blockRange{}
-	numBlocksLeft := int64(to - from)
+	numBlocksLeft := to - from
 	if numBlocksLeft < chunkSize {
 		chunks = append(chunks, &blockRange{
 			FromBlock: from,
 			ToBlock:   to,
 		})
 	} else {
-		blocks := []int64{}
-		for i := int64(0); i <= numBlocksLeft; i++ {
+		blocks := []int{}
+		for i := 0; i <= numBlocksLeft; i++ {
 			blocks = append(blocks, from+i)
 		}
 		numChunks := numBlocksLeft / chunkSize
@@ -495,11 +495,11 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 			numChunks = numChunks + 1
 		}
 
-		for i := int64(0); i < numChunks; i = i + 1 {
+		for i := 0; i < numChunks; i = i + 1 {
 			fromIndex := i * chunkSize
 			toIndex := fromIndex + chunkSize
-			if toIndex >= int64(len(blocks)-1) {
-				toIndex = int64(len(blocks))
+			if toIndex >= len(blocks)-1 {
+				toIndex = len(blocks)
 			}
 			bs := blocks[fromIndex:toIndex]
 			chunks = append(chunks, &blockRange{
@@ -513,7 +513,7 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int64) []*blockRange {
 
 const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
-func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([]types.Log, error) {
+func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]types.Log, error) {
 	log.Info("Fetch block logs from ", from, " to ", to)
 	numBlocks := to - from
 	topics := [][]common.Hash{}
@@ -521,8 +521,8 @@ func (w *Watcher) filterLogsRecurisively(from, to int64, allLogs []types.Log) ([
 		topics = append(topics, w.topics)
 	}
 	logs, err := w.client.FilterLogs(ethereum.FilterQuery{
-		FromBlock: big.NewInt(from),
-		ToBlock:   big.NewInt(to),
+		FromBlock: big.NewInt(int64(from)),
+		ToBlock:   big.NewInt(int64(to)),
 		Topics:    topics,
 	})
 	if err != nil {

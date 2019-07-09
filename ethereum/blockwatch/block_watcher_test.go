@@ -87,13 +87,13 @@ func TestWatcherStartStop(t *testing.T) {
 }
 
 type blockRangeChunksTestCase struct {
-	from                int64
-	to                  int64
+	from                int
+	to                  int
 	expectedBlockRanges []*blockRange
 }
 
 func TestGetBlockRangeChunks(t *testing.T) {
-	chunkSize := int64(6)
+	chunkSize := 6
 	testCases := []blockRangeChunksTestCase{
 		blockRangeChunksTestCase{
 			from: 10,
@@ -251,8 +251,8 @@ type filterLogsRecusivelyTestCase struct {
 }
 
 func TestFilterLogsRecursively(t *testing.T) {
-	from := int64(10)
-	to := int64(20)
+	from := 10
+	to := 20
 	testCases := []filterLogsRecusivelyTestCase{
 		filterLogsRecusivelyTestCase{
 			Label: "HAPPY_PATH",
@@ -362,7 +362,7 @@ type logsInBlockRangeTestCase struct {
 	To                        int
 	RangeToFilterLogsResponse map[string]filterLogsResponse
 	Logs                      []types.Log
-	FurthestBlockProcessed    int64
+	FurthestBlockProcessed    int
 }
 
 func TestGetLogsInBlockRange(t *testing.T) {
@@ -382,7 +382,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 				},
 			},
 			Logs:                   []types.Log{logStub},
-			FurthestBlockProcessed: int64(to),
+			FurthestBlockProcessed: to,
 		},
 		logsInBlockRangeTestCase{
 			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
@@ -401,7 +401,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 				},
 			},
 			Logs:                   []types.Log{logStub, logStub},
-			FurthestBlockProcessed: int64(from + maxBlocksInQuery + 10),
+			FurthestBlockProcessed: from + maxBlocksInQuery + 10,
 		},
 		logsInBlockRangeTestCase{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
@@ -425,7 +425,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 				},
 			},
 			Logs:                   []types.Log{},
-			FurthestBlockProcessed: int64(from) - 1,
+			FurthestBlockProcessed: from - 1,
 		},
 		logsInBlockRangeTestCase{
 			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
@@ -441,7 +441,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 					Err: errUnexpected,
 				}},
 			Logs:                   []types.Log{logStub},
-			FurthestBlockProcessed: int64(from) + maxBlocksInGetLogsQuery - 1,
+			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery - 1,
 		},
 	}
 
@@ -455,7 +455,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		config.Client = fakeLogClient
 		watcher := New(config)
 
-		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(int64(testCase.From), int64(testCase.To))
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())
@@ -466,4 +466,3 @@ func toR(from, to int) string {
 	r := fmt.Sprintf("%d-%d", from, to)
 	return r
 }
-
