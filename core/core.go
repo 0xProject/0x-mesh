@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	dbPkg "github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
@@ -80,7 +80,7 @@ type Config struct {
 }
 
 type snapshotInfo struct {
-	Snapshot            *dbPkg.Snapshot
+	Snapshot            *db.Snapshot
 	ExpirationTimestamp time.Time
 }
 
@@ -111,7 +111,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	db, err := meshdb.NewMeshDB(databasePath)
+	meshDB, err := meshdb.NewMeshDB(databasePath)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func New(config Config) (*App, error) {
 	}
 	topics := orderwatch.GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{
-		MeshDB:              db,
+		MeshDB:              meshDB,
 		PollingInterval:     config.BlockPollingInterval,
 		StartBlockDepth:     ethrpc.LatestBlockNumber,
 		BlockRetentionLimit: blockWatcherRetentionLimit,
@@ -156,7 +156,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(db, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
+	orderWatcher, err := orderwatch.New(meshDB, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func New(config Config) (*App, error) {
 
 	app := &App{
 		config:                    config,
-		db:                        db,
+		db:                        meshDB,
 		networkID:                 config.EthereumNetworkID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
@@ -327,7 +327,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		}, nil
 	}
 
-	var snapshot *dbPkg.Snapshot
+	var snapshot *db.Snapshot
 	if snapshotID == "" {
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
