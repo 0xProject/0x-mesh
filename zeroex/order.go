@@ -106,7 +106,7 @@ func (o OrderEvent) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the OrderEvent type
-func (o OrderEvent) UnmarshalJSON(data []byte) error {
+func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	var orderEventJSON orderEventJSON
 	err := json.Unmarshal(data, &orderEventJSON)
 	if err != nil {
