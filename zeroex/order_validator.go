@@ -23,8 +23,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var getOrderRelevantStatesMethodName = "getOrderRelevantStates"
-
 // MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
 var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
 
@@ -692,7 +690,7 @@ const jsonRPCPayloadByteLength  = 444
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
 	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	data, err := o.orderValidationUtilsABI.Pack(
-		getOrderRelevantStatesMethodName,
+		"getOrderRelevantStates",
 		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
 		[][]byte{signedOrder.Signature},
 	)
