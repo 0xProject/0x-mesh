@@ -17,7 +17,7 @@ will walk you through how to configure and deploy your own 0x Mesh node.
 ## Usage
 
 Once you have deployed a 0x Mesh node, the
-[Usage Guide](https://github.com/0xProject/0x-mesh/blob/master/DEPLOYMENT.md)
+[Usage Guide](https://github.com/0xProject/0x-mesh/blob/master/USAGE.md)
 explains how to interact with it using the JSON-RPC API.
 
 ## Development
