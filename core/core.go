@@ -74,15 +74,15 @@ type Config struct {
 }
 
 type App struct {
-	config         Config
-	db             *meshdb.MeshDB
-	node           *p2p.Node
-	networkID      int
-	blockWatcher   *blockwatch.Watcher
-	orderWatcher   *orderwatch.Watcher
-	ethWatcher     *ethereum.ETHWatcher
-	orderValidator *zeroex.OrderValidator
-	orderJSONSchema     *gojsonschema.Schema
+	config          Config
+	db              *meshdb.MeshDB
+	node            *p2p.Node
+	networkID       int
+	blockWatcher    *blockwatch.Watcher
+	orderWatcher    *orderwatch.Watcher
+	ethWatcher      *ethereum.ETHWatcher
+	orderValidator  *zeroex.OrderValidator
+	orderJSONSchema *gojsonschema.Schema
 }
 
 func New(config Config) (*App, error) {
@@ -104,12 +104,6 @@ func New(config Config) (*App, error) {
 
 	// Initialize the ETH client, which will be used by various watchers.
 	ethClient, err := ethclient.Dial(config.EthereumRPCURL)
-	if err != nil {
-		return nil, err
-	}
-
-	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +135,12 @@ func New(config Config) (*App, error) {
 		}
 	}()
 
+	// Initialize the order validator
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
+	if err != nil {
+		return nil, err
+	}
+
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(db, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
 	if err != nil {
@@ -158,15 +158,16 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	
 	app := &App{
-		config:         config,
-		db:             db,
-		networkID:      config.EthereumNetworkID,
-		blockWatcher:   blockWatcher,
-		orderWatcher:   orderWatcher,
-		ethWatcher:     ethWatcher,
-		orderValidator: orderValidator,
-		orderJSONSchema:     orderJSONSchema,
+		config:          config,
+		db:              db,
+		networkID:       config.EthereumNetworkID,
+		blockWatcher:    blockWatcher,
+		orderWatcher:    orderWatcher,
+		ethWatcher:      ethWatcher,
+		orderValidator:  orderValidator,
+		orderJSONSchema: orderJSONSchema,
 	}
 
 	// Initialize the p2p node.
