@@ -44,7 +44,7 @@ func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
 	// Add a slight delay to simulate an actual network request. This also gives
 	// BlockWatcher.getLogsInBlockRange multi-requests to hit the concurrent request
 	// limit semaphore and simulate more realistic conditions.
-	<-time.Tick(5 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	r := toRange(q.FromBlock, q.ToBlock)
 	res, ok := fc.rangeToResponse[r]
 	if !ok {
