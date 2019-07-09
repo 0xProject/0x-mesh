@@ -676,31 +676,6 @@ func (o *OrderValidator) computeDataSize(method string, params ...interface{}) (
 	return len(encodedData), nil
 }
 
-func (o *OrderValidator) computePayloadSize(method string, params ...interface{}) (int, error) {
-	data, err := o.orderValidationUtilsABI.Pack(method, params...)
-	if err != nil {
-		return 0, err
-	}
-	payload := map[string]interface{}{
-		"id":      2,
-		"jsonrpc": "2.0",
-		"method":  "eth_call",
-	}
-	payload["params"] = []interface{}{
-		map[string]interface{}{
-			"data": hexutil.Bytes(data),
-			"from": constants.NullAddress,
-			"to":   constants.NullAddress,
-		},
-		"latest",
-	}
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return 0, err
-	}
-	return len(payloadBytes), nil
-}
-
 // abiEncodingOverheadForMethodCall includes all the bytes in the encoded `calldata` field that isn't specific to
 // the orders being encoded, but are overhead bytes required to call the getOrderRelevantStates method. As such
 // this is what needs to get subtracted from the encoded `calldata` in order to remain with the bytes taken up by
@@ -708,6 +683,26 @@ func (o *OrderValidator) computePayloadSize(method string, params ...interface{}
 // abiEncodingOverheadForMethodCall = quotes + hexPrefix + methodID + (numParams * (abiHead + abiArrayLen))
 // Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
 const abiEncodingOverheadForMethodCall = 270
+
+
+// jsonRPCPayloadSize is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
+// passed in. The `data` still includes the methodID, and encodes the number of params, and both param array lengths of 0
+/*
+{
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "eth_call",
+    "params": [
+        {
+            "data": "0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "from": "0x0000000000000000000000000000000000000000",
+            "to": "0x0000000000000000000000000000000000000000"
+        },
+        "latest"
+    ]
+}
+*/
+const jsonRPCPayloadSize  = 444
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
 // is before the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
@@ -717,9 +712,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 
 	chunkSizes := []int{}
 
-	restOfPayload, _ := o.computePayloadSize(getOrderRelevantStatesMethodName, []wrappers.OrderWithoutExchangeAddress{}, [][]byte{})
-
-	payloadSize := restOfPayload
+	payloadSize := jsonRPCPayloadSize
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
 		orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
@@ -739,7 +732,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1
-			payloadSize = restOfPayload + encodedOrderSize
+			payloadSize = jsonRPCPayloadSize + encodedOrderSize
 		}
 	}
 	if nextChunkSize != 0 {

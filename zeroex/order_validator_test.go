@@ -15,7 +15,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -253,26 +252,6 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 }
 
 const singleOrderPayloadSize = 1980
-
-func TestComputePayloadSize(t *testing.T) {
-	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
-	require.NoError(t, err)
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
-	require.NoError(t, err)
-
-	orders := []wrappers.OrderWithoutExchangeAddress{signedOrder.ConvertToOrderWithoutExchangeAddress()}
-	signatures := [][]byte{signedOrder.Signature}
-
-	expectedPayloadSize := singleOrderPayloadSize
-
-	payloadSize, err := orderValidator.computePayloadSize(getOrderRelevantStatesMethodName, orders, signatures)
-	require.NoError(t, err)
-	assert.Equal(t, expectedPayloadSize, payloadSize)
-}
 
 func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
