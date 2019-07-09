@@ -663,30 +663,16 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 	return true
 }
 
-func (o *OrderValidator) computeDataSize(method string, params ...interface{}) (int, error) {
-	data, err := o.orderValidationUtilsABI.Pack(method, params...)
-	if err != nil {
-		return 0, err
-	}
-	dataBytes := hexutil.Bytes(data)
-	encodedData, err := json.Marshal(dataBytes)
-	if err != nil {
-		return 0, err
-	}
-	return len(encodedData), nil
-}
-
-// abiEncodingOverheadForMethodCall includes all the bytes in the encoded `calldata` field that isn't specific to
-// the orders being encoded, but are overhead bytes required to call the getOrderRelevantStates method. As such
-// this is what needs to get subtracted from the encoded `calldata` in order to remain with the bytes taken up by
-// an order.
-// abiEncodingOverheadForMethodCall = quotes + hexPrefix + methodID + (numParams * (abiHead + abiArrayLen))
-// Source: https://solidity.readthedocs.io/en/v0.5.10/abi-spec.html#use-of-dynamic-types
-const abiEncodingOverheadForMethodCall = 270
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataByteLength = 268
 
 
-// jsonRPCPayloadSize is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
-// passed in. The `data` still includes the methodID, and encodes the number of params, and both param array lengths of 0
+// jsonRPCPayloadByteLength is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
+// passed in. The `data` still includes the methodID, encodes the param head, and both param array lengths of with values of 0
 /*
 {
     "id": 2,
@@ -702,7 +688,26 @@ const abiEncodingOverheadForMethodCall = 270
     ]
 }
 */
-const jsonRPCPayloadSize  = 444
+const jsonRPCPayloadByteLength  = 444
+
+func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
+	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	data, err := o.orderValidationUtilsABI.Pack(
+		getOrderRelevantStatesMethodName,
+		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
+		[][]byte{signedOrder.Signature},
+	)
+	if err != nil {
+		return 0, err
+	}
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return 0, err
+	}
+	encodedSignedOrderByteLength := len(encodedData) - emptyGetOrderRelevantStatesCallDataByteLength
+	return encodedSignedOrderByteLength, nil
+}
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
 // is before the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
@@ -712,18 +717,12 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 
 	chunkSizes := []int{}
 
-	payloadSize := jsonRPCPayloadSize
+	payloadSize := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
-		orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
-		encodedDataSize, _ := o.computeDataSize(
-			getOrderRelevantStatesMethodName,
-			[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
-			[][]byte{signedOrder.Signature},
-		)
-		encodedOrderSize := encodedDataSize - abiEncodingOverheadForMethodCall
-		if payloadSize+encodedOrderSize < o.maxRequestContentLength {
-			payloadSize += encodedOrderSize
+		encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
+		if payloadSize+encodedSignedOrderByteLength < o.maxRequestContentLength {
+			payloadencodedDataSizeSize += encodedSignedOrderByteLength
 			nextChunkSize++
 		} else {
 			if nextChunkSize == 0 {
@@ -732,7 +731,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1
-			payloadSize = jsonRPCPayloadSize + encodedOrderSize
+			payloadSize = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
 		}
 	}
 	if nextChunkSize != 0 {
