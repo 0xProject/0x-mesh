@@ -339,7 +339,9 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
 	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
 	if int64(furthestBlockProcessed) > latestRetainedBlock.Number.Int64() {
-		// Remove all blocks from the DB
+		// If we have processed blocks further then the latestRetainedBlock in the DB, we
+		// want to remove all blocks from the DB and insert the furthestBlockProcessed
+		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.
 		headers, err := w.InspectRetainedBlocks()
 		if err != nil {
 			return events, err
