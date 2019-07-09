@@ -438,7 +438,11 @@ func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
 
 			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
 			if err != nil {
-				log.WithField("error", err).Trace("Failed to fetch logs for ", chunk.FromBlock, " to ", chunk.ToBlock)
+				log.WithFields(map[string]interface{}{
+					"error":     err,
+					"fromBlock": chunk.FromBlock,
+					"toBlock":   chunk.ToBlock,
+				}).Trace("Failed to fetch logs for range")
 				mu.Lock()
 				didARequestFail = true
 				mu.Unlock()
