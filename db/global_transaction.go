@@ -44,8 +44,8 @@ func (db *DB) OpenGlobalTransaction() *GlobalTransaction {
 	// "writer" but we behave like one in the context of an RWMutex. Up to one
 	// write lock for each collection can be held, or one global write lock can be
 	// held at any given time.
-	db.globalWriteLock.Lock()
 	db.colLock.Lock()
+	db.globalWriteLock.Lock()
 	return &GlobalTransaction{
 		db:             db,
 		batchWriter:    db.ldb,
@@ -97,8 +97,8 @@ func (txn *GlobalTransaction) Commit() error {
 		return err
 	}
 	txn.committed = true
-	txn.db.colLock.Unlock()
 	txn.db.globalWriteLock.Unlock()
+	txn.db.colLock.Unlock()
 	return nil
 }
 
@@ -116,8 +116,8 @@ func (txn *GlobalTransaction) Discard() error {
 		return nil
 	}
 	txn.discarded = true
-	txn.db.colLock.Unlock()
 	txn.db.globalWriteLock.Unlock()
+	txn.db.colLock.Unlock()
 	return nil
 }
 
