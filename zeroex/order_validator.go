@@ -8,13 +8,16 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
@@ -25,9 +28,6 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
-
-// The most orders we can validate in a single eth_call without having the request timeout
-const chunkSize = 300
 
 // The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
 const getOrdersAndTradersInfoTimeout = 15 * time.Second
@@ -169,6 +169,8 @@ type ValidationResults struct {
 
 // OrderValidator validates 0x orders
 type OrderValidator struct {
+	maxRequestContentLength      int
+	orderValidationUtilsABI      abi.ABI
 	orderValidationUtils         *wrappers.OrderValidationUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
 	assetDataDecoder             *AssetDataDecoder
@@ -178,8 +180,12 @@ type OrderValidator struct {
 }
 
 // NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValidator, error) {
+func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	if err != nil {
+		return nil, err
+	}
+	orderValidationUtilsABI, err := abi.JSON(strings.NewReader(wrappers.OrderValidationUtilsABI))
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +200,8 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int) (*OrderValida
 	assetDataDecoder := NewAssetDataDecoder()
 
 	return &OrderValidator{
+		maxRequestContentLength:      maxRequestContentLength,
+		orderValidationUtilsABI:      orderValidationUtilsABI,
 		orderValidationUtils:         orderValidationUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
@@ -224,14 +232,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
 	}
 
-	// Chunk into groups of chunkSize signedOrders for each call to the smart contract
 	signedOrderChunks := [][]*SignedOrder{}
-	for len(signedOrders) > chunkSize {
+	chunkSizes := o.computeOptimalChunkSizes(signedOrders)
+	for _, chunkSize := range chunkSizes {
 		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
 		signedOrders = signedOrders[chunkSize:]
-	}
-	if len(signedOrders) > 0 {
-		signedOrderChunks = append(signedOrderChunks, signedOrders)
 	}
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -273,6 +278,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 					Pending: false,
 					Context: ctx,
 				}
+
 				results, err := o.orderValidationUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
@@ -652,6 +658,83 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		return false
 	}
 	return true
+}
+
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataByteLength = 268
+
+
+// jsonRPCPayloadByteLength is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
+// passed in. The `data` includes the empty `getOrderRelevantStates` calldata.
+/*
+{
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "eth_call",
+    "params": [
+        {
+            "data": "0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "from": "0x0000000000000000000000000000000000000000",
+            "to": "0x0000000000000000000000000000000000000000"
+        },
+        "latest"
+    ]
+}
+*/
+const jsonRPCPayloadByteLength  = 444
+
+func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
+	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	data, err := o.orderValidationUtilsABI.Pack(
+		"getOrderRelevantStates",
+		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
+		[][]byte{signedOrder.Signature},
+	)
+	if err != nil {
+		return 0, err
+	}
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return 0, err
+	}
+	encodedSignedOrderByteLength := len(encodedData) - emptyGetOrderRelevantStatesCallDataByteLength
+	return encodedSignedOrderByteLength, nil
+}
+
+// computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
+// is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
+// encodes signedOrders one at a time until the computed payload size is as close to the
+// maxRequestContentLength as possible.
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) []int {
+	chunkSizes := []int{}
+
+	payloadLength := jsonRPCPayloadByteLength
+	nextChunkSize := 0
+	for _, signedOrder := range signedOrders {
+		encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
+		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+			payloadLength += encodedSignedOrderByteLength
+			nextChunkSize++
+		} else {
+			if nextChunkSize == 0 {
+				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
+				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+			}
+			chunkSizes = append(chunkSizes, nextChunkSize)
+			nextChunkSize = 1
+			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
+		}
+	}
+	if nextChunkSize != 0 {
+		chunkSizes = append(chunkSizes, nextChunkSize)
+	}
+
+	return chunkSizes
 }
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {

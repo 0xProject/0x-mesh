@@ -15,7 +15,6 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
@@ -58,16 +57,12 @@ type Watcher struct {
 }
 
 // New instantiates a new order watcher
-func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
+func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator *zeroex.OrderValidator, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, networkID)
-	if err != nil {
-		return nil, err
-	}
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package constants
 
 import (
 	"errors"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -47,3 +48,6 @@ var GanacheAccountToPrivateKey = map[common.Address][]byte{
 
 // ErrInternal is used whenever we don't wish to expose internal errors to a client
 var ErrInternal = errors.New("internal error")
+
+// TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
+var TestMaxContentLength = 1024 * 512

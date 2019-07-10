@@ -131,7 +131,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 		require.NoError(t, err)
 
 		validationResults := orderValidator.BatchValidate(signedOrders)
@@ -163,7 +163,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
@@ -192,7 +192,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders)
@@ -216,7 +216,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -249,6 +249,79 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
+
+const singleOrderPayloadSize = 1980
+
+func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLength := singleOrderPayloadSize - 10
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{signedOrder}
+	assert.Panics(t, func() {
+		orderValidator.computeOptimalChunkSizes(signedOrders)
+	})
+}
+
+func TestComputeOptimalChunkSizes(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLength := singleOrderPayloadSize * 3
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
+	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
+	expectedChunkSizes := []int{3, 1}
+	assert.Equal(t, expectedChunkSizes, chunkSizes)
+}
+
+var testMultiAssetSignedOrder = SignedOrder{
+	Order: Order{
+		MakerAddress:          constants.GanacheAccount0,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
+		FeeRecipientAddress:   common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb"),
+		MakerAssetData:        common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
+		Salt:                  big.NewInt(1548619145450),
+		MakerFee:              big.NewInt(0),
+		TakerFee:              big.NewInt(0),
+		MakerAssetAmount:      big.NewInt(1000),
+		TakerAssetAmount:      big.NewInt(2000),
+		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
+		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	},
+}
+
+func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
+	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	require.NoError(t, err)
+	signedMultiAssetOrder, err := SignTestOrder(&testMultiAssetSignedOrder.Order)
+	require.NoError(t, err)
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	maxContentLength := singleOrderPayloadSize * 3
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	require.NoError(t, err)
+
+	signedOrders := []*SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}
+	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
+	expectedChunkSizes := []int{2, 3} // MultiAsset order is larger so can only fit two orders in first chunk
+	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
