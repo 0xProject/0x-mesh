@@ -134,6 +134,14 @@ func TestGlobalTransaction(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, actualCount)
 
+	// This short sleep prevents false positives. Without this, the test might
+	// pass simply because the other goroutines did not have time do do anything
+	// before we committed the transaction. We want to rule this out and make sure
+	// that the mutexes are the thing enforcing that no new collections are
+	// created and no new writes are made to the db state until after the global
+	// transaction is committed.
+	time.Sleep(5 * time.Millisecond)
+
 	// Signal that we are about to commit the transaction, then commit it.
 	commitSignal <- struct{}{}
 	require.NoError(t, txn.Commit())
