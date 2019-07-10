@@ -82,6 +82,13 @@ type Config struct {
     // networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
     // and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
     BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
+    // EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
+	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
+	// and Alchemy have much higher limits. When batch validating 0x orders, we will fit as many orders into a
+	// request without crossing the max content length. The default value is appropriate for operators using Geth
+	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
+	// number of RPC calls made by Mesh.
+	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 }
 ```
 
