@@ -381,7 +381,6 @@ type logsInBlockRangeTestCase struct {
 func TestGetLogsInBlockRange(t *testing.T) {
 	from := 10
 	to := 20
-	maxBlocksInQuery := maxBlocksInGetLogsQuery
 	testCases := []logsInBlockRangeTestCase{
 		logsInBlockRangeTestCase{
 			Label: "HAPPY_PATH",
@@ -400,38 +399,38 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		logsInBlockRangeTestCase{
 			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
 			From:  from,
-			To:    from + maxBlocksInQuery + 10,
+			To:    from + maxBlocksInGetLogsQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				aRange(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
 			},
 			Logs:                   []types.Log{logStub, logStub},
-			FurthestBlockProcessed: from + maxBlocksInQuery + 10,
+			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery + 10,
 		},
 		logsInBlockRangeTestCase{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
 			From:  from,
-			To:    from + (maxBlocksInQuery * (concurrencyLimit + 1)),
+			To:    from + (maxBlocksInGetLogsQuery * (concurrencyLimit + 1)),
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				// Same number of responses as the concurrencyLimit since the
 				// error response will stop any further requests.
-				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
 					Err: errUnexpected,
 				},
-				aRange(from+maxBlocksInQuery, from+(maxBlocksInQuery*2)-1): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+(maxBlocksInGetLogsQuery*2)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				aRange(from+(maxBlocksInQuery*2), from+(maxBlocksInQuery*3)-1): filterLogsResponse{
+				aRange(from+(maxBlocksInGetLogsQuery*2), from+(maxBlocksInGetLogsQuery*3)-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
@@ -443,14 +442,14 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		logsInBlockRangeTestCase{
 			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
 			From:  from,
-			To:    from + maxBlocksInQuery + 10,
+			To:    from + maxBlocksInGetLogsQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				aRange(from, from+maxBlocksInQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
 					Logs: []types.Log{
 						logStub,
 					},
 				},
-				aRange(from+maxBlocksInQuery, from+maxBlocksInQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): filterLogsResponse{
 					Err: errUnexpected,
 				}},
 			Logs:                   []types.Log{logStub},
