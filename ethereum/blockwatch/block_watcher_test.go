@@ -94,8 +94,8 @@ type blockRangeChunksTestCase struct {
 	expectedBlockRanges []*blockRange
 }
 
-func TestGetBlockRangeChunks(t *testing.T) {
-	chunkSize := 6
+func TestGetSubBlockRanges(t *testing.T) {
+	rangeSize := 6
 	testCases := []blockRangeChunksTestCase{
 		blockRangeChunksTestCase{
 			from: 10,
@@ -169,7 +169,7 @@ func TestGetBlockRangeChunks(t *testing.T) {
 	watcher := New(config)
 
 	for _, testCase := range testCases {
-		blockRanges := watcher.getBlockRangeChunks(testCase.from, testCase.to, chunkSize)
+		blockRanges := watcher.getSubBlockRanges(testCase.from, testCase.to, rangeSize)
 		assert.Equal(t, testCase.expectedBlockRanges, blockRanges)
 	}
 }
@@ -418,9 +418,9 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		logsInBlockRangeTestCase{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
 			From:  from,
-			To:    from + (maxBlocksInGetLogsQuery * (concurrencyLimit + 1)),
+			To:    from + (maxBlocksInGetLogsQuery * (getLogsRequestChunkSize + 1)),
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				// Same number of responses as the concurrencyLimit since the
+				// Same number of responses as the getLogsRequestChunkSize since the
 				// error response will stop any further requests.
 				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
 					Err: errUnexpected,

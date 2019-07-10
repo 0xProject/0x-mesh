@@ -16,9 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Number of concurrent JSON RPC requests to allow while fast-syncing logs
-const concurrencyLimit = 3
-
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
@@ -402,81 +399,103 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 }
 
 type logRequestResult struct {
-	From                   int
-	To                     int
-	Logs                   []types.Log
-	Err                    error
-	FurthestBlockProcessed int
+	From int
+	To   int
+	Logs []types.Log
+	Err  error
 }
 
-// getLogsInBlockRange attempts to fetch all logs in the block range specified. If it retrieves
-// all logs in the range, it returns them. If it fails to retrieve some of the blocks, it
-// returns all the logs it did find, along with the block number after which no further logs
-// were retrieved.
+// getLogsRequestChunkSize is the number of `eth_getLogs` JSON RPC to send concurrently in each batch fetch
+const getLogsRequestChunkSize = 3
+
+// getLogsInBlockRange attempts to fetch all logs in the block range supplied. It implements a
+// limited-concurrency batch fetch, where all requests in the previous batch must complete for
+// the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
+// batch requests are not sent. Instead, it returns all the logs it found up until the error was
+// encountered, along with the block number after which no further logs were retrieved.
 func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
-	chunks := w.getBlockRangeChunks(from, to, maxBlocksInGetLogsQuery)
+	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
-	mu := sync.Mutex{}
-	indexToLogResult := map[int]logRequestResult{}
-	didARequestFail := false
+	numChunks := 0
+	chunkChan := make(chan []*blockRange, 1000000)
+	for len(blockRanges) != 0 {
+		var chunk []*blockRange
+		if len(blockRanges) < getLogsRequestChunkSize {
+			chunk = blockRanges[:len(blockRanges)]
+		} else {
+			chunk = blockRanges[:getLogsRequestChunkSize]
+		}
+		chunkChan <- chunk
+		blockRanges = blockRanges[len(chunk):]
+		numChunks++
+	}
 
-	semaphoreChan := make(chan struct{}, concurrencyLimit)
+	semaphoreChan := make(chan struct{}, 1)
 	defer close(semaphoreChan)
 
-	wg := &sync.WaitGroup{}
-	for i, chunk := range chunks {
-		wg.Add(1)
-		go func(index int, chunk *blockRange) {
-			defer wg.Done()
+	didAPreviousRequestFail := false
+	furthestBlockProcessed := from - 1
+	allLogs := []types.Log{}
 
-			// Add one to the semaphore chan. If it already has concurrencyLimit values,
-			// the request blocks here until one frees up.
-			semaphoreChan <- struct{}{}
-			// If a previous request failed, we noop all subsequent requests
-			mu.Lock()
-			if didARequestFail {
-				mu.Unlock()
-				<-semaphoreChan
-				return
-			}
-			mu.Unlock()
+	for i := 0; i < numChunks; i++ {
+		// Add one to the semaphore chan. If it already has a value, the chunk blocks here until one frees up.
+		// We deliberately process the chunks sequentially, since if any request results in an error, we
+		// do not want to send any further requests.
+		semaphoreChan <- struct{}{}
 
-			logs, err := w.filterLogsRecurisively(chunk.FromBlock, chunk.ToBlock, []types.Log{})
-			if err != nil {
-				log.WithFields(map[string]interface{}{
-					"error":     err,
-					"fromBlock": chunk.FromBlock,
-					"toBlock":   chunk.ToBlock,
-				}).Trace("Failed to fetch logs for range")
-				mu.Lock()
-				didARequestFail = true
-				mu.Unlock()
-			}
-			mu.Lock()
-			indexToLogResult[index] = logRequestResult{
-				From: chunk.FromBlock,
-				To:   chunk.ToBlock,
-				Err:  err,
-				Logs: logs,
-			}
-			mu.Unlock()
+		// If a previous request failed, we stop processing newer requests
+		if didAPreviousRequestFail {
 			<-semaphoreChan
-		}(i, chunk)
-	}
-
-	// Wait for all log requests to complete
-	wg.Wait()
-
-	logs := []types.Log{}
-	for i := range chunks {
-		logRequestResult := indexToLogResult[i]
-		if logRequestResult.Err != nil {
-			// Stop at first error, return logs found up until this point
-			return logs, logRequestResult.From - 1
+			continue // Noop
 		}
-		logs = append(logs, logRequestResult.Logs...)
+
+		mu := sync.Mutex{}
+		indexToLogResult := map[int]logRequestResult{}
+		chunk := <-chunkChan
+
+		wg := &sync.WaitGroup{}
+		for i, aBlockRange := range chunk {
+			wg.Add(1)
+			go func(index int, b *blockRange) {
+				defer wg.Done()
+
+				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []types.Log{})
+				if err != nil {
+					log.WithFields(map[string]interface{}{
+						"error":     err,
+						"fromBlock": b.FromBlock,
+						"toBlock":   b.ToBlock,
+					}).Trace("Failed to fetch logs for range")
+				}
+				mu.Lock()
+				indexToLogResult[index] = logRequestResult{
+					From: b.FromBlock,
+					To:   b.ToBlock,
+					Err:  err,
+					Logs: logs,
+				}
+				mu.Unlock()
+			}(i, aBlockRange)
+		}
+
+		// Wait for all log requests to complete
+		wg.Wait()
+
+		for i, aBlockRange := range chunk {
+			logRequestResult := indexToLogResult[i]
+			// Break at first error encountered
+			if logRequestResult.Err != nil {
+				didAPreviousRequestFail = true
+				furthestBlockProcessed = logRequestResult.From - 1
+				break
+			}
+			allLogs = append(allLogs, logRequestResult.Logs...)
+			furthestBlockProcessed = aBlockRange.ToBlock
+		}
+		<-semaphoreChan
 	}
-	return logs, to
+
+	return allLogs, furthestBlockProcessed
 }
 
 type blockRange struct {
@@ -484,13 +503,14 @@ type blockRange struct {
 	ToBlock   int
 }
 
-// getBlockRangeChunks breaks up the block range into chunks of chunkSize. `eth_getLogs`
-// requests are inclusive to both the start and end blocks specified and so we need to
-// make the ranges exclusive of one another to avoid fetching the same blocks' logs twice.
-func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
+// getSubBlockRanges breaks up the block range into smaller block ranges of rangeSize.
+// `eth_getLogs` requests are inclusive to both the start and end blocks specified and
+// so we need to make the ranges exclusive of one another to avoid fetching the same
+// blocks' logs twice.
+func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 	chunks := []*blockRange{}
 	numBlocksLeft := to - from
-	if numBlocksLeft < chunkSize {
+	if numBlocksLeft < rangeSize {
 		chunks = append(chunks, &blockRange{
 			FromBlock: from,
 			ToBlock:   to,
@@ -500,15 +520,15 @@ func (w *Watcher) getBlockRangeChunks(from, to, chunkSize int) []*blockRange {
 		for i := 0; i <= numBlocksLeft; i++ {
 			blocks = append(blocks, from+i)
 		}
-		numChunks := len(blocks) / chunkSize
-		remainder := len(blocks) % chunkSize
+		numChunks := len(blocks) / rangeSize
+		remainder := len(blocks) % rangeSize
 		if remainder > 0 {
 			numChunks = numChunks + 1
 		}
 
 		for i := 0; i < numChunks; i = i + 1 {
-			fromIndex := i * chunkSize
-			toIndex := fromIndex + chunkSize
+			fromIndex := i * rangeSize
+			toIndex := fromIndex + rangeSize
 			if toIndex > len(blocks) {
 				toIndex = len(blocks)
 			}
@@ -527,8 +547,8 @@ const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
 func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]types.Log, error) {
 	log.WithFields(map[string]interface{}{
-	    "from": from,
-	    "to": to,
+		"from": from,
+		"to":   to,
 	}).Info("Fetching block logs")
 	numBlocks := to - from
 	topics := [][]common.Hash{}
