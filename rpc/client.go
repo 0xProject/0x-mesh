@@ -37,6 +37,21 @@ func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResu
 	return &validationResults, nil
 }
 
+// GetOrdersResponse is the response returned for an RPC request to mesh_getOrders
+type GetOrdersResponse struct {
+	SnapshotID  string `json:"snapshotID"`
+	OrdersInfos []*zeroex.AcceptedOrderInfo `json:"ordersInfos"`
+}
+
+// GetOrders gets all orders stored on the Mesh node at a particular point in time in a paginated fashion
+func (c *Client) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+	var getOrdersResponse GetOrdersResponse
+	if err := c.rpcClient.Call(&getOrdersResponse, "mesh_getOrders", page, perPage, snapshotID); err != nil {
+		return nil, err
+	}
+	return &getOrdersResponse, nil
+}
+
 // AddPeer adds the peer to the node's list of peers. The node will attempt to
 // connect to this new peer and return an error if it cannot.
 func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
