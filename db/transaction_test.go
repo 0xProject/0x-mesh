@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,8 @@ import (
 func TestTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	ageIndex := col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
@@ -81,5 +83,178 @@ func TestTransaction(t *testing.T) {
 	require.NoError(t, txn.Commit())
 
 	// Wait for any goroutines to finish.
+	wg.Wait()
+}
+
+func TestTransactionCount(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+
+	// insertedBeforeTransaction is a set of testModels inserted before the
+	// transaction is opened.
+	insertedBeforeTransaction := []*testModel{}
+	for i := 0; i < 10; i++ {
+		model := &testModel{
+			Name: "Before_Transaction_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, col.Insert(model))
+		insertedBeforeTransaction = append(insertedBeforeTransaction, model)
+	}
+
+	// Open a transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+
+	// Insert some models inside the transaction.
+	for i := 0; i < 7; i++ {
+		model := &testModel{
+			Name: "Inside_Transaction_" + strconv.Itoa(i),
+			Age:  i,
+		}
+		require.NoError(t, txn.Insert(model))
+	}
+
+	// The WaitGroup will be used to wait for all goroutines to finish.
+	wg := &sync.WaitGroup{}
+
+	// Insert some models outside the transaction.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 4; i++ {
+			model := &testModel{
+				Name: "Outside_Transaction_" + strconv.Itoa(i),
+				Age:  42,
+			}
+			require.NoError(t, col.Insert(model))
+		}
+	}()
+
+	// Delete some models inside of the transaction.
+	idsToDeleteInside := [][]byte{
+		insertedBeforeTransaction[0].ID(),
+		insertedBeforeTransaction[1].ID(),
+		insertedBeforeTransaction[2].ID(),
+	}
+	for _, id := range idsToDeleteInside {
+		require.NoError(t, txn.Delete(id))
+	}
+
+	// Delete some models outside of the transaction.
+	idsToDeleteOutside := [][]byte{
+		insertedBeforeTransaction[3].ID(),
+		insertedBeforeTransaction[4].ID(),
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, id := range idsToDeleteOutside {
+			require.NoError(t, col.Delete(id))
+		}
+	}()
+
+	// Make sure that prior to commiting the transaction, Count only includes the
+	// models inserted/deleted before the transaction was open.
+	expectedPreCommitCount := 10
+	actualPreCommitCount, err := col.Count()
+	require.NoError(t, err)
+	assert.Equal(t, expectedPreCommitCount, actualPreCommitCount)
+
+	// Commit the transaction.
+	require.NoError(t, txn.Commit())
+
+	// Wait for any goroutines to finish.
+	wg.Wait()
+
+	// Make sure that after commiting the transaction, Count includes the models
+	// inserted/deleted in the transaction and outside of the transaction.
+	//   10 before transaction.
+	//   +7 inserted inside transaction
+	//   +4 inserted outside transaction
+	//   -3 deleted inside transaction
+	//   -2 deleted outside transaction
+	// = 16 total
+	expectedPostCommitCount := 16
+	actualPostCommitCount, err := col.Count()
+	require.NoError(t, err)
+	assert.Equal(t, expectedPostCommitCount, actualPostCommitCount)
+}
+
+// TestTransactionExclusion is designed to test whether a collection-based
+// transaction has exclusive write access for the collection while open.
+func TestTransactionExclusion(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	col0, err := db.NewCollection("people0", &testModel{})
+	require.NoError(t, err)
+	col1, err := db.NewCollection("people1", &testModel{})
+	require.NoError(t, err)
+
+	txn := col0.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	// discardSignal is fired right before the original transaction on col0 is
+	// discarded.
+	discardSignal := make(chan struct{}, 1)
+	// col0TxnOpenSignal is fired when a transaction on col0 is opened.
+	col0TxnOpenSignal := make(chan struct{}, 1)
+	// col1TxnOpenSignal is fired when a transaction on col1 is opened.
+	col1TxnOpenSignal := make(chan struct{}, 1)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		col1TxnWasOpened := false
+		for {
+			select {
+			case <-discardSignal:
+				assert.True(t, col1TxnWasOpened, "expected col1 transaction to open before col0 transaction was committed/discarded")
+				return
+			case <-col0TxnOpenSignal:
+				t.Error("a new transaction was opened on col0 before the first transaction was committed/discarded")
+			case <-col1TxnOpenSignal:
+				// col1 transactions should be independent of col0 transactions and do
+				// not need to wait for the col0 transaction to be committed/discarded.
+				col1TxnWasOpened = true
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		txn := col0.OpenTransaction()
+		col0TxnOpenSignal <- struct{}{}
+		defer func() {
+			_ = txn.Discard()
+		}()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		txn := col1.OpenTransaction()
+		col1TxnOpenSignal <- struct{}{}
+		defer func() {
+			_ = txn.Discard()
+		}()
+	}()
+
+	// A short sleep is necessary to ensure that the goroutines have time to run.
+	time.Sleep(5 * time.Millisecond)
+	discardSignal <- struct{}{}
+	require.NoError(t, txn.Discard())
+
 	wg.Wait()
 }

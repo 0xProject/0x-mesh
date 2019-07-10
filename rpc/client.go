@@ -37,6 +37,21 @@ func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResu
 	return &validationResults, nil
 }
 
+// GetOrdersResponse is the response returned for an RPC request to mesh_getOrders
+type GetOrdersResponse struct {
+	SnapshotID  string `json:"snapshotID"`
+	OrdersInfos []*zeroex.AcceptedOrderInfo `json:"ordersInfos"`
+}
+
+// GetOrders gets all orders stored on the Mesh node at a particular point in time in a paginated fashion
+func (c *Client) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+	var getOrdersResponse GetOrdersResponse
+	if err := c.rpcClient.Call(&getOrdersResponse, "mesh_getOrders", page, perPage, snapshotID); err != nil {
+		return nil, err
+	}
+	return &getOrdersResponse, nil
+}
+
 // AddPeer adds the peer to the node's list of peers. The node will attempt to
 // connect to this new peer and return an error if it cannot.
 func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
@@ -54,8 +69,18 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 // SubscribeToOrders subscribes a stream of order events
 // Note copied from `go-ethereum` codebase: Slow subscribers will be dropped eventually. Client
 // buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
-//  channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
+// channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
 // or ensure that the channel usually has at least one reader to prevent this issue.
 func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderEvent) (*rpc.ClientSubscription, error) {
 	return c.rpcClient.Subscribe(ctx, "mesh", ch, "orders")
+}
+
+// SubscribeToHeartbeat subscribes a stream of heartbeats in order to have certainty that the WS
+// connection is still alive.
+// Note copied from `go-ethereum` codebase: Slow subscribers will be dropped eventually. Client
+// buffers up to 8000 notifications before considering the subscriber dead. The subscription Err
+// channel will receive ErrSubscriptionQueueOverflow. Use a sufficiently large buffer on the channel
+// or ensure that the channel usually has at least one reader to prevent this issue.
+func (c *Client) SubscribeToHeartbeat(ctx context.Context, ch chan<- string) (*rpc.ClientSubscription, error) {
+	return c.rpcClient.Subscribe(ctx, "mesh", ch, "heartbeat")
 }

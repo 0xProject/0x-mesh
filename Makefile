@@ -1,13 +1,29 @@
 .PHONY: deps
-deps:
+deps: deps-go deps-js
+
+
+.PHONY: deps-go
+deps-go:
 	dep ensure
+
+
+.PHONY: deps-js
+deps-js:
 	yarn install
 
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile:
+deps-no-lockfile: deps-go-no-lockfile deps-js-no-lockfile
+
+
+.PHONY: deps-go-no-lockfile
+deps-go-no-lockfile:
 	dep ensure --vendor-only
+
+
+.PHONY: deps-js-no-lockfile
+deps-js-no-lockfile:
 	yarn install --frozen-lockfile
 
 

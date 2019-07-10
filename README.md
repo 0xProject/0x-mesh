@@ -1,121 +1,36 @@
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
-[![HackMD](https://img.shields.io/badge/HackMD-Docs-orange.svg)](https://hackmd.io/s/By4pSjATE)
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
 
-# 0x-mesh
+# 0x Mesh
 
-A peer-to-peer network for sharing orders
+0x Mesh is a peer-to-peer network for sharing orders that adhere to the
+[0x order message format](https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md#order-message-format).
 
-:no_entry: WARNING: This project is still under construction and is not ready for use :no_entry:
+:no_entry: WARNING: This project is still under active development. Expect breaking changes before the official release. :no_entry:
+
+## Deployment
+
+[The Deployment Guide](https://github.com/0xProject/0x-mesh/blob/master/DEPLOYMENT.md)
+will walk you through how to configure and deploy your own 0x Mesh node.
+
+## Usage
+
+Once you have deployed a 0x Mesh node, the
+[Usage Guide](https://github.com/0xProject/0x-mesh/blob/master/USAGE.md)
+explains how to interact with it using the JSON-RPC API.
 
 ## Development
 
-If you are working on 0x-mesh, the root directory for the project must be at
-**\$GOPATH/src/github.com/0xProject/0x-mesh**. 0x Mesh uses [Dep](https://golang.github.io/dep/docs/installation.html) for dependency
-management and does not support Go modules.
+We love receiving contributions from the community :smile: If you are interested
+in helping develop 0x Mesh, please read the
+[Development Guide](https://github.com/0xProject/0x-mesh/blob/master/DEVELOPMENT.md).
+If you are looking for a place to start, take a look at the
+[issues page](https://github.com/0xProject/0x-mesh/issues) and don't hesitate to
+[reach out to us on Discord](https://discord.gg/HF7fHwk).
 
-### Prerequisites
+## Additional Background
 
-- [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
-- [Go version >= 1.12](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g))
-- [Dep package manager](https://golang.github.io/dep/docs/installation.html)
-- [Node.js version >= 10](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
-- [Yarn package manager](https://yarnpkg.com/en/)
-- [golangci-lint version 1.16.0](https://github.com/golangci/golangci-lint#install)
-
-### Installing dependencies
-
-```
-make deps
-```
-
-### Installing the standalone Mesh node
-
-To install a standalone version of 0x Mesh that can be run from the command
-line, run:
-
-```
-make mesh
-```
-
-If you have `GOPATH/bin` in your `PATH`, you can now run 0x Mesh directly with:
-
-```
-mesh
-```
-
-### Generating private keys
-
-Mesh ships with a utility called `mesh-keygen` for generating private keys,
-which are used for signing messages sent to peers. Build the tool with:
-
-```
-make mesh-keygen
-```
-
-If you have `GOPATH/bin` in your `PATH`, you can now run it directly with:
-
-```
-mesh-keygen
-```
-
-### Running tests
-
-Some of the tests depend on having a test Ethereum node running. Before running
-the tests, make sure you have [Docker](https://docs.docker.com/install/)
-installed locally and start
-[0xorg/mesh-ganache-cli](https://hub.docker.com/r/0xorg/mesh-ganache-cli):
-
-```
-docker pull 0xorg/mesh-ganache-cli
-docker run -ti -p 8545:8545 0xorg/mesh-ganache-cli
-```
-
-Run tests in a vanilla Go environment:
-
-```
-make test-go
-```
-
-Run tests in a Node.js/WebAssembly environment:
-
-```
-make test-wasm
-```
-
-Run tests in both environments:
-
-```
-make test-all
-```
-
-### Running the linter
-
-```
-make lint
-```
-
-### Managing Dependencies
-
-See https://golang.github.io/dep/docs/daily-dep.html.
-
-### Editor Configuration
-
-#### Visual Studio Code
-
-For VS Code, the following editor configuration is recommended:
-
-```javascript
-{
-  // ...
-
-  "editor.formatOnSave": true,
-  "go.formatTool": "goimports",
-  "go.lintTool": "golangci-lint",
-  "go.lintOnSave": "package",
-  "go.vetOnSave": "off"
-
-  // ...
-}
-```
+- [Announcement blog post](https://blog.0xproject.com/0x-roadmap-2019-part-3-networked-liquidity-0x-mesh-9a24026202b3)
+- [MVP architecture doc](https://drive.google.com/file/d/1dAVTEND7e1sISO9VZSOou0DN-igoUi9z/view)
+- [Video of talk at ETHNewYork](https://youtu.be/YUqe4fKBA2k?t=723)

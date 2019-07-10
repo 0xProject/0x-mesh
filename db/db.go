@@ -1,6 +1,8 @@
 package db
 
 import (
+	"sync"
+
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -28,7 +30,10 @@ type Model interface {
 
 // DB is the top-level Database.
 type DB struct {
-	ldb *leveldb.DB
+	ldb             *leveldb.DB
+	globalWriteLock sync.RWMutex
+	collections     []*Collection
+	colLock         sync.Mutex
 }
 
 // Open creates a new database using the given file path for permanent storage.

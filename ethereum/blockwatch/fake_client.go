@@ -31,8 +31,8 @@ type fakeClient struct {
 }
 
 // newFakeClient instantiates a fakeClient for testing purposes.
-func newFakeClient() (*fakeClient, error) {
-	blob, err := ioutil.ReadFile("testdata/fake_client_fixtures.json")
+func newFakeClient(fixtureFilePath string) (*fakeClient, error) {
+	blob, err := ioutil.ReadFile(fixtureFilePath)
 	if err != nil {
 		return nil, errors.New("Failed to read blockwatch fixture file")
 	}
@@ -78,8 +78,24 @@ func (fc *fakeClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error)
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	// NOT IMPLEMENTED SINCE NOT USED IN TESTS
-	return []types.Log{}, nil
+	// IMPLEMENTED WITH A CANNED RESPONSE. FOR MORE ELABORATE TESTING, SEE `fakeLogClient`
+	return []types.Log{
+		types.Log{
+			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
+			Topics: []common.Hash{
+				common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
+				common.HexToHash("0x0000000000000000000000004d8a4aa1f304f9632cf3877473445d85c577fe5d"),
+				common.HexToHash("0x0000000000000000000000004bdd0d16cfa18e33860470fc4d65c6f5cee60959"),
+			},
+			Data:        common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000337ad34c0"),
+			BlockNumber: uint64(30),
+			TxHash:      common.HexToHash("0xd9bb5f9e888ee6f74bedcda811c2461230f247c205849d6f83cb6c3925e54586"),
+			TxIndex:     uint(0),
+			BlockHash:   common.HexToHash("0x6bbf9b6e836207ab25379c20e517a89090cbbaf8877746f6ed7fb6820770816b"),
+			Index:       uint(0),
+			Removed:     false,
+		},
+	}, nil
 }
 
 // IncrementTimestep increments the timestep of the simulation.

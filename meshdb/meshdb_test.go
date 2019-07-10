@@ -7,6 +7,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -18,7 +19,8 @@ func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	contractNameToAddress := constants.NetworkIDToContractAddresses[constants.TestNetworkID]
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
@@ -35,7 +37,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       contractNameToAddress.Exchange,
+		ExchangeAddress:       contractAddresses.Exchange,
 	}
 	signedOrder, err := zeroex.SignTestOrder(o)
 	require.NoError(t, err)

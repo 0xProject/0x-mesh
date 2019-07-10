@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -16,16 +17,27 @@ type Collection struct {
 // NewCollection creates and returns a new collection with the given name and
 // model type. You should create exactly one collection for each model type. The
 // collection should typically be created once at the start of your application
-// and re-used.
-func (db *DB) NewCollection(name string, typ Model) *Collection {
-	return &Collection{
+// and re-used. NewCollection returns an error if a collection has already been
+// created with the given name for this db.
+func (db *DB) NewCollection(name string, typ Model) (*Collection, error) {
+	col := &Collection{
 		info: &colInfo{
+			db:        db,
 			name:      name,
 			modelType: reflect.TypeOf(typ),
 			writeMut:  &sync.Mutex{},
 		},
 		ldb: db.ldb,
 	}
+	db.colLock.Lock()
+	defer db.colLock.Unlock()
+	for _, existingCol := range db.collections {
+		if existingCol.info.name == name {
+			return nil, fmt.Errorf("a collection with the name %q already exists", name)
+		}
+	}
+	db.collections = append(db.collections, col)
+	return col, nil
 }
 
 // Name returns the name of the collection.
@@ -57,9 +69,11 @@ func (c *Collection) Count() (int, error) {
 // model with the same id already exists.
 func (c *Collection) Insert(model Model) error {
 	txn := c.OpenTransaction()
-	if err := insertWithTransaction(c.info, txn, model); err != nil {
+	if err := insertWithTransaction(c.info, txn.readWriter, model); err != nil {
 		_ = txn.Discard()
+		return err
 	}
+	txn.updateInternalCount(1)
 	if err := txn.Commit(); err != nil {
 		_ = txn.Discard()
 		return err
@@ -71,8 +85,9 @@ func (c *Collection) Insert(model Model) error {
 // given model doesn't already exist.
 func (c *Collection) Update(model Model) error {
 	txn := c.OpenTransaction()
-	if err := updateWithTransaction(c.info, txn, model); err != nil {
+	if err := updateWithTransaction(c.info, txn.readWriter, model); err != nil {
 		_ = txn.Discard()
+		return err
 	}
 	if err := txn.Commit(); err != nil {
 		_ = txn.Discard()
@@ -85,9 +100,11 @@ func (c *Collection) Update(model Model) error {
 // error if the model doesn't exist in the database.
 func (c *Collection) Delete(id []byte) error {
 	txn := c.OpenTransaction()
-	if err := deleteWithTransaction(c.info, txn, id); err != nil {
+	if err := deleteWithTransaction(c.info, txn.readWriter, id); err != nil {
 		_ = txn.Discard()
+		return err
 	}
+	txn.updateInternalCount(-1)
 	if err := txn.Commit(); err != nil {
 		_ = txn.Discard()
 		return err

@@ -5,10 +5,12 @@ package p2p
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"sort"
 	"testing"
 	"time"
 
+	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -75,10 +77,12 @@ func (n *testNotifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream)
 // purposes.
 func newTestNode(t *testing.T) *Node {
 	t.Helper()
+	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
+	require.NoError(t, err)
 	config := Config{
 		Topic:            testTopic,
-		ListenPort:       0,  // Let OS randomly choose an open port.
-		PrivateKeyPath:   "", // Randomly generate a new private key.
+		ListenPort:       0, // Let OS randomly choose an open port.
+		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
 	}

@@ -8,13 +8,15 @@ import (
 
 // colInfo is a set of information/metadata about a collection.
 type colInfo struct {
+	db        *DB
 	name      string
 	modelType reflect.Type
 	indexes   []*Index
 	// indexMut protects the indexes slice.
 	indexMut sync.RWMutex
 	// writeMut is used by transactions to prevent other goroutines from writing
-	// until the transaction is committed or discarded.
+	// until the transaction is committed or discarded. Needs to be a pointer so
+	// that copies of this colInfo retain the same writeLock.
 	writeMut *sync.Mutex
 }
 
@@ -27,6 +29,7 @@ func (info *colInfo) copy() *colInfo {
 	copy(indexes, info.indexes)
 	info.indexMut.RUnlock()
 	return &colInfo{
+		db:        info.db,
 		name:      info.name,
 		modelType: info.modelType,
 		indexes:   indexes,

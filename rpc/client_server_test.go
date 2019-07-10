@@ -4,6 +4,7 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/big"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -24,16 +26,24 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error)
+	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
+	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
-func (d *dummyRPCHandler) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
+func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
-	return d.addOrdersHandler(orders)
+	return d.addOrdersHandler(signedOrdersRaw)
+}
+
+func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+	if d.getOrdersHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for GetOrders")
+	}
+	return d.getOrdersHandler(page, perPage, snapshotID)
 }
 
 func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
@@ -89,13 +99,12 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(3551808554499581700),
 	TakerAssetAmount:      big.NewInt(300000000000000),
 	ExpirationTimeSeconds: big.NewInt(1548619325),
-	ExchangeAddress:       constants.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 }
 
 func TestAddOrdersSuccess(t *testing.T) {
 	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
 	require.NoError(t, err)
-	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 
@@ -103,10 +112,13 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-			assert.Equal(t, signedTestOrders, signedOrders, "AddOrders was called with an unexpected orders argument")
+		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+			require.Len(t, signedOrdersRaw, 1)
 			validationResponse := &zeroex.ValidationResults{}
-			for _, signedOrder := range signedOrders {
+			for _, signedOrderRaw := range signedOrdersRaw {
+				signedOrder := &zeroex.SignedOrder{}
+				err := signedOrder.UnmarshalJSON([]byte(*signedOrderRaw))
+				require.NoError(t, err)
 				orderHash, err := signedOrder.ComputeOrderHash()
 				require.NoError(t, err)
 				validationResponse.Accepted = append(validationResponse.Accepted, &zeroex.AcceptedOrderInfo{
@@ -123,6 +135,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	server, client := newTestServerAndClient(t, rpcHandler)
 	defer server.Close()
 
+	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	validationResponse, err := client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
 	expectedOrderHash, err := testOrder.ComputeOrderHash()
@@ -134,6 +147,62 @@ func TestAddOrdersSuccess(t *testing.T) {
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
 	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+
+	// The WaitGroup signals that AddOrders was called on the server-side.
+	wg.Wait()
+}
+
+func TestGetOrdersSuccess(t *testing.T) {
+	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
+	require.NoError(t, err)
+
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
+
+	expectedPage := 0
+	expectedPerPage := 5
+	expectedSnapshotID := ""
+	returnedSnapshotID := "0x123"
+
+	// Set up the dummy handler with an addOrdersHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		getOrdersHandler: func(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+			assert.Equal(t, expectedPage, page)
+			assert.Equal(t, expectedPerPage, perPage)
+			assert.Equal(t, expectedSnapshotID, snapshotID)
+			orderHash, err := signedTestOrder.ComputeOrderHash()
+			require.NoError(t, err)
+			ordersInfos := []*zeroex.AcceptedOrderInfo{
+				&zeroex.AcceptedOrderInfo{
+					OrderHash:                orderHash,
+					SignedOrder:              signedTestOrder,
+					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
+				},
+			}
+			wg.Done()
+			return &GetOrdersResponse{
+				SnapshotID:  returnedSnapshotID,
+				OrdersInfos: ordersInfos,
+			}, nil
+		},
+	}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
+	require.NoError(t, err)
+	expectedOrderHash, err := testOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
+
+	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
+
+	orderInfo := getOrdersResponse.OrdersInfos[0]
+	assert.Equal(t, expectedOrderHash, orderInfo.OrderHash, "orderHashes did not match")
+	assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
+	assert.Equal(t, expectedFillableTakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
 	// The WaitGroup signals that AddOrders was called on the server-side.
 	wg.Wait()
@@ -195,4 +264,22 @@ func TestOrdersSubscription(t *testing.T) {
 
 	// The WaitGroup signals that AddOrder was called on the server-side.
 	wg.Wait()
+}
+
+func TestHeartbeatSubscription(t *testing.T) {
+	ctx := context.Background()
+
+	rpcHandler := &dummyRPCHandler{}
+
+	server, client := newTestServerAndClient(t, rpcHandler)
+	defer server.Close()
+
+	heartbeatChan := make(chan string)
+	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)
+	defer clientSubscription.Unsubscribe()
+	require.NoError(t, err)
+	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
+
+	heartbeat := <-heartbeatChan
+	assert.Equal(t, "tick", heartbeat)
 }

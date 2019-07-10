@@ -58,8 +58,8 @@ func findWithIterator(info *colInfo, iter iterator.Iterator, models interface{})
 // given primary key. Useful in cases where the given model may be out of date
 // with what is currently stored in the database. It *doesn't* discard the
 // transaction if there is an error.
-func findExistingModelByPrimaryKeyWithTransaction(info *colInfo, txn *Transaction, primaryKey []byte) (Model, error) {
-	data, err := txn.readerWithBatch.Get(primaryKey, nil)
+func findExistingModelByPrimaryKeyWithTransaction(info *colInfo, readWriter dbReadWriter, primaryKey []byte) (Model, error) {
+	data, err := readWriter.Get(primaryKey, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func findExistingModelByPrimaryKeyWithTransaction(info *colInfo, txn *Transactio
 	return model, nil
 }
 
-func insertWithTransaction(info *colInfo, txn *Transaction, model Model) error {
+func insertWithTransaction(info *colInfo, readWriter dbReadWriter, model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't insert model with empty ID")
 	}
@@ -84,24 +84,21 @@ func insertWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 		return err
 	}
 	pk := info.primaryKeyForModel(model)
-	if exists, err := txn.readerWithBatch.Has(pk, nil); err != nil {
+	if exists, err := readWriter.Has(pk, nil); err != nil {
 		return err
 	} else if exists {
 		return AlreadyExistsError{ID: model.ID()}
 	}
-	if err := txn.readerWithBatch.Put(pk, data, nil); err != nil {
+	if err := readWriter.Put(pk, data, nil); err != nil {
 		return err
 	}
-	if err := saveIndexesWithTransaction(info, txn, model); err != nil {
-		return err
-	}
-	if err := updateCountWithTransaction(info, txn, 1); err != nil {
+	if err := saveIndexesWithTransaction(info, readWriter, model); err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateWithTransaction(info *colInfo, txn *Transaction, model Model) error {
+func updateWithTransaction(info *colInfo, readWriter dbReadWriter, model Model) error {
 	if len(model.ID()) == 0 {
 		return errors.New("can't update model with empty ID")
 	}
@@ -111,18 +108,18 @@ func updateWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 
 	// Check if the model already exists and return an error if not.
 	pk := info.primaryKeyForModel(model)
-	if exists, err := txn.readerWithBatch.Has(pk, nil); err != nil {
+	if exists, err := readWriter.Has(pk, nil); err != nil {
 		return err
 	} else if !exists {
 		return NotFoundError{ID: model.ID()}
 	}
 
 	// Get the existing data for the model and delete any (now outdated) indexes.
-	existingModel, err := findExistingModelByPrimaryKeyWithTransaction(info, txn, pk)
+	existingModel, err := findExistingModelByPrimaryKeyWithTransaction(info, readWriter, pk)
 	if err != nil {
 		return err
 	}
-	if err := deleteIndexesWithTransaction(info, txn, existingModel); err != nil {
+	if err := deleteIndexesWithTransaction(info, readWriter, existingModel); err != nil {
 		return err
 	}
 
@@ -131,16 +128,16 @@ func updateWithTransaction(info *colInfo, txn *Transaction, model Model) error {
 	if err != nil {
 		return err
 	}
-	if err := txn.readerWithBatch.Put(pk, newData, nil); err != nil {
+	if err := readWriter.Put(pk, newData, nil); err != nil {
 		return err
 	}
-	if err := saveIndexesWithTransaction(info, txn, model); err != nil {
+	if err := saveIndexesWithTransaction(info, readWriter, model); err != nil {
 		return err
 	}
 	return nil
 }
 
-func deleteWithTransaction(info *colInfo, txn *Transaction, id []byte) error {
+func deleteWithTransaction(info *colInfo, readWriter dbReadWriter, id []byte) error {
 	if len(id) == 0 {
 		return errors.New("can't delete model with empty ID")
 	}
@@ -148,7 +145,7 @@ func deleteWithTransaction(info *colInfo, txn *Transaction, id []byte) error {
 	// We need to get the latest data because the given model might be out of sync
 	// with the actual data in the database.
 	pk := info.primaryKeyForID(id)
-	latest, err := findExistingModelByPrimaryKeyWithTransaction(info, txn, pk)
+	latest, err := findExistingModelByPrimaryKeyWithTransaction(info, readWriter, pk)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			return NotFoundError{ID: id}
@@ -157,30 +154,25 @@ func deleteWithTransaction(info *colInfo, txn *Transaction, id []byte) error {
 	}
 
 	// Delete the primary key.
-	if err := txn.readerWithBatch.Delete(pk, nil); err != nil {
+	if err := readWriter.Delete(pk, nil); err != nil {
 		return err
 	}
 
 	// Delete any index entries.
-	if err := deleteIndexesWithTransaction(info, txn, latest); err != nil {
-		return err
-	}
-
-	// Decrement the model count by 1.
-	if err := updateCountWithTransaction(info, txn, -1); err != nil {
+	if err := deleteIndexesWithTransaction(info, readWriter, latest); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func saveIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) error {
+func saveIndexesWithTransaction(info *colInfo, readWriter dbReadWriter, model Model) error {
 	info.indexMut.RLock()
 	defer info.indexMut.RUnlock()
 	for _, index := range info.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
-			if err := txn.readerWithBatch.Put(key, nil, nil); err != nil {
+			if err := readWriter.Put(key, nil, nil); err != nil {
 				return err
 			}
 		}
@@ -190,13 +182,13 @@ func saveIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) er
 
 // deleteIndexesForModel deletes any indexes computed from the given model. It
 // *doesn't* discard the transaction if there is an error.
-func deleteIndexesWithTransaction(info *colInfo, txn *Transaction, model Model) error {
+func deleteIndexesWithTransaction(info *colInfo, readWriter dbReadWriter, model Model) error {
 	info.indexMut.RLock()
 	defer info.indexMut.RUnlock()
 	for _, index := range info.indexes {
 		keys := index.keysForModel(model)
 		for _, key := range keys {
-			if err := txn.readerWithBatch.Delete(key, nil); err != nil {
+			if err := readWriter.Delete(key, nil); err != nil {
 				return err
 			}
 		}
@@ -221,16 +213,16 @@ func count(info *colInfo, reader dbReader) (int, error) {
 	return count, nil
 }
 
-func updateCountWithTransaction(info *colInfo, txn *Transaction, diff int) error {
-	existingCount, err := count(info, txn.readerWithBatch)
+func updateCountWithTransaction(info *colInfo, readWriter dbReadWriter, diff int) error {
+	existingCount, err := count(info, readWriter)
 	if err != nil {
 		return err
 	}
 	newCount := existingCount + diff
 	if newCount == 0 {
-		return txn.readerWithBatch.Delete(info.countKey(), nil)
+		return readWriter.Delete(info.countKey(), nil)
 	} else {
-		return txn.readerWithBatch.Put(info.countKey(), encodeInt(newCount), nil)
+		return readWriter.Put(info.countKey(), encodeInt(newCount), nil)
 	}
 }
 

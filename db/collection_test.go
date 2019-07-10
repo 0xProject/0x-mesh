@@ -9,10 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewCollection(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	_, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	_, err = db.NewCollection("people", &testModel{})
+	require.Error(t, err, "Expected an error when creating new collection with the same name")
+}
+
 func TestInsert(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	expected := &testModel{
 		Name: "foo",
 		Age:  42,
@@ -26,7 +36,8 @@ func TestInsert(t *testing.T) {
 func TestFindByID(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	expected := &testModel{
 		Name: "foo",
 		Age:  42,
@@ -40,7 +51,8 @@ func TestFindByID(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	original := &testModel{
 		Name: "foo",
 		Age:  42,
@@ -59,7 +71,8 @@ func TestUpdate(t *testing.T) {
 func TestFindAll(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	expected := []*testModel{}
 	for i := 0; i < 5; i++ {
 		model := &testModel{
@@ -77,7 +90,8 @@ func TestFindAll(t *testing.T) {
 func TestCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 
 	// Insert some test models and make sure Count is equal to the number of
 	// models inserted.
@@ -121,7 +135,8 @@ func TestCount(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
 	})
@@ -146,7 +161,8 @@ func TestDelete(t *testing.T) {
 func TestDeleteAfterUpdate(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	col := db.NewCollection("people", &testModel{})
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
 	col.AddIndex("age", func(m Model) []byte {
 		return []byte(fmt.Sprint(m.(*testModel).Age))
 	})
