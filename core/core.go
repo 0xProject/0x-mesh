@@ -235,14 +235,14 @@ func (app *App) Start() error {
 	// returns any fatal errors. As it currently stands, if one of these watchers
 	// experiences a fatal error or crashes, it is difficult for us to tear down
 	// correctly.
-	if err := app.blockWatcher.StartPolling(); err != nil {
-		return err
-	}
-	log.Info("started block watcher")
 	if err := app.orderWatcher.Start(); err != nil {
 		return err
 	}
 	log.Info("started order watcher")
+	if err := app.blockWatcher.Start(); err != nil {
+		return err
+	}
+	log.Info("started block watcher")
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
 	if err := app.ethWatcher.Start(); err != nil {

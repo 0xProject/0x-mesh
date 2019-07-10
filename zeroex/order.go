@@ -77,8 +77,9 @@ type OrderEvent struct {
 	SignedOrder              *SignedOrder   `json:"signedOrder"`
 	Kind                     OrderEventKind `json:"kind"`
 	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
-	// The hash of the Ethereum transaction that caused the order status to change
-	TxHash common.Hash `json:"txHash"`
+	// The hashes of the Ethereum transactions that caused the order status to change.
+	// Could be because of multiple transactions, not just a single transaction.
+	TxHashes []common.Hash `json:"txHashes"`
 }
 
 type orderEventJSON struct {
@@ -86,20 +87,25 @@ type orderEventJSON struct {
 	SignedOrder              *SignedOrder   `json:"signedOrder"`
 	Kind                     OrderEventKind `json:"kind"`
 	FillableTakerAssetAmount string         `json:"fillableTakerAssetAmount"`
-	TxHash                   string         `json:"txHash"`
+	TxHashes                 []string       `json:"txHashes"`
 }
 
-// MarshalJSON implements a custom JSON marshaller for the SignedOrder type
+// MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(orderEventJSON{
-		OrderHash:                o.OrderHash.Hex(),
-		SignedOrder:              o.SignedOrder,
-		Kind:                     o.Kind,
-		FillableTakerAssetAmount: o.FillableTakerAssetAmount.String(),
-		TxHash:                   o.TxHash.Hex(),
+	stringifiedTxHashes := []string{}
+	for _, txHash := range o.TxHashes {
+		stringifiedTxHashes = append(stringifiedTxHashes, txHash.Hex())
+	}
+	return json.Marshal(map[string]interface{}{
+		"orderHash":                o.OrderHash.Hex(),
+		"signedOrder":              o.SignedOrder,
+		"kind":                     o.Kind,
+		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
+		"txHashes":                 stringifiedTxHashes,
 	})
 }
 
+// UnmarshalJSON implements a custom JSON unmarshaller for the OrderEvent type
 func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	var orderEventJSON orderEventJSON
 	err := json.Unmarshal(data, &orderEventJSON)
@@ -115,7 +121,11 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
 	}
-	o.TxHash = common.HexToHash(orderEventJSON.OrderHash)
+	txHashes := []common.Hash{}
+	for _, txHash := range orderEventJSON.TxHashes {
+		txHashes = append(txHashes, common.HexToHash(txHash))
+	}
+	o.TxHashes = txHashes
 	return nil
 }
 
