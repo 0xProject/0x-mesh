@@ -103,7 +103,10 @@ func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
-	log.WithField("config", config).Info("creating new App with config")
+	log.WithFields(map[string]interface{}{
+		"config":  config,
+		"version": "development",
+	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
