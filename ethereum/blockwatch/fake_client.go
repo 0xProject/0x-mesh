@@ -78,7 +78,7 @@ func (fc *fakeClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error)
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	// NOT IMPLEMENTED SINCE NOT USED IN TESTS
+	// IMPLEMENTED WITH A CANNED RESPONSE. FOR MORE ELABORATE TESTING, SEE `fakeLogClient`
 	return []types.Log{
 		types.Log{
 			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
