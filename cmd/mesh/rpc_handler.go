@@ -66,7 +66,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (*rpc
 
 // AddOrders is called when an RPC client calls AddOrders.
 func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
-	log.WithField("count", len(orders)).Debug("received AddOrders request via RPC")
+	log.WithField("count", len(signedOrdersRaw)).Debug("received AddOrders request via RPC")
 	validationResults, err := handler.app.AddOrders(signedOrdersRaw)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
