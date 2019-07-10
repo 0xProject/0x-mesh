@@ -1,5 +1,5 @@
 # mesh-builder produces a statically linked binary
-FROM golang:1.12.1-alpine3.9 as mesh-builder
+FROM golang:1.12.1-alpine3.9 as bridge-builder
 
 
 RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
@@ -12,7 +12,7 @@ ADD . ./
 
 RUN make deps
 
-RUN go build ./cmd/mesh
+RUN go build ./cmd/demo/sra_bridge
 
 # Final Image
 FROM alpine:3.9
@@ -21,14 +21,8 @@ RUN apk update && apk add ca-certificates --no-cache
 
 WORKDIR /usr/mesh
 
-COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh /usr/mesh/mesh
+COPY --from=bridge-builder /go/src/github.com/0xProject/0x-mesh/sra_bridge /usr/mesh/sra_bridge
 
-ENV RPC_PORT=60557
-EXPOSE 60557
+RUN chmod +x ./sra_bridge
 
-ENV P2P_LISTEN_PORT=60558
-EXPOSE 60558
-
-RUN chmod +x ./mesh
-
-ENTRYPOINT ./mesh
+ENTRYPOINT ./sra_bridge
