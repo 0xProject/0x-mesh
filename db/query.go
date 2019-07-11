@@ -195,7 +195,7 @@ func (q *Query) getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key
 	pkSet.Add(string(pk))
 	data, err := q.reader.Get(pk, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("db: possibly outdated index (could not get data for primary key %s): %s", pk, err.Error())
 	}
 	model := reflect.New(q.colInfo.modelType)
 	if err := json.Unmarshal(data, model.Interface()); err != nil {
