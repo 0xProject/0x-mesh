@@ -56,5 +56,10 @@ mesh-keygen:
 	go install ./cmd/mesh-keygen
 
 
+.PHONY: db-integrity-check
+db-integrity-check:
+	go install ./cmd/db-integrity-check
+
+
 .PHONY: all
-all: mesh mesh-keygen
+all: mesh mesh-keygen db-integrity-check

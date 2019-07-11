@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -27,7 +28,7 @@ func findByID(info *colInfo, reader dbReader, id []byte, model Model) error {
 }
 
 func findAll(info *colInfo, reader dbReader, models interface{}) error {
-	prefixRange := util.BytesPrefix(info.prefix())
+	prefixRange := util.BytesPrefix([]byte(fmt.Sprintf("%s:", info.prefix())))
 	iter := reader.NewIterator(prefixRange, nil)
 	return findWithIterator(info, iter, models)
 }
