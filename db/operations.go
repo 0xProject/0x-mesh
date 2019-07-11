@@ -38,7 +38,7 @@ func findWithIterator(info *colInfo, iter iterator.Iterator, models interface{})
 		return err
 	}
 	modelsVal := reflect.ValueOf(models).Elem()
-	for iter.Next() {
+	for iter.Next() && iter.Error() == nil {
 		// We assume that each value in the iterator is the encoded data for some
 		// model.
 		data := iter.Value()
@@ -47,9 +47,6 @@ func findWithIterator(info *colInfo, iter iterator.Iterator, models interface{})
 			return err
 		}
 		modelsVal.Set(reflect.Append(modelsVal, model.Elem()))
-	}
-	if err := iter.Error(); err != nil {
-		return err
 	}
 	return nil
 }
