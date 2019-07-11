@@ -55,7 +55,7 @@ type Config struct {
 	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
-	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
+	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
 	// EthereumNetworkID is the network ID to use when communicating with
 	// Ethereum.
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
