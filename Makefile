@@ -56,10 +56,15 @@ mesh-keygen:
 	go install ./cmd/mesh-keygen
 
 
+.PHONY: mesh-bootstrap
+mesh-bootstrap:
+	go install ./cmd/mesh-bootstrap
+
+
 .PHONY: db-integrity-check
 db-integrity-check:
 	go install ./cmd/db-integrity-check
 
 
 .PHONY: all
-all: mesh mesh-keygen db-integrity-check
+all: mesh mesh-keygen mesh-bootstrap db-integrity-check
