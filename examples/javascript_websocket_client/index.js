@@ -5,7 +5,13 @@ const MESH_WS_ENDPOINT = `ws://localhost:${MESH_WS_PORT}`;
 console.log('Mesh WebSocket endpoint: ', MESH_WS_ENDPOINT);
 
 // Instantiate the WebSocket provider/client
-const websocketProvider = new Web3Providers.WebsocketProvider(MESH_WS_ENDPOINT);
+const websocketProvider = new Web3Providers.WebsocketProvider(MESH_WS_ENDPOINT, {
+    clientConfig: {
+        // For some reason fragmenting the payloads causes the connection to close
+        // Source: https://github.com/theturtle32/WebSocket-Node/issues/359
+        fragmentOutgoingMessages: false,
+    },
+});
 
 // Listen for the close event which will fire if Mesh goes down
 websocketProvider.connection.addEventListener('close', function() {
