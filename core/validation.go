@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -48,6 +49,10 @@ var (
 	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	}
+	ROSenderAddressNotAllowed = zeroex.RejectedOrderStatus{
+		Code:    "SenderAddressNotAllowed",
+		Message: "orders with a senderAddress are not currently supported",
 	}
 )
 
@@ -153,6 +158,21 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				SignedOrder: order,
 				Kind:        zeroex.MeshError,
 				Status:      ROInternalError,
+			})
+			continue
+		}
+		// Note(albrow): Orders with a sender address can be canceled or invalidated
+		// off-chain which is difficult to suppport since we need to purne
+		// canceled/invalidated orders from the database. We can special case some
+		// sender addresses over time. (For example we already have support for
+		// validating Coordinator orders. What we're missing is a way to effeciently
+		// remove orders that are soft-canceled via the Coordinator API).
+		if order.SenderAddress != constants.NullAddress {
+			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        MeshValidation,
+				Status:      ROSenderAddressNotAllowed,
 			})
 			continue
 		}
