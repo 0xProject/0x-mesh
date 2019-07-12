@@ -95,8 +95,12 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 		if !result.Valid() {
+			formattedErrors := make([]string, len(result.Errors()))
+			for i, resultError := range result.Errors() {
+				formattedErrors[i] = resultError.String()
+			}
 			log.WithFields(map[string]interface{}{
-				"errors": result.Errors(),
+				"errors": formattedErrors,
 				"from":   msg.From,
 			}).Trace("order schema validation failed for message")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
