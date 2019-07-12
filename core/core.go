@@ -94,6 +94,7 @@ type App struct {
 	ethWatcher                *ethereum.ETHWatcher
 	orderValidator            *zeroex.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
+	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
@@ -177,6 +178,10 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	meshMessageJSONSchema, err := setupMeshMessageSchemaValidator()
+	if err != nil {
+		return nil, err
+	}
 
 	app := &App{
 		config:                    config,
@@ -187,6 +192,7 @@ func New(config Config) (*App, error) {
 		ethWatcher:                ethWatcher,
 		orderValidator:            orderValidator,
 		orderJSONSchema:           orderJSONSchema,
+		meshMessageJSONSchema:     meshMessageJSONSchema,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 	}

@@ -85,7 +85,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		result, err := app.schemaValidateOrder(msg.Data)
+		result, err := app.schemaValidateMeshMessage(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,
