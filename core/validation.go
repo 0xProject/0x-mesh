@@ -163,7 +163,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 		}
 		// Note(albrow): Orders with a sender address can be canceled or invalidated
 		// off-chain which is difficult to suppport since we need to prune
-		// canceled/invalidated orders from the database. We can special case some
+		// canceled/invalidated orders from the database. We can special-case some
 		// sender addresses over time. (For example we already have support for
 		// validating Coordinator orders. What we're missing is a way to effeciently
 		// remove orders that are soft-canceled via the Coordinator API).
