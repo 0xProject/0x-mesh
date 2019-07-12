@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/albrow/stringset"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -194,6 +196,12 @@ func (q *Query) getAndAppendModelIfUnique(index *Index, pkSet stringset.Set, key
 	}
 	pkSet.Add(string(pk))
 	data, err := q.reader.Get(pk, nil)
+	if err == leveldb.ErrNotFound || data == nil {
+		// It is possible that a separate goroutine deleted the model while we were
+		// iterating through the keys in the index. This is not considered an error.
+		// We simply don't include this model in the final results.
+		return nil
+	}
 	if err != nil {
 		return err
 	}
