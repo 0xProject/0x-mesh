@@ -10,10 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
@@ -219,7 +217,7 @@ func (n *Node) Start() error {
 
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
-		if err := n.connectToBootstrapList(); err != nil {
+		if err := connectToBootstrapList(n.ctx, n.host); err != nil {
 			return err
 		}
 	}
@@ -228,38 +226,6 @@ func (n *Node) Start() error {
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
 	return n.mainLoop()
-}
-
-func (n *Node) connectToBootstrapList() error {
-	log.WithField("BootstrapPeers", constants.BootstrapPeers).Info("connecting to bootstrap peers")
-	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
-	defer cancel()
-	wg := sync.WaitGroup{}
-	for _, addr := range constants.BootstrapPeers {
-		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
-		if err != nil {
-			return err
-		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := n.host.Connect(connectCtx, *peerInfo); err != nil {
-				log.WithFields(map[string]interface{}{
-					"error":    err.Error(),
-					"peerInfo": peerInfo,
-				}).Warn("failed to connect to bootstrap peer")
-			}
-		}()
-	}
-	wg.Wait()
-
-	// It is recommended to wait for 2 seconds after connecting to all the
-	// bootstrap peers to give time for the relevant notifees to trigger and the
-	// DHT to fully initialize.
-	// See: https://github.com/0xProject/0x-mesh/pull/69#discussion_r286849679
-	time.Sleep(2 * time.Second)
-
-	return nil
 }
 
 // AddPeerScore adds diff to the current score for a given peer. Tag is a unique
