@@ -1,3 +1,5 @@
+// +build !js
+
 package p2p
 
 import (
