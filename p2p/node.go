@@ -217,7 +217,7 @@ func (n *Node) Start() error {
 
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
-		if err := connectToBootstrapList(n.ctx, n.host); err != nil {
+		if err := ConnectToBootstrapList(n.ctx, n.host); err != nil {
 			return err
 		}
 	}

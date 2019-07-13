@@ -31,7 +31,7 @@ func init() {
 	}
 }
 
-func connectToBootstrapList(ctx context.Context, host host.Host) error {
+func ConnectToBootstrapList(ctx context.Context, host host.Host) error {
 	log.WithField("bootstrapPeers", bootstrapPeers).Info("connecting to bootstrap peers")
 	connectCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
 	defer cancel()
@@ -40,6 +40,10 @@ func connectToBootstrapList(ctx context.Context, host host.Host) error {
 		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
 		if err != nil {
 			return err
+		}
+		if peerInfo.ID == host.ID() {
+			// Don't connect to self.
+			continue
 		}
 		wg.Add(1)
 		go func() {

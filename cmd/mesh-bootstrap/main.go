@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
@@ -50,7 +51,6 @@ type Config struct {
 }
 
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -99,6 +99,10 @@ func main() {
 
 	if err := kadDHT.Bootstrap(ctx); err != nil {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
+	}
+
+	if err := p2p.ConnectToBootstrapList(ctx, basicHost); err != nil {
+		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
 	}
 
 	log.WithFields(map[string]interface{}{
