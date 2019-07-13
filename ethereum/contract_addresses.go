@@ -31,42 +31,42 @@ type ContractAddresses struct {
 var NetworkIDToContractAddresses = map[int]ContractAddresses{
 	// Mainnet
 	1: ContractAddresses{
-		ERC20Proxy:           common.HexToAddress("0x2240dab907db71e64d3e0dba4800c83b5c502d4e"),
-		ERC721Proxy:          common.HexToAddress("0x208e41fb445f1bb1b6780d58356e81405f3e6127"),
-		Exchange:             common.HexToAddress("0x4f833a24e1f95d70f028921e27040ca56e09ab0b"),
-		OrderValidationUtils: common.HexToAddress("0xaccc650ae2669b9a48c525c40f28c497ff88d839"),
+		ERC20Proxy:           common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
+		ERC721Proxy:          common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
+		Exchange:             common.HexToAddress("0x080bf510fcbf18b91105470639e9561022937712"),
+		OrderValidationUtils: common.HexToAddress("0x2dbaf1295a443db13dceb5a0dffed9bc1a0207b0"),
 		EthBalanceChecker:    common.HexToAddress("0x9bc2c6ae8b1a8e3c375b6ccb55eb4273b2c3fbde"),
-		Coordinator:          common.HexToAddress("0x25aae5b981ce6683cc5aeea1855d927e0b59066f"),
+		Coordinator:          common.HexToAddress("0xa14857e8930acd9a882d33ec20559beb5479c8a6"),
 		CoordinatorRegistry:  common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
 	},
 	// Ropsten
 	3: ContractAddresses{
 		ERC20Proxy:           common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
 		ERC721Proxy:          common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
-		Exchange:             common.HexToAddress("0x4530c0483a1633c7a1c97d2c53721caff2caaaaf"),
-		OrderValidationUtils: common.HexToAddress("0x078b18930c5c16f73b3d9e8e4911d1720c98e292"),
+		Exchange:             common.HexToAddress("0xbff9493f92a3df4b0429b6d00743b3cfb4c85831"),
+		OrderValidationUtils: common.HexToAddress("0x5b749752e39f7f9c8b7f5e4ac58cd6901df8b7ce"),
 		EthBalanceChecker:    common.HexToAddress("0xd5d960219af544b6f2f3e14a8bfd03dec12292fa"),
-		Coordinator:          common.HexToAddress("0x25aae5b981ce6683cc5aeea1855d927e0b59066f"),
+		Coordinator:          common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry:  common.HexToAddress("0x403cc23e88c17c4652fb904784d1af640a6722d9"),
 	},
 	// Rinkeby
 	4: ContractAddresses{
 		ERC20Proxy:           common.HexToAddress("0x3e809c563c15a295e832e37053798ddc8d6c8dab"),
 		ERC721Proxy:          common.HexToAddress("0x8e1ff02637cb5e39f2fa36c14706aa348b065b09"),
-		Exchange:             common.HexToAddress("0x22ebc052f43a88efa06379426120718170f2204e"),
-		OrderValidationUtils: common.HexToAddress("0x2d645bce387b25bdd807be48e57f374226eadff9"),
+		Exchange:             common.HexToAddress("0xbff9493f92a3df4b0429b6d00743b3cfb4c85831"),
+		OrderValidationUtils: common.HexToAddress("0x51fc4f8ee79b0c86e96f44385161111a676d5f1b"),
 		EthBalanceChecker:    common.HexToAddress("0x08b71282431009022eda2dda8af0fbee535e1507"),
-		Coordinator:          common.HexToAddress("0x25aae5b981ce6683cc5aeea1855d927e0b59066f"),
+		Coordinator:          common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry:  common.HexToAddress("0x1084b6a398e47907bae43fec3ff4b677db6e4fee"),
 	},
 	// Kovan
 	42: ContractAddresses{
 		ERC20Proxy:           common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 		ERC721Proxy:          common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
-		Exchange:             common.HexToAddress("0x35dd2932454449b14cee11a94d3674a936d5d7b2"),
-		OrderValidationUtils: common.HexToAddress("0x98cafab5518485d84fe3c2c495f0fcc807f1a7c0"),
+		Exchange:             common.HexToAddress("0x30589010550762d2f0d06f650d8e8b6ade6dbf4b"),
+		OrderValidationUtils: common.HexToAddress("0xb3667ce62aa9fabcc352c5b6dac27ea61f1a3e71igr"),
 		EthBalanceChecker:    common.HexToAddress("0x505aa534485bf80ee919339717cff90eb2e3364c"),
-		Coordinator:          common.HexToAddress("0x25aae5b981ce6683cc5aeea1855d927e0b59066f"),
+		Coordinator:          common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry:  common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
 	},
 	// Ganache snapshot
