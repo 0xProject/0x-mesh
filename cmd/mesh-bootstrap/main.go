@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -50,7 +52,6 @@ type Config struct {
 }
 
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -97,8 +98,26 @@ func main() {
 		log.WithField("error", err).Fatal("could not create DHT")
 	}
 
+	// Initialize the DHT and then connect to the other bootstrap nodes.
 	if err := kadDHT.Bootstrap(ctx); err != nil {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
+	}
+	if err := p2p.ConnectToBootstrapList(ctx, basicHost); err != nil {
+		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
+	}
+
+	// Protect each other bootstrap peer via the connection manager so that we
+	// maintain an active connection to them.
+	for _, addr := range p2p.BootstrapPeers {
+		idString, err := addr.ValueForProtocol(ma.P_IPFS)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
+		}
+		id, err := peer.IDB58Decode(idString)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
+		}
+		connManager.Protect(id, "bootstrap-peer")
 	}
 
 	log.WithFields(map[string]interface{}{

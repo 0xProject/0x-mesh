@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"sync"
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
@@ -23,7 +22,6 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -54,32 +52,6 @@ const (
 	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
 	pubsubProtocolID = pubsub.GossipSubID
 )
-
-// bootstrapPeers is a list of peers to use for bootstrapping the DHT. Based on
-// the default IPFS bootstrap list but with some removals for peers which we
-// could not consistently connect to.
-// TODO(albrow): Replace this with our own bootstrap peer list.
-var bootstrapPeers []multiaddr.Multiaddr
-
-func init() {
-	for _, s := range []string{
-		"/ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",  // mars.i.ipfs.io
-		"/ip4/104.236.179.241/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM", // pluto.i.ipfs.io
-		"/ip4/128.199.219.111/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu", // saturn.i.ipfs.io
-		"/ip4/104.236.76.40/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64",   // venus.i.ipfs.io
-		// "/ip4/178.62.158.247/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd",            // earth.i.ipfs.io
-		"/ip6/2604:a880:1:20::203:d001/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM",  // pluto.i.ipfs.io
-		"/ip6/2400:6180:0:d0::151:6001/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",  // saturn.i.ipfs.io
-		"/ip6/2604:a880:800:10::4a:5001/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64", // venus.i.ipfs.io
-		// "/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd", // earth.i.ipfs.io
-	} {
-		ma, err := multiaddr.NewMultiaddr(s)
-		if err != nil {
-			panic(err)
-		}
-		bootstrapPeers = append(bootstrapPeers, ma)
-	}
-}
 
 // Node is the main type for the p2p package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
@@ -245,7 +217,7 @@ func (n *Node) Start() error {
 
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
-		if err := n.connectToBootstrapList(); err != nil {
+		if err := ConnectToBootstrapList(n.ctx, n.host); err != nil {
 			return err
 		}
 	}
@@ -254,38 +226,6 @@ func (n *Node) Start() error {
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
 	return n.mainLoop()
-}
-
-func (n *Node) connectToBootstrapList() error {
-	log.WithField("bootstrapPeers", bootstrapPeers).Info("connecting to bootstrap peers")
-	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
-	defer cancel()
-	wg := sync.WaitGroup{}
-	for _, addr := range bootstrapPeers {
-		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
-		if err != nil {
-			return err
-		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := n.host.Connect(connectCtx, *peerInfo); err != nil {
-				log.WithFields(map[string]interface{}{
-					"error":    err.Error(),
-					"peerInfo": peerInfo,
-				}).Warn("failed to connect to bootstrap peer")
-			}
-		}()
-	}
-	wg.Wait()
-
-	// It is recommended to wait for 2 seconds after connecting to all the
-	// bootstrap peers to give time for the relevant notifees to trigger and the
-	// DHT to fully initialize.
-	// See: https://github.com/0xProject/0x-mesh/pull/69#discussion_r286849679
-	time.Sleep(2 * time.Second)
-
-	return nil
 }
 
 // AddPeerScore adds diff to the current score for a given peer. Tag is a unique
