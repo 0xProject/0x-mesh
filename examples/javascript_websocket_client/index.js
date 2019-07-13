@@ -44,19 +44,19 @@ websocketProvider
         var order = {
             makerAddress: '0xa3ece5d5b6319fa785efc10d3112769a46c6e149',
             takerAddress: '0x0000000000000000000000000000000000000000',
-            makerAssetAmount: '100000000000000000000',
-            takerAssetAmount: '100000000000000000000000',
-            expirationTimeSeconds: '1559856615025',
+            makerAssetAmount: '1000000000000000000',
+            takerAssetAmount: '10000000000000000000000',
+            expirationTimeSeconds: '1586340602',
             makerFee: '0',
             takerFee: '0',
             feeRecipientAddress: '0x0000000000000000000000000000000000000000',
             senderAddress: '0x0000000000000000000000000000000000000000',
-            salt: '46108882540880341679561755865076495033942060608820537332859096815711589201849',
+            salt: '41253767178111694375645046549067933145709740457131351457334397888365956743955',
             makerAssetData: '0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498',
             takerAssetData: '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-            exchangeAddress: '0x4f833a24e1f95d70f028921e27040ca56e09ab0b',
+            exchangeAddress: '0x080bf510fcbf18b91105470639e9561022937712',
             signature:
-                '0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603',
+                '0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02',
         };
         const orders = [order];
         websocketProvider.send('mesh_addOrders', [orders]).then(function(validationResults) {
