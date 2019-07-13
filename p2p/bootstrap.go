@@ -11,8 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// bootstrapPeers is a list of peers to use for bootstrapping the DHT.
-var bootstrapPeers []multiaddr.Multiaddr
+// BootstrapPeers is a list of peers to use for bootstrapping the DHT.
+var BootstrapPeers []multiaddr.Multiaddr
 
 func init() {
 	for _, s := range []string{
@@ -27,16 +27,16 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
-		bootstrapPeers = append(bootstrapPeers, ma)
+		BootstrapPeers = append(BootstrapPeers, ma)
 	}
 }
 
 func ConnectToBootstrapList(ctx context.Context, host host.Host) error {
-	log.WithField("bootstrapPeers", bootstrapPeers).Info("connecting to bootstrap peers")
+	log.WithField("BootstrapPeers", BootstrapPeers).Info("connecting to bootstrap peers")
 	connectCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
 	defer cancel()
 	wg := sync.WaitGroup{}
-	for _, addr := range bootstrapPeers {
+	for _, addr := range BootstrapPeers {
 		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
 		if err != nil {
 			return err
