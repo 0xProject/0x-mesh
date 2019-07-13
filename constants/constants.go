@@ -4,6 +4,10 @@ import (
 	"errors"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiformats/go-multiaddr"
+
+	// Side-effect import to support DNS multiaddresses.
+	_ "github.com/multiformats/go-multiaddr-dns"
 )
 
 /**
@@ -51,3 +55,23 @@ var ErrInternal = errors.New("internal error")
 
 // TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
 var TestMaxContentLength = 1024 * 512
+
+// BootstrapPeers is a list of peers to use for bootstrapping the DHT.
+var BootstrapPeers []multiaddr.Multiaddr
+
+func init() {
+	for _, s := range []string{
+		"/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
+		"/ip4/18.200.96.60/tcp/60558/ipfs/16Uiu2HAkwsDZk4LzXy2rnWANRsyBjB4fhjnsNeJmjgsBqxPGTL32",
+		"/ip4/13.232.193.142/tcp/60558/ipfs/16Uiu2HAkykwoBxwyvoEbaEkuKMeKrmJDPZ2uKFPUKtqd2JbGHUNH",
+		"/dns4/bootstrap-0.mesh.0x.org/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
+		"/dns4/bootstrap-1.mesh.0x.org/tcp/60558/ipfs/16Uiu2HAkwsDZk4LzXy2rnWANRsyBjB4fhjnsNeJmjgsBqxPGTL32",
+		"/dns4/bootstrap-2.mesh.0x.org/tcp/60558/ipfs/16Uiu2HAkykwoBxwyvoEbaEkuKMeKrmJDPZ2uKFPUKtqd2JbGHUNH",
+	} {
+		ma, err := multiaddr.NewMultiaddr(s)
+		if err != nil {
+			panic(err)
+		}
+		BootstrapPeers = append(BootstrapPeers, ma)
+	}
+}
