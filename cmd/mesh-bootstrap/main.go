@@ -11,8 +11,6 @@ import (
 	"os"
 	"time"
 
-	peer "github.com/libp2p/go-libp2p-peer"
-
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -20,6 +18,7 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
