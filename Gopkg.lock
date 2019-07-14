@@ -416,6 +416,14 @@
   version = "v0.0.6"
 
 [[projects]]
+  digest = "1:b92c2db5053b10f0b83bd3d7587aadc0ff247b98326f18e0e747741051a4dba2"
+  name = "github.com/libp2p/go-libp2p-autonat-svc"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8f86551aac295f65a96ca1be488c351c037b61b6"
+  version = "v0.0.6"
+
+[[projects]]
   digest = "1:886a124af6b511b708c6f59925c77142cea9d30adcfc7198134b6e9c4c099cd7"
   name = "github.com/libp2p/go-libp2p-circuit"
   packages = [
@@ -1244,6 +1252,7 @@
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
+    "github.com/ethereum/go-ethereum/common/hexutil",
     "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
@@ -1254,6 +1263,7 @@
     "github.com/google/uuid",
     "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
+    "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-connmgr",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-discovery",
@@ -1264,6 +1274,7 @@
     "github.com/libp2p/go-libp2p-peerstore",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/multiformats/go-multiaddr",
+    "github.com/multiformats/go-multiaddr-dns",
     "github.com/ocdogan/rbt",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
