@@ -10,22 +10,28 @@
 
 :no_entry: WARNING: This project is still under active development. Expect breaking changes before the official release. :no_entry:
 
+## Versions
+
+You are looking a the documentation for version `development`. To see the
+documentation for a different version, visit the
+[Releases Page](https://github.com/0xProject/0x-mesh/releases).
+
 ## Deployment
 
-[The Deployment Guide](https://github.com/0xProject/0x-mesh/blob/master/DEPLOYMENT.md)
+[The Deployment Guide](DEPLOYMENT.md)
 will walk you through how to configure and deploy your own 0x Mesh node.
 
 ## Usage
 
 Once you have deployed a 0x Mesh node, the
-[Usage Guide](https://github.com/0xProject/0x-mesh/blob/master/USAGE.md)
+[Usage Guide](USAGE.md)
 explains how to interact with it using the JSON-RPC API.
 
 ## Development
 
 We love receiving contributions from the community :smile: If you are interested
 in helping develop 0x Mesh, please read the
-[Development Guide](https://github.com/0xProject/0x-mesh/blob/master/DEVELOPMENT.md).
+[Development Guide](DEVELOPMENT.md).
 If you are looking for a place to start, take a look at the
 [issues page](https://github.com/0xProject/0x-mesh/issues) and don't hesitate to
 [reach out to us on Discord](https://discord.gg/HF7fHwk).
