@@ -64,7 +64,7 @@ var NetworkIDToContractAddresses = map[int]ContractAddresses{
 		ERC20Proxy:           common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 		ERC721Proxy:          common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
 		Exchange:             common.HexToAddress("0x30589010550762d2f0d06f650d8e8b6ade6dbf4b"),
-		OrderValidationUtils: common.HexToAddress("0xb3667ce62aa9fabcc352c5b6dac27ea61f1a3e71igr"),
+		OrderValidationUtils: common.HexToAddress("0xb3667ce62aa9fabcc352c5b6dac27ea61f1a3e71"),
 		EthBalanceChecker:    common.HexToAddress("0x505aa534485bf80ee919339717cff90eb2e3364c"),
 		Coordinator:          common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry:  common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
