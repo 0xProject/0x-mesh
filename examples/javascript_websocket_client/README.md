@@ -10,7 +10,7 @@ This directory contains a very simple example of using [web3-providers](https://
 yarn install
 ```
 
-2. Start your Mesh node locally on port `60557` for Ethereum mainnet (see Docker command in [deployment docs](https://github.com/0xProject/0x-mesh/blob/master/DEPLOYMENT.md))
+2. Start your Mesh node locally on port `60557` for Ethereum mainnet (see Docker command in [deployment docs](DEPLOYMENT.md))
 
 3. Run Javascript WS client
 

@@ -11,6 +11,8 @@ import (
 	"os"
 	"time"
 
+	autonat "github.com/libp2p/go-libp2p-autonat-svc"
+
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -91,6 +93,11 @@ func main() {
 
 	// Set up the notifee.
 	basicHost.Network().Notify(&notifee{})
+
+	// Enable AutoNAT service.
+	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
+		log.WithField("error", err).Fatal("could not enable AutoNAT service")
+	}
 
 	// Set up DHT for peer discovery.
 	kadDHT, err := dht.New(ctx, basicHost)

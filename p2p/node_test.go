@@ -85,6 +85,7 @@ func newTestNode(t *testing.T) *Node {
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
+		UseBootstrapList: false,
 	}
 	node, err := New(config)
 	require.NoError(t, err)
