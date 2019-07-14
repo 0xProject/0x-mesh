@@ -61,7 +61,7 @@ type Config struct {
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
-	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
 	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
