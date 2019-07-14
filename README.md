@@ -12,7 +12,7 @@
 
 ## Versions
 
-You are looking a the documentation for version `development`. To see the
+You are looking at the documentation for version `development`. To see the
 documentation for a different version, visit the
 [Releases Page](https://github.com/0xProject/0x-mesh/releases).
 
