@@ -33,7 +33,7 @@ docker run \
 **Notes:**
 
 -   `60557` is the `RPC_PORT` and `60558` is the `P2P_LISTEN_PORT`
--   In order to enable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `true`.
+-   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
 
@@ -75,7 +75,7 @@ type Config struct {
     EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
     // UseBootstrapList is whether to use the predetermined list of peers to
     // bootstrap the DHT and peer discovery.
-    UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+    UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
     // OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
     // that you'd want it pruned from the Mesh node.
     OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
