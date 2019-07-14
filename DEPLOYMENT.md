@@ -8,11 +8,11 @@ node.
 
 ## Supported Networks
 
-- Mainnet
-- Kovan
-- Ropsten
-- Rinkeby
-- [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli)
+-   Mainnet
+-   Kovan
+-   Ropsten
+-   Rinkeby
+-   [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli)
 
 ## Running Mesh
 
@@ -32,10 +32,10 @@ docker run \
 
 **Notes:**
 
-- `60557` is the `RPC_PORT` and `60558` is the `P2P_LISTEN_PORT`
-- In order to enable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `true`.
-- Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
-- If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
+-   `60557` is the `RPC_PORT` and `60558` is the `P2P_LISTEN_PORT`
+-   In order to enable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `true`.
+-   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
+-   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
 
 ## Persisting State
 

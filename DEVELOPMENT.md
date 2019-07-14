@@ -14,12 +14,12 @@ management and does not support Go modules.
 
 ## Prerequisites
 
-- [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
-- [Go version >= 1.12](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g))
-- [Dep package manager](https://golang.github.io/dep/docs/installation.html)
-- [Node.js version >=11](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
-- [Yarn package manager](https://yarnpkg.com/en/)
-- [golangci-lint version 1.16.0](https://github.com/golangci/golangci-lint#install)
+-   [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
+-   [Go version >= 1.12](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g))
+-   [Dep package manager](https://golang.github.io/dep/docs/installation.html)
+-   [Node.js version >=11](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
+-   [Yarn package manager](https://yarnpkg.com/en/)
+-   [golangci-lint version 1.16.0](https://github.com/golangci/golangci-lint#install)
 
 ## Installing Dependencies
 

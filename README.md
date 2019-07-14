@@ -32,6 +32,6 @@ If you are looking for a place to start, take a look at the
 
 ## Additional Background
 
-- [Announcement blog post](https://blog.0xproject.com/0x-roadmap-2019-part-3-networked-liquidity-0x-mesh-9a24026202b3)
-- [MVP architecture doc](https://drive.google.com/file/d/1dAVTEND7e1sISO9VZSOou0DN-igoUi9z/view)
-- [Video of talk at ETHNewYork](https://youtu.be/YUqe4fKBA2k?t=723)
+-   [Announcement blog post](https://blog.0xproject.com/0x-roadmap-2019-part-3-networked-liquidity-0x-mesh-9a24026202b3)
+-   [MVP architecture doc](https://drive.google.com/file/d/1dAVTEND7e1sISO9VZSOou0DN-igoUi9z/view)
+-   [Video of talk at ETHNewYork](https://youtu.be/YUqe4fKBA2k?t=723)
