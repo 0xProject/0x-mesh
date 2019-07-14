@@ -25,10 +25,10 @@ include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 ### Recommended Clients:
 
 -   Javascript/Typescript: [Web3-providers](https://www.npmjs.com/package/web3-providers)
-    -   See our [example Mesh WS client](https://github.com/0xProject/0x-mesh/tree/f31545953716374c55d9d5e3a5bc8ca59bfb6dc6/examples/javascript_websocket_client) built with it
+    -   See our [example Mesh WS client](examples/javascript_websocket_client) built with it
 -   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use
 -   Go: Mesh ships with a [Mesh RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
-    -   see the [demos](https://github.com/0xProject/0x-mesh/tree/master/cmd/demo) for example usage
+    -   see the [demos](cmd/demo) for example usage
 
 ## API
 

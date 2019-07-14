@@ -61,7 +61,7 @@ type Config struct {
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
 	// UseBootstrapList is whether to use the predetermined list of peers to
 	// bootstrap the DHT and peer discovery.
-	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"false"`
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
 	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
@@ -222,11 +222,11 @@ func New(config Config) (*App, error) {
 }
 
 func getPubSubTopic(networkID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/1.0.0-beta", networkID)
+	return fmt.Sprintf("/0x-orders/network/%d/version/1", networkID)
 }
 
 func getRendezvous(networkID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/1.0.0-beta", networkID)
+	return fmt.Sprintf("/0x-mesh/network/%d/version/1", networkID)
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {

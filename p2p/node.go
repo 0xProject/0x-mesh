@@ -44,7 +44,7 @@ const (
 	peerGraceDuration = 10 * time.Second
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
-	defaultNetworkTimeout = 5 * time.Second
+	defaultNetworkTimeout = 10 * time.Second
 	// advertiseTTL is the TTL for our announcement to the discovery network.
 	advertiseTTL = 5 * time.Minute
 	// pubsubProtocolID is the protocol ID to use for pubsub.
