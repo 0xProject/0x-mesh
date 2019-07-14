@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-development-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-1.0.1-beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
