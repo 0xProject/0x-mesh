@@ -106,7 +106,7 @@ func New(config Config) (*App, error) {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "development",
+		"version": "1.0.0-beta",
 	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
@@ -222,11 +222,11 @@ func New(config Config) (*App, error) {
 }
 
 func getPubSubTopic(networkID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/0.0.1", networkID)
+	return fmt.Sprintf("/0x-orders/network/%d/version/1.0.0-beta", networkID)
 }
 
 func getRendezvous(networkID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/0.0.1", networkID)
+	return fmt.Sprintf("/0x-mesh/network/%d/version/1.0.0-beta", networkID)
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
