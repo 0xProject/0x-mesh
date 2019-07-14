@@ -95,7 +95,7 @@ type Config struct {
 ```
 
 There is one additional environment variable in the [main entrypoint for the
-Mesh executable](https://github.com/0xProject/0x-mesh/blob/master/cmd/mesh/main.go):
+Mesh executable](cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
