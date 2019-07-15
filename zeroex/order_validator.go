@@ -68,6 +68,15 @@ type AcceptedOrderInfo struct {
 	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
 }
 
+// MarshalJSON is a custom Marshaler for AcceptedOrderInfo
+func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"orderHash":                a.OrderHash.Hex(),
+		"signedOrder":              a.SignedOrder,
+		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
+	})
+}
+
 // RejectedOrderStatus enumerates all the unique reasons for an orders rejection
 type RejectedOrderStatus struct {
 	Code    string `json:"code"`
@@ -667,7 +676,6 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 // i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
 const emptyGetOrderRelevantStatesCallDataByteLength = 268
 
-
 // jsonRPCPayloadByteLength is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
 // passed in. The `data` includes the empty `getOrderRelevantStates` calldata.
 /*
@@ -685,7 +693,7 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
     ]
 }
 */
-const jsonRPCPayloadByteLength  = 444
+const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
 	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
