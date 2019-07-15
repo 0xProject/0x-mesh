@@ -11,14 +11,12 @@ import (
 	"os"
 	"time"
 
-	autonat "github.com/libp2p/go-libp2p-autonat-svc"
-
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
+	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -100,7 +98,7 @@ func main() {
 	}
 
 	// Set up DHT for peer discovery.
-	kadDHT, err := dht.New(ctx, basicHost)
+	kadDHT, err := p2p.NewDHT(ctx, basicHost)
 	if err != nil {
 		log.WithField("error", err).Fatal("could not create DHT")
 	}
