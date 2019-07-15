@@ -11,12 +11,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"errors"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jpillora/backoff"
@@ -68,6 +70,12 @@ type AcceptedOrderInfo struct {
 	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
 }
 
+type acceptedOrderInfoJSON struct {
+	OrderHash                string  `json:"orderHash"`
+	SignedOrder              *SignedOrder `json:"signedOrder"`
+	FillableTakerAssetAmount string     `json:"fillableTakerAssetAmount"`
+}
+
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
 func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
@@ -75,6 +83,24 @@ func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
 		"signedOrder":              a.SignedOrder,
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
 	})
+}
+
+// UnmarshalJSON implements a custom JSON unmarshaller for the OrderEvent type
+func (a *AcceptedOrderInfo) UnmarshalJSON(data []byte) error {
+	var acceptedOrderInfoJSON acceptedOrderInfoJSON
+	err := json.Unmarshal(data, &acceptedOrderInfoJSON)
+	if err != nil {
+		return err
+	}
+
+	a.OrderHash = common.HexToHash(acceptedOrderInfoJSON.OrderHash)
+	a.SignedOrder = acceptedOrderInfoJSON.SignedOrder
+	var ok bool
+	a.FillableTakerAssetAmount, ok = math.ParseBig256(acceptedOrderInfoJSON.FillableTakerAssetAmount)
+	if !ok {
+		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
+	}
+	return nil
 }
 
 // RejectedOrderStatus enumerates all the unique reasons for an orders rejection
