@@ -8,10 +8,15 @@ import (
 	"time"
 
 	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
+
+const dhtProtocolID = protocol.ID("/0x-mesh-dht/version/1")
 
 // BootstrapPeers is a list of peers to use for bootstrapping the DHT.
 var BootstrapPeers []multiaddr.Multiaddr
@@ -67,4 +72,9 @@ func ConnectToBootstrapList(ctx context.Context, host host.Host) error {
 	time.Sleep(2 * time.Second)
 
 	return nil
+}
+
+// NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh.
+func NewDHT(ctx context.Context, host host.Host) (*dht.IpfsDHT, error) {
+	return dht.New(ctx, host, dhtopts.Protocols(dhtProtocolID))
 }
