@@ -259,7 +259,6 @@ func (app *App) Start() error {
 	go app.periodicallyCheckForNewAddrs(addrs)
 	log.WithFields(map[string]interface{}{
 		"addresses": addrs,
-		"peerID":    app.node.ID().String(),
 	}).Info("started p2p node")
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which

@@ -130,8 +130,7 @@ func main() {
 	}
 
 	log.WithFields(map[string]interface{}{
-		"addrs":  basicHost.Addrs(),
-		"peerID": basicHost.ID(),
+		"addrs": basicHost.Addrs(),
 	}).Info("started bootstrap node")
 
 	// Sleep until stopped
@@ -166,16 +165,16 @@ func (n *notifee) ListenClose(p2pnet.Network, ma.Multiaddr) {}
 // Connected is called when a connection opened
 func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
 	}).Info("connected to peer")
 }
 
 // Disconnected is called when a connection closed
 func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
 	}).Info("disconnected from peer")
 }
 
