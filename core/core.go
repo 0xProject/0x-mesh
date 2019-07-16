@@ -107,7 +107,7 @@ func New(config Config) (*App, error) {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "1.0.1-beta",
+		"version": "1.0.2-beta",
 	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
