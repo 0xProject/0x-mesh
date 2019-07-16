@@ -352,17 +352,17 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	}
 
 	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
-		MakerAddress:          strings.ToLower(s.MakerAddress.String()),
+		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
 		MakerAssetData:        makerAssetData,
-		MakerAssetAmount:      strings.ToLower(s.MakerAssetAmount.String()),
+		MakerAssetAmount:      s.MakerAssetAmount.String(),
 		MakerFee:              s.MakerFee.String(),
-		TakerAddress:          strings.ToLower(s.TakerAddress.String()),
+		TakerAddress:          strings.ToLower(s.TakerAddress.Hex()),
 		TakerAssetData:        takerAssetData,
 		TakerAssetAmount:      s.TakerAssetAmount.String(),
 		TakerFee:              s.TakerFee.String(),
-		SenderAddress:         strings.ToLower(s.SenderAddress.String()),
-		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.String()),
-		FeeRecipientAddress:   strings.ToLower(s.FeeRecipientAddress.String()),
+		SenderAddress:         strings.ToLower(s.SenderAddress.Hex()),
+		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
+		FeeRecipientAddress:   strings.ToLower(s.FeeRecipientAddress.Hex()),
 		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
 		Salt:                  s.Salt.String(),
 		Signature:             signature,
