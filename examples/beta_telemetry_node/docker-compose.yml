@@ -39,6 +39,7 @@ services:
             - '3333:3333'
         volumes:
             - /root/data/keys:/app/keys
+        restart: on-failure:5
         environment:
             - PORT=3333
             - REMOTE_ADDRESS=https://telemetry.mesh.0x.org/_bulk
