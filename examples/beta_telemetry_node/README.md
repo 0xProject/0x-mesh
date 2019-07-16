@@ -26,7 +26,7 @@ cd 0x-mesh/examples/beta_telemetry_node
 code . # open this directory in your text editor
 ```
 
-Please open up `docker-compose.yml` and set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint (if everyone uses our Infura API key, it'll get rate-limited!).
+Please open up `docker-compose.yml` and set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint.
 
 We are now ready to deploy our instance. Before we can continue, you will need to set up an account with the cloud hosting provider of your choice, and retrieve your access token/key/secret. We will use them to create a new machine with name `mesh-beta`. Docker has great documentation on doing all of that for [DigitalOcean](https://docs.docker.com/machine/examples/ocean/) and [AWS](https://docs.docker.com/machine/examples/aws/). Instead of naming the machine `docker-sandbox` as in those examples, let's name ours `mesh-beta` as shown below.
 
