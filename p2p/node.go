@@ -130,7 +130,7 @@ func New(config Config) (*Node, error) {
 	}
 
 	// Set up DHT for peer discovery.
-	kadDHT, err := dht.New(nodeCtx, basicHost)
+	kadDHT, err := NewDHT(nodeCtx, basicHost)
 	if err != nil {
 		cancel()
 		return nil, err

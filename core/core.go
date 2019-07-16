@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
@@ -106,7 +107,7 @@ func New(config Config) (*App, error) {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "1.0.1-beta",
+		"version": "1.0.2-beta",
 	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
@@ -218,6 +219,9 @@ func New(config Config) (*App, error) {
 	}
 	app.node = node
 
+	// Add the peer ID hook to the logger.
+	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
+
 	return app, nil
 }
 
@@ -255,7 +259,6 @@ func (app *App) Start() error {
 	go app.periodicallyCheckForNewAddrs(addrs)
 	log.WithFields(map[string]interface{}{
 		"addresses": addrs,
-		"peerID":    app.node.ID().String(),
 	}).Info("started p2p node")
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
