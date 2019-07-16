@@ -35,16 +35,16 @@ func (n *notifee) ListenClose(p2pnet.Network, ma.Multiaddr) {}
 // Connected is called when a connection opened
 func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
 	}).Trace("connected to peer")
 }
 
 // Disconnected is called when a connection closed
 func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
 	}).Trace("disconnected from peer")
 }
 
@@ -60,9 +60,9 @@ func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 			// positive score so the Connection Manager will be less likely to
 			// disconnect them.
 			log.WithFields(map[string]interface{}{
-				"peerID":    stream.Conn().RemotePeer(),
-				"protocol":  stream.Protocol(),
-				"direction": stream.Stat().Direction,
+				"remotePeerID": stream.Conn().RemotePeer(),
+				"protocol":     stream.Protocol(),
+				"direction":    stream.Stat().Direction,
 			}).Debug("found peer who speaks our protocol")
 			n.node.connManager.TagPeer(stream.Conn().RemotePeer(), pubsubProtocolTag, pubsubProtocolScore)
 		}
