@@ -16,10 +16,14 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
+	relay "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	routing "github.com/libp2p/go-libp2p-routing"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -73,6 +77,18 @@ func main() {
 		log.WithField("error", err).Fatal("could not initialize private key")
 	}
 
+	// We need to declare the newDHT function ahead of time so we can use it in
+	// the libp2p.Routing option.
+	var kadDHT *dht.IpfsDHT
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		kadDHT, err = p2p.NewDHT(ctx, h)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not create DHT")
+		}
+		return kadDHT, err
+	}
+
 	// Set up the transport and the host.
 	// Note: 0.0.0.0 will use all available addresses.
 	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.P2PListenPort))
@@ -84,6 +100,9 @@ func main() {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
+		libp2p.EnableRelay(relay.OptHop),
+		libp2p.EnableAutoRelay(),
+		libp2p.Routing(newDHT),
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
@@ -99,12 +118,6 @@ func main() {
 	// Enable AutoNAT service.
 	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
 		log.WithField("error", err).Fatal("could not enable AutoNAT service")
-	}
-
-	// Set up DHT for peer discovery.
-	kadDHT, err := p2p.NewDHT(ctx, basicHost)
-	if err != nil {
-		log.WithField("error", err).Fatal("could not create DHT")
 	}
 
 	// Initialize the DHT and then connect to the other bootstrap nodes.
