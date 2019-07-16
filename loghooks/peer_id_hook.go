@@ -24,8 +24,6 @@ func (h *PeerIDHook) Levels() []log.Level {
 }
 
 func (h *PeerIDHook) Fire(entry *log.Entry) error {
-	if _, found := entry.Data["myPeerID"]; !found {
-		entry.Data["myPeerID"] = h.peerID
-	}
+	entry.Data["myPeerID"] = h.peerID
 	return nil
 }
