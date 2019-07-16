@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
@@ -88,6 +89,9 @@ func main() {
 	if err != nil {
 		log.WithField("error", err).Fatal("could not create host")
 	}
+
+	// Add the peer ID hook to the logger.
+	log.AddHook(loghooks.NewPeerIDHook(basicHost.ID()))
 
 	// Set up the notifee.
 	basicHost.Network().Notify(&notifee{})

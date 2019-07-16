@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
@@ -217,6 +218,9 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	app.node = node
+
+	// Add the peer ID hook to the logger.
+	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
 
 	return app, nil
 }
