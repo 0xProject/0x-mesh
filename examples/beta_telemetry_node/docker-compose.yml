@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+    mesh:
+        image: 0xorg/mesh:1.0.1-beta
+        restart: always
+        logging:
+            driver: fluentd
+            options:
+                fluentd-address: localhost:24224
+                tag: docker.mesh
+        volumes:
+            - /root/data:/usr/mesh/0x_mesh
+        links:
+            - fluentbit
+        ports:
+            - '60557:60557'
+            - '60558:60558'
+        environment:
+            - VERBOSITY=5
+            - P2P_LISTEN_PORT=60558
+            - ETHEREUM_NETWORK_ID=1
+            - ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/a9a23d2566e542629179d6372ace13c9
+            - BLOCK_POLLING_INTERVAL=5s
+
+    fluentbit:
+        image: fluent/fluent-bit:1.2.1
+        links:
+            - esproxy
+        ports:
+            - '24224:24224'
+        command: /fluent-bit/bin/fluent-bit -c /fluent-bit/etc/fluent-bit.conf
+        volumes:
+            - /root/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+            - /root/parsers.conf:/fluent-bit/etc/parsers.conf
+    esproxy:
+        image: overmorrow/auth-es-proxy:latest
+        ports:
+            - '3333:3333'
+        volumes:
+            - /root/data/keys:/app/keys
+        restart: on-failure:5
+        environment:
+            - PORT=3333
+            - REMOTE_ADDRESS=https://telemetry.mesh.0x.org/_bulk
+            - INPUT_VALIDATION=false
+            - OUTPUT_SIGNING=true
+            - PRIVATE_KEY_PATH=/app/keys/privkey
