@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
@@ -351,17 +352,17 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	}
 
 	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
-		MakerAddress:          s.MakerAddress.Hex(),
+		MakerAddress:          strings.ToLower(s.MakerAddress.String()),
 		MakerAssetData:        makerAssetData,
-		MakerAssetAmount:      s.MakerAssetAmount.String(),
+		MakerAssetAmount:      strings.ToLower(s.MakerAssetAmount.String()),
 		MakerFee:              s.MakerFee.String(),
-		TakerAddress:          s.TakerAddress.Hex(),
+		TakerAddress:          strings.ToLower(s.TakerAddress.String()),
 		TakerAssetData:        takerAssetData,
 		TakerAssetAmount:      s.TakerAssetAmount.String(),
 		TakerFee:              s.TakerFee.String(),
-		SenderAddress:         s.SenderAddress.Hex(),
-		ExchangeAddress:       s.ExchangeAddress.Hex(),
-		FeeRecipientAddress:   s.FeeRecipientAddress.Hex(),
+		SenderAddress:         strings.ToLower(s.SenderAddress.String()),
+		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.String()),
+		FeeRecipientAddress:   strings.ToLower(s.FeeRecipientAddress.String()),
 		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
 		Salt:                  s.Salt.String(),
 		Signature:             signature,
