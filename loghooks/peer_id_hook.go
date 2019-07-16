@@ -13,7 +13,7 @@ type PeerIDHook struct {
 
 // NewPeerIDHook creates and returns a new PeerIDHook with the given peer ID.
 func NewPeerIDHook(peerID peer.ID) *PeerIDHook {
-	return &PeerIDHook{peerID: peer.IDB58Encode(peerID)}
+	return &PeerIDHook{peerID: peerID.String()}
 }
 
 // Ensure that PeerIDHook implements log.Hook.
