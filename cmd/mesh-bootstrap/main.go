@@ -164,7 +164,7 @@ func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
 		"peerID":       conn.RemotePeer(),
 		"multiaddress": conn.RemoteMultiaddr(),
-	}).Trace("connected to peer")
+	}).Info("connected to peer")
 }
 
 // Disconnected is called when a connection closed
@@ -172,7 +172,7 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
 		"peerID":       conn.RemotePeer(),
 		"multiaddress": conn.RemoteMultiaddr(),
-	}).Trace("disconnected from peer")
+	}).Info("disconnected from peer")
 }
 
 // OpenedStream is called when a stream opened
