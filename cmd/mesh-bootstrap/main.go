@@ -213,8 +213,8 @@ func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {}
 // ClosedStream is called when a stream closed
 func (n *notifee) ClosedStream(network p2pnet.Network, stream p2pnet.Stream) {}
 
-func newAddrsFactory(adverticeAddresses []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
+func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
 	return func([]ma.Multiaddr) []ma.Multiaddr {
-		return adverticeAddresses
+		return advertiseAddrs
 	}
 }
