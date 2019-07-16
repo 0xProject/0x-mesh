@@ -17,7 +17,7 @@ services:
             - '60557:60557'
             - '60558:60558'
         environment:
-            - VERBOSITY=6
+            - VERBOSITY=5
             - P2P_LISTEN_PORT=60558
             - ETHEREUM_NETWORK_ID=1
             - ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/a9a23d2566e542629179d6372ace13c9
