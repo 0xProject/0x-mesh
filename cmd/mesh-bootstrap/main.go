@@ -11,14 +11,13 @@ import (
 	"os"
 	"time"
 
-	autonat "github.com/libp2p/go-libp2p-autonat-svc"
-
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
+	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -91,6 +90,9 @@ func main() {
 		log.WithField("error", err).Fatal("could not create host")
 	}
 
+	// Add the peer ID hook to the logger.
+	log.AddHook(loghooks.NewPeerIDHook(basicHost.ID()))
+
 	// Set up the notifee.
 	basicHost.Network().Notify(&notifee{})
 
@@ -100,7 +102,7 @@ func main() {
 	}
 
 	// Set up DHT for peer discovery.
-	kadDHT, err := dht.New(ctx, basicHost)
+	kadDHT, err := p2p.NewDHT(ctx, basicHost)
 	if err != nil {
 		log.WithField("error", err).Fatal("could not create DHT")
 	}
@@ -128,8 +130,7 @@ func main() {
 	}
 
 	log.WithFields(map[string]interface{}{
-		"addrs":  basicHost.Addrs(),
-		"peerID": basicHost.ID(),
+		"addrs": basicHost.Addrs(),
 	}).Info("started bootstrap node")
 
 	// Sleep until stopped
@@ -164,17 +165,17 @@ func (n *notifee) ListenClose(p2pnet.Network, ma.Multiaddr) {}
 // Connected is called when a connection opened
 func (n *notifee) Connected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
-	}).Trace("connected to peer")
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
+	}).Info("connected to peer")
 }
 
 // Disconnected is called when a connection closed
 func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 	log.WithFields(map[string]interface{}{
-		"peerID":       conn.RemotePeer(),
-		"multiaddress": conn.RemoteMultiaddr(),
-	}).Trace("disconnected from peer")
+		"remotePeerID":       conn.RemotePeer(),
+		"remoteMultiaddress": conn.RemoteMultiaddr(),
+	}).Info("disconnected from peer")
 }
 
 // OpenedStream is called when a stream opened
