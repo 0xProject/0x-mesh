@@ -1,6 +1,14 @@
 ## Setting up a Telemetry-Enabled Mesh Deployment for the Beta Period
 
-This guide will walk you though setting up a Mesh node on the cloud hosting solution of your choice using [Docker Machine](https://docs.docker.com/machine/). The instructions below will deploy to Mesh node on [DigitalOcean](https://www.digitalocean.com/), but can be easily modified to deploy on [many other cloud providers](https://docs.docker.com/machine/drivers/).
+0x Mesh is completely permissionless and the beta is open to anyone who wants to
+participate. You can optionally help improve 0x Mesh by enabling telemetry. Mesh
+automatically logs a lot of useful information including the number of orders
+processed and details about any errors and warnings that might occur. Sending
+this information to us is extraordinarily helpful, but completely optional. If
+you don't want to enable telemetry, you can follow the
+[Deployment Guide](../../DEPLOYMENT.md) instead.
+
+This guide will walk you though setting up a telemetry-enabled Mesh node on the cloud hosting solution of your choice using [Docker Machine](https://docs.docker.com/machine/). The instructions below will deploy a Mesh node on [DigitalOcean](https://www.digitalocean.com/), but can be easily modified to deploy on [many other cloud providers](https://docs.docker.com/machine/drivers/).
 
 ## Prerequisites
 
@@ -17,10 +25,6 @@ git clone https://github.com/0xProject/0x-mesh.git
 cd 0x-mesh/examples/beta_telemetry_node
 code . # open this directory in your text editor
 ```
-
-Next, let's customize this setup for our deployment. Let's open up `fluent-bit.conf` and modify the `Logstash_Prefix` config so that it has a name that uniquely identifies logs originating from your Mesh node as belonging to you or your organization. Let's edit it from `mesh_beta` to `mesh_{NAME}` where `{name}` is your personal/organization name.
-
-Now, let's open `data/keys/privkey` and paste in the private key given to you by the 0x developers. This private key will be used to generate both your `peerID` on the network, and allow your node's logs to be sent to 0x's log aggregation service. Do ahead and replace `<PASTE_YOUR_PRIVATE_KEY_HERE>` with your private key.
 
 Please open up `docker-compose.yml` and set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint (if everyone uses our Infura API key, it'll get rate-limited!).
 
@@ -45,7 +49,6 @@ mesh-beta     -        digitalocean   Running   tcp://162.31.121.332:2376       
 Our remote machine is alive! The next step is to copy over our config files and private key to this remote machine. We can use [docker-machine scp](https://docs.docker.com/machine/reference/scp/). The following commands ask `docker-machine` to copy over the `data` dir and `fluent-bit.conf` and `parsers.conf` files from our local computer to a directory called `root` on the `mesh-beta` machine.
 
 ```
-docker-machine scp -r -d data/ mesh-beta:/root/data/
 docker-machine scp fluent-bit.conf mesh-beta:/root/fluent-bit.conf
 docker-machine scp parsers.conf mesh-beta:/root/parsers.conf
 ```
@@ -71,4 +74,23 @@ docker logs <fluent-bit-container-id> -f
 
 Instead of reading them from the `0xorg/mesh` container.
 
-I hope that was easy enough! If you ran into any issues, please ping us in the #mesh channel on [Discord](https://discord.gg/HF7fHwk). To learn more about connecting to your Mesh node's JSON RPC interface, check out our [Usage docs](USAGE.md).
+Finally, in order to prevent our log aggregation stack from getting overloaded,
+we whitelist the peers that are allowed to send us logs. Look for a log message
+that looks like this:
+
+```
+{
+  "addresses": [
+    "/ip4/127.0.0.1/tcp/60557",
+    "/ip4/172.17.0.2/tcp/60557"
+  ],
+  "level": "info",
+  "msg": "started p2p node",
+  "peerID": "QmbKkHnmkmFxKbPWbBNz3inKizDuqjTsWsVyutnshYULLp",
+  "time": "2019-07-15T17:36:46-07:00"
+}
+```
+
+Ping us on [Discord](https://discord.gg/HF7fHwk) and let us know your peer ID.
+
+I hope that was easy enough! If you ran into any issues, please ping us in the #mesh channel on [Discord](https://discord.gg/HF7fHwk). To learn more about connecting to your Mesh node's JSON RPC interface, check out our [Usage docs](../../USAGE.md).
