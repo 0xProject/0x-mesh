@@ -2,7 +2,7 @@ version: '3'
 
 services:
     mesh:
-        image: 0xorg/mesh:1.0.4-beta
+        image: 0xorg/mesh:1.0.5-beta
         restart: always
         logging:
             driver: fluentd
