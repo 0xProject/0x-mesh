@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/keys"
@@ -16,10 +17,14 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
+	relay "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	routing "github.com/libp2p/go-libp2p-routing"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -43,10 +48,12 @@ const (
 // Config contains configuration options for a Node.
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
-	Verbosity int `envvar:"VERBOSITY" default:"6"`
-	// P2PListenPort is the port on which to listen for new connections. It can be
-	// set to 0 to make the OS automatically choose any available port.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
+	Verbosity int `envvar:"VERBOSITY" default:"5"`
+	// P2PListenPort is the port on which to listen for new connections.
+	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
+	// PublicIPAddrs is a comma separated list of public IPv4 addresses at which
+	// the bootstrap node is accessible.
+	PublicIPAddrs string `envvar:"PUBLIC_IP_ADDRS"`
 	// PrivateKey path is the path to a private key file which will be used for
 	// signing messages and generating a peer ID.
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
@@ -73,6 +80,29 @@ func main() {
 		log.WithField("error", err).Fatal("could not initialize private key")
 	}
 
+	// We need to declare the newDHT function ahead of time so we can use it in
+	// the libp2p.Routing option.
+	var kadDHT *dht.IpfsDHT
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		kadDHT, err = p2p.NewDHT(ctx, h)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not create DHT")
+		}
+		return kadDHT, err
+	}
+	// Parse advertiseAddresses from Public IPs
+	ipAddrs := strings.Split(config.PublicIPAddrs, ",")
+	advertiseAddrs := make([]ma.Multiaddr, len(ipAddrs))
+	for i, ipAddr := range ipAddrs {
+		maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", ipAddr, config.P2PListenPort)
+		ma, err := ma.NewMultiaddr(maddrString)
+		if err != nil {
+			log.Fatal(err)
+		}
+		advertiseAddrs[i] = ma
+	}
+
 	// Set up the transport and the host.
 	// Note: 0.0.0.0 will use all available addresses.
 	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.P2PListenPort))
@@ -84,6 +114,10 @@ func main() {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
+		libp2p.EnableRelay(relay.OptHop),
+		libp2p.EnableAutoRelay(),
+		libp2p.Routing(newDHT),
+		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
@@ -99,12 +133,6 @@ func main() {
 	// Enable AutoNAT service.
 	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
 		log.WithField("error", err).Fatal("could not enable AutoNAT service")
-	}
-
-	// Set up DHT for peer discovery.
-	kadDHT, err := p2p.NewDHT(ctx, basicHost)
-	if err != nil {
-		log.WithField("error", err).Fatal("could not create DHT")
 	}
 
 	// Initialize the DHT and then connect to the other bootstrap nodes.
@@ -130,7 +158,8 @@ func main() {
 	}
 
 	log.WithFields(map[string]interface{}{
-		"addrs": basicHost.Addrs(),
+		"addrs":  basicHost.Addrs(),
+		"config": config,
 	}).Info("started bootstrap node")
 
 	// Sleep until stopped
@@ -183,3 +212,9 @@ func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {}
 
 // ClosedStream is called when a stream closed
 func (n *notifee) ClosedStream(network p2pnet.Network, stream p2pnet.Stream) {}
+
+func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
+	return func([]ma.Multiaddr) []ma.Multiaddr {
+		return advertiseAddrs
+	}
+}
