@@ -22,6 +22,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	routing "github.com/libp2p/go-libp2p-routing"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -97,6 +98,7 @@ type Config struct {
 
 // New creates a new Node with the given config.
 func New(config Config) (*Node, error) {
+
 	nodeCtx, cancel := context.WithCancel(context.Background())
 
 	if config.MessageHandler == nil {
@@ -105,6 +107,18 @@ func New(config Config) (*Node, error) {
 	} else if config.RendezvousString == "" {
 		cancel()
 		return nil, errors.New("config.RendezvousString is required")
+	}
+
+	// We need to declare the newDHT function ahead of time so we can use it in
+	// the libp2p.Routing option.
+	var kadDHT *dht.IpfsDHT
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		kadDHT, err = NewDHT(nodeCtx, h)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not create DHT")
+		}
+		return kadDHT, err
 	}
 
 	// Set up the transport and the host.
@@ -119,6 +133,9 @@ func New(config Config) (*Node, error) {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(config.PrivateKey),
 		libp2p.ConnectionManager(connManager),
+		libp2p.EnableAutoRelay(),
+		libp2p.EnableRelay(),
+		libp2p.Routing(newDHT),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
@@ -130,11 +147,6 @@ func New(config Config) (*Node, error) {
 	}
 
 	// Set up DHT for peer discovery.
-	kadDHT, err := NewDHT(nodeCtx, basicHost)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub.
