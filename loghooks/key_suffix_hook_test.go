@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type myStruct struct {
@@ -100,10 +100,6 @@ func TestGetTypeForValue(t *testing.T) {
 			expected: "array",
 		},
 		{
-			input:    map[string]int{},
-			expected: "object",
-		},
-		{
 			input:    myStruct{},
 			expected: "loghooks_myStruct",
 		},
@@ -128,4 +124,16 @@ func TestGetTypeForValue(t *testing.T) {
 	}
 }
 
-// case reflect.Struct:
+func TestKeySuffixHookWithNestedMapType(t *testing.T) {
+	hook := NewKeySuffixHook()
+	entry := &log.Entry{
+		Data: log.Fields{
+			"myMap": map[string]int{"one": 1},
+		},
+	}
+	require.NoError(t, hook.Fire(entry))
+	expectedData := log.Fields{
+		"myMap_json_string": `{"one":1}`,
+	}
+	assert.Equal(t, expectedData, entry.Data)
+}
