@@ -3,6 +3,7 @@ package loghooks
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,11 +11,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var errNestedMapType = errors.New("nested map types are not supported")
+
 // KeySuffixHook is a logger hook that adds suffixes to all keys based on their
 // type.
 type KeySuffixHook struct{}
 
-// NewKeySuffixHook creates and returns a new KeySuffixHook with the given peer ID.
+// NewKeySuffixHook creates and returns a new KeySuffixHook.
 func NewKeySuffixHook() *KeySuffixHook {
 	return &KeySuffixHook{}
 }
@@ -30,7 +33,20 @@ func (h *KeySuffixHook) Fire(entry *log.Entry) error {
 	for key, value := range entry.Data {
 		typ, err := getTypeForValue(value)
 		if err != nil {
-			return err
+			if err == errNestedMapType {
+				// We can't safely log nested map types, so replace the value with a
+				// string.
+				newKey := fmt.Sprintf("%s_json_string", key)
+				delete(entry.Data, key)
+				mapString, err := json.Marshal(value)
+				if err != nil {
+					return err
+				}
+				entry.Data[newKey] = string(mapString)
+				continue
+			} else {
+				return err
+			}
 		}
 		newKey := fmt.Sprintf("%s_%s", key, typ)
 		delete(entry.Data, key)
@@ -66,7 +82,9 @@ func getTypeForValue(val interface{}) (string, error) {
 	case reflect.Array, reflect.Slice:
 		return "array", nil
 	case reflect.Map:
-		return "object", nil
+		// Nested map types can't be efficiently indexed because they allow for
+		// arbitrary keys. We don't allow them.
+		return "", errNestedMapType
 	case reflect.Struct:
 		return getSafeStructTypeName(underlyingType)
 	default:
