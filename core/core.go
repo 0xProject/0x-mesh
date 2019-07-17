@@ -51,9 +51,8 @@ type Config struct {
 	// DataDir is the directory to use for persisting all data, including the
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-	// P2PListenPort is the port on which to listen for new peer connections. By
-	// default, 0x Mesh will let the OS select a randomly available port.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
+	// P2PListenPort is the port on which to listen for new peer connections.
+	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
@@ -107,7 +106,7 @@ func New(config Config) (*App, error) {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "1.0.4-beta",
+		"version": "1.0.5-beta",
 	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
