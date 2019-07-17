@@ -1,0 +1,92 @@
+package loghooks
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
+)
+
+// KeySuffixHook is a logger hook that adds suffixes to all keys based on their
+// type.
+type KeySuffixHook struct{}
+
+// NewKeySuffixHook creates and returns a new KeySuffixHook with the given peer ID.
+func NewKeySuffixHook() *KeySuffixHook {
+	return &KeySuffixHook{}
+}
+
+// Ensure that KeySuffixHook implements log.Hook.
+var _ log.Hook = &KeySuffixHook{}
+
+func (h *KeySuffixHook) Levels() []log.Level {
+	return log.AllLevels
+}
+
+func (h *KeySuffixHook) Fire(entry *log.Entry) error {
+	for key, value := range entry.Data {
+		typ, err := getTypeForValue(value)
+		if err != nil {
+			return err
+		}
+		newKey := fmt.Sprintf("%s_%s", key, typ)
+		delete(entry.Data, key)
+		entry.Data[newKey] = value
+	}
+	return nil
+}
+
+// getTypeForValue returns a string representation of the type of the given val.
+func getTypeForValue(val interface{}) (string, error) {
+	if _, ok := val.(json.Marshaler); ok {
+		// If val implements json.Marhsler, return the type of json.Marshal(val)
+		// instead of the type of val.
+		buf := &bytes.Buffer{}
+		if err := json.NewEncoder(buf).Encode(val); err != nil {
+			return "", err
+		}
+		var holder interface{}
+		if err := json.NewDecoder(buf).Decode(&holder); err != nil {
+			return "", err
+		}
+		return getTypeForValue(holder)
+	}
+
+	underlyingType := getUnderlyingType(reflect.TypeOf(val))
+	switch kind := underlyingType.Kind(); kind {
+	case reflect.Bool:
+		return "bool", nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
+		return "number", nil
+	case reflect.String, reflect.Complex64, reflect.Complex128, reflect.Func, reflect.Chan:
+		return "string", nil
+	case reflect.Array, reflect.Slice:
+		return "array", nil
+	case reflect.Map:
+		return "object", nil
+	case reflect.Struct:
+		return getSafeStructTypeName(underlyingType)
+	default:
+		return "", fmt.Errorf("cannot determine type suffix for kind: %s", kind)
+	}
+}
+
+// getUnderlyingType returns the underlying type for the given type by
+// recursively dereferencing pointer types.
+func getUnderlyingType(typ reflect.Type) reflect.Type {
+	if typ.Kind() == reflect.Ptr {
+		return getUnderlyingType(typ.Elem())
+	}
+	return typ
+}
+
+// getSafeStructTypeName replaces dots in the name of the given type with
+// underscores. Elasticsearch does not allow dots in key names.
+func getSafeStructTypeName(typ reflect.Type) (string, error) {
+	unsafeTypeName := typ.String()
+	safeTypeName := strings.ReplaceAll(unsafeTypeName, ".", "_")
+	return safeTypeName, nil
+}
