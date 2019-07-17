@@ -108,6 +108,10 @@ func New(config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
+	// HACK(albrow): As a workaround for AutoNAT issues, ping ifconfig.me to
+	// determine our public IP address on boot. This will work for nodes that
+	// would be reachable via a public IP address but don't know what it is (e.g.
+	// because they are running in a Docker container).
 	publicIP, err := getPublicIP()
 	if err != nil {
 		cancel()
@@ -416,6 +420,9 @@ func (n *Node) Close() error {
 
 func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
 	return func(addrs []ma.Multiaddr) []ma.Multiaddr {
+		// Note that we append the advertiseAddrs here just in case we are not
+		// actually reachable at our public IP address (and are reachable at one of
+		// the other addresses).
 		return append(addrs, advertiseAddrs...)
 	}
 }
