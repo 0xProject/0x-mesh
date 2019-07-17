@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
@@ -108,22 +107,6 @@ func New(config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
-	// HACK(albrow): As a workaround for AutoNAT issues, ping ifconfig.me to
-	// determine our public IP address on boot. This will work for nodes that
-	// would be reachable via a public IP address but don't know what it is (e.g.
-	// because they are running in a Docker container).
-	publicIP, err := getPublicIP()
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
-	}
-	maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", publicIP, config.ListenPort)
-	advertiseAddr, err := ma.NewMultiaddr(maddrString)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
 	// Set up the transport and the host.
 	// Note: 0.0.0.0 will use all available addresses.
 	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
@@ -136,7 +119,6 @@ func New(config Config) (*Node, error) {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(config.PrivateKey),
 		libp2p.ConnectionManager(connManager),
-		libp2p.AddrsFactory(newAddrsFactory([]ma.Multiaddr{advertiseAddr})),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
@@ -416,26 +398,4 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 func (n *Node) Close() error {
 	n.cancel()
 	return n.host.Close()
-}
-
-func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
-	return func(addrs []ma.Multiaddr) []ma.Multiaddr {
-		// Note that we append the advertiseAddrs here just in case we are not
-		// actually reachable at our public IP address (and are reachable at one of
-		// the other addresses).
-		return append(addrs, advertiseAddrs...)
-	}
-}
-
-func getPublicIP() (string, error) {
-	res, err := http.Get("https://ifconfig.me")
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-	ipBytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(ipBytes), nil
 }
