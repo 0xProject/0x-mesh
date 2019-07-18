@@ -213,8 +213,8 @@ func (d *Decoder) RemoveKnownERC20(address common.Address) {
 
 // isKnownERC20 checks if the supplied address is a known ERC20 contract
 func (d *Decoder) isKnownERC20(address common.Address) bool {
-	d.knownERC20AddressesMu.Lock()
-	defer d.knownERC20AddressesMu.Unlock()
+	d.knownERC20AddressesMu.RLock()
+	defer d.knownERC20AddressesMu.RUnlock()
 	_, exists := d.knownERC20Addresses[address]
 	return exists
 }
@@ -238,8 +238,8 @@ func (d *Decoder) RemoveKnownERC721(address common.Address) {
 
 // isKnownERC721 checks if the supplied address is a known ERC721 contract
 func (d *Decoder) isKnownERC721(address common.Address) bool {
-	d.knownERC721AddressesMu.Lock()
-	defer d.knownERC721AddressesMu.Unlock()
+	d.knownERC721AddressesMu.RLock()
+	defer d.knownERC721AddressesMu.RUnlock()
 	_, exists := d.knownERC721Addresses[address]
 	return exists
 }
@@ -263,8 +263,8 @@ func (d *Decoder) RemoveKnownExchange(address common.Address) {
 
 // isKnownExchange checks if the supplied address is a known Exchange contract address
 func (d *Decoder) isKnownExchange(address common.Address) bool {
-	d.knownExchangeAddressesMu.Lock()
-	defer d.knownExchangeAddressesMu.Unlock()
+	d.knownExchangeAddressesMu.RLock()
+	defer d.knownExchangeAddressesMu.RUnlock()
 	_, exists := d.knownExchangeAddresses[address]
 	return exists
 }
