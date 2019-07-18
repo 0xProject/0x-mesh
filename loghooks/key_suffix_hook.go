@@ -2,6 +2,7 @@ package loghooks
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,6 +70,11 @@ func getTypeForValue(val interface{}) (string, error) {
 			return "", err
 		}
 		return getTypeForValue(holder)
+	}
+	if _, ok := val.(encoding.TextMarshaler); ok {
+		// The json package always encodes values that implement
+		// encoding.TextMarshaler as a string.
+		return "string", nil
 	}
 
 	underlyingType := getUnderlyingType(reflect.TypeOf(val))

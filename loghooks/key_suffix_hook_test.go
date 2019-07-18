@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/0xProject/0x-mesh/constants"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,6 +104,11 @@ func TestGetTypeForValue(t *testing.T) {
 		{
 			input:    myStruct{},
 			expected: "loghooks_myStruct",
+		},
+		{
+			// Implements encoding.TextUnmarshaler but not json.Marshaler.
+			input:    constants.NullAddress,
+			expected: "string",
 		},
 		{
 			// We don't expect the case of anonymous structs to come up often, but we
