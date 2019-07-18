@@ -1277,6 +1277,7 @@
     "github.com/libp2p/go-libp2p-protocol",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-routing",
+    "github.com/libp2p/go-libp2p-swarm",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
     "github.com/ocdogan/rbt",
