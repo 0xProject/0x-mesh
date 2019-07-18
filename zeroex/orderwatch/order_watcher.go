@@ -507,7 +507,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		orderWithTxHashes := hashToOrderWithTxHashes[acceptedOrderInfo.OrderHash]
-		txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+		txHashes := []common.Hash{}
 		for txHash := range orderWithTxHashes.TxHashes {
 			txHashes = append(txHashes, txHash)
 		}
@@ -573,7 +573,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 				if !ok {
 					logger.WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Panic("No OrderEventKind corresponding to RejectedOrderStatus")
 				}
-				txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+				txHashes := []common.Hash{}
 				for txHash := range orderWithTxHashes.TxHashes {
 					txHashes = append(txHashes, txHash)
 				}
