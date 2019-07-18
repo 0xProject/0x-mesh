@@ -59,7 +59,7 @@ func (h *KeySuffixHook) Fire(entry *log.Entry) error {
 // getTypeForValue returns a string representation of the type of the given val.
 func getTypeForValue(val interface{}) (string, error) {
 	if _, ok := val.(json.Marshaler); ok {
-		// If val implements json.Marhsler, return the type of json.Marshal(val)
+		// If val implements json.Marshaler, return the type of json.Marshal(val)
 		// instead of the type of val.
 		buf := &bytes.Buffer{}
 		if err := json.NewEncoder(buf).Encode(val); err != nil {
