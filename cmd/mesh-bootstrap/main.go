@@ -81,6 +81,7 @@ func main() {
 	// TODO(albrow): Don't use global settings for logger.
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetLevel(log.Level(config.Verbosity))
+	log.AddHook(loghooks.NewKeySuffixHook())
 
 	// Parse private key file
 	privKey, err := initPrivateKey(config.PrivateKeyPath)

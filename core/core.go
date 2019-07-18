@@ -104,6 +104,7 @@ func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
+	log.AddHook(loghooks.NewKeySuffixHook())
 	log.WithFields(map[string]interface{}{
 		"config":  config,
 		"version": "development",
