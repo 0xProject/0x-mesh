@@ -137,9 +137,9 @@ func (e UntrackedTokenError) Error() string {
 // have the same signatures, but different meanings, all ERC20 & ERC721 contract addresses must
 // be added to the decoder ahead of time.
 type Decoder struct {
-	knownERC20AddressesMu    sync.Mutex
-	knownERC721AddressesMu   sync.Mutex
-	knownExchangeAddressesMu sync.Mutex
+	knownERC20AddressesMu    sync.RWMutex
+	knownERC721AddressesMu   sync.RWMutex
+	knownExchangeAddressesMu sync.RWMutex
 	knownERC20Addresses      map[common.Address]bool
 	knownERC721Addresses     map[common.Address]bool
 	knownExchangeAddresses   map[common.Address]bool
