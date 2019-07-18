@@ -104,9 +104,10 @@ func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
+	log.AddHook(loghooks.NewKeySuffixHook())
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "1.0.5-beta",
+		"version": "1.0.6-beta",
 	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {

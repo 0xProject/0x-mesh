@@ -17,7 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
-	relay "github.com/libp2p/go-libp2p-circuit"
+	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
@@ -25,6 +25,7 @@ import (
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	routing "github.com/libp2p/go-libp2p-routing"
+	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -59,6 +60,13 @@ type Config struct {
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
 }
 
+func init() {
+	// Since we know that the bootstrap nodes are more stable, we can
+	// safely reduce AdvertiseBootDelay. This will allow the bootstrap nodes to
+	// advertise themselves as relays sooner.
+	relay.AdvertiseBootDelay = 30 * time.Second
+}
+
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -73,6 +81,7 @@ func main() {
 	// TODO(albrow): Don't use global settings for logger.
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetLevel(log.Level(config.Verbosity))
+	log.AddHook(loghooks.NewKeySuffixHook())
 
 	// Parse private key file
 	privKey, err := initPrivateKey(config.PrivateKeyPath)
@@ -114,7 +123,7 @@ func main() {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
-		libp2p.EnableRelay(relay.OptHop),
+		libp2p.EnableRelay(circuit.OptHop),
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),

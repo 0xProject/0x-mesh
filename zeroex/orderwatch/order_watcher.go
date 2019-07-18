@@ -226,7 +226,8 @@ func (w *Watcher) startCleanupWorker() {
 			hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 			for _, order := range orders {
 				hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
-					Order: order,
+					Order:    order,
+					TxHashes: map[common.Hash]interface{}{},
 				}
 			}
 			w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
@@ -507,8 +508,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		orderWithTxHashes := hashToOrderWithTxHashes[acceptedOrderInfo.OrderHash]
 		txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+		txHashIndex := 0
 		for txHash := range orderWithTxHashes.TxHashes {
-			txHashes = append(txHashes, txHash)
+			txHashes[txHashIndex] = txHash
+			txHashIndex++
 		}
 		order := orderWithTxHashes.Order
 		oldFillableAmount := order.FillableTakerAssetAmount
@@ -573,8 +576,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 					logger.WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Panic("No OrderEventKind corresponding to RejectedOrderStatus")
 				}
 				txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+				txHashIndex := 0
 				for txHash := range orderWithTxHashes.TxHashes {
-					txHashes = append(txHashes, txHash)
+					txHashes[txHashIndex] = txHash
+					txHashIndex++
 				}
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:                rejectedOrderInfo.OrderHash,

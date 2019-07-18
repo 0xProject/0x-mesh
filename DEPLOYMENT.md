@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-1.0.5--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-1.0.6--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh Deployment Guide
 
@@ -25,7 +25,7 @@ docker run \
 -p 60557:60557 \
 -p 60558:60558 \
 -e ETHEREUM_NETWORK_ID="1" \
--e ETHEREUM_RPC_URL="https://mainnet.infura.io/v3/a9a23d2566e542629179d6372ace13c9" \
+-e ETHEREUM_RPC_URL="ADD_YOUR_ETHEREUM_RPC_ENDPOINT_HERE" \
 -e VERBOSITY=5 \
 0xorg/mesh:latest
 ```
