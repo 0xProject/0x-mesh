@@ -226,7 +226,8 @@ func (w *Watcher) startCleanupWorker() {
 			hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 			for _, order := range orders {
 				hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
-					Order: order,
+					Order:    order,
+					TxHashes: map[common.Hash]interface{}{},
 				}
 			}
 			w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
