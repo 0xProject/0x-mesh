@@ -1,0 +1,9 @@
+# Blacklist all files
+.*
+*
+# Whitelist lib
+!lib/**/*
+!README.md
+# Blacklist tests and publish scripts
+/lib/test/*
+# Package specific ignore

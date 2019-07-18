@@ -1,0 +1,64 @@
+{
+    "name": "@0x/mesh-rpc-client",
+    "version": "0.0.1",
+    "engines": {
+        "node": ">=6.12"
+    },
+    "description": "A Javascript library for interacting with the Mesh JSON RPC API over WebSockets",
+    "keywords": [
+        "p2p",
+        "mesh",
+        "0xproject",
+        "ethereum",
+        "tokens",
+        "exchange"
+    ],
+    "main": "lib/src/index.js",
+    "types": "lib/src/index.d.ts",
+    "scripts": {
+        "build": "tsc -b",
+        "clean": "shx rm -rf lib test_temp generated_docs",
+        "lint": "tslint --format stylish --project .",
+        "fix": "tslint --fix --format stylish --project .",
+        "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --exit"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/0xProject/0x-mesh.git"
+    },
+    "author": "Fabio Berger",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/0xProject/0x-mesh/issues"
+    },
+    "homepage": "https://github.com/0xProject/0x-mesh/clients/mesh_rpc_client/README.md",
+    "dependencies": {
+        "@0x/assert": "^2.1.0",
+        "@0x/dev-utils": "^2.2.4",
+        "@0x/order-utils": "^8.1.1",
+        "@0x/types": "^2.2.2",
+        "@0x/typescript-typings": "^4.2.2",
+        "@0x/utils": "^4.3.3",
+        "@0x/web3-providers-fork": "0.0.5",
+        "uuid": "^3.3.2"
+    },
+    "devDependencies": {
+        "@0x/tslint-config": "^3.0.1",
+        "@types/mocha": "^2.2.42",
+        "@types/uuid": "^3.4.3",
+        "@types/websocket": "^0.0.40",
+        "chai": "^4.0.1",
+        "chai-as-promised": "^7.1.0",
+        "chai-bignumber": "^3.0.0",
+        "dirty-chai": "^2.0.1",
+        "make-promises-safe": "^1.1.0",
+        "mocha": "^4.1.0",
+        "shx": "^0.2.2",
+        "tslint": "5.11.0",
+        "typescript": "3.0.1",
+        "websocket": "^1.0.29"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
