@@ -24,6 +24,7 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	routing "github.com/libp2p/go-libp2p-routing"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -354,10 +355,20 @@ func (n *Node) findNewPeers(max int) error {
 		if err := n.host.Connect(connectCtx, peer); err != nil {
 			// If we fail to connect to a single peer we should still keep trying the
 			// others. Log instead of returning the error.
-			log.WithFields(map[string]interface{}{
+			logMsg := "could not connect to peer"
+			logFields := map[string]interface{}{
 				"error":    err.Error(),
 				"peerInfo": peer,
-			}).Warn("could not connect to peer")
+			}
+			if err == swarm.ErrDialBackoff {
+				// ErrDialBackoff means that we dialed the peer too frequently. Logging
+				// it leads to too much verbosity and in most cases what we care about
+				// is the underlying error. Log at level "trace".
+				log.WithFields(logFields).Trace(logMsg)
+			} else {
+				// For other types of errors, we log at level "warn".
+				log.WithFields(logFields).Warn(logMsg)
+			}
 		}
 	}
 	return nil
