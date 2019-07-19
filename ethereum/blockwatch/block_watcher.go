@@ -227,7 +227,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 			// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 			// returned. This is expected to happen sometimes, and we simply return the events gathered so
 			// far and pick back up where we left off on the next polling interval.
-			if err.Error() == "unknown block" {
+			if isUnknownBlockErr(err) {
 				log.WithFields(log.Fields{
 					"nextHeader": nextHeader,
 				}).Trace("failed to get logs for block")
@@ -277,7 +277,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 		// returned. This is expected to happen sometimes, and we simply return the events gathered so
 		// far and pick back up where we left off on the next polling interval.
-		if err.Error() == "unknown block" {
+		if isUnknownBlockErr(err) {
 			log.WithFields(log.Fields{
 				"nextHeader": nextHeader,
 			}).Trace("failed to get logs for block")
@@ -597,4 +597,16 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
+}
+
+func isUnknownBlockErr(err error) bool {
+	// Geth error
+	if err.Error() == "unknown block" {
+		return true
+	}
+	// Parity error
+	if err.Error() == "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found" {
+		return true
+	}
+	return false
 }
