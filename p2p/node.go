@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
@@ -353,25 +354,43 @@ func (n *Node) findNewPeers(max int) error {
 			"peerInfo": peer,
 		}).Trace("found peer via rendezvous")
 		if err := n.host.Connect(connectCtx, peer); err != nil {
-			// If we fail to connect to a single peer we should still keep trying the
-			// others. Log instead of returning the error.
-			logMsg := "could not connect to peer"
-			logFields := map[string]interface{}{
-				"error":    err.Error(),
-				"peerInfo": peer,
-			}
-			if err == swarm.ErrDialBackoff {
-				// ErrDialBackoff means that we dialed the peer too frequently. Logging
-				// it leads to too much verbosity and in most cases what we care about
-				// is the underlying error. Log at level "trace".
-				log.WithFields(logFields).Trace(logMsg)
-			} else {
-				// For other types of errors, we log at level "warn".
-				log.WithFields(logFields).Warn(logMsg)
-			}
+			// We still want to try connecting to the other peers. Log the error and
+			// keep going.
+			logPeerConnectionError(peer, err)
 		}
 	}
 	return nil
+}
+
+// failedPeerConnectionCache keeps track of peer IDs for which we have already
+// logged a connection error. lru.New only returns an error if size is <= 0, so
+// we can safely ignore it.
+var failedPeerConnectionCache, _ = lru.New(peerCountHigh * 2)
+
+func logPeerConnectionError(peerInfo peerstore.PeerInfo, connectionErr error) {
+	// If we fail to connect to a single peer we should still keep trying the
+	// others. Log instead of returning the error.
+	logMsg := "could not connect to peer"
+	logFields := map[string]interface{}{
+		"error":        connectionErr.Error(),
+		"remotePeerID": peerInfo.ID,
+		"remoteAddrs":  peerInfo.Addrs,
+	}
+	if failedPeerConnectionCache.Contains(peerInfo.ID) {
+		// If we have already logged a connection error for this peer ID, log at
+		// level "trace".
+		log.WithFields(logFields).Trace(logMsg)
+	} else if connectionErr == swarm.ErrDialBackoff {
+		// ErrDialBackoff means that we dialed the peer too frequently. Logging
+		// it leads to too much verbosity and in most cases what we care about
+		// is the underlying error. Log at level "trace".
+		log.WithFields(logFields).Trace(logMsg)
+	} else {
+		// For other types of errors, and if we have not already logged a connection
+		// error for this peer ID, we log at level "warn".
+		failedPeerConnectionCache.Add(peerInfo.ID, nil)
+		log.WithFields(logFields).Warn(logMsg)
+	}
 }
 
 // receiveBatch returns up to maxReceiveBatch messages which are received from
