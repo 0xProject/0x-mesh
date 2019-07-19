@@ -139,7 +139,8 @@ func (w *Watcher) Stop() error {
 	return nil
 }
 
-// Watch adds a 0x order to the DB and watches it for changes in fillability.
+// Watch adds a 0x order to the DB and watches it for changes in fillability. It
+// will no-op (and return nil) if the order is already being watched.
 func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
@@ -150,6 +151,11 @@ func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	}
 	err := w.meshDB.Orders.Insert(order)
 	if err != nil {
+		if _, ok := err.(db.AlreadyExistsError); ok {
+			// If we're already watching the order, that's fine in this case. Don't
+			// return an error.
+			return nil
+		}
 		return err
 	}
 
