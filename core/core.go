@@ -105,10 +105,6 @@ func New(config Config) (*App, error) {
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
-	log.WithFields(map[string]interface{}{
-		"config":  config,
-		"version": "development",
-	}).Info("Initializing new core.App")
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
@@ -221,6 +217,11 @@ func New(config Config) (*App, error) {
 
 	// Add the peer ID hook to the logger.
 	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
+
+	log.WithFields(map[string]interface{}{
+		"config":  config,
+		"version": "development",
+	}).Info("finished initializing core.App")
 
 	return app, nil
 }
