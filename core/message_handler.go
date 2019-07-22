@@ -125,19 +125,6 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
 			continue
 		}
-
-		// If we've reached this point, the message is valid and we were able to
-		// decode it into an order. Append it to the list of orders to validate and
-		// update peer scores accordingly.
-		log.WithFields(map[string]interface{}{
-			"orderHash": orderHash,
-			"from":      msg.From.String(),
-		}).Info("received new valid order from peer")
-		log.WithFields(map[string]interface{}{
-			"order":     order,
-			"orderHash": orderHash,
-			"from":      msg.From.String(),
-		}).Trace("all fields for new valid order received from peer")
 		orders = append(orders, order)
 		orderHashToMessage[orderHash] = msg
 		app.handlePeerScoreEvent(msg.From, psValidMessage)
@@ -152,10 +139,18 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	// Store any valid orders and update the peer scores.
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
+		// If we've reached this point, the message is valid and we were able to
+		// decode it into an order. Append it to the list of orders to validate and
+		// update peer scores accordingly.
 		log.WithFields(map[string]interface{}{
-			"acceptedOrderInfo": acceptedOrderInfo,
-			"from":              msg.From.String(),
-		}).Trace("storing valid order received from peer")
+			"orderHash": acceptedOrderInfo.OrderHash,
+			"from":      msg.From.String(),
+		}).Info("received new valid order from peer")
+		log.WithFields(map[string]interface{}{
+			"order":     acceptedOrderInfo.SignedOrder,
+			"orderHash": acceptedOrderInfo.OrderHash,
+			"from":      msg.From.String(),
+		}).Trace("all fields for new valid order received from peer")
 		// Watch stores the message in the database.
 		if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
 			return err
