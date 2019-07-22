@@ -1,7 +1,7 @@
 package blockwatch
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"math/big"
 	"sync"
@@ -87,8 +87,10 @@ func New(config Config) *Watcher {
 	return bs
 }
 
-// Start starts the BlockWatcher
-func (w *Watcher) Start() error {
+// Watch starts the Watcher. It will continuously look for new blocks and blocks
+// until there is an error or the given context is canceled. Typically, you want
+// to call Watch inside a goroutine.
+func (w *Watcher) Watch(ctx context.Context) error {
 	events, err := w.getMissedEventsToBackfill()
 	if err != nil {
 		return err
@@ -97,65 +99,19 @@ func (w *Watcher) Start() error {
 		w.blockFeed.Send(events)
 	}
 
-	// We need the mutex to reliably start/stop the update loop
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.isWatching {
-		return errors.New("Polling already started")
-	}
-
-	w.isWatching = true
-	if w.ticker == nil {
-		w.ticker = time.NewTicker(w.pollingInterval)
-	}
-	go w.startPollingLoop()
-	return nil
-}
-
-func (w *Watcher) startPollingLoop() {
+	ticker := time.NewTicker(w.pollingInterval)
 	for {
-		w.mu.Lock()
-		if !w.isWatching {
-			w.mu.Unlock()
-			return
-		}
-		<-w.ticker.C
-		w.mu.Unlock()
-
-		err := w.pollNextBlock()
-		if err != nil {
-			w.mu.Lock()
-			if !w.isWatching {
-				return
-			}
-			w.mu.Unlock()
-			// Attempt to send errors but if buffered channel is full, we assume there is no
-			// interested consumer and drop them. The Watcher recovers gracefully from errors.
-			select {
-			case w.Errors <- err:
-			default:
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			err := w.pollNextBlock()
+			if err != nil {
+				return err
 			}
 		}
 	}
-}
-
-// stopPolling stops the block poller
-func (w *Watcher) stopPolling() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.isWatching = false
-	if w.ticker != nil {
-		w.ticker.Stop()
-	}
-	w.ticker = nil
-}
-
-// Stop stops the BlockWatcher
-func (w *Watcher) Stop() {
-	if w.isWatching {
-		w.stopPolling()
-	}
-	close(w.Errors)
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
