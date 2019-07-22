@@ -2,6 +2,7 @@ package blockwatch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -60,7 +61,7 @@ type Watcher struct {
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
-	isWatching          bool                    // Whether the block poller is running
+	wasStartedOnce      bool                    // Whether the block watcher has previously been started
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
 	withLogs            bool
@@ -92,6 +93,14 @@ func New(config Config) *Watcher {
 // you want to call Watch inside a goroutine. For non-critical errors, callers
 // must receive from the Errors channel.
 func (w *Watcher) Watch(ctx context.Context) error {
+	w.mu.Lock()
+	if w.wasStartedOnce {
+		w.mu.Unlock()
+		return errors.New("Can only start Watcher once per instance")
+	}
+	w.wasStartedOnce = true
+	w.mu.Unlock()
+
 	events, err := w.getMissedEventsToBackfill()
 	if err != nil {
 		return err
