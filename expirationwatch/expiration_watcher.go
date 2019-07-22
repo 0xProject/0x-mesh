@@ -104,6 +104,7 @@ func (w *Watcher) Watch(ctx context.Context, pollingInterval time.Duration) erro
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			close(w.expiredItems)
 			return nil
 		case <-ticker.C:
