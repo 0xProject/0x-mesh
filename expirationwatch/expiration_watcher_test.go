@@ -1,7 +1,9 @@
 package expirationwatch
 
 import (
+	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -123,38 +125,44 @@ func TestRemoveItemWhichSharesExpirationTimeWithOtherItems(t *testing.T) {
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 
-func TestStartsAndStopsPoller(t *testing.T) {
+func TestStartAndStopPoller(t *testing.T) {
 	watcher := New(0)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	pollingInterval := 50 * time.Millisecond
-	require.NoError(t, watcher.Start(pollingInterval))
 
-	var countMux sync.Mutex
-	channelCount := 0
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		err := watcher.Watch(ctx, pollingInterval)
+		require.NoError(t, err)
+	}()
+
+	wg.Add(1)
+	expiredCount := int32(0)
+	go func() {
+		defer wg.Done()
 		for {
 			select {
-			case _, isOpen := <-watcher.Receive():
+			case _, isOpen := <-watcher.ExpiredItems():
 				if !isOpen {
 					return
 				}
-				countMux.Lock()
-				channelCount++
-				countMux.Unlock()
+				atomic.AddInt32(&expiredCount, 1)
 			}
 		}
 	}()
 
-	expectedIsWatching := true
-	assert.Equal(t, expectedIsWatching, watcher.isWatching)
-
+	// Stop the watcher by canceling the context after a short waiting period.
 	time.Sleep(60 * time.Millisecond)
-	watcher.Stop()
-	expectedIsWatching = false
-	assert.Equal(t, expectedIsWatching, watcher.isWatching)
+	cancel()
 
-	countMux.Lock()
-	expectedChannelCount := 0
-	assert.Equal(t, expectedChannelCount, channelCount)
-	countMux.Unlock()
+	// Wait for all goroutines to exit.
+	wg.Wait()
+
+	assert.Equal(t, true, watcher.wasStartedOnce, "watcher.wasStartedOnce should be true")
+	expectedExpiredCount := int32(0)
+	assert.Equal(t, expectedExpiredCount, expiredCount, "expected no items to expire but at least one did")
 }

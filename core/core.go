@@ -96,6 +96,7 @@ type App struct {
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
+	snapshotExpirationCancel  context.CancelFunc
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 }
@@ -281,7 +282,7 @@ func (app *App) Start() error {
 	}
 	log.Info("started ETH balance watcher")
 	go func() {
-		expiredSnapshotsChan := app.snapshotExpirationWatcher.Receive()
+		expiredSnapshotsChan := app.snapshotExpirationWatcher.ExpiredItems()
 		for expiredSnapshots := range expiredSnapshotsChan {
 			for _, expiredSnapshot := range expiredSnapshots {
 				app.muIdToSnapshotInfo.Lock()
@@ -290,10 +291,15 @@ func (app *App) Start() error {
 			}
 		}
 	}()
-	if err := app.snapshotExpirationWatcher.Start(expirationPollingInterval); err != nil {
-		return err
-	}
-	log.Info("started snapshot expiration watcher")
+
+	snapshotExpirationCtx, snapshotExpirationCancel := context.WithCancel(context.Background())
+	app.snapshotExpirationCancel = snapshotExpirationCancel
+	go func() {
+		if err := app.snapshotExpirationWatcher.Watch(snapshotExpirationCtx, expirationPollingInterval); err != nil {
+			log.WithError(err).Error("Could not start snapshot expiration watcher")
+			app.Close()
+		}
+	}()
 
 	return nil
 }
