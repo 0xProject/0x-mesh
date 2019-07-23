@@ -108,3 +108,7 @@
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-autonat-svc"
   version = "0.0.6"
+
+[[constraint]]
+  name = "github.com/hashicorp/golang-lru"
+  version = "0.5.1"

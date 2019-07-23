@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -60,7 +61,7 @@ type Watcher struct {
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
-	isWatching          bool                    // Whether the block poller is running
+	wasStartedOnce      bool                    // Whether the block watcher has previously been started
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
 	withLogs            bool
@@ -87,8 +88,19 @@ func New(config Config) *Watcher {
 	return bs
 }
 
-// Start starts the BlockWatcher
-func (w *Watcher) Start() error {
+// Watch starts the Watcher. It will continuously look for new blocks and blocks
+// until there is a critical error or the given context is canceled. Typically,
+// you want to call Watch inside a goroutine. For non-critical errors, callers
+// must receive them from the Errors channel.
+func (w *Watcher) Watch(ctx context.Context) error {
+	w.mu.Lock()
+	if w.wasStartedOnce {
+		w.mu.Unlock()
+		return errors.New("Can only start Watcher once per instance")
+	}
+	w.wasStartedOnce = true
+	w.mu.Unlock()
+
 	events, err := w.getMissedEventsToBackfill()
 	if err != nil {
 		return err
@@ -97,65 +109,20 @@ func (w *Watcher) Start() error {
 		w.blockFeed.Send(events)
 	}
 
-	// We need the mutex to reliably start/stop the update loop
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.isWatching {
-		return errors.New("Polling already started")
-	}
-
-	w.isWatching = true
-	if w.ticker == nil {
-		w.ticker = time.NewTicker(w.pollingInterval)
-	}
-	go w.startPollingLoop()
-	return nil
-}
-
-func (w *Watcher) startPollingLoop() {
+	ticker := time.NewTicker(w.pollingInterval)
 	for {
-		w.mu.Lock()
-		if !w.isWatching {
-			w.mu.Unlock()
-			return
-		}
-		<-w.ticker.C
-		w.mu.Unlock()
-
-		err := w.pollNextBlock()
-		if err != nil {
-			w.mu.Lock()
-			if !w.isWatching {
-				return
-			}
-			w.mu.Unlock()
-			// Attempt to send errors but if buffered channel is full, we assume there is no
-			// interested consumer and drop them. The Watcher recovers gracefully from errors.
-			select {
-			case w.Errors <- err:
-			default:
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			close(w.Errors)
+			return nil
+		case <-ticker.C:
+			err := w.pollNextBlock()
+			if err != nil {
+				w.Errors <- err
 			}
 		}
 	}
-}
-
-// stopPolling stops the block poller
-func (w *Watcher) stopPolling() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.isWatching = false
-	if w.ticker != nil {
-		w.ticker.Stop()
-	}
-	w.ticker = nil
-}
-
-// Stop stops the BlockWatcher
-func (w *Watcher) Stop() {
-	if w.isWatching {
-		w.stopPolling()
-	}
-	close(w.Errors)
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
@@ -227,7 +194,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 			// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 			// returned. This is expected to happen sometimes, and we simply return the events gathered so
 			// far and pick back up where we left off on the next polling interval.
-			if err.Error() == "unknown block" {
+			if isUnknownBlockErr(err) {
 				log.WithFields(log.Fields{
 					"nextHeader": nextHeader,
 				}).Trace("failed to get logs for block")
@@ -277,7 +244,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 		// returned. This is expected to happen sometimes, and we simply return the events gathered so
 		// far and pick back up where we left off on the next polling interval.
-		if err.Error() == "unknown block" {
+		if isUnknownBlockErr(err) {
 			log.WithFields(log.Fields{
 				"nextHeader": nextHeader,
 			}).Trace("failed to get logs for block")
@@ -597,4 +564,16 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
+}
+
+func isUnknownBlockErr(err error) bool {
+	// Geth error
+	if err.Error() == "unknown block" {
+		return true
+	}
+	// Parity error
+	if err.Error() == "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found" {
+		return true
+	}
+	return false
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
+	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
@@ -50,9 +51,8 @@ type Config struct {
 	// DataDir is the directory to use for persisting all data, including the
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-	// P2PListenPort is the port on which to listen for new peer connections. By
-	// default, 0x Mesh will let the OS select a randomly available port.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT" default:"0"`
+	// P2PListenPort is the port on which to listen for new peer connections.
+	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
@@ -90,12 +90,14 @@ type App struct {
 	node                      *p2p.Node
 	networkID                 int
 	blockWatcher              *blockwatch.Watcher
+	blockWatcherCancel        context.CancelFunc
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
 	orderValidator            *zeroex.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
+	snapshotExpirationCancel  context.CancelFunc
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 }
@@ -104,10 +106,7 @@ func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
-	log.WithFields(map[string]interface{}{
-		"config":  config,
-		"version": "development",
-	}).Info("Initializing new core.App")
+	log.AddHook(loghooks.NewKeySuffixHook())
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
@@ -218,6 +217,14 @@ func New(config Config) (*App, error) {
 	}
 	app.node = node
 
+	// Add the peer ID hook to the logger.
+	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
+
+	log.WithFields(map[string]interface{}{
+		"config":  config,
+		"version": "development",
+	}).Info("finished initializing core.App")
+
 	return app, nil
 }
 
@@ -255,7 +262,6 @@ func (app *App) Start() error {
 	go app.periodicallyCheckForNewAddrs(addrs)
 	log.WithFields(map[string]interface{}{
 		"addresses": addrs,
-		"peerID":    app.node.ID().String(),
 	}).Info("started p2p node")
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
@@ -266,10 +272,18 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started order watcher")
-	if err := app.blockWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started block watcher")
+
+	blockWatcherCtx, blockWatcherCancel := context.WithCancel(context.Background())
+	app.blockWatcherCancel = blockWatcherCancel
+	go func() {
+		log.Info("starting block watcher")
+		err := app.blockWatcher.Watch(blockWatcherCtx)
+		if err != nil {
+			log.WithError(err).Error("block watcher returned error")
+			app.Close()
+		}
+	}()
+
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
 	if err := app.ethWatcher.Start(); err != nil {
@@ -277,7 +291,7 @@ func (app *App) Start() error {
 	}
 	log.Info("started ETH balance watcher")
 	go func() {
-		expiredSnapshotsChan := app.snapshotExpirationWatcher.Receive()
+		expiredSnapshotsChan := app.snapshotExpirationWatcher.ExpiredItems()
 		for expiredSnapshots := range expiredSnapshotsChan {
 			for _, expiredSnapshot := range expiredSnapshots {
 				app.muIdToSnapshotInfo.Lock()
@@ -286,10 +300,15 @@ func (app *App) Start() error {
 			}
 		}
 	}()
-	if err := app.snapshotExpirationWatcher.Start(expirationPollingInterval); err != nil {
-		return err
-	}
-	log.Info("started snapshot expiration watcher")
+
+	snapshotExpirationCtx, snapshotExpirationCancel := context.WithCancel(context.Background())
+	app.snapshotExpirationCancel = snapshotExpirationCancel
+	go func() {
+		if err := app.snapshotExpirationWatcher.Watch(snapshotExpirationCtx, expirationPollingInterval); err != nil {
+			log.WithError(err).Error("Could not start snapshot expiration watcher")
+			app.Close()
+		}
+	}()
 
 	return nil
 }
@@ -491,6 +510,6 @@ func (app *App) Close() {
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
-	app.blockWatcher.Stop()
+	app.blockWatcherCancel()
 	app.db.Close()
 }

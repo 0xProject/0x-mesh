@@ -10,8 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
@@ -22,6 +24,8 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	routing "github.com/libp2p/go-libp2p-routing"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -97,6 +101,7 @@ type Config struct {
 
 // New creates a new Node with the given config.
 func New(config Config) (*Node, error) {
+
 	nodeCtx, cancel := context.WithCancel(context.Background())
 
 	if config.MessageHandler == nil {
@@ -105,6 +110,34 @@ func New(config Config) (*Node, error) {
 	} else if config.RendezvousString == "" {
 		cancel()
 		return nil, errors.New("config.RendezvousString is required")
+	}
+
+	// We need to declare the newDHT function ahead of time so we can use it in
+	// the libp2p.Routing option.
+	var kadDHT *dht.IpfsDHT
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		kadDHT, err = NewDHT(nodeCtx, h)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not create DHT")
+		}
+		return kadDHT, err
+	}
+
+	// HACK(albrow): As a workaround for AutoNAT issues, ping ifconfig.me to
+	// determine our public IP address on boot. This will work for nodes that
+	// would be reachable via a public IP address but don't know what it is (e.g.
+	// because they are running in a Docker container).
+	publicIP, err := getPublicIP()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
+	}
+	maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", publicIP, config.ListenPort)
+	advertiseAddr, err := ma.NewMultiaddr(maddrString)
+	if err != nil {
+		cancel()
+		return nil, err
 	}
 
 	// Set up the transport and the host.
@@ -119,6 +152,10 @@ func New(config Config) (*Node, error) {
 		libp2p.ListenAddrs(hostAddr),
 		libp2p.Identity(config.PrivateKey),
 		libp2p.ConnectionManager(connManager),
+		libp2p.EnableAutoRelay(),
+		libp2p.EnableRelay(),
+		libp2p.Routing(newDHT),
+		libp2p.AddrsFactory(newAddrsFactory([]ma.Multiaddr{advertiseAddr})),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
@@ -130,11 +167,6 @@ func New(config Config) (*Node, error) {
 	}
 
 	// Set up DHT for peer discovery.
-	kadDHT, err := NewDHT(nodeCtx, basicHost)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub.
@@ -322,15 +354,43 @@ func (n *Node) findNewPeers(max int) error {
 			"peerInfo": peer,
 		}).Trace("found peer via rendezvous")
 		if err := n.host.Connect(connectCtx, peer); err != nil {
-			// If we fail to connect to a single peer we should still keep trying the
-			// others. Log instead of returning the error.
-			log.WithFields(map[string]interface{}{
-				"error":    err.Error(),
-				"peerInfo": peer,
-			}).Warn("could not connect to peer")
+			// We still want to try connecting to the other peers. Log the error and
+			// keep going.
+			logPeerConnectionError(peer, err)
 		}
 	}
 	return nil
+}
+
+// failedPeerConnectionCache keeps track of peer IDs for which we have already
+// logged a connection error. lru.New only returns an error if size is <= 0, so
+// we can safely ignore it.
+var failedPeerConnectionCache, _ = lru.New(peerCountHigh * 2)
+
+func logPeerConnectionError(peerInfo peerstore.PeerInfo, connectionErr error) {
+	// If we fail to connect to a single peer we should still keep trying the
+	// others. Log instead of returning the error.
+	logMsg := "could not connect to peer"
+	logFields := map[string]interface{}{
+		"error":        connectionErr.Error(),
+		"remotePeerID": peerInfo.ID,
+		"remoteAddrs":  peerInfo.Addrs,
+	}
+	if failedPeerConnectionCache.Contains(peerInfo.ID) {
+		// If we have already logged a connection error for this peer ID, log at
+		// level "trace".
+		log.WithFields(logFields).Trace(logMsg)
+	} else if connectionErr == swarm.ErrDialBackoff {
+		// ErrDialBackoff means that we dialed the peer too frequently. Logging
+		// it leads to too much verbosity and in most cases what we care about
+		// is the underlying error. Log at level "trace".
+		log.WithFields(logFields).Trace(logMsg)
+	} else {
+		// For other types of errors, and if we have not already logged a connection
+		// error for this peer ID, we log at level "warn".
+		failedPeerConnectionCache.Add(peerInfo.ID, nil)
+		log.WithFields(logFields).Warn(logMsg)
+	}
 }
 
 // receiveBatch returns up to maxReceiveBatch messages which are received from
@@ -398,4 +458,26 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 func (n *Node) Close() error {
 	n.cancel()
 	return n.host.Close()
+}
+
+func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
+	return func(addrs []ma.Multiaddr) []ma.Multiaddr {
+		// Note that we append the advertiseAddrs here just in case we are not
+		// actually reachable at our public IP address (and are reachable at one of
+		// the other addresses).
+		return append(addrs, advertiseAddrs...)
+	}
+}
+
+func getPublicIP() (string, error) {
+	res, err := http.Get("https://ifconfig.me")
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	ipBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(ipBytes), nil
 }

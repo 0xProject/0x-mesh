@@ -46,6 +46,7 @@ type Watcher struct {
 	blockSubscription          event.Subscription
 	contractAddresses          ethereum.ContractAddresses
 	expirationWatcher          *expirationwatch.Watcher
+	expirationWatcherCancel    context.CancelFunc
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	cleanupCtx                 context.Context
@@ -132,14 +133,15 @@ func (w *Watcher) Stop() error {
 	w.blockSubscription.Unsubscribe()
 
 	// Stop expiration watcher
-	w.expirationWatcher.Stop()
+	w.expirationWatcherCancel()
 
 	// Stop cleanup worker
 	w.stopCleanupWorker()
 	return nil
 }
 
-// Watch adds a 0x order to the DB and watches it for changes in fillability.
+// Watch adds a 0x order to the DB and watches it for changes in fillability. It
+// will no-op (and return nil) if the order is already being watched.
 func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
@@ -150,6 +152,11 @@ func (w *Watcher) Watch(orderInfo *zeroex.AcceptedOrderInfo) error {
 	}
 	err := w.meshDB.Orders.Insert(order)
 	if err != nil {
+		if _, ok := err.(db.AlreadyExistsError); ok {
+			// If we're already watching the order, that's fine in this case. Don't
+			// return an error.
+			return nil
+		}
 		return err
 	}
 
@@ -226,7 +233,8 @@ func (w *Watcher) startCleanupWorker() {
 			hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 			for _, order := range orders {
 				hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
-					Order: order,
+					Order:    order,
+					TxHashes: map[common.Hash]interface{}{},
 				}
 			}
 			w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
@@ -240,7 +248,7 @@ func (w *Watcher) stopCleanupWorker() {
 
 func (w *Watcher) setupExpirationWatcher() error {
 	go func() {
-		expiredOrders := w.expirationWatcher.Receive()
+		expiredOrders := w.expirationWatcher.ExpiredItems()
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
 				order := &meshdb.Order{}
@@ -271,7 +279,17 @@ func (w *Watcher) setupExpirationWatcher() error {
 		}
 	}()
 
-	return w.expirationWatcher.Start(expirationPollingInterval)
+	expirationWatcherCtx, expirationWatcherCancel := context.WithCancel(context.Background())
+	w.expirationWatcherCancel = expirationWatcherCancel
+	go func() {
+		err := w.expirationWatcher.Watch(expirationWatcherCtx, expirationPollingInterval)
+		if err != nil {
+			logger.WithError(err).Error("could not start expiration watcher inside order watcher")
+		}
+		_ = w.Stop()
+	}()
+
+	return nil
 }
 
 type OrderWithTxHashes struct {
@@ -507,8 +525,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		orderWithTxHashes := hashToOrderWithTxHashes[acceptedOrderInfo.OrderHash]
 		txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+		txHashIndex := 0
 		for txHash := range orderWithTxHashes.TxHashes {
-			txHashes = append(txHashes, txHash)
+			txHashes[txHashIndex] = txHash
+			txHashIndex++
 		}
 		order := orderWithTxHashes.Order
 		oldFillableAmount := order.FillableTakerAssetAmount
@@ -573,8 +593,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 					logger.WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Panic("No OrderEventKind corresponding to RejectedOrderStatus")
 				}
 				txHashes := make([]common.Hash, len(orderWithTxHashes.TxHashes))
+				txHashIndex := 0
 				for txHash := range orderWithTxHashes.TxHashes {
-					txHashes = append(txHashes, txHash)
+					txHashes[txHashIndex] = txHash
+					txHashIndex++
 				}
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:                rejectedOrderInfo.OrderHash,

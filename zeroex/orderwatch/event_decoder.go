@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -136,6 +137,9 @@ func (e UntrackedTokenError) Error() string {
 // have the same signatures, but different meanings, all ERC20 & ERC721 contract addresses must
 // be added to the decoder ahead of time.
 type Decoder struct {
+	knownERC20AddressesMu    sync.RWMutex
+	knownERC721AddressesMu   sync.RWMutex
+	knownExchangeAddressesMu sync.RWMutex
 	knownERC20Addresses      map[common.Address]bool
 	knownERC721Addresses     map[common.Address]bool
 	knownExchangeAddresses   map[common.Address]bool
@@ -194,46 +198,82 @@ func NewDecoder() (*Decoder, error) {
 // from this contract address, the decoder will properly decode the `Transfer` and `Approve` events
 // including the correct event parameter names.
 func (d *Decoder) AddKnownERC20(address common.Address) {
+	d.knownERC20AddressesMu.Lock()
+	defer d.knownERC20AddressesMu.Unlock()
 	d.knownERC20Addresses[address] = true
 }
 
 // RemoveKnownERC20 removes an ERC20 address from the list of known addresses. We will no longer decode
 // events for this token.
 func (d *Decoder) RemoveKnownERC20(address common.Address) {
+	d.knownERC20AddressesMu.Lock()
+	defer d.knownERC20AddressesMu.Unlock()
 	delete(d.knownERC20Addresses, address)
+}
+
+// isKnownERC20 checks if the supplied address is a known ERC20 contract
+func (d *Decoder) isKnownERC20(address common.Address) bool {
+	d.knownERC20AddressesMu.RLock()
+	defer d.knownERC20AddressesMu.RUnlock()
+	_, exists := d.knownERC20Addresses[address]
+	return exists
 }
 
 // AddKnownERC721 registers the supplied contract address as an ERC721 contract. If an event is found
 // from this contract address, the decoder will properly decode the `Transfer` and `Approve` events
 // including the correct event parameter names.
 func (d *Decoder) AddKnownERC721(address common.Address) {
+	d.knownERC721AddressesMu.Lock()
+	defer d.knownERC721AddressesMu.Unlock()
 	d.knownERC721Addresses[address] = true
 }
 
 // RemoveKnownERC721 removes an ERC721 address from the list of known addresses. We will no longer decode
 // events for this token.
 func (d *Decoder) RemoveKnownERC721(address common.Address) {
+	d.knownERC721AddressesMu.Lock()
+	defer d.knownERC721AddressesMu.Unlock()
 	delete(d.knownERC721Addresses, address)
+}
+
+// isKnownERC721 checks if the supplied address is a known ERC721 contract
+func (d *Decoder) isKnownERC721(address common.Address) bool {
+	d.knownERC721AddressesMu.RLock()
+	defer d.knownERC721AddressesMu.RUnlock()
+	_, exists := d.knownERC721Addresses[address]
+	return exists
 }
 
 // AddKnownExchange registers the supplied contract address as a 0x Exchange contract. If an event is found
 // from this contract address, the decoder will properly decode it's events including the correct event
 // parameter names.
 func (d *Decoder) AddKnownExchange(address common.Address) {
+	d.knownExchangeAddressesMu.Lock()
+	defer d.knownExchangeAddressesMu.Unlock()
 	d.knownExchangeAddresses[address] = true
 }
 
 // RemoveKnownExchange removes an Exchange address from the list of known addresses. We will no longer decode
 // events for this contract.
 func (d *Decoder) RemoveKnownExchange(address common.Address) {
+	d.knownExchangeAddressesMu.Lock()
+	defer d.knownExchangeAddressesMu.Unlock()
 	delete(d.knownExchangeAddresses, address)
+}
+
+// isKnownExchange checks if the supplied address is a known Exchange contract address
+func (d *Decoder) isKnownExchange(address common.Address) bool {
+	d.knownExchangeAddressesMu.RLock()
+	defer d.knownExchangeAddressesMu.RUnlock()
+	_, exists := d.knownExchangeAddresses[address]
+	return exists
 }
 
 // FindEventType returns to event type contained in the supplied log. It looks both at the registered
 // contract addresses and the log topic.
 func (d *Decoder) FindEventType(log types.Log) (string, error) {
 	firstTopic := log.Topics[0]
-	if _, exists := d.knownERC20Addresses[log.Address]; exists {
+	if isKnown := d.isKnownERC20(log.Address); isKnown {
 		eventName, ok := d.erc20TopicToEventName[firstTopic]
 		if !ok {
 			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
@@ -243,14 +283,14 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 		}
 		return fmt.Sprintf("ERC20%sEvent", eventName), nil
 	}
-	if _, exists := d.knownERC721Addresses[log.Address]; exists {
+	if isKnown := d.isKnownERC721(log.Address); isKnown {
 		eventName, ok := d.erc721TopicToEventName[firstTopic]
 		if !ok {
 			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
 		return fmt.Sprintf("ERC721%sEvent", eventName), nil
 	}
-	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
+	if isKnown := d.isKnownExchange(log.Address); isKnown {
 		eventName, ok := d.exchangeTopicToEventName[firstTopic]
 		if !ok {
 			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
@@ -264,13 +304,13 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 // Decode attempts to decode the supplied log given the event types relevant to 0x orders. The
 // decoded result is stored in the value pointed to by supplied `decodedLog` struct.
 func (d *Decoder) Decode(log types.Log, decodedLog interface{}) error {
-	if _, exists := d.knownERC20Addresses[log.Address]; exists {
+	if isKnown := d.isKnownERC20(log.Address); isKnown {
 		return d.decodeERC20(log, decodedLog)
 	}
-	if _, exists := d.knownERC721Addresses[log.Address]; exists {
+	if isKnown := d.isKnownERC721(log.Address); isKnown {
 		return d.decodeERC721(log, decodedLog)
 	}
-	if _, exists := d.knownExchangeAddresses[log.Address]; exists {
+	if isKnown := d.isKnownExchange(log.Address); isKnown {
 		return d.decodeExchange(log, decodedLog)
 	}
 
