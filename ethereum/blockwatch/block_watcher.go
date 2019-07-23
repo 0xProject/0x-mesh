@@ -91,7 +91,7 @@ func New(config Config) *Watcher {
 // Watch starts the Watcher. It will continuously look for new blocks and blocks
 // until there is a critical error or the given context is canceled. Typically,
 // you want to call Watch inside a goroutine. For non-critical errors, callers
-// must receive from the Errors channel.
+// must receive them from the Errors channel.
 func (w *Watcher) Watch(ctx context.Context) error {
 	w.mu.Lock()
 	if w.wasStartedOnce {
