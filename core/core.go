@@ -146,16 +146,6 @@ func New(config Config) (*App, error) {
 		Client:              blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	go func() {
-		for {
-			err, isOpen := <-blockWatcher.Errors
-			if isOpen {
-				log.WithField("error", err).Error("BlockWatcher error encountered")
-			} else {
-				return // Exit when the error channel is closed
-			}
-		}
-	}()
 
 	// Initialize the order validator
 	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
@@ -278,19 +268,20 @@ func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
 	return nil
 }
 
-func (app *App) Start() error {
+func (app *App) Start(ctx context.Context) error {
 	go func() {
 		err := app.node.Start()
 		if err != nil {
-			log.WithField("error", err.Error()).Error("p2p node returned error")
 			app.Close()
+			log.WithField("error", err.Error()).Fatal("p2p node exited with error")
 		}
 	}()
 	addrs := app.node.Multiaddrs()
-	go app.periodicallyCheckForNewAddrs(addrs)
 	log.WithFields(map[string]interface{}{
 		"addresses": addrs,
 	}).Info("started p2p node")
+
+	go app.periodicallyCheckForNewAddrs(ctx, addrs)
 
 	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
 	// returns any fatal errors. As it currently stands, if one of these watchers
@@ -301,14 +292,23 @@ func (app *App) Start() error {
 	}
 	log.Info("started order watcher")
 
-	blockWatcherCtx, blockWatcherCancel := context.WithCancel(context.Background())
-	app.blockWatcherCancel = blockWatcherCancel
+	// Start the block watcher and listen for errors.
+	go func() {
+		for {
+			err, isOpen := <-app.blockWatcher.Errors
+			if isOpen {
+				log.WithField("error", err).Error("BlockWatcher error encountered")
+			} else {
+				return // Exit when the error channel is closed
+			}
+		}
+	}()
 	go func() {
 		log.Info("starting block watcher")
-		err := app.blockWatcher.Watch(blockWatcherCtx)
+		err := app.blockWatcher.Watch(ctx)
 		if err != nil {
-			log.WithError(err).Error("block watcher returned error")
 			app.Close()
+			log.WithError(err).Fatal("block watcher exited with error")
 		}
 	}()
 
@@ -329,34 +329,38 @@ func (app *App) Start() error {
 		}
 	}()
 
-	snapshotExpirationCtx, snapshotExpirationCancel := context.WithCancel(context.Background())
-	app.snapshotExpirationCancel = snapshotExpirationCancel
 	go func() {
-		if err := app.snapshotExpirationWatcher.Watch(snapshotExpirationCtx, expirationPollingInterval); err != nil {
-			log.WithError(err).Error("Could not start snapshot expiration watcher")
+		if err := app.snapshotExpirationWatcher.Watch(ctx, expirationPollingInterval); err != nil {
 			app.Close()
+			log.WithError(err).Fatal("snapshot expiration watcher exited with error")
 		}
 	}()
 
 	return nil
 }
 
-func (app *App) periodicallyCheckForNewAddrs(startingAddrs []ma.Multiaddr) {
+func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs []ma.Multiaddr) {
+	// TODO: There might be a more efficient way to do this if we have access to
+	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
 	seenAddrs := stringset.New()
 	for _, addr := range startingAddrs {
 		seenAddrs.Add(addr.String())
 	}
-	// TODO: There might be a more efficient way to do this if we have access to
-	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
+	ticker := time.NewTicker(checkNewAddrInterval)
 	for {
-		time.Sleep(checkNewAddrInterval)
-		newAddrs := app.node.Multiaddrs()
-		for _, addr := range newAddrs {
-			if !seenAddrs.Contains(addr.String()) {
-				log.WithFields(map[string]interface{}{
-					"address": addr,
-				}).Info("found new listen address")
-				seenAddrs.Add(addr.String())
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			newAddrs := app.node.Multiaddrs()
+			for _, addr := range newAddrs {
+				if !seenAddrs.Contains(addr.String()) {
+					log.WithFields(map[string]interface{}{
+						"address": addr,
+					}).Info("found new listen address")
+					seenAddrs.Add(addr.String())
+				}
 			}
 		}
 	}

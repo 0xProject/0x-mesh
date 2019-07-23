@@ -6,6 +6,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -39,7 +41,9 @@ func main() {
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("could not initialize app")
 	}
-	if err := app.Start(); err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := app.Start(ctx); err != nil {
 		log.WithField("error", err.Error()).Fatal("fatal error while starting app")
 	}
 	defer app.Close()
