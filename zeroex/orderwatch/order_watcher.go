@@ -46,6 +46,7 @@ type Watcher struct {
 	blockSubscription          event.Subscription
 	contractAddresses          ethereum.ContractAddresses
 	expirationWatcher          *expirationwatch.Watcher
+	expirationWatcherCancel    context.CancelFunc
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	cleanupCtx                 context.Context
@@ -132,7 +133,7 @@ func (w *Watcher) Stop() error {
 	w.blockSubscription.Unsubscribe()
 
 	// Stop expiration watcher
-	w.expirationWatcher.Stop()
+	w.expirationWatcherCancel()
 
 	// Stop cleanup worker
 	w.stopCleanupWorker()
@@ -247,7 +248,7 @@ func (w *Watcher) stopCleanupWorker() {
 
 func (w *Watcher) setupExpirationWatcher() error {
 	go func() {
-		expiredOrders := w.expirationWatcher.Receive()
+		expiredOrders := w.expirationWatcher.ExpiredItems()
 		for expiredOrders := range expiredOrders {
 			for _, expiredOrder := range expiredOrders {
 				order := &meshdb.Order{}
@@ -278,7 +279,17 @@ func (w *Watcher) setupExpirationWatcher() error {
 		}
 	}()
 
-	return w.expirationWatcher.Start(expirationPollingInterval)
+	expirationWatcherCtx, expirationWatcherCancel := context.WithCancel(context.Background())
+	w.expirationWatcherCancel = expirationWatcherCancel
+	go func() {
+		err := w.expirationWatcher.Watch(expirationWatcherCtx, expirationPollingInterval)
+		if err != nil {
+			logger.WithError(err).Error("could not start expiration watcher inside order watcher")
+		}
+		_ = w.Stop()
+	}()
+
+	return nil
 }
 
 type OrderWithTxHashes struct {
