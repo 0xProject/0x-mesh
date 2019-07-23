@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -82,10 +83,28 @@ func TestWatcherStartStop(t *testing.T) {
 	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
-	require.NoError(t, watcher.Start())
-	watcher.stopPolling()
-	require.NoError(t, watcher.Start())
-	watcher.Stop()
+
+	// Start the watcher in a goroutine. We use the done channel to signal when
+	// watcher.Watch returns.
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	defer cancel()
+	go func() {
+		require.NoError(t, watcher.Watch(ctx))
+		done <- struct{}{}
+	}()
+
+	// Wait a bit and then stop the watcher by calling cancel.
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	// Make sure that the watcher actually stops.
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Error("timed out waiting for watcher to stop")
+	case <-done:
+		break
+	}
 }
 
 type blockRangeChunksTestCase struct {

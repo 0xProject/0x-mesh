@@ -90,6 +90,7 @@ type App struct {
 	node                      *p2p.Node
 	networkID                 int
 	blockWatcher              *blockwatch.Watcher
+	blockWatcherCancel        context.CancelFunc
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
 	orderValidator            *zeroex.OrderValidator
@@ -271,10 +272,18 @@ func (app *App) Start() error {
 		return err
 	}
 	log.Info("started order watcher")
-	if err := app.blockWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started block watcher")
+
+	blockWatcherCtx, blockWatcherCancel := context.WithCancel(context.Background())
+	app.blockWatcherCancel = blockWatcherCancel
+	go func() {
+		log.Info("starting block watcher")
+		err := app.blockWatcher.Watch(blockWatcherCtx)
+		if err != nil {
+			log.WithError(err).Error("block watcher returned error")
+			app.Close()
+		}
+	}()
+
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
 	if err := app.ethWatcher.Start(); err != nil {
@@ -501,6 +510,6 @@ func (app *App) Close() {
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
-	app.blockWatcher.Stop()
+	app.blockWatcherCancel()
 	app.db.Close()
 }
