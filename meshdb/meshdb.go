@@ -45,11 +45,22 @@ func (o Order) ID() []byte {
 	return o.Hash.Bytes()
 }
 
+// Metadata is the database representation of MeshDB instance metadata
+type Metadata struct {
+	EthereumNetworkID *big.Int
+}
+
+// ID returns the id used for the metadata collection (one per DB)
+func (m Metadata) ID() []byte {
+	return []byte("metadata")
+}
+
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
 	database    *db.DB
 	MiniHeaders *MiniHeadersCollection
 	Orders      *OrdersCollection
+	Metadata    *MetadataCollection
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
@@ -65,6 +76,12 @@ type OrdersCollection struct {
 	MakerAddressTokenAddressTokenIDIndex *db.Index
 	LastUpdatedIndex                     *db.Index
 	IsRemovedIndex                       *db.Index
+}
+
+// MetadataCollection represents a DB collection used to store instance metadata
+type MetadataCollection struct {
+	*db.Collection
+	EthereumNetworkIDIndex *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -84,10 +101,16 @@ func NewMeshDB(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
+	metadata, err := setupMetadata(database)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MeshDB{
 		database:    database,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
+		Metadata:    metadata,
 	}, nil
 }
 
@@ -167,6 +190,21 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 	return &MiniHeadersCollection{
 		Collection:  col,
 		numberIndex: numberIndex,
+	}, nil
+}
+
+func setupMetadata(database *db.DB) (*MetadataCollection, error) {
+	col, err := database.NewCollection("metadata", &Metadata{})
+	if err != nil {
+		return nil, err
+	}
+	ethereumNetworkIDIndex := col.AddIndex("ethereumNetworkID", func(m db.Model) []byte {
+		networkID := m.(*Metadata).EthereumNetworkID
+		return networkID.Bytes()
+	})
+	return &MetadataCollection{
+		Collection:             col,
+		EthereumNetworkIDIndex: ethereumNetworkIDIndex,
 	}, nil
 }
 

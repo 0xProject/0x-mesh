@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"sync"
@@ -115,6 +116,12 @@ func New(config Config) (*App, error) {
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
 	meshDB, err := meshdb.NewMeshDB(databasePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the DB has been previously intialized with a different networkId
+	err = initNetworkId(config.EthereumNetworkID, meshDB)
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +255,44 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 
 	// For any other type of error, return it.
 	return nil, err
+}
+
+func initNetworkId(networkID int, db *meshdb.MeshDB) error {
+	// see if there is already a stored networkID
+	snapshot, err := db.Metadata.GetSnapshot()
+	if err != nil {
+		return err
+	}
+
+	filter := db.Metadata.EthereumNetworkIDIndex.All()
+	var metadataCol []*meshdb.Metadata
+	err = snapshot.NewQuery(filter).Run(&metadataCol)
+	if err != nil {
+		return err
+	}
+
+	if len(metadataCol) > 1 {
+		return fmt.Errorf("Detected more than one 'Metadata' collection (%v); should be one or zero", len(metadataCol))
+	}
+
+	// on subsequent startups, verify we are on the same network
+	if len(metadataCol) == 1 {
+		loadedNetworkID := metadataCol[0].EthereumNetworkID.Int64()
+		if loadedNetworkID != int64(networkID) {
+			log.Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
+			return fmt.Errorf("expected networkID to be '%v', got '%v", networkID, loadedNetworkID)
+		}
+	}
+
+	// if this is the first startup, set the networkId in initial metadata
+	if len(metadataCol) == 0 {
+		setMetadata := meshdb.Metadata{EthereumNetworkID: big.NewInt(int64(networkID))}
+		err = db.Metadata.Insert(&setMetadata)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (app *App) Start() error {
