@@ -25,7 +25,7 @@ type rpcHandler struct {
 
 // listenRPC starts the RPC server and listens on config.RPCPort. It blocks
 // until there is an error or the RPC server is closed.
-func listenRPC(app *core.App, config standaloneConfig) error {
+func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
 	rpcAddr := fmt.Sprintf(":%d", config.RPCPort)
 	rpcHandler := &rpcHandler{
@@ -42,7 +42,7 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 		}
 		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
 	}()
-	return rpcServer.Listen()
+	return rpcServer.Listen(ctx)
 }
 
 // GetOrders is called when an RPC client calls GetOrders.
@@ -112,6 +112,9 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 
 		for {
 			select {
+			case <-ctx.Done():
+				orderWatcherSub.Unsubscribe()
+				return
 			case orderEvents := <-orderEventsChan:
 				err := notifier.Notify(rpcSub.ID, orderEvents)
 				if err != nil {
