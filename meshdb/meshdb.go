@@ -58,9 +58,9 @@ func (m Metadata) ID() []byte {
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
 	database    *db.DB
+	metadata    *MetadataCollection
 	MiniHeaders *MiniHeadersCollection
 	Orders      *OrdersCollection
-	Metadata    *MetadataCollection
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
@@ -107,9 +107,9 @@ func NewMeshDB(path string) (*MeshDB, error) {
 
 	return &MeshDB{
 		database:    database,
+		metadata:    metadata,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
-		Metadata:    metadata,
 	}, nil
 }
 
@@ -288,15 +288,15 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
 func (m *MeshDB) GetMetadata() (*Metadata, error) {
 	var metadata Metadata
-	if err := m.Metadata.FindByID([]byte{0}, &metadata); err != nil {
+	if err := m.metadata.FindByID([]byte{0}, &metadata); err != nil {
 		return nil, err
 	}
 	return &metadata, nil
 }
 
 // SaveMetadata inserts the metadata into the database.
-func (m *MeshDB) SaveMetadata(metadata Metadata) error {
-	if err := m.Metadata.Insert(&metadata); err != nil {
+func (m *MeshDB) SaveMetadata(metadata *Metadata) error {
+	if err := m.metadata.Insert(metadata); err != nil {
 		return err
 	}
 	return nil

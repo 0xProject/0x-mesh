@@ -261,7 +261,7 @@ func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
 		if _, ok := err.(db.NotFoundError); ok {
 			// No stored metadata found (first startup)
 			metadata = &meshdb.Metadata{EthereumNetworkID: networkID}
-			if err := meshDB.SaveMetadata(*metadata); err != nil {
+			if err := meshDB.SaveMetadata(metadata); err != nil {
 				return err
 			}
 			return nil
