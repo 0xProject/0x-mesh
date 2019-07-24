@@ -23,14 +23,14 @@ import {
 const CLOSE_REASON_NO_HEARTBEAT = 3001;
 const CLOSE_DESCRIPTION_NO_HEARTBEAT = 'No heartbeat received';
 
-const DEFAULT_RECONNECT_AFTER = 5000;
+const DEFAULT_RECONNECT_AFTER_MS = 5000;
 const DEFAULT_WS_OPTS = {
     clientConfig: {
         // For some reason fragmenting the payloads causes the connection to close
         // Source: https://github.com/theturtle32/WebSocket-Node/issues/359
         fragmentOutgoingMessages: false,
     },
-    reconnectAfter: DEFAULT_RECONNECT_AFTER,
+    reconnectAfter: DEFAULT_RECONNECT_AFTER_MS,
 };
 
 /**
@@ -62,7 +62,7 @@ export class WSClient {
     constructor(url: string, wsOpts?: WSOpts) {
         this._subscriptionIdToMeshSpecificId = {};
         if (wsOpts !== undefined && wsOpts.reconnectAfter === undefined) {
-            wsOpts.reconnectAfter = DEFAULT_RECONNECT_AFTER;
+            wsOpts.reconnectAfter = DEFAULT_RECONNECT_AFTER_MS;
         }
         this._wsProvider = new Web3Providers.WebsocketProvider(
             url,
