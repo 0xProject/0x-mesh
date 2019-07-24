@@ -43,3 +43,29 @@ jobs:
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
+  build-ts-client:
+    environment:
+      BASH_ENV: ~/.nvm/nvm.sh
+    docker:
+      - image: circleci/node:9-browsers
+    working_directory: /go/src/github.com/0xProject/0x-mesh/clients/mesh_rpc_client
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: yarn install
+      - run:
+          name: Run TS client linter
+          command: yarn lint
+      - run:
+          name: Run TS client tests
+          command: yarn test
+
+workflows:
+    version: 2
+    main:
+        jobs:
+            - build
+            - build-ts-client:
+                  requires:
+                      - build
