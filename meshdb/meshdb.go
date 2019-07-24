@@ -47,7 +47,7 @@ func (o Order) ID() []byte {
 
 // Metadata is the database representation of MeshDB instance metadata
 type Metadata struct {
-	EthereumNetworkID *big.Int
+	EthereumNetworkID int
 }
 
 // ID returns the id used for the metadata collection (one per DB)
@@ -296,7 +296,7 @@ func (m *MeshDB) GetMetadata() (*Metadata, error) {
 
 // SaveMetadata inserts the metadata into the database.
 func (m *MeshDB) SaveMetadata(networkID int) error {
-	metadata := Metadata{big.NewInt(int64(networkID))}
+	metadata := Metadata{networkID}
 	if err := m.Metadata.Insert(&metadata); err != nil {
 		return err
 	}
