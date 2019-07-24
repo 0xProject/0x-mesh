@@ -340,7 +340,7 @@ func (app *App) Start(ctx context.Context) error {
 }
 
 func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs []ma.Multiaddr) {
-	// TODO: There might be a more efficient way to do this if we have access to
+	// TODO(albrow): There might be a more efficient way to do this if we have access to
 	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
 	seenAddrs := stringset.New()
 	for _, addr := range startingAddrs {
