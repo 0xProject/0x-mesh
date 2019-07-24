@@ -43,7 +43,7 @@ jobs:
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
-  build-ts-client:
+  build-and-test-ts-rpc-client:
     environment:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
@@ -66,6 +66,6 @@ workflows:
     main:
         jobs:
             - build
-            - build-ts-client:
+            - build-and-test-ts-rpc-client:
                   requires:
                       - build
