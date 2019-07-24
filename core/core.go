@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"sync"
@@ -121,8 +120,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Check if the DB has been previously intialized with a different networkId
-	err = initNetworkId(config.EthereumNetworkID, meshDB)
-	if err != nil {
+	if err = initNetworkID(config.EthereumNetworkID, meshDB); err != nil {
 		return nil, err
 	}
 
@@ -257,15 +255,11 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initNetworkId(networkID int, meshDB *meshdb.MeshDB) error {
-	var metadata meshdb.Metadata
-	err := meshDB.Metadata.FindByID([]byte{0}, &metadata)
-
+func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
+	metadata, err := meshDB.GetMetadata()
 	if _, ok := err.(db.NotFoundError); ok {
 		// No stored metadata found (first startup)
-		setMetadata := meshdb.Metadata{EthereumNetworkID: big.NewInt(int64(networkID))}
-		err = meshDB.Metadata.Insert(&setMetadata)
-		if err != nil {
+		if err := meshDB.SaveMetadata(networkID); err != nil {
 			return err
 		}
 		return nil
