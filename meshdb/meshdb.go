@@ -295,8 +295,7 @@ func (m *MeshDB) GetMetadata() (*Metadata, error) {
 }
 
 // SaveMetadata inserts the metadata into the database.
-func (m *MeshDB) SaveMetadata(networkID int) error {
-	metadata := Metadata{networkID}
+func (m *MeshDB) SaveMetadata(metadata Metadata) error {
 	if err := m.Metadata.Insert(&metadata); err != nil {
 		return err
 	}
