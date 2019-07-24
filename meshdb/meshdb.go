@@ -197,9 +197,7 @@ func setupMetadata(database *db.DB) (*MetadataCollection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &MetadataCollection{
-		Collection: col,
-	}, nil
+	return &MetadataCollection{col}, nil
 }
 
 // Close closes the database connection
