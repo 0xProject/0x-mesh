@@ -119,6 +119,11 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Check if the DB has been previously intialized with a different networkId
+	if err = initNetworkID(config.EthereumNetworkID, meshDB); err != nil {
+		return nil, err
+	}
+
 	// Initialize the ETH client, which will be used by various watchers.
 	ethClient, err := ethclient.Dial(config.EthereumRPCURL)
 	if err != nil {
@@ -248,6 +253,29 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 
 	// For any other type of error, return it.
 	return nil, err
+}
+
+func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
+	metadata, err := meshDB.GetMetadata()
+	if err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// No stored metadata found (first startup)
+			metadata = &meshdb.Metadata{EthereumNetworkID: networkID}
+			if err := meshDB.SaveMetadata(metadata); err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+
+	// on subsequent startups, verify we are on the same network
+	if metadata.EthereumNetworkID != networkID {
+		err := fmt.Errorf("expected networkID to be %d but got %d", metadata.EthereumNetworkID, networkID)
+		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
+		return err
+	}
+	return nil
 }
 
 func (app *App) Start() error {
