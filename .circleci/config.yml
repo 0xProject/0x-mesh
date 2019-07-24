@@ -48,7 +48,7 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/node:9-browsers
-    working_directory: /go/src/github.com/0xProject/0x-mesh/clients/mesh_rpc_client
+    working_directory: /go/src/github.com/0xProject/0x-mesh/rpc/clients/typescript
     steps:
       - checkout
       - run:

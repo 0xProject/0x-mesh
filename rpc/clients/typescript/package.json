@@ -31,7 +31,7 @@
     "bugs": {
         "url": "https://github.com/0xProject/0x-mesh/issues"
     },
-    "homepage": "https://github.com/0xProject/0x-mesh/clients/mesh_rpc_client/README.md",
+    "homepage": "https://github.com/0xProject/0x-mesh/rpc/clients/typescript/README.md",
     "dependencies": {
         "@0x/assert": "^2.1.0",
         "@0x/dev-utils": "^2.2.4",
