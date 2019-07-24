@@ -10,6 +10,10 @@ const sixtyFourMB = 64 * 1024 * 1024; // 64MiB
 let server: http.Server;
 let wsServer: WebSocket.server;
 
+/**
+ * Sets up a new test WS server
+ * @return A WS server
+ */
 export async function setupServerAsync(): Promise<WebSocket.server> {
     return new Promise<WebSocket.server>((resolve, reject) => {
         server = http.createServer((_request, response) => {
@@ -33,6 +37,9 @@ export async function setupServerAsync(): Promise<WebSocket.server> {
     });
 }
 
+/**
+ * Stops the test WS server
+ */
 export function stopServer(): void {
     try {
         wsServer.shutDown();

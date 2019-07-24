@@ -38,7 +38,7 @@ const DEFAULT_WS_OPTS = {
  * websocket endpoint.
  */
 export class WSClient {
-    private _subscriptionIdToMeshSpecificId: ObjectMap<string>;
+    private readonly _subscriptionIdToMeshSpecificId: ObjectMap<string>;
     private _heartbeatCheckIntervalId: number | undefined;
     private readonly _wsProvider: Web3Providers.WebsocketProvider;
     private static _convertRawAcceptedOrders(rawAcceptedOrders: RawAcceptedOrderInfo[]): AcceptedOrderInfo[] {
@@ -227,6 +227,7 @@ export class WSClient {
         const oneSecondInMs = 1000;
         this._heartbeatCheckIntervalId = setInterval(() => {
             const twentySecondsInMs = 20000;
+            // tslint:disable-next-line:boolean-naming
             const haveTwentySecondsPastWithoutAHeartBeat =
                 lastHeartbeatTimestampMs + twentySecondsInMs < new Date().getTime();
             if (haveTwentySecondsPastWithoutAHeartBeat) {

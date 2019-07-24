@@ -356,6 +356,7 @@ describe('WSClient', () => {
     });
     describe('#onClose', () => {
         it('should trigger when connection is closed', (done: DoneCallback) => {
+            // tslint:disable-next-line:no-floating-promises
             (async () => {
                 const wsServer = await setupServerAsync();
                 wsServer.on('connect', async (connection: WebSocket.connection) => {
@@ -374,6 +375,7 @@ describe('WSClient', () => {
     });
     describe('#onReconnected', async () => {
         it('should trigger the callback when reconnected', (done: DoneCallback) => {
+            // tslint:disable-next-line:no-floating-promises
             (async () => {
                 const wsServer = await setupServerAsync();
                 wsServer.on('connect', async (connection: WebSocket.connection) => {
@@ -413,6 +415,7 @@ describe('WSClient', () => {
     });
     describe('#destroy', async () => {
         it('should unsubscribe and trigger onClose when close() is called', (done: DoneCallback) => {
+            // tslint:disable-next-line:no-floating-promises
             (async () => {
                 const wsServer = await setupServerAsync();
                 let numMessages = 0;
