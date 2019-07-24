@@ -39,7 +39,7 @@
         "@0x/types": "^2.2.2",
         "@0x/typescript-typings": "^4.2.2",
         "@0x/utils": "^4.3.3",
-        "@0x/web3-providers-fork": "0.0.5",
+        "@0x/web3-providers-fork": "0.0.6",
         "uuid": "^3.3.2"
     },
     "devDependencies": {
