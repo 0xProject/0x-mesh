@@ -29,6 +29,7 @@ import (
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -86,6 +87,8 @@ type snapshotInfo struct {
 
 type App struct {
 	config                    Config
+	peerID                    peer.ID
+	privKey                   p2pcrypto.PrivKey
 	db                        *meshdb.MeshDB
 	node                      *p2p.Node
 	networkID                 int
@@ -107,6 +110,18 @@ func New(config Config) (*App, error) {
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
+
+	// Load private key and add peer ID hook.
+	privKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
+	privKey, err := initPrivateKey(privKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
@@ -179,6 +194,8 @@ func New(config Config) (*App, error) {
 
 	app := &App{
 		config:                    config,
+		privKey:                   privKey,
+		peerID:                    peerID,
 		db:                        meshDB,
 		networkID:                 config.EthereumNetworkID,
 		blockWatcher:              blockWatcher,
@@ -190,30 +207,6 @@ func New(config Config) (*App, error) {
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 	}
-
-	// Initialize the p2p node.
-	privateKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
-	privKey, err := initPrivateKey(privateKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(config.EthereumNetworkID),
-		ListenPort:       config.P2PListenPort,
-		Insecure:         false,
-		PrivateKey:       privKey,
-		MessageHandler:   app,
-		RendezvousString: getRendezvous(config.EthereumNetworkID),
-		UseBootstrapList: config.UseBootstrapList,
-	}
-	node, err := p2p.New(nodeConfig)
-	if err != nil {
-		return nil, err
-	}
-	app.node = node
-
-	// Add the peer ID hook to the logger.
-	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
 
 	log.WithFields(map[string]interface{}{
 		"config":  config,
@@ -269,6 +262,22 @@ func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
 }
 
 func (app *App) Start(ctx context.Context) error {
+	// Initialize the p2p node.
+	nodeConfig := p2p.Config{
+		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
+		ListenPort:       app.config.P2PListenPort,
+		Insecure:         false,
+		PrivateKey:       app.privKey,
+		MessageHandler:   app,
+		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
+		UseBootstrapList: app.config.UseBootstrapList,
+	}
+	var err error
+	app.node, err = p2p.New(ctx, nodeConfig)
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		err := app.node.Start()
 		if err != nil {
@@ -522,9 +531,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 
 // AddPeer can be used to manually connect to a new peer.
 func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
-	ctx, cancel := context.WithTimeout(context.Background(), peerConnectTimeout)
-	defer cancel()
-	return app.node.Connect(ctx, peerInfo)
+	return app.node.Connect(peerInfo, peerConnectTimeout)
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
@@ -535,9 +542,6 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 
 // Close closes the app
 func (app *App) Close() {
-	if err := app.node.Close(); err != nil {
-		log.WithField("error", err.Error()).Error("error while closing node")
-	}
 	app.ethWatcher.Stop()
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")

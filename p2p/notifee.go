@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pnet "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,8 @@ const (
 
 // notifee receives notifications for network-related events.
 type notifee struct {
-	node *Node
+	ctx         context.Context
+	connManager *connmgr.BasicConnMgr
 }
 
 var _ p2pnet.Notifiee = &notifee{}
@@ -51,7 +53,7 @@ func (n *notifee) Disconnected(network p2pnet.Network, conn p2pnet.Conn) {
 // OpenedStream is called when a stream opened
 func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 	go func() {
-		ctx, cancel := context.WithTimeout(n.node.ctx, 5*time.Second)
+		ctx, cancel := context.WithTimeout(n.ctx, 5*time.Second)
 		defer cancel()
 		waitForStreamProtocol(ctx, stream)
 
@@ -64,7 +66,7 @@ func (n *notifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream) {
 				"protocol":     stream.Protocol(),
 				"direction":    stream.Stat().Direction,
 			}).Debug("found peer who speaks our protocol")
-			n.node.connManager.TagPeer(stream.Conn().RemotePeer(), pubsubProtocolTag, pubsubProtocolScore)
+			n.connManager.TagPeer(stream.Conn().RemotePeer(), pubsubProtocolTag, pubsubProtocolScore)
 		}
 	}()
 }
@@ -81,12 +83,14 @@ func waitForStreamProtocol(ctx context.Context, stream p2pnet.Stream) {
 	// event bus which could potentially be used to detect when the protocol is
 	// set or offer a different way to detect peers who speak the protocol we're
 	// looking for.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 	for stream.Protocol() == "" {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			time.Sleep(10 * time.Millisecond)
+		case <-ticker.C:
+			continue
 		}
 	}
 }
