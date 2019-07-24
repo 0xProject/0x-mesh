@@ -382,31 +382,31 @@ describe('WSClient', () => {
                     let requestNum = 0;
                     connection.on('message', (async (message: WSMessage) => {
                         const jsonRpcRequest = JSON.parse(message.utf8Data);
-                        const responses = [
-                            `
+                        if (requestNum === 0) {
+                            const response = `
                                 {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc": "2.0",
                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
                                 }
-                            `,
-                        ];
-                        connection.sendUTF(responses[requestNum]);
-                        requestNum++;
-
-                        if (requestNum === 1) {
+                            `;
+                            connection.sendUTF(response);
                             // tslint:disable-next-line:custom-no-magic-numbers
                             await sleepAsync(100);
                             const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
                             const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
                             connection.drop(reasonCode, description);
-                            return;
                         }
+                        requestNum++;
                     }) as any);
                 });
 
                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectAfter: 100 });
-                client.onReconnected(() => {
+                client.onReconnected(async () => {
+                    // We need to add a sleep here so that we leave time for the client
+                    // to get connected before destroying it.
+                    // tslint:disable-next-line:custom-no-magic-numbers
+                    await sleepAsync(100);
                     client.destroy();
                     done();
                 });
@@ -448,7 +448,7 @@ describe('WSClient', () => {
                 // We need to add a sleep here so that we leave time for the client
                 // to get connected before destroying it.
                 // tslint:disable-next-line:custom-no-magic-numbers
-                await sleepAsync(200);
+                await sleepAsync(100);
                 client.destroy();
             })().catch(done);
         });
