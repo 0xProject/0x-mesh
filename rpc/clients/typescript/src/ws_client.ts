@@ -104,22 +104,26 @@ export class WSClient {
      */
     public async getOrdersAsync(perPage: number = 200): Promise<AcceptedOrderInfo[]> {
         let snapshotID = ''; // New snapshot
-        let ordersInfosLen = 1;
 
-        let i = 0;
-        let rawAcceptedOrderInfos: RawAcceptedOrderInfo[] = [];
-        while (ordersInfosLen === perPage) {
-            const page = i;
-            const getOrdersResponse: GetOrdersResponse = await (this._wsProvider as any).send('mesh_getOrders', [
+        let page = 0;
+        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders',
+            [
                 page,
                 perPage,
                 snapshotID,
-            ]);
-            snapshotID = getOrdersResponse.snapshotID;
-            rawAcceptedOrderInfos = [...rawAcceptedOrderInfos, ...getOrdersResponse.ordersInfos];
-            ordersInfosLen = getOrdersResponse.ordersInfos.length;
-            i++;
-        }
+            ],
+        );
+        snapshotID = getOrdersResponse.snapshotID;
+        let ordersInfos = getOrdersResponse.ordersInfos;
+
+        let rawAcceptedOrderInfos: RawAcceptedOrderInfo[] = [];
+        do {
+            rawAcceptedOrderInfos = [...rawAcceptedOrderInfos, ...ordersInfos];
+            page++;
+            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID]))
+                .ordersInfos;
+        } while (Object.keys(ordersInfos).length > 0);
+
         const allOrdersInfos = WSClient._convertRawAcceptedOrders(rawAcceptedOrderInfos);
         return allOrdersInfos;
     }
