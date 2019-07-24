@@ -52,7 +52,7 @@ type Metadata struct {
 
 // ID returns the id used for the metadata collection (one per DB)
 func (m Metadata) ID() []byte {
-	return []byte("metadata")
+	return []byte{0}
 }
 
 // MeshDB instantiates the DB connection and creates all the collections used by the application
@@ -81,7 +81,6 @@ type OrdersCollection struct {
 // MetadataCollection represents a DB collection used to store instance metadata
 type MetadataCollection struct {
 	*db.Collection
-	EthereumNetworkIDIndex *db.Index
 }
 
 // NewMeshDB instantiates a new MeshDB instance
@@ -198,13 +197,8 @@ func setupMetadata(database *db.DB) (*MetadataCollection, error) {
 	if err != nil {
 		return nil, err
 	}
-	ethereumNetworkIDIndex := col.AddIndex("ethereumNetworkID", func(m db.Model) []byte {
-		networkID := m.(*Metadata).EthereumNetworkID
-		return networkID.Bytes()
-	})
 	return &MetadataCollection{
-		Collection:             col,
-		EthereumNetworkIDIndex: ethereumNetworkIDIndex,
+		Collection: col,
 	}, nil
 }
 

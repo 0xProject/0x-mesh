@@ -257,40 +257,30 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initNetworkId(networkID int, db *meshdb.MeshDB) error {
-	// see if there is already a stored networkID
-	snapshot, err := db.Metadata.GetSnapshot()
-	if err != nil {
-		return err
-	}
+func initNetworkId(networkID int, meshDB *meshdb.MeshDB) error {
+	var metadata meshdb.Metadata
+	err := meshDB.Metadata.FindByID([]byte{0}, &metadata)
 
-	filter := db.Metadata.EthereumNetworkIDIndex.All()
-	var metadataCol []*meshdb.Metadata
-	err = snapshot.NewQuery(filter).Run(&metadataCol)
-	if err != nil {
-		return err
-	}
-
-	switch len(metadataCol) {
-	case 1:
-		// on subsequent startups, verify we are on the same network
-		loadedNetworkID := metadataCol[0].EthereumNetworkID.Int64()
-		if loadedNetworkID != int64(networkID) {
-			log.Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
-			return fmt.Errorf("expected networkID to be '%v', got '%v'", networkID, loadedNetworkID)
-		}
-		return nil
-	case 0:
-		// if this is the first startup, set the networkId in initial metadata
+	if _, ok := err.(db.NotFoundError); ok {
+		// No stored metadata found (first startup)
 		setMetadata := meshdb.Metadata{EthereumNetworkID: big.NewInt(int64(networkID))}
-		err = db.Metadata.Insert(&setMetadata)
+		err = meshDB.Metadata.Insert(&setMetadata)
 		if err != nil {
 			return err
 		}
 		return nil
-	default:
-		return fmt.Errorf("Detected more than one 'Metadata' collection (%v); should be one or zero", len(metadataCol))
+	} else if err != nil {
+		return err
 	}
+
+	// on subsequent startups, verify we are on the same network
+	loadedNetworkID := metadata.EthereumNetworkID.Int64()
+	if loadedNetworkID != int64(networkID) {
+		err := fmt.Errorf("expected networkID to be %d but got %d", loadedNetworkID, networkID)
+		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
+		return err
+	}
+	return nil
 }
 
 func (app *App) Start() error {
