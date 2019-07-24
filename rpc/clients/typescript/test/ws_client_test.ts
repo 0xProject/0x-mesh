@@ -189,7 +189,7 @@ describe('WSClient', () => {
             client.destroy();
         });
     });
-    describe('#subscribeToHeartbeatAsync', async () => {
+    describe('#_subscribeToHeartbeatAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
             (async () => {
                 const wsServer = await setupServerAsync();
@@ -253,7 +253,7 @@ describe('WSClient', () => {
                         client.destroy();
                     },
                 );
-                await client.subscribeToHeartbeatAsync(callback);
+                await (client as any)._subscribeToHeartbeatAsync(callback);
             })().catch(done);
         });
     });

@@ -155,25 +155,6 @@ export class WSClient {
         return id;
     }
     /**
-     * Subscribe to the 'heartbeat' topic and receive an ack from the Mesh every 5 seconds. This method
-     * returns a subscriptionId that can be used to `unsubscribe()` from this subscription.
-     * @param   cb   callback function where you'd like to get notified about heartbeats
-     * @return subscriptionId
-     */
-    public async subscribeToHeartbeatAsync(cb: (ack: string) => void): Promise<string> {
-        assert.isFunction('cb', cb);
-        const heartbeatSubscriptionId = await this._wsProvider.subscribe('mesh_subscribe', 'heartbeat', []);
-        const id = uuid();
-        this._subscriptionIdToMeshSpecificId[id] = heartbeatSubscriptionId;
-
-        const orderEventsCallback = (eventPayload: HeartbeatEventPayload) => {
-            this._subscriptionIdToMeshSpecificId[id] = eventPayload.subscription;
-            cb(eventPayload.result);
-        };
-        this._wsProvider.on(heartbeatSubscriptionId, orderEventsCallback as any);
-        return id;
-    }
-    /**
      * Unsubscribe from a subscription
      * @param subscriptionId identifier of the subscription to cancel
      */
@@ -211,10 +192,29 @@ export class WSClient {
         (this._wsProvider as any).removeAllListeners();
         (this._wsProvider as any).disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
     }
+    /**
+     * Subscribe to the 'heartbeat' topic and receive an ack from the Mesh every 5 seconds. This method
+     * returns a subscriptionId that can be used to `unsubscribe()` from this subscription.
+     * @param   cb   callback function where you'd like to get notified about heartbeats
+     * @return subscriptionId
+     */
+    private async _subscribeToHeartbeatAsync(cb: (ack: string) => void): Promise<string> {
+        assert.isFunction('cb', cb);
+        const heartbeatSubscriptionId = await this._wsProvider.subscribe('mesh_subscribe', 'heartbeat', []);
+        const id = uuid();
+        this._subscriptionIdToMeshSpecificId[id] = heartbeatSubscriptionId;
+
+        const orderEventsCallback = (eventPayload: HeartbeatEventPayload) => {
+            this._subscriptionIdToMeshSpecificId[id] = eventPayload.subscription;
+            cb(eventPayload.result);
+        };
+        this._wsProvider.on(heartbeatSubscriptionId, orderEventsCallback as any);
+        return id;
+    }
     private async _startInternalLivenessCheckAsync(): Promise<void> {
         let lastHeartbeatTimestampMs = new Date().getTime();
         try {
-            await this.subscribeToHeartbeatAsync((ack: string) => {
+            await this._subscribeToHeartbeatAsync((ack: string) => {
                 lastHeartbeatTimestampMs = new Date().getTime();
             });
         } catch (err) {
