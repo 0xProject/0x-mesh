@@ -271,28 +271,26 @@ func initNetworkId(networkID int, db *meshdb.MeshDB) error {
 		return err
 	}
 
-	if len(metadataCol) > 1 {
-		return fmt.Errorf("Detected more than one 'Metadata' collection (%v); should be one or zero", len(metadataCol))
-	}
-
-	// on subsequent startups, verify we are on the same network
-	if len(metadataCol) == 1 {
+	switch len(metadataCol) {
+	case 1:
+		// on subsequent startups, verify we are on the same network
 		loadedNetworkID := metadataCol[0].EthereumNetworkID.Int64()
 		if loadedNetworkID != int64(networkID) {
 			log.Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
-			return fmt.Errorf("expected networkID to be '%v', got '%v", networkID, loadedNetworkID)
+			return fmt.Errorf("expected networkID to be '%v', got '%v'", networkID, loadedNetworkID)
 		}
-	}
-
-	// if this is the first startup, set the networkId in initial metadata
-	if len(metadataCol) == 0 {
+		return nil
+	case 0:
+		// if this is the first startup, set the networkId in initial metadata
 		setMetadata := meshdb.Metadata{EthereumNetworkID: big.NewInt(int64(networkID))}
 		err = db.Metadata.Insert(&setMetadata)
 		if err != nil {
 			return err
 		}
+		return nil
+	default:
+		return fmt.Errorf("Detected more than one 'Metadata' collection (%v); should be one or zero", len(metadataCol))
 	}
-	return nil
 }
 
 func (app *App) Start() error {
