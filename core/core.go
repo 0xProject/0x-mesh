@@ -257,20 +257,20 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 
 func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
 	metadata, err := meshDB.GetMetadata()
-	if _, ok := err.(db.NotFoundError); ok {
-		// No stored metadata found (first startup)
-		if err := meshDB.SaveMetadata(networkID); err != nil {
-			return err
+	if err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// No stored metadata found (first startup)
+			if err := meshDB.SaveMetadata(networkID); err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
-	} else if err != nil {
 		return err
 	}
 
 	// on subsequent startups, verify we are on the same network
-	loadedNetworkID := metadata.EthereumNetworkID.Int64()
-	if loadedNetworkID != int64(networkID) {
-		err := fmt.Errorf("expected networkID to be %d but got %d", loadedNetworkID, networkID)
+	if metadata.EthereumNetworkID != networkID {
+		err := fmt.Errorf("expected networkID to be %d but got %d", metadata.EthereumNetworkID, networkID)
 		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
 		return err
 	}
