@@ -448,7 +448,7 @@ describe('WSClient', () => {
                 // We need to add a sleep here so that we leave time for the client
                 // to get connected before destroying it.
                 // tslint:disable-next-line:custom-no-magic-numbers
-                await sleepAsync(100);
+                await sleepAsync(200);
                 client.destroy();
             })().catch(done);
         });
