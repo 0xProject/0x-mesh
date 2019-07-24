@@ -50,6 +50,9 @@ jobs:
           name: Run TS RPC client linter
           command: cd rpc/clients/typescript && yarn lint
       - run:
+          name: Build TS RPC client
+          command: cd rpc/clients/typescript && yarn build
+      - run:
           name: Run TS RPC client tests
           command: cd rpc/clients/typescript && yarn test
 
