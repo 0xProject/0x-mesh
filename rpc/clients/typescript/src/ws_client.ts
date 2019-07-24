@@ -193,7 +193,6 @@ export class WSClient {
     public destroy(): void {
         clearInterval(this._heartbeatCheckIntervalId);
         this._wsProvider.clearSubscriptions('mesh_unsubscribe');
-        (this._wsProvider as any).removeAllListeners();
         (this._wsProvider as any).disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
     }
     /**
@@ -233,6 +232,7 @@ export class WSClient {
             if (haveTwentySecondsPastWithoutAHeartBeat) {
                 // If connected, we haven't received a heartbeat in over 20 seconds, re-connect
                 if (this._wsProvider.connected) {
+                    console.log('we got a race');
                     this._wsProvider.disconnect(CLOSE_REASON_NO_HEARTBEAT, CLOSE_DESCRIPTION_NO_HEARTBEAT);
                 }
                 lastHeartbeatTimestampMs = new Date().getTime();
