@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -126,6 +127,7 @@ func New(config Config) (*App, error) {
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
 	}
+	config = unquoteConfig(config)
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
@@ -214,6 +216,17 @@ func New(config Config) (*App, error) {
 	}).Info("finished initializing core.App")
 
 	return app, nil
+}
+
+// unquoteConfig removes quotes (if needed) from each string field in config.
+func unquoteConfig(config Config) Config {
+	if unquotedEthereumRPCURL, err := strconv.Unquote(config.EthereumRPCURL); err == nil {
+		config.EthereumRPCURL = unquotedEthereumRPCURL
+	}
+	if unquotedDataDir, err := strconv.Unquote(config.DataDir); err == nil {
+		config.DataDir = unquotedDataDir
+	}
+	return config
 }
 
 func getPubSubTopic(networkID int) string {
