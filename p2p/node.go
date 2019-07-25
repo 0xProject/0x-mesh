@@ -20,7 +20,6 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	p2pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -62,16 +61,14 @@ const (
 // messages.
 type Node struct {
 	ctx              context.Context
-	cancel           context.CancelFunc
-	host             host.Host
-	dht              *dht.IpfsDHT
-	routingDiscovery discovery.Discovery
-	connManager      *connmgr.BasicConnMgr
-	pubsub           *pubsub.PubSub
-	sub              *pubsub.Subscription
 	config           Config
 	messageHandler   MessageHandler
-	notifee          p2pnet.Notifiee
+	host             host.Host
+	connManager      *connmgr.BasicConnMgr
+	dht              *dht.IpfsDHT
+	routingDiscovery discovery.Discovery
+	pubsub           *pubsub.PubSub
+	sub              *pubsub.Subscription
 }
 
 // Config contains configuration options for a Node.
@@ -99,17 +96,19 @@ type Config struct {
 	UseBootstrapList bool
 }
 
-// New creates a new Node with the given config.
-func New(config Config) (*Node, error) {
-
-	nodeCtx, cancel := context.WithCancel(context.Background())
-
+// New creates a new Node with the given context and config. The Node will stop
+// all background operations if the context is canceled.
+func New(ctx context.Context, config Config) (*Node, error) {
 	if config.MessageHandler == nil {
-		cancel()
 		return nil, errors.New("config.MessageHandler is required")
 	} else if config.RendezvousString == "" {
-		cancel()
 		return nil, errors.New("config.RendezvousString is required")
+	}
+
+	// Note: 0.0.0.0 will use all available addresses.
+	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
+	if err != nil {
+		return nil, err
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -117,7 +116,7 @@ func New(config Config) (*Node, error) {
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		kadDHT, err = NewDHT(nodeCtx, h)
+		kadDHT, err = NewDHT(ctx, h)
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}
@@ -130,23 +129,15 @@ func New(config Config) (*Node, error) {
 	// because they are running in a Docker container).
 	publicIP, err := getPublicIP()
 	if err != nil {
-		cancel()
 		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
 	}
 	maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", publicIP, config.ListenPort)
 	advertiseAddr, err := ma.NewMultiaddr(maddrString)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 
 	// Set up the transport and the host.
-	// Note: 0.0.0.0 will use all available addresses.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
-	if err != nil {
-		cancel()
-		return nil, err
-	}
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(hostAddr),
@@ -160,43 +151,43 @@ func New(config Config) (*Node, error) {
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
 	}
-	basicHost, err := libp2p.New(nodeCtx, opts...)
+	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
+
+	// Close the host whenever the context is canceled.
+	go func() {
+		<-ctx.Done()
+		_ = basicHost.Close()
+	}()
+
+	// Set up the notifee.
+	basicHost.Network().Notify(&notifee{
+		ctx:         ctx,
+		connManager: connManager,
+	})
 
 	// Set up DHT for peer discovery.
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
-	// Set up pubsub.
-	ps, err := pubsub.NewGossipSub(nodeCtx, basicHost)
+	// Set up pubsub
+	pubsub, err := pubsub.NewGossipSub(ctx, basicHost)
 	if err != nil {
-		cancel()
-		return nil, err
-	}
-	sub, err := ps.Subscribe(config.Topic)
-	if err != nil {
-		cancel()
 		return nil, err
 	}
 
 	// Create the Node.
 	node := &Node{
-		ctx:              nodeCtx,
-		cancel:           cancel,
+		ctx:              ctx,
+		config:           config,
+		messageHandler:   config.MessageHandler,
 		host:             basicHost,
+		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
-		connManager:      connManager,
-		config:           config,
-		pubsub:           ps,
-		sub:              sub,
-		messageHandler:   config.MessageHandler,
+		pubsub:           pubsub,
 	}
-
-	// Set up the notifee.
-	basicHost.Network().Notify(&notifee{node: node})
 
 	return node, nil
 }
@@ -284,9 +275,12 @@ func (n *Node) UnsetPeerScore(id peer.ID, tag string) {
 
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
-// peer, and block until a connection is open, or an error is returned.
-func (n *Node) Connect(ctx context.Context, peerInfo peerstore.PeerInfo) error {
-	err := n.host.Connect(ctx, peerInfo)
+// peer, and block until a connection is open, timeout is exceeded, or an error
+// is returned.
+func (n *Node) Connect(peerInfo peerstore.PeerInfo, timeout time.Duration) error {
+	connectCtx, cancel := context.WithTimeout(n.ctx, timeout)
+	defer cancel()
+	err := n.host.Connect(connectCtx, peerInfo)
 	if err != nil {
 		return err
 	}
@@ -447,17 +441,18 @@ func (n *Node) send(data []byte) error {
 // receive returns the next pending message. It blocks if no messages are
 // available. If the given context is canceled, it returns nil, ctx.Err().
 func (n *Node) receive(ctx context.Context) (*Message, error) {
+	if n.sub == nil {
+		var err error
+		n.sub, err = n.pubsub.Subscribe(n.config.Topic)
+		if err != nil {
+			return nil, err
+		}
+	}
 	msg, err := n.sub.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &Message{From: msg.GetFrom(), Data: msg.Data}, nil
-}
-
-// Close closes the Node and any active connections.
-func (n *Node) Close() error {
-	n.cancel()
-	return n.host.Close()
 }
 
 func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
