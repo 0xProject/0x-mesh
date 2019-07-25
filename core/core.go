@@ -305,14 +305,14 @@ func (app *App) Start(ctx context.Context) error {
 
 	go app.periodicallyCheckForNewAddrs(ctx, addrs)
 
-	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
-	// returns any fatal errors. As it currently stands, if one of these watchers
-	// experiences a fatal error or crashes, it is difficult for us to tear down
-	// correctly.
-	if err := app.orderWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started order watcher")
+	// Start the order watcher and listen for errors.
+	go func() {
+		log.Info("starting order watcher")
+		if err := app.orderWatcher.Watch(ctx); err != nil {
+			app.Close()
+			log.WithError(err).Fatal("order watcher exited with error")
+		}
+	}()
 
 	// Start the block watcher and listen for errors.
 	go func() {
@@ -537,7 +537,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 	}
 
 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
-		err = app.orderWatcher.Watch(acceptedOrderInfo)
+		err = app.orderWatcher.Add(acceptedOrderInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -558,9 +558,6 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 
 // Close closes the app
 func (app *App) Close() {
-	if err := app.orderWatcher.Stop(); err != nil {
-		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
-	}
 	app.blockWatcherCancel()
 	app.db.Close()
 }

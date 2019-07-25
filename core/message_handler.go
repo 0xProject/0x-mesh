@@ -151,8 +151,8 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"orderHash": acceptedOrderInfo.OrderHash,
 			"from":      msg.From.String(),
 		}).Trace("all fields for new valid order received from peer")
-		// Watch stores the message in the database.
-		if err := app.orderWatcher.Watch(acceptedOrderInfo); err != nil {
+		// Add stores the message in the database.
+		if err := app.orderWatcher.Add(acceptedOrderInfo); err != nil {
 			return err
 		}
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
