@@ -314,8 +314,7 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 	go func() {
 		log.Info("starting block watcher")
-		err := app.blockWatcher.Watch(ctx)
-		if err != nil {
+		if err := app.blockWatcher.Watch(ctx); err != nil {
 			app.Close()
 			log.WithError(err).Fatal("block watcher exited with error")
 		}
@@ -323,10 +322,14 @@ func (app *App) Start(ctx context.Context) error {
 
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
-	if err := app.ethWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started ETH balance watcher")
+	go func() {
+		log.Info("starting ETH balance watcher")
+		if err := app.ethWatcher.Watch(ctx); err != nil {
+			app.Close()
+			log.WithError(err).Fatal("ETH watcher exited with error")
+		}
+	}()
+
 	go func() {
 		expiredSnapshotsChan := app.snapshotExpirationWatcher.ExpiredItems()
 		for expiredSnapshots := range expiredSnapshotsChan {
@@ -542,7 +545,6 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 
 // Close closes the app
 func (app *App) Close() {
-	app.ethWatcher.Stop()
 	if err := app.orderWatcher.Stop(); err != nil {
 		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
 	}
