@@ -65,12 +65,16 @@ func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscript
 // orderHandler to handle incoming requests. Useful for testing purposes. Will
 // block until both the server and client are running and connected to one
 // another.
-func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler) (*Server, *Client) {
+func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler, ctx context.Context) (*Server, *Client) {
 	// Start a new server.
 	server, err := NewServer(":0", rpcHandler)
 	require.NoError(t, err)
 	go func() {
-		_ = server.Listen()
+		err := server.Listen(ctx)
+		if err != nil {
+			panic(err)
+		}
+		require.NoError(t, err)
 	}()
 
 	// We need to wait for the OS to choose an available port and for server.Addr
@@ -132,8 +136,9 @@ func TestAddOrdersSuccess(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	validationResponse, err := client.AddOrders(signedTestOrders)
@@ -188,8 +193,9 @@ func TestGetOrdersSuccess(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
 	require.NoError(t, err)
@@ -232,8 +238,9 @@ func TestAddPeer(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
 
@@ -254,8 +261,9 @@ func TestOrdersSubscription(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	orderEventChan := make(chan []*zeroex.OrderEvent)
 	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventChan)
@@ -271,8 +279,9 @@ func TestHeartbeatSubscription(t *testing.T) {
 
 	rpcHandler := &dummyRPCHandler{}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	heartbeatChan := make(chan string)
 	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)

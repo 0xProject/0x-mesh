@@ -50,7 +50,7 @@ func main() {
 
 	// Start RPC server.
 	go func() {
-		err := listenRPC(app, config)
+		err := listenRPC(app, config, ctx)
 		if err != nil {
 			app.Close()
 			log.WithField("error", err.Error()).Fatal("RPC server returned error")

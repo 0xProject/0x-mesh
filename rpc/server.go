@@ -3,8 +3,10 @@
 package rpc
 
 import (
+	"context"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -33,8 +35,9 @@ func NewServer(addr string, rpcHandler RPCHandler) (*Server, error) {
 }
 
 // Listen causes the server to listen for new connections. You can call Close to
-// stop listening. Listen blocks until there is an error.
-func (s *Server) Listen() error {
+// stop listening. Listen blocks until there is an error or the given context is
+// canceled.
+func (s *Server) Listen(ctx context.Context) error {
 	s.mut.Lock()
 
 	rpcService := &rpcService{
@@ -52,7 +55,43 @@ func (s *Server) Listen() error {
 	s.listener = listener
 	s.mut.Unlock()
 
-	return http.Serve(s.listener, s.rpcServer.WebsocketHandler([]string{"*"}))
+	// Close the server when the context is canceled.
+	go func() {
+		<-ctx.Done()
+		s.rpcServer.Stop()
+		_ = s.listener.Close()
+	}()
+
+	if err := http.Serve(s.listener, s.rpcServer.WebsocketHandler([]string{"*"})); err != nil {
+		// HACK(albrow): http.Serve doesn't accept a context. This means that
+		// everytime we close the context for our rpc.Server, we see a "use of
+		// closed network connection" error.
+		if isClosedNetworkConnectionErr(err) {
+			// Check whether the context is canceled in order to determine whether we
+			// are in the process of tearing down the server.
+			select {
+			case <-ctx.Done():
+				// If we are tearing down the server, this is okay and we don't need to
+				// return the error.
+				return nil
+			default:
+				// If we are not tearing down the server, the error is not expected, and
+				// we should return it.
+				return err
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func isClosedNetworkConnectionErr(err error) bool {
+	if opErr, ok := err.(*net.OpError); ok {
+		if strings.Contains(opErr.Error(), "use of closed network connection") {
+			return true
+		}
+	}
+	return false
 }
 
 // Addr returns the address the server is listening on or nil if it has not yet
@@ -64,11 +103,4 @@ func (s *Server) Addr() net.Addr {
 		return nil
 	}
 	return s.listener.Addr()
-}
-
-// Close closes the listener and stops it from accepting new connections or
-// responding to any new requests.
-func (s *Server) Close() error {
-	s.rpcServer.Stop()
-	return s.listener.Close()
 }
