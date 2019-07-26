@@ -207,6 +207,7 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) {
+	orderEvents := []*zeroex.OrderEvent{}
 	for _, expiredOrder := range expiredOrders {
 		order := &meshdb.Order{}
 		err := w.meshDB.Orders.FindByID(common.HexToHash(expiredOrder.ID).Bytes(), order)
@@ -231,8 +232,9 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 			Kind:                     zeroex.EKOrderExpired,
 		}
-		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+		orderEvents = append(orderEvents, orderEvent)
 	}
+	w.orderFeed.Send(orderEvents)
 }
 
 func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
