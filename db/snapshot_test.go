@@ -12,6 +12,7 @@ import (
 func TestSnapshot(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 

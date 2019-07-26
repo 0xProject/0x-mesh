@@ -12,8 +12,9 @@ import (
 )
 
 func TestEthereumNetworkDetection(t *testing.T) {
-	meshDB, err := meshdb.NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 
 	// simulate starting up on mainnet
 	err = initNetworkID(1, meshDB)

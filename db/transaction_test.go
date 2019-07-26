@@ -14,6 +14,7 @@ import (
 func TestTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -89,6 +90,7 @@ func TestTransaction(t *testing.T) {
 func TestTransactionCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -193,6 +195,7 @@ func TestTransactionCount(t *testing.T) {
 func TestTransactionExclusion(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})

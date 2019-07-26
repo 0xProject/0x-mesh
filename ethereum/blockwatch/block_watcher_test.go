@@ -32,7 +32,7 @@ func TestWatcher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Polling interval unused because we hijack the ticker for this test
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
@@ -77,7 +77,7 @@ func TestWatcherStartStop(t *testing.T) {
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
@@ -180,7 +180,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
@@ -198,7 +198,7 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
@@ -230,7 +230,7 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
@@ -371,8 +371,9 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 
 	for _, testCase := range testCases {
@@ -476,7 +477,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
