@@ -140,7 +140,7 @@ func TestGlobalTransaction(t *testing.T) {
 	// that the mutexes are the thing enforcing that no new collections are
 	// created and no new writes are made to the db state until after the global
 	// transaction is committed.
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(transactionTestSleepDuration)
 
 	// Signal that we are about to commit the transaction, then commit it.
 	commitSignal <- struct{}{}
@@ -337,7 +337,7 @@ func TestGlobalTransactionExclusion(t *testing.T) {
 		}()
 	}()
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(transactionTestSleepDuration)
 	discardSignal <- struct{}{}
 	require.NoError(t, txn.Discard())
 
