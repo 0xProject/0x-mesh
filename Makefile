@@ -33,7 +33,7 @@ test-all: test-go test-wasm
 
 .PHONY: test-go
 test-go:
-	go test ./... -race
+	go test ./... -race -timeout 30s
 
 
 .PHONY: test-wasm
