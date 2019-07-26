@@ -19,10 +19,10 @@ import (
 	logger "github.com/sirupsen/logrus"
 )
 
-// cleanupInterval specified the amount of time between orderbook cleanups.
-// These cleanups are meant to catch any stale orders that somehow were not
-// caught by the event watcher process.
-var cleanupInterval = 1 * time.Hour
+// minCleanupInterval specified the minimum amount of time between orderbook
+// cleanups. These cleanups are meant to catch any stale orders that somehow
+// were not caught by the event watcher process.
+var minCleanupInterval = 1 * time.Hour
 
 // lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
 // be re-validated by the cleanup worker
@@ -105,20 +105,60 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
-	// Start the expiration watcher.
+	// Create a child context so that we can preemptively cancel if there is an
+	// error.
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// A waitgroup lets us wait for all goroutines to exit.
+	wg := &sync.WaitGroup{}
+
+	// Start three independent goroutines. The expiration watcher, main loop, and
+	// cleanup loop. Use three separate channels to communicate errors.
 	expirationErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
-		expirationErrChan <- w.expirationWatcher.Watch(ctx, expirationPollingInterval)
+		defer wg.Done()
+		expirationErrChan <- w.expirationWatcher.Watch(innerCtx, expirationPollingInterval)
+	}()
+	mainLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mainLoopErrChan <- w.mainLoop(innerCtx)
+	}()
+	cleanupLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
 	}()
 
-	// Start the main loop, which listens and responds to various events.
-	if err := w.mainLoop(ctx); err != nil {
-		return err
+	// If any error channel returns a non-nil error, we cancel the inner context
+	// and return the error. Note that this means we only return the first error
+	// that occurs.
+	select {
+	case err := <-expirationErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-mainLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-cleanupLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
 	}
 
-	// If the main loop exits without an error, return the error that came from
-	// the expiration watcher (which might be nil).
-	return <-expirationErrChan
+	// Wait for all goroutines to exit. If we reached here it means we are done
+	// and there are no errors.
+	wg.Wait()
+	return nil
 }
 
 func (w *Watcher) mainLoop(ctx context.Context) error {
@@ -126,20 +166,14 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 	blockEvents := make(chan []*blockwatch.Event, 10)
 	w.blockSubscription = w.blockWatcher.Subscribe(blockEvents)
 
-	cleanupTicker := time.NewTicker(cleanupInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			cleanupTicker.Stop()
 			w.blockSubscription.Unsubscribe()
 			close(blockEvents)
 			return nil
 		case expiredOrders := <-w.expirationWatcher.ExpiredItems():
 			w.handleExpiration(expiredOrders)
-		case <-cleanupTicker.C:
-			if err := w.cleanup(); err != nil {
-				return err
-			}
 		case err := <-w.blockSubscription.Err():
 			logger.WithFields(logger.Fields{
 				"error": err.Error(),
@@ -148,6 +182,26 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 			if err := w.handleBlockEvents(events); err != nil {
 				return err
 			}
+		}
+	}
+}
+
+func (w *Watcher) cleanupLoop(ctx context.Context) error {
+	start := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
+		// Wait minCleanupInterval before calling cleanup again. Since
+		// we only start sleeping _after_ cleanup completes, we will never
+		// have multiple calls to cleanup running in parallel
+		time.Sleep(minCleanupInterval - time.Since(start))
+		start = time.Now()
+		if err := w.cleanup(ctx); err != nil {
+			return err
 		}
 	}
 }
@@ -385,7 +439,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 	return w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
 }
 
-func (w *Watcher) cleanup() error {
+func (w *Watcher) cleanup(ctx context.Context) error {
 	lastUpdatedCutOff := time.Now().Add(-lastUpdatedBuffer)
 	orders, err := w.meshDB.FindOrdersLastUpdatedBefore(lastUpdatedCutOff)
 	if err != nil {
@@ -397,6 +451,11 @@ func (w *Watcher) cleanup() error {
 	}
 	hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 	for _, order := range orders {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
 		hashToOrderWithTxHashes[order.Hash] = &OrderWithTxHashes{
 			Order:    order,
 			TxHashes: map[common.Hash]interface{}{},
