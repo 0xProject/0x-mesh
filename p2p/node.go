@@ -118,7 +118,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		var err error
 		kadDHT, err = NewDHT(ctx, h)
 		if err != nil {
-			log.WithField("error", err).Fatal("could not create DHT")
+			log.WithField("error", err).Error("could not create DHT")
 		}
 		return kadDHT, err
 	}

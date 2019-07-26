@@ -25,7 +25,7 @@ func escape(value []byte) []byte {
 }
 
 // unescape is the inverse of escape.
-func unescape(value []byte) []byte {
+func unescape(value []byte) ([]byte, error) {
 	reader := bufio.NewReader(bytes.NewBuffer(value))
 	unescaped := []byte{}
 	for {
@@ -42,7 +42,8 @@ func unescape(value []byte) []byte {
 				log.WithFields(log.Fields{
 					"error": err.Error(),
 					"value": hex.Dump(value),
-				}).Panic("unexpected error in unescape")
+				}).Error("unexpected error in unescape")
+				return nil, err
 			}
 			if next == 'c' {
 				unescaped = append(unescaped, ':')
@@ -53,5 +54,5 @@ func unescape(value []byte) []byte {
 			unescaped = append(unescaped, b)
 		}
 	}
-	return unescaped
+	return unescaped, nil
 }

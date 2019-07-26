@@ -578,7 +578,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		signedOrder := &zeroex.SignedOrder{}
 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 			// This error should never happen since the signedOrder already passed the JSON schema validation above
-			log.WithField("signedOrderRaw", string(signedOrderBytes)).Panic("Failed to unmarshal SignedOrder")
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
+			return nil, err
 		}
 		schemaValidOrders = append(schemaValidOrders, signedOrder)
 	}
