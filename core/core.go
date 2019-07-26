@@ -94,14 +94,12 @@ type App struct {
 	node                      *p2p.Node
 	networkID                 int
 	blockWatcher              *blockwatch.Watcher
-	blockWatcherCancel        context.CancelFunc
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
 	orderValidator            *zeroex.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
-	snapshotExpirationCancel  context.CancelFunc
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 }
@@ -275,6 +273,11 @@ func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
 }
 
 func (app *App) Start(ctx context.Context) error {
+	// Create a child context so that we can preemptively cancel if there is an
+	// error.
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// Initialize the p2p node.
 	nodeConfig := p2p.Config{
 		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
@@ -286,66 +289,83 @@ func (app *App) Start(ctx context.Context) error {
 		UseBootstrapList: app.config.UseBootstrapList,
 	}
 	var err error
-	app.node, err = p2p.New(ctx, nodeConfig)
+	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
 		return err
 	}
 
+	// Start several independent goroutines. Use separate channels to communicate
+	// errors and a waitgroup to wait for all goroutines to exit.
+	wg := &sync.WaitGroup{}
+
+	// Close the database when the context is canceled.
+	wg.Add(1)
 	go func() {
-		err := app.node.Start()
-		if err != nil {
-			app.Close()
-			log.WithField("error", err.Error()).Fatal("p2p node exited with error")
-		}
+		defer wg.Done()
+		<-innerCtx.Done()
+		app.db.Close()
 	}()
-	addrs := app.node.Multiaddrs()
-	log.WithFields(map[string]interface{}{
-		"addresses": addrs,
-	}).Info("started p2p node")
 
-	go app.periodicallyCheckForNewAddrs(ctx, addrs)
-
-	// Start the order watcher and listen for errors.
+	// Start the p2p node.
+	p2pErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		addrs := app.node.Multiaddrs()
+		log.WithFields(map[string]interface{}{
+			"addresses": addrs,
+		}).Info("starting p2p node")
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
+		}()
+
+		p2pErrChan <- app.node.Start()
+	}()
+
+	// Start the order watcher.
+	orderWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		log.Info("starting order watcher")
-		if err := app.orderWatcher.Watch(ctx); err != nil {
-			app.Close()
-			log.WithError(err).Fatal("order watcher exited with error")
-		}
+		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Start the block watcher and listen for errors.
+	// Set up and start the block watcher.
+	wg.Add(1)
 	go func() {
-		for {
-			err, isOpen := <-app.blockWatcher.Errors
-			if isOpen {
-				log.WithField("error", err).Error("BlockWatcher error encountered")
-			} else {
-				return // Exit when the error channel is closed
-			}
+		defer wg.Done()
+		for err := range app.blockWatcher.Errors {
+			log.WithField("error", err).Error("BlockWatcher error encountered")
 		}
 	}()
+	blockWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		log.Info("starting block watcher")
-		if err := app.blockWatcher.Watch(ctx); err != nil {
-			app.Close()
-			log.WithError(err).Fatal("block watcher exited with error")
-		}
+		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
+	// Start the ETH balance watcher.
 	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
 	// for future use by the order storing algorithm.
+	ethWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		log.Info("starting ETH balance watcher")
-		if err := app.ethWatcher.Watch(ctx); err != nil {
-			app.Close()
-			log.WithError(err).Fatal("ETH watcher exited with error")
-		}
+		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
 	}()
 
+	// Set up and start the snapshot expiration watcher.
+	wg.Add(1)
 	go func() {
-		expiredSnapshotsChan := app.snapshotExpirationWatcher.ExpiredItems()
-		for expiredSnapshots := range expiredSnapshotsChan {
+		defer wg.Done()
+		for expiredSnapshots := range app.snapshotExpirationWatcher.ExpiredItems() {
 			for _, expiredSnapshot := range expiredSnapshots {
 				app.muIdToSnapshotInfo.Lock()
 				delete(app.idToSnapshotInfo, expiredSnapshot.ID)
@@ -353,14 +373,52 @@ func (app *App) Start(ctx context.Context) error {
 			}
 		}
 	}()
-
+	snapshotExpirationWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
-		if err := app.snapshotExpirationWatcher.Watch(ctx, expirationPollingInterval); err != nil {
-			app.Close()
-			log.WithError(err).Fatal("snapshot expiration watcher exited with error")
-		}
+		defer wg.Done()
+		snapshotExpirationWatcherErrChan <- app.snapshotExpirationWatcher.Watch(innerCtx, expirationPollingInterval)
 	}()
 
+	// If any error channel returns a non-nil error, we cancel the inner context
+	// and return the error. Note that this means we only return the first error
+	// that occurs.
+	select {
+	case err := <-p2pErrChan:
+		if err != nil {
+			log.WithError(err).Error("p2p node exited with error")
+			cancel()
+			return err
+		}
+	case err := <-orderWatcherErrChan:
+		if err != nil {
+			log.WithError(err).Error("order watcher exited with error")
+			cancel()
+			return err
+		}
+	case err := <-blockWatcherErrChan:
+		log.WithError(err).Error("block watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-ethWatcherErrChan:
+		log.WithError(err).Error("eth watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-snapshotExpirationWatcherErrChan:
+		log.WithError(err).Error("snapshot expiration watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	}
+
+	// Wait for all goroutines to exit. If we reached here it means we are done
+	// and there are no errors.
+	wg.Wait()
 	return nil
 }
 
@@ -554,10 +612,4 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.Subscription {
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
-}
-
-// Close closes the app
-func (app *App) Close() {
-	app.blockWatcherCancel()
-	app.db.Close()
 }

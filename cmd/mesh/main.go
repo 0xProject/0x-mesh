@@ -43,17 +43,19 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := app.Start(ctx); err != nil {
-		log.WithField("error", err.Error()).Fatal("fatal error while starting app")
-	}
-	defer app.Close()
+
+	go func() {
+		if err := app.Start(ctx); err != nil {
+			cancel()
+			log.WithField("error", err.Error()).Error("core app exited with error")
+		}
+	}()
 
 	// Start RPC server.
 	go func() {
-		err := listenRPC(app, config, ctx)
-		if err != nil {
-			app.Close()
-			log.WithField("error", err.Error()).Fatal("RPC server returned error")
+		if err := listenRPC(app, config, ctx); err != nil {
+			cancel()
+			log.WithField("error", err.Error()).Error("RPC server returned error")
 		}
 	}()
 
