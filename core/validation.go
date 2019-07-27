@@ -13,7 +13,6 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -38,9 +37,9 @@ var (
 		Code:    "MaxOrderSizeExceeded",
 		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", maxOrderSizeInBytes),
 	}
-	ROOrderAlreadyStored = zeroex.RejectedOrderStatus{
-		Code:    "OrderAlreadyStored",
-		Message: "order is already stored",
+	ROOrderAlreadyStoredAndUnfillable = zeroex.RejectedOrderStatus{
+		Code:    "OrderAlreadyStoredAndUnfillable",
+		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
 	}
 	ROMaxExpirationExceeded = zeroex.RejectedOrderStatus{
 		Code:    "OrderMaxExpirationExceeded",
@@ -215,23 +214,40 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				continue
 			}
 		}
-		alreadyStored, err := app.orderAlreadyStored(orderHash)
+
+		// Check if order is already stored in DB
+		var dbOrder meshdb.Order
+		err = app.db.Orders.FindByID(orderHash.Bytes(), &dbOrder)
 		if err != nil {
-			log.WithField("error", err).Error("could not check if order was already stored")
-			return nil, err
+			if _, ok := err.(db.NotFoundError); !ok {
+				log.WithField("error", err).Error("could not check if order was already stored")
+				return nil, err
+			}
+		} else {
+			// If stored but flagged for removal, reject it
+			if dbOrder.IsRemoved {
+				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: order,
+					Kind:        MeshValidation,
+					Status:      ROOrderAlreadyStoredAndUnfillable,
+				})
+				continue
+			} else {
+				// If stored but not flagged for removal, accept it without re-validation
+				results.Accepted = append(results.Accepted, &zeroex.AcceptedOrderInfo{
+					OrderHash:                orderHash,
+					SignedOrder:              order,
+					FillableTakerAssetAmount: dbOrder.FillableTakerAssetAmount,
+				})
+				continue
+			}
 		}
-		if alreadyStored {
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        MeshValidation,
-				Status:      ROOrderAlreadyStored,
-			})
-			continue
-		}
+
 		validMeshOrders = append(validMeshOrders, order)
 	}
 	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders)
+	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil
 }
@@ -252,17 +268,4 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 		return errMaxSize
 	}
 	return nil
-}
-
-// TODO(albrow): Use the more efficient Exists method instead of FindByID.
-func (app *App) orderAlreadyStored(orderHash common.Hash) (bool, error) {
-	var order meshdb.Order
-	err := app.db.Orders.FindByID(orderHash.Bytes(), &order)
-	if err == nil {
-		return true, nil
-	}
-	if _, ok := err.(db.NotFoundError); ok {
-		return false, nil
-	}
-	return false, err
 }
