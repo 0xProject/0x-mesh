@@ -54,7 +54,6 @@ type Config struct {
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
-	Errors              chan error
 	blockRetentionLimit int
 	startBlockDepth     rpc.BlockNumber
 	stack               *Stack
@@ -73,10 +72,7 @@ type Watcher struct {
 func New(config Config) *Watcher {
 	stack := NewStack(config.MeshDB, config.BlockRetentionLimit)
 
-	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
-	errorsChan := make(chan error, 5)
 	bs := &Watcher{
-		Errors:              errorsChan,
 		pollingInterval:     config.PollingInterval,
 		blockRetentionLimit: config.BlockRetentionLimit,
 		startBlockDepth:     config.StartBlockDepth,
@@ -114,12 +110,10 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			close(w.Errors)
 			return nil
 		case <-ticker.C:
-			err := w.pollNextBlock()
-			if err != nil {
-				w.Errors <- err
+			if err := w.pollNextBlock(); err != nil {
+				log.WithError(err).Error("blockwatch.Watcher error encountered")
 			}
 		}
 	}

@@ -334,14 +334,7 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Set up and start the block watcher.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for err := range app.blockWatcher.Errors {
-			log.WithField("error", err).Error("BlockWatcher error encountered")
-		}
-	}()
+	// Start the block watcher.
 	blockWatcherErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
