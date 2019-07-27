@@ -214,7 +214,9 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	config.Client = fakeClient
 	watcher := New(config)
 
-	events, err := watcher.getMissedEventsToBackfill()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	events, err := watcher.getMissedEventsToBackfill(ctx)
 	require.NoError(t, err)
 	assert.Len(t, events, 1)
 
@@ -246,7 +248,9 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	config.Client = fakeClient
 	watcher := New(config)
 
-	events, err := watcher.getMissedEventsToBackfill()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	events, err := watcher.getMissedEventsToBackfill(ctx)
 	require.NoError(t, err)
 	assert.Len(t, events, 0)
 
@@ -482,13 +486,16 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	defer meshDB.Close()
 	config.MeshDB = meshDB
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, testCase := range testCases {
 		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		require.NoError(t, err)
 		config.Client = fakeLogClient
 		watcher := New(config)
 
-		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(ctx, testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())

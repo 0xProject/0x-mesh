@@ -81,7 +81,7 @@ func (e *ETHWatcher) Watch(ctx context.Context) error {
 			return nil
 		default:
 			start := time.Now()
-			e.updateBalances()
+			e.updateBalances(ctx)
 
 			// Wait minPollingInterval before calling updateBalances again. Since
 			// we only start sleeping _after_ updateBalances completes, we will never
@@ -134,7 +134,7 @@ func (e *ETHWatcher) BalanceUpdates() <-chan Balance {
 	return e.balanceChan
 }
 
-func (e *ETHWatcher) updateBalances() {
+func (e *ETHWatcher) updateBalances(ctx context.Context) {
 	e.addressToBalanceMu.Lock()
 	defer e.addressToBalanceMu.Unlock()
 	addresses := []common.Address{}
@@ -153,7 +153,11 @@ func (e *ETHWatcher) updateBalances() {
 					Amount:  newAmount,
 				}
 				go func() {
-					e.balanceChan <- updatedBalance
+					select {
+					case <-ctx.Done():
+						return
+					case e.balanceChan <- updatedBalance:
+					}
 				}()
 			}
 		} else {

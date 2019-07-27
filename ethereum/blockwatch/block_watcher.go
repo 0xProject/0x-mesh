@@ -97,7 +97,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
-	events, err := w.getMissedEventsToBackfill()
+	events, err := w.getMissedEventsToBackfill(ctx)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
-func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
+func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, error) {
 	events := []*Event{}
 
 	latestRetainedBlock, err := w.stack.Peek()
@@ -300,7 +300,7 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling events")
 	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
 	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
-	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
+	logs, furthestBlockProcessed := w.getLogsInBlockRange(ctx, startBlockNum, endBlockNum)
 	if int64(furthestBlockProcessed) > latestRetainedBlock.Number.Int64() {
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
@@ -374,7 +374,7 @@ const getLogsRequestChunkSize = 3
 // the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
 // batch requests are not sent. Instead, it returns all the logs it found up until the error was
 // encountered, along with the block number after which no further logs were retrieved.
-func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
+func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]types.Log, int) {
 	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
 	numChunks := 0
@@ -419,6 +419,12 @@ func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
 			wg.Add(1)
 			go func(index int, b *blockRange) {
 				defer wg.Done()
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 
 				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []types.Log{})
 				if err != nil {
