@@ -60,4 +60,4 @@
 
 ## Contributing
 
-* [Development guide](DEVELOPMENT.md)
+* [Contributing guide](DEVELOPMENT.md)
