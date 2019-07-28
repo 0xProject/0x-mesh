@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [WSOpts](_types_.wsopts.md) /
-
-# Interface: WSOpts
+> # Interface: WSOpts
 
 timeout: timeout in milliseconds to enforce on every WS request that expects a response
 headers: Request headers (e.g., authorization)
@@ -32,7 +28,7 @@ reconnectAfter: time in milliseconds after which to attempt to reconnect to WS s
 
 • **clientConfig**? : *[ClientConfig](_types_.clientconfig.md)*
 
-*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L32)*
+*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L32)*
 
 ___
 
@@ -40,7 +36,7 @@ ___
 
 • **headers**? : *undefined | `__type`*
 
-*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L30)*
+*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L30)*
 
 ___
 
@@ -48,7 +44,7 @@ ___
 
 • **protocol**? : *undefined | string*
 
-*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L31)*
+*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L31)*
 
 ___
 
@@ -56,7 +52,7 @@ ___
 
 • **reconnectAfter**? : *undefined | number*
 
-*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L33)*
+*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L33)*
 
 ___
 
@@ -64,4 +60,4 @@ ___
 
 • **timeout**? : *undefined | number*
 
-*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L29)*
+*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L29)*

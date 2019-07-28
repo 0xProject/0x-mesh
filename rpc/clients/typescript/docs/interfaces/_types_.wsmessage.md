@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [WSMessage](_types_.wsmessage.md) /
-
-# Interface: WSMessage
+> # Interface: WSMessage
 
 ## Hierarchy
 
@@ -21,7 +17,7 @@
 
 • **type**: *string*
 
-*Defined in [types.ts:160](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L160)*
+*Defined in [types.ts:160](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L160)*
 
 ___
 
@@ -29,4 +25,4 @@ ___
 
 • **utf8Data**: *string*
 
-*Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L161)*
+*Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L161)*

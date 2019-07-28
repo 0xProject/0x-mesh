@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RejectedCode](_types_.rejectedcode.md) /
-
-# Enumeration: RejectedCode
+> # Enumeration: RejectedCode
 
 ## Index
 
@@ -29,7 +25,7 @@
 
 • **InternalError**: = "InternalError"
 
-*Defined in [types.ts:109](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L109)*
+*Defined in [types.ts:109](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L109)*
 
 ___
 
@@ -37,7 +33,7 @@ ___
 
 • **MaxOrderSizeExceeded**: = "MaxOrderSizeExceeded"
 
-*Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L110)*
+*Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L110)*
 
 ___
 
@@ -45,7 +41,7 @@ ___
 
 • **NetworkRequestFailed**: = "NetworkRequestFailed"
 
-*Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L113)*
+*Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L113)*
 
 ___
 
@@ -53,7 +49,7 @@ ___
 
 • **OrderAlreadyStored**: = "OrderAlreadyStored"
 
-*Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L111)*
+*Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L111)*
 
 ___
 
@@ -61,7 +57,7 @@ ___
 
 • **OrderCancelled**: = "OrderCancelled"
 
-*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L118)*
+*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L118)*
 
 ___
 
@@ -69,7 +65,7 @@ ___
 
 • **OrderExpired**: = "OrderExpired"
 
-*Defined in [types.ts:116](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L116)*
+*Defined in [types.ts:116](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L116)*
 
 ___
 
@@ -77,7 +73,7 @@ ___
 
 • **OrderForIncorrectNetwork**: = "OrderForIncorrectNetwork"
 
-*Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L112)*
+*Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L112)*
 
 ___
 
@@ -85,7 +81,7 @@ ___
 
 • **OrderFullyFilled**: = "OrderFullyFilled"
 
-*Defined in [types.ts:117](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L117)*
+*Defined in [types.ts:117](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L117)*
 
 ___
 
@@ -93,7 +89,7 @@ ___
 
 • **OrderHasInvalidMakerAssetAmount**: = "OrderHasInvalidMakerAssetAmount"
 
-*Defined in [types.ts:114](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L114)*
+*Defined in [types.ts:114](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L114)*
 
 ___
 
@@ -101,7 +97,7 @@ ___
 
 • **OrderHasInvalidMakerAssetData**: = "OrderHasInvalidMakerAssetData"
 
-*Defined in [types.ts:120](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L120)*
+*Defined in [types.ts:120](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L120)*
 
 ___
 
@@ -109,7 +105,7 @@ ___
 
 • **OrderHasInvalidSignature**: = "OrderHasInvalidSignature"
 
-*Defined in [types.ts:122](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L122)*
+*Defined in [types.ts:122](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L122)*
 
 ___
 
@@ -117,7 +113,7 @@ ___
 
 • **OrderHasInvalidTakerAssetAmount**: = "OrderHasInvalidTakerAssetAmount"
 
-*Defined in [types.ts:115](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L115)*
+*Defined in [types.ts:115](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L115)*
 
 ___
 
@@ -125,7 +121,7 @@ ___
 
 • **OrderHasInvalidTakerAssetData**: = "OrderHasInvalidTakerAssetData"
 
-*Defined in [types.ts:121](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L121)*
+*Defined in [types.ts:121](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L121)*
 
 ___
 
@@ -133,4 +129,4 @@ ___
 
 • **OrderUnfunded**: = "OrderUnfunded"
 
-*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L119)*
+*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L119)*

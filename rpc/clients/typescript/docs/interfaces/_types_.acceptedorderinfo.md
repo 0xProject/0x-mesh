@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [AcceptedOrderInfo](_types_.acceptedorderinfo.md) /
-
-# Interface: AcceptedOrderInfo
+> # Interface: AcceptedOrderInfo
 
 ## Hierarchy
 
@@ -22,7 +18,7 @@
 
 • **fillableTakerAssetAmount**: *`BigNumber`*
 
-*Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L99)*
+*Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L99)*
 
 ___
 
@@ -30,7 +26,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:97](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L97)*
+*Defined in [types.ts:97](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L97)*
 
 ___
 
@@ -38,4 +34,4 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L98)*
+*Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L98)*

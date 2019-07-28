@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["ws_client"](../modules/_ws_client_.md) / [WSClient](_ws_client_.wsclient.md) /
-
-# Class: WSClient
+> # Class: WSClient
 
 This class includes all the functionality related to interacting with a Mesh JSON RPC
 websocket endpoint.
@@ -33,7 +29,7 @@ websocket endpoint.
 
 \+ **new WSClient**(`url`: string, `wsOpts?`: [WSOpts](../interfaces/_types_.wsopts.md)): *[WSClient](_ws_client_.wsclient.md)*
 
-*Defined in [ws_client.ts:55](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L55)*
+*Defined in [ws_client.ts:55](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L55)*
 
 Instantiates a new WSClient instance
 
@@ -54,7 +50,7 @@ An instance of WSClient
 
 ▸ **addOrdersAsync**(`signedOrders`: `SignedOrder`[]): *`Promise<ValidationResults>`*
 
-*Defined in [ws_client.ts:80](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L80)*
+*Defined in [ws_client.ts:80](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L80)*
 
 Adds an array of 0x signed orders to the Mesh node.
 
@@ -74,7 +70,7 @@ ___
 
 ▸ **destroy**(): *void*
 
-*Defined in [ws_client.ts:193](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L193)*
+*Defined in [ws_client.ts:193](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L193)*
 
 destroy unsubscribes all active subscriptions, closes the websocket connection
 and stops the internal heartbeat connection liveness check.
@@ -87,7 +83,7 @@ ___
 
 ▸ **getOrdersAsync**(`perPage`: number): *`Promise<AcceptedOrderInfo[]>`*
 
-*Defined in [ws_client.ts:105](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L105)*
+*Defined in [ws_client.ts:105](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L105)*
 
 Get all 0x signed orders currently stored in the Mesh node
 
@@ -107,7 +103,7 @@ ___
 
 ▸ **onClose**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:175](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L175)*
+*Defined in [ws_client.ts:175](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L175)*
 
 Get notified when the underlying WS connection closes normally. If it closes with an
 error, WSClient automatically attempts to re-connect without emitting a `close` event.
@@ -128,7 +124,7 @@ ___
 
 ▸ **onReconnected**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:184](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L184)*
+*Defined in [ws_client.ts:184](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L184)*
 
 Get notified when a connection to the underlying WS connection is re-established
 
@@ -148,7 +144,7 @@ ___
 
 ▸ **subscribeToOrdersAsync**(`cb`: function): *`Promise<string>`*
 
-*Defined in [ws_client.ts:136](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L136)*
+*Defined in [ws_client.ts:136](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L136)*
 
 Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
 subscriptionId that can be used to `unsubscribe()` from this subscription.
@@ -177,7 +173,7 @@ ___
 
 ▸ **unsubscribeAsync**(`subscriptionId`: string): *`Promise<void>`*
 
-*Defined in [ws_client.ts:165](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/ws_client.ts#L165)*
+*Defined in [ws_client.ts:165](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/ws_client.ts#L165)*
 
 Unsubscribe from a subscription
 

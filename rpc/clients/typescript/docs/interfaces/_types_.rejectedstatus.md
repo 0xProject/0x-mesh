@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RejectedStatus](_types_.rejectedstatus.md) /
-
-# Interface: RejectedStatus
+> # Interface: RejectedStatus
 
 ## Hierarchy
 
@@ -21,7 +17,7 @@
 
 • **code**: *[RejectedCode](../enums/_types_.rejectedcode.md)*
 
-*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L126)*
+*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L126)*
 
 ___
 
@@ -29,4 +25,4 @@ ___
 
 • **message**: *string*
 
-*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L127)*
+*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L127)*

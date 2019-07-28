@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RejectedOrderInfo](_types_.rejectedorderinfo.md) /
-
-# Interface: RejectedOrderInfo
+> # Interface: RejectedOrderInfo
 
 ## Hierarchy
 
@@ -23,7 +19,7 @@
 
 • **kind**: *[RejectedKind](../enums/_types_.rejectedkind.md)*
 
-*Defined in [types.ts:140](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L140)*
+*Defined in [types.ts:140](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L140)*
 
 ___
 
@@ -31,7 +27,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:138](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L138)*
+*Defined in [types.ts:138](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L138)*
 
 ___
 
@@ -39,7 +35,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:139](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L139)*
+*Defined in [types.ts:139](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L139)*
 
 ___
 
@@ -47,4 +43,4 @@ ___
 
 • **status**: *[RejectedStatus](_types_.rejectedstatus.md)*
 
-*Defined in [types.ts:141](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L141)*
+*Defined in [types.ts:141](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L141)*

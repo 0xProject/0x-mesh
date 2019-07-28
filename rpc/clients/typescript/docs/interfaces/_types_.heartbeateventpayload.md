@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [HeartbeatEventPayload](_types_.heartbeateventpayload.md) /
-
-# Interface: HeartbeatEventPayload
+> # Interface: HeartbeatEventPayload
 
 ## Hierarchy
 
@@ -21,7 +17,7 @@
 
 • **result**: *string*
 
-*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L71)*
+*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L71)*
 
 ___
 
@@ -29,4 +25,4 @@ ___
 
 • **subscription**: *string*
 
-*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L70)*
+*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L70)*

@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RawAcceptedOrderInfo](_types_.rawacceptedorderinfo.md) /
-
-# Interface: RawAcceptedOrderInfo
+> # Interface: RawAcceptedOrderInfo
 
 ## Hierarchy
 
@@ -22,7 +18,7 @@
 
 • **fillableTakerAssetAmount**: *string*
 
-*Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L93)*
+*Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L93)*
 
 ___
 
@@ -30,7 +26,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:91](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L91)*
+*Defined in [types.ts:91](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L91)*
 
 ___
 
@@ -38,4 +34,4 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](_types_.stringifiedsignedorder.md)*
 
-*Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L92)*
+*Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L92)*

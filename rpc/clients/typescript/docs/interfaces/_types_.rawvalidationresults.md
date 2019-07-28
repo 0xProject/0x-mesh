@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RawValidationResults](_types_.rawvalidationresults.md) /
-
-# Interface: RawValidationResults
+> # Interface: RawValidationResults
 
 ## Hierarchy
 
@@ -21,7 +17,7 @@
 
 • **accepted**: *[RawAcceptedOrderInfo](_types_.rawacceptedorderinfo.md)[]*
 
-*Defined in [types.ts:145](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L145)*
+*Defined in [types.ts:145](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L145)*
 
 ___
 
@@ -29,4 +25,4 @@ ___
 
 • **rejected**: *[RawRejectedOrderInfo](_types_.rawrejectedorderinfo.md)[]*
 
-*Defined in [types.ts:146](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L146)*
+*Defined in [types.ts:146](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L146)*

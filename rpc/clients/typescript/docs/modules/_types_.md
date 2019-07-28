@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](_types_.md) /
-
-# External module: "types"
+> # External module: "types"
 
 ## Index
 

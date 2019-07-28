@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [OrderEventPayload](_types_.ordereventpayload.md) /
-
-# Interface: OrderEventPayload
+> # Interface: OrderEventPayload
 
 ## Hierarchy
 
@@ -21,7 +17,7 @@
 
 • **result**: *[RawOrderEvent](_types_.raworderevent.md)[]*
 
-*Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L66)*
+*Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L66)*
 
 ___
 
@@ -29,4 +25,4 @@ ___
 
 • **subscription**: *string*
 
-*Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L65)*
+*Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L65)*

@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [OrderEvent](_types_.orderevent.md) /
-
-# Interface: OrderEvent
+> # Interface: OrderEvent
 
 ## Hierarchy
 
@@ -24,7 +20,7 @@
 
 • **fillableTakerAssetAmount**: *`BigNumber`*
 
-*Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L86)*
+*Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L86)*
 
 ___
 
@@ -32,7 +28,7 @@ ___
 
 • **kind**: *[OrderEventKind](../enums/_types_.ordereventkind.md)*
 
-*Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L85)*
+*Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L85)*
 
 ___
 
@@ -40,7 +36,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L83)*
+*Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L83)*
 
 ___
 
@@ -48,7 +44,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L84)*
+*Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L84)*
 
 ___
 
@@ -56,4 +52,4 @@ ___
 
 • **txHashes**: *string[]*
 
-*Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L87)*
+*Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L87)*

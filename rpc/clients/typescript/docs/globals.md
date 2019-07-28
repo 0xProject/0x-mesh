@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](README.md)**
-
-[Globals](globals.md) /
-
-# @0x/mesh-rpc-client
+> # @0x/mesh-rpc-client
 
 ## Index
 

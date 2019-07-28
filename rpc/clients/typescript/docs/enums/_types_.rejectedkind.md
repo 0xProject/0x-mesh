@@ -1,8 +1,4 @@
-> **[@0x/mesh-rpc-client](../README.md)**
-
-[Globals](../globals.md) / ["types"](../modules/_types_.md) / [RejectedKind](_types_.rejectedkind.md) /
-
-# Enumeration: RejectedKind
+> # Enumeration: RejectedKind
 
 ## Index
 
@@ -18,7 +14,7 @@
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [types.ts:104](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L104)*
+*Defined in [types.ts:104](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L104)*
 
 ___
 
@@ -26,7 +22,7 @@ ___
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L105)*
+*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L105)*
 
 ___
 
@@ -34,4 +30,4 @@ ___
 
 • **ZeroexValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [types.ts:103](https://github.com/0xProject/0x-mesh/blob/32339c4/rpc/clients/typescript/src/types.ts#L103)*
+*Defined in [types.ts:103](https://github.com/0xProject/0x-mesh/blob/9ff2bf1/rpc/clients/typescript/src/types.ts#L103)*

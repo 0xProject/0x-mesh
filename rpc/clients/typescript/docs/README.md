@@ -1,7 +1,3 @@
-> **[@0x/mesh-rpc-client](README.md)**
-
-[Globals](globals.md) /
-
 ## @0x/mesh-rpc-client
 
 A Javascript library for interacting with the Mesh JSON RPC API over WebSockets.
