@@ -8,7 +8,7 @@
 0x Mesh is a peer-to-peer network for sharing orders that adhere to the
 [0x order message format](https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md#order-message-format).
 
-:no_entry: WARNING: This project is still under active development. Expect breaking changes before the official release. :no_entry:
+WARNING: This project is still under active development. Expect breaking changes before the official release.
 
 ## Versions
 
