@@ -9,6 +9,8 @@
 
 * [Golang client](https://godoc.org/github.com/0xProject/0x-mesh/rpc)
 * [Typescript client](json_rpc_clients/typescript/README.md)
+  * [Classes]()
+    * [ws_client.WSClient](json_rpc_clients/typescript/classes/_ws_client_.wsclient.md)
   * [Globals](json_rpc_clients/typescript/globals.md)
   * [External Modules]()
     * [index](json_rpc_clients/typescript/modules/_index_.md)
@@ -33,8 +35,6 @@
     * [types.WSMessage](json_rpc_clients/typescript/interfaces/_types_.wsmessage.md)
     * [types.WSOpts](json_rpc_clients/typescript/interfaces/_types_.wsopts.md)
     * [ws_client](json_rpc_clients/typescript/modules/_ws_client_.md)
-    * [ws_client.WSClient](json_rpc_clients/typescript/classes/_ws_client_.wsclient.md)
-  * [Classes]()
     * [ws_client.WSClient](json_rpc_clients/typescript/classes/_ws_client_.wsclient.md)
   * [Enums]()
     * [types.OrderEventKind](json_rpc_clients/typescript/enums/_types_.ordereventkind.md)
