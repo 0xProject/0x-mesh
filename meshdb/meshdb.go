@@ -83,8 +83,8 @@ type MetadataCollection struct {
 	*db.Collection
 }
 
-// NewMeshDB instantiates a new MeshDB instance
-func NewMeshDB(path string) (*MeshDB, error) {
+// New instantiates a new MeshDB instance
+func New(path string) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err

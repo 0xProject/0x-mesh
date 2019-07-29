@@ -13,6 +13,7 @@ import (
 func TestGlobalTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})
@@ -164,6 +165,7 @@ func TestGlobalTransaction(t *testing.T) {
 func TestGlobalTransactionCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -268,6 +270,7 @@ func TestGlobalTransactionCount(t *testing.T) {
 func TestGlobalTransactionExclusion(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})

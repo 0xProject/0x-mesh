@@ -19,6 +19,7 @@ func TestIntegrityCheckPass(t *testing.T) {
 func TestIntegrityCheckInvalidModelData(t *testing.T) {
 	t.Parallel()
 	db, col, models, _ := setUpIntegrityCheckTest(t)
+	defer db.Close()
 
 	// Manually break integrity by storing invalid model data.
 	keyToChange := col.info.primaryKeyForModel(models[0])
@@ -30,6 +31,7 @@ func TestIntegrityCheckInvalidModelData(t *testing.T) {
 func TestIntegrityCheckIndexKeyWithoutModelData(t *testing.T) {
 	t.Parallel()
 	db, col, models, _ := setUpIntegrityCheckTest(t)
+	defer db.Close()
 
 	// Manually break integrity by deleting a primary key.
 	keyToDelete := col.info.primaryKeyForModel(models[0])
@@ -41,6 +43,7 @@ func TestIntegrityCheckIndexKeyWithoutModelData(t *testing.T) {
 func TestIntegrityCheckModelNotIndexed(t *testing.T) {
 	t.Parallel()
 	db, _, models, ageIndex := setUpIntegrityCheckTest(t)
+	defer db.Close()
 
 	// Manually break integrity by deleting an index key.
 	keyToDelete := ageIndex.keysForModel(models[0])[0]

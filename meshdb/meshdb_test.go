@@ -16,8 +16,9 @@ import (
 )
 
 func TestOrderCRUDOperations(t *testing.T) {
-	meshDB, err := NewMeshDB("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
 	require.NoError(t, err)
