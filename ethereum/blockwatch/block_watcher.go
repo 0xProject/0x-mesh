@@ -84,6 +84,20 @@ func New(config Config) *Watcher {
 	return bs
 }
 
+// BackfillEventsIfNeeded finds missed events that might have occured while the
+// Mesh node was offline and sends them to event subscribers. It blocks until
+// it is done backfilling or the given context is canceled.
+func (w *Watcher) BackfillEventsIfNeeded(ctx context.Context) error {
+	events, err := w.getMissedEventsToBackfill(ctx)
+	if err != nil {
+		return err
+	}
+	if len(events) > 0 {
+		w.blockFeed.Send(events)
+	}
+	return nil
+}
+
 // Watch starts the Watcher. It will continuously look for new blocks and blocks
 // until there is a critical error or the given context is canceled. Typically,
 // you want to call Watch inside a goroutine. For non-critical errors, callers
@@ -96,14 +110,6 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	}
 	w.wasStartedOnce = true
 	w.mu.Unlock()
-
-	events, err := w.getMissedEventsToBackfill(ctx)
-	if err != nil {
-		return err
-	}
-	if len(events) > 0 {
-		w.blockFeed.Send(events)
-	}
 
 	ticker := time.NewTicker(w.pollingInterval)
 	for {
@@ -297,7 +303,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 		return events, nil
 	}
 
-	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling events")
+	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
 	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
 	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
 	logs, furthestBlockProcessed := w.getLogsInBlockRange(ctx, startBlockNum, endBlockNum)
@@ -354,6 +360,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 				BlockHeader: blockHeader,
 			})
 		}
+		log.Info("Done backfilling block events")
 		return events, nil
 	}
 	return events, nil
