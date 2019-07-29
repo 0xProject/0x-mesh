@@ -278,24 +278,9 @@ func (app *App) Start(ctx context.Context) error {
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Initialize the p2p node.
-	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
-		ListenPort:       app.config.P2PListenPort,
-		Insecure:         false,
-		PrivateKey:       app.privKey,
-		MessageHandler:   app,
-		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
-		UseBootstrapList: app.config.UseBootstrapList,
-	}
-	var err error
-	app.node, err = p2p.New(innerCtx, nodeConfig)
-	if err != nil {
-		return err
-	}
-
-	// Start several independent goroutines. Use separate channels to communicate
-	// errors and a waitgroup to wait for all goroutines to exit.
+	// Below, we will start several independent goroutines. We use separate
+	// channels to communicate errors and a waitgroup to wait for all goroutines
+	// to exit.
 	wg := &sync.WaitGroup{}
 
 	// Close the database when the context is canceled.
@@ -304,54 +289,6 @@ func (app *App) Start(ctx context.Context) error {
 		defer wg.Done()
 		<-innerCtx.Done()
 		app.db.Close()
-	}()
-
-	// Start the p2p node.
-	p2pErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		addrs := app.node.Multiaddrs()
-		log.WithFields(map[string]interface{}{
-			"addresses": addrs,
-		}).Info("starting p2p node")
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
-		}()
-
-		p2pErrChan <- app.node.Start()
-	}()
-
-	// Start the order watcher.
-	orderWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.Info("starting order watcher")
-		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
-	}()
-
-	// Start the block watcher.
-	blockWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.Info("starting block watcher")
-		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
-	}()
-
-	// Start the ETH balance watcher.
-	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
-	// for future use by the order storing algorithm.
-	ethWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.Info("starting ETH balance watcher")
-		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
 	}()
 
 	// Set up and start the snapshot expiration watcher.
@@ -371,6 +308,76 @@ func (app *App) Start(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		snapshotExpirationWatcherErrChan <- app.snapshotExpirationWatcher.Watch(innerCtx, expirationPollingInterval)
+	}()
+
+	// Start the order watcher.
+	orderWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting order watcher")
+		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
+	}()
+
+	// Start the ETH balance watcher.
+	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
+	// for future use by the order storing algorithm.
+	ethWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting ETH balance watcher")
+		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
+	}()
+
+	// Backfill block events if needed. This is a blocking call so we won't
+	// continue set up until its finished.
+	if err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx); err != nil {
+		return err
+	}
+
+	// Start the block watcher.
+	blockWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting block watcher")
+		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
+	}()
+
+	// Initialize the p2p node.
+	nodeConfig := p2p.Config{
+		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
+		ListenPort:       app.config.P2PListenPort,
+		Insecure:         false,
+		PrivateKey:       app.privKey,
+		MessageHandler:   app,
+		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
+		UseBootstrapList: app.config.UseBootstrapList,
+	}
+	var err error
+	app.node, err = p2p.New(innerCtx, nodeConfig)
+	if err != nil {
+		return err
+	}
+
+	// Start the p2p node.
+	p2pErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		addrs := app.node.Multiaddrs()
+		log.WithFields(map[string]interface{}{
+			"addresses": addrs,
+		}).Info("starting p2p node")
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
+		}()
+
+		p2pErrChan <- app.node.Start()
 	}()
 
 	// If any error channel returns a non-nil error, we cancel the inner context
