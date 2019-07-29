@@ -422,6 +422,12 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 
 				select {
 				case <-ctx.Done():
+					indexToLogResult[index] = logRequestResult{
+						From: b.FromBlock,
+						To:   b.ToBlock,
+						Err:  errors.New("context was canceled"),
+						Logs: []types.Log{},
+					}
 					return
 				default:
 				}
