@@ -28,7 +28,8 @@ var trickyByteValues = [][]byte{
 func TestEscapeUnescape(t *testing.T) {
 	t.Parallel()
 	for _, expected := range trickyByteValues {
-		actual := unescape(escape(expected))
+		actual, err := unescape(escape(expected))
+		require.NoError(t, err)
 		assert.Equal(t, expected, actual)
 	}
 }

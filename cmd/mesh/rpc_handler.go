@@ -38,6 +38,11 @@ func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) erro
 	go func() {
 		// Wait for the server to start listening and select an address.
 		for rpcServer.Addr() == nil {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			time.Sleep(10 * time.Millisecond)
 		}
 		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
