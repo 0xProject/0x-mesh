@@ -10,12 +10,6 @@
 
 WARNING: This project is still under active development. Expect breaking changes before the official release.
 
-## Versions
-
-You are looking at the documentation for version `development`. To see the
-documentation for a different version, visit the
-[Releases Page](https://github.com/0xProject/0x-mesh/releases).
-
 ## Deployment
 
 [The Deployment Guide](docs/DEPLOYMENT.md)
