@@ -215,7 +215,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			logger.WithFields(logger.Fields{
 				"error":     err.Error(),
 				"orderHash": expiredOrder.ID,
-			}).Warning("Order expired that was no longer in DB")
+			}).Trace("Order expired that was no longer in DB")
 			continue
 		}
 		orderInfo := &zeroex.OrderInfo{
