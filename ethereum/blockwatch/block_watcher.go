@@ -522,7 +522,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	log.WithFields(map[string]interface{}{
 		"from": from,
 		"to":   to,
-	}).Info("Fetching block logs")
+	}).Trace("Fetching block logs")
 	numBlocks := to - from
 	topics := [][]common.Hash{}
 	if len(w.topics) > 0 {
