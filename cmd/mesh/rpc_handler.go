@@ -112,9 +112,6 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription,
 
 		for {
 			select {
-			case <-ctx.Done():
-				orderWatcherSub.Unsubscribe()
-				return
 			case orderEvents := <-orderEventsChan:
 				err := notifier.Notify(rpcSub.ID, orderEvents)
 				if err != nil {
