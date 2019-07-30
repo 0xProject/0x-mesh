@@ -35,6 +35,8 @@
         "@0x/types": "^2.4.1",
         "@0x/typescript-typings": "^4.2.4",
         "@0x/utils": "^4.4.2",
+        "ethereum-types": "^2.1.4",
+        "eventemitter3": "4.0.0",
         "uuid": "^3.3.2",
         "websocket": "^1.0.29"
     },

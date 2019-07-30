@@ -1,4 +1,5 @@
 import { ObjectMap } from '@0x/types';
+import { JSONRPCRequestPayload, JSONRPCResponsePayload } from 'ethereum-types';
 import * as EventEmitter from 'eventemitter3';
 import * as WebSocket from 'websocket';
 
@@ -16,48 +17,29 @@ const SOCKET_ERROR = 'socket_error';
 const SOCKET_CONNECT = 'socket_connect';
 
 /**
- * The GenericWSClient is a generic WS client with subscriptions support as defined in
- * https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
+ * The GenericWSClient is a generic JSON-RPC WS client with subscriptions support as
+ * defined in https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
  * It handles re-connecting closed connections due to errors and handles re-subscribing
  * all active subscriptions upon reconnect.
  */
 export class GenericWSClient extends EventEmitter {
     private _timeoutIfExists?: number;
     private _subscriptions: ObjectMap<Subscription>;
-    private _connection: any; // @types/websocket type-defs are incorrect
-    private _host: string;
+    private _connection: any;
     private _reconnectionTimeoutMs: number;
-    private _messageId: number;
-    private static _isValidJSONRPCResponseOrThrow(response: any): void {
-        if (typeof response !== 'object') {
-            throw new Error('Validation error: Response must be of type Object');
-        }
-
-        if (response.error) {
-            if (response.error instanceof Error) {
-                throw new Error(`Node error: ${response.error.message}`);
-            }
-
-            throw new Error(`Node error: ${JSON.stringify(response.error)}`);
-        }
-
-        if (response.result === undefined) {
-            throw new Error('Validation error: Undefined JSON-RPC result');
-        }
-    }
+    private _jsonRpcRequestId: number;
     // HACK(fabio): We could have used `WebSocket.connection` as the type for param `connection` but
     // the type definitions for the `websocket` package are very out-of-date and this would cause us
     // to use `as any` in most places we access it. Simply using `any` felt cleaner until the typings
     // are updated.
     constructor(connection: any, reconnectionTimeout: number = 5000, timeout: number | undefined) {
         super();
-        this._messageId = 1;
+        this._jsonRpcRequestId = 1;
         this._connection = connection;
         this._timeoutIfExists = timeout;
         this._subscriptions = {};
-        this._registerEventListeners();
-        this._host = this._connection.url;
         this._reconnectionTimeoutMs = reconnectionTimeout;
+        this._registerEventListeners();
     }
     /**
      * Creates the JSON-RPC payload and sends it to the node.
@@ -65,9 +47,23 @@ export class GenericWSClient extends EventEmitter {
      * @param parameters parameters to send to method call
      * @returns response to JSON-RPC call
      */
-    public async sendAsync(method: string, parameters: any): Promise<any> {
-        const response = await this._sendPayloadAsync(this._toPayload(method, parameters));
-        GenericWSClient._isValidJSONRPCResponseOrThrow(response);
+    public async sendAsync(method: string, parameters: any[]): Promise<any> {
+        const payload = {
+            jsonrpc: '2.0',
+            id: this._jsonRpcRequestId++,
+            method,
+            params: parameters || [],
+        };
+        const response = await this._sendPayloadAsync(payload);
+        if (typeof response !== 'object') {
+            throw new Error('JSON-RPC response must be an object');
+        }
+        if (response.error) {
+            throw new Error(`Error encountered: ${JSON.stringify(response.error)}`);
+        }
+        if (response.result === undefined) {
+            throw new Error('JSON-RPC payload found without a `result` property');
+        }
         return response.result;
     }
     /**
@@ -160,15 +156,15 @@ export class GenericWSClient extends EventEmitter {
      *
      * @returns the response received with the matching id specified in the payload
      */
-    private async _sendPayloadAsync(payload: any): Promise<any> {
-        return new Promise((resolve, reject) => {
-            this.once('error', reject);
+    private async _sendPayloadAsync(payload: JSONRPCRequestPayload): Promise<JSONRPCResponsePayload> {
+        return new Promise<JSONRPCResponsePayload>((resolve, reject) => {
+            (this as EventEmitter).once('error', reject);
 
             if (!this._isConnecting()) {
                 let timeout: any;
 
                 if (this._connection.readyState !== this._connection.OPEN) {
-                    this.removeListener('error', reject);
+                    (this as EventEmitter).removeListener('error', reject);
 
                     return reject(new Error('Connection error: Connection is not open on send()'));
                 }
@@ -176,7 +172,7 @@ export class GenericWSClient extends EventEmitter {
                 try {
                     this._connection.send(JSON.stringify(payload));
                 } catch (error) {
-                    this.removeListener('error', reject);
+                    (this as EventEmitter).removeListener('error', reject);
 
                     return reject(error);
                 }
@@ -188,12 +184,12 @@ export class GenericWSClient extends EventEmitter {
                 }
 
                 const id = Array.isArray(payload) ? payload[0].id : payload.id;
-                this.once(id, response => {
+                (this as EventEmitter).once(id, (response: JSONRPCResponsePayload) => {
                     if (timeout) {
                         clearTimeout(timeout);
                     }
 
-                    this.removeListener('error', reject);
+                    (this as EventEmitter).removeListener('error', reject);
 
                     return resolve(response);
                 });
@@ -201,15 +197,15 @@ export class GenericWSClient extends EventEmitter {
                 return;
             }
 
-            this.once('connect', () => {
+            (this as EventEmitter).once('connect', () => {
                 this._sendPayloadAsync(payload)
                     .then(response => {
-                        this.removeListener('error', reject);
+                        (this as EventEmitter).removeListener('error', reject);
 
                         return resolve(response);
                     })
                     .catch(error => {
-                        this.removeListener('error', reject);
+                        (this as EventEmitter).removeListener('error', reject);
 
                         return reject(error);
                     });
@@ -369,7 +365,7 @@ export class GenericWSClient extends EventEmitter {
 
             if (this._connection.constructor.name === 'W3CWebSocket') {
                 connection = new this._connection.constructor(
-                    this._host,
+                    this._connection.url,
                     this._connection._client.protocol,
                     null,
                     this._connection._client.headers,
@@ -377,14 +373,17 @@ export class GenericWSClient extends EventEmitter {
                     this._connection._client.config,
                 );
             } else {
-                connection = new this._connection.constructor(this._host, this._connection.protocol || undefined);
+                connection = new this._connection.constructor(
+                    this._connection.url,
+                    this._connection.protocol || undefined,
+                );
             }
 
             this._connection = connection;
             this._registerEventListeners();
             // Emit a "reconnected" event only once the new connection is established
-            this.once('connect', () => {
-                this.emit('reconnected');
+            (this as EventEmitter).once('connect', () => {
+                (this as EventEmitter).emit('reconnected');
             });
         }, this._reconnectionTimeoutMs);
     }
@@ -414,26 +413,5 @@ export class GenericWSClient extends EventEmitter {
         }
 
         return event;
-    }
-    /**
-     * Creates a valid json payload object
-     * @param method JSON-RPC method to call
-     * @param params parameters to supply in method call
-     * @returns JSON-RPC payload
-     */
-    private _toPayload(method: string, params: any[]): any {
-        if (!method) {
-            throw new Error(`JSON-RPC method should be specified in payload: "${JSON.stringify(params)}"`);
-        }
-
-        const id = this._messageId;
-        this._messageId++;
-
-        return {
-            jsonrpc: '2.0',
-            id,
-            method,
-            params: params || [],
-        };
     }
 }
