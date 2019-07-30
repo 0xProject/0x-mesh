@@ -16,6 +16,9 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +28,7 @@ import (
 type dummyRPCHandler struct {
 	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
+	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
@@ -41,6 +45,13 @@ func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetO
 		return nil, errors.New("dummyRPCHandler: no handler set for GetOrders")
 	}
 	return d.getOrdersHandler(page, perPage, snapshotID)
+}
+
+func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
+	if d.addPeerHandler == nil {
+		return errors.New("dummyRPCHandler: no handler set for AddPeer")
+	}
+	return d.addPeerHandler(peerInfo)
 }
 
 func (d *dummyRPCHandler) GetStats() (*GetStatsResponse, error) {
@@ -209,6 +220,40 @@ func TestGetOrdersSuccess(t *testing.T) {
 	assert.Equal(t, expectedFillableTakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
 	// The WaitGroup signals that AddOrders was called on the server-side.
+	wg.Wait()
+}
+
+func TestAddPeer(t *testing.T) {
+	// Create the expected PeerInfo
+	addr0, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+	require.NoError(t, err)
+	addr1, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/5678")
+	require.NoError(t, err)
+	peerID, err := peer.IDB58Decode("QmagLpXZHNrTraqWpY49xtFmZMTLBWctx2PF96s4aFrj9f")
+	require.NoError(t, err)
+	expectedPeerInfo := peerstore.PeerInfo{
+		ID:    peerID,
+		Addrs: []ma.Multiaddr{addr0, addr1},
+	}
+
+	// Set up the dummy handler with an addPeerHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		addPeerHandler: func(peerInfo peerstore.PeerInfo) error {
+			assert.Equal(t, expectedPeerInfo, peerInfo, "AddPeer was called with an unexpected peerInfo argument")
+			wg.Done()
+			return nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
+
+	require.NoError(t, client.AddPeer(expectedPeerInfo))
+
+	// The WaitGroup signals that AddPeer was called on the server-side.
 	wg.Wait()
 }
 

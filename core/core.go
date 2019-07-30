@@ -31,6 +31,7 @@ import (
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
@@ -602,6 +603,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		}
 	}
 	return allValidationResults, nil
+}
+
+// AddPeer can be used to manually connect to a new peer.
+func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
+	return app.node.Connect(peerInfo, peerConnectTimeout)
 }
 
 // GetStats retrieves stats about the Mesh node
