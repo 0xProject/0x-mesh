@@ -14,7 +14,7 @@
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [types.ts:104](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L104)*
+*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L118)*
 
 ___
 
@@ -22,7 +22,7 @@ ___
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L105)*
+*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L119)*
 
 ___
 
@@ -30,4 +30,4 @@ ___
 
 • **ZeroexValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [types.ts:103](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L103)*
+*Defined in [types.ts:117](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L117)*

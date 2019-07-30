@@ -20,7 +20,7 @@
 
 • **fillableTakerAssetAmount**: *string*
 
-*Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L78)*
+*Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L78)*
 
 ___
 
@@ -28,7 +28,7 @@ ___
 
 • **kind**: *[OrderEventKind](../enums/_types_.ordereventkind.md)*
 
-*Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L77)*
+*Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L77)*
 
 ___
 
@@ -36,7 +36,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L75)*
+*Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L75)*
 
 ___
 
@@ -44,7 +44,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](_types_.stringifiedsignedorder.md)*
 
-*Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L76)*
+*Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L76)*
 
 ___
 
@@ -52,4 +52,4 @@ ___
 
 • **txHashes**: *string[]*
 
-*Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L79)*
+*Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L79)*

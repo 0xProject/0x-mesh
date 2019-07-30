@@ -19,7 +19,7 @@
 
 • **kind**: *[RejectedKind](../enums/_types_.rejectedkind.md)*
 
-*Defined in [types.ts:133](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L133)*
+*Defined in [types.ts:147](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L147)*
 
 ___
 
@@ -27,7 +27,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:131](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L131)*
+*Defined in [types.ts:145](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L145)*
 
 ___
 
@@ -35,7 +35,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](_types_.stringifiedsignedorder.md)*
 
-*Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L132)*
+*Defined in [types.ts:146](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L146)*
 
 ___
 
@@ -43,4 +43,4 @@ ___
 
 • **status**: *[RejectedStatus](_types_.rejectedstatus.md)*
 
-*Defined in [types.ts:134](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L134)*
+*Defined in [types.ts:148](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L148)*

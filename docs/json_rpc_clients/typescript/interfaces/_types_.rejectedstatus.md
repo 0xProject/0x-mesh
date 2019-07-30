@@ -17,7 +17,7 @@
 
 • **code**: *[RejectedCode](../enums/_types_.rejectedcode.md)*
 
-*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L126)*
+*Defined in [types.ts:140](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L140)*
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **message**: *string*
 
-*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L127)*
+*Defined in [types.ts:141](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L141)*

@@ -17,7 +17,7 @@
 
 • **result**: *string*
 
-*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L71)*
+*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L71)*
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **subscription**: *string*
 
-*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L70)*
+*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L70)*

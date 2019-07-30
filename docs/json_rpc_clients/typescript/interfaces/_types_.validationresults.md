@@ -17,7 +17,7 @@
 
 • **accepted**: *[AcceptedOrderInfo](_types_.acceptedorderinfo.md)[]*
 
-*Defined in [types.ts:150](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L150)*
+*Defined in [types.ts:164](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L164)*
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **rejected**: *[RejectedOrderInfo](_types_.rejectedorderinfo.md)[]*
 
-*Defined in [types.ts:151](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L151)*
+*Defined in [types.ts:165](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L165)*

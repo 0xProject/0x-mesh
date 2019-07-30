@@ -26,7 +26,7 @@ Source: https://github.com/theturtle32/WebSocket-Node/blob/master/docs/WebSocket
 
 • **assembleFragments**? : *undefined | false | true*
 
-*Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L14)*
+*Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L14)*
 
 ___
 
@@ -34,7 +34,7 @@ ___
 
 • **closeTimeout**? : *undefined | number*
 
-*Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L15)*
+*Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L15)*
 
 ___
 
@@ -42,7 +42,7 @@ ___
 
 • **fragmentOutgoingMessages**? : *undefined | false | true*
 
-*Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L12)*
+*Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L12)*
 
 ___
 
@@ -50,7 +50,7 @@ ___
 
 • **fragmentationThreshold**? : *undefined | number*
 
-*Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L13)*
+*Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L13)*
 
 ___
 
@@ -58,7 +58,7 @@ ___
 
 • **maxReceivedFrameSize**? : *undefined | number*
 
-*Defined in [types.ts:10](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L10)*
+*Defined in [types.ts:10](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L10)*
 
 ___
 
@@ -66,7 +66,7 @@ ___
 
 • **maxReceivedMessageSize**? : *undefined | number*
 
-*Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L11)*
+*Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L11)*
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 • **tlsOptions**? : *any*
 
-*Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L16)*
+*Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L16)*
 
 ___
 
@@ -82,4 +82,4 @@ ___
 
 • **webSocketVersion**? : *undefined | number*
 
-*Defined in [types.ts:9](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L9)*
+*Defined in [types.ts:9](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L9)*

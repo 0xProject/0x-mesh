@@ -17,7 +17,7 @@
 
 • **type**: *string*
 
-*Defined in [types.ts:160](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L160)*
+*Defined in [types.ts:174](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L174)*
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **utf8Data**: *string*
 
-*Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L161)*
+*Defined in [types.ts:175](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L175)*

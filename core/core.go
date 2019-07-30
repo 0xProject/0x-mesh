@@ -44,7 +44,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "development"
+	version                    = "2.0.0-beta"
 )
 
 // Config is a set of configuration options for 0x Mesh.

@@ -15,6 +15,7 @@ websocket endpoint.
 
 ### Methods
 
+* [GetStatsAsync](_ws_client_.wsclient.md#getstatsasync)
 * [addOrdersAsync](_ws_client_.wsclient.md#addordersasync)
 * [destroy](_ws_client_.wsclient.md#destroy)
 * [getOrdersAsync](_ws_client_.wsclient.md#getordersasync)
@@ -29,7 +30,7 @@ websocket endpoint.
 
 \+ **new WSClient**(`url`: string, `wsOpts?`: [WSOpts](../interfaces/_types_.wsopts.md)): *[WSClient](_ws_client_.wsclient.md)*
 
-*Defined in [ws_client.ts:55](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L55)*
+*Defined in [ws_client.ts:71](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L71)*
 
 Instantiates a new WSClient instance
 
@@ -46,11 +47,21 @@ An instance of WSClient
 
 ## Methods
 
+###  GetStatsAsync
+
+▸ **GetStatsAsync**(): *`Promise<GetStatsResponse>`*
+
+*Defined in [ws_client.ts:116](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L116)*
+
+**Returns:** *`Promise<GetStatsResponse>`*
+
+___
+
 ###  addOrdersAsync
 
 ▸ **addOrdersAsync**(`signedOrders`: `SignedOrder`[]): *`Promise<ValidationResults>`*
 
-*Defined in [ws_client.ts:80](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L80)*
+*Defined in [ws_client.ts:96](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L96)*
 
 Adds an array of 0x signed orders to the Mesh node.
 
@@ -70,7 +81,7 @@ ___
 
 ▸ **destroy**(): *void*
 
-*Defined in [ws_client.ts:193](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L193)*
+*Defined in [ws_client.ts:213](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L213)*
 
 destroy unsubscribes all active subscriptions, closes the websocket connection
 and stops the internal heartbeat connection liveness check.
@@ -81,9 +92,9 @@ ___
 
 ###  getOrdersAsync
 
-▸ **getOrdersAsync**(`perPage`: number): *`Promise<AcceptedOrderInfo[]>`*
+▸ **getOrdersAsync**(`perPage`: number): *`Promise<OrderInfo[]>`*
 
-*Defined in [ws_client.ts:105](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L105)*
+*Defined in [ws_client.ts:125](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L125)*
 
 Get all 0x signed orders currently stored in the Mesh node
 
@@ -93,7 +104,7 @@ Name | Type | Default | Description |
 ------ | ------ | ------ | ------ |
 `perPage` | number | 200 | number of signedOrders to fetch per paginated request |
 
-**Returns:** *`Promise<AcceptedOrderInfo[]>`*
+**Returns:** *`Promise<OrderInfo[]>`*
 
 all orders, their hash and their fillableTakerAssetAmount
 
@@ -103,7 +114,7 @@ ___
 
 ▸ **onClose**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:175](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L175)*
+*Defined in [ws_client.ts:195](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L195)*
 
 Get notified when the underlying WS connection closes normally. If it closes with an
 error, WSClient automatically attempts to re-connect without emitting a `close` event.
@@ -124,7 +135,7 @@ ___
 
 ▸ **onReconnected**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:184](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L184)*
+*Defined in [ws_client.ts:204](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L204)*
 
 Get notified when a connection to the underlying WS connection is re-established
 
@@ -144,7 +155,7 @@ ___
 
 ▸ **subscribeToOrdersAsync**(`cb`: function): *`Promise<string>`*
 
-*Defined in [ws_client.ts:136](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L136)*
+*Defined in [ws_client.ts:156](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L156)*
 
 Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
 subscriptionId that can be used to `unsubscribe()` from this subscription.
@@ -173,7 +184,7 @@ ___
 
 ▸ **unsubscribeAsync**(`subscriptionId`: string): *`Promise<void>`*
 
-*Defined in [ws_client.ts:165](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/ws_client.ts#L165)*
+*Defined in [ws_client.ts:185](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/ws_client.ts#L185)*
 
 Unsubscribe from a subscription
 

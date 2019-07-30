@@ -29,7 +29,7 @@
 
 • **exchangeAddress**: *string*
 
-*Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L47)*
+*Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L47)*
 
 ___
 
@@ -37,7 +37,7 @@ ___
 
 • **expirationTimeSeconds**: *string*
 
-*Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L49)*
+*Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L49)*
 
 ___
 
@@ -45,7 +45,7 @@ ___
 
 • **feeRecipientAddress**: *string*
 
-*Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L48)*
+*Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L48)*
 
 ___
 
@@ -53,7 +53,7 @@ ___
 
 • **makerAddress**: *string*
 
-*Defined in [types.ts:38](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L38)*
+*Defined in [types.ts:38](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L38)*
 
 ___
 
@@ -61,7 +61,7 @@ ___
 
 • **makerAssetAmount**: *string*
 
-*Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L42)*
+*Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L42)*
 
 ___
 
@@ -69,7 +69,7 @@ ___
 
 • **makerAssetData**: *string*
 
-*Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L44)*
+*Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L44)*
 
 ___
 
@@ -77,7 +77,7 @@ ___
 
 • **makerFee**: *string*
 
-*Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L40)*
+*Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L40)*
 
 ___
 
@@ -85,7 +85,7 @@ ___
 
 • **salt**: *string*
 
-*Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L46)*
+*Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L46)*
 
 ___
 
@@ -93,7 +93,7 @@ ___
 
 • **senderAddress**: *string*
 
-*Defined in [types.ts:37](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L37)*
+*Defined in [types.ts:37](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L37)*
 
 ___
 
@@ -101,7 +101,7 @@ ___
 
 • **signature**: *string*
 
-*Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L50)*
+*Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L50)*
 
 ___
 
@@ -109,7 +109,7 @@ ___
 
 • **takerAddress**: *string*
 
-*Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L39)*
+*Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L39)*
 
 ___
 
@@ -117,7 +117,7 @@ ___
 
 • **takerAssetAmount**: *string*
 
-*Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L43)*
+*Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L43)*
 
 ___
 
@@ -125,7 +125,7 @@ ___
 
 • **takerAssetData**: *string*
 
-*Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L45)*
+*Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L45)*
 
 ___
 
@@ -133,4 +133,4 @@ ___
 
 • **takerFee**: *string*
 
-*Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L41)*
+*Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L41)*

@@ -28,7 +28,7 @@ reconnectAfter: time in milliseconds after which to attempt to reconnect to WS s
 
 • **clientConfig**? : *[ClientConfig](_types_.clientconfig.md)*
 
-*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L32)*
+*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L32)*
 
 ___
 
@@ -36,7 +36,7 @@ ___
 
 • **headers**? : *undefined | `__type`*
 
-*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L30)*
+*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L30)*
 
 ___
 
@@ -44,7 +44,7 @@ ___
 
 • **protocol**? : *undefined | string*
 
-*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L31)*
+*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L31)*
 
 ___
 
@@ -52,7 +52,7 @@ ___
 
 • **reconnectAfter**? : *undefined | number*
 
-*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L33)*
+*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L33)*
 
 ___
 
@@ -60,4 +60,4 @@ ___
 
 • **timeout**? : *undefined | number*
 
-*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L29)*
+*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L29)*

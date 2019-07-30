@@ -19,7 +19,7 @@
 
 • **Added**: = "ADDED"
 
-*Defined in [types.ts:55](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L55)*
+*Defined in [types.ts:55](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L55)*
 
 ___
 
@@ -27,7 +27,7 @@ ___
 
 • **Cancelled**: = "CANCELLED"
 
-*Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L58)*
+*Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L58)*
 
 ___
 
@@ -35,7 +35,7 @@ ___
 
 • **Expired**: = "EXPIRED"
 
-*Defined in [types.ts:59](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L59)*
+*Defined in [types.ts:59](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L59)*
 
 ___
 
@@ -43,7 +43,7 @@ ___
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-*Defined in [types.ts:61](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L61)*
+*Defined in [types.ts:61](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L61)*
 
 ___
 
@@ -51,7 +51,7 @@ ___
 
 • **Filled**: = "FILLED"
 
-*Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L56)*
+*Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L56)*
 
 ___
 
@@ -59,7 +59,7 @@ ___
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-*Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L57)*
+*Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L57)*
 
 ___
 
@@ -67,7 +67,7 @@ ___
 
 • **Invalid**: = "INVALID"
 
-*Defined in [types.ts:54](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L54)*
+*Defined in [types.ts:54](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L54)*
 
 ___
 
@@ -75,4 +75,4 @@ ___
 
 • **Unfunded**: = "UNFUNDED"
 
-*Defined in [types.ts:60](https://github.com/0xProject/0x-mesh/blob/7038c73/rpc/clients/typescript/src/types.ts#L60)*
+*Defined in [types.ts:60](https://github.com/0xProject/0x-mesh/blob/01a8c7e/rpc/clients/typescript/src/types.ts#L60)*
