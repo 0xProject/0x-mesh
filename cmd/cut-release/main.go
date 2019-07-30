@@ -34,7 +34,7 @@ func generateTypescriptClientDocs() {
 	cmd.Dir = "rpc/clients/typescript"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Print(stdoutStderr)
+		log.Print(string(stdoutStderr))
 		log.Fatal(err)
 	}
 
@@ -43,7 +43,7 @@ func generateTypescriptClientDocs() {
 	cmd.Dir = "rpc/clients/typescript"
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
-		log.Print(stdoutStderr)
+		log.Print(string(stdoutStderr))
 		log.Fatal(err)
 	}
 
