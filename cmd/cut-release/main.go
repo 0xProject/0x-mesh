@@ -97,44 +97,34 @@ func updateHardCodedVersions(version string) {
 
 	// Update `rpc/clients/typescript/package.json`
 	tsClientPackageJSONPath := "rpc/clients/typescript/package.json"
-	updateVersionKey(tsClientPackageJSONPath, version)
+	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
+	regex := `"version": "(.*)"`
+	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
 	// Update `core.go`
 	corePath := "core/core.go"
-	updateVersionKey(corePath, version)
+	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
+	regex = `version(.*)= "(.*)"`
+	updateFileWithRegex(corePath, regex, newVersionString)
 
 	// Update badge in README.md
 	pathToMDFilesWithBadges := []string{"README.md", "docs/USAGE.md", "docs/DEVELOPMENT.md", "docs/DEPLOYMENT.md"}
-	for _, path := range pathToMDFilesWithBadges {
-		updateBadge(path, version)
-	}
-}
-
-func updateVersionKey(filePath string, version string) {
-	dat, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
-	var re = regexp.MustCompile(`"version": "(.*)"`)
-	modifiedDat := []byte(re.ReplaceAllString(string(dat), newVersionString))
-	err = ioutil.WriteFile(filePath, modifiedDat, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func updateBadge(filePath string, version string) {
-	dat, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
-	var re = regexp.MustCompile(`version-(.*)-orange.svg`)
-	modifiedDat := []byte(re.ReplaceAllString(string(dat), newSvgName))
+	regex = `version-(.*)-orange.svg`
+	for _, path := range pathToMDFilesWithBadges {
+		updateFileWithRegex(path, regex, newSvgName)
+	}
+}
 
+func updateFileWithRegex(filePath string, regex string, replacement string) {
+	dat, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var re = regexp.MustCompile(regex)
+	modifiedDat := []byte(re.ReplaceAllString(string(dat), replacement))
 	err = ioutil.WriteFile(filePath, modifiedDat, 0644)
 	if err != nil {
 		log.Fatal(err)
