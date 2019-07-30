@@ -299,7 +299,10 @@ export class WSClient {
     public async unsubscribeAsync(subscriptionId: string): Promise<void> {
         assert.isString('subscriptionId', subscriptionId);
         const meshSubscriptionId = this._subscriptionIdToMeshSpecificId[subscriptionId];
-        await this._wsProvider.sendAsync('mesh_unsubscribe', [meshSubscriptionId]);
+        if (meshSubscriptionId === undefined) {
+            throw new Error(`Subscription not found with ID: ${subscriptionId}`);
+        }
+        await this._wsProvider.unsubscribeAsync(meshSubscriptionId, 'mesh_unsubscribe');
     }
     /**
      * Get notified when the underlying WS connection closes normally. If it closes with an
