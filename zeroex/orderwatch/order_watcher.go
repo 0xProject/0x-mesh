@@ -577,7 +577,8 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 	if len(signedOrders) == 0 {
 		return nil
 	}
-	validationResults := w.orderValidator.BatchValidate(signedOrders)
+	areNewOrders := false
+	validationResults := w.orderValidator.BatchValidate(signedOrders, areNewOrders)
 
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {

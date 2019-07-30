@@ -239,6 +239,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 					OrderHash:                orderHash,
 					SignedOrder:              order,
 					FillableTakerAssetAmount: dbOrder.FillableTakerAssetAmount,
+					IsNew:                    false,
 				})
 				continue
 			}
@@ -246,7 +247,8 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 
 		validMeshOrders = append(validMeshOrders, order)
 	}
-	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders)
+	areNewOrders := true
+	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders)
 	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil

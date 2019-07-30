@@ -129,6 +129,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 					OrderHash:                orderHash,
 					SignedOrder:              signedOrder,
 					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
+					IsNew:                    true,
 				})
 			}
 			wg.Done()
