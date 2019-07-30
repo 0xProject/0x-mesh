@@ -64,18 +64,26 @@ describe('WSClient', () => {
                                     ]
                                 }
                             }
-                            `,
+                        `,
                         // Second paginated request
                         `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc": "2.0",
-                                    "result": {
-                                        "snapshotID": "123",
-                                        "ordersInfos": []
-                                    }
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc": "2.0",
+                                "result": {
+                                    "snapshotID": "123",
+                                    "ordersInfos": []
                                 }
-                            `,
+                            }
+                        `,
+                        // Response to unsubscribe
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc":"2.0",
+                                "result":true
+                            }
+                        `,
                     ];
                     connection.sendUTF(responses[requestNum]);
                     requestNum++;
@@ -93,7 +101,7 @@ describe('WSClient', () => {
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.salt)).to.equal(true);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.expirationTimeSeconds)).to.equal(true);
 
-            client.destroy();
+            await client.destroyAsync();
         });
     });
     describe('#addOrdersAsync', async () => {
@@ -144,6 +152,14 @@ describe('WSClient', () => {
                                 }
                             }
                         `,
+                        // Response to unsubscribe
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc":"2.0",
+                                "result":true
+                            }
+                        `,
                     ];
                     connection.sendUTF(responses[requestNum]);
                     requestNum++;
@@ -186,7 +202,7 @@ describe('WSClient', () => {
             );
             expect(BigNumber.isBigNumber(validationResults.accepted[0].fillableTakerAssetAmount)).to.equal(true);
 
-            client.destroy();
+            await client.destroyAsync();
         });
     });
     describe('#_subscribeToHeartbeatAsync', async () => {
@@ -219,7 +235,7 @@ describe('WSClient', () => {
                                 {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc":"2.0",
-                                    "result":true,
+                                    "result":true
                                 }
                             `,
                         ];
@@ -250,7 +266,7 @@ describe('WSClient', () => {
                 const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
                     async (ack: string) => {
                         expect(ack).to.be.equal('tick');
-                        client.destroy();
+                        await client.destroyAsync();
                     },
                 );
                 await (client as any)._subscribeToHeartbeatAsync(callback);
@@ -285,7 +301,7 @@ describe('WSClient', () => {
                                 {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc":"2.0",
-                                    "result":true,
+                                    "result":true
                                 }
                             `,
                         ];
@@ -365,7 +381,7 @@ describe('WSClient', () => {
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.expirationTimeSeconds)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].fillableTakerAssetAmount)).to.equal(true);
 
-                        client.destroy();
+                        await client.destroyAsync();
                     },
                 );
                 await client.subscribeToOrdersAsync(callback);
@@ -384,8 +400,8 @@ describe('WSClient', () => {
                 });
 
                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-                client.onClose(() => {
-                    client.destroy();
+                client.onClose(async () => {
+                    await client.destroyAsync();
                     done();
                 });
             })();
@@ -396,13 +412,11 @@ describe('WSClient', () => {
             // tslint:disable-next-line:no-floating-promises
             (async () => {
                 const wsServer = await setupServerAsync();
-                let connectionNum = 0;
+                let isFirstConnection = true;
                 wsServer.on('connect', async (connection: WebSocket.connection) => {
-                    let requestNum = 0;
-                    connectionNum++;
                     connection.on('message', (async (message: WSMessage) => {
                         const jsonRpcRequest = JSON.parse(message.utf8Data);
-                        if (requestNum === 0) {
+                        if ((jsonRpcRequest as any).method === 'mesh_subscribe') {
                             const response = `
                                 {
                                     "id": "${jsonRpcRequest.id}",
@@ -411,15 +425,15 @@ describe('WSClient', () => {
                                 }
                             `;
                             connection.sendUTF(response);
-                            if (connectionNum === 1) {
-                                // tslint:disable-next-line:custom-no-magic-numbers
-                                await sleepAsync(100);
-                                const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
-                                const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
-                                connection.drop(reasonCode, description);
-                            }
                         }
-                        requestNum++;
+                        if (isFirstConnection) {
+                            // tslint:disable-next-line:custom-no-magic-numbers
+                            await sleepAsync(100);
+                            const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
+                            const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
+                            connection.drop(reasonCode, description);
+                        }
+                        isFirstConnection = false;
                     }) as any);
                 });
 
@@ -429,7 +443,7 @@ describe('WSClient', () => {
                     // to get connected before destroying it.
                     // tslint:disable-next-line:custom-no-magic-numbers
                     await sleepAsync(100);
-                    client.destroy();
+                    await client.destroyAsync();
                     done();
                 });
             })();
@@ -470,7 +484,7 @@ describe('WSClient', () => {
                 // to get connected before destroying it.
                 // tslint:disable-next-line:custom-no-magic-numbers
                 await sleepAsync(100);
-                client.destroy();
+                await client.destroyAsync();
             })().catch(done);
         });
     });
