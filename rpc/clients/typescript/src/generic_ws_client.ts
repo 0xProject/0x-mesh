@@ -1,5 +1,8 @@
+import { ObjectMap } from '@0x/types';
 import * as EventEmitter from 'eventemitter3';
 import * as WebSocket from 'websocket';
+
+import { Subscription } from './types';
 
 const READY = 'ready';
 const CONNECT = 'connect';
@@ -13,42 +16,40 @@ const SOCKET_ERROR = 'socket_error';
 const SOCKET_CONNECT = 'socket_connect';
 
 /**
- * The BaseWSClient is a generic WS client with subscriptions support as defined in
+ * The GenericWSClient is a generic WS client with subscriptions support as defined in
  * https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
- * It handles re-connecting closed connections due to errors and also re-subscribes
- * all active subscriptions
+ * It handles re-connecting closed connections due to errors and handles re-subscribing
+ * all active subscriptions upon reconnect.
  */
-export class BaseWSClient extends EventEmitter {
-    private _timeoutIfExists: number|undefined;
-    private _subscriptions: any;
-    private _connection: any;
+export class GenericWSClient extends EventEmitter {
+    private _timeoutIfExists?: number;
+    private _subscriptions: ObjectMap<Subscription>;
+    private _connection: any; // @types/websocket type-defs are incorrect
     private _host: string;
     private _reconnectionTimeoutMs: number;
     private _messageId: number;
-    private static _validateJSONRPCResponse(response: any): boolean|Error {
-        if (typeof response === 'object') {
-            if (response.error) {
-                if (response.error instanceof Error) {
-                    return new Error(`Node error: ${response.error.message}`);
-                }
-
-                return new Error(`Node error: ${JSON.stringify(response.error)}`);
-            }
-
-            if (response.result === undefined) {
-                return new Error('Validation error: Undefined JSON-RPC result');
-            }
-
-            return true;
+    private static _isValidJSONRPCResponseOrThrow(response: any): void {
+        if (typeof response !== 'object') {
+            throw new Error('Validation error: Response must be of type Object');
         }
 
-        return new Error('Validation error: Response should be of type Object');
+        if (response.error) {
+            if (response.error instanceof Error) {
+                throw new Error(`Node error: ${response.error.message}`);
+            }
+
+            throw new Error(`Node error: ${JSON.stringify(response.error)}`);
+        }
+
+        if (response.result === undefined) {
+            throw new Error('Validation error: Undefined JSON-RPC result');
+        }
     }
     // HACK(fabio): We could have used `WebSocket.connection` as the type for param `connection` but
     // the type definitions for the `websocket` package are very out-of-date and this would cause us
     // to use `as any` in most places we access it. Simply using `any` felt cleaner until the typings
     // are updated.
-    constructor(connection: any, reconnectionTimeout: number = 5000, timeout: number|undefined) {
+    constructor(connection: any, reconnectionTimeout: number = 5000, timeout: number | undefined) {
         super();
         this._messageId = 1;
         this._connection = connection;
@@ -64,12 +65,9 @@ export class BaseWSClient extends EventEmitter {
      * @param parameters parameters to send to method call
      * @returns response to JSON-RPC call
      */
-    protected async _sendAsync(method: string, parameters: any): Promise<any> {
+    public async sendAsync(method: string, parameters: any): Promise<any> {
         const response = await this._sendPayloadAsync(this._toPayload(method, parameters));
-        const validationResult = BaseWSClient._validateJSONRPCResponse(response);
-        if (validationResult instanceof Error) {
-            throw validationResult;
-        }
+        GenericWSClient._isValidJSONRPCResponseOrThrow(response);
         return response.result;
     }
     /**
@@ -79,14 +77,14 @@ export class BaseWSClient extends EventEmitter {
      * @param code WebSocket error code
      * @param reason error description
      */
-    protected _disconnect(code: number | null = null, reason: string | null = null): void {
+    public disconnect(code: number | null = null, reason: string | null = null): void {
         this._connection.close(code, reason);
     }
     /**
      * Returns true if the socket connection state is OPEN
      * @returns whether we are connected
      */
-    protected _isConnected(): boolean {
+    public isConnected(): boolean {
         return this._connection.readyState === this._connection.OPEN;
     }
     /**
@@ -96,10 +94,10 @@ export class BaseWSClient extends EventEmitter {
      * @param parameters Additional parameters to subscribe call
      * @returns The subscriptionId of an error
      */
-    protected _subscribeAsync(subscribeMethod: string, subscriptionMethod: string, parameters: any[]): Promise<any> {
+    public subscribeAsync(subscribeMethod: string, subscriptionMethod: string, parameters: any[]): Promise<any> {
         parameters.unshift(subscriptionMethod);
 
-        return this._sendAsync(subscribeMethod, parameters)
+        return this.sendAsync(subscribeMethod, parameters)
             .then(subscriptionId => {
                 this._subscriptions[subscriptionId] = {
                     id: subscriptionId,
@@ -120,9 +118,9 @@ export class BaseWSClient extends EventEmitter {
      *
      * @returns either a boolean of whether the subscription was cancelled, or an error
      */
-    protected _unsubscribeAsync(subscriptionId: string, unsubscribeMethod: string): Promise<boolean|Error> {
+    public unsubscribeAsync(subscriptionId: string, unsubscribeMethod: string): Promise<boolean | Error> {
         if (this._hasSubscription(subscriptionId)) {
-            return this._sendAsync(unsubscribeMethod, [subscriptionId]).then(response => {
+            return this.sendAsync(unsubscribeMethod, [subscriptionId]).then(response => {
                 if (response) {
                     this._removeAllListeners(this._getSubscriptionEvent(subscriptionId));
 
@@ -140,12 +138,12 @@ export class BaseWSClient extends EventEmitter {
      * @param unsubscribeMethod JSON-RPC unsubscribe method
      * @returns true if clearing subscription succeeds, otherwise an error
      */
-    protected async _clearSubscriptionsAsync(unsubscribeMethod: string): Promise<boolean|Error> {
+    public async clearSubscriptionsAsync(unsubscribeMethod: string): Promise<boolean | Error> {
         const unsubscribePromises: Array<Promise<any>> = [];
 
         Object.keys(this._subscriptions).forEach(key => {
             this._removeAllListeners(key);
-            unsubscribePromises.push(this._unsubscribeAsync(this._subscriptions[key].id, unsubscribeMethod));
+            unsubscribePromises.push(this.unsubscribeAsync(this._subscriptions[key].id, unsubscribeMethod));
         });
 
         return Promise.all(unsubscribePromises).then(results => {
@@ -183,7 +181,7 @@ export class BaseWSClient extends EventEmitter {
                     return reject(error);
                 }
 
-                if (this._timeoutIfExists) {
+                if (this._timeoutIfExists !== undefined) {
                     timeout = setTimeout(() => {
                         reject(new Error('Connection error: Timeout exceeded'));
                     }, this._timeoutIfExists);
@@ -290,7 +288,7 @@ export class BaseWSClient extends EventEmitter {
             let subscriptionId;
 
             for (const key of subscriptionKeys) {
-                subscriptionId = await this._subscribeAsync(
+                subscriptionId = await this.subscribeAsync(
                     this._subscriptions[key].subscribeMethod,
                     this._subscriptions[key].parameters[0],
                     this._subscriptions[key].parameters.slice(1),
@@ -336,7 +334,7 @@ export class BaseWSClient extends EventEmitter {
                 this._connection.removeEventListener('connect', this._onConnectAsync);
                 break;
             default:
-                // Noop
+            // Noop
         }
         super.removeAllListeners(event);
     }
@@ -403,12 +401,12 @@ export class BaseWSClient extends EventEmitter {
      * @param subscriptionId subscription ID
      * @returns subscription event name (e.g. "heartbeat")
      */
-    private _getSubscriptionEvent(subscriptionId: string): string|undefined {
+    private _getSubscriptionEvent(subscriptionId: string): string | undefined {
         if (this._subscriptions[subscriptionId]) {
             return subscriptionId;
         }
 
-        let event: string|undefined;
+        let event: string | undefined;
         for (const key in this._subscriptions) {
             if (this._subscriptions[key].id === subscriptionId) {
                 event = key;

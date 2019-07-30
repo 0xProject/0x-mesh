@@ -1,5 +1,6 @@
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
+import { any } from 'prop-types';
 
 /**
  * WebSocketClient configs
@@ -350,4 +351,10 @@ export interface GetStatsResponse {
     LatestBlock: LatestBlock;
     NumPeers: number;
     NumOrders: number;
+}
+
+export interface Subscription {
+    id: string;
+    subscribeMethod: string;
+    parameters: any[];
 }

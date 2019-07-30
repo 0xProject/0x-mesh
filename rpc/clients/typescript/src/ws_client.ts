@@ -5,7 +5,7 @@ import { BigNumber } from '@0x/utils';
 import { v4 as uuid } from 'uuid';
 import * as WebSocket from 'websocket';
 
-import { BaseWSClient } from './base_ws_client';
+import { GenericWSClient } from './generic_ws_client';
 import {
     AcceptedOrderInfo,
     ContractEvent,
@@ -54,9 +54,10 @@ const DEFAULT_WS_OPTS: WSOpts = {
  * This class includes all the functionality related to interacting with a Mesh JSON RPC
  * websocket endpoint.
  */
-export class WSClient extends BaseWSClient {
+export class WSClient {
     private readonly _subscriptionIdToMeshSpecificId: ObjectMap<string>;
     private _heartbeatCheckIntervalId: number | undefined;
+    private _genericWsClient: GenericWSClient;
     private static _convertRawAcceptedOrderInfos(rawAcceptedOrderInfos: RawAcceptedOrderInfo[]): AcceptedOrderInfo[] {
         const acceptedOrderInfos: AcceptedOrderInfo[] = [];
         rawAcceptedOrderInfos.forEach(rawAcceptedOrderInfo => {
@@ -197,11 +198,18 @@ export class WSClient extends BaseWSClient {
         // If running in Node.js environment
         if (typeof process !== 'undefined' && process.versions != null && process.versions.node != null) {
             const headers: any = finalWSOpts.headers || {};
-            connection = new (WebSocket.w3cwebsocket as any)(url, finalWSOpts.protocol, null, headers, null, finalWSOpts.clientConfig);
+            connection = new (WebSocket.w3cwebsocket as any)(
+                url,
+                finalWSOpts.protocol,
+                null,
+                headers,
+                null,
+                finalWSOpts.clientConfig,
+            );
         } else {
             connection = new (window as any).WebSocket(url, finalWSOpts.protocol);
         }
-        super(connection, finalWSOpts.reconnectAfter, finalWSOpts.timeout);
+        this._genericWsClient = new GenericWSClient(connection, finalWSOpts.reconnectAfter, finalWSOpts.timeout);
         this._subscriptionIdToMeshSpecificId = {};
         // Intentional fire-and-forget
         // tslint:disable-next-line:no-floating-promises
@@ -214,7 +222,7 @@ export class WSClient extends BaseWSClient {
      */
     public async addOrdersAsync(signedOrders: SignedOrder[]): Promise<ValidationResults> {
         assert.isArray('signedOrders', signedOrders);
-        const rawValidationResults: RawValidationResults = await this._sendAsync('mesh_addOrders', [
+        const rawValidationResults: RawValidationResults = await this._genericWsClient.sendAsync('mesh_addOrders', [
             signedOrders,
         ]);
         const validationResults: ValidationResults = {
@@ -245,13 +253,11 @@ export class WSClient extends BaseWSClient {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const getOrdersResponse: GetOrdersResponse = await this._sendAsync('mesh_getOrders',
-            [
-                page,
-                perPage,
-                snapshotID,
-            ],
-        );
+        const getOrdersResponse: GetOrdersResponse = await this._genericWsClient.sendAsync('mesh_getOrders', [
+            page,
+            perPage,
+            snapshotID,
+        ]);
         snapshotID = getOrdersResponse.snapshotID;
         let ordersInfos = getOrdersResponse.ordersInfos;
 
@@ -259,7 +265,7 @@ export class WSClient extends BaseWSClient {
         do {
             rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
             page++;
-            ordersInfos = (await this._sendAsync('mesh_getOrders', [page, perPage, snapshotID]))
+            ordersInfos = (await this._genericWsClient.sendAsync('mesh_getOrders', [page, perPage, snapshotID]))
                 .ordersInfos;
         } while (Object.keys(ordersInfos).length > 0);
 
@@ -274,7 +280,7 @@ export class WSClient extends BaseWSClient {
      */
     public async subscribeToOrdersAsync(cb: (orderEvents: OrderEvent[]) => void): Promise<string> {
         assert.isFunction('cb', cb);
-        const orderEventsSubscriptionId = await this._subscribeAsync('mesh_subscribe', 'orders', []);
+        const orderEventsSubscriptionId = await this._genericWsClient.subscribeAsync('mesh_subscribe', 'orders', []);
         const id = uuid();
         this._subscriptionIdToMeshSpecificId[id] = orderEventsSubscriptionId;
 
@@ -294,7 +300,7 @@ export class WSClient extends BaseWSClient {
             });
             cb(orderEvents);
         };
-        this.on(orderEventsSubscriptionId, orderEventsCallback as any);
+        this._genericWsClient.on(orderEventsSubscriptionId, orderEventsCallback as any);
         return id;
     }
     /**
@@ -307,7 +313,7 @@ export class WSClient extends BaseWSClient {
         if (meshSubscriptionId === undefined) {
             throw new Error(`Subscription not found with ID: ${subscriptionId}`);
         }
-        await this._unsubscribeAsync(meshSubscriptionId, 'mesh_unsubscribe');
+        await this._genericWsClient.unsubscribeAsync(meshSubscriptionId, 'mesh_unsubscribe');
     }
     /**
      * Get notified when the underlying WS connection closes normally. If it closes with an
@@ -315,7 +321,7 @@ export class WSClient extends BaseWSClient {
      * @param cb callback to call when WS connection closes
      */
     public onClose(cb: () => void): void {
-        this.on('close', () => {
+        this._genericWsClient.on('close', () => {
             cb();
         });
     }
@@ -324,7 +330,7 @@ export class WSClient extends BaseWSClient {
      * @param cb callback to call with the error when it occurs
      */
     public onReconnected(cb: () => void): void {
-        this.on('reconnected', () => {
+        this._genericWsClient.on('reconnected', () => {
             cb();
         });
     }
@@ -336,12 +342,12 @@ export class WSClient extends BaseWSClient {
         clearInterval(this._heartbeatCheckIntervalId);
         // HACK(fabio): We fire-and-forget the call to clear subscriptions since we don't want `destroyAsync()`
         // to block if the connection is having issues. The hacky part though is that we will get an error if
-        // we try to send a payload on a connection _we know_ is closed. We therefore need to call `_disconnect`
+        // we try to send a payload on a connection _we know_ is closed. We therefore need to call `disconnect`
         // after a timeout so that we are sure we've already attempted to send the unsubscription payloads before
         // we forcefully close the connection
-        this._clearSubscriptionsAsync('mesh_unsubscribe');
+        this._genericWsClient.clearSubscriptionsAsync('mesh_unsubscribe');
         await new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, CLEAR_SUBSCRIPTIONS_GRACE_PERIOD_MS));
-        this._disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
+        this._genericWsClient.disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
     }
     /**
      * Subscribe to the 'heartbeat' topic and receive an ack from the Mesh every 5 seconds. This method
@@ -351,7 +357,7 @@ export class WSClient extends BaseWSClient {
      */
     private async _subscribeToHeartbeatAsync(cb: (ack: string) => void): Promise<string> {
         assert.isFunction('cb', cb);
-        const heartbeatSubscriptionId = await this._subscribeAsync('mesh_subscribe', 'heartbeat', []);
+        const heartbeatSubscriptionId = await this._genericWsClient.subscribeAsync('mesh_subscribe', 'heartbeat', []);
         const id = uuid();
         this._subscriptionIdToMeshSpecificId[id] = heartbeatSubscriptionId;
 
@@ -359,7 +365,7 @@ export class WSClient extends BaseWSClient {
             this._subscriptionIdToMeshSpecificId[id] = eventPayload.subscription;
             cb(eventPayload.result);
         };
-        this.on(heartbeatSubscriptionId, orderEventsCallback as any);
+        this._genericWsClient.on(heartbeatSubscriptionId, orderEventsCallback as any);
         return id;
     }
     private async _startInternalLivenessCheckAsync(): Promise<void> {
@@ -379,8 +385,8 @@ export class WSClient extends BaseWSClient {
                 lastHeartbeatTimestampMs + twentySecondsInMs < new Date().getTime();
             if (haveTwentySecondsPastWithoutAHeartBeat) {
                 // If connected, we haven't received a heartbeat in over 20 seconds, re-connect
-                if (this._isConnected()) {
-                    this._disconnect(CLOSE_REASON_NO_HEARTBEAT, CLOSE_DESCRIPTION_NO_HEARTBEAT);
+                if (this._genericWsClient.isConnected()) {
+                    this._genericWsClient.disconnect(CLOSE_REASON_NO_HEARTBEAT, CLOSE_DESCRIPTION_NO_HEARTBEAT);
                 }
                 lastHeartbeatTimestampMs = new Date().getTime();
             }
