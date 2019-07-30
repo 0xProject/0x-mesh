@@ -13,6 +13,7 @@ export {
     RejectedOrderInfo,
     ValidationResults,
     GetOrdersResponse,
+    GetStatsResponse,
 } from './types';
 export { SignedOrder } from '@0x/types';
 export { BigNumber } from '@0x/utils';
