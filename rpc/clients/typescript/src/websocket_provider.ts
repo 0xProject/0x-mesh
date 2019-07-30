@@ -13,9 +13,9 @@ const SOCKET_ERROR = 'socket_error';
 const SOCKET_CONNECT = 'socket_connect';
 
 export class WebSocketProvider extends EventEmitter {
-    public connection: any;
-    public timeoutIfExists: number|undefined;
-    public subscriptions: any;
+    private _timeoutIfExists: number|undefined;
+    private _subscriptions: any;
+    private _connection: any;
     private _host: string;
     private _reconnectionTimeoutMs: number;
     private _messageId: number;
@@ -41,12 +41,12 @@ export class WebSocketProvider extends EventEmitter {
     constructor(connection: any, reconnectionTimeout: number = 5000, timeout: number|undefined) {
         super();
         this._messageId = 1;
-        this.connection = connection;
-        this.timeoutIfExists = timeout;
-        this.subscriptions = {};
+        this._connection = connection;
+        this._timeoutIfExists = timeout;
+        this._subscriptions = {};
         this.registerEventListeners();
         // HACK(fabio): @types/websocket out-of-date
-        this._host = this.connection.url;
+        this._host = this._connection.url;
         this._reconnectionTimeoutMs = reconnectionTimeout;
     }
     /**
@@ -113,26 +113,26 @@ export class WebSocketProvider extends EventEmitter {
         (this as EventEmitter).emit(SOCKET_READY, event);
     }
     /**
-     * Emits the connect event and checks if there are subscriptions defined that should be resubscribed.
+     * Emits the connect event and checks if there are _subscriptions defined that should be resubscribed.
      */
     public async onConnectAsync(): Promise<void> {
-        const subscriptionKeys = Object.keys(this.subscriptions);
+        const subscriptionKeys = Object.keys(this._subscriptions);
 
         if (subscriptionKeys.length > 0) {
             let subscriptionId;
 
             for (const key of subscriptionKeys) {
                 subscriptionId = await this.subscribeAsync(
-                    this.subscriptions[key].subscribeMethod,
-                    this.subscriptions[key].parameters[0],
-                    this.subscriptions[key].parameters.slice(1),
+                    this._subscriptions[key].subscribeMethod,
+                    this._subscriptions[key].parameters[0],
+                    this._subscriptions[key].parameters.slice(1),
                 );
 
                 if (key !== subscriptionId) {
-                    delete this.subscriptions[subscriptionId];
+                    delete this._subscriptions[subscriptionId];
                 }
 
-                this.subscriptions[key].id = subscriptionId;
+                this._subscriptions[key].id = subscriptionId;
             }
         }
 
@@ -164,20 +164,20 @@ export class WebSocketProvider extends EventEmitter {
 
             let connection = [];
 
-            if (this.connection.constructor.name === 'W3CWebSocket') {
-                connection = new this.connection.constructor(
+            if (this._connection.constructor.name === 'W3CWebSocket') {
+                connection = new this._connection.constructor(
                     this._host,
-                    this.connection._client.protocol,
+                    this._connection._client.protocol,
                     null,
-                    this.connection._client.headers,
-                    this.connection._client.requestOptions,
-                    this.connection._client.config,
+                    this._connection._client.headers,
+                    this._connection._client.requestOptions,
+                    this._connection._client.config,
                 );
             } else {
-                connection = new this.connection.constructor(this._host, this.connection.protocol || undefined);
+                connection = new this._connection.constructor(this._host, this._connection.protocol || undefined);
             }
 
-            this.connection = connection;
+            this._connection = connection;
             this.registerEventListeners();
             // Emit a "reconnected" event once new connection established
             this.once('connect', () => {
@@ -203,17 +203,17 @@ export class WebSocketProvider extends EventEmitter {
      * @param reason error description
      */
     public disconnect(code: number | null = null, reason: string | null = null): void {
-        this.connection.close(code, reason);
+        this._connection.close(code, reason);
     }
     /**
      * Registers all the required listeners.
      */
     public registerEventListeners(): void {
-        this.connection.addEventListener('message', this.onMessage.bind(this));
-        this.connection.addEventListener('open', this.onReady.bind(this));
-        this.connection.addEventListener('open', this.onConnectAsync.bind(this));
-        this.connection.addEventListener('close', this.onClose.bind(this));
-        this.connection.addEventListener('error', this.onError.bind(this));
+        this._connection.addEventListener('message', this.onMessage.bind(this));
+        this._connection.addEventListener('open', this.onReady.bind(this));
+        this._connection.addEventListener('open', this.onConnectAsync.bind(this));
+        this._connection.addEventListener('close', this.onClose.bind(this));
+        this._connection.addEventListener('error', this.onError.bind(this));
     }
     /**
      * Removes all listeners on the EventEmitter and the socket object.
@@ -222,19 +222,19 @@ export class WebSocketProvider extends EventEmitter {
     public removeAllListeners(event?: string | symbol | undefined): any {
         switch (event) {
             case SOCKET_MESSAGE:
-                this.connection.removeEventListener('message', this.onMessage);
+                this._connection.removeEventListener('message', this.onMessage);
                 break;
             case SOCKET_READY:
-                this.connection.removeEventListener('open', this.onReady);
+                this._connection.removeEventListener('open', this.onReady);
                 break;
             case SOCKET_CLOSE:
-                this.connection.removeEventListener('close', this.onClose);
+                this._connection.removeEventListener('close', this.onClose);
                 break;
             case SOCKET_ERROR:
-                this.connection.removeEventListener('error', this.onError);
+                this._connection.removeEventListener('error', this.onError);
                 break;
             case SOCKET_CONNECT:
-                this.connection.removeEventListener('connect', this.onConnectAsync);
+                this._connection.removeEventListener('connect', this.onConnectAsync);
                 break;
             default:
                 // Noop
@@ -246,14 +246,14 @@ export class WebSocketProvider extends EventEmitter {
      * @returns whether we are connected
      */
     public isConnected(): boolean {
-        return this.connection.readyState === this.connection.OPEN;
+        return this._connection.readyState === this._connection.OPEN;
     }
     /**
      * Returns if the socket connection is in the connecting state.
      * @returns whether we are connecting
      */
     public isConnecting(): boolean {
-        return this.connection.readyState === this.connection.CONNECTING;
+        return this._connection.readyState === this._connection.CONNECTING;
     }
     /**
      * Sends the JSON-RPC payload to the node.
@@ -269,24 +269,24 @@ export class WebSocketProvider extends EventEmitter {
             if (!this.isConnecting()) {
                 let timeout: any;
 
-                if (this.connection.readyState !== this.connection.OPEN) {
+                if (this._connection.readyState !== this._connection.OPEN) {
                     this.removeListener('error', reject);
 
                     return reject(new Error('Connection error: Connection is not open on send()'));
                 }
 
                 try {
-                    this.connection.send(JSON.stringify(payload));
+                    this._connection.send(JSON.stringify(payload));
                 } catch (error) {
                     this.removeListener('error', reject);
 
                     return reject(error);
                 }
 
-                if (this.timeoutIfExists) {
+                if (this._timeoutIfExists) {
                     timeout = setTimeout(() => {
                         reject(new Error('Connection error: Timeout exceeded'));
-                    }, this.timeoutIfExists);
+                    }, this._timeoutIfExists);
                 }
 
                 const id = Array.isArray(payload) ? payload[0].id : payload.id;
@@ -330,7 +330,7 @@ export class WebSocketProvider extends EventEmitter {
 
         return this.sendAsync(subscribeMethod, parameters)
             .then(subscriptionId => {
-                this.subscriptions[subscriptionId] = {
+                this._subscriptions[subscriptionId] = {
                     id: subscriptionId,
                     subscribeMethod,
                     parameters,
@@ -355,7 +355,7 @@ export class WebSocketProvider extends EventEmitter {
                 if (response) {
                     (this as EventEmitter).removeAllListeners(this._getSubscriptionEvent(subscriptionId));
 
-                    delete this.subscriptions[subscriptionId];
+                    delete this._subscriptions[subscriptionId];
                 }
 
                 return response;
@@ -365,21 +365,21 @@ export class WebSocketProvider extends EventEmitter {
         return Promise.reject(new Error(`Provider error: Subscription with ID ${subscriptionId} does not exist.`));
     }
     /**
-     * Clears all subscriptions and listeners
+     * Clears all _subscriptions and listeners
      * @param unsubscribeMethod JSON-RPC unsubscribe method
      * @returns true if clearing subscription succeeds, otherwise an error
      */
     public async clearSubscriptionsAsync(unsubscribeMethod: string): Promise<boolean|Error> {
         const unsubscribePromises: Array<Promise<any>> = [];
 
-        Object.keys(this.subscriptions).forEach(key => {
+        Object.keys(this._subscriptions).forEach(key => {
             (this as EventEmitter).removeAllListeners(key);
-            unsubscribePromises.push(this.unsubscribeAsync(this.subscriptions[key].id, unsubscribeMethod));
+            unsubscribePromises.push(this.unsubscribeAsync(this._subscriptions[key].id, unsubscribeMethod));
         });
 
         return Promise.all(unsubscribePromises).then(results => {
             if (results.includes(false)) {
-                throw new Error(`Could not unsubscribe all subscriptions: ${JSON.stringify(results)}`);
+                throw new Error(`Could not unsubscribe all _subscriptions: ${JSON.stringify(results)}`);
             }
 
             return true;
@@ -399,13 +399,13 @@ export class WebSocketProvider extends EventEmitter {
      * @returns subscription event name (e.g. "heartbeat")
      */
     private _getSubscriptionEvent(subscriptionId: string): string|undefined {
-        if (this.subscriptions[subscriptionId]) {
+        if (this._subscriptions[subscriptionId]) {
             return subscriptionId;
         }
 
         let event: string|undefined;
-        for (const key in this.subscriptions) {
-            if (this.subscriptions[key].id === subscriptionId) {
+        for (const key in this._subscriptions) {
+            if (this._subscriptions[key].id === subscriptionId) {
                 event = key;
             }
         }
