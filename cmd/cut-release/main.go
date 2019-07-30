@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/plaid/go-envvar/envvar"
@@ -112,8 +113,10 @@ func updateVersionKey(filePath string, version string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	newVersionString := fmt.Sprintf(`"version": "%s",`, version)
-	modifiedDat := []byte(strings.Replace(string(dat), `"version": "development",`, newVersionString, 1))
+
+	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
+	var re = regexp.MustCompile(`"version": "(.*)"`)
+	modifiedDat := []byte(re.ReplaceAllString(string(dat), newVersionString))
 	err = ioutil.WriteFile(filePath, modifiedDat, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -127,7 +130,9 @@ func updateBadge(filePath string, version string) {
 	}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
-	modifiedDat := []byte(strings.Replace(string(dat), "version-development-orange.svg", newSvgName, 1))
+	var re = regexp.MustCompile(`version-(.*)-orange.svg`)
+	modifiedDat := []byte(re.ReplaceAllString(string(dat), newSvgName))
+
 	err = ioutil.WriteFile(filePath, modifiedDat, 0644)
 	if err != nil {
 		log.Fatal(err)
