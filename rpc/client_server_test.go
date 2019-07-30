@@ -179,8 +179,8 @@ func TestGetOrdersSuccess(t *testing.T) {
 			assert.Equal(t, expectedSnapshotID, snapshotID)
 			orderHash, err := signedTestOrder.ComputeOrderHash()
 			require.NoError(t, err)
-			ordersInfos := []*zeroex.AcceptedOrderInfo{
-				&zeroex.AcceptedOrderInfo{
+			ordersInfos := []*OrderInfo{
+				&OrderInfo{
 					OrderHash:                orderHash,
 					SignedOrder:              signedTestOrder,
 					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
