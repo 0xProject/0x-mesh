@@ -91,9 +91,23 @@ export interface RawAcceptedOrderInfo {
     orderHash: string;
     signedOrder: StringifiedSignedOrder;
     fillableTakerAssetAmount: string;
+    isNew: boolean;
 }
 
 export interface AcceptedOrderInfo {
+    orderHash: string;
+    signedOrder: SignedOrder;
+    fillableTakerAssetAmount: BigNumber;
+    isNew: boolean;
+}
+
+export interface RawOrderInfo {
+    orderHash: string;
+    signedOrder: StringifiedSignedOrder;
+    fillableTakerAssetAmount: string;
+}
+
+export interface OrderInfo {
     orderHash: string;
     signedOrder: SignedOrder;
     fillableTakerAssetAmount: BigNumber;

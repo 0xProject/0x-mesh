@@ -68,12 +68,14 @@ type AcceptedOrderInfo struct {
 	OrderHash                common.Hash  `json:"orderHash"`
 	SignedOrder              *SignedOrder `json:"signedOrder"`
 	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
+	IsNew                    bool         `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
 	OrderHash                string       `json:"orderHash"`
 	SignedOrder              *SignedOrder `json:"signedOrder"`
 	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
+	IsNew                    bool         `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
@@ -82,6 +84,7 @@ func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
 		"orderHash":                a.OrderHash.Hex(),
 		"signedOrder":              a.SignedOrder,
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
+		"isNew":                    a.IsNew,
 	})
 }
 
@@ -95,6 +98,7 @@ func (a *AcceptedOrderInfo) UnmarshalJSON(data []byte) error {
 
 	a.OrderHash = common.HexToHash(acceptedOrderInfoJSON.OrderHash)
 	a.SignedOrder = acceptedOrderInfoJSON.SignedOrder
+	a.IsNew = acceptedOrderInfoJSON.IsNew
 	var ok bool
 	a.FillableTakerAssetAmount, ok = math.ParseBig256(acceptedOrderInfoJSON.FillableTakerAssetAmount)
 	if !ok {
@@ -251,7 +255,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *ValidationResults {
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrders bool) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -389,6 +393,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								OrderHash:                orderHash,
 								SignedOrder:              signedOrder,
 								FillableTakerAssetAmount: fillableTakerAssetAmount,
+								IsNew:                    areNewOrders,
 							})
 						}
 						continue

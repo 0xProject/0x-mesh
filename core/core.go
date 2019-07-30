@@ -463,7 +463,7 @@ func (e ErrSnapshotNotFound) Error() string {
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
-	ordersInfos := []*zeroex.AcceptedOrderInfo{}
+	ordersInfos := []*rpc.OrderInfo{}
 	if perPage <= 0 {
 		return &rpc.GetOrdersResponse{
 			OrdersInfos: ordersInfos,
@@ -515,7 +515,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		return nil, err
 	}
 	for _, order := range selectedOrders {
-		ordersInfos = append(ordersInfos, &zeroex.AcceptedOrderInfo{
+		ordersInfos = append(ordersInfos, &rpc.OrderInfo{
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
