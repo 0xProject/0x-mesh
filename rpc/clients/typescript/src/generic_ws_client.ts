@@ -90,22 +90,16 @@ export class GenericWSClient extends EventEmitter {
      * @param parameters Additional parameters to subscribe call
      * @returns The subscriptionId of an error
      */
-    public subscribeAsync(subscribeMethod: string, subscriptionMethod: string, parameters: any[]): Promise<any> {
+    public async subscribeAsync(subscribeMethod: string, subscriptionMethod: string, parameters: any[]): Promise<any> {
         parameters.unshift(subscriptionMethod);
 
-        return this.sendAsync(subscribeMethod, parameters)
-            .then(subscriptionId => {
-                this._subscriptions[subscriptionId] = {
-                    id: subscriptionId,
-                    subscribeMethod,
-                    parameters,
-                };
-
-                return subscriptionId;
-            })
-            .catch(error => {
-                throw new Error(`Provider error: ${error}`);
-            });
+        const subscriptionId = await this.sendAsync(subscribeMethod, parameters);
+        this._subscriptions[subscriptionId] = {
+            id: subscriptionId,
+            subscribeMethod,
+            parameters,
+        };
+        return subscriptionId;
     }
     /**
      * Unsubscribes the subscription by his id
@@ -114,39 +108,39 @@ export class GenericWSClient extends EventEmitter {
      *
      * @returns either a boolean of whether the subscription was cancelled, or an error
      */
-    public unsubscribeAsync(subscriptionId: string, unsubscribeMethod: string): Promise<boolean | Error> {
-        if (this._hasSubscription(subscriptionId)) {
-            return this.sendAsync(unsubscribeMethod, [subscriptionId]).then(response => {
-                if (response) {
-                    this._removeAllListeners(this._getSubscriptionEvent(subscriptionId));
-
-                    delete this._subscriptions[subscriptionId];
-                }
-
-                return response;
-            });
+    public async unsubscribeAsync(subscriptionId: string, unsubscribeMethod: string): Promise<boolean> {
+        const isSubscribed = await this.sendAsync(unsubscribeMethod, [subscriptionId]);
+        if (typeof isSubscribed !== 'boolean') {
+            throw new Error('Received non-boolean response to unsubscribe request');
         }
+        if (isSubscribed) {
+            this._removeAllListeners(this._getSubscriptionEvent(subscriptionId));
 
-        return Promise.reject(new Error(`Provider error: Subscription with ID ${subscriptionId} does not exist.`));
+            delete this._subscriptions[subscriptionId];
+        }
+        return isSubscribed;
     }
     /**
      * Clears all _subscriptions and listeners
      * @param unsubscribeMethod JSON-RPC unsubscribe method
      * @returns true if clearing subscription succeeds, otherwise an error
      */
-    public async clearSubscriptionsAsync(unsubscribeMethod: string): Promise<boolean | Error> {
+    public async clearSubscriptionsAsync(unsubscribeMethod: string): Promise<boolean> {
         const unsubscribePromises: Array<Promise<any>> = [];
 
-        Object.keys(this._subscriptions).forEach(key => {
-            this._removeAllListeners(key);
-            unsubscribePromises.push(this.unsubscribeAsync(this._subscriptions[key].id, unsubscribeMethod));
-        });
+        const subscriptionIds = Object.keys(this._subscriptions);
+        for (const subscriptionId of subscriptionIds) {
+            if (!this._hasSubscription(subscriptionId)) {
+                throw new Error(`Subscription with ID ${subscriptionId} does not exist.`);
+            }
+            this._removeAllListeners(subscriptionId);
+            unsubscribePromises.push(this.unsubscribeAsync(subscriptionId, unsubscribeMethod));
+        }
 
         return Promise.all(unsubscribePromises).then(results => {
             if (results.includes(false)) {
                 throw new Error(`Could not unsubscribe all _subscriptions: ${JSON.stringify(results)}`);
             }
-
             return true;
         });
     }
@@ -262,9 +256,7 @@ export class GenericWSClient extends EventEmitter {
             responseObject = JSON.parse(response);
         }
 
-        if (Array.isArray(responseObject)) {
-            event = responseObject[0].id;
-        } else if (typeof responseObject.id === 'undefined') {
+        if (typeof responseObject.id === 'undefined') {
             event = this._getSubscriptionEvent(responseObject.params.subscription);
             responseObject = responseObject.params;
         } else {
@@ -278,23 +270,22 @@ export class GenericWSClient extends EventEmitter {
      * Emits the connect event and checks if there are _subscriptions defined that should be resubscribed.
      */
     private async _onConnectAsync(): Promise<void> {
-        const subscriptionKeys = Object.keys(this._subscriptions);
+        const subscriptionIds = Object.keys(this._subscriptions);
 
-        if (subscriptionKeys.length > 0) {
+        if (subscriptionIds.length > 0) {
             let subscriptionId;
 
-            for (const key of subscriptionKeys) {
+            for (const aSubscriptionId of subscriptionIds) {
                 subscriptionId = await this.subscribeAsync(
-                    this._subscriptions[key].subscribeMethod,
-                    this._subscriptions[key].parameters[0],
-                    this._subscriptions[key].parameters.slice(1),
+                    this._subscriptions[aSubscriptionId].subscribeMethod,
+                    this._subscriptions[aSubscriptionId].parameters[0],
+                    this._subscriptions[aSubscriptionId].parameters.slice(1),
                 );
 
-                if (key !== subscriptionId) {
+                if (aSubscriptionId !== subscriptionId) {
                     delete this._subscriptions[subscriptionId];
                 }
-
-                this._subscriptions[key].id = subscriptionId;
+                this._subscriptions[aSubscriptionId].id = subscriptionId;
             }
         }
 
@@ -406,9 +397,10 @@ export class GenericWSClient extends EventEmitter {
         }
 
         let event: string | undefined;
-        for (const key in this._subscriptions) {
-            if (this._subscriptions[key].id === subscriptionId) {
-                event = key;
+        const subscriptionIds = Object.keys(this._subscriptions);
+        for (const aSubscriptionId of subscriptionIds) {
+            if (this._subscriptions[aSubscriptionId].id === subscriptionId) {
+                event = subscriptionId;
             }
         }
 
