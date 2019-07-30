@@ -1,6 +1,9 @@
+.DS_Store
 vendor/
 node_modules/
 TODO.md
 0x_mesh/
 examples/javascript_websocket_client/node_modules
 examples/javascript_websocket_client/lib
+rpc/clients/typescript/node_modules
+rpc/clients/typescript/lib

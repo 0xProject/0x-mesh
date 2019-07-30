@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-1.0.6--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
 [![GoDoc](https://godoc.org/github.com/0xProject/0x-mesh?status.svg)](https://godoc.org/github.com/0xProject/0x-mesh)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
@@ -8,30 +8,24 @@
 0x Mesh is a peer-to-peer network for sharing orders that adhere to the
 [0x order message format](https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md#order-message-format).
 
-:no_entry: WARNING: This project is still under active development. Expect breaking changes before the official release. :no_entry:
-
-## Versions
-
-You are looking at the documentation for version `1.0.6-beta`. To see the
-documentation for a different version, visit the
-[Releases Page](https://github.com/0xProject/0x-mesh/releases).
+WARNING: This project is still under active development. Expect breaking changes before the official release.
 
 ## Deployment
 
-[The Deployment Guide](DEPLOYMENT.md)
+[The Deployment Guide](docs/DEPLOYMENT.md)
 will walk you through how to configure and deploy your own 0x Mesh node.
 
 ## Usage
 
 Once you have deployed a 0x Mesh node, the
-[Usage Guide](USAGE.md)
+[Usage Guide](docs/USAGE.md)
 explains how to interact with it using the JSON-RPC API.
 
 ## Development
 
 We love receiving contributions from the community :smile: If you are interested
 in helping develop 0x Mesh, please read the
-[Development Guide](DEVELOPMENT.md).
+[Development Guide](docs/DEVELOPMENT.md).
 If you are looking for a place to start, take a look at the
 [issues page](https://github.com/0xProject/0x-mesh/issues) and don't hesitate to
 [reach out to us on Discord](https://discord.gg/HF7fHwk).

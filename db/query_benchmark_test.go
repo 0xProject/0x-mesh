@@ -12,6 +12,7 @@ const defaultTargetNickname = "target"
 func setupQueryBenchmark(b *testing.B) (db *DB, col *Collection, nicknameIndex *Index) {
 	b.Helper()
 	db = newTestDB(b)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(b, err)
 	nicknameIndex = col.AddMultiIndex("nicknames", func(m Model) [][]byte {

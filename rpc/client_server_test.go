@@ -29,6 +29,7 @@ type dummyRPCHandler struct {
 	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
+	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
@@ -53,6 +54,13 @@ func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return d.addPeerHandler(peerInfo)
 }
 
+func (d *dummyRPCHandler) GetStats() (*GetStatsResponse, error) {
+	if d.getStatsHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for GetStats")
+	}
+	return d.getStatsHandler()
+}
+
 func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error) {
 	if d.subscribeToOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for Orders")
@@ -65,12 +73,16 @@ func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscript
 // orderHandler to handle incoming requests. Useful for testing purposes. Will
 // block until both the server and client are running and connected to one
 // another.
-func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler) (*Server, *Client) {
+func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler, ctx context.Context) (*Server, *Client) {
 	// Start a new server.
 	server, err := NewServer(":0", rpcHandler)
 	require.NoError(t, err)
 	go func() {
-		_ = server.Listen()
+		err := server.Listen(ctx)
+		if err != nil {
+			panic(err)
+		}
+		require.NoError(t, err)
 	}()
 
 	// We need to wait for the OS to choose an available port and for server.Addr
@@ -125,6 +137,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 					OrderHash:                orderHash,
 					SignedOrder:              signedOrder,
 					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
+					IsNew:                    true,
 				})
 			}
 			wg.Done()
@@ -132,8 +145,9 @@ func TestAddOrdersSuccess(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	validationResponse, err := client.AddOrders(signedTestOrders)
@@ -173,8 +187,8 @@ func TestGetOrdersSuccess(t *testing.T) {
 			assert.Equal(t, expectedSnapshotID, snapshotID)
 			orderHash, err := signedTestOrder.ComputeOrderHash()
 			require.NoError(t, err)
-			ordersInfos := []*zeroex.AcceptedOrderInfo{
-				&zeroex.AcceptedOrderInfo{
+			ordersInfos := []*OrderInfo{
+				&OrderInfo{
 					OrderHash:                orderHash,
 					SignedOrder:              signedTestOrder,
 					FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
@@ -188,8 +202,9 @@ func TestGetOrdersSuccess(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
 	require.NoError(t, err)
@@ -232,12 +247,50 @@ func TestAddPeer(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
 
 	// The WaitGroup signals that AddPeer was called on the server-side.
+	wg.Wait()
+}
+
+func TestGetStats(t *testing.T) {
+	expectedGetStatsResponse := &GetStatsResponse{
+		Version:           "development",
+		PubSubTopic:       "/0x-orders/network/development/version/1",
+		Rendezvous:        "/0x-mesh/network/development/version/1",
+		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
+		EthereumNetworkID: 42,
+		LatestBlock: LatestBlock{
+			Number: 1,
+			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		},
+		NumOrders: 0,
+		NumPeers:  0,
+	}
+
+	// Set up the dummy handler with a getStatsHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		getStatsHandler: func() (*GetStatsResponse, error) {
+			wg.Done()
+			return expectedGetStatsResponse, nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
+
+	getStatsResponse, err := client.GetStats()
+	require.NoError(t, err)
+	require.Equal(t, expectedGetStatsResponse, getStatsResponse)
+
+	// The WaitGroup signals that GetStats was called on the server-side.
 	wg.Wait()
 }
 
@@ -254,8 +307,9 @@ func TestOrdersSubscription(t *testing.T) {
 		},
 	}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	orderEventChan := make(chan []*zeroex.OrderEvent)
 	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventChan)
@@ -271,8 +325,9 @@ func TestHeartbeatSubscription(t *testing.T) {
 
 	rpcHandler := &dummyRPCHandler{}
 
-	server, client := newTestServerAndClient(t, rpcHandler)
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
 	heartbeatChan := make(chan string)
 	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)

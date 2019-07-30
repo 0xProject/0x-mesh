@@ -1,6 +1,6 @@
 // +build !js
 
-// package core contains everything needed to configure and run a 0x Mesh node.
+// Package core contains everything needed to configure and run a 0x Mesh node.
 package core
 
 import (
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -42,6 +44,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
+	version                    = "2.0.0-beta"
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -86,6 +89,8 @@ type snapshotInfo struct {
 
 type App struct {
 	config                    Config
+	peerID                    peer.ID
+	privKey                   p2pcrypto.PrivKey
 	db                        *meshdb.MeshDB
 	node                      *p2p.Node
 	networkID                 int
@@ -105,19 +110,33 @@ func New(config Config) (*App, error) {
 	// TODO(albrow): Don't use global variables for log settings.
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
-	log.WithFields(map[string]interface{}{
-		"config":  config,
-		"version": "1.0.6-beta",
-	}).Info("Initializing new core.App")
+
+	// Load private key and add peer ID hook.
+	privKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
+	privKey, err := initPrivateKey(privKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
 	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
 		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
 	}
+	config = unquoteConfig(config)
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.NewMeshDB(databasePath)
+	meshDB, err := meshdb.New(databasePath)
 	if err != nil {
+		return nil, err
+	}
+
+	// Check if the DB has been previously intialized with a different networkId
+	if err = initNetworkID(config.EthereumNetworkID, meshDB); err != nil {
 		return nil, err
 	}
 
@@ -143,16 +162,6 @@ func New(config Config) (*App, error) {
 		Client:              blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	go func() {
-		for {
-			err, isOpen := <-blockWatcher.Errors
-			if isOpen {
-				log.WithField("error", err).Error("BlockWatcher error encountered")
-			} else {
-				return // Exit when the error channel is closed
-			}
-		}
-	}()
 
 	// Initialize the order validator
 	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
@@ -186,6 +195,8 @@ func New(config Config) (*App, error) {
 
 	app := &App{
 		config:                    config,
+		privKey:                   privKey,
+		peerID:                    peerID,
 		db:                        meshDB,
 		networkID:                 config.EthereumNetworkID,
 		blockWatcher:              blockWatcher,
@@ -198,31 +209,23 @@ func New(config Config) (*App, error) {
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 	}
 
-	// Initialize the p2p node.
-	privateKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
-	privKey, err := initPrivateKey(privateKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(config.EthereumNetworkID),
-		ListenPort:       config.P2PListenPort,
-		Insecure:         false,
-		PrivateKey:       privKey,
-		MessageHandler:   app,
-		RendezvousString: getRendezvous(config.EthereumNetworkID),
-		UseBootstrapList: config.UseBootstrapList,
-	}
-	node, err := p2p.New(nodeConfig)
-	if err != nil {
-		return nil, err
-	}
-	app.node = node
-
-	// Add the peer ID hook to the logger.
-	log.AddHook(loghooks.NewPeerIDHook(node.ID()))
+	log.WithFields(map[string]interface{}{
+		"config":  config,
+		"version": version,
+	}).Info("finished initializing core.App")
 
 	return app, nil
+}
+
+// unquoteConfig removes quotes (if needed) from each string field in config.
+func unquoteConfig(config Config) Config {
+	if unquotedEthereumRPCURL, err := strconv.Unquote(config.EthereumRPCURL); err == nil {
+		config.EthereumRPCURL = unquotedEthereumRPCURL
+	}
+	if unquotedDataDir, err := strconv.Unquote(config.DataDir); err == nil {
+		config.DataDir = unquotedDataDir
+	}
+	return config
 }
 
 func getPubSubTopic(networkID int) string {
@@ -247,41 +250,53 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func (app *App) Start() error {
-	go func() {
-		err := app.node.Start()
-		if err != nil {
-			log.WithField("error", err.Error()).Error("p2p node returned error")
-			app.Close()
+func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
+	metadata, err := meshDB.GetMetadata()
+	if err != nil {
+		if _, ok := err.(db.NotFoundError); ok {
+			// No stored metadata found (first startup)
+			metadata = &meshdb.Metadata{EthereumNetworkID: networkID}
+			if err := meshDB.SaveMetadata(metadata); err != nil {
+				return err
+			}
+			return nil
 		}
-	}()
-	addrs := app.node.Multiaddrs()
-	go app.periodicallyCheckForNewAddrs(addrs)
-	log.WithFields(map[string]interface{}{
-		"addresses": addrs,
-	}).Info("started p2p node")
+		return err
+	}
 
-	// TODO(albrow) we might want to match the synchronous API of p2p.Node which
-	// returns any fatal errors. As it currently stands, if one of these watchers
-	// experiences a fatal error or crashes, it is difficult for us to tear down
-	// correctly.
-	if err := app.orderWatcher.Start(); err != nil {
+	// on subsequent startups, verify we are on the same network
+	if metadata.EthereumNetworkID != networkID {
+		err := fmt.Errorf("expected networkID to be %d but got %d", metadata.EthereumNetworkID, networkID)
+		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
 		return err
 	}
-	log.Info("started order watcher")
-	if err := app.blockWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started block watcher")
-	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
-	// for future use by the order storing algorithm.
-	if err := app.ethWatcher.Start(); err != nil {
-		return err
-	}
-	log.Info("started ETH balance watcher")
+	return nil
+}
+
+func (app *App) Start(ctx context.Context) error {
+	// Create a child context so that we can preemptively cancel if there is an
+	// error.
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Below, we will start several independent goroutines. We use separate
+	// channels to communicate errors and a waitgroup to wait for all goroutines
+	// to exit.
+	wg := &sync.WaitGroup{}
+
+	// Close the database when the context is canceled.
+	wg.Add(1)
 	go func() {
-		expiredSnapshotsChan := app.snapshotExpirationWatcher.Receive()
-		for expiredSnapshots := range expiredSnapshotsChan {
+		defer wg.Done()
+		<-innerCtx.Done()
+		app.db.Close()
+	}()
+
+	// Set up and start the snapshot expiration watcher.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for expiredSnapshots := range app.snapshotExpirationWatcher.ExpiredItems() {
 			for _, expiredSnapshot := range expiredSnapshots {
 				app.muIdToSnapshotInfo.Lock()
 				delete(app.idToSnapshotInfo, expiredSnapshot.ID)
@@ -289,30 +304,147 @@ func (app *App) Start() error {
 			}
 		}
 	}()
-	if err := app.snapshotExpirationWatcher.Start(expirationPollingInterval); err != nil {
+	snapshotExpirationWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		snapshotExpirationWatcherErrChan <- app.snapshotExpirationWatcher.Watch(innerCtx, expirationPollingInterval)
+	}()
+
+	// Start the order watcher.
+	orderWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting order watcher")
+		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
+	}()
+
+	// Start the ETH balance watcher.
+	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
+	// for future use by the order storing algorithm.
+	ethWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting ETH balance watcher")
+		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
+	}()
+
+	// Backfill block events if needed. This is a blocking call so we won't
+	// continue set up until its finished.
+	if err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx); err != nil {
 		return err
 	}
-	log.Info("started snapshot expiration watcher")
 
+	// Start the block watcher.
+	blockWatcherErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Info("starting block watcher")
+		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
+	}()
+
+	// Initialize the p2p node.
+	nodeConfig := p2p.Config{
+		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
+		ListenPort:       app.config.P2PListenPort,
+		Insecure:         false,
+		PrivateKey:       app.privKey,
+		MessageHandler:   app,
+		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
+		UseBootstrapList: app.config.UseBootstrapList,
+	}
+	var err error
+	app.node, err = p2p.New(innerCtx, nodeConfig)
+	if err != nil {
+		return err
+	}
+
+	// Start the p2p node.
+	p2pErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		addrs := app.node.Multiaddrs()
+		log.WithFields(map[string]interface{}{
+			"addresses": addrs,
+		}).Info("starting p2p node")
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
+		}()
+
+		p2pErrChan <- app.node.Start()
+	}()
+
+	// If any error channel returns a non-nil error, we cancel the inner context
+	// and return the error. Note that this means we only return the first error
+	// that occurs.
+	select {
+	case err := <-p2pErrChan:
+		if err != nil {
+			log.WithError(err).Error("p2p node exited with error")
+			cancel()
+			return err
+		}
+	case err := <-orderWatcherErrChan:
+		if err != nil {
+			log.WithError(err).Error("order watcher exited with error")
+			cancel()
+			return err
+		}
+	case err := <-blockWatcherErrChan:
+		log.WithError(err).Error("block watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-ethWatcherErrChan:
+		log.WithError(err).Error("eth watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-snapshotExpirationWatcherErrChan:
+		log.WithError(err).Error("snapshot expiration watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	}
+
+	// Wait for all goroutines to exit. If we reached here it means we are done
+	// and there are no errors.
+	wg.Wait()
 	return nil
 }
 
-func (app *App) periodicallyCheckForNewAddrs(startingAddrs []ma.Multiaddr) {
+func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs []ma.Multiaddr) {
+	// TODO(albrow): There might be a more efficient way to do this if we have access to
+	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
 	seenAddrs := stringset.New()
 	for _, addr := range startingAddrs {
 		seenAddrs.Add(addr.String())
 	}
-	// TODO: There might be a more efficient way to do this if we have access to
-	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
+	ticker := time.NewTicker(checkNewAddrInterval)
 	for {
-		time.Sleep(checkNewAddrInterval)
-		newAddrs := app.node.Multiaddrs()
-		for _, addr := range newAddrs {
-			if !seenAddrs.Contains(addr.String()) {
-				log.WithFields(map[string]interface{}{
-					"address": addr,
-				}).Info("found new listen address")
-				seenAddrs.Add(addr.String())
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			newAddrs := app.node.Multiaddrs()
+			for _, addr := range newAddrs {
+				if !seenAddrs.Contains(addr.String()) {
+					log.WithFields(map[string]interface{}{
+						"address": addr,
+					}).Info("found new listen address")
+					seenAddrs.Add(addr.String())
+				}
 			}
 		}
 	}
@@ -332,7 +464,7 @@ func (e ErrSnapshotNotFound) Error() string {
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
-	ordersInfos := []*zeroex.AcceptedOrderInfo{}
+	ordersInfos := []*rpc.OrderInfo{}
 	if perPage <= 0 {
 		return &rpc.GetOrdersResponse{
 			OrdersInfos: ordersInfos,
@@ -384,7 +516,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		return nil, err
 	}
 	for _, order := range selectedOrders {
-		ordersInfos = append(ordersInfos, &zeroex.AcceptedOrderInfo{
+		ordersInfos = append(ordersInfos, &rpc.OrderInfo{
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -447,7 +579,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		signedOrder := &zeroex.SignedOrder{}
 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 			// This error should never happen since the signedOrder already passed the JSON schema validation above
-			log.WithField("signedOrderRaw", string(signedOrderBytes)).Panic("Failed to unmarshal SignedOrder")
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
+			return nil, err
 		}
 		schemaValidOrders = append(schemaValidOrders, signedOrder)
 	}
@@ -464,7 +597,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 	}
 
 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
-		err = app.orderWatcher.Watch(acceptedOrderInfo)
+		err = app.orderWatcher.Add(acceptedOrderInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -474,26 +607,40 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 
 // AddPeer can be used to manually connect to a new peer.
 func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
-	ctx, cancel := context.WithTimeout(context.Background(), peerConnectTimeout)
-	defer cancel()
-	return app.node.Connect(ctx, peerInfo)
+	return app.node.Connect(peerInfo, peerConnectTimeout)
+}
+
+// GetStats retrieves stats about the Mesh node
+func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
+	latestBlockHeader, err := app.blockWatcher.GetLatestBlock()
+	if err != nil {
+		return nil, err
+	}
+	latestBlock := rpc.LatestBlock{
+		Number: int(latestBlockHeader.Number.Int64()),
+		Hash:   latestBlockHeader.Hash,
+	}
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &rpc.GetStatsResponse{
+		Version:           version,
+		PubSubTopic:       getPubSubTopic(app.config.EthereumNetworkID),
+		Rendezvous:        getRendezvous(app.config.EthereumNetworkID),
+		PeerID:            app.peerID.String(),
+		EthereumNetworkID: app.config.EthereumNetworkID,
+		LatestBlock:       latestBlock,
+		NumOrders:         numOrders,
+		NumPeers:          app.node.GetNumPeers(),
+	}
+	return response, nil
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
 func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.Subscription {
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
-}
-
-// Close closes the app
-func (app *App) Close() {
-	if err := app.node.Close(); err != nil {
-		log.WithField("error", err.Error()).Error("error while closing node")
-	}
-	app.ethWatcher.Stop()
-	if err := app.orderWatcher.Stop(); err != nil {
-		log.WithField("error", err.Error()).Error("error while closing orderWatcher")
-	}
-	app.blockWatcher.Stop()
-	app.db.Close()
 }

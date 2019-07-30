@@ -6,7 +6,7 @@ automatically logs a lot of useful information including the number of orders
 processed and details about any errors and warnings that might occur. Sending
 this information to us is extraordinarily helpful, but completely optional. If
 you don't want to enable telemetry, you can follow the
-[Deployment Guide](../../DEPLOYMENT.md) instead.
+[Deployment Guide](docs/DEPLOYMENT.md) instead.
 
 This guide will walk you though setting up a telemetry-enabled Mesh node on the cloud hosting solution of your choice using [Docker Machine](https://docs.docker.com/machine/). The instructions below will deploy a Mesh node on [DigitalOcean](https://www.digitalocean.com/), but can be easily modified to deploy on [many other cloud providers](https://docs.docker.com/machine/drivers/).
 
@@ -90,7 +90,7 @@ that looks like this:
 
 Ping us in [Discord](https://discord.gg/HF7fHwk) and let us know your peer ID. You can DM `fabio#1058`, `Alex Browne | 0x#2975` or `ovrmrrw#0454` and we'll whitelist your node :)
 
-I hope that was easy enough! If you ran into any issues, please ping us in the #mesh channel on [Discord](https://discord.gg/HF7fHwk). To learn more about connecting to your Mesh node's JSON RPC interface, check out our [Usage docs](../../USAGE.md). Your node's JSON RPC endpoint should be available at `ws://<your-ip-address>:60557` and you can discover your machine's IP address by running:
+I hope that was easy enough! If you ran into any issues, please ping us in the #mesh channel on [Discord](https://discord.gg/HF7fHwk). To learn more about connecting to your Mesh node's JSON RPC interface, check out our [Usage docs](docs/USAGE.md). Your node's JSON RPC endpoint should be available at `ws://<your-ip-address>:60557` and you can discover your machine's IP address by running:
 
 ```
 docker-machine ip mesh-beta

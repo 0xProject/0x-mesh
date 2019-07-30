@@ -43,3 +43,16 @@ jobs:
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
+      - run:
+          name: Install TS RPC client dependencies
+          command: cd rpc/clients/typescript && yarn install
+      - run:
+          name: Run TS RPC client linter
+          command: cd rpc/clients/typescript && yarn lint
+      - run:
+          name: Build TS RPC client
+          command: cd rpc/clients/typescript && yarn build
+      - run:
+          name: Run TS RPC client tests
+          command: cd rpc/clients/typescript && yarn test
+

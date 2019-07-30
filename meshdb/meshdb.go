@@ -45,9 +45,20 @@ func (o Order) ID() []byte {
 	return o.Hash.Bytes()
 }
 
+// Metadata is the database representation of MeshDB instance metadata
+type Metadata struct {
+	EthereumNetworkID int
+}
+
+// ID returns the id used for the metadata collection (one per DB)
+func (m Metadata) ID() []byte {
+	return []byte{0}
+}
+
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
 	database    *db.DB
+	metadata    *MetadataCollection
 	MiniHeaders *MiniHeadersCollection
 	Orders      *OrdersCollection
 }
@@ -67,8 +78,13 @@ type OrdersCollection struct {
 	IsRemovedIndex                       *db.Index
 }
 
-// NewMeshDB instantiates a new MeshDB instance
-func NewMeshDB(path string) (*MeshDB, error) {
+// MetadataCollection represents a DB collection used to store instance metadata
+type MetadataCollection struct {
+	*db.Collection
+}
+
+// New instantiates a new MeshDB instance
+func New(path string) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err
@@ -84,8 +100,14 @@ func NewMeshDB(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
+	metadata, err := setupMetadata(database)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MeshDB{
 		database:    database,
+		metadata:    metadata,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
 	}, nil
@@ -170,6 +192,14 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 	}, nil
 }
 
+func setupMetadata(database *db.DB) (*MetadataCollection, error) {
+	col, err := database.NewCollection("metadata", &Metadata{})
+	if err != nil {
+		return nil, err
+	}
+	return &MetadataCollection{col}, nil
+}
+
 // Close closes the database connection
 func (m *MeshDB) Close() {
 	m.database.Close()
@@ -179,8 +209,7 @@ func (m *MeshDB) Close() {
 func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 	miniHeaders := []*MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All())
-	err := query.Run(&miniHeaders)
-	if err != nil {
+	if err := query.Run(&miniHeaders); err != nil {
 		return nil, err
 	}
 	return miniHeaders, nil
@@ -191,8 +220,7 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
 	miniHeaders := []*MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All()).Reverse().Max(1)
-	err := query.Run(&miniHeaders)
-	if err != nil {
+	if err := query.Run(&miniHeaders); err != nil {
 		return nil, err
 	}
 	if len(miniHeaders) == 0 {
@@ -206,8 +234,7 @@ func (m *MeshDB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order
 	prefix := []byte(makerAddress.Hex() + "|")
 	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
 	orders := []*Order{}
-	err := m.Orders.NewQuery(filter).Run(&orders)
-	if err != nil {
+	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
@@ -222,8 +249,7 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 	}
 	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
 	orders := []*Order{}
-	err := m.Orders.NewQuery(filter).Run(&orders)
-	if err != nil {
+	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
@@ -240,8 +266,7 @@ func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address,
 	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), saltPlusOne.String()))
 	filter := m.Orders.MakerAddressAndSaltIndex.RangeFilter(start, limit)
 	orders := []*Order{}
-	err := m.Orders.NewQuery(filter).Run(&orders)
-	if err != nil {
+	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
@@ -254,11 +279,27 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	limit := []byte(lastUpdated.UTC().Format(time.RFC3339Nano))
 	filter := m.Orders.LastUpdatedIndex.RangeFilter(start, limit)
 	orders := []*Order{}
-	err := m.Orders.NewQuery(filter).Run(&orders)
-	if err != nil {
+	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
+}
+
+// GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
+func (m *MeshDB) GetMetadata() (*Metadata, error) {
+	var metadata Metadata
+	if err := m.metadata.FindByID([]byte{0}, &metadata); err != nil {
+		return nil, err
+	}
+	return &metadata, nil
+}
+
+// SaveMetadata inserts the metadata into the database.
+func (m *MeshDB) SaveMetadata(metadata *Metadata) error {
+	if err := m.metadata.Insert(metadata); err != nil {
+		return err
+	}
+	return nil
 }
 
 type singleAssetData struct {

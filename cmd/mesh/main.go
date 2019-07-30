@@ -6,6 +6,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
@@ -39,17 +41,21 @@ func main() {
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("could not initialize app")
 	}
-	if err := app.Start(); err != nil {
-		log.WithField("error", err.Error()).Fatal("fatal error while starting app")
-	}
-	defer app.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := app.Start(ctx); err != nil {
+			cancel()
+			log.WithField("error", err.Error()).Error("core app exited with error")
+		}
+	}()
 
 	// Start RPC server.
 	go func() {
-		err := listenRPC(app, config)
-		if err != nil {
-			app.Close()
-			log.WithField("error", err.Error()).Fatal("RPC server returned error")
+		if err := listenRPC(app, config, ctx); err != nil {
+			cancel()
+			log.WithField("error", err.Error()).Error("RPC server returned error")
 		}
 	}()
 

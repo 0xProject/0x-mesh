@@ -33,7 +33,7 @@ test-all: test-go test-wasm
 
 .PHONY: test-go
 test-go:
-	go test ./... -race
+	go test ./... -race -timeout 30s
 
 
 .PHONY: test-wasm
@@ -64,6 +64,10 @@ mesh-bootstrap:
 .PHONY: db-integrity-check
 db-integrity-check:
 	go install ./cmd/db-integrity-check
+
+.PHONY: cut-release
+cut-release:
+	go run ./cmd/cut-release/main.go
 
 
 .PHONY: all

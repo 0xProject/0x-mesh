@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -11,15 +12,14 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"errors"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
@@ -68,12 +68,14 @@ type AcceptedOrderInfo struct {
 	OrderHash                common.Hash  `json:"orderHash"`
 	SignedOrder              *SignedOrder `json:"signedOrder"`
 	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
+	IsNew                    bool         `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
-	OrderHash                string  `json:"orderHash"`
+	OrderHash                string       `json:"orderHash"`
 	SignedOrder              *SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string     `json:"fillableTakerAssetAmount"`
+	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
+	IsNew                    bool         `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
@@ -82,6 +84,7 @@ func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
 		"orderHash":                a.OrderHash.Hex(),
 		"signedOrder":              a.SignedOrder,
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
+		"isNew":                    a.IsNew,
 	})
 }
 
@@ -95,6 +98,7 @@ func (a *AcceptedOrderInfo) UnmarshalJSON(data []byte) error {
 
 	a.OrderHash = common.HexToHash(acceptedOrderInfoJSON.OrderHash)
 	a.SignedOrder = acceptedOrderInfoJSON.SignedOrder
+	a.IsNew = acceptedOrderInfoJSON.IsNew
 	var ok bool
 	a.FillableTakerAssetAmount, ok = math.ParseBig256(acceptedOrderInfoJSON.FillableTakerAssetAmount)
 	if !ok {
@@ -251,7 +255,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *ValidationResults {
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrders bool) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -330,8 +334,8 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
-							if err != nil { // Should never happen
-								log.WithField("error", err).Panic("Unexpectedly failed to generate orderHash")
+							if err != nil {
+								log.WithField("error", err).Error("Unexpectedly failed to generate orderHash")
 								continue
 							}
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
@@ -389,6 +393,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder) *Validati
 								OrderHash:                orderHash,
 								SignedOrder:              signedOrder,
 								FillableTakerAssetAmount: fillableTakerAssetAmount,
+								IsNew:                    areNewOrders,
 							})
 						}
 						continue
@@ -426,7 +431,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
-			log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+			log.WithError(err).WithField("signedOrder", signedOrder).Error("Computing the orderHash failed unexpectedly")
 		}
 		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
 		if !ok {
@@ -477,7 +482,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 		for _, signedOrder := range signedOrders {
 			orderHash, err := signedOrder.ComputeOrderHash()
 			if err != nil {
-				log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+				log.WithError(err).WithField("signedOrder", signedOrder).Error("Computing the orderHash failed unexpectedly")
 			}
 			orderHashToSignedOrder[orderHash] = signedOrder
 			orderHashes = append(orderHashes, orderHash)
@@ -485,7 +490,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 		payload := &bytes.Buffer{}
 		err := json.NewEncoder(payload).Encode(orderHashes)
 		if err != nil {
-			log.WithField("orderHashes", orderHashes).Panic("Unable to marshal `orderHashes` into JSON")
+			log.WithError(err).WithField("orderHashes", orderHashes).Error("Unable to marshal `orderHashes` into JSON")
 		}
 		// Check if the orders have been soft-cancelled by querying the Coordinator server
 		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
@@ -595,7 +600,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
-			log.WithField("signedOrder", signedOrder).Panic("Computing the orderHash failed unexpectedly")
+			log.WithError(err).WithField("signedOrder", signedOrder).Error("Computing the orderHash failed unexpectedly")
 		}
 		now := big.NewInt(time.Now().Unix())
 		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {

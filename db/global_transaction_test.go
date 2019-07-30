@@ -13,6 +13,7 @@ import (
 func TestGlobalTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})
@@ -140,7 +141,7 @@ func TestGlobalTransaction(t *testing.T) {
 	// that the mutexes are the thing enforcing that no new collections are
 	// created and no new writes are made to the db state until after the global
 	// transaction is committed.
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(transactionTestSleepDuration)
 
 	// Signal that we are about to commit the transaction, then commit it.
 	commitSignal <- struct{}{}
@@ -164,6 +165,7 @@ func TestGlobalTransaction(t *testing.T) {
 func TestGlobalTransactionCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -268,6 +270,7 @@ func TestGlobalTransactionCount(t *testing.T) {
 func TestGlobalTransactionExclusion(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})
@@ -337,7 +340,7 @@ func TestGlobalTransactionExclusion(t *testing.T) {
 		}()
 	}()
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(transactionTestSleepDuration)
 	discardSignal <- struct{}{}
 	require.NoError(t, txn.Discard())
 
