@@ -282,6 +282,18 @@
   dependencies:
     "@types/node" "*"
 
+"@types/detect-node@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@types/detect-node/-/detect-node-2.0.0.tgz#696e024ddd105c72bbc6a2e3f97902a2886f2c3f"
+  integrity sha512-+BozjlbPTACYITf1PWf62HLtDV79HbmZosUN1mv1gGrnjDCRwBXkDKka1sf6YQJvspmfPXVcy+X6tFW62KteeQ==
+
+"@types/eth-lightwallet@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@types/eth-lightwallet/-/eth-lightwallet-3.0.0.tgz#9be5b59dc6fb3fcdb01e65c2c2a79cd601f72dd4"
+  integrity sha512-AgE1V0Z9VqZ3bwZgUeIwJkKuyCP/vFaIFtZd7OZxhwD0Vsqjy9HqfT6IolrxXCTLWy9YkqcN7gL1jtIiH+Ml7Q==
+  dependencies:
+    "@types/node" "*"
+
 "@types/ethereum-protocol@*":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@types/ethereum-protocol/-/ethereum-protocol-1.0.0.tgz#416e3827d5fdfa4658b0045b35a008747871b271"
@@ -2218,6 +2230,11 @@ detect-node@2.0.3:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/detect-node/-/detect-node-2.0.3.tgz#a2033c09cc8e158d37748fbde7507832bd6ce127"
   integrity sha1-ogM8CcyOFY03dI+951B4Mr1s4Sc=
+
+detect-node@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/detect-node/-/detect-node-2.0.4.tgz#014ee8f8f669c5c58023da64b8179c083a28c46c"
+  integrity sha512-ZIzRpLJrOj7jjP2miAtgqIfmzbxa4ZOr5jJc601zklsfEx9oTzmmj2nVpIPRpNlRTIh8lc1kyViIY7BWSGNmKw==
 
 diff@3.3.1:
   version "3.3.1"

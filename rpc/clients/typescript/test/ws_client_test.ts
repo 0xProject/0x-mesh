@@ -416,7 +416,7 @@ describe('WSClient', () => {
                 wsServer.on('connect', async (connection: WebSocket.connection) => {
                     connection.on('message', (async (message: WSMessage) => {
                         const jsonRpcRequest = JSON.parse(message.utf8Data);
-                        if ((jsonRpcRequest as any).method === 'mesh_subscribe') {
+                        if ((jsonRpcRequest).method === 'mesh_subscribe') {
                             const response = `
                                 {
                                     "id": "${jsonRpcRequest.id}",

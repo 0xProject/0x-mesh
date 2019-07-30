@@ -23,10 +23,10 @@ const SOCKET_CONNECT = 'socket_connect';
  * all active subscriptions upon reconnect.
  */
 export class GenericWSClient extends EventEmitter {
-    private _timeoutIfExists?: number;
-    private _subscriptions: ObjectMap<Subscription>;
+    private readonly _timeoutIfExists?: number;
+    private readonly _subscriptions: ObjectMap<Subscription>;
     private _connection: any;
-    private _reconnectionTimeoutMs: number;
+    private readonly _reconnectionTimeoutMs: number;
     private _jsonRpcRequestId: number;
     // HACK(fabio): We could have used `WebSocket.connection` as the type for param `connection` but
     // the type definitions for the `websocket` package are very out-of-date and this would cause us
@@ -219,7 +219,7 @@ export class GenericWSClient extends EventEmitter {
      * @param closeEvent close event
      */
     private _onClose(closeEvent: CloseEvent): void {
-        if (closeEvent.code !== WebSocket.connection.CLOSE_REASON_NORMAL || closeEvent.wasClean === false) {
+        if (closeEvent.code !== WebSocket.connection.CLOSE_REASON_NORMAL || !closeEvent.wasClean) {
             this._reconnect();
 
             return;
@@ -251,7 +251,7 @@ export class GenericWSClient extends EventEmitter {
         const response = messageEvent.data;
         let event;
 
-        let responseObject = response as any;
+        let responseObject = response;
         if (typeof response !== 'object') {
             responseObject = JSON.parse(response);
         }
@@ -306,19 +306,19 @@ export class GenericWSClient extends EventEmitter {
     private _removeAllListeners(event?: string | symbol | undefined): any {
         switch (event) {
             case SOCKET_MESSAGE:
-                this._connection.removeEventListener('message', this._onMessage);
+                this._connection.removeEventListener('message', this._onMessage.bind(this));
                 break;
             case SOCKET_READY:
-                this._connection.removeEventListener('open', this._onReady);
+                this._connection.removeEventListener('open', this._onReady.bind(this));
                 break;
             case SOCKET_CLOSE:
-                this._connection.removeEventListener('close', this._onClose);
+                this._connection.removeEventListener('close', this._onClose.bind(this));
                 break;
             case SOCKET_ERROR:
-                this._connection.removeEventListener('error', this._onError);
+                this._connection.removeEventListener('error', this._onError.bind(this));
                 break;
             case SOCKET_CONNECT:
-                this._connection.removeEventListener('connect', this._onConnectAsync);
+                this._connection.removeEventListener('connect', this._onConnectAsync.bind(this));
                 break;
             default:
             // Noop

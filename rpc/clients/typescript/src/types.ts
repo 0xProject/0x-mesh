@@ -1,6 +1,5 @@
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
-import { any } from 'prop-types';
 
 /**
  * WebSocketClient configs

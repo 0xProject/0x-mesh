@@ -2,6 +2,7 @@ import { assert } from '@0x/assert';
 import { orderParsingUtils } from '@0x/order-utils';
 import { ObjectMap, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
+import isNode = require('detect-node');
 import { v4 as uuid } from 'uuid';
 import * as WebSocket from 'websocket';
 
@@ -57,7 +58,7 @@ const DEFAULT_WS_OPTS: WSOpts = {
 export class WSClient {
     private readonly _subscriptionIdToMeshSpecificId: ObjectMap<string>;
     private _heartbeatCheckIntervalId: number | undefined;
-    private _genericWsClient: GenericWSClient;
+    private readonly _genericWsClient: GenericWSClient;
     private static _convertRawAcceptedOrderInfos(rawAcceptedOrderInfos: RawAcceptedOrderInfo[]): AcceptedOrderInfo[] {
         const acceptedOrderInfos: AcceptedOrderInfo[] = [];
         rawAcceptedOrderInfos.forEach(rawAcceptedOrderInfo => {
@@ -71,117 +72,28 @@ export class WSClient {
         });
         return acceptedOrderInfos;
     }
-    private static _convertRawOrderInfos(rawOrderInfos: RawOrderInfo[]): OrderInfo[] {
-        const orderInfos: OrderInfo[] = [];
-        rawOrderInfos.forEach(rawOrderInfo => {
-            const orderInfo: OrderInfo = {
-                orderHash: rawOrderInfo.orderHash,
-                signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderInfo.signedOrder),
-                fillableTakerAssetAmount: new BigNumber(rawOrderInfo.fillableTakerAssetAmount),
-            };
-            orderInfos.push(orderInfo);
-        });
-        return orderInfos;
-    }
-    private static _convertStringifiedContractEvents(rawContractEvents: StringifiedContractEvent[]): ContractEvent[] {
-        const contractEvents: ContractEvent[] = [];
-        if (rawContractEvents === null) {
-            return contractEvents;
+    private static _instantiateGenericWSClient(url: string, wsOpts: WSOpts | undefined): GenericWSClient {
+        const opts = wsOpts !== undefined ? wsOpts : DEFAULT_WS_OPTS;
+        if (opts !== undefined && opts.reconnectAfter === undefined) {
+            opts.reconnectAfter = DEFAULT_RECONNECT_AFTER_MS;
         }
-        rawContractEvents.forEach(rawContractEvent => {
-            const kind = rawContractEvent.kind as ContractEventKind;
-            const rawParameters = rawContractEvent.parameters;
-            let parameters: ContractEventParameters;
-            switch (kind) {
-                case ContractEventKind.ERC20TransferEvent:
-                    const erc20TransferEvent = rawParameters as StringifiedERC20TransferEvent;
-                    parameters = {
-                        from: erc20TransferEvent.from,
-                        to: erc20TransferEvent.to,
-                        value: new BigNumber(erc20TransferEvent.value),
-                    };
-                    break;
-                case ContractEventKind.ERC20ApprovalEvent:
-                    const erc20ApprovalEvent = rawParameters as StringifiedERC20ApprovalEvent;
-                    parameters = {
-                        owner: erc20ApprovalEvent.owner,
-                        spender: erc20ApprovalEvent.spender,
-                        value: new BigNumber(erc20ApprovalEvent.value),
-                    };
-                    break;
-                case ContractEventKind.ERC721TransferEvent:
-                    const erc721TransferEvent = rawParameters as StringifiedERC721TransferEvent;
-                    parameters = {
-                        from: erc721TransferEvent.from,
-                        to: erc721TransferEvent.to,
-                        tokenId: new BigNumber(erc721TransferEvent.tokenId),
-                    };
-                    break;
-                case ContractEventKind.ERC721ApprovalEvent:
-                    const erc721ApprovalEvent = rawParameters as StringifiedERC721ApprovalEvent;
-                    parameters = {
-                        owner: erc721ApprovalEvent.owner,
-                        approved: erc721ApprovalEvent.approved,
-                        tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
-                    };
-                    break;
-                case ContractEventKind.ExchangeFillEvent:
-                    const exchangeFillEvent = rawParameters as StringifiedExchangeFillEvent;
-                    parameters = {
-                        makerAddress: exchangeFillEvent.makerAddress,
-                        takerAddress: exchangeFillEvent.takerAddress,
-                        senderAddress: exchangeFillEvent.senderAddress,
-                        feeRecipientAddress: exchangeFillEvent.feeRecipientAddress,
-                        makerAssetFilledAmount: new BigNumber(exchangeFillEvent.makerAssetFilledAmount),
-                        takerAssetFilledAmount: new BigNumber(exchangeFillEvent.takerAssetFilledAmount),
-                        makerFeePaid: new BigNumber(exchangeFillEvent.makerFeePaid),
-                        takerFeePaid: new BigNumber(exchangeFillEvent.takerFeePaid),
-                        orderHash: exchangeFillEvent.orderHash,
-                        makerAssetData: exchangeFillEvent.makerAssetData,
-                        takerAssetData: exchangeFillEvent.takerAssetData,
-                    };
-                    break;
-                case ContractEventKind.ExchangeCancelEvent:
-                    parameters = rawParameters as ExchangeCancelEvent;
-                    break;
-                case ContractEventKind.ExchangeCancelUpToEvent:
-                    const exchangeCancelUpToEvent = rawParameters as StringifiedExchangeCancelUpToEvent;
-                    parameters = {
-                        makerAddress: exchangeCancelUpToEvent.makerAddress,
-                        senderAddress: exchangeCancelUpToEvent.senderAddress,
-                        orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
-                    };
-                    break;
-                case ContractEventKind.WethDepositEvent:
-                    const wethDepositEvent = rawParameters as StringifiedWethDepositEvent;
-                    parameters = {
-                        owner: wethDepositEvent.owner,
-                        value: new BigNumber(wethDepositEvent.value),
-                    };
-                    break;
-                case ContractEventKind.WethWithdrawalEvent:
-                    const wethWithdrawalEvent = rawParameters as StringifiedWethWithdrawalEvent;
-                    parameters = {
-                        owner: wethWithdrawalEvent.owner,
-                        value: new BigNumber(wethWithdrawalEvent.value),
-                    };
-                    break;
-                default:
-                    throw new Error(`Unrecognized ContractEventKind: ${kind}`);
-            }
-            const contractEvent: ContractEvent = {
-                blockHash: rawContractEvent.blockHash,
-                txHash:  rawContractEvent.txHash,
-                txIndex:  rawContractEvent.txIndex,
-                logIndex:  rawContractEvent.logIndex,
-                isRemoved:  rawContractEvent.isRemoved,
-                address:  rawContractEvent.address,
-                kind,
-                parameters,
-            };
-            contractEvents.push(contractEvent);
-        });
-        return contractEvents;
+        let connection: any;
+        // If running in Node.js environment
+        if (isNode) {
+            const headers: any = opts.headers || {};
+            connection = new (WebSocket.w3cwebsocket as any)(
+                url,
+                opts.protocol,
+                null,
+                headers,
+                null,
+                opts.clientConfig,
+            );
+        } else {
+            connection = new (window as any).WebSocket(url, opts.protocol);
+        }
+        const genericWSClient = new GenericWSClient(connection, opts.reconnectAfter, opts.timeout);
+        return genericWSClient;
     }
     /**
      * Instantiates a new WSClient instance
@@ -190,26 +102,7 @@ export class WSClient {
      * @return  An instance of WSClient
      */
     constructor(url: string, wsOpts?: WSOpts) {
-        if (wsOpts !== undefined && wsOpts.reconnectAfter === undefined) {
-            wsOpts.reconnectAfter = DEFAULT_RECONNECT_AFTER_MS;
-        }
-        const finalWSOpts = wsOpts !== undefined ? wsOpts : DEFAULT_WS_OPTS;
-        let connection: any;
-        // If running in Node.js environment
-        if (typeof process !== 'undefined' && process.versions != null && process.versions.node != null) {
-            const headers: any = finalWSOpts.headers || {};
-            connection = new (WebSocket.w3cwebsocket as any)(
-                url,
-                finalWSOpts.protocol,
-                null,
-                headers,
-                null,
-                finalWSOpts.clientConfig,
-            );
-        } else {
-            connection = new (window as any).WebSocket(url, finalWSOpts.protocol);
-        }
-        this._genericWsClient = new GenericWSClient(connection, finalWSOpts.reconnectAfter, finalWSOpts.timeout);
+        this._genericWsClient = WSClient._instantiateGenericWSClient(url, wsOpts);
         this._subscriptionIdToMeshSpecificId = {};
         // Intentional fire-and-forget
         // tslint:disable-next-line:no-floating-promises
@@ -345,6 +238,7 @@ export class WSClient {
         // we try to send a payload on a connection _we know_ is closed. We therefore need to call `disconnect`
         // after a timeout so that we are sure we've already attempted to send the unsubscription payloads before
         // we forcefully close the connection
+        // tslint:disable-next-line:no-floating-promises
         this._genericWsClient.clearSubscriptionsAsync('mesh_unsubscribe');
         await new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, CLEAR_SUBSCRIPTIONS_GRACE_PERIOD_MS));
         this._genericWsClient.disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
