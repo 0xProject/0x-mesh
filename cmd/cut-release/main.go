@@ -67,14 +67,14 @@ func generateTypescriptClientDocs() {
 	lines := strings.Split(string(dat), "\n")
 	isCutting := false
 	for _, l := range lines {
-		if strings.Contains(l, "## Contributing") {
+		if strings.Contains(l, "<!-- END TYPEDOC GENERATED SUMMARY -->") {
 			isCutting = false
-			finalSummaryLines = append(finalSummaryLines, finalTsClientSummary, "")
+			finalSummaryLines = append(finalSummaryLines, finalTsClientSummary)
 		}
 		if !isCutting {
 			finalSummaryLines = append(finalSummaryLines, l)
 		}
-		if strings.Contains(l, "[Typescript client]") {
+		if strings.Contains(l, "<!-- START TYPEDOC GENERATED SUMMARY -->") {
 			isCutting = true
 		}
 	}
