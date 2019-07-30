@@ -8,7 +8,7 @@
 ## JSON-RPC clients
 
 * [Golang client](https://godoc.org/github.com/0xProject/0x-mesh/rpc)
-* [Typescript client](json_rpc_clients/typescript/README.md)
+* [TypeScript client](json_rpc_clients/typescript/README.md)
 <!-- START TYPEDOC GENERATED SUMMARY -->
   * [Globals](json_rpc_clients/typescript/globals.md)
   * [External Modules]()
