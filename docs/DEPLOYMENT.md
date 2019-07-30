@@ -1,7 +1,5 @@
 [![Version](https://img.shields.io/badge/version-development-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
-# 0x Mesh Deployment Guide
-
 Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Deployment Guide!
 This guide will walk you through how to configure and deploy your own 0x Mesh
 node.

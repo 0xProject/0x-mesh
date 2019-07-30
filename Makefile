@@ -65,6 +65,10 @@ mesh-bootstrap:
 db-integrity-check:
 	go install ./cmd/db-integrity-check
 
+.PHONY: cut-release
+cut-release:
+	go run ./cmd/cut-release/main.go
+
 
 .PHONY: all
 all: mesh mesh-keygen mesh-bootstrap db-integrity-check

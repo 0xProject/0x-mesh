@@ -1,7 +1,5 @@
 [![Version](https://img.shields.io/badge/version-development-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
-# 0x Mesh Usage Guide
-
 Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Usage
 Guide! This guide will help you interact with 0x Mesh via a JSON-RPC API once
 you have it up and running.
@@ -24,10 +22,9 @@ include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 
 ### Recommended Clients:
 
--   Javascript/Typescript: [Web3-providers](https://www.npmjs.com/package/web3-providers)
-    -   See our [example Mesh WS client](examples/javascript_websocket_client) built with it
+-   Javascript/Typescript: We've published a [Typescript RPC client](docs/json_rpc_clients/typescript/README.md)
 -   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use
--   Go: Mesh ships with a [Mesh RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
+-   Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
     -   see the [demos](cmd/demo) for example usage
 
 ## API
