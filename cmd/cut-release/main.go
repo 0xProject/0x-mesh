@@ -13,7 +13,7 @@ import (
 
 type envVars struct {
 	// Version is the new release version to use
-	Version string `envvar:"VERSION" default:"development"`
+	Version string `envvar:"VERSION"`
 }
 
 func main() {
@@ -29,16 +29,20 @@ func main() {
 
 func generateTypescriptClientDocs() {
 	// Run `yarn install` to make sure `TypeDoc` dep is installed
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
 	cmd.Dir = "rpc/clients/typescript"
-	if err := cmd.Run(); err != nil {
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(stdoutStderr)
 		log.Fatal(err)
 	}
 
 	// Run `yarn docs:md` to generate MD docs
 	cmd = exec.Command("yarn", "docs:md")
 	cmd.Dir = "rpc/clients/typescript"
-	if err := cmd.Run(); err != nil {
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(stdoutStderr)
 		log.Fatal(err)
 	}
 
