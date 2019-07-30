@@ -9,6 +9,7 @@ import * as WebSocket from 'websocket';
 import {
     AcceptedOrderInfo,
     GetOrdersResponse,
+    GetStatsResponse,
     HeartbeatEventPayload,
     OrderEvent,
     OrderEventPayload,
@@ -111,6 +112,10 @@ export class WSClient {
             validationResults.rejected.push(rejectedOrderInfo);
         });
         return validationResults;
+    }
+    public async GetStatsAsync(): Promise<GetStatsResponse> {
+        const stats = await this._wsProvider.send('mesh_getStats', []);
+        return stats;
     }
     /**
      * Get all 0x signed orders currently stored in the Mesh node

@@ -133,6 +133,11 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
+// GetLatestBlock returns the latest block processed
+func (w *Watcher) GetLatestBlock() (*meshdb.MiniHeader, error) {
+	return w.stack.Peek()
+}
+
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
 func (w *Watcher) InspectRetainedBlocks() ([]*meshdb.MiniHeader, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -64,6 +65,33 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return err
 	}
 	return nil
+}
+
+// LatestBlock is the latest block processed by the Mesh node
+type LatestBlock struct {
+	Number int         `json:"number"`
+	Hash   common.Hash `json:"hash"`
+}
+
+// GetStatsResponse is the response returned for an RPC request to mesh_getStats
+type GetStatsResponse struct {
+	Version           string      `json:"version"`
+	PubSubTopic       string      `json:"pubSubTopic"`
+	Rendezvous        string      `json:"rendervous"`
+	PeerID            string      `json:"peerID"`
+	EthereumNetworkID int         `json:"ethereumNetworkID"`
+	LatestBlock       LatestBlock `json:"latestBlock"`
+	NumPeers          int         `json:"numPeers"`
+	NumOrders         int         `json:"numOrders"`
+}
+
+// GetStats retrieves stats about the Mesh node
+func (c *Client) GetStats() (*GetStatsResponse, error) {
+	var getStatsResponse *GetStatsResponse
+	if err := c.rpcClient.Call(&getStatsResponse, "mesh_getStats"); err != nil {
+		return nil, err
+	}
+	return getStatsResponse, nil
 }
 
 // SubscribeToOrders subscribes a stream of order events

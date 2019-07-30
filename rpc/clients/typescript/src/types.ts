@@ -174,3 +174,19 @@ export interface WSMessage {
     type: string;
     utf8Data: string;
 }
+
+export interface LatestBlock {
+    number: number;
+    hash: string;
+}
+
+export interface GetStatsResponse {
+    Version: string;
+    PubSubTopic: string;
+    Rendezvous: string;
+    PeerID: string;
+    EthereumNetworkID: number;
+    LatestBlock: LatestBlock;
+    NumPeers: number;
+    NumOrders: number;
+}
