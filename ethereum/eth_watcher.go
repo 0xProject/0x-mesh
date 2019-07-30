@@ -36,11 +36,12 @@ type Balance struct {
 type ETHWatcher struct {
 	addressToBalance   map[common.Address]*big.Int
 	minPollingInterval time.Duration
-	isWatching         bool
 	balanceChan        chan Balance
 	ethBalanceChecker  *wrappers.EthBalanceChecker
 	ethClient          *ethclient.Client
 	addressToBalanceMu sync.Mutex
+	wasStartedOnce     bool
+	mu                 sync.Mutex
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
@@ -58,39 +59,36 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 		addressToBalance:   make(map[common.Address]*big.Int),
 		balanceChan:        make(chan Balance, 100),
 		minPollingInterval: minPollingInterval,
-		isWatching:         false,
 		ethClient:          ethClient,
 		ethBalanceChecker:  ethBalanceChecker,
 	}, nil
 }
 
-// Start begins the ETH balance poller
-func (e *ETHWatcher) Start() error {
-	if e.isWatching {
-		return errors.New("Watcher already started")
+// Watch starts watching for ETH balance changes. It blocks until there is an
+// error or the given context is canceled.
+func (e *ETHWatcher) Watch(ctx context.Context) error {
+	e.mu.Lock()
+	if e.wasStartedOnce {
+		e.mu.Unlock()
+		return errors.New("Can only start Watcher once per instance")
 	}
-	e.isWatching = true
-	go func() {
-		for {
-			start := time.Now()
+	e.wasStartedOnce = true
+	e.mu.Unlock()
 
-			e.updateBalances()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			start := time.Now()
+			e.updateBalances(ctx)
 
 			// Wait minPollingInterval before calling updateBalances again. Since
 			// we only start sleeping _after_ updateBalances completes, we will never
 			// have multiple calls to updateBalances running in parallel
 			time.Sleep(e.minPollingInterval - time.Since(start))
 		}
-	}()
-	return nil
-}
-
-// Stop stops the ETH balance poller
-func (e *ETHWatcher) Stop() {
-	if !e.isWatching {
-		return // noop
 	}
-	e.isWatching = false
 }
 
 // Add adds new Ethereum addresses we'd like to track for balance changes and returns a map of added
@@ -130,12 +128,13 @@ func (e *ETHWatcher) GetBalance(address common.Address) (*big.Int, error) {
 	return nil, errors.New("Supplied address not tracked")
 }
 
-// Receive returns a read-only channel that can be used to listen for modified ETH balances
-func (e *ETHWatcher) Receive() <-chan Balance {
+// BalanceUpdates returns a read-only channel that can be used to listen for
+// balance changes.
+func (e *ETHWatcher) BalanceUpdates() <-chan Balance {
 	return e.balanceChan
 }
 
-func (e *ETHWatcher) updateBalances() {
+func (e *ETHWatcher) updateBalances(ctx context.Context) {
 	e.addressToBalanceMu.Lock()
 	defer e.addressToBalanceMu.Unlock()
 	addresses := []common.Address{}
@@ -154,7 +153,11 @@ func (e *ETHWatcher) updateBalances() {
 					Amount:  newAmount,
 				}
 				go func() {
-					e.balanceChan <- updatedBalance
+					select {
+					case <-ctx.Done():
+						return
+					case e.balanceChan <- updatedBalance:
+					}
 				}()
 			}
 		} else {

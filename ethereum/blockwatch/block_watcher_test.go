@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -31,7 +32,7 @@ func TestWatcher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Polling interval unused because we hijack the ticker for this test
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
@@ -76,16 +77,34 @@ func TestWatcherStartStop(t *testing.T) {
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
-	require.NoError(t, watcher.Start())
-	watcher.stopPolling()
-	require.NoError(t, watcher.Start())
-	watcher.Stop()
+
+	// Start the watcher in a goroutine. We use the done channel to signal when
+	// watcher.Watch returns.
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	defer cancel()
+	go func() {
+		require.NoError(t, watcher.Watch(ctx))
+		done <- struct{}{}
+	}()
+
+	// Wait a bit and then stop the watcher by calling cancel.
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	// Make sure that the watcher actually stops.
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Error("timed out waiting for watcher to stop")
+	case <-done:
+		break
+	}
 }
 
 type blockRangeChunksTestCase struct {
@@ -161,7 +180,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
@@ -179,7 +198,7 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
@@ -195,7 +214,9 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	config.Client = fakeClient
 	watcher := New(config)
 
-	events, err := watcher.getMissedEventsToBackfill()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	events, err := watcher.getMissedEventsToBackfill(ctx)
 	require.NoError(t, err)
 	assert.Len(t, events, 1)
 
@@ -211,7 +232,7 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
@@ -227,7 +248,9 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	config.Client = fakeClient
 	watcher := New(config)
 
-	events, err := watcher.getMissedEventsToBackfill()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	events, err := watcher.getMissedEventsToBackfill(ctx)
 	require.NoError(t, err)
 	assert.Len(t, events, 0)
 
@@ -352,8 +375,9 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	defer meshDB.Close()
 	config.MeshDB = meshDB
 
 	for _, testCase := range testCases {
@@ -457,10 +481,13 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.NewMeshDB("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	config.MeshDB = meshDB
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for _, testCase := range testCases {
 		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
@@ -468,7 +495,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		config.Client = fakeLogClient
 		watcher := New(config)
 
-		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(ctx, testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())

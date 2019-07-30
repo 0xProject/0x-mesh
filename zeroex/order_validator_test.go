@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const areNewOrders = false
+
 var unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
 var malformedAssetData = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
@@ -134,7 +136,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 		require.NoError(t, err)
 
-		validationResults := orderValidator.BatchValidate(signedOrders)
+		validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
 		isValid := len(validationResults.Accepted) == 1
 		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
@@ -166,7 +168,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders)
+	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
@@ -195,7 +197,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders)
+	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
@@ -244,7 +246,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	_, err = orderValidator.coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders)
+	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)

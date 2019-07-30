@@ -12,6 +12,7 @@ import (
 
 func TestQueryWithValue(t *testing.T) {
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -52,6 +53,7 @@ func TestQueryWithValue(t *testing.T) {
 
 func TestQueryWithRange(t *testing.T) {
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -76,6 +78,7 @@ func TestQueryWithRange(t *testing.T) {
 
 func TestQueryWithPrefix(t *testing.T) {
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -134,6 +137,7 @@ func TestQueryWithPrefix(t *testing.T) {
 
 func TestFindWithValueWithMultiIndex(t *testing.T) {
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {
@@ -195,6 +199,7 @@ func TestFindWithValueWithMultiIndex(t *testing.T) {
 
 func TestFindWithRangeWithMultiIndex(t *testing.T) {
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	nicknameIndex := col.AddMultiIndex("nicknames", func(m Model) [][]byte {

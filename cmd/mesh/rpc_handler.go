@@ -25,7 +25,7 @@ type rpcHandler struct {
 
 // listenRPC starts the RPC server and listens on config.RPCPort. It blocks
 // until there is an error or the RPC server is closed.
-func listenRPC(app *core.App, config standaloneConfig) error {
+func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
 	rpcAddr := fmt.Sprintf(":%d", config.RPCPort)
 	rpcHandler := &rpcHandler{
@@ -38,11 +38,16 @@ func listenRPC(app *core.App, config standaloneConfig) error {
 	go func() {
 		// Wait for the server to start listening and select an address.
 		for rpcServer.Addr() == nil {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			time.Sleep(10 * time.Millisecond)
 		}
 		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
 	}()
-	return rpcServer.Listen()
+	return rpcServer.Listen(ctx)
 }
 
 // GetOrders is called when an RPC client calls GetOrders.
@@ -84,6 +89,17 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
 		return constants.ErrInternal
 	}
 	return nil
+}
+
+// GetStats is called when an RPC client calls GetStats,
+func (handler *rpcHandler) GetStats() (*rpc.GetStatsResponse, error) {
+	log.Debug("received GetStats request via RPC")
+	getStatsResponse, err := handler.app.GetStats()
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in GetStats RPC call")
+		return nil, constants.ErrInternal
+	}
+	return getStatsResponse, nil
 }
 
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter

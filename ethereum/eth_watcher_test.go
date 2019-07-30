@@ -84,19 +84,20 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	amount := big.NewInt(int64(1000000))
 	transferFunds(t, ethClient, constants.GanacheAccount0, randomAccount, amount)
 
-	require.NoError(t, ethWatcher.Start())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		require.NoError(t, ethWatcher.Watch(ctx))
+	}()
 
 	select {
-	case balance := <-ethWatcher.Receive():
+	case balance := <-ethWatcher.BalanceUpdates():
 		assert.Equal(t, constants.GanacheAccount0, balance.Address)
 		assert.NotEqual(t, addressToInitialBalance[balance.Address], balance.Amount, "wrong balance for account: %s", balance.Address.Hex())
 
 	case <-time.After(3 * time.Second):
 		t.Fatal("Timed out waiting for balance channel to deliver expected balances")
 	}
-
-	ethWatcher.Stop()
-	assert.False(t, ethWatcher.isWatching, "Calling Stop() should stop the ethWatcher poller")
 }
 
 func transferFunds(t *testing.T, client *ethclient.Client, from, to common.Address, value *big.Int) {

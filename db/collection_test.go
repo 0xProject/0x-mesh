@@ -12,6 +12,7 @@ import (
 func TestNewCollection(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	_, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	_, err = db.NewCollection("people", &testModel{})
@@ -21,6 +22,7 @@ func TestNewCollection(t *testing.T) {
 func TestInsert(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	expected := &testModel{
@@ -36,6 +38,7 @@ func TestInsert(t *testing.T) {
 func TestFindByID(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	expected := &testModel{
@@ -51,6 +54,7 @@ func TestFindByID(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	original := &testModel{
@@ -71,6 +75,7 @@ func TestUpdate(t *testing.T) {
 func TestFindAll(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	expected := []*testModel{}
@@ -90,6 +95,7 @@ func TestFindAll(t *testing.T) {
 func TestCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -135,6 +141,7 @@ func TestCount(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	col.AddIndex("age", func(m Model) []byte {
@@ -161,6 +168,7 @@ func TestDelete(t *testing.T) {
 func TestDeleteAfterUpdate(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 	col.AddIndex("age", func(m Model) []byte {

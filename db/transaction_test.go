@@ -11,9 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// transactionTestSleepDuration is passed to time.Sleep in some transaction tests
+// involving timing between multiple goroutines.
+const transactionTestSleepDuration = 50 * time.Millisecond
+
 func TestTransaction(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -89,6 +94,7 @@ func TestTransaction(t *testing.T) {
 func TestTransactionCount(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col, err := db.NewCollection("people", &testModel{})
 	require.NoError(t, err)
 
@@ -193,6 +199,7 @@ func TestTransactionCount(t *testing.T) {
 func TestTransactionExclusion(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
+	defer db.Close()
 	col0, err := db.NewCollection("people0", &testModel{})
 	require.NoError(t, err)
 	col1, err := db.NewCollection("people1", &testModel{})
@@ -252,7 +259,7 @@ func TestTransactionExclusion(t *testing.T) {
 	}()
 
 	// A short sleep is necessary to ensure that the goroutines have time to run.
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(transactionTestSleepDuration)
 	discardSignal <- struct{}{}
 	require.NoError(t, txn.Discard())
 

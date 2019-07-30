@@ -1,6 +1,7 @@
 package blockwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -53,14 +54,13 @@ type Config struct {
 // handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
 // block height, and will emit both block added and removed events.
 type Watcher struct {
-	Errors              chan error
 	blockRetentionLimit int
 	startBlockDepth     rpc.BlockNumber
 	stack               *Stack
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
-	isWatching          bool                    // Whether the block poller is running
+	wasStartedOnce      bool                    // Whether the block watcher has previously been started
 	pollingInterval     time.Duration
 	ticker              *time.Ticker
 	withLogs            bool
@@ -72,10 +72,7 @@ type Watcher struct {
 func New(config Config) *Watcher {
 	stack := NewStack(config.MeshDB, config.BlockRetentionLimit)
 
-	// Buffer the first 5 errors, if no channel consumer processing the errors, any additional errors are dropped
-	errorsChan := make(chan error, 5)
 	bs := &Watcher{
-		Errors:              errorsChan,
 		pollingInterval:     config.PollingInterval,
 		blockRetentionLimit: config.BlockRetentionLimit,
 		startBlockDepth:     config.StartBlockDepth,
@@ -87,75 +84,45 @@ func New(config Config) *Watcher {
 	return bs
 }
 
-// Start starts the BlockWatcher
-func (w *Watcher) Start() error {
-	events, err := w.getMissedEventsToBackfill()
+// BackfillEventsIfNeeded finds missed events that might have occured while the
+// Mesh node was offline and sends them to event subscribers. It blocks until
+// it is done backfilling or the given context is canceled.
+func (w *Watcher) BackfillEventsIfNeeded(ctx context.Context) error {
+	events, err := w.getMissedEventsToBackfill(ctx)
 	if err != nil {
 		return err
 	}
 	if len(events) > 0 {
 		w.blockFeed.Send(events)
 	}
-
-	// We need the mutex to reliably start/stop the update loop
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.isWatching {
-		return errors.New("Polling already started")
-	}
-
-	w.isWatching = true
-	if w.ticker == nil {
-		w.ticker = time.NewTicker(w.pollingInterval)
-	}
-	go w.startPollingLoop()
 	return nil
 }
 
-func (w *Watcher) startPollingLoop() {
-	for {
-		w.mu.Lock()
-		if !w.isWatching {
-			w.mu.Unlock()
-			return
-		}
-		<-w.ticker.C
-		w.mu.Unlock()
-
-		err := w.pollNextBlock()
-		if err != nil {
-			w.mu.Lock()
-			if !w.isWatching {
-				return
-			}
-			w.mu.Unlock()
-			// Attempt to send errors but if buffered channel is full, we assume there is no
-			// interested consumer and drop them. The Watcher recovers gracefully from errors.
-			select {
-			case w.Errors <- err:
-			default:
-			}
-		}
-	}
-}
-
-// stopPolling stops the block poller
-func (w *Watcher) stopPolling() {
+// Watch starts the Watcher. It will continuously look for new blocks and blocks
+// until there is a critical error or the given context is canceled. Typically,
+// you want to call Watch inside a goroutine. For non-critical errors, callers
+// must receive them from the Errors channel.
+func (w *Watcher) Watch(ctx context.Context) error {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.isWatching = false
-	if w.ticker != nil {
-		w.ticker.Stop()
+	if w.wasStartedOnce {
+		w.mu.Unlock()
+		return errors.New("Can only start Watcher once per instance")
 	}
-	w.ticker = nil
-}
+	w.wasStartedOnce = true
+	w.mu.Unlock()
 
-// Stop stops the BlockWatcher
-func (w *Watcher) Stop() {
-	if w.isWatching {
-		w.stopPolling()
+	ticker := time.NewTicker(w.pollingInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			if err := w.pollNextBlock(); err != nil {
+				log.WithError(err).Error("blockwatch.Watcher error encountered")
+			}
+		}
 	}
-	close(w.Errors)
 }
 
 // Subscribe allows one to subscribe to the block events emitted by the Watcher.
@@ -164,6 +131,11 @@ func (w *Watcher) Stop() {
 // Slow subscribers are not dropped.
 func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
+}
+
+// GetLatestBlock returns the latest block processed
+func (w *Watcher) GetLatestBlock() (*meshdb.MiniHeader, error) {
+	return w.stack.Peek()
 }
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
@@ -227,7 +199,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 			// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 			// returned. This is expected to happen sometimes, and we simply return the events gathered so
 			// far and pick back up where we left off on the next polling interval.
-			if err.Error() == "unknown block" {
+			if isUnknownBlockErr(err) {
 				log.WithFields(log.Fields{
 					"nextHeader": nextHeader,
 				}).Trace("failed to get logs for block")
@@ -277,7 +249,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 		// a block header might be returned, but when fetching it's logs, an "unknown block" error is
 		// returned. This is expected to happen sometimes, and we simply return the events gathered so
 		// far and pick back up where we left off on the next polling interval.
-		if err.Error() == "unknown block" {
+		if isUnknownBlockErr(err) {
 			log.WithFields(log.Fields{
 				"nextHeader": nextHeader,
 			}).Trace("failed to get logs for block")
@@ -316,7 +288,7 @@ func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error)
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
-func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
+func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, error) {
 	events := []*Event{}
 
 	latestRetainedBlock, err := w.stack.Peek()
@@ -336,10 +308,10 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 		return events, nil
 	}
 
-	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling events")
+	log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
 	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
 	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
-	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
+	logs, furthestBlockProcessed := w.getLogsInBlockRange(ctx, startBlockNum, endBlockNum)
 	if int64(furthestBlockProcessed) > latestRetainedBlock.Number.Int64() {
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
@@ -393,6 +365,7 @@ func (w *Watcher) getMissedEventsToBackfill() ([]*Event, error) {
 				BlockHeader: blockHeader,
 			})
 		}
+		log.Info("Done backfilling block events")
 		return events, nil
 	}
 	return events, nil
@@ -413,7 +386,7 @@ const getLogsRequestChunkSize = 3
 // the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
 // batch requests are not sent. Instead, it returns all the logs it found up until the error was
 // encountered, along with the block number after which no further logs were retrieved.
-func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
+func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]types.Log, int) {
 	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
 	numChunks := 0
@@ -458,6 +431,18 @@ func (w *Watcher) getLogsInBlockRange(from, to int) ([]types.Log, int) {
 			wg.Add(1)
 			go func(index int, b *blockRange) {
 				defer wg.Done()
+
+				select {
+				case <-ctx.Done():
+					indexToLogResult[index] = logRequestResult{
+						From: b.FromBlock,
+						To:   b.ToBlock,
+						Err:  errors.New("context was canceled"),
+						Logs: []types.Log{},
+					}
+					return
+				default:
+				}
 
 				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []types.Log{})
 				if err != nil {
@@ -549,7 +534,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	log.WithFields(map[string]interface{}{
 		"from": from,
 		"to":   to,
-	}).Info("Fetching block logs")
+	}).Trace("Fetching block logs")
 	numBlocks := to - from
 	topics := [][]common.Hash{}
 	if len(w.topics) > 0 {
@@ -597,4 +582,16 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
+}
+
+func isUnknownBlockErr(err error) bool {
+	// Geth error
+	if err.Error() == "unknown block" {
+		return true
+	}
+	// Parity error
+	if err.Error() == "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found" {
+		return true
+	}
+	return false
 }
