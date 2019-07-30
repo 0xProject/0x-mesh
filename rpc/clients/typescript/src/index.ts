@@ -5,6 +5,7 @@ export {
     OrderEventKind,
     OrderEventPayload,
     OrderEvent,
+    OrderInfo,
     AcceptedOrderInfo,
     RejectedKind,
     RejectedCode,

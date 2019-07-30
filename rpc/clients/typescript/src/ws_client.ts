@@ -12,8 +12,10 @@ import {
     HeartbeatEventPayload,
     OrderEvent,
     OrderEventPayload,
+    OrderInfo,
     RawAcceptedOrderInfo,
     RawOrderEvent,
+    RawOrderInfo,
     RawValidationResults,
     RejectedOrderInfo,
     ValidationResults,
@@ -41,17 +43,30 @@ export class WSClient {
     private readonly _subscriptionIdToMeshSpecificId: ObjectMap<string>;
     private _heartbeatCheckIntervalId: number | undefined;
     private readonly _wsProvider: Web3Providers.WebsocketProvider;
-    private static _convertRawAcceptedOrders(rawAcceptedOrders: RawAcceptedOrderInfo[]): AcceptedOrderInfo[] {
+    private static _convertRawAcceptedOrderInfos(rawAcceptedOrderInfos: RawAcceptedOrderInfo[]): AcceptedOrderInfo[] {
         const acceptedOrderInfos: AcceptedOrderInfo[] = [];
-        rawAcceptedOrders.forEach(rawAcceptedOrderInfo => {
+        rawAcceptedOrderInfos.forEach(rawAcceptedOrderInfo => {
             const acceptedOrderInfo: AcceptedOrderInfo = {
                 orderHash: rawAcceptedOrderInfo.orderHash,
                 signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawAcceptedOrderInfo.signedOrder),
                 fillableTakerAssetAmount: new BigNumber(rawAcceptedOrderInfo.fillableTakerAssetAmount),
+                isNew: rawAcceptedOrderInfo.isNew,
             };
             acceptedOrderInfos.push(acceptedOrderInfo);
         });
         return acceptedOrderInfos;
+    }
+    private static _convertRawOrderInfos(rawOrderInfos: RawOrderInfo[]): OrderInfo[] {
+        const orderInfos: OrderInfo[] = [];
+        rawOrderInfos.forEach(rawOrderInfo => {
+            const orderInfo: OrderInfo = {
+                orderHash: rawOrderInfo.orderHash,
+                signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderInfo.signedOrder),
+                fillableTakerAssetAmount: new BigNumber(rawOrderInfo.fillableTakerAssetAmount),
+            };
+            orderInfos.push(orderInfo);
+        });
+        return orderInfos;
     }
     /**
      * Instantiates a new WSClient instance
@@ -83,7 +98,7 @@ export class WSClient {
             signedOrders,
         ]);
         const validationResults: ValidationResults = {
-            accepted: WSClient._convertRawAcceptedOrders(rawValidationResults.accepted),
+            accepted: WSClient._convertRawAcceptedOrderInfos(rawValidationResults.accepted),
             rejected: [],
         };
         rawValidationResults.rejected.forEach(rawRejectedOrderInfo => {
@@ -102,7 +117,7 @@ export class WSClient {
      * @param perPage number of signedOrders to fetch per paginated request
      * @returns all orders, their hash and their fillableTakerAssetAmount
      */
-    public async getOrdersAsync(perPage: number = 200): Promise<AcceptedOrderInfo[]> {
+    public async getOrdersAsync(perPage: number = 200): Promise<OrderInfo[]> {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
@@ -116,16 +131,16 @@ export class WSClient {
         snapshotID = getOrdersResponse.snapshotID;
         let ordersInfos = getOrdersResponse.ordersInfos;
 
-        let rawAcceptedOrderInfos: RawAcceptedOrderInfo[] = [];
+        let rawOrderInfos: RawOrderInfo[] = [];
         do {
-            rawAcceptedOrderInfos = [...rawAcceptedOrderInfos, ...ordersInfos];
+            rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
             page++;
             ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID]))
                 .ordersInfos;
         } while (Object.keys(ordersInfos).length > 0);
 
-        const allOrdersInfos = WSClient._convertRawAcceptedOrders(rawAcceptedOrderInfos);
-        return allOrdersInfos;
+        const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);
+        return orderInfos;
     }
     /**
      * Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
