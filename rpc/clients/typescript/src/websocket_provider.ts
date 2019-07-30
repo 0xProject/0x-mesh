@@ -38,6 +38,10 @@ export class WebSocketProvider extends EventEmitter {
 
         return new Error('Validation error: Response should be of type Object');
     }
+    // HACK(fabio): We could have used `WebSocket.connection` as the type for param `connection` but
+    // the type definitions for the `websocket` package are very out-of-date and this would cause us
+    // to use `as any` in most places we access it. Simply using `any` felt cleaner until the typings
+    // are updated.
     constructor(connection: any, reconnectionTimeout: number = 5000, timeout: number|undefined) {
         super();
         this._messageId = 1;
@@ -45,7 +49,6 @@ export class WebSocketProvider extends EventEmitter {
         this._timeoutIfExists = timeout;
         this._subscriptions = {};
         this.registerEventListeners();
-        // HACK(fabio): @types/websocket out-of-date
         this._host = this._connection.url;
         this._reconnectionTimeoutMs = reconnectionTimeout;
     }
@@ -148,11 +151,9 @@ export class WebSocketProvider extends EventEmitter {
     public async sendAsync(method: string, parameters: any): Promise<any> {
         const response = await this.sendPayloadAsync(this._toPayload(method, parameters));
         const validationResult = WebSocketProvider._validateJSONRPCResponse(response);
-
         if (validationResult instanceof Error) {
             throw validationResult;
         }
-
         return response.result;
     }
     /**
@@ -179,7 +180,7 @@ export class WebSocketProvider extends EventEmitter {
 
             this._connection = connection;
             this.registerEventListeners();
-            // Emit a "reconnected" event once new connection established
+            // Emit a "reconnected" event only once the new connection is established
             this.once('connect', () => {
                 this.emit('reconnected');
             });
@@ -261,7 +262,6 @@ export class WebSocketProvider extends EventEmitter {
      *
      * @returns the response received with the matching id specified in the payload
      */
-    // tslint:disable-next-line:async-suffix
     public async sendPayloadAsync(payload: any): Promise<any> {
         return new Promise((resolve, reject) => {
             this.once('error', reject);
@@ -420,7 +420,7 @@ export class WebSocketProvider extends EventEmitter {
      */
     private _toPayload(method: string, params: any[]): any {
         if (!method) {
-            throw new Error(`JSONRPC method should be specified for params: "${JSON.stringify(params)}"!`);
+            throw new Error(`JSON-RPC method should be specified in payload: "${JSON.stringify(params)}"`);
         }
 
         const id = this._messageId;
