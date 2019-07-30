@@ -310,7 +310,7 @@ export class WSClient {
      * @param cb callback to call when WS connection closes
      */
     public onClose(cb: () => void): void {
-        this._wsProvider.connection.addEventListener('close', () => {
+        this._wsProvider.on('close', () => {
             cb();
         });
     }
