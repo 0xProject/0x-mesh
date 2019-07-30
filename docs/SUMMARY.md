@@ -9,6 +9,7 @@
 
 * [Golang client](https://godoc.org/github.com/0xProject/0x-mesh/rpc)
 * [Typescript client](json_rpc_clients/typescript/README.md)
+<!-- START TYPEDOC GENERATED SUMMARY -->
   * [Globals](json_rpc_clients/typescript/globals.md)
   * [External Modules]()
     * [index](json_rpc_clients/typescript/modules/_index_.md)
@@ -57,6 +58,7 @@
     * [types.ValidationResults](json_rpc_clients/typescript/interfaces/_types_.validationresults.md)
     * [types.WSMessage](json_rpc_clients/typescript/interfaces/_types_.wsmessage.md)
     * [types.WSOpts](json_rpc_clients/typescript/interfaces/_types_.wsopts.md)
+<!-- END TYPEDOC GENERATED SUMMARY -->
 
 ## Contributing
 
