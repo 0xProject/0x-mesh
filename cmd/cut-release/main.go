@@ -104,8 +104,10 @@ func updateHardCodedVersions(version string) {
 	updateVersionKey(corePath, version)
 
 	// Update badge in README.md
-	readmePath := "README.md"
-	updateBadge(readmePath, version)
+	pathToMDFilesWithBadges := []string{"README.md", "docs/USAGE.md", "docs/DEVELOPMENT.md", "docs/DEPLOYMENT.md"}
+	for _, path := range pathToMDFilesWithBadges {
+		updateBadge(path, version)
+	}
 }
 
 func updateVersionKey(filePath string, version string) {
