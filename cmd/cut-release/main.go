@@ -98,7 +98,7 @@ func updateHardCodedVersions(version string) {
 	tsClientPackageJSONPath := "rpc/clients/typescript/package.json"
 	updateVersionKey(tsClientPackageJSONPath, version)
 
-	// Update `core.ts`
+	// Update `core.go`
 	corePath := "core/core.go"
 	updateVersionKey(corePath, version)
 
