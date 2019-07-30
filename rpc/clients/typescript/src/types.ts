@@ -27,7 +27,7 @@ export interface ClientConfig {
  */
 export interface WSOpts {
     timeout?: number;
-    headers?: {};
+    headers?: any;
     protocol?: string;
     clientConfig?: ClientConfig;
     reconnectAfter?: number;
