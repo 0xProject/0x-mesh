@@ -16,9 +16,6 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +25,7 @@ import (
 type dummyRPCHandler struct {
 	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
-	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
+	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
@@ -46,11 +43,11 @@ func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetO
 	return d.getOrdersHandler(page, perPage, snapshotID)
 }
 
-func (d *dummyRPCHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
-	if d.addPeerHandler == nil {
-		return errors.New("dummyRPCHandler: no handler set for AddPeer")
+func (d *dummyRPCHandler) GetStats() (*GetStatsResponse, error) {
+	if d.getStatsHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for GetStats")
 	}
-	return d.addPeerHandler(peerInfo)
+	return d.getStatsHandler()
 }
 
 func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error) {
@@ -215,27 +212,28 @@ func TestGetOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
-func TestAddPeer(t *testing.T) {
-	// Create the expected PeerInfo
-	addr0, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-	require.NoError(t, err)
-	addr1, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/5678")
-	require.NoError(t, err)
-	peerID, err := peer.IDB58Decode("QmagLpXZHNrTraqWpY49xtFmZMTLBWctx2PF96s4aFrj9f")
-	require.NoError(t, err)
-	expectedPeerInfo := peerstore.PeerInfo{
-		ID:    peerID,
-		Addrs: []ma.Multiaddr{addr0, addr1},
+func TestGetStats(t *testing.T) {
+	expectedGetStatsResponse := &GetStatsResponse{
+		Version:           "development",
+		PubSubTopic:       "/0x-orders/network/development/version/1",
+		Rendezvous:        "/0x-mesh/network/development/version/1",
+		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
+		EthereumNetworkID: 42,
+		LatestBlock: LatestBlock{
+			Number: 1,
+			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		},
+		NumOrders: 0,
+		NumPeers:  0,
 	}
 
-	// Set up the dummy handler with an addPeerHandler
+	// Set up the dummy handler with a getStatsHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addPeerHandler: func(peerInfo peerstore.PeerInfo) error {
-			assert.Equal(t, expectedPeerInfo, peerInfo, "AddPeer was called with an unexpected peerInfo argument")
+		getStatsHandler: func() (*GetStatsResponse, error) {
 			wg.Done()
-			return nil
+			return expectedGetStatsResponse, nil
 		},
 	}
 
@@ -243,9 +241,11 @@ func TestAddPeer(t *testing.T) {
 	defer cancel()
 	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
-	require.NoError(t, client.AddPeer(expectedPeerInfo))
+	getStatsResponse, err := client.GetStats()
+	require.NoError(t, err)
+	require.Equal(t, expectedGetStatsResponse, getStatsResponse)
 
-	// The WaitGroup signals that AddPeer was called on the server-side.
+	// The WaitGroup signals that GetStats was called on the server-side.
 	wg.Wait()
 }
 

@@ -1,6 +1,6 @@
 // +build !js
 
-// package core contains everything needed to configure and run a 0x Mesh node.
+// Package core contains everything needed to configure and run a 0x Mesh node.
 package core
 
 import (
@@ -31,7 +31,6 @@ import (
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
@@ -44,6 +43,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
+	version                    = "development"
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -210,7 +210,7 @@ func New(config Config) (*App, error) {
 
 	log.WithFields(map[string]interface{}{
 		"config":  config,
-		"version": "development",
+		"version": version,
 	}).Info("finished initializing core.App")
 
 	return app, nil
@@ -604,9 +604,33 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 	return allValidationResults, nil
 }
 
-// AddPeer can be used to manually connect to a new peer.
-func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
-	return app.node.Connect(peerInfo, peerConnectTimeout)
+// GetStats retrieves stats about the Mesh node
+func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
+	latestBlockHeader, err := app.blockWatcher.GetLatestBlock()
+	if err != nil {
+		return nil, err
+	}
+	latestBlock := rpc.LatestBlock{
+		Number: int(latestBlockHeader.Number.Int64()),
+		Hash:   latestBlockHeader.Hash,
+	}
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &rpc.GetStatsResponse{
+		Version:           version,
+		PubSubTopic:       getPubSubTopic(app.config.EthereumNetworkID),
+		Rendezvous:        getRendezvous(app.config.EthereumNetworkID),
+		PeerID:            app.peerID.String(),
+		EthereumNetworkID: app.config.EthereumNetworkID,
+		LatestBlock:       latestBlock,
+		NumOrders:         numOrders,
+		NumPeers:          app.node.GetNumPeers(),
+	}
+	return response, nil
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher

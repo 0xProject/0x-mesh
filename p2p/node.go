@@ -273,6 +273,11 @@ func (n *Node) UnsetPeerScore(id peer.ID, tag string) {
 	n.connManager.UntagPeer(id, tag)
 }
 
+// GetNumPeers returns the number of peers the node is connected to
+func (n *Node) GetNumPeers() int {
+	return n.connManager.GetInfo().ConnCount
+}
+
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, timeout is exceeded, or an error

@@ -15,7 +15,6 @@ import (
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	ethRpc "github.com/ethereum/go-ethereum/rpc"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,14 +80,15 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroe
 	return validationResults, nil
 }
 
-// AddPeer is called when an RPC client calls AddPeer,
-func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) error {
-	log.Debug("received AddPeer request via RPC")
-	if err := handler.app.AddPeer(peerInfo); err != nil {
-		log.WithField("error", err.Error()).Error("internal error in AddPeer RPC call")
-		return constants.ErrInternal
+// GetStats is called when an RPC client calls GetStats,
+func (handler *rpcHandler) GetStats() (*rpc.GetStatsResponse, error) {
+	log.Debug("received GetStats request via RPC")
+	getStatsResponse, err := handler.app.GetStats()
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in GetStats RPC call")
+		return nil, constants.ErrInternal
 	}
-	return nil
+	return getStatsResponse, nil
 }
 
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
