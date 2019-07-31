@@ -107,6 +107,12 @@ func updateHardCodedVersions(version string) {
 	regex = `version(.*)= "(.*)"`
 	updateFileWithRegex(corePath, regex, newVersionString)
 
+	// Update `beta_telemetry_node/docker-compose.yml`
+	dockerComposePath := "examples/beta_telemetry_node/docker-compose.yml"
+	newVersionString = fmt.Sprintf(`image: 0xorg/mesh:%s`, version)
+	regex = `image: 0xorg/mesh:(.*)`
+	updateFileWithRegex(dockerComposePath, regex, newVersionString)
+
 	// Update badge in README.md
 	pathToMDFilesWithBadges := []string{"README.md", "docs/USAGE.md", "docs/DEVELOPMENT.md", "docs/DEPLOYMENT.md"}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
