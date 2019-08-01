@@ -176,10 +176,10 @@
     js-sha3 "^0.7.0"
     lodash "^4.17.11"
 
-"@0x/web3-providers-fork@0.0.6":
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/@0x/web3-providers-fork/-/web3-providers-fork-0.0.6.tgz#f1fccf0ac0b2bf0f382d272f61aac1c85a4d4045"
-  integrity sha512-RJ60Oyf9U+CrOiJDuxJa5V4atF7i8JIqp6UwuM14Eh4CkA+00Y1jqBfaWQb32DH2JIy4qT35Qm5Ohj2lStznVQ==
+"@0x/web3-providers-fork@0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@0x/web3-providers-fork/-/web3-providers-fork-0.0.7.tgz#9cf40ebb6a2aa230283c5accb195d92594bb0aa7"
+  integrity sha512-TB8Y/VY0RBXzkuP5Tzv5WdXIOjx0YMa/1tPe/7v4nP3z0CjlKWoXuD9PXUIQv1qlLx1sGR5/mf+XcjruYfnWoA==
   dependencies:
     "@babel/runtime" "^7.3.1"
     "@types/node" "^10.12.18"
