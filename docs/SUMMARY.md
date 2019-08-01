@@ -3,6 +3,7 @@
 ## Getting started
 
 * [Deployment guide](DEPLOYMENT.md)
+* [Mesh Beta participation guide](../examples/beta_telemetry_node/README.md)
 * [Usage guide](USAGE.md)
 
 ## JSON-RPC clients

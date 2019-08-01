@@ -1,4 +1,4 @@
-## Deploying a Telemetry-Enabled Mesh Node
+## Deploying a Telemetry-Enabled Mesh Node for the Beta
 
 0x Mesh is completely permissionless and the beta is open to anyone who wants to
 participate. You can optionally help improve 0x Mesh by enabling telemetry. Mesh
