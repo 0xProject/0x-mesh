@@ -1,6 +1,6 @@
 # How to keep an external database in-sync with a Mesh node
 
-This guide will walk you through syncing an external database with a Mesh node so that the external database's state mirrors that of the Mesh node (and vice-versa). Whenever new orders are discovered or added to Mesh, they are inserted into the database. If an order is filled, cancelled, or has it's fillability changed it is updated or removed from the database. We are assuming that your database is storing both the order itself and how much of it is left to be filled (i.e., it's `fillableTakerAssetAmount`).
+This guide will walk you through syncing an external database with a Mesh node so that the external database's state mirrors that of the Mesh node (and vice-versa). Whenever new orders are discovered or added to Mesh, they are inserted into the database. If an order is filled, cancelled, or has its fillability changed it is updated or removed from the database. We are assuming that your database is storing both the order itself and the remaining fillable amount (i.e., its `fillableTakerAssetAmount`).
 
 ## High-level architecture
 
