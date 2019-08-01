@@ -27,7 +27,7 @@ Subscribe to the Mesh node's `orders` subscription over a WS connection. This ca
 
 #### 2. Get all orders currently stored in Mesh
 
-There might have been orders stored in Mesh that the DB doesn't know about at this time. Because of this, we must fetch all currently stored order in the Mesh node and upsert them in the database. This can be done using the [mesh_getOrders](./USAGE.md#mesh_getorders) JSON-RPC method. This method creates a snapshot of the Mesh node's internal DB of orders when first called, and allows for subsequent paginated requests against this snapshot. Because we are already subscribed to order events, any new orders added/removed after the snapshot is made will be discovered via that subscription.
+There might have been orders stored in Mesh that the DB doesn't know about at this time. Because of this, we must fetch all currently stored orders in the Mesh node and upsert them in the database. This can be done using the [mesh_getOrders](./USAGE.md#mesh_getorders) JSON-RPC method. This method creates a snapshot of the Mesh node's internal DB of orders when first called, and allows for subsequent paginated requests against this snapshot. Because we are already subscribed to order events, any new orders added/removed after the snapshot is made will be discovered via that subscription.
 
 **Note:** The [Mesh Typescript client](./json-rpc-clients/typescript) has a convenience method that does the multiple paginated requests for you under-the-hood. You can simply call the [getOrders](./json-rpc-clients/typescript/classes/_ws_client_.wsclient#getordersasync) method.
 
