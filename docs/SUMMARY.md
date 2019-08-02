@@ -6,6 +6,10 @@
 * [Mesh Beta participation guide](../examples/beta_telemetry_node/README.md)
 * [Usage guide](USAGE.md)
 
+## Advanced topics
+
+* [Syncing an external DB with Mesh](./DB_SYNCING.md)
+
 ## JSON-RPC clients
 
 * [Golang client](https://godoc.org/github.com/0xProject/0x-mesh/rpc)
