@@ -8,6 +8,7 @@
 
 ### Bug fixes 🐞 
 
+- De-dup order submitted via the JSON-RPC method `mesh_addOrders` before performing validation (#331)
 - Added `"declaration": true,` to TS client's `tsconfig.json` so that downstream projects can use it's TS typings. (#325)
 
 
