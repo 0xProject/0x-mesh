@@ -2,6 +2,10 @@
 
 ## Upcoming release
 
+### Breaking changes 🛠 
+
+- Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders (#333)
+
 ### Bug fixes 🐞 
 
 - Added `"declaration": true,` to TS client's `tsconfig.json` so that downstream projects can use it's TS typings. (#325)
