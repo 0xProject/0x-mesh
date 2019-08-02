@@ -68,3 +68,4 @@
 ## Contributing
 
 * [Contributing guide](DEVELOPMENT.md)
+* [CHANGELOG](../CHANGELOG.md)
