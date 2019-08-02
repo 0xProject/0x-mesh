@@ -21,7 +21,12 @@
         "lint": "tslint --format stylish --project .",
         "fix": "tslint --fix --format stylish --project .",
         "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --exit",
-        "docs:md": "typedoc --theme markdown --platform gitbook --excludePrivate --excludeProtected --excludeExternals --excludeNotExported --target ES5 --module commonjs --out ../../../docs/json_rpc_clients/typescript/ ./src"
+        "script:processDocs": "node ./lib/scripts/post_process_docs.js",
+        "docs:generate": "typedoc --theme markdown --platform gitbook --excludePrivate --excludeProtected --excludeExternals --excludeNotExported --target ES5 --module commonjs --out ${npm_package_config_docspath} ./src",
+        "docs:md": "rm -rf ${npm_package_config_docspath}; yarn docs:generate; yarn script:processDocs;"
+    },
+    "config": {
+        "docspath": "../../../docs/json_rpc_clients/typescript/"
     },
     "repository": {
         "type": "git",
@@ -46,6 +51,7 @@
     },
     "devDependencies": {
         "@0x/tslint-config": "^3.0.1",
+        "@types/glob": "^7.1.1",
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
         "@types/websocket": "^0.0.40",
@@ -53,6 +59,7 @@
         "chai-as-promised": "^7.1.0",
         "chai-bignumber": "^3.0.0",
         "dirty-chai": "^2.0.1",
+        "glob": "^7.1.4",
         "make-promises-safe": "^1.1.0",
         "mocha": "^4.1.0",
         "shx": "^0.2.2",
