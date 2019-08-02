@@ -381,7 +381,10 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 						})
 						continue
 					case OSFillable:
-						if fillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+						remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
+						// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
+						// partially fillable orders as invalid
+						if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
 							validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 								OrderHash:   orderHash,
 								SignedOrder: signedOrder,
