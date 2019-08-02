@@ -14,15 +14,15 @@ function main(): void {
             throw err;
         }
         (paths as any).sort((firstEl: string, secondEl: string) => {
-            const firstIsFile = firstEl.includes('.md');
-            const secondIsFile = secondEl.includes('.md');
-            if ((firstIsFile && secondIsFile) || (!firstIsFile && !secondIsFile)) {
+            const isFirstAFile = firstEl.includes('.md');
+            const isSecondAFile = secondEl.includes('.md');
+            if ((isFirstAFile && isSecondAFile) || (!isFirstAFile && !isSecondAFile)) {
                 return 0;
             }
-            if (firstIsFile) {
+            if (isFirstAFile) {
                 return -1;
             }
-            if (secondIsFile) {
+            if (isSecondAFile) {
                 return 1;
             }
             return undefined;
