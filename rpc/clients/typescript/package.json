@@ -34,12 +34,12 @@
     },
     "homepage": "https://github.com/0xProject/0x-mesh/rpc/clients/typescript/README.md",
     "dependencies": {
-        "@0x/assert": "^2.1.0",
-        "@0x/dev-utils": "^2.2.4",
-        "@0x/order-utils": "^8.1.1",
-        "@0x/types": "^2.2.2",
-        "@0x/typescript-typings": "^4.2.2",
-        "@0x/utils": "^4.3.3",
+        "@0x/assert": "^2.1.2",
+        "@0x/dev-utils": "^2.2.6",
+        "@0x/order-utils": "^8.2.4",
+        "@0x/types": "^2.4.1",
+        "@0x/typescript-typings": "^4.2.4",
+        "@0x/utils": "^4.4.2",
         "@0x/web3-providers-fork": "0.0.7",
         "uuid": "^3.3.2",
         "websocket": "^1.0.29"
