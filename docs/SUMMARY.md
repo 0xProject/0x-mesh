@@ -8,7 +8,7 @@
 
 ## Advanced topics
 
-* [Syncing an external DB with Mesh](./DB_SYNCING.md)
+* [Syncing an external DB with Mesh](DB_SYNCING.md)
 
 ## JSON-RPC clients
 
