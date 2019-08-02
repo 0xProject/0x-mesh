@@ -2,10 +2,6 @@
 
 ## Upcoming release
 
-### Breaking changes 🛠 
-
-### Features ✅ 
-
 ### Bug fixes 🐞 
 
 - Added `"declaration": true,` to TS client's `tsconfig.json` so that downstream projects can use it's TS typings. (#325)
