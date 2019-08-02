@@ -31,8 +31,8 @@ var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c
 // GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
 var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
-// The context timeout length to use for requests to getOrdersAndTradersInfoTimeout
-const getOrdersAndTradersInfoTimeout = 15 * time.Second
+// The context timeout length to use for requests to getOrderRelevantStateTimeout
+const getOrderRelevantStateTimeout = 15 * time.Second
 
 // The context timeout length to use for requests to getCoordinatorEndpoint
 const getCoordinatorEndpointTimeout = 10 * time.Second
@@ -311,7 +311,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 			for {
 				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
 				// any one request from taking longer then 15 seconds
-				ctx, cancel := context.WithTimeout(context.Background(), getOrdersAndTradersInfoTimeout)
+				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
 				defer cancel()
 				opts := &bind.CallOpts{
 					Pending: false,
