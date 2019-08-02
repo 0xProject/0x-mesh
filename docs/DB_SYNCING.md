@@ -39,7 +39,7 @@ Since there might also be orders added to the database that Mesh doesn't know ab
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|--------------------|
 | EthRPCRequestFailed, CoordinatorRequestFailed, CoordinatorEndpointNotFound, InternalError                                                                                                                             | Failure to validate the order     | Yes                |
 | MaxOrderSizeExceeded, OrderMaxExpirationExceeded, OrderForIncorrectNetwork, SenderAddressNotAllowed                                                                                                                   | Failed Mesh-specific criteria | No                 |
-| OrderHasInvalidMakerAssetData, OrderHasInvalidTakerAssetData, OrderHasInvalidSignature, OrderUnfundedOrderCancelled, OrderFullyFilled, OrderHasInvalidMakerAssetAmount, OrderHasInvalidTakerAssetAmount, OrderExpired | Invalid or unfillable order   | No                 |
+| OrderHasInvalidMakerAssetData, OrderHasInvalidTakerAssetData, OrderHasInvalidSignature, OrderUnfunded, OrderCancelled, OrderFullyFilled, OrderHasInvalidMakerAssetAmount, OrderHasInvalidTakerAssetAmount, OrderExpired | Invalid or unfillable order   | No                 |
 
 If an order was rejected with a code related to the "failure to validate the order" reason above, you can re-try adding the order to Mesh after a back-off period. For all other rejection reasons, the orders should be removed from the database.
 
