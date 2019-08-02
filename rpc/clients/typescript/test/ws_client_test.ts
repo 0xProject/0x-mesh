@@ -436,7 +436,6 @@ describe('WSClient', () => {
                             return;
                         }
                         numMessages++;
-                        expect(jsonRpcRequest.method).to.be.equal('mesh_unsubscribe');
                     }) as any);
                 }) as any);
 
