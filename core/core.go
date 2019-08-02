@@ -539,7 +539,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		Accepted: []*zeroex.AcceptedOrderInfo{},
 		Rejected: []*zeroex.RejectedOrderInfo{},
 	}
-	orderHashesSeen := map[common.Hash]interface{}{}
+	orderHashesSeen := map[common.Hash]struct{}{}
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
