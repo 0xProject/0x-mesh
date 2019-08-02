@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:5b9dd020576063ed81bd1210fe44837ad42313135064f5a5f2390ecf64e0d2b8"
+  name = "github.com/0xProject/qunit"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "81c18fdf77522b0964f4e3fced25a88edcd813d7"
+
+[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -865,6 +873,15 @@
   version = "v0.0.4"
 
 [[projects]]
+  branch = "support-arrays"
+  digest = "1:0d4c99af326c5aa0cb55940961953f9772cc84e765f3a90110a4501dcccdae90"
+  name = "github.com/norunners/vert"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "32b044758d63e7074e457e97fd1ca54f01448b16"
+  source = "github.com/albrow/vert"
+
+[[projects]]
   branch = "master"
   digest = "1:7f728b11da089d6162d536b9adfe0d68abc9a6f277585d82f14601791ebaf9c2"
   name = "github.com/ocdogan/rbt"
@@ -1019,8 +1036,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "minimum-wasm-support"
-  digest = "1:fd89d5b43d208d71dda7947134f259bc7f41d517b47de0ffc9e46d1e73570c8d"
+  branch = "full-wasm-support"
+  digest = "1:19a06414eca371f87af481d67abf345eeaf6ff9eeab1a622513f1b6633d9be4f"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -1037,7 +1054,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
+  revision = "d4cacb205e8673f0b7ac34406a7dbfffb993400f"
   source = "github.com/0xProject/goleveldb"
 
 [[projects]]
@@ -1259,6 +1276,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/0xProject/qunit",
     "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
@@ -1298,6 +1316,7 @@
     "github.com/libp2p/go-libp2p/p2p/host/relay",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
+    "github.com/norunners/vert",
     "github.com/ocdogan/rbt",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
