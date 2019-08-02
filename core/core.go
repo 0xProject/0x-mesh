@@ -25,6 +25,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -538,6 +539,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		Accepted: []*zeroex.AcceptedOrderInfo{},
 		Rejected: []*zeroex.RejectedOrderInfo{},
 	}
+	orderHashesSeen := map[common.Hash]struct{}{}
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
@@ -582,7 +584,17 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
 			return nil, err
 		}
+
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		if _, alreadySeen := orderHashesSeen[orderHash]; alreadySeen {
+			continue
+		}
+
 		schemaValidOrders = append(schemaValidOrders, signedOrder)
+		orderHashesSeen[orderHash] = struct{}{}
 	}
 
 	validationResults, err := app.validateOrders(schemaValidOrders)
