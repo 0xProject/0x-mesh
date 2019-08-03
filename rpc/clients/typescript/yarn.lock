@@ -128,10 +128,10 @@
   optionalDependencies:
     "@ledgerhq/hw-transport-node-hid" "^4.3.0"
 
-"@0x/ts-doc-gen@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@0x/ts-doc-gen/-/ts-doc-gen-0.0.2.tgz#04ef1bd4d40297864fe92ac604d9e64e52c6f226"
-  integrity sha512-qfpWfirTj1AKSj5x5gOk1opAvCWw6xwa5BcPs/CQeHtd0I7DWW1Ld6AosZnqk2wUGS0axXBAIz0AhC9GIYgLOg==
+"@0x/ts-doc-gen@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@0x/ts-doc-gen/-/ts-doc-gen-0.0.3.tgz#460ffb10554f0491b8d9c92fa407e68b179e4b28"
+  integrity sha512-4UkL4u8BXOUkkL2++Ej4tWxkqaSGGykK+q6DaI2aWHahjr3GAcKSfCxFkjOW1pQvO2jdgbJWIg6vxBv8fEcQcA==
   dependencies:
     "@0x/typescript-typings" "^4.2.2"
     "@0x/utils" "^4.3.3"
@@ -162,7 +162,7 @@
     bignumber.js "~8.0.2"
     ethereum-types "^2.1.4"
 
-"@0x/typescript-typings@^4.2.4":
+"@0x/typescript-typings@^4.2.2", "@0x/typescript-typings@^4.2.4":
   version "4.2.4"
   resolved "https://registry.yarnpkg.com/@0x/typescript-typings/-/typescript-typings-4.2.4.tgz#0858639ddfdf7e9e1a3f9fd8f7d8f2e8ebfdce85"
   integrity sha512-yIg8q/bj9+Y0OzNuq59D3JDe4OoQR3bU2QKy+7d8NV6CIfA0GqfWWS+JFdUB45S45qT5P0EmThh/szQ7zuW4oQ==
@@ -173,7 +173,7 @@
     ethereum-types "^2.1.4"
     popper.js "1.14.3"
 
-"@0x/utils@^4.4.2":
+"@0x/utils@^4.3.3", "@0x/utils@^4.4.2":
   version "4.4.2"
   resolved "https://registry.yarnpkg.com/@0x/utils/-/utils-4.4.2.tgz#8c7899f0f768859a92e805cfa93e57f921cf6122"
   integrity sha512-kR0KncZP/m+V5HDUlNNOgcQXmnLA2e7lfovUxNI1XWB8djXDlB42ukqK8A4KRtxlt+A8CsXR64OcXvO8c6wQgA==
