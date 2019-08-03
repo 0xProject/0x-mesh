@@ -14,7 +14,7 @@
 
 * [Golang client](https://godoc.org/github.com/0xProject/0x-mesh/rpc)
 * [TypeScript client](json_rpc_clients/typescript/README.md)
-  * [Doc reference](json_rpc_clients/typescript/all.md)
+  * [Doc reference](json_rpc_clients/typescript/reference.md)
 
 ## Contributing
 
