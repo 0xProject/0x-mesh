@@ -22,11 +22,7 @@
         "fix": "tslint --fix --format stylish --project .",
         "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --exit",
         "script:processDocs": "node ./lib/scripts/post_process_docs.js",
-        "docs:generate": "typedoc --theme markdown --platform gitbook --excludePrivate --excludeProtected --excludeExternals --excludeNotExported --target ES5 --module commonjs --out ${npm_package_config_docspath} ./src",
-        "docs:md": "rm -rf ${npm_package_config_docspath}; yarn docs:generate; yarn script:processDocs;"
-    },
-    "config": {
-        "docspath": "../../../docs/json_rpc_clients/typescript/"
+        "docs:md": "yarn script:processDocs;"
     },
     "repository": {
         "type": "git",
@@ -47,14 +43,17 @@
         "@0x/utils": "^4.4.2",
         "@0x/web3-providers-fork": "0.0.7",
         "uuid": "^3.3.2",
-        "websocket": "^1.0.29"
+        "websocket": "^1.0.29",
+        "yargs": "^10.0.3"
     },
     "devDependencies": {
         "@0x/tslint-config": "^3.0.1",
         "@types/glob": "^7.1.1",
         "@types/mocha": "^2.2.42",
+        "@types/rimraf": "^2.0.2",
         "@types/uuid": "^3.4.3",
         "@types/websocket": "^0.0.40",
+        "@types/yargs": "^11.0.0",
         "chai": "^4.0.1",
         "chai-as-promised": "^7.1.0",
         "chai-bignumber": "^3.0.0",
@@ -62,6 +61,8 @@
         "glob": "^7.1.4",
         "make-promises-safe": "^1.1.0",
         "mocha": "^4.1.0",
+        "promisify-child-process": "^3.1.1",
+        "rimraf": "^2.6.3",
         "shx": "^0.2.2",
         "tslint": "5.11.0",
         "typedoc": "^0.15.0",
