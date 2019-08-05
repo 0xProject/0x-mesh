@@ -36,6 +36,7 @@ docker run \
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
+-   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
 
 ## Persisting State
 
