@@ -1,19 +1,17 @@
 {
-  "name": "0x-mesh",
-  "version": "0.0.1",
-  "engines": {
-    "node": ">=11"
-  },
-  "description": "A peer-to-peer network for sharing orders",
-  "main": "index.js",
-  "repository": "git@github.com:0xProject/0x-mesh.git",
-  "private": true,
-  "devDependencies": {
-    "es6-promise": "^4.2.6",
-    "isomorphic-fetch": "^2.2.1",
-    "wrtc": "0.4.1"
-  },
-  "dependencies": {
-    "qunit-puppeteer": "^1.0.1"
-  }
+    "name": "0x-mesh",
+    "version": "0.0.1",
+    "engines": {
+        "node": ">=11"
+    },
+    "description": "A peer-to-peer network for sharing orders",
+    "main": "index.js",
+    "repository": "git@github.com:0xProject/0x-mesh.git",
+    "private": true,
+    "devDependencies": {
+        "es6-promise": "^4.2.6",
+        "isomorphic-fetch": "^2.2.1",
+        "wrtc": "0.4.1",
+        "qunit-puppeteer": "^1.0.1"
+    }
 }
