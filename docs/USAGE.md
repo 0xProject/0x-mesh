@@ -22,7 +22,7 @@ include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 
 ### Recommended Clients:
 
--   Javascript/Typescript: We've published a [Typescript RPC client](docs/json_rpc_clients/typescript/README.md)
+-   Javascript/Typescript: We've published a [Typescript RPC client](json_rpc_clients/typescript/README.md)
 -   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use
 -   Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
     -   see the [demos](cmd/demo) for example usage
