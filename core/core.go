@@ -356,6 +356,7 @@ func (app *App) Start(ctx context.Context) error {
 		MessageHandler:   app,
 		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
 		UseBootstrapList: app.config.UseBootstrapList,
+		PeerstoreDir:     filepath.Join(app.config.DataDir, "peerstore"),
 	}
 	var err error
 	app.node, err = p2p.New(innerCtx, nodeConfig)
