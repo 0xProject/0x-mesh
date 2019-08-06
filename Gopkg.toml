@@ -118,10 +118,6 @@
   version = "0.0.2"
 
 [[constraint]]
-  name = "github.com/ipfs/go-datastore"
-  version = "0.0.5"
-
-[[constraint]]
   branch = "support-arrays"
   name = "github.com/norunners/vert"
   source = "github.com/albrow/vert"

@@ -1293,7 +1293,6 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
-    "github.com/ipfs/go-datastore",
     "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
