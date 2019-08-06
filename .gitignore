@@ -7,3 +7,4 @@ examples/javascript_websocket_client/node_modules
 examples/javascript_websocket_client/lib
 rpc/clients/typescript/node_modules
 rpc/clients/typescript/lib
+rpc/clients/typescript/yarn-error.log

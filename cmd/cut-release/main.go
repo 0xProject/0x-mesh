@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -70,50 +69,6 @@ func generateTypescriptClientDocs() {
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-
-	// Update SUMMARY.md
-	tsClientSummaryPath := "docs/json_rpc_clients/typescript/SUMMARY.md"
-	dat, err := ioutil.ReadFile(tsClientSummaryPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Modify the paths to be prefixed with `json_rpc_clients/typescript`
-	modifiedDat := strings.Replace(string(dat), "](", "](json_rpc_clients/typescript/", -1)
-	modifiedDat = strings.Replace(modifiedDat, "](json_rpc_clients/typescript/)", "]()", -1)
-	finalTsClientSummary := strings.Replace(modifiedDat, "* [", "  * [", -1)
-
-	// Replace the summary content nested under `Typescript client`
-	mainSummaryPath := "docs/SUMMARY.md"
-	dat, err = ioutil.ReadFile(mainSummaryPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	finalSummaryLines := []string{}
-	lines := strings.Split(string(dat), "\n")
-	isCutting := false
-	for _, l := range lines {
-		if strings.Contains(l, "<!-- END TYPEDOC GENERATED SUMMARY -->") {
-			isCutting = false
-			finalSummaryLines = append(finalSummaryLines, finalTsClientSummary)
-		}
-		if !isCutting {
-			finalSummaryLines = append(finalSummaryLines, l)
-		}
-		if strings.Contains(l, "<!-- START TYPEDOC GENERATED SUMMARY -->") {
-			isCutting = true
-		}
-	}
-	finalSummary := strings.Join(finalSummaryLines, "\n")
-	err = ioutil.WriteFile(mainSummaryPath, []byte(finalSummary), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Remove the nested SUMMARY.MD file
-	err = os.Remove(tsClientSummaryPath)
-	if err != nil {
 		log.Fatal(err)
 	}
 }
