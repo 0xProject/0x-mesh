@@ -145,11 +145,13 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:760b2447d30444b6c2da7f77b677921f095fe19e6ed423b2edc1cd47a8507789"
+  digest = "1:d0e00c8ccabdfe678667d6be78c9d08a6a4efc36d9fb596f098706728b00ba6b"
   name = "github.com/gogo/protobuf"
   packages = [
+    "gogoproto",
     "io",
     "proto",
+    "protoc-gen-gogo/descriptor",
   ]
   pruneopts = "UT"
   revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
@@ -237,6 +239,14 @@
   pruneopts = "UT"
   revision = "aa9190c18f1576be98e974359fd08c64ca0b5a94"
   version = "v0.0.5"
+
+[[projects]]
+  digest = "1:ab70bd10c780d127a66393a14061ae69ae0145027e7207b7c43db68524f3f64a"
+  name = "github.com/ipfs/go-ds-leveldb"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "47a9627082eeb3e52570a75eb4fdfaff8b2f19a9"
+  version = "v0.0.2"
 
 [[projects]]
   digest = "1:0b4439ae69776549e6489b261f66894a1390140dad53f1c3b1fbfc074478590d"
@@ -551,22 +561,25 @@
   version = "v0.0.2"
 
 [[projects]]
-  digest = "1:b3c290f06f93c1abf58e4aba2df719f233e7b7c2592a54263b4e2d53df1e9dd0"
+  digest = "1:6229f1e520bda7fb92de81dce17e81c8fbb5d8a1e1d526bcce2f3112114d0180"
   name = "github.com/libp2p/go-libp2p-peer"
   packages = [
     ".",
     "peerset",
+    "test",
   ]
   pruneopts = "UT"
   revision = "badcaca9df8cb2887943c0a3d408fe07db160992"
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:482f3d69fc3c245562137c7acc554d359a0ddb8c0b6489d6d0940968cc7f2f99"
+  digest = "1:37c4d6a49ba55a6a3e244c0bbc509dce692f02d892ad44788616bf448086a975"
   name = "github.com/libp2p/go-libp2p-peerstore"
   packages = [
     ".",
     "addr",
+    "pb",
+    "pstoreds",
     "pstoremem",
     "queue",
   ]
@@ -1262,6 +1275,8 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
+    "github.com/ipfs/go-datastore",
+    "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
@@ -1275,6 +1290,7 @@
     "github.com/libp2p/go-libp2p-net",
     "github.com/libp2p/go-libp2p-peer",
     "github.com/libp2p/go-libp2p-peerstore",
+    "github.com/libp2p/go-libp2p-peerstore/pstoreds",
     "github.com/libp2p/go-libp2p-protocol",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-routing",

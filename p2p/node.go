@@ -14,6 +14,7 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
@@ -22,6 +23,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	routing "github.com/libp2p/go-libp2p-routing"
 	swarm "github.com/libp2p/go-libp2p-swarm"
@@ -94,6 +96,8 @@ type Config struct {
 	// UseBootstrapList determines whether or not to use the list of predetermined
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
+	// PeerstoreDir is the directory to use for peerstore data.
+	PeerstoreDir string
 }
 
 // New creates a new Node with the given context and config. The Node will stop
@@ -137,6 +141,16 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, err
 	}
 
+	// Set up the peerstore to use LevelDB.
+	store, err := leveldbStore.NewDatastore(config.PeerstoreDir, nil)
+	if err != nil {
+		return nil, err
+	}
+	pstore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+	if err != nil {
+		return nil, err
+	}
+
 	// Set up the transport and the host.
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
@@ -147,6 +161,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.EnableRelay(),
 		libp2p.Routing(newDHT),
 		libp2p.AddrsFactory(newAddrsFactory([]ma.Multiaddr{advertiseAddr})),
+		libp2p.Peerstore(pstore),
 	}
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
