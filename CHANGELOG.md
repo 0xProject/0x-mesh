@@ -2,6 +2,8 @@
 
 ## Upcoming release
 
+## v3.0.0-beta
+
 ### Breaking changes 🛠 
 
 - Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
