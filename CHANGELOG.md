@@ -4,7 +4,9 @@
 
 ### Breaking changes 🛠 
 
-- Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders (#333)
+- Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
+  technically a breaking change, partially fillable orders are rare in the wild and we don't expect this will
+  affect many users. (#333)
 
 ### Bug fixes 🐞 
 
