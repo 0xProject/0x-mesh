@@ -113,7 +113,7 @@ export class WSClient {
         });
         return validationResults;
     }
-    public async GetStatsAsync(): Promise<GetStatsResponse> {
+    public async getStatsAsync(): Promise<GetStatsResponse> {
         const stats = await this._wsProvider.send('mesh_getStats', []);
         return stats;
     }

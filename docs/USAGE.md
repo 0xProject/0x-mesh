@@ -22,7 +22,7 @@ include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 
 ### Recommended Clients:
 
--   Javascript/Typescript: We've published a [Typescript RPC client](docs/json_rpc_clients/typescript/README.md)
+-   Javascript/Typescript: We've published a [Typescript RPC client](json_rpc_clients/typescript/README.md)
 -   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use
 -   Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
     -   see the [demos](cmd/demo) for example usage
@@ -111,6 +111,98 @@ See the [AcceptedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroe
 
 **Note:** The `fillableTakerAssetAmount` takes into account the amount of the order that has already been filled AND the maker's balance/allowance. Thus, it represents the amount this order could _actually_ be filled for at this moment in time.
 
+### `mesh_getOrders`
+
+Gets orders already stored in a Mesh node at a particular snapshot of the DB state. This is a paginated endpoint with parameters (page, perPage and snapshotID).
+
+**Example payload:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "mesh_getOrders",
+    "params": [
+        1,
+        100,
+        ""
+    ],
+    "id": 1
+}
+```
+
+This payload is requesting 100 orders from the 1st page (think: offset). The third parameter is the `snapshotID` which should be left empty for the first request. The response will include the snapshotID that can then be supplied in subsequent requests.
+
+**Example response:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "snapshotID": "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+        "ordersInfos": [
+            {
+                "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
+                "signedOrder": {
+                    "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
+                    "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
+                    "makerAssetAmount": "1000000000000000000",
+                    "makerFee": "0",
+                    "takerAddress": "0x0000000000000000000000000000000000000000",
+                    "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "takerAssetAmount": "10000000000000000000000",
+                    "takerFee": "0",
+                    "senderAddress": "0x0000000000000000000000000000000000000000",
+                    "exchangeAddress": "0x080bf510FCbF18b91105470639e9561022937712",
+                    "feeRecipientAddress": "0x0000000000000000000000000000000000000000",
+                    "expirationTimeSeconds": "1586340602",
+                    "salt": "41253767178111694375645046549067933145709740457131351457334397888365956743955",
+                    "signature": "0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02"
+                },
+                "fillableTakerAssetAmount": "10000000000000000000000"
+            }
+        ]
+    },
+    "id": 1
+}
+```
+
+### `mesh_getStats`
+
+Gets certain configurations and stats about a Mesh node.
+
+**Example payload:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "mesh_getStats",
+    "params": [],
+    "id": 1
+}
+```
+
+**Example response:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "version": "development",
+        "pubSubTopic": "/0x-orders/network/1/version/1",
+        "rendervous": "/0x-mesh/network/1/version/1",
+        "peerID": "16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
+        "ethereumNetworkID": 1,
+        "latestBlock": {
+            "number": 8253150,
+            "hash": "0x84aaae84147fc42fc77b33e2d3e05d86272663792d9cacaa8dc89f207b4d0642"
+        },
+        "numPeers": 18,
+        "numOrders": 1095
+    },
+    "id": 1
+}
+```
+
 ### `mesh_subscribe` to `orders` topic
 
 Mesh has implemented subscriptions in the [same manner as Geth](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB). In order to start a subscription, you must send the following payload:
@@ -172,7 +264,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
 }
 ```
 
-See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [OrderEventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) event types for a complete list of the events that could be emitted.
+See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [EventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) event types for a complete list of the events that could be emitted.
 
 To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId`.
 

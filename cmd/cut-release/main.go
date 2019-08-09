@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -25,7 +24,33 @@ func main() {
 
 	updateHardCodedVersions(env.Version)
 
+	addChangelogUpcomingReleaseTemplate()
+
 	generateTypescriptClientDocs()
+}
+
+func addChangelogUpcomingReleaseTemplate() {
+	changelogPath := "CHANGELOG.md"
+	changelog, err := ioutil.ReadFile(changelogPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	finalChangelogLines := []string{}
+	lines := strings.Split(string(changelog), "\n")
+	for _, l := range lines {
+		finalChangelogLines = append(finalChangelogLines, l)
+		if strings.Contains(l, "# CHANGELOG") {
+			finalChangelogLines = append(finalChangelogLines, "")
+			finalChangelogLines = append(finalChangelogLines, "## Upcoming release")
+		}
+	}
+
+	updatedChangelog := strings.Join(finalChangelogLines, "\n")
+	err = ioutil.WriteFile(changelogPath, []byte(updatedChangelog), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func generateTypescriptClientDocs() {
@@ -46,50 +71,6 @@ func generateTypescriptClientDocs() {
 		log.Print(string(stdoutStderr))
 		log.Fatal(err)
 	}
-
-	// Update SUMMARY.md
-	tsClientSummaryPath := "docs/json_rpc_clients/typescript/SUMMARY.md"
-	dat, err := ioutil.ReadFile(tsClientSummaryPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Modify the paths to be prefixed with `json_rpc_clients/typescript`
-	modifiedDat := strings.Replace(string(dat), "](", "](json_rpc_clients/typescript/", -1)
-	modifiedDat = strings.Replace(modifiedDat, "](json_rpc_clients/typescript/)", "]()", -1)
-	finalTsClientSummary := strings.Replace(modifiedDat, "* [", "  * [", -1)
-
-	// Replace the summary content nested under `Typescript client`
-	mainSummaryPath := "docs/SUMMARY.md"
-	dat, err = ioutil.ReadFile(mainSummaryPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	finalSummaryLines := []string{}
-	lines := strings.Split(string(dat), "\n")
-	isCutting := false
-	for _, l := range lines {
-		if strings.Contains(l, "<!-- END TYPEDOC GENERATED SUMMARY -->") {
-			isCutting = false
-			finalSummaryLines = append(finalSummaryLines, finalTsClientSummary)
-		}
-		if !isCutting {
-			finalSummaryLines = append(finalSummaryLines, l)
-		}
-		if strings.Contains(l, "<!-- START TYPEDOC GENERATED SUMMARY -->") {
-			isCutting = true
-		}
-	}
-	finalSummary := strings.Join(finalSummaryLines, "\n")
-	err = ioutil.WriteFile(mainSummaryPath, []byte(finalSummary), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Remove the nested SUMMARY.MD file
-	err = os.Remove(tsClientSummaryPath)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 // Update the version string in all files that must be updated for a new release
@@ -106,6 +87,18 @@ func updateHardCodedVersions(version string) {
 	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
 	regex = `version(.*)= "(.*)"`
 	updateFileWithRegex(corePath, regex, newVersionString)
+
+	// Update `CHANGELOG.md`
+	changelog := "CHANGELOG.md"
+	newChangelogSection := fmt.Sprintf(`## v%s`, version)
+	regex = `(## Upcoming release)`
+	updateFileWithRegex(changelog, regex, newChangelogSection)
+
+	// Update `beta_telemetry_node/docker-compose.yml`
+	dockerComposePath := "examples/beta_telemetry_node/docker-compose.yml"
+	newVersionString = fmt.Sprintf(`image: 0xorg/mesh:%s`, version)
+	regex = `image: 0xorg/mesh:(.*)`
+	updateFileWithRegex(dockerComposePath, regex, newVersionString)
 
 	// Update badge in README.md
 	pathToMDFilesWithBadges := []string{"README.md", "docs/USAGE.md", "docs/DEVELOPMENT.md", "docs/DEPLOYMENT.md"}

@@ -622,7 +622,6 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 			// The order is now fillable for more then it was before. E.g.:
 			// 1. A fill txn reverted (block-reorg)
-			// 2. Traders added missing balance/allowance increasing the order's fillability
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,

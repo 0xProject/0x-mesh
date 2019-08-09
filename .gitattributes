@@ -1,3 +1,4 @@
 # Automatically collapse generated files in GitHub.
 ethereum/wrappers/*.go  linguist-generated=true
+docs/json-rpc-clients/typescript/*.md  linguist-generated=true
 

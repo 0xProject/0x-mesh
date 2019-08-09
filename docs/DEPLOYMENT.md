@@ -14,6 +14,8 @@ node.
 
 ## Running Mesh
 
+If you would like to participate in the Mesh Beta, check out [this guide](../examples/beta_telemetry_node/README.md) to deploying a telemetry-enabled Mesh node.
+
 Make sure you have Docker installed. Then run:
 
 ```bash
@@ -34,6 +36,7 @@ docker run \
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
+-   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
 
 ## Persisting State
 

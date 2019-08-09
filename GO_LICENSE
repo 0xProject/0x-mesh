@@ -1,3 +1,6 @@
+Note: this license covers code copied and/or modified from the Go source
+code. Such code is indicated by a comment at the top of the file.
+
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
