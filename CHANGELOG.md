@@ -7,6 +7,7 @@
 - Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
   technically a breaking change, partially fillable orders are rare in the wild and we don't expect this will
   affect many users. ([#333](https://github.com/0xProject/0x-mesh/pull/333))
+- Lowercased `GetStatsAsync` method to `getStatsAsync` in TS client
 
 ### Bug fixes 🐞 
 
