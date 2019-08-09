@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-2.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-3.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Development
 Guide! This guide will help you get started with contributing to the 0x Mesh

@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-rpc-client",
-    "version": "2.0.0-beta",
+    "version": "3.0.0-beta",
     "engines": {
         "node": ">=6.12"
     },
@@ -17,11 +17,14 @@
     "types": "lib/src/index.d.ts",
     "scripts": {
         "build": "tsc -b",
-        "clean": "shx rm -rf lib test_temp generated_docs",
+        "clean": "shx rm -rf lib",
         "lint": "tslint --format stylish --project .",
-        "fix": "tslint --fix --format stylish --project .",
         "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --exit",
-        "docs:md": "typedoc --theme markdown --platform gitbook --excludePrivate --excludeProtected --excludeExternals --excludeNotExported --target ES5 --module commonjs --out ../../../docs/json_rpc_clients/typescript/ ./src"
+        "s3:sync": "aws s3 sync ${npm_package_config_docsPath} s3://docs-markdown/${npm_package_name}/v${npm_package_version} --profile 0xproject --region us-east-1 --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers",
+        "docs:md": "ts-doc-gen --sourceDir=./src --output=${npm_package_config_docsPath}"
+    },
+    "config": {
+        "docsPath": "../../../docs/json_rpc_clients/typescript"
     },
     "repository": {
         "type": "git",
@@ -34,17 +37,18 @@
     },
     "homepage": "https://github.com/0xProject/0x-mesh/rpc/clients/typescript/README.md",
     "dependencies": {
-        "@0x/assert": "^2.1.0",
-        "@0x/dev-utils": "^2.2.4",
-        "@0x/order-utils": "^8.1.1",
-        "@0x/types": "^2.2.2",
-        "@0x/typescript-typings": "^4.2.2",
-        "@0x/utils": "^4.3.3",
-        "@0x/web3-providers-fork": "0.0.6",
+        "@0x/assert": "^2.1.2",
+        "@0x/dev-utils": "^2.2.6",
+        "@0x/order-utils": "^8.2.4",
+        "@0x/types": "^2.4.1",
+        "@0x/typescript-typings": "^4.2.4",
+        "@0x/utils": "^4.4.2",
+        "@0x/web3-providers-fork": "0.0.7",
         "uuid": "^3.3.2",
         "websocket": "^1.0.29"
     },
     "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.13",
         "@0x/tslint-config": "^3.0.1",
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
@@ -57,8 +61,6 @@
         "mocha": "^4.1.0",
         "shx": "^0.2.2",
         "tslint": "5.11.0",
-        "typedoc": "^0.15.0",
-        "typedoc-plugin-markdown": "^2.1.0",
         "typescript": "3.0.1"
     },
     "publishConfig": {

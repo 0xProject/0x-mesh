@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:5b9dd020576063ed81bd1210fe44837ad42313135064f5a5f2390ecf64e0d2b8"
+  name = "github.com/0xProject/qunit"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "81c18fdf77522b0964f4e3fced25a88edcd813d7"
+
+[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -145,11 +153,13 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:760b2447d30444b6c2da7f77b677921f095fe19e6ed423b2edc1cd47a8507789"
+  digest = "1:d0e00c8ccabdfe678667d6be78c9d08a6a4efc36d9fb596f098706728b00ba6b"
   name = "github.com/gogo/protobuf"
   packages = [
+    "gogoproto",
     "io",
     "proto",
+    "protoc-gen-gogo/descriptor",
   ]
   pruneopts = "UT"
   revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
@@ -237,6 +247,14 @@
   pruneopts = "UT"
   revision = "aa9190c18f1576be98e974359fd08c64ca0b5a94"
   version = "v0.0.5"
+
+[[projects]]
+  digest = "1:ab70bd10c780d127a66393a14061ae69ae0145027e7207b7c43db68524f3f64a"
+  name = "github.com/ipfs/go-ds-leveldb"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "47a9627082eeb3e52570a75eb4fdfaff8b2f19a9"
+  version = "v0.0.2"
 
 [[projects]]
   digest = "1:0b4439ae69776549e6489b261f66894a1390140dad53f1c3b1fbfc074478590d"
@@ -551,22 +569,25 @@
   version = "v0.0.2"
 
 [[projects]]
-  digest = "1:b3c290f06f93c1abf58e4aba2df719f233e7b7c2592a54263b4e2d53df1e9dd0"
+  digest = "1:6229f1e520bda7fb92de81dce17e81c8fbb5d8a1e1d526bcce2f3112114d0180"
   name = "github.com/libp2p/go-libp2p-peer"
   packages = [
     ".",
     "peerset",
+    "test",
   ]
   pruneopts = "UT"
   revision = "badcaca9df8cb2887943c0a3d408fe07db160992"
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:482f3d69fc3c245562137c7acc554d359a0ddb8c0b6489d6d0940968cc7f2f99"
+  digest = "1:37c4d6a49ba55a6a3e244c0bbc509dce692f02d892ad44788616bf448086a975"
   name = "github.com/libp2p/go-libp2p-peerstore"
   packages = [
     ".",
     "addr",
+    "pb",
+    "pstoreds",
     "pstoremem",
     "queue",
   ]
@@ -852,6 +873,15 @@
   version = "v0.0.4"
 
 [[projects]]
+  branch = "support-arrays"
+  digest = "1:0d4c99af326c5aa0cb55940961953f9772cc84e765f3a90110a4501dcccdae90"
+  name = "github.com/norunners/vert"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "32b044758d63e7074e457e97fd1ca54f01448b16"
+  source = "github.com/albrow/vert"
+
+[[projects]]
   branch = "master"
   digest = "1:7f728b11da089d6162d536b9adfe0d68abc9a6f277585d82f14601791ebaf9c2"
   name = "github.com/ocdogan/rbt"
@@ -1006,8 +1036,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "minimum-wasm-support"
-  digest = "1:fd89d5b43d208d71dda7947134f259bc7f41d517b47de0ffc9e46d1e73570c8d"
+  branch = "full-wasm-support"
+  digest = "1:19a06414eca371f87af481d67abf345eeaf6ff9eeab1a622513f1b6633d9be4f"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -1024,7 +1054,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "fffbeed929e855b40ba3475af0e30e5e4e759e49"
+  revision = "d4cacb205e8673f0b7ac34406a7dbfffb993400f"
   source = "github.com/0xProject/goleveldb"
 
 [[projects]]
@@ -1246,6 +1276,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/0xProject/qunit",
     "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
@@ -1262,6 +1293,7 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
+    "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
@@ -1275,6 +1307,7 @@
     "github.com/libp2p/go-libp2p-net",
     "github.com/libp2p/go-libp2p-peer",
     "github.com/libp2p/go-libp2p-peerstore",
+    "github.com/libp2p/go-libp2p-peerstore/pstoreds",
     "github.com/libp2p/go-libp2p-protocol",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-routing",
@@ -1282,6 +1315,7 @@
     "github.com/libp2p/go-libp2p/p2p/host/relay",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
+    "github.com/norunners/vert",
     "github.com/ocdogan/rbt",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",

@@ -25,6 +25,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -44,7 +45,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "2.0.0-beta"
+	version                    = "3.0.0-beta"
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -355,6 +356,7 @@ func (app *App) Start(ctx context.Context) error {
 		MessageHandler:   app,
 		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
 		UseBootstrapList: app.config.UseBootstrapList,
+		PeerstoreDir:     filepath.Join(app.config.DataDir, "peerstore"),
 	}
 	var err error
 	app.node, err = p2p.New(innerCtx, nodeConfig)
@@ -538,6 +540,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		Accepted: []*zeroex.AcceptedOrderInfo{},
 		Rejected: []*zeroex.RejectedOrderInfo{},
 	}
+	orderHashesSeen := map[common.Hash]struct{}{}
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
@@ -582,7 +585,17 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
 			return nil, err
 		}
+
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		if _, alreadySeen := orderHashesSeen[orderHash]; alreadySeen {
+			continue
+		}
+
 		schemaValidOrders = append(schemaValidOrders, signedOrder)
+		orderHashesSeen[orderHash] = struct{}{}
 	}
 
 	validationResults, err := app.validateOrders(schemaValidOrders)

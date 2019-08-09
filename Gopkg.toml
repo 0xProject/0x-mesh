@@ -52,7 +52,7 @@
 
 [[constraint]]
   name = "github.com/syndtr/goleveldb"
-  branch = "minimum-wasm-support"
+  branch = "full-wasm-support"
   source = "github.com/0xProject/goleveldb"
 
 [[constraint]]
@@ -112,3 +112,12 @@
 [[constraint]]
   name = "github.com/hashicorp/golang-lru"
   version = "0.5.1"
+
+[[constraint]]
+  name = "github.com/ipfs/go-ds-leveldb"
+  version = "0.0.2"
+
+[[constraint]]
+  branch = "support-arrays"
+  name = "github.com/norunners/vert"
+  source = "github.com/albrow/vert"
