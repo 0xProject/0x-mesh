@@ -109,3 +109,7 @@
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-core"
   version = "0.2.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-discovery"
+  version = "0.1.0"
