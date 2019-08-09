@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type Message struct {

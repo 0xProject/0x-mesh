@@ -7,7 +7,7 @@ import (
 	"time"
 
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	p2pnet "github.com/libp2p/go-libp2p-net"
+	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
