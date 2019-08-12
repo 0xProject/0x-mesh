@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/zeroex"
-
 	"github.com/albrow/stringset"
 	"github.com/ocdogan/rbt"
 	log "github.com/sirupsen/logrus"
