@@ -77,6 +77,7 @@ type Node struct {
 	protectedIPsMut  sync.RWMutex
 	protectedIPs     stringset.Set
 	bandwidthChecker *bandwidthChecker
+	topics           []string
 }
 
 // Config contains configuration options for a Node.
@@ -86,7 +87,7 @@ type Config struct {
 	DefaultTopic string
 	// CustomTopic is a custom topic to which the node operator wishes to subscribe to.
 	// The node will still share all orders on both the custom topic and the default topic
-	// but will only receive from the custom topic.
+	// but will only receive from peers also on the custom topic.
 	CustomTopic string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
@@ -198,6 +199,11 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, err
 	}
 
+	topics := []string{config.DefaultTopic}
+	if config.CustomTopic != "" {
+		topics = append(topics, config.CustomTopic)
+	}
+
 	// Create the Node.
 	node := &Node{
 		ctx:              ctx,
@@ -210,6 +216,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
 		protectedIPs:     stringset.New(),
+		topics:           topics,
 	}
 	node.bandwidthChecker = newBandwidthChecker(node, bandwidthCounter)
 
@@ -544,7 +551,7 @@ func (n *Node) shareBatch() error {
 		return err
 	}
 	for _, data := range outgoing {
-		for _, topic := range []string{n.config.DefaultTopic, n.config.CustomTopic} {
+		for _, topic := range n.topics {
 			if err := n.send(topic, data); err != nil {
 				return err
 			}
