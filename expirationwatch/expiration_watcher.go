@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/zeroex"
+
 	"github.com/albrow/stringset"
 	"github.com/ocdogan/rbt"
 	log "github.com/sirupsen/logrus"
@@ -135,15 +137,14 @@ func (w *Watcher) prune() []ExpiredItem {
 			break
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
-		expirationTimestamp := time.Unix(expirationTimeSeconds, 0)
-		currentTimePlusBuffer := time.Now().Add(w.expirationBuffer)
-		if expirationTimestamp.After(currentTimePlusBuffer) {
+		expirationTime := time.Unix(expirationTimeSeconds, 0)
+		if !zeroex.IsExpired(expirationTime, w.expirationBuffer) {
 			break
 		}
 		ids := value.(stringset.Set)
 		for id := range ids {
 			pruned = append(pruned, ExpiredItem{
-				ExpirationTimestamp: expirationTimestamp,
+				ExpirationTimestamp: expirationTime,
 				ID:                  id,
 			})
 		}
