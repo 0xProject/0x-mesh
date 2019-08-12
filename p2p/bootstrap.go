@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
-	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -49,7 +50,7 @@ func ConnectToBootstrapList(ctx context.Context, host host.Host) error {
 	defer cancel()
 	wg := sync.WaitGroup{}
 	for _, addr := range BootstrapPeers {
-		peerInfo, err := peerstore.InfoFromP2pAddr(addr)
+		peerInfo, err := peer.AddrInfoFromP2pAddr(addr)
 		if err != nil {
 			return err
 		}
