@@ -114,6 +114,8 @@ type Config struct {
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
+	// CustomTopic is an additional custom topic the Mesh node should send/receive orders to/from
+	CustomTopic string `envvar:"CUSTOM_TOPIC" default:""`
 }
 
 type snapshotInfo struct {
@@ -270,7 +272,7 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPubSubTopic(networkID int) string {
+func getDefaultPubSubTopic(networkID int) string {
 	return fmt.Sprintf("/0x-orders/network/%d/version/1", networkID)
 }
 
@@ -394,7 +396,8 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
+		DefaultTopic:     getDefaultPubSubTopic(app.config.EthereumNetworkID),
+		CustomTopic:      app.config.CustomTopic,
 		TCPPort:          app.config.P2PTCPPort,
 		WebSocketsPort:   app.config.P2PWebSocketsPort,
 		Insecure:         false,
@@ -693,9 +696,13 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		return nil, err
 	}
 
+	topics := []string{getDefaultPubSubTopic(app.config.EthereumNetworkID)}
+	if app.config.CustomTopic != "" {
+		topics = append(topics, app.config.CustomTopic)
+	}
 	response := &rpc.GetStatsResponse{
 		Version:           version,
-		PubSubTopic:       getPubSubTopic(app.config.EthereumNetworkID),
+		PubSubTopics:      topics,
 		Rendezvous:        getRendezvous(app.config.EthereumNetworkID),
 		PeerID:            app.peerID.String(),
 		EthereumNetworkID: app.config.EthereumNetworkID,

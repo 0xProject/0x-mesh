@@ -81,9 +81,13 @@ type Node struct {
 
 // Config contains configuration options for a Node.
 type Config struct {
-	// Topic is a unique string representing the pubsub topic. Only Nodes which
-	// have the same topic will share messages with one another.
-	Topic string
+	// DefaultTopic is the topic upon which all orders are broadcast. This is the
+	// default topic nodes share on if a custom topic is not specified at startup
+	DefaultTopic string
+	// CustomTopic is a custom topic to which the node operator wishes to subscribe to.
+	// The node will still share all orders on both the custom topic and the default topic
+	// but will only receive from the custom topic.
+	CustomTopic string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
@@ -540,16 +544,18 @@ func (n *Node) shareBatch() error {
 		return err
 	}
 	for _, data := range outgoing {
-		if err := n.send(data); err != nil {
-			return err
+		for _, topic := range []string{n.config.DefaultTopic, n.config.CustomTopic} {
+			if err := n.send(topic, data); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 // send sends a message continaing the given data to all connected peers.
-func (n *Node) send(data []byte) error {
-	return n.pubsub.Publish(n.config.Topic, data)
+func (n *Node) send(topic string, data []byte) error {
+	return n.pubsub.Publish(topic, data)
 }
 
 // receive returns the next pending message. It blocks if no messages are
@@ -557,7 +563,11 @@ func (n *Node) send(data []byte) error {
 func (n *Node) receive(ctx context.Context) (*Message, error) {
 	if n.sub == nil {
 		var err error
-		n.sub, err = n.pubsub.Subscribe(n.config.Topic)
+		topic := n.config.DefaultTopic
+		if n.config.CustomTopic != "" {
+			topic = n.config.CustomTopic
+		}
+		n.sub, err = n.pubsub.Subscribe(topic)
 		if err != nil {
 			return nil, err
 		}

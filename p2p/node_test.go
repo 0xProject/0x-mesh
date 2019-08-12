@@ -81,7 +81,8 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
 	require.NoError(t, err)
 	config := Config{
-		Topic:            testTopic,
+		DefaultTopic:     testTopic,
+		CustomTopic:      "",
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
@@ -235,13 +236,13 @@ loop:
 
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
-	require.NoError(t, node0.send(pingMessage.Data))
+	require.NoError(t, node0.send(testTopic, pingMessage.Data))
 	const pingPongTimeout = 15 * time.Second
 	expectMessage(t, node1, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{From: node1.host.ID(), Data: []byte("pong\n")}
-	require.NoError(t, node1.send(pongMessage.Data))
+	require.NoError(t, node1.send(testTopic, pongMessage.Data))
 	expectMessage(t, node0, pongMessage, pingPongTimeout)
 }
 
