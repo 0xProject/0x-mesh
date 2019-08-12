@@ -21,7 +21,7 @@ WARNING: This project is still under active development. Expect breaking changes
 - Market makers can use Mesh to reach a broader audience. Their orders will be
   sent throughout the network and are more likely to be filled.
 - Mesh allows for a new type of relayer called a "serverless relayer". In the
-  serverless relayer model, each users runs Mesh in their browser and there is
+  serverless relayer model, each user runs Mesh in their browser and there is
   no backend server or database. Instead, peers share orders directly with one
   another. (There are pros and cons to this approach and it is probably not
   suitable for all markets).
