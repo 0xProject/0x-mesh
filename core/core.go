@@ -114,7 +114,8 @@ type Config struct {
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
-	// CustomTopic is an additional custom topic the Mesh node should send/receive orders to/from
+	// CustomTopic is an additional topic the Mesh node should send orders to. If specified, the node will also
+	// exclusively receive orders from peers also subscribed to the custom topic.
 	CustomTopic string `envvar:"CUSTOM_TOPIC" default:""`
 }
 
