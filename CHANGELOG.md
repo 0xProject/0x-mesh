@@ -60,6 +60,16 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Breaking changes 🛠 
 
+- Modified `mesh_getStats` so that it returns the topics used in the pubsub layer differentiated between those that are published to, and those that the node is subscribed to. Mesh nodes can publish to multiple topics but only ever subscribe to a single topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
+
+### Features ✅ 
+
+- Added the ability to specify a custom pubsub topic at instantiation and have the Mesh node receive orders exclusively from peers subscribed to the same topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
+
+## v3.0.0-beta
+
+### Breaking changes 🛠 
+
 - Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
   technically a breaking change, partially fillable orders are rare in the wild and we don't expect this will
   affect many users. ([#333](https://github.com/0xProject/0x-mesh/pull/333))
