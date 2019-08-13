@@ -277,6 +277,17 @@ func getDefaultPubSubTopic(networkID int) string {
 	return fmt.Sprintf("/0x-orders/network/%d/version/1", networkID)
 }
 
+func getPublishAndSubscribeTopics(networkID int, customTopic string) (publishTopics []string, subscribeTopic string) {
+	defaultTopic := getDefaultPubSubTopic(networkID)
+	publishTopics = []string{defaultTopic}
+	subscribeTopic = defaultTopic
+	if customTopic != "" {
+		publishTopics = append(publishTopics, customTopic)
+		subscribeTopic = customTopic
+	}
+	return publishTopics, subscribeTopic
+}
+
 func getRendezvous(networkID int) string {
 	return fmt.Sprintf("/0x-mesh/network/%d/version/1", networkID)
 }
@@ -391,13 +402,7 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	defaultTopic := getDefaultPubSubTopic(app.config.EthereumNetworkID)
-	publishTopics := []string{defaultTopic}
-	subscribeTopic := defaultTopic
-	if app.config.CustomTopic != "" {
-		publishTopics = append(publishTopics, app.config.CustomTopic)
-		subscribeTopic = app.config.CustomTopic
-	}
+	publishTopics, subscribeTopic := getPublishAndSubscribeTopics(app.config.EthereumNetworkID, app.config.CustomTopic)
 
 	// Initialize the p2p node.
 	bootstrapList := p2p.DefaultBootstrapList
@@ -705,13 +710,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		return nil, err
 	}
 
-	defaultTopic := getDefaultPubSubTopic(app.config.EthereumNetworkID)
-	publishTopics := []string{defaultTopic}
-	subscribeTopic := defaultTopic
-	if app.config.CustomTopic != "" {
-		publishTopics = append(publishTopics, app.config.CustomTopic)
-		subscribeTopic = app.config.CustomTopic
-	}
+	publishTopics, subscribeTopic := getPublishAndSubscribeTopics(app.config.EthereumNetworkID, app.config.CustomTopic)
 	response := &rpc.GetStatsResponse{
 		Version:           version,
 		PublishTopics:     publishTopics,
