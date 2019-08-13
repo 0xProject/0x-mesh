@@ -19,8 +19,8 @@ type BlockStack struct {
 
 // New instantiates a new stack with the specified size limit. Once the size limit
 // is reached, adding additional blocks will evict the deepest block.
-func New(meshDB *meshdb.MeshDB, limit int) BlockStack {
-	return BlockStack{
+func New(meshDB *meshdb.MeshDB, limit int) *BlockStack {
+	return &BlockStack{
 		meshDB: meshDB,
 		limit:  limit,
 	}
@@ -28,7 +28,7 @@ func New(meshDB *meshdb.MeshDB, limit int) BlockStack {
 
 // Pop removes and returns the latest block header on the block stack. It
 // returns nil if the stack is empty.
-func (b BlockStack) Pop() (*blockwatch.MiniHeader, error) {
+func (b *BlockStack) Pop() (*blockwatch.MiniHeader, error) {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
@@ -47,7 +47,7 @@ func (b BlockStack) Pop() (*blockwatch.MiniHeader, error) {
 
 // Push pushes a block header onto the block stack. If the stack limit is
 // reached, it will remove the oldest block header.
-func (b BlockStack) Push(block *blockwatch.MiniHeader) error {
+func (b *BlockStack) Push(block *blockwatch.MiniHeader) error {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
@@ -68,7 +68,7 @@ func (b BlockStack) Push(block *blockwatch.MiniHeader) error {
 
 // Peek returns the latest block header from the block stack without removing
 // it. It returns nil if the stack is empty.
-func (b BlockStack) Peek() (*blockwatch.MiniHeader, error) {
+func (b *BlockStack) Peek() (*blockwatch.MiniHeader, error) {
 	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
 	if err != nil {
 		return nil, nil
@@ -78,7 +78,7 @@ func (b BlockStack) Peek() (*blockwatch.MiniHeader, error) {
 }
 
 // Inspect returns all the block headers currently on the stack
-func (b BlockStack) Inspect() ([]*blockwatch.MiniHeader, error) {
+func (b *BlockStack) Inspect() ([]*blockwatch.MiniHeader, error) {
 	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
