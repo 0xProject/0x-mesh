@@ -269,7 +269,8 @@ func TestAddPeer(t *testing.T) {
 func TestGetStats(t *testing.T) {
 	expectedGetStatsResponse := &GetStatsResponse{
 		Version:           "development",
-		PubSubTopics:       []string{"/0x-orders/network/development/version/1"},
+		PublishTopics:     []string{"/0x-orders/network/development/version/1"},
+		SubscribeTopic:    "/0x-orders/network/development/version/1",
 		Rendezvous:        "/0x-mesh/network/development/version/1",
 		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
 		EthereumNetworkID: 42,

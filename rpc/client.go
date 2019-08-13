@@ -77,7 +77,8 @@ type LatestBlock struct {
 // GetStatsResponse is the response returned for an RPC request to mesh_getStats
 type GetStatsResponse struct {
 	Version           string      `json:"version"`
-	PubSubTopics      []string      `json:"pubSubTopics"`
+	PublishTopics     []string    `json:"publishTopics"`
+	SubscribeTopic    string      `json:"subscribeTopic"`
 	Rendezvous        string      `json:"rendervous"`
 	PeerID            string      `json:"peerID"`
 	EthereumNetworkID int         `json:"ethereumNetworkID"`

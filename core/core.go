@@ -705,13 +705,17 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		return nil, err
 	}
 
-	topics := []string{getDefaultPubSubTopic(app.config.EthereumNetworkID)}
+	defaultTopic := getDefaultPubSubTopic(app.config.EthereumNetworkID)
+	publishTopics := []string{defaultTopic}
+	subscribeTopic := defaultTopic
 	if app.config.CustomTopic != "" {
-		topics = append(topics, app.config.CustomTopic)
+		publishTopics = append(publishTopics, app.config.CustomTopic)
+		subscribeTopic = app.config.CustomTopic
 	}
 	response := &rpc.GetStatsResponse{
 		Version:           version,
-		PubSubTopics:      topics,
+		PublishTopics:     publishTopics,
+		SubscribeTopic:    subscribeTopic,
 		Rendezvous:        getRendezvous(app.config.EthereumNetworkID),
 		PeerID:            app.peerID.String(),
 		EthereumNetworkID: app.config.EthereumNetworkID,
