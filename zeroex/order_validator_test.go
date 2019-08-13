@@ -133,7 +133,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 		require.NoError(t, err)
 
 		validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
@@ -165,7 +165,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
@@ -194,7 +194,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
@@ -218,7 +218,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -263,7 +263,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*SignedOrder{signedOrder}
@@ -280,7 +280,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
@@ -317,7 +317,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength)
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}

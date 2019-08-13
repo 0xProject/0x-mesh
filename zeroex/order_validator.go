@@ -167,6 +167,10 @@ var (
 		Code:    "OrderHasInvalidSignature",
 		Message: "order signature must be valid",
 	}
+	ROMaxExpirationExceeded = RejectedOrderStatus{
+		Code:    "OrderMaxExpirationExceeded",
+		Message: "order expiration too far in the future",
+	}
 )
 
 // ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
@@ -193,6 +197,7 @@ type RejectedOrderKind string
 const (
 	ZeroExValidation = RejectedOrderKind("ZEROEX_VALIDATION")
 	MeshError        = RejectedOrderKind("MESH_ERROR")
+	MeshValidation   = RejectedOrderKind("MESH_VALIDATION")
 	CoordinatorError = RejectedOrderKind("COORDINATOR_ERROR")
 )
 
@@ -216,10 +221,11 @@ type OrderValidator struct {
 	networkID                    int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
+	expirationBuffer             time.Duration
 }
 
 // NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int) (*OrderValidator, error) {
+func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
@@ -605,8 +611,19 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([
 		if err != nil {
 			log.WithError(err).WithField("signedOrder", signedOrder).Error("Computing the orderHash failed unexpectedly")
 		}
-		now := big.NewInt(time.Now().Unix())
-		if signedOrder.ExpirationTimeSeconds.Cmp(now) == -1 {
+		if !signedOrder.ExpirationTimeSeconds.IsInt64() {
+			// Shouldn't happen because we separately enforce a max expiration time.
+			// See core/validation.go.
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        MeshValidation,
+				Status:      ROMaxExpirationExceeded,
+			})
+			continue
+		}
+		expirationTime := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
+		if IsExpired(expirationTime, o.expirationBuffer) {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
@@ -815,4 +832,9 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	}
 
 	return true
+}
+
+func IsExpired(expirationTime time.Time, expirationBuffer time.Duration) bool {
+	currentTimePlusBuffer := time.Now().Add(expirationBuffer)
+	return currentTimePlusBuffer.After(expirationTime)
 }
