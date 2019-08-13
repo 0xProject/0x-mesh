@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -19,8 +18,8 @@ import (
 // Client defines the methods needed to satisfy the client expected when
 // instantiating a Watcher instance.
 type Client interface {
-	HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
-	HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error)
+	HeaderByNumber(number *big.Int) (*MiniHeader, error)
+	HeaderByHash(hash common.Hash) (*MiniHeader, error)
 	FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
 }
 
@@ -53,7 +52,7 @@ type GetBlockByNumberResponse struct {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error) {
+func (rc *RpcClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
 	defer cancel()
 
@@ -84,7 +83,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	if !ok {
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block number returned from eth_getBlockByNumber")
 	}
-	miniHeader := &meshdb.MiniHeader{
+	miniHeader := &MiniHeader{
 		Hash:   header.Hash,
 		Parent: header.ParentHash,
 		Number: blockNum,
@@ -94,14 +93,14 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (rc *RpcClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error) {
+func (rc *RpcClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
 	defer cancel()
 	header, err := rc.client.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
-	miniHeader := &meshdb.MiniHeader{
+	miniHeader := &MiniHeader{
 		Hash:   header.Hash(),
 		Parent: header.ParentHash,
 		Number: header.Number,

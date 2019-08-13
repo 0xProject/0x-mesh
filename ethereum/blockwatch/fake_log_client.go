@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -31,12 +30,12 @@ func newFakeLogClient(rangeToResponse map[string]filterLogsResponse) (*fakeLogCl
 }
 
 // HeaderByNumber fetches a block header by its number
-func (fc *fakeLogClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error) {
+func (fc *fakeLogClient) HeaderByNumber(number *big.Int) (*MiniHeader, error) {
 	return nil, errors.New("NOT_IMPLEMENTED")
 }
 
 // HeaderByHash fetches a block header by its block hash
-func (fc *fakeLogClient) HeaderByHash(hash common.Hash) (*meshdb.MiniHeader, error) {
+func (fc *fakeLogClient) HeaderByHash(hash common.Hash) (*MiniHeader, error) {
 	return nil, errors.New("NOT_IMPLEMENTED")
 }
 

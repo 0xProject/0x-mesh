@@ -14,6 +14,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/blockstack"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
@@ -166,14 +167,14 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
+	stack := blockstack.New(meshDB, blockWatcherRetentionLimit)
 	blockWatcherConfig := blockwatch.Config{
-		MeshDB:              meshDB,
-		PollingInterval:     config.BlockPollingInterval,
-		StartBlockDepth:     ethrpc.LatestBlockNumber,
-		BlockRetentionLimit: blockWatcherRetentionLimit,
-		WithLogs:            true,
-		Topics:              topics,
-		Client:              blockWatcherClient,
+		Stack:           stack,
+		PollingInterval: config.BlockPollingInterval,
+		StartBlockDepth: ethrpc.LatestBlockNumber,
+		WithLogs:        true,
+		Topics:          topics,
+		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
