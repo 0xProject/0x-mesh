@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-3.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-3.0.1--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Usage
 Guide! This guide will help you interact with 0x Mesh via a JSON-RPC API once
