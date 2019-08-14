@@ -45,7 +45,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "3.0.0-beta"
+	version                    = "3.0.1-beta"
 )
 
 // Config is a set of configuration options for 0x Mesh.
@@ -165,7 +165,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength)
+	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -553,7 +553,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        MeshValidation,
+				Kind:        zeroex.MeshValidation,
 				Status: zeroex.RejectedOrderStatus{
 					Code:    ROInvalidSchemaCode,
 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
@@ -573,7 +573,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 			}
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        MeshValidation,
+				Kind:        zeroex.MeshValidation,
 				Status:      status,
 			})
 			continue

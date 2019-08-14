@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 func GetPrivateKeyFromPath(path string) (p2pcrypto.PrivKey, error) {

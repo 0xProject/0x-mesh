@@ -41,10 +41,6 @@ var (
 		Code:    "OrderAlreadyStoredAndUnfillable",
 		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
 	}
-	ROMaxExpirationExceeded = zeroex.RejectedOrderStatus{
-		Code:    "OrderMaxExpirationExceeded",
-		Message: "order expiration too far in the future",
-	}
 	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
@@ -65,11 +61,6 @@ var (
 	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"exchangeAddress":{"$ref":"/addressSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","salt","exchangeAddress","feeRecipientAddress","expirationTimeSeconds"],"type":"object"}`)
 	signedOrderSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/signedOrderSchema","allOf":[{"$ref":"/orderSchema"},{"properties":{"signature":{"$ref":"/hexSchema"}},"required":["signature"]}]}`)
 	meshMessageSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/meshMessageSchema","properties":{"MessageType":{"type":"string"},"Order":{"$ref":"/signedOrderSchema"}},"required":["MessageType","Order"]}`)
-)
-
-// RejectedOrderKind values
-const (
-	MeshValidation = zeroex.RejectedOrderKind("MESH_VALIDATION")
 )
 
 func setupMeshMessageSchemaValidator() (*gojsonschema.Schema, error) {
@@ -170,7 +161,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        MeshValidation,
+				Kind:        zeroex.MeshValidation,
 				Status:      ROSenderAddressNotAllowed,
 			})
 			continue
@@ -179,7 +170,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        MeshValidation,
+				Kind:        zeroex.MeshValidation,
 				Status:      ROIncorrectNetwork,
 			})
 			continue
@@ -189,8 +180,8 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        MeshValidation,
-				Status:      ROMaxExpirationExceeded,
+				Kind:        zeroex.MeshValidation,
+				Status:      zeroex.ROMaxExpirationExceeded,
 			})
 			continue
 		}
@@ -199,7 +190,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
-					Kind:        MeshValidation,
+					Kind:        zeroex.MeshValidation,
 					Status:      ROMaxOrderSizeExceeded,
 				})
 				continue
@@ -229,7 +220,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
-					Kind:        MeshValidation,
+					Kind:        zeroex.MeshValidation,
 					Status:      ROOrderAlreadyStoredAndUnfillable,
 				})
 				continue

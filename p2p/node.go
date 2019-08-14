@@ -17,15 +17,14 @@ import (
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	routing "github.com/libp2p/go-libp2p-routing"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
@@ -297,7 +296,7 @@ func (n *Node) GetNumPeers() int {
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, timeout is exceeded, or an error
 // is returned.
-func (n *Node) Connect(peerInfo peerstore.PeerInfo, timeout time.Duration) error {
+func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 	connectCtx, cancel := context.WithTimeout(n.ctx, timeout)
 	defer cancel()
 	err := n.host.Connect(connectCtx, peerInfo)
@@ -381,7 +380,7 @@ func (n *Node) findNewPeers(max int) error {
 // we can safely ignore it.
 var failedPeerConnectionCache, _ = lru.New(peerCountHigh * 2)
 
-func logPeerConnectionError(peerInfo peerstore.PeerInfo, connectionErr error) {
+func logPeerConnectionError(peerInfo peer.AddrInfo, connectionErr error) {
 	// If we fail to connect to a single peer we should still keep trying the
 	// others. Log instead of returning the error.
 	logMsg := "could not connect to peer"

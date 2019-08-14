@@ -378,8 +378,10 @@ describe('WSClient', () => {
             // tslint:disable-next-line:no-floating-promises
             (async () => {
                 const wsServer = await setupServerAsync();
+                let connectionNum = 0;
                 wsServer.on('connect', async (connection: WebSocket.connection) => {
                     let requestNum = 0;
+                    connectionNum++;
                     connection.on('message', (async (message: WSMessage) => {
                         const jsonRpcRequest = JSON.parse(message.utf8Data);
                         if (requestNum === 0) {
@@ -391,11 +393,13 @@ describe('WSClient', () => {
                                 }
                             `;
                             connection.sendUTF(response);
-                            // tslint:disable-next-line:custom-no-magic-numbers
-                            await sleepAsync(100);
-                            const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
-                            const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
-                            connection.drop(reasonCode, description);
+                            if (connectionNum === 1) {
+                                // tslint:disable-next-line:custom-no-magic-numbers
+                                await sleepAsync(100);
+                                const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
+                                const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
+                                connection.drop(reasonCode, description);
+                            }
                         }
                         requestNum++;
                     }) as any);
