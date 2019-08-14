@@ -33,6 +33,9 @@ func localStorageReadFile(path string) (data []byte, err error) {
 	}()
 	key := getKey(path)
 	rawData := js.Global().Get("localStorage").Call("getItem", key)
+	if rawData == js.Undefined() || rawData == js.Null() {
+		return nil, os.ErrNotExist
+	}
 	return base64.StdEncoding.DecodeString(rawData.String())
 }
 
