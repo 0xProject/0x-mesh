@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,29 +37,16 @@ const (
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	Type        EventType
-	BlockHeader *MiniHeader
-}
-
-// MiniHeader represents an Ethereum block header
-type MiniHeader struct {
-	Hash   common.Hash
-	Parent common.Hash
-	Number *big.Int
-	Logs   []types.Log
-}
-
-// ID returns the MiniHeader's ID
-func (m *MiniHeader) ID() []byte {
-	return m.Hash.Bytes()
+	BlockHeader *miniheader.MiniHeader
 }
 
 // Stack defines the interface a stack must implement in order to be used by
 // OrderWatcher for block header storage
 type Stack interface {
-	Pop() (*MiniHeader, error)
-	Push(*MiniHeader) error
-	Peek() (*MiniHeader, error)
-	Inspect() ([]*MiniHeader, error)
+	Pop() (*miniheader.MiniHeader, error)
+	Push(*miniheader.MiniHeader) error
+	Peek() (*miniheader.MiniHeader, error)
+	Inspect() ([]*miniheader.MiniHeader, error)
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
@@ -71,9 +59,9 @@ type Config struct {
 	Client          Client
 }
 
-// Watcher maintains a consistent representation of the latest `X` blocks,
-// handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
-// block height, and will emit both block added and removed events.
+// Watcher maintains a consistent representation of the latest X blocks (where X is enforced by the
+// supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from 
+// any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
 	startBlockDepth rpc.BlockNumber
 	stack           Stack
@@ -157,13 +145,13 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 }
 
 // GetLatestBlock returns the latest block processed
-func (w *Watcher) GetLatestBlock() (*MiniHeader, error) {
+func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
 }
 
 // InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
 // particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() ([]*MiniHeader, error) {
+func (w *Watcher) InspectRetainedBlocks() ([]*miniheader.MiniHeader, error) {
 	return w.stack.Inspect()
 }
 
@@ -209,7 +197,7 @@ func (w *Watcher) pollNextBlock() error {
 	return nil
 }
 
-func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) ([]*Event, error) {
+func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
 	latestHeader, err := w.stack.Peek()
 	if err != nil {
 		return nil, err
@@ -292,7 +280,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *MiniHeader, events []*Event) (
 	return events, nil
 }
 
-func (w *Watcher) addLogs(header *MiniHeader) (*MiniHeader, error) {
+func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
 	}
@@ -366,14 +354,14 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 
 		// Create the block events from all the logs found by grouping
 		// them into blockHeaders
-		hashToBlockHeader := map[common.Hash]*MiniHeader{}
+		hashToBlockHeader := map[common.Hash]*miniheader.MiniHeader{}
 		for _, log := range logs {
 			blockHeader, ok := hashToBlockHeader[log.BlockHash]
 			if !ok {
 				// TODO(fabio): Find a way to include the parent hash for the block as well.
 				// It's currently not an issue to omit it since we don't use the parent hash
 				// when processing block events in OrderWatcher.
-				blockHeader = &MiniHeader{
+				blockHeader = &miniheader.MiniHeader{
 					Hash:   log.BlockHash,
 					Number: big.NewInt(0).SetUint64(log.BlockNumber),
 					Logs:   []types.Log{},

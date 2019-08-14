@@ -6,24 +6,11 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	log "github.com/sirupsen/logrus"
 )
-
-// MiniHeader is the database representation of a succinct Ethereum block headers
-type MiniHeader struct {
-	Hash   common.Hash
-	Parent common.Hash
-	Number *big.Int
-	Logs   []types.Log
-}
-
-// ID returns the MiniHeader's ID
-func (m *MiniHeader) ID() []byte {
-	return m.Hash.Bytes()
-}
 
 // Order is the database representation a 0x order along with some relevant metadata
 type Order struct {
@@ -173,7 +160,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 }
 
 func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
-	col, err := database.NewCollection("miniHeader", &MiniHeader{})
+	col, err := database.NewCollection("miniHeader", &miniheader.MiniHeader{})
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +169,7 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 		// numerical order, we need to pad with zeroes. The maximum length of an
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
 		// length of the number is always 80.
-		number := model.(*MiniHeader).Number
+		number := model.(*miniheader.MiniHeader).Number
 		return []byte(fmt.Sprintf("%080s", number.String()))
 	})
 
@@ -206,8 +193,8 @@ func (m *MeshDB) Close() {
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
-func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
-	miniHeaders := []*MiniHeader{}
+func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, error) {
+	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All())
 	if err := query.Run(&miniHeaders); err != nil {
 		return nil, err
@@ -217,8 +204,8 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*MiniHeader, error) {
 
 // FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
 // largest block number), or nil if there are none in the database.
-func (m *MeshDB) FindLatestMiniHeader() (*MiniHeader, error) {
-	miniHeaders := []*MiniHeader{}
+func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
+	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All()).Reverse().Max(1)
 	if err := query.Run(&miniHeaders); err != nil {
 		return nil, err
