@@ -2,6 +2,12 @@
 
 ## Upcoming release
 
+### Bug fixes 🐞 
+
+- Fix bug where block number would sometimes be converted to hex with a leading zero, an invalid hex value per the [Ethereum JSON-RPC specification](https://github.com/ethereum/wiki/wiki/JSON-RPC#hex-value-encoding). ([#353](https://github.com/0xProject/0x-mesh/pull/353))
+
+## v3.0.0-beta
+
 ### Breaking changes 🛠 
 
 - Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
