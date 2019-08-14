@@ -4,6 +4,14 @@ Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Usage
 Guide! This guide will help you interact with 0x Mesh via a JSON-RPC API once
 you have it up and running.
 
+The JSON-RPC API is intended to be a *private* API. The API should only be
+accessible to the developers running the Mesh node and should not be exposed to
+the public. The API runs on a separate port from the peer-to-peer protocols and
+access to it can be controlled via a firewall.
+
+Peers in the network do not use the JSON-RPC API and instead use a peer-to-peer
+PubSub mechanism (usually this is not something you need to worry about).
+
 ## Similarities to the Ethereum JSON-RPC API
 
 Our JSON-RPC API is very similar to the

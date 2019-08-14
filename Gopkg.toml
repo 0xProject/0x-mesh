@@ -61,39 +61,23 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p"
-  version = "v0.0.28"
-
-[[constraint]]
-  name = "github.com/libp2p/go-libp2p-peerstore"
-  version = "v0.0.6"
+  version = "v0.3.0"
 
 [[constraint]]
   name = "github.com/multiformats/go-multiaddr"
   version = "0.0.4"
 
 [[constraint]]
-  name = "github.com/libp2p/go-libp2p-crypto"
-  version = "0.0.2"
-
-[[constraint]]
-  name = "github.com/libp2p/go-libp2p-host"
-  version = "0.0.3"
-
-[[constraint]]
   name = "github.com/libp2p/go-libp2p-pubsub"
-  version = "0.0.3"
+  version = "0.1.0"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-kad-dht"
-  version = "0.0.13"
+  version = "0.2.0"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-connmgr"
-  version = "0.0.4"
-
-[[constraint]]
-  name = "github.com/libp2p/go-libp2p-discovery"
-  version = "0.0.4"
+  version = "0.1.1"
 
 [[override]]
   name = "github.com/gballet/go-libpcsclite"
@@ -107,7 +91,7 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-autonat-svc"
-  version = "0.0.6"
+  version = "0.1.0"
 
 [[constraint]]
   name = "github.com/hashicorp/golang-lru"
@@ -121,3 +105,11 @@
   branch = "support-arrays"
   name = "github.com/norunners/vert"
   source = "github.com/albrow/vert"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-core"
+  version = "0.2.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-discovery"
+  version = "0.1.0"

@@ -3,13 +3,13 @@ package blockwatch
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -61,7 +61,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*meshdb.MiniHeader, error)
 	if number == nil {
 		blockParam = "latest"
 	} else {
-		blockParam = fmt.Sprintf("0x%s", common.Bytes2Hex(number.Bytes()))
+		blockParam = hexutil.EncodeBig(number)
 	}
 	shouldIncludeTransactions := false
 

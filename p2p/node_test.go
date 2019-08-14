@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
-	p2pnet "github.com/libp2p/go-libp2p-net"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	p2pnet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,7 +99,7 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 }
 
 func connectTestNodes(t *testing.T, node0, node1 *Node) {
-	node1PeerInfo := peerstore.PeerInfo{
+	node1PeerInfo := peer.AddrInfo{
 		ID:    node1.ID(),
 		Addrs: node1.Multiaddrs(),
 	}
@@ -390,7 +390,7 @@ func TestPeerDiscovery(t *testing.T) {
 	go startNodeAndCheckError(t, node2)
 	connectTestNodes(t, node0, node1)
 
-	err := node2.Connect(peerstore.PeerInfo{
+	err := node2.Connect(peer.AddrInfo{
 		ID:    node1.host.ID(),
 		Addrs: node1.host.Addrs(),
 	}, testConnectionTimeout)
