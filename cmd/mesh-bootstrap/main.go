@@ -22,7 +22,6 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
@@ -154,16 +153,8 @@ func main() {
 
 	// Protect each other bootstrap peer via the connection manager so that we
 	// maintain an active connection to them.
-	for _, addr := range p2p.BootstrapPeers {
-		idString, err := addr.ValueForProtocol(ma.P_IPFS)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
-		}
-		id, err := peer.IDB58Decode(idString)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
-		}
-		connManager.Protect(id, "bootstrap-peer")
+	for _, addrInfo := range p2p.BootstrapPeers {
+		connManager.Protect(addrInfo.ID, "bootstrap-peer")
 	}
 
 	log.WithFields(map[string]interface{}{
