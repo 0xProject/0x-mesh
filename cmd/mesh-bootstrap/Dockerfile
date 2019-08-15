@@ -26,7 +26,9 @@ WORKDIR /usr/mesh
 
 COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh-bootstrap /usr/mesh/mesh-bootstrap
 
+# Default port for TCP multiaddr
 EXPOSE 60558
+# Default port for WebSockets multiaddr
 EXPOSE 60559
 
 RUN chmod +x ./mesh-bootstrap
