@@ -2,15 +2,13 @@ package keys
 
 import (
 	"crypto/rand"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 func GetPrivateKeyFromPath(path string) (p2pcrypto.PrivKey, error) {
-	keyBytes, err := ioutil.ReadFile(path)
+	keyBytes, err := readFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +25,7 @@ func GetPrivateKeyFromPath(path string) (p2pcrypto.PrivKey, error) {
 
 func GenerateAndSavePrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	if err := mkdirAll(dir); err != nil {
 		return nil, err
 	}
 	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
@@ -39,7 +37,7 @@ func GenerateAndSavePrivateKey(path string) (p2pcrypto.PrivKey, error) {
 		return nil, err
 	}
 	encodedKey := p2pcrypto.ConfigEncodeKey(keyBytes)
-	if err := ioutil.WriteFile(path, []byte(encodedKey), os.ModePerm); err != nil {
+	if err := writeFile(path, []byte(encodedKey)); err != nil {
 		return nil, err
 	}
 	return privKey, nil
