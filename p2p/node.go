@@ -484,7 +484,7 @@ func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Mu
 }
 
 func getPublicIP() (string, error) {
-	res, err := http.Get("https://ifconfig.me")
+	res, err := http.Get("https://ifconfig.me/ip")
 	if err != nil {
 		return "", err
 	}
