@@ -1,5 +1,3 @@
-// +build !js
-
 // Package core contains everything needed to configure and run a 0x Mesh node.
 package core
 

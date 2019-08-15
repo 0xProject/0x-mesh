@@ -1,5 +1,3 @@
-// +build !js
-
 // package p2p is a low-level library responsible for peer discovery and
 // sending/receiving messages.
 package p2p
