@@ -49,11 +49,9 @@ const (
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"5"`
-	// P2PListenPort is the port on which to listen for new connections.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
-	// PublicIPAddrs is a comma separated list of public IPv4 addresses at which
-	// the bootstrap node is accessible.
-	PublicIPAddrs string `envvar:"PUBLIC_IP_ADDRS"`
+	// P2PAddrs is a comma separated list of libp2p multiaddresses which the
+	// bootstrap node will bind to and advertise.
+	P2PAddrs string `envvar:"P2P_ADDRS"`
 	// PrivateKey path is the path to a private key file which will be used for
 	// signing messages and generating a peer ID.
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
@@ -99,33 +97,27 @@ func main() {
 		}
 		return kadDHT, err
 	}
-	// Parse advertiseAddresses from Public IPs
-	ipAddrs := strings.Split(config.PublicIPAddrs, ",")
-	advertiseAddrs := make([]ma.Multiaddr, len(ipAddrs))
-	for i, ipAddr := range ipAddrs {
-		maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", ipAddr, config.P2PListenPort)
+	// Parse multiaddresses given in the config
+	maddrStrings := strings.Split(config.P2PAddrs, ",")
+	maddrs := make([]ma.Multiaddr, len(maddrStrings))
+	for i, maddrString := range maddrStrings {
 		ma, err := ma.NewMultiaddr(maddrString)
 		if err != nil {
 			log.Fatal(err)
 		}
-		advertiseAddrs[i] = ma
+		maddrs[i] = ma
 	}
 
 	// Set up the transport and the host.
-	// Note: 0.0.0.0 will use all available addresses.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.P2PListenPort))
-	if err != nil {
-		log.WithField("error", err).Fatal("could not parse multiaddr")
-	}
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
-		libp2p.ListenAddrs(hostAddr),
+		libp2p.ListenAddrs(maddrs...),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
 		libp2p.EnableRelay(circuit.OptHop),
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
-		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
+		libp2p.AddrsFactory(newAddrsFactory(maddrs)),
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
