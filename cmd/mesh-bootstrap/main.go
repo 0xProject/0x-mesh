@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
@@ -49,9 +51,12 @@ const (
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"5"`
-	// P2PAddrs is a comma separated list of libp2p multiaddresses which the
-	// bootstrap node will bind to and advertise.
-	P2PAddrs string `envvar:"P2P_ADDRS"`
+	// P2PBindAddrs is a comma separated list of libp2p multiaddresses which the
+	// bootstrap node will bind to.
+	P2PBindAddrs string `envvar:"P2P_BIND_ADDRS"`
+	// P2PAdvertiseAddrs is a comma separated list of libp2p multiaddresses which the
+	// bootstrap node will advertise to peers.
+	P2PAdvertiseAddrs string `envvar:"P2P_ADVERTISE_ADDRS"`
 	// PrivateKey path is the path to a private key file which will be used for
 	// signing messages and generating a peer ID.
 	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
@@ -80,11 +85,16 @@ func main() {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
 
-	// Parse private key file
+	// Parse private key file and add peer ID log hook
 	privKey, err := initPrivateKey(config.PrivateKeyPath)
 	if err != nil {
 		log.WithField("error", err).Fatal("could not initialize private key")
 	}
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
@@ -97,35 +107,32 @@ func main() {
 		}
 		return kadDHT, err
 	}
+
 	// Parse multiaddresses given in the config
-	maddrStrings := strings.Split(config.P2PAddrs, ",")
-	maddrs := make([]ma.Multiaddr, len(maddrStrings))
-	for i, maddrString := range maddrStrings {
-		ma, err := ma.NewMultiaddr(maddrString)
-		if err != nil {
-			log.Fatal(err)
-		}
-		maddrs[i] = ma
+	bindAddrs, err := parseAddrs(config.P2PBindAddrs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	advertiseAddrs, err := parseAddrs(config.P2PAdvertiseAddrs)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Set up the transport and the host.
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
-		libp2p.ListenAddrs(maddrs...),
+		libp2p.ListenAddrs(bindAddrs...),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
 		libp2p.EnableRelay(circuit.OptHop),
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
-		libp2p.AddrsFactory(newAddrsFactory(maddrs)),
+		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		log.WithField("error", err).Fatal("could not create host")
 	}
-
-	// Add the peer ID hook to the logger.
-	log.AddHook(loghooks.NewPeerIDHook(basicHost.ID()))
 
 	// Set up the notifee.
 	basicHost.Network().Notify(&notifee{})
@@ -209,4 +216,17 @@ func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Mu
 	return func([]ma.Multiaddr) []ma.Multiaddr {
 		return advertiseAddrs
 	}
+}
+
+func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
+	maddrStrings := strings.Split(commaSeparatedAddrs, ",")
+	maddrs := make([]ma.Multiaddr, len(maddrStrings))
+	for i, maddrString := range maddrStrings {
+		ma, err := ma.NewMultiaddr(maddrString)
+		if err != nil {
+			return nil, err
+		}
+		maddrs[i] = ma
+	}
+	return maddrs, nil
 }
