@@ -14,10 +14,24 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-func getOptionsForCurrentEnvironment(ctx context.Context, config Config) ([]libp2p.Option, error) {
+const (
+	// maxReceiveBatch is the maximum number of new messages to receive at once.
+	maxReceiveBatch = 500
+	// maxShareBatch is the maximum number of messages to share at once.
+	maxShareBatch = 100
+	// peerCountLow is the target number of peers to connect to at any given time.
+	peerCountLow = 100
+	// peerCountHigh is the maximum number of peers to be connected to. If the
+	// number of connections exceeds this number, we will prune connections until
+	// we reach peerCountLow.
+	peerCountHigh = 110
+)
+
+func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error) {
 	// Note: 0.0.0.0 will use all available addresses.
 	tcpBindAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.TCPPort))
 	if err != nil {
@@ -60,6 +74,11 @@ func getOptionsForCurrentEnvironment(ctx context.Context, config Config) ([]libp
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.Peerstore(pstore),
 	}, nil
+}
+
+func getPubSubOptions() []pubsub.Option {
+	// Use the default options.
+	return nil
 }
 
 func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {

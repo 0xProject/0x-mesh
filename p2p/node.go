@@ -29,16 +29,6 @@ import (
 const (
 	// receiveTimeout is the maximum amount of time to wait for receiving new messages.
 	receiveTimeout = 1 * time.Second
-	// maxReceiveBatch is the maximum number of new messages to receive at once.
-	maxReceiveBatch = 500
-	// maxShareBatch is the maximum number of messages to share at once.
-	maxShareBatch = 100
-	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 100
-	// peerCountHigh is the maximum number of peers to be connected to. If the
-	// number of connections exceeds this number, we will prune connections until
-	// we reach peerCountLow.
-	peerCountHigh = 110
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
@@ -130,7 +120,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 
 	// Get environment specific host options.
-	opts, err := getOptionsForCurrentEnvironment(ctx, config)
+	opts, err := getHostOptions(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +160,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub
-	pubsub, err := pubsub.NewGossipSub(ctx, basicHost)
+	pubsubOpts := getPubSubOptions()
+	pubsub, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
 		return nil, err
 	}
