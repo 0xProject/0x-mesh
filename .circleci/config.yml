@@ -41,8 +41,11 @@ jobs:
           name: Run Go tests
           command: make test-go
       - run:
-          name: Run WebAssembly tests
-          command: make test-wasm
+          name: Run WebAssembly tests in Node.js
+          command: make test-wasm-node
+      - run:
+          name: Run WebAssembly tests in a headless browser
+          command: make test-wasm-browser
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
