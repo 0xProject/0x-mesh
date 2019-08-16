@@ -53,8 +53,12 @@ type Config struct {
 	// DataDir is the directory to use for persisting all data, including the
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-	// P2PListenPort is the port on which to listen for new peer connections.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
+	// P2PTCPPort is the port on which to listen for new TCP connections from
+	// peers in the network.
+	P2PTCPPort int `envvar:"P2P_TCP_PORT"`
+	// P2PWebSocketsPort is the port on which to listen for new WebSockets
+	// connections from peers in the network.
+	P2PWebSocketsPort int `envvar:"P2P_WEBSOCKETS_PORT"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
@@ -348,7 +352,8 @@ func (app *App) Start(ctx context.Context) error {
 	// Initialize the p2p node.
 	nodeConfig := p2p.Config{
 		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
-		ListenPort:       app.config.P2PListenPort,
+		TCPPort:          app.config.P2PTCPPort,
+		WebSocketsPort:   app.config.P2PWebSocketsPort,
 		Insecure:         false,
 		PrivateKey:       app.privKey,
 		MessageHandler:   app,

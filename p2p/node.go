@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -21,7 +19,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
@@ -75,9 +72,13 @@ type Config struct {
 	// Topic is a unique string representing the pubsub topic. Only Nodes which
 	// have the same topic will share messages with one another.
 	Topic string
-	// ListenPort is the port on which to listen for new connections. It can be
-	// set to 0 to make the OS automatically choose any available port.
-	ListenPort int
+	// TCPPort is the port on which to listen for incoming TCP connections. It can
+	// be set to 0 to make the OS automatically choose any available port.
+	TCPPort int
+	// WebSocketsPort is the port on which to listen for incoming WebSockets
+	// connections. It can be set to 0 to make the OS automatically choose any
+	// available port.
+	WebSocketsPort int
 	// Insecure controls whether or not messages should be encrypted. It should
 	// always be set to false in production.
 	Insecure bool
@@ -106,12 +107,6 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
-	// Note: 0.0.0.0 will use all available addresses.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
-	if err != nil {
-		return nil, err
-	}
-
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
@@ -124,45 +119,26 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return kadDHT, err
 	}
 
-	// HACK(albrow): As a workaround for AutoNAT issues, ping ifconfig.me to
-	// determine our public IP address on boot. This will work for nodes that
-	// would be reachable via a public IP address but don't know what it is (e.g.
-	// because they are running in a Docker container).
-	publicIP, err := getPublicIP()
-	if err != nil {
-		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
-	}
-	maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", publicIP, config.ListenPort)
-	advertiseAddr, err := ma.NewMultiaddr(maddrString)
+	// Get environment specific host options.
+	opts, err := getOptionsForCurrentEnvironment(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	// Set up the peerstore to use LevelDB.
-	store, err := leveldbStore.NewDatastore(config.PeerstoreDir, nil)
-	if err != nil {
-		return nil, err
-	}
-	pstore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
-	}
-
-	// Set up the transport and the host.
+	// Set up and append environment agnostic host options.
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
-	opts := []libp2p.Option{
-		libp2p.ListenAddrs(hostAddr),
-		libp2p.Identity(config.PrivateKey),
+	opts = append(opts, []libp2p.Option{
+		libp2p.Routing(newDHT),
 		libp2p.ConnectionManager(connManager),
+		libp2p.Identity(config.PrivateKey),
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
-		libp2p.Routing(newDHT),
-		libp2p.AddrsFactory(newAddrsFactory([]ma.Multiaddr{advertiseAddr})),
-		libp2p.Peerstore(pstore),
-	}
+	}...)
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
 	}
+
+	// Initialize the host.
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -470,26 +446,4 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 		return nil, err
 	}
 	return &Message{From: msg.GetFrom(), Data: msg.Data}, nil
-}
-
-func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
-	return func(addrs []ma.Multiaddr) []ma.Multiaddr {
-		// Note that we append the advertiseAddrs here just in case we are not
-		// actually reachable at our public IP address (and are reachable at one of
-		// the other addresses).
-		return append(addrs, advertiseAddrs...)
-	}
-}
-
-func getPublicIP() (string, error) {
-	res, err := http.Get("https://ifconfig.me/ip")
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-	ipBytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(ipBytes), nil
 }

@@ -81,7 +81,6 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 	require.NoError(t, err)
 	config := Config{
 		Topic:            testTopic,
-		ListenPort:       0, // Let OS randomly choose an open port.
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,

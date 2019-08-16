@@ -11,7 +11,6 @@ func main() {
 	appConfig := core.Config{
 		Verbosity:                   4,
 		DataDir:                     "zeroex-mesh",
-		P2PListenPort:               0,
 		EthereumRPCURL:              "https://mainnet.infura.io/v3/af2e590be00f463fbfd0b546784065ad",
 		EthereumNetworkID:           1,
 		UseBootstrapList:            true,
