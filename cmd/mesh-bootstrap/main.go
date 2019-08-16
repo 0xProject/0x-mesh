@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -56,9 +57,8 @@ type Config struct {
 	// P2PAdvertiseAddrs is a comma separated list of libp2p multiaddresses which the
 	// bootstrap node will advertise to peers.
 	P2PAdvertiseAddrs string `envvar:"P2P_ADVERTISE_ADDRS"`
-	// PrivateKey path is the path to a private key file which will be used for
-	// signing messages and generating a peer ID.
-	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
+	// DataDir is the directory used for storing data.
+	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
 }
 
 func init() {
@@ -66,6 +66,18 @@ func init() {
 	// safely reduce AdvertiseBootDelay. This will allow the bootstrap nodes to
 	// advertise themselves as relays sooner.
 	relay.AdvertiseBootDelay = 30 * time.Second
+}
+
+func getPrivateKeyPath(config Config) string {
+	return filepath.Join(config.DataDir, "keys", "privkey")
+}
+
+func getDHTDir(config Config) string {
+	return filepath.Join(config.DataDir, "p2p", "dht")
+}
+
+func getPeerstoreDir(config Config) string {
+	return filepath.Join(config.DataDir, "p2p", "peerstore")
 }
 
 func main() {
@@ -85,7 +97,7 @@ func main() {
 	log.AddHook(loghooks.NewKeySuffixHook())
 
 	// Parse private key file and add peer ID log hook
-	privKey, err := initPrivateKey(config.PrivateKeyPath)
+	privKey, err := initPrivateKey(getPrivateKeyPath(config))
 	if err != nil {
 		log.WithField("error", err).Fatal("could not initialize private key")
 	}
@@ -100,7 +112,8 @@ func main() {
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		kadDHT, err = p2p.NewDHT(ctx, h)
+		dhtDir := getDHTDir(config)
+		kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}

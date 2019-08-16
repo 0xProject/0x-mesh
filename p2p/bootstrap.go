@@ -8,8 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -111,9 +109,4 @@ func ConnectToBootstrapList(ctx context.Context, host host.Host) error {
 	time.Sleep(2 * time.Second)
 
 	return nil
-}
-
-// NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh.
-func NewDHT(ctx context.Context, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Protocols(dhtProtocolID))
 }

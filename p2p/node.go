@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -94,8 +95,16 @@ type Config struct {
 	// UseBootstrapList determines whether or not to use the list of predetermined
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
-	// PeerstoreDir is the directory to use for peerstore data.
-	PeerstoreDir string
+	// DataDir is the directory to use for storing data.
+	DataDir string
+}
+
+func getPeerstoreDir(datadir string) string {
+	return filepath.Join(datadir, "peerstore")
+}
+
+func getDHTDir(datadir string) string {
+	return filepath.Join(datadir, "dht")
 }
 
 // New creates a new Node with the given context and config. The Node will stop
@@ -112,7 +121,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		kadDHT, err = NewDHT(ctx, h)
+		dhtDir := getDHTDir(config.DataDir)
+		kadDHT, err = NewDHT(ctx, dhtDir, h)
 		if err != nil {
 			log.WithField("error", err).Error("could not create DHT")
 		}
