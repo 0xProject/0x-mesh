@@ -157,6 +157,10 @@ func TestAddOrdersSuccess(t *testing.T) {
 	assert.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
 
+	// We need to call ResetHash so that unexported hash field is equal in later
+	// assertions.
+	signedTestOrder.ResetHash()
+
 	acceptedOrderInfo := validationResponse.Accepted[0]
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
@@ -213,6 +217,10 @@ func TestGetOrdersSuccess(t *testing.T) {
 	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
 
 	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
+
+	// We need to call ResetHash so that unexported hash field is equal in later
+	// assertions.
+	signedTestOrder.ResetHash()
 
 	orderInfo := getOrdersResponse.OrdersInfos[0]
 	assert.Equal(t, expectedOrderHash, orderInfo.OrderHash, "orderHashes did not match")
