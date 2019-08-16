@@ -3,18 +3,6 @@
 <head>
 	<meta charset="utf-8">
 	<title>0x Mesh in the browser</title>
-	<script src="resources/browserfs-1.4.3.js"></script>
-	<script>
-		BrowserFS.configure({
-			fs: "LocalStorage",
-		}, function(e) {
-			if (e) {
-				throw e;
-			}
-		});
-		// In browsers, goleveldb expects the global variable "browserFS" to be set.
-		window.browserFS = BrowserFS.BFSRequire('fs');
-	</script>
 	<script src="resources/wasm_exec.js"></script>
 	<script>
 		const go = new Go();
@@ -24,7 +12,5 @@
 	</script>
 </head>
 <body>
-	<div id="qunit"></div>
-	<div id="qunit-fixture"></div>
 </body>
 </html>

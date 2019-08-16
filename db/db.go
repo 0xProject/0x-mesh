@@ -36,18 +36,6 @@ type DB struct {
 	colLock         sync.Mutex
 }
 
-// Open creates a new database using the given file path for permanent storage.
-// It is not safe to have multiple DBs using the same file path.
-func Open(path string) (*DB, error) {
-	ldb, err := leveldb.OpenFile(path, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &DB{
-		ldb: ldb,
-	}, nil
-}
-
 // Close closes the database. It is not safe to call Close if there are any
 // other methods that have not yet returned. It is safe to call Close multiple
 // times.
