@@ -54,12 +54,11 @@ type Config struct {
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
 	// P2PTCPPort is the port on which to listen for new TCP connections from
-	// peers in the network. By default, Mesh will randomly pick any available
-	// port.
-	P2PTCPPort int `envvar:"P2P_TCP_PORT" default:"0"`
+	// peers in the network. Set to 60558 by default.
+	P2PTCPPort int `envvar:"P2P_TCP_PORT" default:"60558"`
 	// P2PWebSocketsPort is the port on which to listen for new WebSockets
-	// connections from peers in the network.
-	P2PWebSocketsPort int `envvar:"P2P_WEBSOCKETS_PORT" default:"0"`
+	// connections from peers in the network. Set to 60559 by default.
+	P2PWebSocketsPort int `envvar:"P2P_WEBSOCKETS_PORT" default:"60559"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`

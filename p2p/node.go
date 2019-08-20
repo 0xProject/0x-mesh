@@ -63,12 +63,10 @@ type Config struct {
 	// Topic is a unique string representing the pubsub topic. Only Nodes which
 	// have the same topic will share messages with one another.
 	Topic string
-	// TCPPort is the port on which to listen for incoming TCP connections. It can
-	// be set to 0 to make the OS automatically choose any available port.
+	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
-	// connections. It can be set to 0 to make the OS automatically choose any
-	// available port.
+	// connections.
 	WebSocketsPort int
 	// Insecure controls whether or not messages should be encrypted. It should
 	// always be set to false in production.
