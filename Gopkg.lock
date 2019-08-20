@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:5b9dd020576063ed81bd1210fe44837ad42313135064f5a5f2390ecf64e0d2b8"
-  name = "github.com/0xProject/qunit"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "81c18fdf77522b0964f4e3fced25a88edcd813d7"
-
-[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -707,12 +699,12 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:b1436d41d493ff2d51052838e0415c26366314febead5051f732f5c98e3729f1"
+  digest = "1:9d32384c7a3a540d1211207cad7880b98a0450168b138648d92a9203c1865a18"
   name = "github.com/libp2p/go-ws-transport"
   packages = ["."]
   pruneopts = "UT"
-  revision = "6efd965516262a6b6e46ea987b94904ef13e59bc"
-  version = "v0.1.0"
+  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"
+  source = "github.com/0xProject/go-ws-transport"
 
 [[projects]]
   digest = "1:64fdef1e970d17504d960d18412125e85ca620703e495105b3fbffee27acf568"
@@ -833,15 +825,6 @@
   pruneopts = "UT"
   revision = "039807e4901c4b2041f40a0e4aa32d72939608aa"
   version = "v0.1.0"
-
-[[projects]]
-  branch = "support-arrays"
-  digest = "1:0d4c99af326c5aa0cb55940961953f9772cc84e765f3a90110a4501dcccdae90"
-  name = "github.com/norunners/vert"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "32b044758d63e7074e457e97fd1ca54f01448b16"
-  source = "github.com/albrow/vert"
 
 [[projects]]
   branch = "master"
@@ -1225,7 +1208,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/0xProject/qunit",
     "github.com/albrow/stringset",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
@@ -1264,9 +1246,9 @@
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-swarm",
     "github.com/libp2p/go-libp2p/p2p/host/relay",
+    "github.com/libp2p/go-ws-transport",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
-    "github.com/norunners/vert",
     "github.com/ocdogan/rbt",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
@@ -1275,6 +1257,7 @@
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
+    "github.com/syndtr/goleveldb/leveldb/storage",
     "github.com/syndtr/goleveldb/leveldb/util",
     "github.com/xeipuuv/gojsonschema",
     "golang.org/x/crypto/sha3",

@@ -102,14 +102,14 @@
   version = "0.0.2"
 
 [[constraint]]
-  branch = "support-arrays"
-  name = "github.com/norunners/vert"
-  source = "github.com/albrow/vert"
-
-[[constraint]]
   name = "github.com/libp2p/go-libp2p-core"
   version = "0.2.2"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-discovery"
   version = "0.1.0"
+
+[[override]]
+  name = "github.com/libp2p/go-ws-transport"
+  source = "github.com/0xProject/go-ws-transport"
+  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"

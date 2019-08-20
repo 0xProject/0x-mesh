@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -81,11 +82,11 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 	require.NoError(t, err)
 	config := Config{
 		Topic:            testTopic,
-		ListenPort:       0, // Let OS randomly choose an open port.
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
 		UseBootstrapList: false,
+		DataDir:          "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 	}
 	node, err := New(ctx, config)
 	require.NoError(t, err)
