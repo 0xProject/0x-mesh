@@ -112,4 +112,4 @@
 [[override]]
   name = "github.com/libp2p/go-ws-transport"
   source = "github.com/0xProject/go-ws-transport"
-  revision = "e79326d2cecfcde766b0be6f2019304c2922f411"
+  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"

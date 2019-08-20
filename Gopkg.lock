@@ -699,11 +699,11 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:24f436e1fbcc90cd64a8bf65793eeacdde9afed87a689a12cb9df0c76a301ef9"
+  digest = "1:9d32384c7a3a540d1211207cad7880b98a0450168b138648d92a9203c1865a18"
   name = "github.com/libp2p/go-ws-transport"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e79326d2cecfcde766b0be6f2019304c2922f411"
+  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"
   source = "github.com/0xProject/go-ws-transport"
 
 [[projects]]
