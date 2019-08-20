@@ -30,6 +30,9 @@ type Order struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
+
+	// Cache hash for performance
+	hash *common.Hash
 }
 
 // SignedOrder represents a signed 0x order
@@ -216,8 +219,17 @@ var eip712OrderTypes = signer.Types{
 	},
 }
 
+// Resets the cached order hash. Usually only required for testing.
+func (o *Order) ResetHash() {
+	o.hash = nil
+}
+
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
+	if o.hash != nil {
+		return *o.hash, nil
+	}
+
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
@@ -257,6 +269,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	rawData := []byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash)))
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
+	o.hash = &hash
 	return hash, nil
 }
 
