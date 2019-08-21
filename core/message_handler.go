@@ -144,12 +144,12 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		// decode it into an order. Append it to the list of orders to validate and
 		// update peer scores accordingly.
 		log.WithFields(map[string]interface{}{
-			"orderHash": acceptedOrderInfo.OrderHash,
+			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
 		}).Info("received new valid order from peer")
 		log.WithFields(map[string]interface{}{
 			"order":     acceptedOrderInfo.SignedOrder,
-			"orderHash": acceptedOrderInfo.OrderHash,
+			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
 		}).Trace("all fields for new valid order received from peer")
 		// Add stores the message in the database.
