@@ -1,18 +1,18 @@
 {
-  "name": "mesh-webpack",
-  "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT",
-  "scripts": {
-    "webpack": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js"
-  },
-  "devDependencies": {
-    "ts-loader": "^6.0.4",
-    "typescript": "^3.5.3",
-    "webpack": "^4.39.2",
-    "webpack-cli": "^3.3.7"
-  },
-  "dependencies": {
-    "@0xorg/mesh-browser": "./../../browser/"
-  }
+    "name": "mesh-webpack",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "build": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js"
+    },
+    "devDependencies": {
+        "ts-loader": "^6.0.4",
+        "typescript": "^3.5.3",
+        "webpack": "^4.39.2",
+        "webpack-cli": "^3.3.7"
+    },
+    "dependencies": {
+        "@0xorg/mesh-browser": "./../../browser/"
+    }
 }
