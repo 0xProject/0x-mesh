@@ -9,3 +9,6 @@ rpc/clients/typescript/node_modules
 rpc/clients/typescript/lib
 rpc/clients/typescript/yarn-error.log
 *.wasm
+browser/lib
+browser/ts/generated
+examples/browser/dist/bundle.js

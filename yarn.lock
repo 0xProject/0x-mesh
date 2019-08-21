@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"@types/base64-arraybuffer@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@types/base64-arraybuffer/-/base64-arraybuffer-0.1.0.tgz#739eea0a974d13ae831f96d97d882ceb0b187543"
+  integrity sha512-oyV0CGER7tX6OlfnLfGze0XbsA7tfRuTtsQ2JbP8K5KBUzc24yoYRD+0XjMRQgOejvZWeIbtkNaHlE8akzj4aQ==
+
 abbrev@1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.1.tgz#f8f2c887ad10bf67f634f005b6987fed3179aac8"
@@ -33,6 +38,11 @@ async-limiter@~1.0.0:
 balanced-match@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.0.tgz#89b4d199ab2bee49de164ea02b89ce462d71b767"
+
+base64-arraybuffer@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/base64-arraybuffer/-/base64-arraybuffer-0.2.0.tgz#4b944fac0191aa5907afe2d8c999ccc57ce80f45"
+  integrity sha512-7emyCsu1/xiBXgQZrscw/8KPRT44I4Yq9Pe6EGs3aPRTsWuggML1/1DTuZUuIaJPIm1FTDUVXl4x/yW8s0kQDQ==
 
 brace-expansion@^1.1.7:
   version "1.1.11"

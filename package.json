@@ -11,7 +11,7 @@
     "devDependencies": {
         "es6-promise": "^4.2.6",
         "isomorphic-fetch": "^2.2.1",
-        "wrtc": "0.4.1",
-        "qunit-puppeteer": "^1.0.1"
+        "qunit-puppeteer": "^1.0.1",
+        "wrtc": "0.4.1"
     }
 }
