@@ -37,7 +37,7 @@ interface MeshWrapper {
 var isWasmLoaded = false;
 const loadEventName = '0xmeshload';
 window.addEventListener(loadEventName, () => {
-    console.log('WASM is done loading. Mesh is ready to go :D');
+    console.log('Wasm is done loading. Mesh is ready to go :D');
     isWasmLoaded = true;
 });
 
@@ -47,7 +47,7 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
         go.run(module.instance);
     })
     .catch(err => {
-        console.error('Could not load WASM');
+        console.error('Could not load Wasm');
         console.error(err);
     });
 

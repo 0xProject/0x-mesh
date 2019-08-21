@@ -34,10 +34,10 @@ func main() {
 		panic(err)
 	}
 
-	// HACK(albrow): We generate a TypeScript file that contains the WASM output
-	// encoded as a base64 string. This is the most reliable way to load WASM such
-	// that users just see a TypeScript/JavaScript package and without relying on a
-	// third-party server.
+	// HACK(albrow): We generate a TypeScript file that contains the Wasm output
+	// encoded as a base64 string. This is the most reliable way to load Wasm such
+	// that users just see a TypeScript/JavaScript package and without relying on
+	// a third-party server.
 	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		panic(err)

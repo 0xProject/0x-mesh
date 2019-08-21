@@ -4,15 +4,17 @@
     "main": "index.js",
     "license": "MIT",
     "scripts": {
-        "build": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js"
+        "build": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js",
+        "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts"
     },
     "devDependencies": {
         "ts-loader": "^6.0.4",
         "typescript": "^3.5.3",
         "webpack": "^4.39.2",
-        "webpack-cli": "^3.3.7"
+        "webpack-cli": "^3.3.7",
+        "rimraf": "^3.0.0"
     },
     "dependencies": {
-        "@0xorg/mesh-browser": "./../../browser/"
+        "@0x/mesh-browser": "./../../browser/"
     }
 }

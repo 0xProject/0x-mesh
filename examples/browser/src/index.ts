@@ -1,4 +1,4 @@
-import { Mesh } from '@0xorg/mesh-browser';
+import { Mesh } from '@0x/mesh-browser';
 
 (async () => {
     const mesh = new Mesh({
