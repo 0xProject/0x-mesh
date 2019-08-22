@@ -19,7 +19,6 @@ var (
 )
 
 func main() {
-	// 	const file = fs.readFileSync('./wasm/main.wasm');
 	wasmBytcode, err := ioutil.ReadFile(inputPath)
 	if err != nil {
 		panic(err)
