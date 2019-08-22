@@ -59,6 +59,6 @@ func main() {
 		}
 	}()
 
-	// Block forever or until the app is closed.
-	select {}
+	// Block until there is an error or the app is closed.
+	<-ctx.Done()
 }
