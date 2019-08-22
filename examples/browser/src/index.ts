@@ -1,18 +1,26 @@
 import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
 
 (async () => {
+    // Confingure Mesh to use mainnet and Infura.
     const mesh = new Mesh({
         ethereumRPCURL: 'https://mainnet.infura.io/v3/af2e590be00f463fbfd0b546784065ad',
         ethereumNetworkID: 1,
     });
+
+    // This handler will be called whenver there is a critical error.
     mesh.onError((err: Error) => {
         console.error(err);
     });
+
+    // This handler will be called whenever an order is added, expired,
+    // canceled, or filled.
     mesh.onOrderEvents((events: Array<OrderEvent>) => {
         for (let event of events) {
             console.log(event);
         }
     });
+
+    // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
 
     // This order is for demonstration purposes only and is invalid. It will be
@@ -39,6 +47,8 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
         signature:
             '0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec03',
     };
+
+    // Add the order and log the result.
     const result = await mesh.addOrdersAsync([order]);
     console.log(result);
 })().catch(err => {

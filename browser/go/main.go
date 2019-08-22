@@ -15,7 +15,11 @@ import (
 )
 
 const (
-	loadEventName         = "0xmeshload"
+	// loadEventName is the name of a global event that will be fired after all
+	// WebAssembly is done loading.
+	loadEventName = "0xmeshload"
+	// orderEventsBufferSize is the buffer size for the orderEvents channel. If
+	// the buffer is full, any additional events won't be processed.
 	orderEventsBufferSize = 100
 )
 
@@ -28,6 +32,8 @@ func main() {
 	select {}
 }
 
+// setGlobals sets the global identifiers that are needed to interact with Mesh
+// from the JavaScript world.
 func setGlobals() {
 	zeroexMesh := map[string]interface{}{
 		// newWrapperAsync(config: Config): Promise<MeshWrapper>;
@@ -44,12 +50,16 @@ func setGlobals() {
 	js.Global().Set("zeroExMesh", zeroexMesh)
 }
 
+// triggerLoadEvent triggers the global load event to indicate that te Wasm is
+// done loading.
 func triggerLoadEvent() {
 	event := js.Global().Get("document").Call("createEvent", "Event")
 	event.Call("initEvent", loadEventName, true, true)
 	js.Global().Call("dispatchEvent", event)
 }
 
+// MeshWrapper is a wrapper around core.App. It exposes methods with basic,
+// JavaScript-compatible types like string and int.
 type MeshWrapper struct {
 	app                     *core.App
 	ctx                     context.Context
@@ -61,6 +71,8 @@ type MeshWrapper struct {
 	orderEventsHandler      js.Value
 }
 
+// convertConfig converts a JavaScript config object into a core.Config. It also
+// adds default values for any that are missing in the JavaScript object.
 func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if isNullOrUndefined(jsConfig) {
 		return core.Config{}, errors.New("config is required")
@@ -106,6 +118,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	return config, nil
 }
 
+// NewMeshWrapper creates a new wrapper from the given config.
 func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 	app, err := core.New(config)
 	if err != nil {
@@ -119,6 +132,9 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 	}, nil
 }
 
+// Start starts core.App and sets up some channels. Unlike core.App.Start, it
+// *does not* block. Instead, any erorrs that occur while Mesh is running
+// will be sent through cw.errHandler.
 func (cw *MeshWrapper) Start() error {
 	cw.orderEvents = make(chan []*zeroex.OrderEvent, orderEventsBufferSize)
 	cw.orderEventsSubscription = cw.app.SubscribeToOrderEvents(cw.orderEvents)
@@ -167,6 +183,9 @@ func (cw *MeshWrapper) Start() error {
 	return nil
 }
 
+// AddOrders converts raw JavaScript orders into the appropriate type, calls
+// core.App.AddOrders, converts the result into basic JavaScript types (string,
+// int, etc.) and returns it.
 func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
 	// HACK(albrow): There is a more effecient way to do this, but for now,
 	// just use JSON to convert to the Go type.
@@ -184,6 +203,9 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
 	return resultsJS, nil
 }
 
+// JSValue satisfies the js.Wrapper interface. The return value is a JavaScript
+// object consisting of named functions. They act like methods by capturing the
+// MeshWrapper through a closure.
 func (cw *MeshWrapper) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		// startAsync(): Promise<void>;
@@ -213,6 +235,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 	})
 }
 
+// errorToJS converts a Go error to a JavaScript Error.
 func errorToJS(err error) js.Value {
 	return js.Global().Get("Error").New(err.Error())
 }
@@ -221,6 +244,10 @@ func isNullOrUndefined(value js.Value) bool {
 	return value == js.Null() || value == js.Undefined()
 }
 
+// wrapInPromise converts a potentially blocking Go function into a non-blocking
+// JavaScript Promise. If the function returns an error, the promise will reject
+// with that error. Otherwise, the promise will resolve with the first return
+// value.
 func wrapInPromise(f func() (interface{}, error)) js.Value {
 	var executor js.Func
 	executor = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
