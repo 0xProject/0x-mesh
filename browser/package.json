@@ -12,6 +12,8 @@
         "build:go": "GOOS=js GOARCH=wasm go build -o ./wasm/main.wasm ./go/main.go"
     },
     "dependencies": {
+        "@0x/order-utils": "^8.3.0",
+        "@0x/utils": "^4.5.0",
         "@types/base64-arraybuffer": "^0.1.0",
         "@types/node": "^12.7.2",
         "base64-arraybuffer": "^0.2.0",
