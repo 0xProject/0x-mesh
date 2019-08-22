@@ -5,7 +5,10 @@ import { Mesh, OrderEvent, SignedOrder } from '@0x/mesh-browser';
         ethereumRPCURL: 'https://mainnet.infura.io/v3/af2e590be00f463fbfd0b546784065ad',
         ethereumNetworkID: 1,
     });
-    mesh.setOrderEventsHandler((events: Array<OrderEvent>) => {
+    mesh.onError((err: Error) => {
+        console.error(err);
+    });
+    mesh.onOrderEvents((events: Array<OrderEvent>) => {
         for (let event of events) {
             console.log(event);
         }

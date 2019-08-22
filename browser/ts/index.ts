@@ -32,7 +32,8 @@ interface ZeroExMesh {
 
 interface MeshWrapper {
     startAsync(): Promise<void>;
-    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void): void;
+    onError(handler: (err: Error) => void): void;
+    onOrderEvents(handler: (events: Array<OrderEvent>) => void): void;
     addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>;
 }
 
@@ -114,7 +115,8 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 export class Mesh {
     private _config: Config;
     private _wrapper?: MeshWrapper;
-    private _orderEventHandler?: (events: Array<OrderEvent>) => void;
+    private _errHandler?: (err: Error) => void;
+    private _orderEventsHandler?: (events: Array<OrderEvent>) => void;
 
     constructor(config: Config) {
         this._config = config;
@@ -126,18 +128,28 @@ export class Mesh {
         }
     }
 
-    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void) {
-        this._orderEventHandler = handler;
+    onError(handler: (err: Error) => void) {
+        this._errHandler = handler;
         if (this._wrapper != undefined) {
-            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+            this._wrapper.onError(this._errHandler);
+        }
+    }
+
+    onOrderEvents(handler: (events: Array<OrderEvent>) => void) {
+        this._orderEventsHandler = handler;
+        if (this._wrapper != undefined) {
+            this._wrapper.onOrderEvents(this._orderEventsHandler);
         }
     }
 
     async startAsync(): Promise<void> {
         await this._waitForLoadAsync();
         this._wrapper = await zeroExMesh.newWrapperAsync(this._config);
-        if (this._orderEventHandler != undefined) {
-            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+        if (this._orderEventsHandler != undefined) {
+            this._wrapper.onOrderEvents(this._orderEventsHandler);
+        }
+        if (this._errHandler != undefined) {
+            this._wrapper.onError(this._errHandler);
         }
         return this._wrapper.startAsync();
     }

@@ -55,9 +55,10 @@ type MeshWrapper struct {
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	errChan                 chan error
+	errHandler              js.Value
 	orderEvents             chan []*zeroex.OrderEvent
 	orderEventsSubscription event.Subscription
-	orderEventHandler       js.Value
+	orderEventsHandler      js.Value
 }
 
 func convertConfig(jsConfig js.Value) (core.Config, error) {
@@ -145,18 +146,19 @@ func (cw *MeshWrapper) Start() error {
 		for {
 			select {
 			case err := <-cw.errChan:
-				// core.App exited with an error.
-				// TODO(albrow): Handle this better.
-				panic(err)
+				// core.App exited with an error. Call errHandler.
+				if !isNullOrUndefined(cw.errHandler) {
+					cw.errHandler.Invoke(errorToJS(err))
+				}
 			case <-cw.ctx.Done():
 				return
 			case events := <-cw.orderEvents:
-				if !isNullOrUndefined(cw.orderEventHandler) {
+				if !isNullOrUndefined(cw.orderEventsHandler) {
 					eventsJS := make([]interface{}, len(events))
 					for i, event := range events {
 						eventsJS[i] = event.JSValue()
 					}
-					cw.orderEventHandler.Invoke(eventsJS)
+					cw.orderEventsHandler.Invoke(eventsJS)
 				}
 			}
 		}
@@ -190,10 +192,16 @@ func (cw *MeshWrapper) JSValue() js.Value {
 				return nil, cw.Start()
 			})
 		}),
-		// setOrderEventsHandler(handler: (event: Array<OrderEvent>) => void): void;
-		"setOrderEventsHandler": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		// onError(handler: (error: Error) => void): void;
+		"onError": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			handler := args[0]
-			cw.orderEventHandler = handler
+			cw.errHandler = handler
+			return nil
+		}),
+		// onOrderEvents(handler: (events: Array<OrderEvent>) => void): void;
+		"onOrderEvents": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			handler := args[0]
+			cw.orderEventsHandler = handler
 			return nil
 		}),
 		// addOrderAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
