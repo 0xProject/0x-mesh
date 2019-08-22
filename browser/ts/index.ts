@@ -32,6 +32,15 @@ interface ZeroExMesh {
 
 interface MeshWrapper {
     startAsync(): Promise<void>;
+    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void): void;
+}
+
+export interface OrderEvent {
+    orderHash: string;
+    signedOrder: any;
+    kind: string;
+    fillableTakerAssetAmount: string;
+    txHashes: Array<string>;
 }
 
 var isWasmLoaded = false;
@@ -54,21 +63,32 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 export class Mesh {
     private _config: Config;
     private _wrapper?: MeshWrapper;
+    private _orderEventHandler?: (events: Array<OrderEvent>) => void;
 
     constructor(config: Config) {
         this._config = config;
     }
 
-    async waitForLoadAsync(): Promise<void> {
+    private async _waitForLoadAsync(): Promise<void> {
         while (!isWasmLoaded) {
             await sleepAsync(100);
         }
     }
 
     async startAsync(): Promise<void> {
-        await this.waitForLoadAsync();
+        await this._waitForLoadAsync();
         this._wrapper = await zeroExMesh.newWrapperAsync(this._config);
+        if (this._orderEventHandler != undefined) {
+            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+        }
         return this._wrapper.startAsync();
+    }
+
+    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void) {
+        this._orderEventHandler = handler;
+        if (this._wrapper != undefined) {
+            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+        }
     }
 }
 

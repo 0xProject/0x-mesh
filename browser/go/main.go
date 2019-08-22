@@ -9,9 +9,14 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/event"
 )
 
-const loadEventName = "0xmeshload"
+const (
+	loadEventName         = "0xmeshload"
+	orderEventsBufferSize = 100
+)
 
 func main() {
 	setGlobals()
@@ -45,9 +50,12 @@ func triggerLoadEvent() {
 }
 
 type MeshWrapper struct {
-	app    *core.App
-	ctx    context.Context
-	cancel context.CancelFunc
+	app                     *core.App
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	orderEvents             chan []*zeroex.OrderEvent
+	orderEventsSubscription event.Subscription
+	orderEventHandler       js.Value
 }
 
 func convertConfig(jsConfig js.Value) (core.Config, error) {
@@ -57,7 +65,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 
 	// Default config options. Some might be overridden.
 	config := core.Config{
-		Verbosity:                   5,
+		Verbosity:                   2,
 		DataDir:                     "0x-mesh",
 		P2PTCPPort:                  0,
 		P2PWebSocketsPort:           0,
@@ -109,6 +117,24 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 }
 
 func (cw *MeshWrapper) Start() error {
+	cw.orderEvents = make(chan []*zeroex.OrderEvent, orderEventsBufferSize)
+	cw.orderEventsSubscription = cw.app.SubscribeToOrderEvents(cw.orderEvents)
+	go func() {
+		for {
+			select {
+			case <-cw.ctx.Done():
+				return
+			case events := <-cw.orderEvents:
+				if !isNullOrUndefined(cw.orderEventHandler) {
+					eventsJS := make([]interface{}, len(events))
+					for i, event := range events {
+						eventsJS[i] = event.JSValue()
+					}
+					cw.orderEventHandler.Invoke(eventsJS)
+				}
+			}
+		}
+	}()
 	return cw.app.Start(cw.ctx)
 }
 
@@ -119,6 +145,12 @@ func (cw *MeshWrapper) JSValue() js.Value {
 			return wrapInPromise(func() (interface{}, error) {
 				return nil, cw.Start()
 			})
+		}),
+		// setOrderEventsHandler(handler: (event: Array<OrderEvent>) => void): void;
+		"setOrderEventsHandler": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			handler := args[0]
+			cw.orderEventHandler = handler
+			return nil
 		}),
 	})
 }

@@ -7,7 +7,7 @@
     "private": true,
     "scripts": {
         "build": "yarn build:go && yarn build:generate && yarn build:ts",
-        "build:ts": "yarn tsc -b",
+        "build:ts": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
         "build:generate": "go run ./scripts/generate_wasm_buffer.go",
         "build:go": "GOOS=js GOARCH=wasm go build -o ./wasm/main.wasm ./go/main.go"
     },

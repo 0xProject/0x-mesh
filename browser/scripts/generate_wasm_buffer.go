@@ -14,8 +14,8 @@ const (
 )
 
 var (
-	prefix = []byte("import * as base64 from \"base64-arraybuffer\";\nexport const wasmBuffer = base64.decode(\"")
-	suffix = []byte(`");`)
+	prefix = []byte("import * as base64 from \"base64-arraybuffer\";\nexport const wasmBuffer = base64.decode(`")
+	suffix = []byte("`);")
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	// encoded as a base64 string. This is the most reliable way to load Wasm such
 	// that users just see a TypeScript/JavaScript package and without relying on
 	// a third-party server.
-	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY, os.ModePerm)
+	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
