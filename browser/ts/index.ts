@@ -33,14 +33,65 @@ interface ZeroExMesh {
 interface MeshWrapper {
     startAsync(): Promise<void>;
     setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void): void;
+    addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>;
 }
 
 export interface OrderEvent {
     orderHash: string;
-    signedOrder: any;
+    signedOrder: SignedOrder;
     kind: string;
     fillableTakerAssetAmount: string;
     txHashes: Array<string>;
+}
+
+// TODO(albrow): Use existing 0x types where possible instead of creating new
+// ones.
+export interface SignedOrder {
+    makerAddress: string;
+    makerAssetData: string;
+    makerAssetAmount: string;
+    makerFee: string;
+    takerAddress: string;
+    takerAssetData: string;
+    takerAssetAmount: string;
+    takerFee: string;
+    senderAddress: string;
+    exchangeAddress: string;
+    feeRecipientAddress: string;
+    expirationTimeSeconds: string;
+    salt: string;
+    signature: string;
+}
+
+export interface ValidationResults {
+    accepted: Array<AcceptedOrderInfo>;
+    rejected: Array<RejectedOrderInfo>;
+}
+
+export interface AcceptedOrderInfo {
+    orderHash: string;
+    signedOrder: SignedOrder;
+    fillableTakerAssetAmount: string;
+    isNew: boolean;
+}
+
+export interface RejectedOrderInfo {
+    orderHash: string;
+    signedOrder: SignedOrder;
+    kind: RejectedOrderKind;
+    status: RejectedOrderStatus;
+}
+
+export enum RejectedOrderKind {
+    ZeroExValidation = 'ZEROEX_VALIDATION',
+    MeshError = 'MESH_ERROR',
+    MeshValidation = 'MESH_VALIDATION',
+    CoordinatorError = 'COORDINATOR_ERROR',
+}
+
+export interface RejectedOrderStatus {
+    code: string;
+    message: string;
 }
 
 var isWasmLoaded = false;
@@ -75,6 +126,13 @@ export class Mesh {
         }
     }
 
+    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void) {
+        this._orderEventHandler = handler;
+        if (this._wrapper != undefined) {
+            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+        }
+    }
+
     async startAsync(): Promise<void> {
         await this._waitForLoadAsync();
         this._wrapper = await zeroExMesh.newWrapperAsync(this._config);
@@ -84,11 +142,15 @@ export class Mesh {
         return this._wrapper.startAsync();
     }
 
-    setOrderEventsHandler(handler: (events: Array<OrderEvent>) => void) {
-        this._orderEventHandler = handler;
-        if (this._wrapper != undefined) {
-            this._wrapper.setOrderEventsHandler(this._orderEventHandler);
+    async addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults> {
+        await this._waitForLoadAsync();
+        if (this._wrapper == undefined) {
+            // If this is called after startAsync, this._wrapper is always
+            // defined. This check is here just in case and satisfies the
+            // compiler.
+            return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
+        return this._wrapper.addOrdersAsync(orders);
     }
 }
 

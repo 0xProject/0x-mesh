@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"syscall/js"
 	"time"
@@ -53,6 +54,7 @@ type MeshWrapper struct {
 	app                     *core.App
 	ctx                     context.Context
 	cancel                  context.CancelFunc
+	errChan                 chan error
 	orderEvents             chan []*zeroex.OrderEvent
 	orderEventsSubscription event.Subscription
 	orderEventHandler       js.Value
@@ -119,9 +121,33 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 func (cw *MeshWrapper) Start() error {
 	cw.orderEvents = make(chan []*zeroex.OrderEvent, orderEventsBufferSize)
 	cw.orderEventsSubscription = cw.app.SubscribeToOrderEvents(cw.orderEvents)
+	cw.errChan = make(chan error, 1)
+
+	// cw.app.Start blocks until there is an error or the app is closed, so we
+	// need to start it in a goroutine.
+	go func() {
+		cw.errChan <- cw.app.Start(cw.ctx)
+	}()
+
+	// Wait up to 1 second to see if cw.app.Start returns an error right away.
+	// If it does, it probably indicates a configuration error which we should
+	// return immediately.
+	startTimeout := 1 * time.Second
+	select {
+	case err := <-cw.errChan:
+		return err
+	case <-time.After(startTimeout):
+		break
+	}
+
+	// Otherwise listen for future events in a goroutine and return nil.
 	go func() {
 		for {
 			select {
+			case err := <-cw.errChan:
+				// core.App exited with an error.
+				// TODO(albrow): Handle this better.
+				panic(err)
 			case <-cw.ctx.Done():
 				return
 			case events := <-cw.orderEvents:
@@ -135,7 +161,25 @@ func (cw *MeshWrapper) Start() error {
 			}
 		}
 	}()
-	return cw.app.Start(cw.ctx)
+
+	return nil
+}
+
+func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
+	// HACK(albrow): There is a more effecient way to do this, but for now,
+	// just use JSON to convert to the Go type.
+	encodedOrders := js.Global().Get("JSON").Call("stringify", rawOrders).String()
+	var rawMessages []*json.RawMessage
+	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
+		return js.Undefined(), err
+	}
+	results, err := cw.app.AddOrders(rawMessages)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	encodedResults, err := json.Marshal(results)
+	resultsJS := js.Global().Get("JSON").Call("parse", string(encodedResults))
+	return resultsJS, nil
 }
 
 func (cw *MeshWrapper) JSValue() js.Value {
@@ -151,6 +195,12 @@ func (cw *MeshWrapper) JSValue() js.Value {
 			handler := args[0]
 			cw.orderEventHandler = handler
 			return nil
+		}),
+		// addOrderAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
+		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return wrapInPromise(func() (interface{}, error) {
+				return cw.AddOrders(args[0])
+			})
 		}),
 	})
 }
