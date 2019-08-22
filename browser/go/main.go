@@ -50,7 +50,7 @@ func setGlobals() {
 	js.Global().Set("zeroExMesh", zeroexMesh)
 }
 
-// triggerLoadEvent triggers the global load event to indicate that te Wasm is
+// triggerLoadEvent triggers the global load event to indicate that the Wasm is
 // done loading.
 func triggerLoadEvent() {
 	event := js.Global().Get("document").Call("createEvent", "Event")
@@ -226,7 +226,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 			cw.orderEventsHandler = handler
 			return nil
 		}),
-		// addOrderAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
+		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return wrapInPromise(func() (interface{}, error) {
 				return cw.AddOrders(args[0])
@@ -244,7 +244,7 @@ func isNullOrUndefined(value js.Value) bool {
 	return value == js.Null() || value == js.Undefined()
 }
 
-// wrapInPromise converts a potentially blocking Go function into a non-blocking
+// wrapInPromise converts a potentially blocking Go function to a non-blocking
 // JavaScript Promise. If the function returns an error, the promise will reject
 // with that error. Otherwise, the promise will resolve with the first return
 // value.

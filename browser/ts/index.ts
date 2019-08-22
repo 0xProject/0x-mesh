@@ -22,7 +22,9 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
-// A set of configuration options for Mesh.
+/**
+ * A set of configuration options for Mesh.
+ */
 export interface Config {
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
@@ -98,7 +100,10 @@ interface MeshOrderEvent {
     txHashes: Array<string>;
 }
 
-// The analog of MeshOrderEvent in which some types are converted.
+/**
+ * Order events are fired by Mesh whenever an order is added, canceled, expired,
+ * or filled.
+ */
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
@@ -129,13 +134,17 @@ interface MeshRejectedOrderInfo {
     status: RejectedOrderStatus;
 }
 
-// The analog of MeshValidationResults in which some types are converted.
+/**
+ * Indicates which orders where accepted, which were rejected, and why.
+ */
 export interface ValidationResults {
     accepted: Array<AcceptedOrderInfo>;
     rejected: Array<RejectedOrderInfo>;
 }
 
-// The analog of MeshAcceptedOrderInfo in which some types are converted.
+/**
+ * Info for any orders that were accepted.
+ */
 export interface AcceptedOrderInfo {
     orderHash: string;
     signedOrder: SignedOrder;
@@ -143,7 +152,10 @@ export interface AcceptedOrderInfo {
     isNew: boolean;
 }
 
-// The analog of MeshRejectedOrderInfo in which some types are converted.
+/**
+ * Info for any orders that were rejected, including the reason they were
+ * rejected.
+ */
 export interface RejectedOrderInfo {
     orderHash: string;
     signedOrder: SignedOrder;
@@ -151,7 +163,9 @@ export interface RejectedOrderInfo {
     status: RejectedOrderStatus;
 }
 
-// Used in both MeshWrapper and the exported interface.
+/**
+ * A set of categories for rejected orders.
+ */
 export enum RejectedOrderKind {
     ZeroExValidation = 'ZEROEX_VALIDATION',
     MeshError = 'MESH_ERROR',
@@ -159,7 +173,9 @@ export enum RejectedOrderKind {
     CoordinatorError = 'COORDINATOR_ERROR',
 }
 
-// Used in both MeshWrapper and the exported interface.
+/**
+ * Provides more information about why an order was rejected.
+ */
 export interface RejectedOrderStatus {
     code: string;
     message: string;
