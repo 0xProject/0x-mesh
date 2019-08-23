@@ -201,6 +201,11 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
         console.error('Could not load Wasm');
         // tslint:disable-next-line no-console
         console.error(err);
+        // If the Wasm bytecode didn't compile, Mesh won't work. We have no
+        // choice but to throw an error.
+        setImmediate(() => {
+            throw err;
+        });
     });
 
 /**
