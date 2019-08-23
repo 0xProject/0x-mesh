@@ -7,6 +7,8 @@ package main
 
 import (
 	"context"
+	"os"
+	"sync"
 
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/plaid/go-envvar/envvar"
@@ -44,21 +46,47 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Below, we will start several independent goroutines. We use separate
+	// channels to communicate errors and a waitgroup to wait for all goroutines
+	// to exit.
+	wg := &sync.WaitGroup{}
+
+	coreErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := app.Start(ctx); err != nil {
-			cancel()
-			log.WithField("error", err.Error()).Error("core app exited with error")
+			coreErrChan <- err
 		}
 	}()
 
 	// Start RPC server.
+	rpcErrChan := make(chan error, 1)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := listenRPC(app, config, ctx); err != nil {
-			cancel()
-			log.WithField("error", err.Error()).Error("RPC server returned error")
+			rpcErrChan <- err
 		}
 	}()
 
 	// Block until there is an error or the app is closed.
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+		// We exited without error. Wait for all goroutines to finish and then
+		// exit the process with a status code of 0.
+		wg.Wait()
+		os.Exit(0)
+	case err := <-coreErrChan:
+		cancel()
+		log.WithField("error", err.Error()).Error("core app exited with error")
+	case err := <-rpcErrChan:
+		cancel()
+		log.WithField("error", err.Error()).Error("RPC server returned error")
+	}
+
+	// If we reached here it means there was an error. Wait for all goroutines
+	// to finish and then exit with non-zero status code.
+	wg.Wait()
+	os.Exit(1)
 }
