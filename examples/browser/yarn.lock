@@ -67,10 +67,7 @@
   dependencies:
     "@0x/order-utils" "^8.3.0"
     "@0x/utils" "^4.5.0"
-    "@types/base64-arraybuffer" "^0.1.0"
-    "@types/node" "^12.7.2"
     base64-arraybuffer "^0.2.0"
-    typescript "^3.5.3"
 
 "@0x/order-utils@^8.3.0":
   version "8.3.0"
@@ -148,11 +145,6 @@
     ethers "~4.0.4"
     lodash "^4.17.11"
 
-"@types/base64-arraybuffer@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@types/base64-arraybuffer/-/base64-arraybuffer-0.1.0.tgz#739eea0a974d13ae831f96d97d882ceb0b187543"
-  integrity sha512-oyV0CGER7tX6OlfnLfGze0XbsA7tfRuTtsQ2JbP8K5KBUzc24yoYRD+0XjMRQgOejvZWeIbtkNaHlE8akzj4aQ==
-
 "@types/bn.js@^4.11.0":
   version "4.11.5"
   resolved "https://registry.yarnpkg.com/@types/bn.js/-/bn.js-4.11.5.tgz#40e36197433f78f807524ec623afcf0169ac81dc"
@@ -160,7 +152,7 @@
   dependencies:
     "@types/node" "*"
 
-"@types/node@*", "@types/node@^12.7.2":
+"@types/node@*":
   version "12.7.2"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.7.2.tgz#c4e63af5e8823ce9cc3f0b34f7b998c2171f0c44"
   integrity sha512-dyYO+f6ihZEtNPDcWNR1fkoTDf3zAK3lAABDze3mz6POyIercH0lEUawUFXlG8xaQZmm1yEBON/4TsYv/laDYg==

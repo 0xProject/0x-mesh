@@ -4,6 +4,9 @@ import { BigNumber } from '@0x/utils';
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
 
+export { SignedOrder } from '@0x/order-utils';
+export { BigNumber } from '@0x/utils';
+
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
 
@@ -68,14 +71,14 @@ interface ZeroExMesh {
 interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
-    onOrderEvents(handler: (events: MeshOrderEvent[]) => void): void;
-    addOrdersAsync(orders: MeshSignedOrder[]): Promise<MeshValidationResults>;
+    onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
+    addOrdersAsync(orders: WrapperSignedOrder[]): Promise<WrapperValidationResults>;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
 // analog isn't defined here. Instead we re-use the definition in
 // @0x/order-utils.
-interface MeshSignedOrder {
+interface WrapperSignedOrder {
     makerAddress: string;
     makerAssetData: string;
     makerAssetAmount: string;
@@ -93,9 +96,9 @@ interface MeshSignedOrder {
 }
 
 // The type for order events exposed by MeshWrapper.
-interface MeshOrderEvent {
+interface WrapperOrderEvent {
     orderHash: string;
-    signedOrder: MeshSignedOrder;
+    signedOrder: WrapperSignedOrder;
     kind: string;
     fillableTakerAssetAmount: string;
     txHashes: string[];
@@ -114,23 +117,23 @@ export interface OrderEvent {
 }
 
 // The type for validation results exposed by MeshWrapper.
-interface MeshValidationResults {
-    accepted: MeshAcceptedOrderInfo[];
-    rejected: MeshRejectedOrderInfo[];
+interface WrapperValidationResults {
+    accepted: WrapperAcceptedOrderInfo[];
+    rejected: WrapperRejectedOrderInfo[];
 }
 
 // The type for accepted orders exposed by MeshWrapper.
-interface MeshAcceptedOrderInfo {
+interface WrapperAcceptedOrderInfo {
     orderHash: string;
-    signedOrder: MeshSignedOrder;
+    signedOrder: WrapperSignedOrder;
     fillableTakerAssetAmount: string;
     isNew: boolean;
 }
 
 // The type for rejected orders exposed by MeshWrapper.
-interface MeshRejectedOrderInfo {
+interface WrapperRejectedOrderInfo {
     orderHash: string;
-    signedOrder: MeshSignedOrder;
+    signedOrder: WrapperSignedOrder;
     kind: RejectedOrderKind;
     status: RejectedOrderStatus;
 }
@@ -217,7 +220,7 @@ export class Mesh {
     private readonly _config: Config;
     private _wrapper?: MeshWrapper;
     private _errHandler?: (err: Error) => void;
-    private _orderEventsHandler?: (events: MeshOrderEvent[]) => void;
+    private _orderEventsHandler?: (events: WrapperOrderEvent[]) => void;
 
     /**
      * Instantiates a new Mesh instance.
@@ -253,7 +256,7 @@ export class Mesh {
      * @param   handler                The handler to be called.
      */
     public onOrderEvents(handler: (events: OrderEvent[]) => void): void {
-        this._orderEventsHandler = orderEventsHandlerToMeshOrderEventsHandler(handler);
+        this._orderEventsHandler = orderEventsHandlerToWrapperOrderEventsHandler(handler);
         if (this._wrapper !== undefined) {
             this._wrapper.onOrderEvents(this._orderEventsHandler);
         }
@@ -295,9 +298,9 @@ export class Mesh {
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
-        const meshOrders = orders.map(signedOrderToMeshSignedOrder);
+        const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
         const meshResults = await this._wrapper.addOrdersAsync(meshOrders);
-        return meshValidationResultsToValidationResults(meshResults);
+        return wrapperValidationResultsToValidationResults(meshResults);
     }
 }
 
@@ -314,19 +317,19 @@ async function sleepAsync(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function meshSignedOrderToSignedOrder(meshSignedOrder: MeshSignedOrder): SignedOrder {
+function wrapperSignedOrderToSignedOrder(wrapperSignedOrder: WrapperSignedOrder): SignedOrder {
     return {
-        ...meshSignedOrder,
-        makerFee: new BigNumber(meshSignedOrder.makerFee),
-        takerFee: new BigNumber(meshSignedOrder.takerFee),
-        makerAssetAmount: new BigNumber(meshSignedOrder.makerAssetAmount),
-        takerAssetAmount: new BigNumber(meshSignedOrder.takerAssetAmount),
-        salt: new BigNumber(meshSignedOrder.salt),
-        expirationTimeSeconds: new BigNumber(meshSignedOrder.expirationTimeSeconds),
+        ...wrapperSignedOrder,
+        makerFee: new BigNumber(wrapperSignedOrder.makerFee),
+        takerFee: new BigNumber(wrapperSignedOrder.takerFee),
+        makerAssetAmount: new BigNumber(wrapperSignedOrder.makerAssetAmount),
+        takerAssetAmount: new BigNumber(wrapperSignedOrder.takerAssetAmount),
+        salt: new BigNumber(wrapperSignedOrder.salt),
+        expirationTimeSeconds: new BigNumber(wrapperSignedOrder.expirationTimeSeconds),
     };
 }
 
-function signedOrderToMeshSignedOrder(signedOrder: SignedOrder): MeshSignedOrder {
+function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSignedOrder {
     return {
         ...signedOrder,
         makerFee: signedOrder.makerFee.toString(),
@@ -338,41 +341,47 @@ function signedOrderToMeshSignedOrder(signedOrder: SignedOrder): MeshSignedOrder
     };
 }
 
-function meshOrderEventToOrderEvent(meshOrderEvent: MeshOrderEvent): OrderEvent {
+function wrapperOrderEventToOrderEvent(wrapperOrderEvent: WrapperOrderEvent): OrderEvent {
     return {
-        ...meshOrderEvent,
-        signedOrder: meshSignedOrderToSignedOrder(meshOrderEvent.signedOrder),
-        fillableTakerAssetAmount: new BigNumber(meshOrderEvent.fillableTakerAssetAmount),
+        ...wrapperOrderEvent,
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderEvent.signedOrder),
+        fillableTakerAssetAmount: new BigNumber(wrapperOrderEvent.fillableTakerAssetAmount),
     };
 }
 
-function orderEventsHandlerToMeshOrderEventsHandler(
+function orderEventsHandlerToWrapperOrderEventsHandler(
     orderEventsHandler: (events: OrderEvent[]) => void,
-): (events: MeshOrderEvent[]) => void {
-    return (meshOrderEvents: MeshOrderEvent[]) => {
-        const orderEvents = meshOrderEvents.map(meshOrderEventToOrderEvent);
+): (events: WrapperOrderEvent[]) => void {
+    return (wrapperOrderEvents: WrapperOrderEvent[]) => {
+        const orderEvents = wrapperOrderEvents.map(wrapperOrderEventToOrderEvent);
         orderEventsHandler(orderEvents);
     };
 }
 
-function meshValidationResultsToValidationResults(meshValidationResults: MeshValidationResults): ValidationResults {
+function wrapperValidationResultsToValidationResults(
+    wrapperValidationResults: WrapperValidationResults,
+): ValidationResults {
     return {
-        accepted: meshValidationResults.accepted.map(meshAcceptedOrderInfoToAcceptedOrderInfo),
-        rejected: meshValidationResults.rejected.map(meshRejectedOrderInfoToRejectedOrderInfo),
+        accepted: wrapperValidationResults.accepted.map(wrapperAcceptedOrderInfoToAcceptedOrderInfo),
+        rejected: wrapperValidationResults.rejected.map(wrapperRejectedOrderInfoToRejectedOrderInfo),
     };
 }
 
-function meshAcceptedOrderInfoToAcceptedOrderInfo(meshAcceptedOrderInfo: MeshAcceptedOrderInfo): AcceptedOrderInfo {
+function wrapperAcceptedOrderInfoToAcceptedOrderInfo(
+    wrapperAcceptedOrderInfo: WrapperAcceptedOrderInfo,
+): AcceptedOrderInfo {
     return {
-        ...meshAcceptedOrderInfo,
-        signedOrder: meshSignedOrderToSignedOrder(meshAcceptedOrderInfo.signedOrder),
-        fillableTakerAssetAmount: new BigNumber(meshAcceptedOrderInfo.fillableTakerAssetAmount),
+        ...wrapperAcceptedOrderInfo,
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperAcceptedOrderInfo.signedOrder),
+        fillableTakerAssetAmount: new BigNumber(wrapperAcceptedOrderInfo.fillableTakerAssetAmount),
     };
 }
 
-function meshRejectedOrderInfoToRejectedOrderInfo(meshRejectedOrderInfo: MeshRejectedOrderInfo): RejectedOrderInfo {
+function wrapperRejectedOrderInfoToRejectedOrderInfo(
+    wrapperRejectedOrderInfo: WrapperRejectedOrderInfo,
+): RejectedOrderInfo {
     return {
-        ...meshRejectedOrderInfo,
-        signedOrder: meshSignedOrderToSignedOrder(meshRejectedOrderInfo.signedOrder),
+        ...wrapperRejectedOrderInfo,
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperRejectedOrderInfo.signedOrder),
     };
 }
