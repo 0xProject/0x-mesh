@@ -1,21 +1,19 @@
 import { SignedOrder } from '@0x/order-utils';
-import { wasmBuffer } from './generated/wasm_buffer';
 import { BigNumber } from '@0x/utils';
 
-export { SignedOrder } from '@0x/order-utils';
-export { BigNumber } from '@0x/utils';
-
-// Side-effect import
-// Side-effects include adding an `fs` and `Go` property on the global object.
+import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
+
+// The interval (in milliseconds) to check whether Wasm is done loading.
+const wasmLoadCheckIntervalMs = 100;
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
 declare global {
     // Defined in wasm_exec.ts
     class Go {
-        run(instance: WebAssembly.Instance): void;
-        importObject: any;
+        public importObject: any;
+        public run(instance: WebAssembly.Instance): void;
     }
 
     // Defined in ../go/main.go
@@ -70,8 +68,8 @@ interface ZeroExMesh {
 interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
-    onOrderEvents(handler: (events: Array<MeshOrderEvent>) => void): void;
-    addOrdersAsync(orders: Array<MeshSignedOrder>): Promise<MeshValidationResults>;
+    onOrderEvents(handler: (events: MeshOrderEvent[]) => void): void;
+    addOrdersAsync(orders: MeshSignedOrder[]): Promise<MeshValidationResults>;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -100,7 +98,7 @@ interface MeshOrderEvent {
     signedOrder: MeshSignedOrder;
     kind: string;
     fillableTakerAssetAmount: string;
-    txHashes: Array<string>;
+    txHashes: string[];
 }
 
 /**
@@ -112,13 +110,13 @@ export interface OrderEvent {
     signedOrder: SignedOrder;
     kind: string;
     fillableTakerAssetAmount: BigNumber;
-    txHashes: Array<string>;
+    txHashes: string[];
 }
 
 // The type for validation results exposed by MeshWrapper.
 interface MeshValidationResults {
-    accepted: Array<MeshAcceptedOrderInfo>;
-    rejected: Array<MeshRejectedOrderInfo>;
+    accepted: MeshAcceptedOrderInfo[];
+    rejected: MeshRejectedOrderInfo[];
 }
 
 // The type for accepted orders exposed by MeshWrapper.
@@ -141,8 +139,8 @@ interface MeshRejectedOrderInfo {
  * Indicates which orders where accepted, which were rejected, and why.
  */
 export interface ValidationResults {
-    accepted: Array<AcceptedOrderInfo>;
-    rejected: Array<RejectedOrderInfo>;
+    accepted: AcceptedOrderInfo[];
+    rejected: RejectedOrderInfo[];
 }
 
 /**
@@ -185,10 +183,9 @@ export interface RejectedOrderStatus {
 }
 
 // We use a global variable to track whether the Wasm code has finished loading.
-var isWasmLoaded = false;
+let isWasmLoaded = false;
 const loadEventName = '0xmeshload';
 window.addEventListener(loadEventName, () => {
-    console.log('Wasm is done loading. Mesh is ready to go :D');
     isWasmLoaded = true;
 });
 
@@ -200,7 +197,9 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
         go.run(module.instance);
     })
     .catch(err => {
+        // tslint:disable-next-line no-console
         console.error('Could not load Wasm');
+        // tslint:disable-next-line no-console
         console.error(err);
     });
 
@@ -208,11 +207,12 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
  * The main class for this package. Has methods for receiving order events and
  * sending orders through the 0x Mesh network.
  */
+// tslint:disable-next-line max-classes-per-file
 export class Mesh {
-    private _config: Config;
+    private readonly _config: Config;
     private _wrapper?: MeshWrapper;
     private _errHandler?: (err: Error) => void;
-    private _orderEventsHandler?: (events: Array<MeshOrderEvent>) => void;
+    private _orderEventsHandler?: (events: MeshOrderEvent[]) => void;
 
     /**
      * Instantiates a new Mesh instance.
@@ -224,15 +224,6 @@ export class Mesh {
         this._config = config;
     }
 
-    private async _waitForLoadAsync(): Promise<void> {
-        // Note: this approach is not CPU efficient but it avoids race
-        // conditions and has the advantage of returning instantaneously if the
-        // Wasm code has already loaded.
-        while (!isWasmLoaded) {
-            await sleepAsync(100);
-        }
-    }
-
     /**
      * Registers a handler which will be called in the event of a critical
      * error. Note that the handler will not be called for non-critical errors.
@@ -241,9 +232,9 @@ export class Mesh {
      *
      * @param   handler               The handler to be called.
      */
-    onError(handler: (err: Error) => void) {
+    public onError(handler: (err: Error) => void): void {
         this._errHandler = handler;
-        if (this._wrapper != undefined) {
+        if (this._wrapper !== undefined) {
             this._wrapper.onError(this._errHandler);
         }
     }
@@ -256,9 +247,9 @@ export class Mesh {
      *
      * @param   handler                The handler to be called.
      */
-    onOrderEvents(handler: (events: Array<OrderEvent>) => void) {
+    public onOrderEvents(handler: (events: OrderEvent[]) => void): void {
         this._orderEventsHandler = orderEventsHandlerToMeshOrderEventsHandler(handler);
-        if (this._wrapper != undefined) {
+        if (this._wrapper !== undefined) {
             this._wrapper.onOrderEvents(this._orderEventsHandler);
         }
     }
@@ -267,13 +258,13 @@ export class Mesh {
      * Starts the Mesh node in the background. Mesh will automatically find
      * peers in the network and begin receiving orders from them.
      */
-    async startAsync(): Promise<void> {
-        await this._waitForLoadAsync();
+    public async startAsync(): Promise<void> {
+        await waitForLoadAsync();
         this._wrapper = await zeroExMesh.newWrapperAsync(this._config);
-        if (this._orderEventsHandler != undefined) {
+        if (this._orderEventsHandler !== undefined) {
             this._wrapper.onOrderEvents(this._orderEventsHandler);
         }
-        if (this._errHandler != undefined) {
+        if (this._errHandler !== undefined) {
             this._wrapper.onError(this._errHandler);
         }
         return this._wrapper.startAsync();
@@ -291,9 +282,9 @@ export class Mesh {
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
-    async addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults> {
-        await this._waitForLoadAsync();
-        if (this._wrapper == undefined) {
+    public async addOrdersAsync(orders: SignedOrder[]): Promise<ValidationResults> {
+        await waitForLoadAsync();
+        if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
             // defined. This check is here just in case and satisfies the
             // compiler.
@@ -305,7 +296,16 @@ export class Mesh {
     }
 }
 
-function sleepAsync(ms: number): Promise<void> {
+async function waitForLoadAsync(): Promise<void> {
+    // Note: this approach is not CPU efficient but it avoids race
+    // conditions and has the advantage of returning instantaneously if the
+    // Wasm code has already loaded.
+    while (!isWasmLoaded) {
+        await sleepAsync(wasmLoadCheckIntervalMs);
+    }
+}
+
+async function sleepAsync(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -342,9 +342,9 @@ function meshOrderEventToOrderEvent(meshOrderEvent: MeshOrderEvent): OrderEvent 
 }
 
 function orderEventsHandlerToMeshOrderEventsHandler(
-    orderEventsHandler: (events: Array<OrderEvent>) => void,
-): (events: Array<MeshOrderEvent>) => void {
-    return (meshOrderEvents: Array<MeshOrderEvent>) => {
+    orderEventsHandler: (events: OrderEvent[]) => void,
+): (events: MeshOrderEvent[]) => void {
+    return (meshOrderEvents: MeshOrderEvent[]) => {
         const orderEvents = meshOrderEvents.map(meshOrderEventToOrderEvent);
         orderEventsHandler(orderEvents);
     };

@@ -14,8 +14,8 @@ const (
 )
 
 var (
-	prefix = []byte("import * as base64 from \"base64-arraybuffer\";\nexport const wasmBuffer = base64.decode(`")
-	suffix = []byte("`);")
+	prefix = []byte("import * as base64 from 'base64-arraybuffer';\nexport const wasmBuffer = base64.decode('")
+	suffix = []byte("');\n")
 )
 
 func main() {
