@@ -87,11 +87,11 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	OrderHash                string         `json:"orderHash"`
-	SignedOrder              *SignedOrder   `json:"signedOrder"`
-	Kind                     OrderEventKind `json:"kind"`
-	FillableTakerAssetAmount string         `json:"fillableTakerAssetAmount"`
-	TxHashes                 []string       `json:"txHashes"`
+	OrderHash                string       `json:"orderHash"`
+	SignedOrder              *SignedOrder `json:"signedOrder"`
+	Kind                     string       `json:"kind"`
+	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
+	TxHashes                 []string     `json:"txHashes"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
@@ -116,10 +116,13 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	return o.fromOrderEventJSON(orderEventJSON)
+}
 
+func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
-	o.Kind = orderEventJSON.Kind
+	o.Kind = OrderEventKind(orderEventJSON.Kind)
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
 	if !ok {

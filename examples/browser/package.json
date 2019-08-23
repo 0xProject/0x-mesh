@@ -1,0 +1,21 @@
+{
+    "name": "mesh-webpack",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "Apache-2.0",
+    "private": true,
+    "scripts": {
+        "build": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js",
+        "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts"
+    },
+    "devDependencies": {
+        "rimraf": "^3.0.0",
+        "ts-loader": "^6.0.4",
+        "typescript": "^3.5.3",
+        "webpack": "^4.39.2",
+        "webpack-cli": "^3.3.7"
+    },
+    "dependencies": {
+        "@0x/mesh-browser": "./../../browser/"
+    }
+}

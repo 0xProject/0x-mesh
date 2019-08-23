@@ -46,6 +46,10 @@ const (
 	version                    = "development"
 )
 
+// Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
+// need to keep both definitions in sync, so if you change one you must also
+// change the other.
+
 // Config is a set of configuration options for 0x Mesh.
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
