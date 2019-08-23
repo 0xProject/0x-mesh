@@ -89,7 +89,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		EthereumRPCMaxContentLength: 524288,
 	}
 
-	// Required conig options
+	// Required config options
 	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); isNullOrUndefined(ethereumRPCURL) || ethereumRPCURL.String() == "" {
 		return core.Config{}, errors.New("ethereumRPCURL is required")
 	} else {
