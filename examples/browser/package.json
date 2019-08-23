@@ -2,7 +2,8 @@
     "name": "mesh-webpack",
     "version": "1.0.0",
     "main": "index.js",
-    "license": "MIT",
+    "license": "Apache-2.0",
+    "private": true,
     "scripts": {
         "build": "node --max_old_space_size=4096 ./node_modules/webpack/bin/webpack.js",
         "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts"

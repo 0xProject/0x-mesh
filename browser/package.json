@@ -3,20 +3,20 @@
     "version": "3.0.1-beta",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
-    "license": "MIT",
-    "private": true,
+    "license": "Apache-2.0",
     "scripts": {
         "build": "yarn build:go && yarn build:generate && yarn build:ts",
         "build:ts": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
         "build:generate": "go run ./scripts/generate_wasm_buffer.go",
         "build:go": "GOOS=js GOARCH=wasm go build -o ./wasm/main.wasm ./go/main.go"
     },
+    "devDependencies": {
+        "@types/base64-arraybuffer": "^0.1.0",
+        "typescript": "^3.5.3"
+    },
     "dependencies": {
         "@0x/order-utils": "^8.3.0",
         "@0x/utils": "^4.5.0",
-        "@types/base64-arraybuffer": "^0.1.0",
-        "@types/node": "^12.7.2",
-        "base64-arraybuffer": "^0.2.0",
-        "typescript": "^3.5.3"
+        "base64-arraybuffer": "^0.2.0"
     }
 }
