@@ -22,6 +22,9 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
+// Note(albrow): This is currently copied over from core/core.go. We need to keep
+// both definitions in sync, so if you change one you must also change the
+// other.
 /**
  * A set of configuration options for Mesh.
  */
