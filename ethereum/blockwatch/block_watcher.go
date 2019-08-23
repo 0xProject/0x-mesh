@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
@@ -119,6 +120,12 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.pollNextBlock(); err != nil {
+				if err == leveldb.ErrClosed {
+					// We can't continue if the database is closed. Stop the watcher and
+					// return an error.
+					ticker.Stop()
+					return err
+				}
 				log.WithError(err).Error("blockwatch.Watcher error encountered")
 			}
 		}
