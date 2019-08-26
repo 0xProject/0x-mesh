@@ -70,8 +70,8 @@ type Config struct {
 	// EthereumNetworkID is the network ID to use when communicating with
 	// Ethereum.
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
-	// UseBootstrapList is whether to use the predetermined list of peers to
-	// bootstrap the DHT and peer discovery.
+	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
+	// specific set of peers.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,

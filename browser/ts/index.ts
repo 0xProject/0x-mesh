@@ -35,8 +35,8 @@ export interface Config {
     ethereumRPCURL: string;
     // The network ID to use when communicating with Ethereum.
     ethereumNetworkID: number;
-    // UseBootstrapList is whether to use the predetermined list of peers to
-    // bootstrap the DHT and peer discovery. Defaults to true.
+    // UseBootstrapList is whether to bootstrap the DHT by connecting to a
+    // specific set of peers.
     useBootstrapList?: boolean;
     // bootstrapList is a list of multiaddresses to use for bootstrapping the
     // DHT (e.g.,
