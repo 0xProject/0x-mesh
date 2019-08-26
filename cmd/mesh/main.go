@@ -24,10 +24,6 @@ type standaloneConfig struct {
 }
 
 func main() {
-	// Configure logger to output JSON
-	// TODO(albrow): Don't use global settings for logger.
-	log.SetFormatter(&log.JSONFormatter{})
-
 	// Parse env vars
 	var coreConfig core.Config
 	if err := envvar.Parse(&coreConfig); err != nil {
@@ -65,6 +61,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		log.WithField("rpc_port", config.RPCPort).Info("starting RPC server")
 		if err := listenRPC(app, config, ctx); err != nil {
 			rpcErrChan <- err
 		}

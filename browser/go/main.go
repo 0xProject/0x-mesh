@@ -102,6 +102,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 
 	// Optional config options
+	if verbosity := jsConfig.Get("verbosity"); !isNullOrUndefined(verbosity) {
+		config.Verbosity = verbosity.Int()
+	}
 	if useBootstrapList := jsConfig.Get("useBootstrapList"); !isNullOrUndefined(useBootstrapList) {
 		config.UseBootstrapList = useBootstrapList.Bool()
 	}

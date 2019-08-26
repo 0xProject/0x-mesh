@@ -30,6 +30,9 @@ declare global {
  * A set of configuration options for Mesh.
  */
 export interface Config {
+    // Verbosity is the logging verbosity. Defaults to Verbosity.Error meaning
+    // only errors will be logged.
+    verbosity: Verbosity;
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
@@ -65,6 +68,16 @@ export interface Config {
     ethereumRPCMaxContentLength?: number;
 }
 
+enum Verbosity {
+    Panic = 0,
+    Fatal = 1,
+    Error = 2,
+    Warn = 3,
+    Info = 4,
+    Debug = 5,
+    Trace = 6,
+}
+
 // The global entrypoint for creating a new MeshWrapper.
 interface ZeroExMesh {
     newWrapperAsync(config: WrapperConfig): Promise<MeshWrapper>;
@@ -82,6 +95,7 @@ interface MeshWrapper {
 
 // The type for configuration exposed by MeshWrapper.
 interface WrapperConfig {
+    verbosity: number;
     ethereumRPCURL: string;
     ethereumNetworkID: number;
     useBootstrapList?: boolean;

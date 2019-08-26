@@ -4,7 +4,7 @@ jobs:
     environment:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.12.9
       - image: 0xorg/mesh-ganache-cli:6.0.0
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
@@ -46,6 +46,9 @@ jobs:
       - run:
           name: Run WebAssembly tests in a headless browser
           command: make test-wasm-browser
+      - run:
+          name: Run integration tests
+          command: make test-integration
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
