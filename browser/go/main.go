@@ -105,6 +105,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if useBootstrapList := jsConfig.Get("useBootstrapList"); !isNullOrUndefined(useBootstrapList) {
 		config.UseBootstrapList = useBootstrapList.Bool()
 	}
+	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
+		config.BootstrapList = bootstrapList.String()
+	}
 	if orderExpirationBufferSeconds := jsConfig.Get("orderExpirationBufferSeconds"); !isNullOrUndefined(orderExpirationBufferSeconds) {
 		config.OrderExpirationBuffer = time.Duration(orderExpirationBufferSeconds.Int()) * time.Second
 	}

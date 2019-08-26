@@ -38,6 +38,11 @@ export interface Config {
     // UseBootstrapList is whether to use the predetermined list of peers to
     // bootstrap the DHT and peer discovery. Defaults to true.
     useBootstrapList?: boolean;
+    // bootstrapList is a list of multiaddresses to use for bootstrapping the
+    // DHT (e.g.,
+    // "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
+    // Defaults to the hard-coded default bootstrap list.
+    bootstrapList?: string[];
     // The amount of time (in seconds) before the order's stipulated expiration
     // time that it will be considered expired. Higher values will cause orders
     // to be considered invalid sooner. Defaluts to 10.
@@ -62,7 +67,7 @@ export interface Config {
 
 // The global entrypoint for creating a new MeshWrapper.
 interface ZeroExMesh {
-    newWrapperAsync(config: Config): Promise<MeshWrapper>;
+    newWrapperAsync(config: WrapperConfig): Promise<MeshWrapper>;
 }
 
 // A direct translation of the MeshWrapper type in Go. Its API exposes only
@@ -73,6 +78,17 @@ interface MeshWrapper {
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
     addOrdersAsync(orders: WrapperSignedOrder[]): Promise<WrapperValidationResults>;
+}
+
+// The type for configuration exposed by MeshWrapper.
+interface WrapperConfig {
+    ethereumRPCURL: string;
+    ethereumNetworkID: number;
+    useBootstrapList?: boolean;
+    bootstrapList?: string; // comma-separated string instead of an array of strings.
+    orderExpirationBufferSeconds?: number;
+    blockPollingIntervalSeconds?: number;
+    ethereumRPCMaxContentLength?: number;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -268,7 +284,7 @@ export class Mesh {
      */
     public async startAsync(): Promise<void> {
         await waitForLoadAsync();
-        this._wrapper = await zeroExMesh.newWrapperAsync(this._config);
+        this._wrapper = await zeroExMesh.newWrapperAsync(configToWrapperConfig(this._config));
         if (this._orderEventsHandler !== undefined) {
             this._wrapper.onOrderEvents(this._orderEventsHandler);
         }
@@ -315,6 +331,14 @@ async function waitForLoadAsync(): Promise<void> {
 
 async function sleepAsync(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function configToWrapperConfig(config: Config): WrapperConfig {
+    const bootstrapList = config.bootstrapList == null ? undefined : config.bootstrapList.join(',');
+    return {
+        ...config,
+        bootstrapList,
+    };
 }
 
 function wrapperSignedOrderToSignedOrder(wrapperSignedOrder: WrapperSignedOrder): SignedOrder {
