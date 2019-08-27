@@ -83,8 +83,8 @@ type Config struct {
 	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
-	// BootstrapList is a list of multaddress strings to use for bootstrapping the
-	// DHT. If empty, the default list will be used.
+	// BootstrapList is a list of multiaddress strings to use for bootstrapping
+	// the DHT. If empty, the default list will be used.
 	BootstrapList []string
 	// DataDir is the directory to use for storing data.
 	DataDir string
