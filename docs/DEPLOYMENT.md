@@ -60,37 +60,42 @@ authoritative.
 
 ```go
 type Config struct {
-    // Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
-    Verbosity int `envvar:"VERBOSITY" default:"2"`
-    // DataDir is the directory to use for persisting all data, including the
-    // database and private key files.
-    DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-    // P2PListenPort is the port on which to listen for new peer connections.
-    P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
-    // EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
-    // API.
-    EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
-    // EthereumNetworkID is the network ID to use when communicating with
-    // Ethereum.
-    EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
-    // UseBootstrapList is whether to use the predetermined list of peers to
-    // bootstrap the DHT and peer discovery.
-    UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
-    // OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
-    // that you'd want it pruned from the Mesh node.
-    OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
-    // BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
-    // that might contain transactions that impact the fillability of orders stored by Mesh. Different
-    // networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
-    // and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
-    BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
-    // EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
-    // endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
-    // and Alchemy have much higher limits. When batch validating 0x orders, we will fit as many orders into a
-    // request without crossing the max content length. The default value is appropriate for operators using Geth
-    // or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
-    // number of RPC calls made by Mesh.
-    EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
+	Verbosity int `envvar:"VERBOSITY" default:"2"`
+	// DataDir is the directory to use for persisting all data, including the
+	// database and private key files.
+	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
+	// P2PListenPort is the port on which to listen for new peer connections.
+	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
+	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
+	// API.
+	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
+	// EthereumNetworkID is the network ID to use when communicating with
+	// Ethereum.
+	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
+	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
+	// specific set of peers.
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
+	// BootstrapList is a comma-separated list of multiaddresses to use for
+	// bootstrapping the DHT (e.g.,
+	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
+	// If empty, the default bootstrap list will be used.
+	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
+	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
+	// that you'd want it pruned from the Mesh node.
+	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
+	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
+	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
+	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
+	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
+	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
+	// EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
+	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
+	// and Alchemy have much higher limits. When batch validating 0x orders, we will fit as many orders into a
+	// request without crossing the max content length. The default value is appropriate for operators using Geth
+	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
+	// number of RPC calls made by Mesh.
+	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 }
 ```
 
@@ -99,8 +104,8 @@ Mesh executable](cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
-    // RPCPort is the port to use for the JSON RPC API over WebSockets. By
-    // default, 0x Mesh will let the OS select a randomly available port.
-    RPCPort int `envvar:"RPC_PORT" default:"0"`
+	// RPCPort is the port to use for the JSON RPC API over WebSockets. By
+	// default, 0x Mesh will let the OS select a randomly available port.
+	RPCPort int `envvar:"RPC_PORT" default:"0"`
 }
 ```

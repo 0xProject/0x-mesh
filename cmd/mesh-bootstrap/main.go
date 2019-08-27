@@ -59,6 +59,11 @@ type Config struct {
 	P2PAdvertiseAddrs string `envvar:"P2P_ADVERTISE_ADDRS"`
 	// DataDir is the directory used for storing data.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
+	// BootstrapList is a comma-separated list of multiaddresses to use for
+	// bootstrapping the DHT (e.g.,
+	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
+	// If empty, the default bootstrap list will be used.
+	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
 }
 
 func init() {
@@ -158,13 +163,21 @@ func main() {
 	if err := kadDHT.Bootstrap(ctx); err != nil {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
 	}
-	if err := p2p.ConnectToBootstrapList(ctx, basicHost); err != nil {
+	bootstrapList := p2p.DefaultBootstrapList
+	if config.BootstrapList != "" {
+		bootstrapList = strings.Split(config.BootstrapList, ",")
+	}
+	if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
 		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
 	}
 
 	// Protect each other bootstrap peer via the connection manager so that we
 	// maintain an active connection to them.
-	for _, addrInfo := range p2p.BootstrapPeers {
+	bootstrapAddrInfos, err := p2p.BootstrapListToAddrInfos(bootstrapList)
+	if err != nil {
+		log.WithField("error", err).Fatal("could not parse bootstrap list")
+	}
+	for _, addrInfo := range bootstrapAddrInfos {
 		connManager.Protect(addrInfo.ID, "bootstrap-peer")
 	}
 

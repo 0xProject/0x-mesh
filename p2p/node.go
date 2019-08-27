@@ -80,9 +80,12 @@ type Config struct {
 	// RendezvousString is a unique identifier for the rendezvous point. This node
 	// will attempt to find peers with the same Rendezvous string.
 	RendezvousString string
-	// UseBootstrapList determines whether or not to use the list of predetermined
+	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
+	// BootstrapList is a list of multiaddress strings to use for bootstrapping
+	// the DHT. If empty, the default list will be used.
+	BootstrapList []string
 	// DataDir is the directory to use for storing data.
 	DataDir string
 }
@@ -225,9 +228,14 @@ func (n *Node) Start() error {
 		return err
 	}
 
+	// Use the default bootstrap list if none was provided.
+	if len(n.config.BootstrapList) == 0 {
+		n.config.BootstrapList = DefaultBootstrapList
+	}
+
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
-		if err := ConnectToBootstrapList(n.ctx, n.host); err != nil {
+		if err := ConnectToBootstrapList(n.ctx, n.host, n.config.BootstrapList); err != nil {
 			return err
 		}
 	}
