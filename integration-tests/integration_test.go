@@ -204,6 +204,12 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
 
+	fmt.Println("Installing dependencies for TypeScript bindings...")
+	cmd = exec.CommandContext(ctx, "yarn", "install")
+	cmd.Dir = "../browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
+
 	fmt.Println("Building TypeScript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "build")
 	cmd.Dir = "../browser"
