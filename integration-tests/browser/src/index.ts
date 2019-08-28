@@ -1,7 +1,8 @@
 import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
 
 (async () => {
-    // Configure Mesh to use our local Ganache instance and network ID 51
+    // Configure Mesh to use our local Ganache instance and local bootstrap
+    // node.
     const mesh = new Mesh({
         verbosity: 5,
         ethereumRPCURL: 'http://localhost:8545',
@@ -16,17 +17,19 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
 
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled.
-    mesh.onOrderEvents((events: Array<OrderEvent>) => {
-        for (let event of events) {
-            // console.log('received order event: ' + JSON.stringify(event));
-        }
-    });
+    // TODO(albrow): Log this event and check for it in the integration tests
+    // instead of relying on the interal logs from the core package.
+    // mesh.onOrderEvents((events: Array<OrderEvent>) => {
+    //     for (let event of events) {
+    //         // console.log('received order event: ' + JSON.stringify(event));
+    //     }
+    // });
 
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
 
-    // This order is for demonstration purposes only and is invalid. It will be
-    // rejected by Mesh. You can replace it with a valid order.
+    // Send an order to the network. In the integration tests we will check that
+    // the order was received.
     const order: SignedOrder = {
         makerAddress: '0x5409ed021d9299bf6814279a6a1411a7e866a631',
         makerAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
@@ -44,8 +47,6 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
         signature:
             '0x1be53f1a3cc8508b51995f03e5c22948c4988d113c2085d10135d9bbc20dd272275d31c59ec09790ea4691b35aec4a0ed0558b18add3e778dda20eb05d8a07097303',
     };
-
-    // Add the order and log the result.
     const result = await mesh.addOrdersAsync([order]);
     if (result.accepted.length !== 1) {
         throw new Error('Expected exactly one order to be accepted but got: ' + result.accepted.length);
@@ -54,6 +55,8 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
         throw new Error('Expected no orders to be rejected but got: ' + result.rejected.length);
     }
 
+    // This special #jsFinished div is used to signal the headless Chrome driver
+    // that the JavaScript code is done running.
     const finishedDiv = document.createElement('div');
     finishedDiv.setAttribute('id', 'jsFinished');
     document.querySelector('body')!.appendChild(finishedDiv);
