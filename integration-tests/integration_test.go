@@ -77,7 +77,7 @@ func TestBrowserIntegration(t *testing.T) {
 		t.Skip("Integration tests are disabled. You can enable them with the --integration")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 

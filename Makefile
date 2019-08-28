@@ -44,7 +44,7 @@ test-go:
 
 .PHONY: test-integration
 test-integration:
-	go test ./integration-tests -timeout 125s --integration
+	go test ./integration-tests -timeout 185s --integration
 
 
 .PHONY: test-wasm-node
