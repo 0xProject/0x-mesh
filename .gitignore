@@ -12,3 +12,8 @@ rpc/clients/typescript/yarn-error.log
 browser/lib
 browser/ts/generated
 examples/browser/dist/bundle.js
+integration-tests/browser/dist/bundle.js
+integration-tests/data/standalone-0/db/
+integration-tests/data/standalone-0/p2p/
+integration-tests/data/bootstrap-0/p2p/
+

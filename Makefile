@@ -42,6 +42,11 @@ test-go:
 	go test ./... -race -timeout 30s
 
 
+.PHONY: test-integration
+test-integration:
+	go test ./integration-tests -timeout 185s --integration
+
+
 .PHONY: test-wasm-node
 test-wasm-node:
 	export ZEROEX_MESH_ROOT_DIR=$$(pwd); GOOS=js GOARCH=wasm go test -exec="$$ZEROEX_MESH_ROOT_DIR/test-wasm/go_js_wasm_exec" ./...

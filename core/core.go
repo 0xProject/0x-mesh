@@ -121,6 +121,7 @@ type App struct {
 func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
+	log.SetFormatter(&log.JSONFormatter{})
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
 

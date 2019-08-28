@@ -4,14 +4,11 @@ jobs:
     environment:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.12.9-browsers
       - image: 0xorg/mesh-ganache-cli:6.0.0
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout
-      - run:
-          name: Install dependencies for Google Chrome
-          command: sudo apt-get update && sudo apt-get install -yq gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils wget --fix-missing
       - run:
           name: Install dep
           command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
@@ -46,6 +43,9 @@ jobs:
       - run:
           name: Run WebAssembly tests in a headless browser
           command: make test-wasm-browser
+      - run:
+          name: Run integration tests
+          command: make test-integration
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
