@@ -2,13 +2,15 @@
 
 ## Getting started
 
-* [Deployment guide](DEPLOYMENT.md)
+* [Deployment guide](deployment.md)
 * [Mesh Beta participation guide](../examples/beta_telemetry_node/README.md)
-* [Usage guide](USAGE.md)
+* [JSON-RPC API documentation](rpc_api.md)
+* [Browser API documentation](browser/reference.md)
+* [Browser guide](browser.md)
 
 ## Advanced topics
 
-* [Syncing an external DB with Mesh](DB_SYNCING.md)
+* [Syncing an external DB with Mesh](db_syncing.md)
 
 ## JSON-RPC clients
 
@@ -18,5 +20,5 @@
 
 ## Contributing
 
-* [Contributing guide](DEVELOPMENT.md)
+* [Development guide](development.md)
 * [CHANGELOG](../CHANGELOG.md)
