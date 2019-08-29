@@ -6,7 +6,7 @@ automatically logs a lot of useful information including the number of orders
 processed and details about any errors and warnings that might occur. Sending
 this information to us is extraordinarily helpful, but completely optional. If
 you don't want to enable telemetry, you can follow the
-[Deployment Guide](docs/DEPLOYMENT.md) instead.
+[Deployment Guide](../../docs/DEPLOYMENT.md) instead.
 
 This guide will walk you though setting up a telemetry-enabled Mesh node on the cloud hosting solution of your choice using [Docker Machine](https://docs.docker.com/machine/). The instructions below will deploy a Mesh node on [DigitalOcean](https://www.digitalocean.com/), but can be easily modified to deploy on [many other cloud providers](https://docs.docker.com/machine/drivers/).
 
@@ -75,16 +75,12 @@ docker logs <fluent-bit-container-id> -f
 Instead of reading them from the `0xorg/mesh` container.
 
 Finally, in order to prevent our log aggregation stack from getting overloaded,
-we whitelist the peers that are allowed to send us logs. Look for a log message
-that looks like this:
+we whitelist the peers that are allowed to send us logs. Look for a field in the
+logs called `myPeerID`:
 
 ```json
 {
-    "addresses": ["/ip4/127.0.0.1/tcp/60557", "/ip4/172.17.0.2/tcp/60557"],
-    "level": "info",
-    "msg": "started p2p node",
-    "peerID": "QmbKkHnmkmFxKbPWbBNz3inKizDuqjTsWsVyutnshYULLp",
-    "time": "2019-07-15T17:36:46-07:00"
+    "myPeerID": "QmbKkHnmkmFxKbPWbBNz3inKizDuqjTsWsVyutnshYULLp",
 }
 ```
 
