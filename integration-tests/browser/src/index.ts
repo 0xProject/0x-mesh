@@ -16,14 +16,13 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
     });
 
     // This handler will be called whenever an order is added, expired,
-    // canceled, or filled.
-    // TODO(albrow): Log this event and check for it in the integration tests
-    // instead of relying on the interal logs from the core package.
-    // mesh.onOrderEvents((events: Array<OrderEvent>) => {
-    //     for (let event of events) {
-    //         // console.log('received order event: ' + JSON.stringify(event));
-    //     }
-    // });
+    // canceled, or filled. We will check for certain events to be logged in the
+    // integration tests.
+    mesh.onOrderEvents((events: Array<OrderEvent>) => {
+        for (let event of events) {
+            console.log(JSON.stringify(event));
+        }
+    });
 
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
