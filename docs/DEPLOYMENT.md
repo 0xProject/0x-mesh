@@ -24,15 +24,21 @@ docker run \
 --rm \
 -p 60557:60557 \
 -p 60558:60558 \
+-p 60559:60559 \
 -e ETHEREUM_NETWORK_ID="1" \
--e ETHEREUM_RPC_URL="ADD_YOUR_ETHEREUM_RPC_ENDPOINT_HERE" \
+-e ETHEREUM_RPC_URL="{your_ethereum_rpc_url}" \
 -e VERBOSITY=5 \
+-v {local_path_on_host_machine}/0x_mesh:/usr/mesh/0x_mesh
 0xorg/mesh:latest
 ```
 
+You should replace `{your_ethereum_rpc_url}` with the RPC endpoint for an
+Ethereum node and `{local_path_on_host_machine}` with a directory on your host
+machine where all Mesh-related data will be stored.
+
 **Notes:**
 
--   `60557` is the `RPC_PORT` and `60558` is the `P2P_LISTEN_PORT`
+-   Ports 60557, 60558, and 60559 are the default ports used for the JSON RPC endpoint, communicating with peers over TCP, and communicating with peers over WebSockets, respectively.
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet.
@@ -40,16 +46,11 @@ docker run \
 
 ## Persisting State
 
-By default in the Docker container, Mesh stores all state (e.g. database files,
+The Docker container is configured to store all Mesh state (e.g. database files,
 private key file) in `/usr/mesh/0x_mesh`. If you want the Mesh state to persist
-across Docker container re-starts, mount a local `0x_mesh` directory to your
-container. Add the following to the `docker run` command above:
-
-```
--v {abs_local_path}/0x_mesh:/usr/mesh/0x_mesh
-```
-
-**Note:** Replace `{abs_local_path}` with the absolute path to the desired `0x_mesh` directory on the host machine.
+across Docker container re-starts, use the `-v` flag as included in the command
+above to mount a local `0x_mesh` directory into your container. This is strongly
+recommended.
 
 ## Environment Variables
 
@@ -100,7 +101,7 @@ type Config struct {
 ```
 
 There is one additional environment variable in the [main entrypoint for the
-Mesh executable](cmd/mesh/main.go):
+Mesh executable](../cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
