@@ -174,11 +174,11 @@ func TestBrowserIntegration(t *testing.T) {
 		browserPeerIDChan <- browserPeerID
 
 		// Next, wait for the order to be received.
-		expectedOrderLog := receivedOrderLog{
+		expectedOrderEventLog := orderEventLog{
 			OrderHash: expectedStandaloneOrderHash,
-			From:      standalonePeerID,
+			Kind:      "ADDED",
 		}
-		_, err = waitForReceivedOrderLog(ctx, browserLogMessages, expectedOrderLog)
+		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
 		assert.NoError(t, err, "Browser node did not receive order sent by standalone node")
 	}()
 
@@ -375,8 +375,8 @@ func waitForLogSubstring(ctx context.Context, logMessages <-chan string, substr 
 	})
 }
 
-// A holder type used for parsing the messages that are logged when an order is
-// received.
+// A holder type used for parsing the "received new valid order from peer"
+// messages that are logged by Mesh when an order is received.
 type receivedOrderLog struct {
 	OrderHash string `json:"orderHash_string"`
 	From      string `json:"from_string"`
@@ -385,18 +385,44 @@ type receivedOrderLog struct {
 func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, expectedLog receivedOrderLog) (string, error) {
 	return waitForLogMessage(ctx, logMessages, func(msg string) bool {
 		var foundLog receivedOrderLog
-		// Depending on the environment, the message may contain escaped quotes
-		// which we need to unescape.
-		unquoted, err := strconv.Unquote(msg)
-		if err == nil {
-			msg = unquoted
-		}
-		if err := json.Unmarshal([]byte(msg), &foundLog); err != nil {
+		if err := unquoteAndUnmarshal(msg, &foundLog); err != nil {
 			return false
 		}
 		return foundLog.OrderHash == expectedLog.OrderHash &&
 			foundLog.From == expectedLog.From
 	})
+}
+
+// A holder type for parsing logged OrderEvents. These are received by either
+// an RPC subscription or in the TypeScript bindings and are not usually logged
+// by Mesh. They need to be explicitly logged.
+type orderEventLog struct {
+	OrderHash string `json:"orderHash"`
+	Kind      string `json:"kind"`
+}
+
+func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expectedLog orderEventLog) (string, error) {
+	return waitForLogMessage(ctx, logMessages, func(msg string) bool {
+		var foundLog orderEventLog
+		if err := unquoteAndUnmarshal(msg, &foundLog); err != nil {
+			return false
+		}
+		return foundLog.OrderHash == expectedLog.OrderHash &&
+			foundLog.Kind == expectedLog.Kind
+	})
+}
+
+func unquoteAndUnmarshal(msg string, holder interface{}) error {
+	// Depending on the environment, the message may contain escaped quotes
+	// which we need to unescape.
+	unquoted, err := strconv.Unquote(msg)
+	if err == nil {
+		msg = unquoted
+	}
+	if err := json.Unmarshal([]byte(msg), holder); err != nil {
+		return err
+	}
+	return nil
 }
 
 // extractPeerIDFromLog expects a log message that contains a peer ID under the
