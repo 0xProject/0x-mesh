@@ -613,10 +613,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 			// No important state-change happened, simply update lastUpdated timestamp in DB
-			w.updateOrderLastUpdatedAndFillableAmount(order)
+			w.updateOrderDBEntry(order)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
-			w.updateOrderLastUpdatedAndFillableAmount(order)
+			w.updateOrderDBEntry(order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
@@ -628,7 +628,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 			// Update order in DB and emit event
-			w.updateOrderLastUpdatedAndFillableAmount(order)
+			w.updateOrderDBEntry(order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
@@ -650,7 +650,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
 				// Update it's lastUpdated timestamp in DB
-				w.updateOrderLastUpdatedAndFillableAmount(order)
+				w.updateOrderDBEntry(order)
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(order, big.NewInt(0))
@@ -687,9 +687,8 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 	return nil
 }
 
-func (w *Watcher) updateOrderLastUpdatedAndFillableAmount(order *meshdb.Order) {
+func (w *Watcher) updateOrderDBEntry(order *meshdb.Order) {
 	order.LastUpdated = time.Now().UTC()
-	order.FillableTakerAssetAmount = order.FillableTakerAssetAmount
 	err := w.meshDB.Orders.Update(order)
 	if err != nil {
 		logger.WithFields(logger.Fields{
