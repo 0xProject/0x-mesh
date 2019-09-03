@@ -393,10 +393,10 @@ func setupScenario(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	// Convert ETH into WETH
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
 
+	// Convert ETH-WETH
 	opts := &bind.TransactOpts{
 		From:   takerAddress,
 		Value:  wethAmount,
@@ -408,7 +408,6 @@ func setupScenario(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	// Convert ETH into WETH
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	require.NoError(t, err)
 
