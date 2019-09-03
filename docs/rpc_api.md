@@ -1,8 +1,6 @@
 [![Version](https://img.shields.io/badge/version-development-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
-Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Usage
-Guide! This guide will help you interact with 0x Mesh via a JSON-RPC API once
-you have it up and running.
+# 0x Mesh JSON-RPC API Documentation
 
 The JSON-RPC API is intended to be a *private* API. The API should only be
 accessible to the developers running the Mesh node and should not be exposed to
