@@ -45,6 +45,7 @@ type Watcher struct {
 	assetDataDecoder           *zeroex.AssetDataDecoder
 	blockSubscription          event.Subscription
 	contractAddresses          ethereum.ContractAddresses
+	expirationBuffer           time.Duration
 	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -69,6 +70,7 @@ func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator
 	w := &Watcher{
 		meshDB:                     meshDB,
 		blockWatcher:               blockWatcher,
+		expirationBuffer:           expirationBuffer,
 		expirationWatcher:          expirationwatch.New(expirationBuffer),
 		contractAddressToSeenCount: map[common.Address]uint{},
 		orderValidator:             orderValidator,
@@ -224,7 +226,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			FillableTakerAssetAmount: big.NewInt(0),
 			OrderStatus:              zeroex.OSExpired,
 		}
-		w.unwatchOrder(order)
+		w.unwatchOrder(order, order.FillableTakerAssetAmount)
 
 		orderEvent := &zeroex.OrderEvent{
 			OrderHash:                orderInfo.OrderHash,
@@ -593,10 +595,13 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 		oldFillableAmount := order.FillableTakerAssetAmount
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
-		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-			// A previous event caused this order to be removed from DB, but it has now
-			// been revived (e.g., block re-org causes order fill txn to get reverted)
-			// Need to re-add order and emit an event
+
+		expirationTime := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+		isExpired := zeroex.IsExpired(expirationTime, w.expirationBuffer)
+		if !isExpired && oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
+			// A previous event caused this order to be removed from DB because it's
+			// fillableAmount became 0, but it has now been revived (e.g., block re-org
+			// causes order fill txn to get reverted). We need to re-add order and emit an event.
 			w.rewatchOrder(order, acceptedOrderInfo)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -645,7 +650,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 				// Noop
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
-				w.unwatchOrder(order)
+				w.unwatchOrder(order, big.NewInt(0))
 				kind, ok := zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventKind corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
@@ -696,10 +701,10 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOr
 	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) unwatchOrder(order *meshdb.Order) {
+func (w *Watcher) unwatchOrder(order *meshdb.Order, newFillableAmount *big.Int) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
-	order.FillableTakerAssetAmount = big.NewInt(0)
+	order.FillableTakerAssetAmount = newFillableAmount
 	err := w.meshDB.Orders.Update(order)
 	if err != nil {
 		logger.WithFields(logger.Fields{
