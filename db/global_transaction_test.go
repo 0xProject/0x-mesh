@@ -100,19 +100,6 @@ func TestGlobalTransaction(t *testing.T) {
 	commitSignal := make(chan struct{})
 	// newCollectionSignal is fired after the new collection has been created.
 	newCollectionSignal := make(chan struct{})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-commitSignal:
-			// Expected outcome. Return from goroutine.
-			return
-		case <-newCollectionSignal:
-			// Not the expected outcome. commitSignal should have fired first.
-			t.Error("new collection was created before the transaction was committed")
-			return
-		}
-	}()
 
 	wg.Add(1)
 	go func() {
@@ -122,6 +109,15 @@ func TestGlobalTransaction(t *testing.T) {
 		// Signal that the new collection was created.
 		close(newCollectionSignal)
 	}()
+
+	select {
+	case <-time.After(transactionExclusionTestTimeout):
+		// Expected outcome. Exit from select.
+		break
+	case <-newCollectionSignal:
+		t.Error("new collection was created before the transaction was committed")
+		return
+	}
 
 	// Make sure that col0 only contains models that were created before the
 	// transaction was opened.
@@ -134,14 +130,6 @@ func TestGlobalTransaction(t *testing.T) {
 	actualCount, err := col1.Count()
 	require.NoError(t, err)
 	assert.Equal(t, 0, actualCount)
-
-	// This short sleep prevents false positives. Without this, the test might
-	// pass simply because the other goroutines did not have time do do anything
-	// before we committed the transaction. We want to rule this out and make sure
-	// that the mutexes are the thing enforcing that no new collections are
-	// created and no new writes are made to the db state until after the global
-	// transaction is committed.
-	time.Sleep(50 * time.Millisecond)
 
 	// Signal that we are about to commit the transaction, then commit it.
 	close(commitSignal)
