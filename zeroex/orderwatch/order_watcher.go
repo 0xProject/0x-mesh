@@ -612,9 +612,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-			// No important state-change happened, ignore
-			// Noop
+			// No important state-change happened, simply update lastUpdated timestamp
+			w.actualizeLastUpdated(order)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+			w.actualizeLastUpdated(order)
 			// Order was filled, emit  event
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -625,6 +626,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
+			w.actualizeLastUpdated(order)
 			// The order is now fillable for more then it was before. E.g.:
 			// 1. A fill txn reverted (block-reorg)
 			orderEvent := &zeroex.OrderEvent{
@@ -646,8 +648,9 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			order := orderWithTxHashes.Order
 			oldFillableAmount := order.FillableTakerAssetAmount
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-				// If the oldFillableAmount was already 0, this order is already flagged for removal
-				// Noop
+				// If the oldFillableAmount was already 0, this order is already flagged for removal. We simply
+				// update it's lastUpdated timestamp
+				w.actualizeLastUpdated(order)
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(order, big.NewInt(0))
@@ -682,6 +685,17 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 		w.orderFeed.Send(orderEvents)
 	}
 	return nil
+}
+
+func (w *Watcher) actualizeLastUpdated(order *meshdb.Order) {
+	order.LastUpdated = time.Now().UTC()
+	err := w.meshDB.Orders.Update(order)
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
 }
 
 func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOrderInfo) {
