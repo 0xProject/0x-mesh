@@ -97,22 +97,9 @@ func TestGlobalTransaction(t *testing.T) {
 	// is committed/discarded. We use two channels to determine the order in which
 	// the two events occurred.
 	// commitSignal is fired right before the transaction is committed.
-	commitSignal := make(chan struct{}, 1)
+	commitSignal := make(chan struct{})
 	// newCollectionSignal is fired after the new collection has been created.
-	newCollectionSignal := make(chan struct{}, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-commitSignal:
-			// Expected outcome. Return from goroutine.
-			return
-		case <-newCollectionSignal:
-			// Not the expected outcome. commitSignal should have fired first.
-			t.Error("new collection was created before the transaction was committed")
-			return
-		}
-	}()
+	newCollectionSignal := make(chan struct{})
 
 	wg.Add(1)
 	go func() {
@@ -120,8 +107,17 @@ func TestGlobalTransaction(t *testing.T) {
 		_, err := db.NewCollection("people2", &testModel{})
 		require.NoError(t, err)
 		// Signal that the new collection was created.
-		newCollectionSignal <- struct{}{}
+		close(newCollectionSignal)
 	}()
+
+	select {
+	case <-time.After(transactionExclusionTestTimeout):
+		// Expected outcome. Exit from select.
+		break
+	case <-newCollectionSignal:
+		t.Error("new collection was created before the transaction was committed")
+		return
+	}
 
 	// Make sure that col0 only contains models that were created before the
 	// transaction was opened.
@@ -135,16 +131,8 @@ func TestGlobalTransaction(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, actualCount)
 
-	// This short sleep prevents false positives. Without this, the test might
-	// pass simply because the other goroutines did not have time do do anything
-	// before we committed the transaction. We want to rule this out and make sure
-	// that the mutexes are the thing enforcing that no new collections are
-	// created and no new writes are made to the db state until after the global
-	// transaction is committed.
-	time.Sleep(transactionTestSleepDuration)
-
 	// Signal that we are about to commit the transaction, then commit it.
-	commitSignal <- struct{}{}
+	close(commitSignal)
 	require.NoError(t, txn.Commit())
 
 	// Wait for any goroutines to finish.
@@ -281,50 +269,19 @@ func TestGlobalTransactionExclusion(t *testing.T) {
 		_ = txn.Discard()
 	}()
 
-	// discardSignal is fired right before the original global transaction is
-	// discarded.
-	discardSignal := make(chan struct{}, 1)
 	// newGlobalTxnOpenSignal is fired when a new global transaction is opened.
-	newGlobalTxnOpenSignal := make(chan struct{}, 1)
+	newGlobalTxnOpenSignal := make(chan struct{})
 	// col0TxnOpenSignal is fired when a transaction on col0 is opened.
-	col0TxnOpenSignal := make(chan struct{}, 1)
+	col0TxnOpenSignal := make(chan struct{})
 	// col1TxnOpenSignal is fired when a transaction on col1 is opened.
-	col1TxnOpenSignal := make(chan struct{}, 1)
+	col1TxnOpenSignal := make(chan struct{})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for {
-			select {
-			case <-discardSignal:
-				// Expected outcome. Return from the goroutine.
-				return
-			case <-newGlobalTxnOpenSignal:
-				t.Error("a new global transaction was opened before the first was committed/discarded")
-			case <-col0TxnOpenSignal:
-				t.Error("a new transaction was opened on col0 before the global transaction was committed/discarded")
-			case <-col1TxnOpenSignal:
-				t.Error("a new transaction was opened on col1 before the global transaction was committed/discarded")
-			}
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		txn := db.OpenGlobalTransaction()
-		newGlobalTxnOpenSignal <- struct{}{}
-		defer func() {
-			_ = txn.Discard()
-		}()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
 		txn := col0.OpenTransaction()
-		col0TxnOpenSignal <- struct{}{}
+		close(col0TxnOpenSignal)
 		defer func() {
 			_ = txn.Discard()
 		}()
@@ -334,15 +291,59 @@ func TestGlobalTransactionExclusion(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		txn := col1.OpenTransaction()
-		col1TxnOpenSignal <- struct{}{}
+		close(col1TxnOpenSignal)
 		defer func() {
 			_ = txn.Discard()
 		}()
 	}()
 
-	time.Sleep(transactionTestSleepDuration)
-	discardSignal <- struct{}{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		txn := db.OpenGlobalTransaction()
+		close(newGlobalTxnOpenSignal)
+		defer func() {
+			_ = txn.Discard()
+		}()
+	}()
+
+	select {
+	case <-time.After(transactionExclusionTestTimeout):
+		// Expected outcome. Return from the goroutine.
+		return
+	case <-newGlobalTxnOpenSignal:
+		t.Error("a new global transaction was opened before the first was committed/discarded")
+	case <-col0TxnOpenSignal:
+		t.Error("a new transaction was opened on col0 before the global transaction was committed/discarded")
+	case <-col1TxnOpenSignal:
+		t.Error("a new transaction was opened on col1 before the global transaction was committed/discarded")
+	}
+
+	// Discard the first global transaction.
 	require.NoError(t, txn.Discard())
 
+	// Check that col0 and col1 transactions are opened.
+	wasCol0TxnOpened := false
+	wasCol1TxnOpened := false
+	wasNewGlobalTxnOpened := false
+	txnOpenTimeout := time.After(transactionExclusionTestTimeout)
+	for {
+		if wasCol0TxnOpened && wasCol1TxnOpened && wasNewGlobalTxnOpened {
+			// All three transactions were opened. Break the for loop.
+			break
+		}
+		select {
+		case <-txnOpenTimeout:
+			t.Fatalf("timed out waiting for one or more transactions to open (tx0: %t, txn1: %t, global: %t)", wasCol0TxnOpened, wasCol1TxnOpened, wasNewGlobalTxnOpened)
+		case <-col0TxnOpenSignal:
+			wasCol0TxnOpened = true
+		case <-col1TxnOpenSignal:
+			wasCol1TxnOpened = true
+		case <-newGlobalTxnOpenSignal:
+			wasNewGlobalTxnOpened = true
+		}
+	}
+
+	// Wait for all goroutines to exit.
 	wg.Wait()
 }
