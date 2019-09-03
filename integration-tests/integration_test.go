@@ -20,11 +20,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/ethereum/go-ethereum/common"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,33 +50,7 @@ const (
 	standaloneDataDir     = "./data/standalone-0"
 	standaloneRPCEndpoint = "ws://localhost:60501"
 	standaloneRPCPort     = 60501
-
-	// Hash of the order that will be sent by the browser node.
-	expectedBrowserOrderHash = "0x7292f6e7bee79f117c146c57f207d6a380e888b871ef733ae2608a064c36ef83"
-	// Hash of the order that will be sent by the standalone node.
-	expectedStandaloneOrderHash = "0x4f43d2126b856ed72e40cd504ea4e6cea1c88cd1adc1eb2ea8c30da412470584"
 )
-
-// standaloneOrder is the order that will be sent to the Mesh network by the
-// standalone node.
-var standaloneOrder = &zeroex.SignedOrder{
-	Order: zeroex.Order{
-		MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
-		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		MakerAssetAmount:      big.NewInt(1000),
-		MakerFee:              big.NewInt(0),
-		TakerAddress:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
-		TakerAssetAmount:      big.NewInt(2000),
-		TakerFee:              big.NewInt(0),
-		SenderAddress:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		ExchangeAddress:       common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
-		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		ExpirationTimeSeconds: big.NewInt(1567121010),
-		Salt:                  big.NewInt(1548619145450),
-	},
-	Signature: common.Hex2Bytes("1b15b0edc1cab84e1be2a801cef16cb6da2edc1f17cc3239ff5ebf2c84de8bac7854005c7d85a622732177c7abe69545254a564fcf60e57b21fbdf6cd7ade9078c03"),
-}
 
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
@@ -118,6 +95,12 @@ func TestBrowserIntegration(t *testing.T) {
 		startStandaloneNode(t, ctx, standaloneLogMessages)
 	}()
 
+	// standaloneOrder is an order that will be sent to the network by the
+	// standalone node.
+	standaloneOrder := createSignedTestOrder(t)
+	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
+	require.NoError(t, err, "could not compute order hash for standalone order")
+
 	// In a separate goroutine, send standaloneOrder through the RPC endpoint for
 	// the standalone node.
 	wg.Add(1)
@@ -150,10 +133,14 @@ func TestBrowserIntegration(t *testing.T) {
 		startBrowserNode(t, ctx, ts.URL, browserLogMessages)
 	}()
 
-	// browserPeerIDChan is used to retrive the peer ID of the browser nodes.
+	// browserPeerIDChan is used to retrieve the peer ID of the browser node.
 	// Unlike the other nodes, we can't know it ahead of time because we have no
 	// easy way to manipulate localStorage.
 	browserPeerIDChan := make(chan string, 1)
+
+	// browserOrderHashChan is used to retrieve the order hash of the order signed
+	// in the browser node.
+	browserOrderHashChan := make(chan string, 1)
 
 	// messageWG is a separate WaitGroup that will be used to wait for all
 	// expected messages to be logged.
@@ -165,17 +152,25 @@ func TestBrowserIntegration(t *testing.T) {
 	go func() {
 		defer messageWG.Done()
 
+		// Wait for the order hash to be logged.
+		msg, err := waitForSignedOrderLog(ctx, browserLogMessages)
+		assert.NoError(t, err, "Could not find browser orderHash in logs. Maybe the browser node didn't start?")
+		browserOrderHash, err := extractOrderHashFromLog(msg)
+		assert.NoError(t, err, "Could not extract brower orderHash from log message.")
+		fmt.Println("browser order hash is", browserOrderHash)
+		browserOrderHashChan <- browserOrderHash
+
 		// Wait for the peer ID to be logged first.
-		msg, err := waitForLogSubstring(ctx, browserLogMessages, "myPeerID")
+		msg, err = waitForLogSubstring(ctx, browserLogMessages, "myPeerID")
 		assert.NoError(t, err, "Could not find browser peer ID in logs. Maybe the browser node didn't start?")
 		browserPeerID, err := extractPeerIDFromLog(msg)
 		assert.NoError(t, err, "Could not extract brower peer ID from log message.")
-		fmt.Println("browser peerID is", browserPeerID)
+		fmt.Println("browser peer ID is", browserPeerID)
 		browserPeerIDChan <- browserPeerID
 
 		// Next, wait for the order to be received.
 		expectedOrderEventLog := orderEventLog{
-			OrderHash: expectedStandaloneOrderHash,
+			OrderHash: standaloneOrderHash.Hex(),
 			Kind:      "ADDED",
 		}
 		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
@@ -187,9 +182,10 @@ func TestBrowserIntegration(t *testing.T) {
 	messageWG.Add(1)
 	go func() {
 		defer messageWG.Done()
+		browserOrderHash := <-browserOrderHashChan
 		browserPeerID := <-browserPeerIDChan
 		expectedOrderLog := receivedOrderLog{
-			OrderHash: expectedBrowserOrderHash,
+			OrderHash: browserOrderHash,
 			From:      browserPeerID,
 		}
 		_, err := waitForReceivedOrderLog(ctx, standaloneLogMessages, expectedOrderLog)
@@ -412,6 +408,23 @@ func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expect
 	})
 }
 
+// A holder type used for parsing the "signed order in browser" message that
+// comes from the browser node
+type signedOrderLog struct {
+	Message   string `json:"message"`
+	OrderHash string `json:"orderHash"`
+}
+
+func waitForSignedOrderLog(ctx context.Context, logMessages <-chan string) (string, error) {
+	return waitForLogMessage(ctx, logMessages, func(msg string) bool {
+		var foundLog signedOrderLog
+		if err := unquoteAndUnmarshal(msg, &foundLog); err != nil {
+			return false
+		}
+		return foundLog.Message == "signed order in browser"
+	})
+}
+
 func unquoteAndUnmarshal(msg string, holder interface{}) error {
 	// Depending on the environment, the message may contain escaped quotes
 	// which we need to unescape.
@@ -440,4 +453,46 @@ func extractPeerIDFromLog(msg string) (string, error) {
 		return "", err
 	}
 	return holder.PeerID, nil
+}
+
+// extractOrderHashFromLog expects a log message that contains an order hash
+// and a field message that equals "signed order in browser". It extracts and
+// returns the order hash.
+func extractOrderHashFromLog(msg string) (string, error) {
+	unquoted, err := strconv.Unquote(msg)
+	if err == nil {
+		msg = unquoted
+	}
+	holder := signedOrderLog{}
+	if err := json.Unmarshal([]byte(msg), &holder); err != nil {
+		return "", err
+	}
+	return holder.OrderHash, nil
+}
+
+func createSignedTestOrder(t *testing.T) *zeroex.SignedOrder {
+	testOrder := &zeroex.Order{
+		MakerAddress:          constants.GanacheAccount0,
+		TakerAddress:          constants.NullAddress,
+		SenderAddress:         constants.NullAddress,
+		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
+		Salt:                  big.NewInt(1548619145450),
+		MakerFee:              big.NewInt(0),
+		TakerFee:              big.NewInt(0),
+		MakerAssetAmount:      big.NewInt(1000),
+		TakerAssetAmount:      big.NewInt(2000),
+		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	}
+
+	ethClient, err := ethrpc.Dial(ethereumRPCURL)
+	require.NoError(t, err, "could not create Ethereum RPC client")
+
+	signer := ethereum.NewEthRPCSigner(ethClient)
+	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
+	require.NoError(t, err, "could not sign order")
+
+	return signedTestOrder
 }
