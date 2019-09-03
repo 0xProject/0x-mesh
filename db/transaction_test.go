@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// transactionTestSleepDuration is passed to time.Sleep in some transaction tests
-// involving timing between multiple goroutines.
-const transactionTestSleepDuration = 50 * time.Millisecond
+// transactionExclusionTestTimeout is used in transaction exclusion tests to
+// timeout while waiting for one transaction to open.
+const transactionExclusionTestTimeout = 100 * time.Millisecond
 
 func TestTransaction(t *testing.T) {
 	t.Parallel()
@@ -210,39 +210,17 @@ func TestTransactionExclusion(t *testing.T) {
 		_ = txn.Discard()
 	}()
 
-	// discardSignal is fired right before the original transaction on col0 is
-	// discarded.
-	discardSignal := make(chan struct{}, 1)
 	// col0TxnOpenSignal is fired when a transaction on col0 is opened.
-	col0TxnOpenSignal := make(chan struct{}, 1)
+	col0TxnOpenSignal := make(chan struct{})
 	// col1TxnOpenSignal is fired when a transaction on col1 is opened.
-	col1TxnOpenSignal := make(chan struct{}, 1)
+	col1TxnOpenSignal := make(chan struct{})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		col1TxnWasOpened := false
-		for {
-			select {
-			case <-discardSignal:
-				assert.True(t, col1TxnWasOpened, "expected col1 transaction to open before col0 transaction was committed/discarded")
-				return
-			case <-col0TxnOpenSignal:
-				t.Error("a new transaction was opened on col0 before the first transaction was committed/discarded")
-			case <-col1TxnOpenSignal:
-				// col1 transactions should be independent of col0 transactions and do
-				// not need to wait for the col0 transaction to be committed/discarded.
-				col1TxnWasOpened = true
-			}
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
 		txn := col0.OpenTransaction()
-		col0TxnOpenSignal <- struct{}{}
+		close(col0TxnOpenSignal)
 		defer func() {
 			_ = txn.Discard()
 		}()
@@ -252,16 +230,31 @@ func TestTransactionExclusion(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		txn := col1.OpenTransaction()
-		col1TxnOpenSignal <- struct{}{}
+		close(col1TxnOpenSignal)
 		defer func() {
 			_ = txn.Discard()
 		}()
 	}()
 
-	// A short sleep is necessary to ensure that the goroutines have time to run.
-	time.Sleep(transactionTestSleepDuration)
-	discardSignal <- struct{}{}
+	select {
+	case <-col1TxnOpenSignal:
+		// This is expected. Continue the test.
+		break
+	case <-time.After(transactionExclusionTestTimeout):
+		t.Fatal("timed out waiting for col1 transaction to open")
+	case <-col0TxnOpenSignal:
+		t.Error("a new transaction was opened on col0 before the first transaction was committed/discarded")
+	}
+
 	require.NoError(t, txn.Discard())
+
+	select {
+	case <-col0TxnOpenSignal:
+		// This is expected. Continue the test.
+		break
+	case <-time.After(transactionExclusionTestTimeout):
+		t.Fatal("timed out waiting for second col0 transaction to open")
+	}
 
 	wg.Wait()
 }
