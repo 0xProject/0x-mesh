@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Upcoming release
+## v3.0.1-beta
 
 ### Bug fixes 🐞 
 
