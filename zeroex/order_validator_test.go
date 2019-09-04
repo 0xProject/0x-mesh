@@ -63,12 +63,6 @@ type testCase struct {
 
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
-func TestSetup(t *testing.T) {
-	var err error
-	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
-	require.NoError(t, err)
-}
-
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
