@@ -201,7 +201,7 @@ func TestPingPong(t *testing.T) {
 	connectTestNodes(t, node0, node1)
 
 	// Wait for the nodes to open a GossipSub stream.
-	streamCtx, cancel := context.WithTimeout(node0.ctx, 5*time.Second)
+	streamCtx, cancel := context.WithTimeout(node0.ctx, 10*time.Second)
 	defer cancel()
 	streamCount := 0
 loop:
@@ -236,7 +236,7 @@ loop:
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
 	require.NoError(t, node0.send(pingMessage.Data))
-	const pingPongTimeout = 5 * time.Second
+	const pingPongTimeout = 15 * time.Second
 	expectMessage(t, node1, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
@@ -409,4 +409,103 @@ loop:
 			}
 		}
 	}
+}
+
+func TestBanIP(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	node0 := newTestNode(t, ctx, nil)
+	node1 := newTestNode(t, ctx, nil)
+	go startNodeAndCheckError(t, node0)
+	go startNodeAndCheckError(t, node1)
+
+	node0AddrInfo := peer.AddrInfo{
+		ID:    node0.ID(),
+		Addrs: node0.Multiaddrs(),
+	}
+	node1AddrInfo := peer.AddrInfo{
+		ID:    node1.ID(),
+		Addrs: node1.Multiaddrs(),
+	}
+
+	// Ban all node1 IP addresses.
+	for _, maddr := range node1.Multiaddrs() {
+		require.NoError(t, node0.BanIP(maddr))
+	}
+
+	// node0 should not be able to connect to node1 and vice versa.
+	// Unfortunately, libp2p swallows the error and creates a new one so there is
+	// no way for us to guarantee that the error we got is the one that we expect.
+	err := node0.Connect(node1AddrInfo, testConnectionTimeout)
+	require.Error(t, err, "node0 should not be abble to connect to node1")
+	err = node1.Connect(node0AddrInfo, testConnectionTimeout)
+	require.Error(t, err, "node1 should not be abble to connect to node0")
+}
+
+func TestUnbanIP(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	node0 := newTestNode(t, ctx, nil)
+	node1 := newTestNode(t, ctx, nil)
+	go startNodeAndCheckError(t, node0)
+	go startNodeAndCheckError(t, node1)
+
+	node0AddrInfo := peer.AddrInfo{
+		ID:    node0.ID(),
+		Addrs: node0.Multiaddrs(),
+	}
+	node1AddrInfo := peer.AddrInfo{
+		ID:    node1.ID(),
+		Addrs: node1.Multiaddrs(),
+	}
+
+	// Ban all node1 IP addresses.
+	for _, maddr := range node1.Multiaddrs() {
+		require.NoError(t, node0.BanIP(maddr))
+	}
+
+	// Unban all node1 IP addresses.
+	for _, maddr := range node1.Multiaddrs() {
+		require.NoError(t, node0.UnbanIP(maddr))
+	}
+
+	// Each node should now be able to connect to the other.
+	require.NoError(t, node0.Connect(node1AddrInfo, testConnectionTimeout))
+	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
+}
+
+func TestProtectIP(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	node0 := newTestNode(t, ctx, nil)
+	node1 := newTestNode(t, ctx, nil)
+	go startNodeAndCheckError(t, node0)
+	go startNodeAndCheckError(t, node1)
+
+	node0AddrInfo := peer.AddrInfo{
+		ID:    node0.ID(),
+		Addrs: node0.Multiaddrs(),
+	}
+	node1AddrInfo := peer.AddrInfo{
+		ID:    node1.ID(),
+		Addrs: node1.Multiaddrs(),
+	}
+
+	// Protect all node1 IP addresses.
+	for _, maddr := range node1.Multiaddrs() {
+		require.NoError(t, node0.ProtectIP(maddr))
+	}
+
+	// Ban all node1 IP addresses (this should have no effect since the IP
+	// addresses are protected).
+	for _, maddr := range node1.Multiaddrs() {
+		require.NoError(t, node0.BanIP(maddr))
+	}
+
+	// Each node should now be able to connect to the other.
+	require.NoError(t, node0.Connect(node1AddrInfo, testConnectionTimeout))
+	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
 }
