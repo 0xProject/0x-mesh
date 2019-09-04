@@ -1,4 +1,4 @@
-package blockstack
+package dbstack
 
 import (
 	"math/big"
@@ -22,7 +22,7 @@ var (
 	}
 )
 
-func TestBlockStackPushPeekPop(t *testing.T) {
+func TestDBStackPushPeekPop(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	stack := New(meshDB, 10)

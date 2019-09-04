@@ -1,4 +1,4 @@
-package blockstack
+package dbstack
 
 import (
 	"sync"
@@ -7,9 +7,9 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 )
 
-// BlockStack allows performing basic stack operations on a stack of meshdb.MiniHeaders stored
+// DBStack allows performing basic stack operations on a stack of meshdb.MiniHeaders stored
 // in the DB backing our meshdb package.
-type BlockStack struct {
+type DBStack struct {
 	// TODO(albrow): Use Transactions when db supports them instead of a mutex
 	// here. There are cases where we need to make sure no modifications are made
 	// to the database in between a read/write or read/delete.
@@ -20,8 +20,8 @@ type BlockStack struct {
 
 // New instantiates a new stack with the specified size limit. Once the size limit
 // is reached, adding additional blocks will evict the deepest block.
-func New(meshDB *meshdb.MeshDB, limit int) *BlockStack {
-	return &BlockStack{
+func New(meshDB *meshdb.MeshDB, limit int) *DBStack {
+	return &DBStack{
 		meshDB: meshDB,
 		limit:  limit,
 	}
@@ -29,7 +29,7 @@ func New(meshDB *meshdb.MeshDB, limit int) *BlockStack {
 
 // Pop removes and returns the latest block header on the block stack. It
 // returns nil if the stack is empty.
-func (b *BlockStack) Pop() (*miniheader.MiniHeader, error) {
+func (b *DBStack) Pop() (*miniheader.MiniHeader, error) {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
@@ -47,7 +47,7 @@ func (b *BlockStack) Pop() (*miniheader.MiniHeader, error) {
 
 // Push pushes a block header onto the block stack. If the stack limit is
 // reached, it will remove the oldest block header.
-func (b *BlockStack) Push(block *miniheader.MiniHeader) error {
+func (b *DBStack) Push(block *miniheader.MiniHeader) error {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
@@ -68,7 +68,7 @@ func (b *BlockStack) Push(block *miniheader.MiniHeader) error {
 
 // Peek returns the latest block header from the block stack without removing
 // it. It returns nil if the stack is empty.
-func (b *BlockStack) Peek() (*miniheader.MiniHeader, error) {
+func (b *DBStack) Peek() (*miniheader.MiniHeader, error) {
 	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
 	if err != nil {
 		return nil, nil
@@ -77,7 +77,7 @@ func (b *BlockStack) Peek() (*miniheader.MiniHeader, error) {
 }
 
 // Inspect returns all the block headers currently on the stack
-func (b *BlockStack) Inspect() ([]*miniheader.MiniHeader, error) {
+func (b *DBStack) Inspect() ([]*miniheader.MiniHeader, error) {
 	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
