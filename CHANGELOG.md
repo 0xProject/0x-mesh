@@ -1,5 +1,7 @@
 # CHANGELOG
 
+This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
+
 ## v3.0.2-beta
 
 - Fixed two related bugs: One where order expiration events would be emitted multiple times and another that meant subsequent fill/cancel events for orders deemed expired were not emitted. Fills/cancels for expired orders will continue to be emitted if they occur within ~4 mins (i.e. 20 blocks) of the expiration. ([#385](https://github.com/0xProject/0x-mesh/pull/385))
