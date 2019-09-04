@@ -46,7 +46,7 @@ type Stack interface {
 	Pop() (*miniheader.MiniHeader, error)
 	Push(*miniheader.MiniHeader) error
 	Peek() (*miniheader.MiniHeader, error)
-	Inspect() ([]*miniheader.MiniHeader, error)
+	PeekAll() ([]*miniheader.MiniHeader, error)
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
@@ -60,7 +60,7 @@ type Config struct {
 }
 
 // Watcher maintains a consistent representation of the latest X blocks (where X is enforced by the
-// supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from 
+// supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
 	startBlockDepth rpc.BlockNumber
@@ -149,10 +149,9 @@ func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
 }
 
-// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
-// particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() ([]*miniheader.MiniHeader, error) {
-	return w.stack.Inspect()
+// GetAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
+func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
+	return w.stack.PeekAll()
 }
 
 // pollNextBlock polls for the next block header to be added to the block stack.
@@ -327,7 +326,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
 		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.
-		headers, err := w.InspectRetainedBlocks()
+		headers, err := w.GetAllRetainedBlocks()
 		if err != nil {
 			return events, err
 		}

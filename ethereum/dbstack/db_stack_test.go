@@ -30,7 +30,7 @@ func TestDBStackPushPeekPop(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedLen := 1
-	miniHeaders, err := stack.Inspect()
+	miniHeaders, err := stack.PeekAll()
 	require.NoError(t, err)
 	assert.Len(t, miniHeaders, expectedLen)
 
@@ -39,7 +39,7 @@ func TestDBStackPushPeekPop(t *testing.T) {
 	assert.Equal(t, miniHeaders[0], miniHeader)
 
 	expectedLen = 1
-	miniHeaders, err = stack.Inspect()
+	miniHeaders, err = stack.PeekAll()
 	require.NoError(t, err)
 	assert.Len(t, miniHeaders, expectedLen)
 
@@ -48,7 +48,7 @@ func TestDBStackPushPeekPop(t *testing.T) {
 	assert.Equal(t, miniHeaders[0], miniHeader)
 
 	expectedLen = 0
-	miniHeaders, err = stack.Inspect()
+	miniHeaders, err = stack.PeekAll()
 	require.NoError(t, err)
 	assert.Len(t, miniHeaders, expectedLen)
 }

@@ -50,7 +50,7 @@ func TestWatcher(t *testing.T) {
 		err := watcher.pollNextBlock()
 		require.NoError(t, err)
 
-		retainedBlocks, err := watcher.InspectRetainedBlocks()
+		retainedBlocks, err := watcher.GetAllRetainedBlocks()
 		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)
@@ -218,7 +218,7 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	assert.Len(t, events, 1)
 
 	// Check that block 30 is now in the DB, and block 5 was removed.
-	headers, err := config.Stack.Inspect()
+	headers, err := config.Stack.PeekAll()
 	require.NoError(t, err)
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(30), headers[0].Number)
@@ -252,7 +252,7 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	assert.Len(t, events, 0)
 
 	// Check that block 5 is still in the DB
-	headers, err := config.Stack.Inspect()
+	headers, err := config.Stack.PeekAll()
 	require.NoError(t, err)
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(5), headers[0].Number)
