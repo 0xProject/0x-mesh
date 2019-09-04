@@ -3,6 +3,11 @@
 package p2p
 
 import (
+	"net"
+	"sync"
+
+	"github.com/albrow/stringset"
+
 	"context"
 	"crypto/rand"
 	"errors"
@@ -22,6 +27,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,11 +57,14 @@ type Node struct {
 	config           Config
 	messageHandler   MessageHandler
 	host             host.Host
+	swarm            *swarm.Swarm
 	connManager      *connmgr.BasicConnMgr
 	dht              *dht.IpfsDHT
 	routingDiscovery discovery.Discovery
 	pubsub           *pubsub.PubSub
 	sub              *pubsub.Subscription
+	protectedIPsMut  sync.RWMutex
+	protectedIPs     stringset.Set
 }
 
 // Config contains configuration options for a Node.
@@ -140,7 +149,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 
 	// Initialize the host.
-	basicHost, err := libp2p.New(ctx, opts...)
+	basicHost, swrm, err := NewHost(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +182,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		config:           config,
 		messageHandler:   config.MessageHandler,
 		host:             basicHost,
+		swarm:            swrm,
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
+		protectedIPs:     stringset.New(),
 	}
 
 	return node, nil
@@ -238,6 +249,16 @@ func (n *Node) Start() error {
 		if err := ConnectToBootstrapList(n.ctx, n.host, n.config.BootstrapList); err != nil {
 			return err
 		}
+		// Protect the IP addresses for each bootstrap node.
+		bootstrapAddrInfos, err := BootstrapListToAddrInfos(n.config.BootstrapList)
+		if err != nil {
+			return err
+		}
+		for _, addrInfo := range bootstrapAddrInfos {
+			for _, addr := range addrInfo.Addrs {
+				_ = n.ProtectIP(addr)
+			}
+		}
 	}
 
 	// Advertise ourselves for the purposes of peer discovery.
@@ -285,6 +306,63 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 		return err
 	}
 	return nil
+}
+
+// ProtectIP permanently adds the IP address of the given Multiaddr to a
+// list of protected IP addresses. Protected IPs can never be banned and will
+// not be added to the blacklist. If the IP address is already on the blacklist,
+// it will be removed.
+func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
+	n.protectedIPsMut.Lock()
+	defer n.protectedIPsMut.Unlock()
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.unbanIPNet(ipNet)
+	n.protectedIPs.Add(ipNet.IP.String())
+	return nil
+}
+
+// BanIP adds the IP address of the given Multiaddr to the blacklist. The
+// node will no longer dial or accept connections from this IP address. However,
+// if the IP address is protected, calling BanIP is a no-op. BanIP does not
+// automatically disconnect from the given multiaddress if there is currently an
+// open connection.
+func (n *Node) BanIP(maddr ma.Multiaddr) error {
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.protectedIPsMut.RLock()
+	defer n.protectedIPsMut.RUnlock()
+	if n.protectedIPs.Contains(ipNet.IP.String()) {
+		// IP address is protected. no-op.
+		return nil
+	}
+	n.swarm.Filters.AddFilter(ipNet, filter.ActionDeny)
+	return nil
+}
+
+// UnbanIP removes the IP address of the given Multiaddr from the blacklist. If
+// the IP address is not currently on the blacklist this is a no-op.
+func (n *Node) UnbanIP(maddr ma.Multiaddr) error {
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.unbanIPNet(ipNet)
+	return nil
+}
+
+func (n *Node) unbanIPNet(ipNet net.IPNet) {
+	// There is no guarantee in the public API of the filters package that would
+	// prevent multiple filters being added for the same IPNet (though it
+	// shoudln't happen in practice). We use a for loop here to make sure we
+	// remove all possible filters. RemoveLiteral returns false if no filter was
+	// removed.
+	for n.swarm.Filters.RemoveLiteral(ipNet) {
+	}
 }
 
 // mainLoop is where the core logic for a Node is implemented. On each iteration
@@ -453,4 +531,58 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 		return nil, err
 	}
 	return &Message{From: msg.GetFrom(), Data: msg.Data}, nil
+}
+
+func ipNetFromMaddr(maddr ma.Multiaddr) (ipNet net.IPNet, err error) {
+	ip, err := ipFromMaddr(maddr)
+	if err != nil {
+		return net.IPNet{}, err
+	}
+	mask := getAllMaskForIP(ip)
+	return net.IPNet{
+		IP:   ip,
+		Mask: mask,
+	}, nil
+}
+
+func ipFromMaddr(maddr ma.Multiaddr) (net.IP, error) {
+	var (
+		ip    net.IP
+		found bool
+	)
+
+	ma.ForEach(maddr, func(c ma.Component) bool {
+		switch c.Protocol().Code {
+		case ma.P_IP6ZONE:
+			return true
+		case ma.P_IP6, ma.P_IP4:
+			found = true
+			ip = net.IP(c.RawValue())
+			return false
+		default:
+			return false
+		}
+	})
+
+	if !found {
+		return net.IP{}, fmt.Errorf("could not parse IP address from multiaddress: %s", maddr)
+	}
+	return ip, nil
+}
+
+var (
+	ipv4AllMask = net.IPMask{255, 255, 255, 255}
+	ipv6AllMask = net.IPMask{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
+)
+
+// getAllMaskForIP returns an IPMask that will match all IP addresses. The size
+// of the mask depends on whether the given IP address is an IPv4 or an IPv6
+// address.
+func getAllMaskForIP(ip net.IP) net.IPMask {
+	if ip.To4() != nil {
+		// This is an ipv4 address. Return 4 byte mask.
+		return ipv4AllMask
+	}
+	// Assume ipv6 address. Return 16 byte mask.
+	return ipv6AllMask
 }
