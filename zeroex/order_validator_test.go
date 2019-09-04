@@ -28,6 +28,10 @@ const areNewOrders = false
 
 var makerAddress = constants.GanacheAccount0
 var takerAddress = constants.GanacheAccount1
+var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+
 var unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
 var malformedAssetData = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
@@ -331,7 +335,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress)
+	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}

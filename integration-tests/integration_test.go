@@ -55,6 +55,9 @@ const (
 
 var makerAddress = constants.GanacheAccount0
 var takerAddress = constants.GanacheAccount1
+var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
@@ -514,7 +517,7 @@ var blockchainLifecycle *ethereum.BlockchainLifecycle
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress)
+	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}

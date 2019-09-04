@@ -15,13 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-
 // SetupBalancesAndAllowances sets up the proper balance/allowance for the maker/taker of
 // ZRX/WETH respectively so that the created orders are fillable.
-func SetupBalancesAndAllowances(t *testing.T, makerAddress, takerAddress common.Address) {
+func SetupBalancesAndAllowances(t *testing.T, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) {
 
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
 
