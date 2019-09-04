@@ -3,19 +3,17 @@
 package p2p
 
 import (
-	"net"
-	"sync"
-
-	"github.com/albrow/stringset"
-
 	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/albrow/stringset"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
