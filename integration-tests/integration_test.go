@@ -23,6 +23,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/rpc"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
@@ -52,6 +53,9 @@ const (
 	standaloneRPCPort     = 60501
 )
 
+var makerAddress = constants.GanacheAccount0
+var takerAddress = constants.GanacheAccount1
+
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
 var integrationTestsEnabled bool
@@ -61,10 +65,19 @@ func init() {
 	flag.Parse()
 }
 
+func TestSetup(t *testing.T) {
+	var err error
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
+	require.NoError(t, err)
+}
+
 func TestBrowserIntegration(t *testing.T) {
 	if !integrationTestsEnabled {
 		t.Skip("Integration tests are disabled. You can enable them with the --integration")
 	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
@@ -472,7 +485,7 @@ func extractOrderHashFromLog(msg string) (string, error) {
 
 func createSignedTestOrder(t *testing.T) *zeroex.SignedOrder {
 	testOrder := &zeroex.Order{
-		MakerAddress:          constants.GanacheAccount0,
+		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
@@ -495,4 +508,14 @@ func createSignedTestOrder(t *testing.T) *zeroex.SignedOrder {
 	require.NoError(t, err, "could not sign order")
 
 	return signedTestOrder
+}
+
+var blockchainLifecycle *ethereum.BlockchainLifecycle
+
+func setupSubTest(t *testing.T) func(t *testing.T) {
+	blockchainLifecycle.Start(t)
+	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress)
+	return func(t *testing.T) {
+		blockchainLifecycle.Revert(t)
+	}
 }

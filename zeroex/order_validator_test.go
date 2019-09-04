@@ -15,7 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -26,12 +26,8 @@ import (
 
 const areNewOrders = false
 
-var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-
 var makerAddress = constants.GanacheAccount0
 var takerAddress = constants.GanacheAccount1
-var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 var unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
 var malformedAssetData = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
@@ -62,6 +58,12 @@ type testCase struct {
 }
 
 var blockchainLifecycle *ethereum.BlockchainLifecycle
+
+func TestSetup(t *testing.T) {
+	var err error
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
+	require.NoError(t, err)
+}
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
@@ -329,7 +331,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	setupScenario(t)
+	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
@@ -377,64 +379,4 @@ func signedOrderWithCustomSignature(t *testing.T, signedOrder SignedOrder, signa
 
 func copyOrder(order Order) Order {
 	return order
-}
-
-// Sets up the proper balance/allowance for the maker/taker of ZRX/WETH respectively
-// so that the created orders are fillable.
-func setupScenario(t *testing.T) {
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[50]
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
-	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
-	require.NoError(t, err)
-
-	// Convert ETH-WETH
-	opts := &bind.TransactOpts{
-		From:   takerAddress,
-		Value:  wethAmount,
-		Signer: getTestSignerFn(takerAddress),
-	}
-	txn, err := weth9.Deposit(opts)
-	require.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
-
-	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
-	require.NoError(t, err)
-
-	// SET ZRX allowance
-	opts = &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: getTestSignerFn(makerAddress),
-	}
-	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
-	require.NoError(t, err)
-	receipt, err = bind.WaitMined(context.Background(), ethClient, txn)
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
-
-	// SET WETH allowance
-	opts = &bind.TransactOpts{
-		From:   takerAddress,
-		Signer: getTestSignerFn(takerAddress),
-	}
-	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, wethAmount)
-	require.NoError(t, err)
-	receipt, err = bind.WaitMined(context.Background(), ethClient, txn)
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
-}
-
-func getTestSignerFn(signerAddress common.Address) func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	return func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-		testSigner := ethereum.NewTestSigner()
-		signature, err := testSigner.(*ethereum.TestSigner).SignTx(signer.Hash(tx).Bytes(), signerAddress)
-		if err != nil {
-			return nil, err
-		}
-		return tx.WithSignature(signer, signature)
-	}
 }
