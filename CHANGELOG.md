@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v3.0.2-beta
+
+- Fixed two related bugs: One where order expiration events would be emitted multiple times and another that meant subsequent fill/cancel events for orders deemed expired were not emitted. Fills/cancels for expired orders will continue to be emitted if they occur within ~4 mins (i.e. 20 blocks) of the expiration. ([#385](https://github.com/0xProject/0x-mesh/pull/385))
+
 ## v3.0.1-beta
 
 ### Bug fixes 🐞 
