@@ -356,7 +356,7 @@ func (n *Node) UnbanIP(maddr ma.Multiaddr) error {
 func (n *Node) unbanIPNet(ipNet net.IPNet) {
 	// There is no guarantee in the public API of the filters package that would
 	// prevent multiple filters being added for the same IPNet (though it
-	// shoudln't happen in practice). We use a for loop here to make sure we
+	// shouldn't happen in practice). We use a for loop here to make sure we
 	// remove all possible filters. RemoveLiteral returns false if no filter was
 	// removed.
 	for n.swarm.Filters.RemoveLiteral(ipNet) {
