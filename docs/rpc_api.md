@@ -263,7 +263,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
                 },
                 "kind": "CANCELLED",
                 "fillableTakerAssetAmount": 0,
-                "txHash": "0x9e6830a7044b39e107f410e4f765995fd0d3d69d5c3b3582a1701b9d68167560"
+                "txHashes": ["0x9e6830a7044b39e107f410e4f765995fd0d3d69d5c3b3582a1701b9d68167560"]
             }
         ]
     }
