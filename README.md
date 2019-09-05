@@ -25,6 +25,8 @@ WARNING: This project is still under active development. Expect breaking changes
   another. (There are pros and cons to this approach and it is probably not
   suitable for all markets).
 
+Both Relayers and Market makers can use Mesh to watch a set of orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
+
 0x Mesh is intended to be entirely automatic. It takes care of all the work of
 receiving, sharing, and validating orders so that you can focus on building your
 application. When you run a 0x Mesh node, it will automatically discover peers
