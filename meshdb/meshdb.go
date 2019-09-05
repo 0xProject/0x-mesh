@@ -280,13 +280,18 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	return orders, nil
 }
 
-// FindOldestOrder returns the order with the latest `createdAt` value
-func (m *MeshDB) FindOldestOrder() ([]*Order, error) {
+// RemoveOldestOrders removes the last x orders with the oldest `createdAt` value
+func (m *MeshDB) RemoveOldestOrders(limit int) error {
 	orders := []*Order{}
-	if err := m.Orders.NewQuery(m.Orders.CreatedAtIndex.All()).Reverse().Max(1).Run(&orders); err != nil {
-		return nil, err
+	if err := m.Orders.NewQuery(m.Orders.CreatedAtIndex.All()).Reverse().Max(limit).Run(&orders); err != nil {
+		return err
 	}
-	return orders, nil
+	for _, order := range orders {
+		if err := m.Orders.Delete(order.ID()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
