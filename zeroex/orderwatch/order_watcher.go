@@ -272,7 +272,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, nil)
+				orders, err = w.findOrders(transferEvent.From, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -290,7 +290,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 				if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
 					continue
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrders(approvalEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -304,7 +304,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(transferEvent.From, log.Address, transferEvent.TokenId)
+				orders, err = w.findOrders(transferEvent.From, log.Address, transferEvent.TokenId)
 				if err != nil {
 					return err
 				}
@@ -322,7 +322,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 				if approvalEvent.Approved != w.contractAddresses.ERC721Proxy {
 					continue
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
+				orders, err = w.findOrders(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
 				if err != nil {
 					return err
 				}
@@ -340,7 +340,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 				if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
 					continue
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(approvalForAllEvent.Owner, log.Address, nil)
+				orders, err = w.findOrders(approvalForAllEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -354,7 +354,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(withdrawalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrders(withdrawalEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -368,7 +368,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrdersAndGenerateOrderEvents(depositEvent.Owner, log.Address, nil)
+				orders, err = w.findOrders(depositEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -553,7 +553,7 @@ func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) *meshdb
 	return &order
 }
 
-func (w *Watcher) findOrdersAndGenerateOrderEvents(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*meshdb.Order, error) {
+func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*meshdb.Order, error) {
 	orders, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
