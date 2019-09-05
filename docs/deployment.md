@@ -12,7 +12,7 @@ node.
 -   Kovan
 -   Ropsten
 -   Rinkeby
--   [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/mesh-ganache-cli)
+-   [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/ganache-cli)
 
 ## Running Mesh
 

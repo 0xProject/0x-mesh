@@ -55,7 +55,7 @@ type Node struct {
 	config           Config
 	messageHandler   MessageHandler
 	host             host.Host
-	swarm            *swarm.Swarm
+	filters          *filter.Filters
 	connManager      *connmgr.BasicConnMgr
 	dht              *dht.IpfsDHT
 	routingDiscovery discovery.Discovery
@@ -133,6 +133,9 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, err
 	}
 
+	// Initialize filters.
+	filters := filter.NewFilters()
+
 	// Set up and append environment agnostic host options.
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts = append(opts, []libp2p.Option{
@@ -141,13 +144,14 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.Identity(config.PrivateKey),
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
+		Filters(filters),
 	}...)
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
 	}
 
 	// Initialize the host.
-	basicHost, swrm, err := NewHost(ctx, opts...)
+	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +184,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		config:           config,
 		messageHandler:   config.MessageHandler,
 		host:             basicHost,
-		swarm:            swrm,
+		filters:          filters,
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
@@ -338,7 +342,7 @@ func (n *Node) BanIP(maddr ma.Multiaddr) error {
 		// IP address is protected. no-op.
 		return nil
 	}
-	n.swarm.Filters.AddFilter(ipNet, filter.ActionDeny)
+	n.filters.AddFilter(ipNet, filter.ActionDeny)
 	return nil
 }
 
@@ -359,7 +363,7 @@ func (n *Node) unbanIPNet(ipNet net.IPNet) {
 	// shouldn't happen in practice). We use a for loop here to make sure we
 	// remove all possible filters. RemoveLiteral returns false if no filter was
 	// removed.
-	for n.swarm.Filters.RemoveLiteral(ipNet) {
+	for n.filters.RemoveLiteral(ipNet) {
 	}
 }
 
