@@ -28,8 +28,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v3.0.1-beta
 
-## v3.0.1-beta
-
 ### Bug fixes 🐞 
 
 - Fixed bug where block number would sometimes be converted to hex with a leading zero, an invalid hex value per the [Ethereum JSON-RPC specification](https://github.com/ethereum/wiki/wiki/JSON-RPC#hex-value-encoding). ([#353](https://github.com/0xProject/0x-mesh/pull/353))
