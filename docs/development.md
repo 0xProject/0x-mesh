@@ -32,11 +32,11 @@ make deps
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/mesh-ganache-cli](https://hub.docker.com/r/0xorg/mesh-ganache-cli):
+[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli):
 
 ```
-docker pull 0xorg/mesh-ganache-cli
-docker run -ti -p 8545:8545 0xorg/mesh-ganache-cli
+docker pull 0xorg/ganache-cli
+docker run -ti -p 8545:8545 -e VERSION=4.3.0 0xorg/ganache-cli
 ```
 
 Run tests in a vanilla Go environment:
