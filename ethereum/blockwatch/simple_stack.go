@@ -45,7 +45,7 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 	return nil
 }
 
-// Inspect returns the miniHeaders currently in the stack
-func (s *SimpleStack) Inspect() ([]*miniheader.MiniHeader, error) {
+// PeekAll returns all the miniHeaders currently in the stack
+func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	return s.miniHeaders, nil
 }

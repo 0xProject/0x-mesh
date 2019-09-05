@@ -76,8 +76,8 @@ func (b *DBStack) Peek() (*miniheader.MiniHeader, error) {
 	return latestMiniHeader, nil
 }
 
-// Inspect returns all the block headers currently on the stack
-func (b *DBStack) Inspect() ([]*miniheader.MiniHeader, error) {
+// PeekAll returns all the block headers currently on the stack
+func (b *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
