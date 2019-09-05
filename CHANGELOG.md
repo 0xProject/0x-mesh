@@ -1,6 +1,32 @@
 # CHANGELOG
 
-## Upcoming release
+This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
+
+## v4.0.0-beta
+
+### Breaking changes 🛠 
+
+- Renamed the environment variable `P2P_LISTEN_PORT` to `P2P_TCP_PORT` ([#366](https://github.com/0xProject/0x-mesh/pull/366)). This makes it possible to configure Mesh to use both the TCP and Websocket transports by listening on different ports.
+
+### Features ✅ 
+
+- Enabled WebSocket transport for bootstrap nodes and all other nodes ([#361](https://github.com/0xProject/0x-mesh/pull/361), [#363](https://github.com/0xProject/0x-mesh/pull/363), [#366](https://github.com/0xProject/0x-mesh/pull/366)). By default the WebSocket transport listens on port `60559` but this can be changed via the `P2P_WEBSOCKETS_PORT` environment variable.
+- Created TypeScript bindings and an NPM package for running Mesh directly in the browser ([#369](https://github.com/0xProject/0x-mesh/pull/369)). Documentation for the NPM package and a guide for running Mesh in the browser can be found at [https://0x-org.gitbook.io/mesh/](https://0x-org.gitbook.io/mesh/).
+- Added ability to use custom bootstrap list via the `BOOTSTRAP_LIST` environment variable ([#374](https://github.com/0xProject/0x-mesh/pull/374)). Typically this should only be used for testing/debugging.
+- Added WebAssembly/Browser support to packages that previously did not support it ([#358](https://github.com/0xProject/0x-mesh/pull/358), [#359](https://github.com/0xProject/0x-mesh/pull/359), [#366](https://github.com/0xProject/0x-mesh/pull/366)).
+- Order hash calculations are now cached, which slightly improves performance ([#365](https://github.com/0xProject/0x-mesh/pull/365)).
+- Refactored `BlockWatch` so that it can be used without using `LevelDB` for Ethereum block storage. ([#355](https://github.com/0xProject/0x-mesh/pull/355))
+
+### Bug fixes 🐞 
+
+- Fixed two related bugs: One where order expiration events would be emitted multiple times and another that meant subsequent fill/cancel events for orders deemed expired were not emitted. Fills/cancels for expired orders will continue to be emitted if they occur within ~4 mins (i.e. 20 blocks) of the expiration ([#385](https://github.com/0xProject/0x-mesh/pull/385)).
+- Fixed a data race-condition in OrderWatcher that could have caused order collection updates to be overwritten in the DB. ([#386](https://github.com/0xProject/0x-mesh/pull/386))
+- Fixed a bug where `fillableTakerAssetAmount` and `lastUpdated` were not always being properly updated in the DB. ([#386](https://github.com/0xProject/0x-mesh/pull/386))
+- Fixed some issues with key prefixes for certain types not being applied correctly to logs ([#375](https://github.com/0xProject/0x-mesh/pull/375)).
+- Fixed an issue where order hashes were not being correctly logged ([#368](https://github.com/0xProject/0x-mesh/pull/368)).
+- Mesh will now properly shut down if the database is unexpectedly closed ([#370](https://github.com/0xProject/0x-mesh/pull/370)).
+
+## v3.0.1-beta
 
 ## v3.0.1-beta
 

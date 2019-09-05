@@ -1,5 +1,3 @@
-// +build !js
-
 // Package core contains everything needed to configure and run a 0x Mesh node.
 package core
 
@@ -10,11 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
@@ -48,6 +48,10 @@ const (
 	version                    = "3.0.1-beta"
 )
 
+// Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
+// need to keep both definitions in sync, so if you change one you must also
+// change the other.
+
 // Config is a set of configuration options for 0x Mesh.
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
@@ -55,17 +59,26 @@ type Config struct {
 	// DataDir is the directory to use for persisting all data, including the
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-	// P2PListenPort is the port on which to listen for new peer connections.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
+	// P2PTCPPort is the port on which to listen for new TCP connections from
+	// peers in the network. Set to 60558 by default.
+	P2PTCPPort int `envvar:"P2P_TCP_PORT" default:"60558"`
+	// P2PWebSocketsPort is the port on which to listen for new WebSockets
+	// connections from peers in the network. Set to 60559 by default.
+	P2PWebSocketsPort int `envvar:"P2P_WEBSOCKETS_PORT" default:"60559"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
 	// EthereumNetworkID is the network ID to use when communicating with
 	// Ethereum.
 	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
-	// UseBootstrapList is whether to use the predetermined list of peers to
-	// bootstrap the DHT and peer discovery.
+	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
+	// specific set of peers.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
+	// BootstrapList is a comma-separated list of multiaddresses to use for
+	// bootstrapping the DHT (e.g.,
+	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
+	// If empty, the default bootstrap list will be used.
+	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
 	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
 	// that you'd want it pruned from the Mesh node.
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
@@ -109,6 +122,7 @@ type App struct {
 func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
+	log.SetFormatter(&log.JSONFormatter{})
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
 
@@ -153,14 +167,14 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
+	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
 	blockWatcherConfig := blockwatch.Config{
-		MeshDB:              meshDB,
-		PollingInterval:     config.BlockPollingInterval,
-		StartBlockDepth:     ethrpc.LatestBlockNumber,
-		BlockRetentionLimit: blockWatcherRetentionLimit,
-		WithLogs:            true,
-		Topics:              topics,
-		Client:              blockWatcherClient,
+		Stack:           stack,
+		PollingInterval: config.BlockPollingInterval,
+		StartBlockDepth: ethrpc.LatestBlockNumber,
+		WithLogs:        true,
+		Topics:          topics,
+		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
@@ -348,15 +362,21 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 
 	// Initialize the p2p node.
+	bootstrapList := p2p.DefaultBootstrapList
+	if app.config.BootstrapList != "" {
+		bootstrapList = strings.Split(app.config.BootstrapList, ",")
+	}
 	nodeConfig := p2p.Config{
 		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
-		ListenPort:       app.config.P2PListenPort,
+		TCPPort:          app.config.P2PTCPPort,
+		WebSocketsPort:   app.config.P2PWebSocketsPort,
 		Insecure:         false,
 		PrivateKey:       app.privKey,
 		MessageHandler:   app,
 		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
 		UseBootstrapList: app.config.UseBootstrapList,
-		PeerstoreDir:     filepath.Join(app.config.DataDir, "peerstore"),
+		BootstrapList:    bootstrapList,
+		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
 	}
 	var err error
 	app.node, err = p2p.New(innerCtx, nodeConfig)

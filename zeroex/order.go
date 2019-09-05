@@ -30,6 +30,9 @@ type Order struct {
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
+
+	// Cache hash for performance
+	hash *common.Hash
 }
 
 // SignedOrder represents a signed 0x order
@@ -84,11 +87,11 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	OrderHash                string         `json:"orderHash"`
-	SignedOrder              *SignedOrder   `json:"signedOrder"`
-	Kind                     OrderEventKind `json:"kind"`
-	FillableTakerAssetAmount string         `json:"fillableTakerAssetAmount"`
-	TxHashes                 []string       `json:"txHashes"`
+	OrderHash                string       `json:"orderHash"`
+	SignedOrder              *SignedOrder `json:"signedOrder"`
+	Kind                     string       `json:"kind"`
+	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
+	TxHashes                 []string     `json:"txHashes"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
@@ -113,10 +116,13 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	return o.fromOrderEventJSON(orderEventJSON)
+}
 
+func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
-	o.Kind = orderEventJSON.Kind
+	o.Kind = OrderEventKind(orderEventJSON.Kind)
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
 	if !ok {
@@ -216,8 +222,17 @@ var eip712OrderTypes = signer.Types{
 	},
 }
 
+// Resets the cached order hash. Usually only required for testing.
+func (o *Order) ResetHash() {
+	o.hash = nil
+}
+
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
+	if o.hash != nil {
+		return *o.hash, nil
+	}
+
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
@@ -257,6 +272,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	rawData := []byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash)))
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
+	o.hash = &hash
 	return hash, nil
 }
 

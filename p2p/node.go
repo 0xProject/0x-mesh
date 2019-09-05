@@ -1,5 +1,3 @@
-// +build !js
-
 // package p2p is a low-level library responsible for peer discovery and
 // sending/receiving messages.
 package p2p
@@ -10,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"net"
+	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/albrow/stringset"
 	lru "github.com/hashicorp/golang-lru"
-	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -23,9 +23,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,16 +33,6 @@ import (
 const (
 	// receiveTimeout is the maximum amount of time to wait for receiving new messages.
 	receiveTimeout = 1 * time.Second
-	// maxReceiveBatch is the maximum number of new messages to receive at once.
-	maxReceiveBatch = 500
-	// maxShareBatch is the maximum number of messages to share at once.
-	maxShareBatch = 100
-	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 100
-	// peerCountHigh is the maximum number of peers to be connected to. If the
-	// number of connections exceeds this number, we will prune connections until
-	// we reach peerCountLow.
-	peerCountHigh = 110
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
@@ -65,11 +55,14 @@ type Node struct {
 	config           Config
 	messageHandler   MessageHandler
 	host             host.Host
+	filters          *filter.Filters
 	connManager      *connmgr.BasicConnMgr
 	dht              *dht.IpfsDHT
 	routingDiscovery discovery.Discovery
 	pubsub           *pubsub.PubSub
 	sub              *pubsub.Subscription
+	protectedIPsMut  sync.RWMutex
+	protectedIPs     stringset.Set
 }
 
 // Config contains configuration options for a Node.
@@ -77,9 +70,11 @@ type Config struct {
 	// Topic is a unique string representing the pubsub topic. Only Nodes which
 	// have the same topic will share messages with one another.
 	Topic string
-	// ListenPort is the port on which to listen for new connections. It can be
-	// set to 0 to make the OS automatically choose any available port.
-	ListenPort int
+	// TCPPort is the port on which to listen for incoming TCP connections.
+	TCPPort int
+	// WebSocketsPort is the port on which to listen for incoming WebSockets
+	// connections.
+	WebSocketsPort int
 	// Insecure controls whether or not messages should be encrypted. It should
 	// always be set to false in production.
 	Insecure bool
@@ -92,11 +87,22 @@ type Config struct {
 	// RendezvousString is a unique identifier for the rendezvous point. This node
 	// will attempt to find peers with the same Rendezvous string.
 	RendezvousString string
-	// UseBootstrapList determines whether or not to use the list of predetermined
+	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
-	// PeerstoreDir is the directory to use for peerstore data.
-	PeerstoreDir string
+	// BootstrapList is a list of multiaddress strings to use for bootstrapping
+	// the DHT. If empty, the default list will be used.
+	BootstrapList []string
+	// DataDir is the directory to use for storing data.
+	DataDir string
+}
+
+func getPeerstoreDir(datadir string) string {
+	return filepath.Join(datadir, "peerstore")
+}
+
+func getDHTDir(datadir string) string {
+	return filepath.Join(datadir, "dht")
 }
 
 // New creates a new Node with the given context and config. The Node will stop
@@ -108,63 +114,43 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, errors.New("config.RendezvousString is required")
 	}
 
-	// Note: 0.0.0.0 will use all available addresses.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.ListenPort))
-	if err != nil {
-		return nil, err
-	}
-
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		kadDHT, err = NewDHT(ctx, h)
+		dhtDir := getDHTDir(config.DataDir)
+		kadDHT, err = NewDHT(ctx, dhtDir, h)
 		if err != nil {
 			log.WithField("error", err).Error("could not create DHT")
 		}
 		return kadDHT, err
 	}
 
-	// HACK(albrow): As a workaround for AutoNAT issues, ping ifconfig.me to
-	// determine our public IP address on boot. This will work for nodes that
-	// would be reachable via a public IP address but don't know what it is (e.g.
-	// because they are running in a Docker container).
-	publicIP, err := getPublicIP()
-	if err != nil {
-		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
-	}
-	maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", publicIP, config.ListenPort)
-	advertiseAddr, err := ma.NewMultiaddr(maddrString)
+	// Get environment specific host options.
+	opts, err := getHostOptions(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	// Set up the peerstore to use LevelDB.
-	store, err := leveldbStore.NewDatastore(config.PeerstoreDir, nil)
-	if err != nil {
-		return nil, err
-	}
-	pstore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
-	}
+	// Initialize filters.
+	filters := filter.NewFilters()
 
-	// Set up the transport and the host.
+	// Set up and append environment agnostic host options.
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
-	opts := []libp2p.Option{
-		libp2p.ListenAddrs(hostAddr),
-		libp2p.Identity(config.PrivateKey),
+	opts = append(opts, []libp2p.Option{
+		libp2p.Routing(newDHT),
 		libp2p.ConnectionManager(connManager),
+		libp2p.Identity(config.PrivateKey),
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
-		libp2p.Routing(newDHT),
-		libp2p.AddrsFactory(newAddrsFactory([]ma.Multiaddr{advertiseAddr})),
-		libp2p.Peerstore(pstore),
-	}
+		Filters(filters),
+	}...)
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
 	}
+
+	// Initialize the host.
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -186,7 +172,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
 	// Set up pubsub
-	pubsub, err := pubsub.NewGossipSub(ctx, basicHost)
+	pubsubOpts := getPubSubOptions()
+	pubsub, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +184,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		config:           config,
 		messageHandler:   config.MessageHandler,
 		host:             basicHost,
+		filters:          filters,
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
+		protectedIPs:     stringset.New(),
 	}
 
 	return node, nil
@@ -252,10 +241,25 @@ func (n *Node) Start() error {
 		return err
 	}
 
+	// Use the default bootstrap list if none was provided.
+	if len(n.config.BootstrapList) == 0 {
+		n.config.BootstrapList = DefaultBootstrapList
+	}
+
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
-		if err := ConnectToBootstrapList(n.ctx, n.host); err != nil {
+		if err := ConnectToBootstrapList(n.ctx, n.host, n.config.BootstrapList); err != nil {
 			return err
+		}
+		// Protect the IP addresses for each bootstrap node.
+		bootstrapAddrInfos, err := BootstrapListToAddrInfos(n.config.BootstrapList)
+		if err != nil {
+			return err
+		}
+		for _, addrInfo := range bootstrapAddrInfos {
+			for _, addr := range addrInfo.Addrs {
+				_ = n.ProtectIP(addr)
+			}
 		}
 	}
 
@@ -304,6 +308,63 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 		return err
 	}
 	return nil
+}
+
+// ProtectIP permanently adds the IP address of the given Multiaddr to a
+// list of protected IP addresses. Protected IPs can never be banned and will
+// not be added to the blacklist. If the IP address is already on the blacklist,
+// it will be removed.
+func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
+	n.protectedIPsMut.Lock()
+	defer n.protectedIPsMut.Unlock()
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.unbanIPNet(ipNet)
+	n.protectedIPs.Add(ipNet.IP.String())
+	return nil
+}
+
+// BanIP adds the IP address of the given Multiaddr to the blacklist. The
+// node will no longer dial or accept connections from this IP address. However,
+// if the IP address is protected, calling BanIP is a no-op. BanIP does not
+// automatically disconnect from the given multiaddress if there is currently an
+// open connection.
+func (n *Node) BanIP(maddr ma.Multiaddr) error {
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.protectedIPsMut.RLock()
+	defer n.protectedIPsMut.RUnlock()
+	if n.protectedIPs.Contains(ipNet.IP.String()) {
+		// IP address is protected. no-op.
+		return nil
+	}
+	n.filters.AddFilter(ipNet, filter.ActionDeny)
+	return nil
+}
+
+// UnbanIP removes the IP address of the given Multiaddr from the blacklist. If
+// the IP address is not currently on the blacklist this is a no-op.
+func (n *Node) UnbanIP(maddr ma.Multiaddr) error {
+	ipNet, err := ipNetFromMaddr(maddr)
+	if err != nil {
+		return err
+	}
+	n.unbanIPNet(ipNet)
+	return nil
+}
+
+func (n *Node) unbanIPNet(ipNet net.IPNet) {
+	// There is no guarantee in the public API of the filters package that would
+	// prevent multiple filters being added for the same IPNet (though it
+	// shouldn't happen in practice). We use a for loop here to make sure we
+	// remove all possible filters. RemoveLiteral returns false if no filter was
+	// removed.
+	for n.filters.RemoveLiteral(ipNet) {
+	}
 }
 
 // mainLoop is where the core logic for a Node is implemented. On each iteration
@@ -474,24 +535,56 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 	return &Message{From: msg.GetFrom(), Data: msg.Data}, nil
 }
 
-func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
-	return func(addrs []ma.Multiaddr) []ma.Multiaddr {
-		// Note that we append the advertiseAddrs here just in case we are not
-		// actually reachable at our public IP address (and are reachable at one of
-		// the other addresses).
-		return append(addrs, advertiseAddrs...)
+func ipNetFromMaddr(maddr ma.Multiaddr) (ipNet net.IPNet, err error) {
+	ip, err := ipFromMaddr(maddr)
+	if err != nil {
+		return net.IPNet{}, err
 	}
+	mask := getAllMaskForIP(ip)
+	return net.IPNet{
+		IP:   ip,
+		Mask: mask,
+	}, nil
 }
 
-func getPublicIP() (string, error) {
-	res, err := http.Get("https://ifconfig.me")
-	if err != nil {
-		return "", err
+func ipFromMaddr(maddr ma.Multiaddr) (net.IP, error) {
+	var (
+		ip    net.IP
+		found bool
+	)
+
+	ma.ForEach(maddr, func(c ma.Component) bool {
+		switch c.Protocol().Code {
+		case ma.P_IP6ZONE:
+			return true
+		case ma.P_IP6, ma.P_IP4:
+			found = true
+			ip = net.IP(c.RawValue())
+			return false
+		default:
+			return false
+		}
+	})
+
+	if !found {
+		return net.IP{}, fmt.Errorf("could not parse IP address from multiaddress: %s", maddr)
 	}
-	defer res.Body.Close()
-	ipBytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
+	return ip, nil
+}
+
+var (
+	ipv4AllMask = net.IPMask{255, 255, 255, 255}
+	ipv6AllMask = net.IPMask{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
+)
+
+// getAllMaskForIP returns an IPMask that will match all IP addresses. The size
+// of the mask depends on whether the given IP address is an IPv4 or an IPv6
+// address.
+func getAllMaskForIP(ip net.IP) net.IPMask {
+	if ip.To4() != nil {
+		// This is an ipv4 address. Return 4 byte mask.
+		return ipv4AllMask
 	}
-	return string(ipBytes), nil
+	// Assume ipv6 address. Return 16 byte mask.
+	return ipv6AllMask
 }

@@ -76,9 +76,21 @@ func getTypeForValue(val interface{}) (string, error) {
 		// encoding.TextMarshaler as a string.
 		return "string", nil
 	}
+	if _, ok := val.(error); ok {
+		// The json package always encodes values that implement
+		// error as a string.
+		return "string", nil
+	}
 
 	underlyingType := getUnderlyingType(reflect.TypeOf(val))
 	switch kind := underlyingType.Kind(); kind {
+	case reflect.Ptr:
+		reflectVal := reflect.ValueOf(val)
+		if !reflectVal.IsNil() {
+			return getTypeForValue(reflectVal.Elem())
+		} else {
+			return "null", nil
+		}
 	case reflect.Bool:
 		return "bool", nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:

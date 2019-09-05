@@ -14,12 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// MainnetEthBalanceCheckerAddress is the mainnet EthBalanceChecker contract address
-var MainnetEthBalanceCheckerAddress = common.HexToAddress("0x9bc2c6ae8b1a8e3c375b6ccb55eb4273b2c3fbde")
-
-// GanacheEthBalanceCheckerAddress is the ganache snapshot EthBalanceChecker contract address
-var GanacheEthBalanceCheckerAddress = common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc")
-
 // The most addresses we can fetch balances for in a single CALL without going over the block gas
 // limit. One of Geth/Parity caps the gas limit for `eth_call`s at the block gas limit.
 // Block gas limit on 19th April 2019: 7,600,889
@@ -37,7 +31,7 @@ type ETHWatcher struct {
 	addressToBalance   map[common.Address]*big.Int
 	minPollingInterval time.Duration
 	balanceChan        chan Balance
-	ethBalanceChecker  *wrappers.EthBalanceChecker
+	devUtils           *wrappers.DevUtils
 	ethClient          *ethclient.Client
 	addressToBalanceMu sync.Mutex
 	wasStartedOnce     bool
@@ -50,7 +44,7 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 	if err != nil {
 		return nil, err
 	}
-	ethBalanceChecker, err := wrappers.NewEthBalanceChecker(contractAddresses.EthBalanceChecker, ethClient)
+	devUtils, err := wrappers.NewDevUtils(contractAddresses.DevUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +54,7 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 		balanceChan:        make(chan Balance, 100),
 		minPollingInterval: minPollingInterval,
 		ethClient:          ethClient,
-		ethBalanceChecker:  ethBalanceChecker,
+		devUtils:           devUtils,
 	}, nil
 }
 
@@ -202,7 +196,7 @@ func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address
 				Pending: false,
 				Context: ctx,
 			}
-			balances, err := e.ethBalanceChecker.GetEthBalances(opts, chunk)
+			balances, err := e.devUtils.GetEthBalances(opts, chunk)
 			if err != nil {
 				for _, address := range chunk {
 					failedAddresses = append(failedAddresses, address)

@@ -58,6 +58,9 @@ func TestOrderCRUDOperations(t *testing.T) {
 		IsRemoved:                false,
 	}
 	require.NoError(t, meshDB.Orders.Insert(order))
+	// We need to call ResetHash so that unexported hash field is equal in later
+	// assertions.
+	signedOrder.ResetHash()
 
 	// Find
 	foundOrder := &Order{}

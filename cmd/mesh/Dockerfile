@@ -4,7 +4,7 @@
 #
 
 # mesh-builder produces a statically linked binary
-FROM golang:1.12.1-alpine3.9 as mesh-builder
+FROM golang:1.12.9-alpine3.9 as mesh-builder
 
 
 RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
@@ -29,8 +29,10 @@ COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh /usr/mesh/mes
 ENV RPC_PORT=60557
 EXPOSE 60557
 
-ENV P2P_LISTEN_PORT=60558
+ENV P2P_TCP_PORT=60558
 EXPOSE 60558
+ENV P2P_WEBSOCKETS_PORT=60559
+EXPOSE 60559
 
 RUN chmod +x ./mesh
 

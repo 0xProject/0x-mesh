@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -50,14 +51,19 @@ const (
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"5"`
-	// P2PListenPort is the port on which to listen for new connections.
-	P2PListenPort int `envvar:"P2P_LISTEN_PORT"`
-	// PublicIPAddrs is a comma separated list of public IPv4 addresses at which
-	// the bootstrap node is accessible.
-	PublicIPAddrs string `envvar:"PUBLIC_IP_ADDRS"`
-	// PrivateKey path is the path to a private key file which will be used for
-	// signing messages and generating a peer ID.
-	PrivateKeyPath string `envvar:"PRIVATE_KEY_PATH" default:"0x_mesh/keys/privkey"`
+	// P2PBindAddrs is a comma separated list of libp2p multiaddresses which the
+	// bootstrap node will bind to.
+	P2PBindAddrs string `envvar:"P2P_BIND_ADDRS"`
+	// P2PAdvertiseAddrs is a comma separated list of libp2p multiaddresses which the
+	// bootstrap node will advertise to peers.
+	P2PAdvertiseAddrs string `envvar:"P2P_ADVERTISE_ADDRS"`
+	// DataDir is the directory used for storing data.
+	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
+	// BootstrapList is a comma-separated list of multiaddresses to use for
+	// bootstrapping the DHT (e.g.,
+	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
+	// If empty, the default bootstrap list will be used.
+	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
 }
 
 func init() {
@@ -65,6 +71,18 @@ func init() {
 	// safely reduce AdvertiseBootDelay. This will allow the bootstrap nodes to
 	// advertise themselves as relays sooner.
 	relay.AdvertiseBootDelay = 30 * time.Second
+}
+
+func getPrivateKeyPath(config Config) string {
+	return filepath.Join(config.DataDir, "keys", "privkey")
+}
+
+func getDHTDir(config Config) string {
+	return filepath.Join(config.DataDir, "p2p", "dht")
+}
+
+func getPeerstoreDir(config Config) string {
+	return filepath.Join(config.DataDir, "p2p", "peerstore")
 }
 
 func main() {
@@ -83,44 +101,44 @@ func main() {
 	log.SetLevel(log.Level(config.Verbosity))
 	log.AddHook(loghooks.NewKeySuffixHook())
 
-	// Parse private key file
-	privKey, err := initPrivateKey(config.PrivateKeyPath)
+	// Parse private key file and add peer ID log hook
+	privKey, err := initPrivateKey(getPrivateKeyPath(config))
 	if err != nil {
 		log.WithField("error", err).Fatal("could not initialize private key")
 	}
+	peerID, err := peer.IDFromPrivateKey(privKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		kadDHT, err = p2p.NewDHT(ctx, h)
+		dhtDir := getDHTDir(config)
+		kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}
 		return kadDHT, err
 	}
-	// Parse advertiseAddresses from Public IPs
-	ipAddrs := strings.Split(config.PublicIPAddrs, ",")
-	advertiseAddrs := make([]ma.Multiaddr, len(ipAddrs))
-	for i, ipAddr := range ipAddrs {
-		maddrString := fmt.Sprintf("/ip4/%s/tcp/%d", ipAddr, config.P2PListenPort)
-		ma, err := ma.NewMultiaddr(maddrString)
-		if err != nil {
-			log.Fatal(err)
-		}
-		advertiseAddrs[i] = ma
+
+	// Parse multiaddresses given in the config
+	bindAddrs, err := parseAddrs(config.P2PBindAddrs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	advertiseAddrs, err := parseAddrs(config.P2PAdvertiseAddrs)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Set up the transport and the host.
-	// Note: 0.0.0.0 will use all available addresses.
-	hostAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", config.P2PListenPort))
-	if err != nil {
-		log.WithField("error", err).Fatal("could not parse multiaddr")
-	}
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
-		libp2p.ListenAddrs(hostAddr),
+		libp2p.ListenAddrs(bindAddrs...),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
 		libp2p.EnableRelay(circuit.OptHop),
@@ -132,9 +150,6 @@ func main() {
 	if err != nil {
 		log.WithField("error", err).Fatal("could not create host")
 	}
-
-	// Add the peer ID hook to the logger.
-	log.AddHook(loghooks.NewPeerIDHook(basicHost.ID()))
 
 	// Set up the notifee.
 	basicHost.Network().Notify(&notifee{})
@@ -148,22 +163,22 @@ func main() {
 	if err := kadDHT.Bootstrap(ctx); err != nil {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
 	}
-	if err := p2p.ConnectToBootstrapList(ctx, basicHost); err != nil {
+	bootstrapList := p2p.DefaultBootstrapList
+	if config.BootstrapList != "" {
+		bootstrapList = strings.Split(config.BootstrapList, ",")
+	}
+	if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
 		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
 	}
 
 	// Protect each other bootstrap peer via the connection manager so that we
 	// maintain an active connection to them.
-	for _, addr := range p2p.BootstrapPeers {
-		idString, err := addr.ValueForProtocol(ma.P_IPFS)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
-		}
-		id, err := peer.IDB58Decode(idString)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not extract peer id from bootstrap peer")
-		}
-		connManager.Protect(id, "bootstrap-peer")
+	bootstrapAddrInfos, err := p2p.BootstrapListToAddrInfos(bootstrapList)
+	if err != nil {
+		log.WithField("error", err).Fatal("could not parse bootstrap list")
+	}
+	for _, addrInfo := range bootstrapAddrInfos {
+		connManager.Protect(addrInfo.ID, "bootstrap-peer")
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -226,4 +241,17 @@ func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Mu
 	return func([]ma.Multiaddr) []ma.Multiaddr {
 		return advertiseAddrs
 	}
+}
+
+func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
+	maddrStrings := strings.Split(commaSeparatedAddrs, ",")
+	maddrs := make([]ma.Multiaddr, len(maddrStrings))
+	for i, maddrString := range maddrStrings {
+		ma, err := ma.NewMultiaddr(maddrString)
+		if err != nil {
+			return nil, err
+		}
+		maddrs[i] = ma
+	}
+	return maddrs, nil
 }
