@@ -382,7 +382,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				order := w.findOrderAndGenerateOrderEvents(exchangeFillEvent.OrderHash)
+				order := w.findOrder(exchangeFillEvent.OrderHash)
 				if order != nil {
 					orders = append(orders, order)
 				}
@@ -397,7 +397,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 				orders = []*meshdb.Order{}
-				order := w.findOrderAndGenerateOrderEvents(exchangeCancelEvent.OrderHash)
+				order := w.findOrder(exchangeCancelEvent.OrderHash)
 				if order != nil {
 					orders = append(orders, order)
 				}
@@ -536,7 +536,7 @@ type OrderWithTxHashes struct {
 	TxHashes map[common.Hash]interface{}
 }
 
-func (w *Watcher) findOrderAndGenerateOrderEvents(orderHash common.Hash) *meshdb.Order {
+func (w *Watcher) findOrder(orderHash common.Hash) *meshdb.Order {
 	order := meshdb.Order{}
 	err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
 	if err != nil {
