@@ -6,7 +6,7 @@
 # 0x Mesh
 
 0x Mesh is a peer-to-peer network for sharing orders that adhere to the
-[0x order message format](https://github.com/0xProject/0x-protocol-specification/blob/master/v2/v2-specification.md#order-message-format).
+[0x order message format](https://0x.org/docs/guides/v2-specification#order-message-format).
 
 WARNING: This project is still under active development. Expect breaking changes before the official release.
 
@@ -24,6 +24,8 @@ WARNING: This project is still under active development. Expect breaking changes
   no backend server or database. Instead, peers share orders directly with one
   another. (There are pros and cons to this approach and it is probably not
   suitable for all markets).
+
+Both Relayers and Market makers can use Mesh to watch a set of orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
 
 0x Mesh is intended to be entirely automatic. It takes care of all the work of
 receiving, sharing, and validating orders so that you can focus on building your
