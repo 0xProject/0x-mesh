@@ -226,7 +226,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			FillableTakerAssetAmount: big.NewInt(0),
 			OrderStatus:              zeroex.OSExpired,
 		}
-		w.unwatchOrder(order, order.FillableTakerAssetAmount)
+		w.unwatchOrder(w.meshDB.Orders, order, order.FillableTakerAssetAmount)
 
 		orderEvent := &zeroex.OrderEvent{
 			OrderHash:                orderInfo.OrderHash,
@@ -565,6 +565,7 @@ func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID 
 }
 
 func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[common.Hash]*OrderWithTxHashes) error {
+	ordersColTxn := w.meshDB.Orders.OpenTransaction()
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, orderWithTxHashes := range hashToOrderWithTxHashes {
 		order := orderWithTxHashes.Order
@@ -602,7 +603,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
-			w.rewatchOrder(order, acceptedOrderInfo)
+			w.rewatchOrder(ordersColTxn, order, acceptedOrderInfo)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
@@ -613,10 +614,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 			// No important state-change happened, simply update lastUpdated timestamp in DB
-			w.updateOrderDBEntry(order)
+			w.updateOrderDBEntry(ordersColTxn, order)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
-			w.updateOrderDBEntry(order)
+			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
@@ -628,7 +629,7 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 			// Update order in DB and emit event
-			w.updateOrderDBEntry(order)
+			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
@@ -650,10 +651,10 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
 				// Update it's lastUpdated timestamp in DB
-				w.updateOrderDBEntry(order)
+				w.updateOrderDBEntry(ordersColTxn, order)
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
-				w.unwatchOrder(order, big.NewInt(0))
+				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
 				kind, ok := zeroex.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventKind corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
@@ -681,15 +682,25 @@ func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[commo
 			return err
 		}
 	}
+	if err := ordersColTxn.Commit(); err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("Failed to commit orders collection transaction")
+	}
+
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
 	}
 	return nil
 }
 
-func (w *Watcher) updateOrderDBEntry(order *meshdb.Order) {
+type updatableOrdersCol interface {
+	Update(model db.Model) error
+}
+
+func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) {
 	order.LastUpdated = time.Now().UTC()
-	err := w.meshDB.Orders.Update(order)
+	err := u.Update(order)
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
@@ -698,11 +709,11 @@ func (w *Watcher) updateOrderDBEntry(order *meshdb.Order) {
 	}
 }
 
-func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOrderInfo) {
+func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderInfo *zeroex.AcceptedOrderInfo) {
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
-	err := w.meshDB.Orders.Update(order)
+	err := u.Update(order)
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
@@ -715,11 +726,11 @@ func (w *Watcher) rewatchOrder(order *meshdb.Order, orderInfo *zeroex.AcceptedOr
 	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) unwatchOrder(order *meshdb.Order, newFillableAmount *big.Int) {
+func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFillableAmount *big.Int) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = newFillableAmount
-	err := w.meshDB.Orders.Update(order)
+	err := u.Update(order)
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
