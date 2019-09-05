@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -37,50 +37,54 @@ const (
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	Type        EventType
-	BlockHeader *meshdb.MiniHeader
+	BlockHeader *miniheader.MiniHeader
+}
+
+// Stack defines the interface a stack must implement in order to be used by
+// OrderWatcher for block header storage
+type Stack interface {
+	Pop() (*miniheader.MiniHeader, error)
+	Push(*miniheader.MiniHeader) error
+	Peek() (*miniheader.MiniHeader, error)
+	PeekAll() ([]*miniheader.MiniHeader, error)
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
-	MeshDB              *meshdb.MeshDB
-	PollingInterval     time.Duration
-	StartBlockDepth     rpc.BlockNumber
-	BlockRetentionLimit int
-	WithLogs            bool
-	Topics              []common.Hash
-	Client              Client
+	Stack           Stack
+	PollingInterval time.Duration
+	StartBlockDepth rpc.BlockNumber
+	WithLogs        bool
+	Topics          []common.Hash
+	Client          Client
 }
 
-// Watcher maintains a consistent representation of the latest `blockRetentionLimit` blocks,
-// handling block re-orgs and network disruptions gracefully. It can be started from any arbitrary
-// block height, and will emit both block added and removed events.
+// Watcher maintains a consistent representation of the latest X blocks (where X is enforced by the
+// supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
+// any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	blockRetentionLimit int
-	startBlockDepth     rpc.BlockNumber
-	stack               *Stack
-	client              Client
-	blockFeed           event.Feed
-	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
-	wasStartedOnce      bool                    // Whether the block watcher has previously been started
-	pollingInterval     time.Duration
-	ticker              *time.Ticker
-	withLogs            bool
-	topics              []common.Hash
-	mu                  sync.RWMutex
+	startBlockDepth rpc.BlockNumber
+	stack           Stack
+	client          Client
+	blockFeed       event.Feed
+	blockScope      event.SubscriptionScope // Subscription scope tracking current live listeners
+	wasStartedOnce  bool                    // Whether the block watcher has previously been started
+	pollingInterval time.Duration
+	ticker          *time.Ticker
+	withLogs        bool
+	topics          []common.Hash
+	mu              sync.RWMutex
 }
 
 // New creates a new Watcher instance.
 func New(config Config) *Watcher {
-	stack := NewStack(config.MeshDB, config.BlockRetentionLimit)
-
 	bs := &Watcher{
-		pollingInterval:     config.PollingInterval,
-		blockRetentionLimit: config.BlockRetentionLimit,
-		startBlockDepth:     config.StartBlockDepth,
-		stack:               stack,
-		client:              config.Client,
-		withLogs:            config.WithLogs,
-		topics:              config.Topics,
+		pollingInterval: config.PollingInterval,
+		startBlockDepth: config.StartBlockDepth,
+		stack:           config.Stack,
+		client:          config.Client,
+		withLogs:        config.WithLogs,
+		topics:          config.Topics,
 	}
 	return bs
 }
@@ -141,14 +145,13 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 }
 
 // GetLatestBlock returns the latest block processed
-func (w *Watcher) GetLatestBlock() (*meshdb.MiniHeader, error) {
+func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
 }
 
-// InspectRetainedBlocks returns the blocks retained in-memory by the Watcher instance. It is not
-// particularly performant and therefore should only be used for debugging and testing purposes.
-func (w *Watcher) InspectRetainedBlocks() ([]*meshdb.MiniHeader, error) {
-	return w.stack.Inspect()
+// GetAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
+func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
+	return w.stack.PeekAll()
 }
 
 // pollNextBlock polls for the next block header to be added to the block stack.
@@ -193,7 +196,7 @@ func (w *Watcher) pollNextBlock() error {
 	return nil
 }
 
-func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*Event) ([]*Event, error) {
+func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
 	latestHeader, err := w.stack.Peek()
 	if err != nil {
 		return nil, err
@@ -276,7 +279,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *meshdb.MiniHeader, events []*E
 	return events, nil
 }
 
-func (w *Watcher) addLogs(header *meshdb.MiniHeader) (*meshdb.MiniHeader, error) {
+func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
 	}
@@ -323,7 +326,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
 		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.
-		headers, err := w.InspectRetainedBlocks()
+		headers, err := w.GetAllRetainedBlocks()
 		if err != nil {
 			return events, err
 		}
@@ -350,14 +353,14 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 
 		// Create the block events from all the logs found by grouping
 		// them into blockHeaders
-		hashToBlockHeader := map[common.Hash]*meshdb.MiniHeader{}
+		hashToBlockHeader := map[common.Hash]*miniheader.MiniHeader{}
 		for _, log := range logs {
 			blockHeader, ok := hashToBlockHeader[log.BlockHash]
 			if !ok {
 				// TODO(fabio): Find a way to include the parent hash for the block as well.
 				// It's currently not an issue to omit it since we don't use the parent hash
 				// when processing block events in OrderWatcher.
-				blockHeader = &meshdb.MiniHeader{
+				blockHeader = &miniheader.MiniHeader{
 					Hash:   log.BlockHash,
 					Number: big.NewInt(0).SetUint64(log.BlockNumber),
 					Logs:   []types.Log{},
