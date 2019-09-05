@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:5b9dd020576063ed81bd1210fe44837ad42313135064f5a5f2390ecf64e0d2b8"
-  name = "github.com/0xProject/qunit"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "81c18fdf77522b0964f4e3fced25a88edcd813d7"
-
-[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -43,6 +35,72 @@
   packages = ["btcec"]
   pruneopts = "UT"
   revision = "4063feeff79a0da1b08cc857e89d4602e91a294c"
+
+[[projects]]
+  branch = "master"
+  digest = "1:70df0bb21a1a4847f05c0cdfaadc39468f13cdabf0bdfde01bc89b1ae4c074eb"
+  name = "github.com/chromedp/cdproto"
+  packages = [
+    ".",
+    "accessibility",
+    "animation",
+    "applicationcache",
+    "audits",
+    "backgroundservice",
+    "browser",
+    "cachestorage",
+    "cast",
+    "cdp",
+    "css",
+    "database",
+    "debugger",
+    "deviceorientation",
+    "dom",
+    "domdebugger",
+    "domsnapshot",
+    "domstorage",
+    "emulation",
+    "fetch",
+    "headlessexperimental",
+    "heapprofiler",
+    "indexeddb",
+    "input",
+    "inspector",
+    "io",
+    "layertree",
+    "log",
+    "media",
+    "memory",
+    "network",
+    "overlay",
+    "page",
+    "performance",
+    "profiler",
+    "runtime",
+    "security",
+    "serviceworker",
+    "storage",
+    "systeminfo",
+    "target",
+    "tethering",
+    "tracing",
+    "webaudio",
+    "webauthn",
+  ]
+  pruneopts = "UT"
+  revision = "b5ac1e37ce90b05a556d6d6ce1f4beee5e8cd23e"
+
+[[projects]]
+  digest = "1:2e5122f1f956687cbebd5e652857b28a593a26eef899ac14c5c3437b6f640cf6"
+  name = "github.com/chromedp/chromedp"
+  packages = [
+    ".",
+    "device",
+    "kb",
+  ]
+  pruneopts = "UT"
+  revision = "c956994840a529a4f213d4b27346bfeee1beec05"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:05ffeeed3f0f05520de0679f6aa3219ffee69cfd6d9fb6c194879d4c818ad670"
@@ -151,6 +209,38 @@
   pruneopts = "UT"
   revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
   version = "v1.8.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:368ba96ddacaae2fe265afcac3062a199908f7dc0c6569d6e05a7a13042cccf1"
+  name = "github.com/gobwas/httphead"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2c6c146eadee0b69f856f87e3e9f1d0cd6aad2f5"
+
+[[projects]]
+  digest = "1:bdfe3b97ff03e4f7252c74cfaefb20050a360c8fb760701014ebf99c9540abd1"
+  name = "github.com/gobwas/pool"
+  packages = [
+    ".",
+    "internal/pmath",
+    "pbufio",
+    "pbytes",
+  ]
+  pruneopts = "UT"
+  revision = "fa3125c39d7eca32e1387bb69b1b38dcb31b1e0b"
+  version = "v0.2.0"
+
+[[projects]]
+  digest = "1:aea6697202cefa9365797c4c8ad0a1dbdf15ba21600ddc599a9000629a2ecb6f"
+  name = "github.com/gobwas/ws"
+  packages = [
+    ".",
+    "wsutil",
+  ]
+  pruneopts = "UT"
+  revision = "05baaea2bbcfe8963301c62d9931c882d59595cd"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:d0e00c8ccabdfe678667d6be78c9d08a6a4efc36d9fb596f098706728b00ba6b"
@@ -339,6 +429,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:8cb15b21828b36ad568850d0ecb9340e22b148c8c6755f4a3d7918021bfc38a2"
+  name = "github.com/knq/sysutil"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f05b59f0f3075ba1bc5701ef0df4393a05ebd0e7"
+
+[[projects]]
   digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -369,6 +467,14 @@
   pruneopts = "UT"
   revision = "c4a5988a1e475884367015e1a2d0bd5fa4c491f4"
   version = "v0.0.2"
+
+[[projects]]
+  digest = "1:6a443af5bfbc3cd231972c06ce15d8e396486bf57a9115fac6c1bc76eb68bcc5"
+  name = "github.com/libp2p/go-conn-security"
+  packages = ["insecure"]
+  pruneopts = "UT"
+  revision = "5f8143019e00897f3f6776723f2ca9230904458b"
+  version = "v0.1.0"
 
 [[projects]]
   digest = "1:041a5219e2f0c1fa2af5d25aee6970600ba2ac055ba386c18cfe960d392df3db"
@@ -616,6 +722,14 @@
   version = "v0.2.0"
 
 [[projects]]
+  digest = "1:f55b1d675b33c91230c833c99b7aa1a03f9eda84ab775d2ecddd8136cb2d2faa"
+  name = "github.com/libp2p/go-libp2p-transport"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2406e91c260757c7cf63c70ad20073f5a7b29af4"
+  version = "v0.1.0"
+
+[[projects]]
   digest = "1:2fcb80000123d80148ce210a053a226d52dc891419905d7ff076c164825da50d"
   name = "github.com/libp2p/go-libp2p-transport-upgrader"
   packages = ["."]
@@ -707,12 +821,12 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:b1436d41d493ff2d51052838e0415c26366314febead5051f732f5c98e3729f1"
+  digest = "1:9d32384c7a3a540d1211207cad7880b98a0450168b138648d92a9203c1865a18"
   name = "github.com/libp2p/go-ws-transport"
   packages = ["."]
   pruneopts = "UT"
-  revision = "6efd965516262a6b6e46ea987b94904ef13e59bc"
-  version = "v0.1.0"
+  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"
+  source = "github.com/0xProject/go-ws-transport"
 
 [[projects]]
   digest = "1:64fdef1e970d17504d960d18412125e85ca620703e495105b3fbffee27acf568"
@@ -721,6 +835,19 @@
   pruneopts = "UT"
   revision = "663972181d409e7263040f0b668462f87c85e1bd"
   version = "v1.2.3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ad157c87bae81a72ca4cc7b5d2da8907eeedf060ac9828833bfa3013982f6f66"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "UT"
+  revision = "b2ccc519800e761ac8000b95e5d57c80a897ff9e"
 
 [[projects]]
   digest = "1:7c084e0e780596dd2a7e20d25803909a9a43689c153de953520dfbc0b0e51166"
@@ -833,15 +960,6 @@
   pruneopts = "UT"
   revision = "039807e4901c4b2041f40a0e4aa32d72939608aa"
   version = "v0.1.0"
-
-[[projects]]
-  branch = "support-arrays"
-  digest = "1:0d4c99af326c5aa0cb55940961953f9772cc84e765f3a90110a4501dcccdae90"
-  name = "github.com/norunners/vert"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "32b044758d63e7074e457e97fd1ca54f01448b16"
-  source = "github.com/albrow/vert"
 
 [[projects]]
   branch = "master"
@@ -1225,8 +1343,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/0xProject/qunit",
     "github.com/albrow/stringset",
+    "github.com/chromedp/cdproto/runtime",
+    "github.com/chromedp/chromedp",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
@@ -1243,17 +1362,23 @@
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
     "github.com/ipfs/go-ds-leveldb",
+    "github.com/ipfs/go-log",
     "github.com/jpillora/backoff",
+    "github.com/libp2p/go-conn-security-multistream",
+    "github.com/libp2p/go-conn-security/insecure",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-circuit",
     "github.com/libp2p/go-libp2p-connmgr",
     "github.com/libp2p/go-libp2p-core/crypto",
     "github.com/libp2p/go-libp2p-core/host",
+    "github.com/libp2p/go-libp2p-core/mux",
     "github.com/libp2p/go-libp2p-core/network",
     "github.com/libp2p/go-libp2p-core/peer",
+    "github.com/libp2p/go-libp2p-core/pnet",
     "github.com/libp2p/go-libp2p-core/protocol",
     "github.com/libp2p/go-libp2p-core/routing",
+    "github.com/libp2p/go-libp2p-core/sec",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-discovery",
     "github.com/libp2p/go-libp2p-kad-dht",
@@ -1263,10 +1388,17 @@
     "github.com/libp2p/go-libp2p-peerstore/pstoreds",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-swarm",
+    "github.com/libp2p/go-libp2p-transport",
+    "github.com/libp2p/go-libp2p-transport-upgrader",
+    "github.com/libp2p/go-libp2p/config",
+    "github.com/libp2p/go-libp2p/p2p/host/basic",
     "github.com/libp2p/go-libp2p/p2p/host/relay",
+    "github.com/libp2p/go-libp2p/p2p/host/routed",
+    "github.com/libp2p/go-maddr-filter",
+    "github.com/libp2p/go-stream-muxer-multistream",
+    "github.com/libp2p/go-ws-transport",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
-    "github.com/norunners/vert",
     "github.com/ocdogan/rbt",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
@@ -1275,6 +1407,7 @@
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
+    "github.com/syndtr/goleveldb/leveldb/storage",
     "github.com/syndtr/goleveldb/leveldb/util",
     "github.com/xeipuuv/gojsonschema",
     "golang.org/x/crypto/sha3",

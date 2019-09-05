@@ -1,7 +1,9 @@
 package loghooks
 
 import (
+	"errors"
 	"fmt"
+	"syscall"
 	"testing"
 
 	"github.com/0xProject/0x-mesh/constants"
@@ -86,6 +88,14 @@ func TestGetTypeForValue(t *testing.T) {
 			expected: "string",
 		},
 		{
+			input:    errors.New("this is an error"),
+			expected: "string",
+		},
+		{
+			input:    syscall.Errno(1),
+			expected: "string",
+		},
+		{
 			input:    func() {},
 			expected: "string",
 		},
@@ -103,6 +113,10 @@ func TestGetTypeForValue(t *testing.T) {
 		},
 		{
 			input:    myStruct{},
+			expected: "loghooks_myStruct",
+		},
+		{
+			input:    &myStruct{},
 			expected: "loghooks_myStruct",
 		},
 		{

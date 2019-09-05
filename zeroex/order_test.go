@@ -64,6 +64,11 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	buf := &bytes.Buffer{}
 	require.NoError(t, json.NewEncoder(buf).Encode(orderEvent))
 	var decoded OrderEvent
+
+	// We need to call ResetHash so that unexported hash field is equal in later
+	// assertions.
+	signedOrder.ResetHash()
+
 	require.NoError(t, json.NewDecoder(buf).Decode(&decoded))
 	assert.Equal(t, orderEvent, decoded)
 }

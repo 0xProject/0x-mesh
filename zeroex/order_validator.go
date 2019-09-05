@@ -214,8 +214,8 @@ type ValidationResults struct {
 // OrderValidator validates 0x orders
 type OrderValidator struct {
 	maxRequestContentLength      int
-	orderValidationUtilsABI      abi.ABI
-	orderValidationUtils         *wrappers.OrderValidationUtils
+	devUtilsABI                  abi.ABI
+	devUtils                     *wrappers.DevUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
 	assetDataDecoder             *AssetDataDecoder
 	networkID                    int
@@ -230,11 +230,11 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 	if err != nil {
 		return nil, err
 	}
-	orderValidationUtilsABI, err := abi.JSON(strings.NewReader(wrappers.OrderValidationUtilsABI))
+	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
 	if err != nil {
 		return nil, err
 	}
-	orderValidationUtils, err := wrappers.NewOrderValidationUtils(contractAddresses.OrderValidationUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtils(contractAddresses.DevUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -246,8 +246,8 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 
 	return &OrderValidator{
 		maxRequestContentLength:      maxRequestContentLength,
-		orderValidationUtilsABI:      orderValidationUtilsABI,
-		orderValidationUtils:         orderValidationUtils,
+		devUtilsABI:                  devUtilsABI,
+		devUtils:                     devUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
 		networkID:                    networkID,
@@ -324,7 +324,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 					Context: ctx,
 				}
 
-				results, err := o.orderValidationUtils.GetOrderRelevantStates(opts, orders, signatures)
+				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"error":     err.Error(),
@@ -748,7 +748,7 @@ const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
 	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
-	data, err := o.orderValidationUtilsABI.Pack(
+	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
 		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
 		[][]byte{signedOrder.Signature},

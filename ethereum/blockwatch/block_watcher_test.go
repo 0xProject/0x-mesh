@@ -1,3 +1,5 @@
+// +build !browser
+
 package blockwatch
 
 import (
@@ -8,34 +10,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var config = Config{
-	PollingInterval:     1 * time.Second,
-	BlockRetentionLimit: 10,
-	StartBlockDepth:     rpc.LatestBlockNumber,
-	WithLogs:            false,
-	Topics:              []common.Hash{},
+	PollingInterval: 1 * time.Second,
+	StartBlockDepth: rpc.LatestBlockNumber,
+	WithLogs:        false,
+	Topics:          []common.Hash{},
 }
 
-var basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
+var (
+	basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
+	blockRetentionLimit    = 10
+)
 
 func TestWatcher(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_block_poller_fixtures.json")
 	require.NoError(t, err)
 
 	// Polling interval unused because we hijack the ticker for this test
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	defer meshDB.Close()
-	config.MeshDB = meshDB
+	config.Stack = NewSimpleStack(blockRetentionLimit)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -49,7 +50,7 @@ func TestWatcher(t *testing.T) {
 		err := watcher.pollNextBlock()
 		require.NoError(t, err)
 
-		retainedBlocks, err := watcher.InspectRetainedBlocks()
+		retainedBlocks, err := watcher.GetAllRetainedBlocks()
 		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)
@@ -77,10 +78,8 @@ func TestWatcherStartStop(t *testing.T) {
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	defer meshDB.Close()
-	config.MeshDB = meshDB
+	config.Stack = NewSimpleStack(blockRetentionLimit)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -180,10 +179,8 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	defer meshDB.Close()
-	config.MeshDB = meshDB
+	config.Stack = NewSimpleStack(blockRetentionLimit)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -198,19 +195,19 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
-	lastBlockSeen := &meshdb.MiniHeader{
+	lastBlockSeen := &miniheader.MiniHeader{
 		Number: big.NewInt(5),
 		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
 		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
 	}
-	err = meshDB.MiniHeaders.Insert(lastBlockSeen)
+
+	config.Stack = NewSimpleStack(blockRetentionLimit)
+
+	err = config.Stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
-	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -221,7 +218,7 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	assert.Len(t, events, 1)
 
 	// Check that block 30 is now in the DB, and block 5 was removed.
-	headers, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	headers, err := config.Stack.PeekAll()
 	require.NoError(t, err)
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(30), headers[0].Number)
@@ -232,19 +229,19 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
 	require.NoError(t, err)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	defer meshDB.Close()
 	// Add block number 5 as the last block seen by BlockWatcher
-	lastBlockSeen := &meshdb.MiniHeader{
+	lastBlockSeen := &miniheader.MiniHeader{
 		Number: big.NewInt(5),
 		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
 		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
 	}
-	err = meshDB.MiniHeaders.Insert(lastBlockSeen)
+
+	config.Stack = NewSimpleStack(blockRetentionLimit)
+
+	err = config.Stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
-	config.MeshDB = meshDB
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -255,7 +252,7 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	assert.Len(t, events, 0)
 
 	// Check that block 5 is still in the DB
-	headers, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	headers, err := config.Stack.PeekAll()
 	require.NoError(t, err)
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(5), headers[0].Number)
@@ -375,10 +372,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
-	require.NoError(t, err)
-	defer meshDB.Close()
-	config.MeshDB = meshDB
+	config.Stack = NewSimpleStack(blockRetentionLimit)
 
 	for _, testCase := range testCases {
 		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
@@ -481,10 +475,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 	}
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
-	require.NoError(t, err)
-	defer meshDB.Close()
-	config.MeshDB = meshDB
+	config.Stack = NewSimpleStack(blockRetentionLimit)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
