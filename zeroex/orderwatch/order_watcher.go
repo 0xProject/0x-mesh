@@ -240,6 +240,10 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 }
 
 func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
+	ordersColTxn := w.meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersColTxn.Discard()
+	}()
 	hashToOrderWithTxHashes := map[common.Hash]*OrderWithTxHashes{}
 	for _, event := range events {
 		for _, log := range event.BlockHeader.Logs {
@@ -440,10 +444,14 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 			}
 		}
 	}
-	return w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
+	return w.generateOrderEventsIfChanged(ordersColTxn, hashToOrderWithTxHashes)
 }
 
 func (w *Watcher) cleanup(ctx context.Context) error {
+	ordersColTxn := w.meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersColTxn.Discard()
+	}()
 	lastUpdatedCutOff := time.Now().Add(-lastUpdatedBuffer)
 	orders, err := w.meshDB.FindOrdersLastUpdatedBefore(lastUpdatedCutOff)
 	if err != nil {
@@ -465,7 +473,7 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 			TxHashes: map[common.Hash]interface{}{},
 		}
 	}
-	return w.generateOrderEventsIfChanged(hashToOrderWithTxHashes)
+	return w.generateOrderEventsIfChanged(ordersColTxn, hashToOrderWithTxHashes)
 }
 
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
@@ -564,8 +572,7 @@ func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID 
 	return orders, nil
 }
 
-func (w *Watcher) generateOrderEventsIfChanged(hashToOrderWithTxHashes map[common.Hash]*OrderWithTxHashes) error {
-	ordersColTxn := w.meshDB.Orders.OpenTransaction()
+func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, hashToOrderWithTxHashes map[common.Hash]*OrderWithTxHashes) error {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, orderWithTxHashes := range hashToOrderWithTxHashes {
 		order := orderWithTxHashes.Order
