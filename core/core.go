@@ -45,7 +45,7 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "3.0.1-beta"
+	version                    = "4.0.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We

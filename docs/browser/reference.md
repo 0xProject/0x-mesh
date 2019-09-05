@@ -14,7 +14,7 @@ sending orders through the 0x Mesh network.
 
 \+ **new Mesh**(`config`: [Config](#interface-config)): *[Mesh](#class-mesh)*
 
-*Defined in [index.ts:212](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L212)*
+*Defined in [index.ts:253](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L253)*
 
 Instantiates a new Mesh instance.
 
@@ -32,9 +32,9 @@ An instance of Mesh
 
 ##  addOrdersAsync
 
-▸ **addOrdersAsync**(`orders`: Array‹SignedOrder›): *Promise‹[ValidationResults](#interface-validationresults)›*
+▸ **addOrdersAsync**(`orders`: SignedOrder[]): *Promise‹[ValidationResults](#interface-validationresults)›*
 
-*Defined in [index.ts:291](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L291)*
+*Defined in [index.ts:323](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L323)*
 
 Validates and adds the given orders to Mesh. If an order is successfully
 added, Mesh will share it with any peers in the network and start
@@ -47,7 +47,7 @@ results.rejected instead).
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`orders` | Array‹SignedOrder› | An array of orders to add. |
+`orders` | SignedOrder[] | An array of orders to add. |
 
 **Returns:** *Promise‹[ValidationResults](#interface-validationresults)›*
 
@@ -60,7 +60,7 @@ ___
 
 ▸ **onError**(`handler`: function): *void*
 
-*Defined in [index.ts:241](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L241)*
+*Defined in [index.ts:273](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L273)*
 
 Registers a handler which will be called in the event of a critical
 error. Note that the handler will not be called for non-critical errors.
@@ -89,7 +89,7 @@ ___
 
 ▸ **onOrderEvents**(`handler`: function): *void*
 
-*Defined in [index.ts:256](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L256)*
+*Defined in [index.ts:288](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L288)*
 
 Registers a handler which will be called for any incoming order events.
 Order events are fired whenver an order is added, canceled, expired, or
@@ -102,13 +102,13 @@ before startAsync.
 
 The handler to be called.
 
-▸ (`events`: Array‹[OrderEvent](#interface-orderevent)›): *void*
+▸ (`events`: [OrderEvent](#interface-orderevent)[]): *void*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`events` | Array‹[OrderEvent](#interface-orderevent)› |
+`events` | [OrderEvent](#interface-orderevent)[] |
 
 **Returns:** *void*
 
@@ -118,7 +118,7 @@ ___
 
 ▸ **startAsync**(): *Promise‹void›*
 
-*Defined in [index.ts:267](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L267)*
+*Defined in [index.ts:299](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L299)*
 
 Starts the Mesh node in the background. Mesh will automatically find
 peers in the network and begin receiving orders from them.
@@ -138,7 +138,7 @@ A set of categories for rejected orders.
 
 • **CoordinatorError**: = "COORDINATOR_ERROR"
 
-*Defined in [index.ts:173](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L173)*
+*Defined in [index.ts:207](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L207)*
 
 ___
 
@@ -146,7 +146,7 @@ ___
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [index.ts:171](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L171)*
+*Defined in [index.ts:205](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L205)*
 
 ___
 
@@ -154,7 +154,7 @@ ___
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [index.ts:172](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L172)*
+*Defined in [index.ts:206](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L206)*
 
 ___
 
@@ -162,7 +162,7 @@ ___
 
 • **ZeroExValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [index.ts:170](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L170)*
+*Defined in [index.ts:204](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L204)*
 
 <hr />
 
@@ -181,7 +181,7 @@ Info for any orders that were accepted.
 
 • **fillableTakerAssetAmount**: *BigNumber*
 
-*Defined in [index.ts:151](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L151)*
+*Defined in [index.ts:185](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L185)*
 
 ___
 
@@ -189,7 +189,7 @@ ___
 
 • **isNew**: *boolean*
 
-*Defined in [index.ts:152](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L152)*
+*Defined in [index.ts:186](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L186)*
 
 ___
 
@@ -197,7 +197,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:149](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L149)*
+*Defined in [index.ts:183](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L183)*
 
 ___
 
@@ -205,7 +205,7 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:150](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L150)*
+*Defined in [index.ts:184](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L184)*
 
 <hr />
 
@@ -224,7 +224,15 @@ A set of configuration options for Mesh.
 
 • **blockPollingIntervalSeconds**? : *undefined | number*
 
-*Defined in [index.ts:47](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L47)*
+*Defined in [index.ts:59](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L59)*
+
+___
+
+## `Optional` bootstrapList
+
+• **bootstrapList**? : *string[]*
+
+*Defined in [index.ts:48](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L48)*
 
 ___
 
@@ -232,7 +240,7 @@ ___
 
 • **ethereumNetworkID**: *number*
 
-*Defined in [index.ts:33](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L33)*
+*Defined in [index.ts:40](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L40)*
 
 ___
 
@@ -240,7 +248,7 @@ ___
 
 • **ethereumRPCMaxContentLength**? : *undefined | number*
 
-*Defined in [index.ts:56](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L56)*
+*Defined in [index.ts:68](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L68)*
 
 ___
 
@@ -248,7 +256,7 @@ ___
 
 • **ethereumRPCURL**: *string*
 
-*Defined in [index.ts:31](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L31)*
+*Defined in [index.ts:38](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L38)*
 
 ___
 
@@ -256,7 +264,7 @@ ___
 
 • **orderExpirationBufferSeconds**? : *undefined | number*
 
-*Defined in [index.ts:40](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L40)*
+*Defined in [index.ts:52](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L52)*
 
 ___
 
@@ -264,7 +272,15 @@ ___
 
 • **useBootstrapList**? : *undefined | false | true*
 
-*Defined in [index.ts:36](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L36)*
+*Defined in [index.ts:43](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L43)*
+
+___
+
+##  verbosity
+
+• **verbosity**: *Verbosity*
+
+*Defined in [index.ts:35](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L35)*
 
 <hr />
 
@@ -284,7 +300,7 @@ or filled.
 
 • **fillableTakerAssetAmount**: *BigNumber*
 
-*Defined in [index.ts:111](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L111)*
+*Defined in [index.ts:145](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L145)*
 
 ___
 
@@ -292,7 +308,7 @@ ___
 
 • **kind**: *string*
 
-*Defined in [index.ts:110](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L110)*
+*Defined in [index.ts:144](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L144)*
 
 ___
 
@@ -300,7 +316,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:108](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L108)*
+*Defined in [index.ts:142](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L142)*
 
 ___
 
@@ -308,15 +324,15 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:109](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L109)*
+*Defined in [index.ts:143](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L143)*
 
 ___
 
 ##  txHashes
 
-• **txHashes**: *Array‹string›*
+• **txHashes**: *string[]*
 
-*Defined in [index.ts:112](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L112)*
+*Defined in [index.ts:146](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L146)*
 
 <hr />
 
@@ -336,7 +352,7 @@ rejected.
 
 • **kind**: *[RejectedOrderKind](#enumeration-rejectedorderkind)*
 
-*Defined in [index.ts:162](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L162)*
+*Defined in [index.ts:196](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L196)*
 
 ___
 
@@ -344,7 +360,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:160](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L160)*
+*Defined in [index.ts:194](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L194)*
 
 ___
 
@@ -352,7 +368,7 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:161](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L161)*
+*Defined in [index.ts:195](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L195)*
 
 ___
 
@@ -360,7 +376,7 @@ ___
 
 • **status**: *[RejectedOrderStatus](#class-rejectedorderstatus)*
 
-*Defined in [index.ts:163](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L163)*
+*Defined in [index.ts:197](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L197)*
 
 <hr />
 
@@ -379,7 +395,7 @@ Provides more information about why an order was rejected.
 
 • **code**: *string*
 
-*Defined in [index.ts:180](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L180)*
+*Defined in [index.ts:214](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L214)*
 
 ___
 
@@ -387,7 +403,7 @@ ___
 
 • **message**: *string*
 
-*Defined in [index.ts:181](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L181)*
+*Defined in [index.ts:215](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L215)*
 
 <hr />
 
@@ -404,17 +420,17 @@ Indicates which orders where accepted, which were rejected, and why.
 
 ##  accepted
 
-• **accepted**: *Array‹[AcceptedOrderInfo](#class-acceptedorderinfo)›*
+• **accepted**: *[AcceptedOrderInfo](#class-acceptedorderinfo)[]*
 
-*Defined in [index.ts:141](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L141)*
+*Defined in [index.ts:175](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L175)*
 
 ___
 
 ##  rejected
 
-• **rejected**: *Array‹[RejectedOrderInfo](#class-rejectedorderinfo)›*
+• **rejected**: *[RejectedOrderInfo](#class-rejectedorderinfo)[]*
 
-*Defined in [index.ts:142](https://github.com/0xProject/0x-mesh/blob/ed8a11c/browser/ts/index.ts#L142)*
+*Defined in [index.ts:176](https://github.com/0xProject/0x-mesh/blob/22c2a55/browser/ts/index.ts#L176)*
 
 <hr />
 
