@@ -16,6 +16,8 @@ import (
 type Order struct {
 	Hash        common.Hash
 	SignedOrder *zeroex.SignedOrder
+	// When the order was first added to the DB
+	CreatedAt time.Time
 	// When was this order last validated
 	LastUpdated time.Time
 	// How much of this order can still be filled
@@ -61,6 +63,7 @@ type OrdersCollection struct {
 	*db.Collection
 	MakerAddressAndSaltIndex             *db.Index
 	MakerAddressTokenAddressTokenIDIndex *db.Index
+	CreatedAtIndex                       *db.Index
 	LastUpdatedIndex                     *db.Index
 	IsRemovedIndex                       *db.Index
 }
@@ -109,6 +112,10 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		index := []byte(m.(*Order).LastUpdated.UTC().Format(time.RFC3339Nano))
 		return index
 	})
+	createdAtIndex := col.AddIndex("createdAt", func(m db.Model) []byte {
+		index := []byte(m.(*Order).CreatedAt.UTC().Format(time.RFC3339Nano))
+		return index
+	})
 	makerAddressAndSaltIndex := col.AddIndex("makerAddressAndSalt", func(m db.Model) []byte {
 		// By default, the index is sorted in byte order. In order to sort by
 		// numerical order, we need to pad with zeroes. The maximum length of an
@@ -154,6 +161,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
+		CreatedAtIndex:                       createdAtIndex,
 		LastUpdatedIndex:                     lastUpdatedIndex,
 		IsRemovedIndex:                       isRemovedIndex,
 	}, nil
@@ -267,6 +275,15 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	filter := m.Orders.LastUpdatedIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+// FindOldestOrder returns the order with the latest `createdAt` value
+func (m *MeshDB) FindOldestOrder() ([]*Order, error) {
+	orders := []*Order{}
+	if err := m.Orders.NewQuery(m.Orders.CreatedAtIndex.All()).Reverse().Max(1).Run(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil

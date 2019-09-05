@@ -54,6 +54,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 		Hash:                     orderHash,
 		SignedOrder:              signedOrder,
 		FillableTakerAssetAmount: big.NewInt(1),
+		CreatedAt:                currentTime,
 		LastUpdated:              currentTime,
 		IsRemoved:                false,
 	}

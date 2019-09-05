@@ -473,10 +473,12 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added.
 func (w *Watcher) Add(orderInfo *zeroex.AcceptedOrderInfo) error {
+	currentTime := time.Now().UTC()
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
-		LastUpdated:              time.Now().UTC(),
+		CreatedAt:                currentTime,
+		LastUpdated:              currentTime,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
