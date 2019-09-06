@@ -56,6 +56,12 @@ func updateHardCodedVersions(version string) {
 	regex := `"version": "(.*)"`
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
+	// Update `browser/package.json`
+	browserPackageJSONPath := "browser/package.json"
+	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
+	regex = `"version": "(.*)"`
+	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
+
 	// Update `core.go`
 	corePath := "core/core.go"
 	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
