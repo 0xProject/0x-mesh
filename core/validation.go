@@ -15,41 +15,11 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// maxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
-// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
-const maxOrderSizeInBytes = 8192
-
 // maxOrderExpirationDuration is the maximum duration between the current time and the expiration
 // set on an order that will be accepted by Mesh.
 const maxOrderExpirationDuration = 9 * 30 * 24 * time.Hour // 9 months
 
-var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", maxOrderSizeInBytes)
-
-// RejectedOrderStatus values
-var (
-	ROInternalError = zeroex.RejectedOrderStatus{
-		Code:    "InternalError",
-		Message: "an unexpected internal error has occurred",
-	}
-	ROMaxOrderSizeExceeded = zeroex.RejectedOrderStatus{
-		Code:    "MaxOrderSizeExceeded",
-		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", maxOrderSizeInBytes),
-	}
-	ROOrderAlreadyStoredAndUnfillable = zeroex.RejectedOrderStatus{
-		Code:    "OrderAlreadyStoredAndUnfillable",
-		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
-	}
-	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
-		Code:    "OrderForIncorrectNetwork",
-		Message: "order was created for a different network than the one this Mesh node is configured to support",
-	}
-	ROSenderAddressNotAllowed = zeroex.RejectedOrderStatus{
-		Code:    "SenderAddressNotAllowed",
-		Message: "orders with a senderAddress are not currently supported",
-	}
-)
-
-const ROInvalidSchemaCode = "InvalidSchema"
+var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", zeroex.MaxOrderSizeInBytes)
 
 // JSON-schema schemas
 var (
@@ -145,7 +115,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        zeroex.MeshError,
-				Status:      ROInternalError,
+				Status:      zeroex.ROInternalError,
 			})
 			continue
 		}
@@ -160,7 +130,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        zeroex.MeshValidation,
-				Status:      ROSenderAddressNotAllowed,
+				Status:      zeroex.ROSenderAddressNotAllowed,
 			})
 			continue
 		}
@@ -169,7 +139,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        zeroex.MeshValidation,
-				Status:      ROIncorrectNetwork,
+				Status:      zeroex.ROIncorrectNetwork,
 			})
 			continue
 		}
@@ -189,7 +159,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 					OrderHash:   orderHash,
 					SignedOrder: order,
 					Kind:        zeroex.MeshValidation,
-					Status:      ROMaxOrderSizeExceeded,
+					Status:      zeroex.ROMaxOrderSizeExceeded,
 				})
 				continue
 			} else {
@@ -198,7 +168,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 					OrderHash:   orderHash,
 					SignedOrder: order,
 					Kind:        zeroex.MeshError,
-					Status:      ROInternalError,
+					Status:      zeroex.ROInternalError,
 				})
 				continue
 			}
@@ -219,7 +189,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 					OrderHash:   orderHash,
 					SignedOrder: order,
 					Kind:        zeroex.MeshValidation,
-					Status:      ROOrderAlreadyStoredAndUnfillable,
+					Status:      zeroex.ROOrderAlreadyStoredAndUnfillable,
 				})
 				continue
 			} else {
@@ -244,7 +214,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 }
 
 func validateMessageSize(message *p2p.Message) error {
-	if len(message.Data) > maxOrderSizeInBytes {
+	if len(message.Data) > zeroex.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil
@@ -255,7 +225,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	if err != nil {
 		return err
 	}
-	if len(encoded) > maxOrderSizeInBytes {
+	if len(encoded) > zeroex.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil

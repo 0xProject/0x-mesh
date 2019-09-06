@@ -76,7 +76,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			log.WithFields(map[string]interface{}{
 				"error":               err,
 				"from":                msg.From,
-				"maxOrderSizeInBytes": maxOrderSizeInBytes,
+				"maxOrderSizeInBytes": zeroex.MaxOrderSizeInBytes,
 				"actualSizeInBytes":   len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
@@ -168,7 +168,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"from":              msg.From.String(),
 		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
-		case ROInternalError, zeroex.ROEthRPCRequestFailed, zeroex.ROCoordinatorRequestFailed:
+		case zeroex.ROInternalError, zeroex.ROEthRPCRequestFailed, zeroex.ROCoordinatorRequestFailed:
 			// Don't incur a negative score for these status types (it might not be
 			// their fault).
 		default:

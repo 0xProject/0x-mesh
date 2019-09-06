@@ -97,6 +97,10 @@ type RejectedOrderStatus struct {
 	Message string `json:"message"`
 }
 
+// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
+// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
+const MaxOrderSizeInBytes = 8192
+
 // RejectedOrderStatus values
 var (
 	ROEthRPCRequestFailed = RejectedOrderStatus{
@@ -155,7 +159,30 @@ var (
 		Code:    "OrderMaxExpirationExceeded",
 		Message: "order expiration too far in the future",
 	}
+	ROInternalError = RejectedOrderStatus{
+		Code:    "InternalError",
+		Message: "an unexpected internal error has occurred",
+	}
+	ROMaxOrderSizeExceeded = RejectedOrderStatus{
+		Code:    "MaxOrderSizeExceeded",
+		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", MaxOrderSizeInBytes),
+	}
+	ROOrderAlreadyStoredAndUnfillable = RejectedOrderStatus{
+		Code:    "OrderAlreadyStoredAndUnfillable",
+		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
+	}
+	ROIncorrectNetwork = RejectedOrderStatus{
+		Code:    "OrderForIncorrectNetwork",
+		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	}
+	ROSenderAddressNotAllowed = RejectedOrderStatus{
+		Code:    "SenderAddressNotAllowed",
+		Message: "orders with a senderAddress are not currently supported",
+	}
 )
+
+// ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema
+const ROInvalidSchemaCode = "InvalidSchema"
 
 // ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
 func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (OrderEventKind, bool) {

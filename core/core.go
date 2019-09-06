@@ -14,8 +14,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -138,8 +138,8 @@ func New(config Config) (*App, error) {
 	}
 	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
+	if config.EthereumRPCMaxContentLength < zeroex.MaxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", zeroex.MaxOrderSizeInBytes)
 	}
 	config = unquoteConfig(config)
 
@@ -575,7 +575,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 				SignedOrder: signedOrder,
 				Kind:        zeroex.MeshValidation,
 				Status: zeroex.RejectedOrderStatus{
-					Code:    ROInvalidSchemaCode,
+					Code:    zeroex.ROInvalidSchemaCode,
 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
 				},
 			})
@@ -584,7 +584,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		if !result.Valid() {
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
 			status := zeroex.RejectedOrderStatus{
-				Code:    ROInvalidSchemaCode,
+				Code:    zeroex.ROInvalidSchemaCode,
 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
 			}
 			signedOrder := &zeroex.SignedOrder{}
