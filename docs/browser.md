@@ -51,6 +51,6 @@ Documentation for the `@0x/mesh-browser` package is available at
 
 ## Example usage
 
-[The examples/browser directory](../examples/browser) includes a bare-bones
+[The examples/browser directory](../examples/browser/package.json) includes a bare-bones
 example of how to use the `@0x/mesh-browser` and bundle everything together with
 Webpack.
