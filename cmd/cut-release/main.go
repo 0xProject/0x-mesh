@@ -24,33 +24,7 @@ func main() {
 
 	updateHardCodedVersions(env.Version)
 
-	addChangelogUpcomingReleaseTemplate()
-
 	generateTypescriptClientDocs()
-}
-
-func addChangelogUpcomingReleaseTemplate() {
-	changelogPath := "CHANGELOG.md"
-	changelog, err := ioutil.ReadFile(changelogPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	finalChangelogLines := []string{}
-	lines := strings.Split(string(changelog), "\n")
-	for _, l := range lines {
-		finalChangelogLines = append(finalChangelogLines, l)
-		if strings.Contains(l, "# CHANGELOG") {
-			finalChangelogLines = append(finalChangelogLines, "")
-			finalChangelogLines = append(finalChangelogLines, "## Upcoming release")
-		}
-	}
-
-	updatedChangelog := strings.Join(finalChangelogLines, "\n")
-	err = ioutil.WriteFile(changelogPath, []byte(updatedChangelog), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func generateTypescriptClientDocs() {
