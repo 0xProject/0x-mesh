@@ -47,7 +47,7 @@ We recommend using a tool like [Webpack](https://webpack.js.org/) to bundle the
 ## Documentation
 
 Documentation for the `@0x/mesh-browser` package is available at
-[0x-org.gitbook.io/mesh/browser](https://0x-org.gitbook.io/mesh/browser).
+[0x-org.gitbook.io/mesh/browser](https://0x-org.gitbook.io/mesh/browser/reference).
 
 ## Example usage
 
