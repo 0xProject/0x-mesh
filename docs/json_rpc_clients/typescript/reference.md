@@ -30,7 +30,7 @@ websocket endpoint.
 
 \+ **new WSClient**(`url`: string, `wsOpts?`: [WSOpts](#interface-wsopts)): *[WSClient](#class-wsclient)*
 
-*Defined in [ws_client.ts:71](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L71)*
+*Defined in [ws_client.ts:71](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L71)*
 
 Instantiates a new WSClient instance
 
@@ -51,7 +51,7 @@ An instance of WSClient
 
 ▸ **addOrdersAsync**(`signedOrders`: `SignedOrder`[]): *`Promise<ValidationResults>`*
 
-*Defined in [ws_client.ts:96](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L96)*
+*Defined in [ws_client.ts:96](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L96)*
 
 Adds an array of 0x signed orders to the Mesh node.
 
@@ -71,7 +71,7 @@ ___
 
 ▸ **destroy**(): *void*
 
-*Defined in [ws_client.ts:213](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L213)*
+*Defined in [ws_client.ts:213](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L213)*
 
 destroy unsubscribes all active subscriptions, closes the websocket connection
 and stops the internal heartbeat connection liveness check.
@@ -84,7 +84,7 @@ ___
 
 ▸ **getOrdersAsync**(`perPage`: number): *`Promise<OrderInfo[]>`*
 
-*Defined in [ws_client.ts:125](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L125)*
+*Defined in [ws_client.ts:125](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L125)*
 
 Get all 0x signed orders currently stored in the Mesh node
 
@@ -104,7 +104,7 @@ ___
 
 ▸ **getStatsAsync**(): *`Promise<GetStatsResponse>`*
 
-*Defined in [ws_client.ts:116](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L116)*
+*Defined in [ws_client.ts:116](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L116)*
 
 **Returns:** *`Promise<GetStatsResponse>`*
 
@@ -114,7 +114,7 @@ ___
 
 ▸ **onClose**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:195](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L195)*
+*Defined in [ws_client.ts:195](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L195)*
 
 Get notified when the underlying WS connection closes normally. If it closes with an
 error, WSClient automatically attempts to re-connect without emitting a `close` event.
@@ -135,7 +135,7 @@ ___
 
 ▸ **onReconnected**(`cb`: function): *void*
 
-*Defined in [ws_client.ts:204](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L204)*
+*Defined in [ws_client.ts:204](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L204)*
 
 Get notified when a connection to the underlying WS connection is re-established
 
@@ -155,7 +155,7 @@ ___
 
 ▸ **subscribeToOrdersAsync**(`cb`: function): *`Promise<string>`*
 
-*Defined in [ws_client.ts:156](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L156)*
+*Defined in [ws_client.ts:156](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L156)*
 
 Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
 subscriptionId that can be used to `unsubscribe()` from this subscription.
@@ -184,7 +184,7 @@ ___
 
 ▸ **unsubscribeAsync**(`subscriptionId`: string): *`Promise<void>`*
 
-*Defined in [ws_client.ts:185](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/ws_client.ts#L185)*
+*Defined in [ws_client.ts:185](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/ws_client.ts#L185)*
 
 Unsubscribe from a subscription
 
@@ -219,7 +219,7 @@ Name | Type | Description |
 
 • **Added**: = "ADDED"
 
-*Defined in [types.ts:55](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L55)*
+*Defined in [types.ts:55](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L55)*
 
 ___
 
@@ -227,7 +227,7 @@ ___
 
 • **Cancelled**: = "CANCELLED"
 
-*Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L58)*
+*Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L58)*
 
 ___
 
@@ -235,7 +235,7 @@ ___
 
 • **Expired**: = "EXPIRED"
 
-*Defined in [types.ts:59](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L59)*
+*Defined in [types.ts:59](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L59)*
 
 ___
 
@@ -243,7 +243,7 @@ ___
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-*Defined in [types.ts:61](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L61)*
+*Defined in [types.ts:61](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L61)*
 
 ___
 
@@ -251,7 +251,7 @@ ___
 
 • **Filled**: = "FILLED"
 
-*Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L56)*
+*Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L56)*
 
 ___
 
@@ -259,7 +259,7 @@ ___
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-*Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L57)*
+*Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L57)*
 
 ___
 
@@ -267,7 +267,7 @@ ___
 
 • **Invalid**: = "INVALID"
 
-*Defined in [types.ts:54](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L54)*
+*Defined in [types.ts:54](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L54)*
 
 ___
 
@@ -275,7 +275,7 @@ ___
 
 • **Unfunded**: = "UNFUNDED"
 
-*Defined in [types.ts:60](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L60)*
+*Defined in [types.ts:60](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L60)*
 
 <hr />
 
@@ -306,7 +306,7 @@ ___
 
 • **InternalError**: = "InternalError"
 
-*Defined in [types.ts:123](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L123)*
+*Defined in [types.ts:123](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L123)*
 
 ___
 
@@ -314,7 +314,7 @@ ___
 
 • **MaxOrderSizeExceeded**: = "MaxOrderSizeExceeded"
 
-*Defined in [types.ts:124](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L124)*
+*Defined in [types.ts:124](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L124)*
 
 ___
 
@@ -322,7 +322,7 @@ ___
 
 • **NetworkRequestFailed**: = "NetworkRequestFailed"
 
-*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L127)*
+*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L127)*
 
 ___
 
@@ -330,7 +330,7 @@ ___
 
 • **OrderAlreadyStored**: = "OrderAlreadyStored"
 
-*Defined in [types.ts:125](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L125)*
+*Defined in [types.ts:125](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L125)*
 
 ___
 
@@ -338,7 +338,7 @@ ___
 
 • **OrderCancelled**: = "OrderCancelled"
 
-*Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L132)*
+*Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L132)*
 
 ___
 
@@ -346,7 +346,7 @@ ___
 
 • **OrderExpired**: = "OrderExpired"
 
-*Defined in [types.ts:130](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L130)*
+*Defined in [types.ts:130](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L130)*
 
 ___
 
@@ -354,7 +354,7 @@ ___
 
 • **OrderForIncorrectNetwork**: = "OrderForIncorrectNetwork"
 
-*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L126)*
+*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L126)*
 
 ___
 
@@ -362,7 +362,7 @@ ___
 
 • **OrderFullyFilled**: = "OrderFullyFilled"
 
-*Defined in [types.ts:131](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L131)*
+*Defined in [types.ts:131](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L131)*
 
 ___
 
@@ -370,7 +370,7 @@ ___
 
 • **OrderHasInvalidMakerAssetAmount**: = "OrderHasInvalidMakerAssetAmount"
 
-*Defined in [types.ts:128](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L128)*
+*Defined in [types.ts:128](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L128)*
 
 ___
 
@@ -378,7 +378,7 @@ ___
 
 • **OrderHasInvalidMakerAssetData**: = "OrderHasInvalidMakerAssetData"
 
-*Defined in [types.ts:134](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L134)*
+*Defined in [types.ts:134](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L134)*
 
 ___
 
@@ -386,7 +386,7 @@ ___
 
 • **OrderHasInvalidSignature**: = "OrderHasInvalidSignature"
 
-*Defined in [types.ts:136](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L136)*
+*Defined in [types.ts:136](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L136)*
 
 ___
 
@@ -394,7 +394,7 @@ ___
 
 • **OrderHasInvalidTakerAssetAmount**: = "OrderHasInvalidTakerAssetAmount"
 
-*Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L129)*
+*Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L129)*
 
 ___
 
@@ -402,7 +402,7 @@ ___
 
 • **OrderHasInvalidTakerAssetData**: = "OrderHasInvalidTakerAssetData"
 
-*Defined in [types.ts:135](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L135)*
+*Defined in [types.ts:135](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L135)*
 
 ___
 
@@ -410,7 +410,7 @@ ___
 
 • **OrderUnfunded**: = "OrderUnfunded"
 
-*Defined in [types.ts:133](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L133)*
+*Defined in [types.ts:133](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L133)*
 
 <hr />
 
@@ -430,7 +430,7 @@ ___
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L118)*
+*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L118)*
 
 ___
 
@@ -438,7 +438,7 @@ ___
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L119)*
+*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L119)*
 
 ___
 
@@ -446,7 +446,7 @@ ___
 
 • **ZeroexValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [types.ts:117](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L117)*
+*Defined in [types.ts:117](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L117)*
 
 <hr />
 
@@ -471,7 +471,7 @@ ___
 
 • **fillableTakerAssetAmount**: *`BigNumber`*
 
-*Defined in [types.ts:100](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L100)*
+*Defined in [types.ts:100](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L100)*
 
 ___
 
@@ -479,7 +479,7 @@ ___
 
 • **isNew**: *boolean*
 
-*Defined in [types.ts:101](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L101)*
+*Defined in [types.ts:101](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L101)*
 
 ___
 
@@ -487,7 +487,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L98)*
+*Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L98)*
 
 ___
 
@@ -495,7 +495,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L99)*
+*Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L99)*
 
 <hr />
 
@@ -527,7 +527,7 @@ Source: https://github.com/theturtle32/WebSocket-Node/blob/master/docs/WebSocket
 
 • **assembleFragments**? : *undefined | false | true*
 
-*Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L14)*
+*Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L14)*
 
 ___
 
@@ -535,7 +535,7 @@ ___
 
 • **closeTimeout**? : *undefined | number*
 
-*Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L15)*
+*Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L15)*
 
 ___
 
@@ -543,7 +543,7 @@ ___
 
 • **fragmentOutgoingMessages**? : *undefined | false | true*
 
-*Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L12)*
+*Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L12)*
 
 ___
 
@@ -551,7 +551,7 @@ ___
 
 • **fragmentationThreshold**? : *undefined | number*
 
-*Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L13)*
+*Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L13)*
 
 ___
 
@@ -559,7 +559,7 @@ ___
 
 • **maxReceivedFrameSize**? : *undefined | number*
 
-*Defined in [types.ts:10](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L10)*
+*Defined in [types.ts:10](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L10)*
 
 ___
 
@@ -567,7 +567,7 @@ ___
 
 • **maxReceivedMessageSize**? : *undefined | number*
 
-*Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L11)*
+*Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L11)*
 
 ___
 
@@ -575,7 +575,7 @@ ___
 
 • **tlsOptions**? : *any*
 
-*Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L16)*
+*Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L16)*
 
 ___
 
@@ -583,7 +583,7 @@ ___
 
 • **webSocketVersion**? : *undefined | number*
 
-*Defined in [types.ts:9](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L9)*
+*Defined in [types.ts:9](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L9)*
 
 <hr />
 
@@ -606,7 +606,7 @@ ___
 
 • **ordersInfos**: *[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]*
 
-*Defined in [types.ts:170](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L170)*
+*Defined in [types.ts:170](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L170)*
 
 ___
 
@@ -614,7 +614,7 @@ ___
 
 • **snapshotID**: *string*
 
-*Defined in [types.ts:169](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L169)*
+*Defined in [types.ts:169](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L169)*
 
 <hr />
 
@@ -643,7 +643,7 @@ ___
 
 • **EthereumNetworkID**: *number*
 
-*Defined in [types.ts:188](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L188)*
+*Defined in [types.ts:188](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L188)*
 
 ___
 
@@ -651,7 +651,7 @@ ___
 
 • **LatestBlock**: *[LatestBlock](#interface-latestblock)*
 
-*Defined in [types.ts:189](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L189)*
+*Defined in [types.ts:189](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L189)*
 
 ___
 
@@ -659,7 +659,7 @@ ___
 
 • **NumOrders**: *number*
 
-*Defined in [types.ts:191](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L191)*
+*Defined in [types.ts:191](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L191)*
 
 ___
 
@@ -667,7 +667,7 @@ ___
 
 • **NumPeers**: *number*
 
-*Defined in [types.ts:190](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L190)*
+*Defined in [types.ts:190](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L190)*
 
 ___
 
@@ -675,7 +675,7 @@ ___
 
 • **PeerID**: *string*
 
-*Defined in [types.ts:187](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L187)*
+*Defined in [types.ts:187](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L187)*
 
 ___
 
@@ -683,7 +683,7 @@ ___
 
 • **PubSubTopic**: *string*
 
-*Defined in [types.ts:185](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L185)*
+*Defined in [types.ts:185](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L185)*
 
 ___
 
@@ -691,7 +691,7 @@ ___
 
 • **Rendezvous**: *string*
 
-*Defined in [types.ts:186](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L186)*
+*Defined in [types.ts:186](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L186)*
 
 ___
 
@@ -699,7 +699,7 @@ ___
 
 • **Version**: *string*
 
-*Defined in [types.ts:184](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L184)*
+*Defined in [types.ts:184](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L184)*
 
 <hr />
 
@@ -722,7 +722,7 @@ ___
 
 • **result**: *string*
 
-*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L71)*
+*Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L71)*
 
 ___
 
@@ -730,7 +730,7 @@ ___
 
 • **subscription**: *string*
 
-*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L70)*
+*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L70)*
 
 <hr />
 
@@ -753,7 +753,7 @@ ___
 
 • **hash**: *string*
 
-*Defined in [types.ts:180](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L180)*
+*Defined in [types.ts:180](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L180)*
 
 ___
 
@@ -761,7 +761,7 @@ ___
 
 • **number**: *number*
 
-*Defined in [types.ts:179](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L179)*
+*Defined in [types.ts:179](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L179)*
 
 <hr />
 
@@ -787,7 +787,7 @@ ___
 
 • **fillableTakerAssetAmount**: *`BigNumber`*
 
-*Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L86)*
+*Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L86)*
 
 ___
 
@@ -795,7 +795,7 @@ ___
 
 • **kind**: *[OrderEventKind](#enumeration-ordereventkind)*
 
-*Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L85)*
+*Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L85)*
 
 ___
 
@@ -803,7 +803,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L83)*
+*Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L83)*
 
 ___
 
@@ -811,7 +811,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L84)*
+*Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L84)*
 
 ___
 
@@ -819,7 +819,7 @@ ___
 
 • **txHashes**: *string[]*
 
-*Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L87)*
+*Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L87)*
 
 <hr />
 
@@ -842,7 +842,7 @@ ___
 
 • **result**: *[RawOrderEvent](#interface-raworderevent)[]*
 
-*Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L66)*
+*Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L66)*
 
 ___
 
@@ -850,7 +850,7 @@ ___
 
 • **subscription**: *string*
 
-*Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L65)*
+*Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L65)*
 
 <hr />
 
@@ -874,7 +874,7 @@ ___
 
 • **fillableTakerAssetAmount**: *`BigNumber`*
 
-*Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L113)*
+*Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L113)*
 
 ___
 
@@ -882,7 +882,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L111)*
+*Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L111)*
 
 ___
 
@@ -890,7 +890,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L112)*
+*Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L112)*
 
 <hr />
 
@@ -915,7 +915,7 @@ ___
 
 • **fillableTakerAssetAmount**: *string*
 
-*Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L93)*
+*Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L93)*
 
 ___
 
@@ -923,7 +923,7 @@ ___
 
 • **isNew**: *boolean*
 
-*Defined in [types.ts:94](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L94)*
+*Defined in [types.ts:94](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L94)*
 
 ___
 
@@ -931,7 +931,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:91](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L91)*
+*Defined in [types.ts:91](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L91)*
 
 ___
 
@@ -939,7 +939,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
 
-*Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L92)*
+*Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L92)*
 
 <hr />
 
@@ -965,7 +965,7 @@ ___
 
 • **fillableTakerAssetAmount**: *string*
 
-*Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L78)*
+*Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L78)*
 
 ___
 
@@ -973,7 +973,7 @@ ___
 
 • **kind**: *[OrderEventKind](#enumeration-ordereventkind)*
 
-*Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L77)*
+*Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L77)*
 
 ___
 
@@ -981,7 +981,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L75)*
+*Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L75)*
 
 ___
 
@@ -989,7 +989,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
 
-*Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L76)*
+*Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L76)*
 
 ___
 
@@ -997,7 +997,7 @@ ___
 
 • **txHashes**: *string[]*
 
-*Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L79)*
+*Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L79)*
 
 <hr />
 
@@ -1021,7 +1021,7 @@ ___
 
 • **fillableTakerAssetAmount**: *string*
 
-*Defined in [types.ts:107](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L107)*
+*Defined in [types.ts:107](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L107)*
 
 ___
 
@@ -1029,7 +1029,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L105)*
+*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L105)*
 
 ___
 
@@ -1037,7 +1037,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
 
-*Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L106)*
+*Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L106)*
 
 <hr />
 
@@ -1062,7 +1062,7 @@ ___
 
 • **kind**: *[RejectedKind](#enumeration-rejectedkind)*
 
-*Defined in [types.ts:147](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L147)*
+*Defined in [types.ts:147](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L147)*
 
 ___
 
@@ -1070,7 +1070,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:145](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L145)*
+*Defined in [types.ts:145](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L145)*
 
 ___
 
@@ -1078,7 +1078,7 @@ ___
 
 • **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
 
-*Defined in [types.ts:146](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L146)*
+*Defined in [types.ts:146](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L146)*
 
 ___
 
@@ -1086,7 +1086,7 @@ ___
 
 • **status**: *[RejectedStatus](#interface-rejectedstatus)*
 
-*Defined in [types.ts:148](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L148)*
+*Defined in [types.ts:148](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L148)*
 
 <hr />
 
@@ -1109,7 +1109,7 @@ ___
 
 • **accepted**: *[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]*
 
-*Defined in [types.ts:159](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L159)*
+*Defined in [types.ts:159](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L159)*
 
 ___
 
@@ -1117,7 +1117,7 @@ ___
 
 • **rejected**: *[RawRejectedOrderInfo](#interface-rawrejectedorderinfo)[]*
 
-*Defined in [types.ts:160](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L160)*
+*Defined in [types.ts:160](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L160)*
 
 <hr />
 
@@ -1142,7 +1142,7 @@ ___
 
 • **kind**: *[RejectedKind](#enumeration-rejectedkind)*
 
-*Defined in [types.ts:154](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L154)*
+*Defined in [types.ts:154](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L154)*
 
 ___
 
@@ -1150,7 +1150,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [types.ts:152](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L152)*
+*Defined in [types.ts:152](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L152)*
 
 ___
 
@@ -1158,7 +1158,7 @@ ___
 
 • **signedOrder**: *`SignedOrder`*
 
-*Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L153)*
+*Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L153)*
 
 ___
 
@@ -1166,7 +1166,7 @@ ___
 
 • **status**: *[RejectedStatus](#interface-rejectedstatus)*
 
-*Defined in [types.ts:155](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L155)*
+*Defined in [types.ts:155](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L155)*
 
 <hr />
 
@@ -1189,7 +1189,7 @@ ___
 
 • **code**: *[RejectedCode](#enumeration-rejectedcode)*
 
-*Defined in [types.ts:140](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L140)*
+*Defined in [types.ts:140](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L140)*
 
 ___
 
@@ -1197,7 +1197,7 @@ ___
 
 • **message**: *string*
 
-*Defined in [types.ts:141](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L141)*
+*Defined in [types.ts:141](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L141)*
 
 <hr />
 
@@ -1232,7 +1232,7 @@ ___
 
 • **exchangeAddress**: *string*
 
-*Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L47)*
+*Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L47)*
 
 ___
 
@@ -1240,7 +1240,7 @@ ___
 
 • **expirationTimeSeconds**: *string*
 
-*Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L49)*
+*Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L49)*
 
 ___
 
@@ -1248,7 +1248,7 @@ ___
 
 • **feeRecipientAddress**: *string*
 
-*Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L48)*
+*Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L48)*
 
 ___
 
@@ -1256,7 +1256,7 @@ ___
 
 • **makerAddress**: *string*
 
-*Defined in [types.ts:38](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L38)*
+*Defined in [types.ts:38](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L38)*
 
 ___
 
@@ -1264,7 +1264,7 @@ ___
 
 • **makerAssetAmount**: *string*
 
-*Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L42)*
+*Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L42)*
 
 ___
 
@@ -1272,7 +1272,7 @@ ___
 
 • **makerAssetData**: *string*
 
-*Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L44)*
+*Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L44)*
 
 ___
 
@@ -1280,7 +1280,7 @@ ___
 
 • **makerFee**: *string*
 
-*Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L40)*
+*Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L40)*
 
 ___
 
@@ -1288,7 +1288,7 @@ ___
 
 • **salt**: *string*
 
-*Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L46)*
+*Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L46)*
 
 ___
 
@@ -1296,7 +1296,7 @@ ___
 
 • **senderAddress**: *string*
 
-*Defined in [types.ts:37](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L37)*
+*Defined in [types.ts:37](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L37)*
 
 ___
 
@@ -1304,7 +1304,7 @@ ___
 
 • **signature**: *string*
 
-*Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L50)*
+*Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L50)*
 
 ___
 
@@ -1312,7 +1312,7 @@ ___
 
 • **takerAddress**: *string*
 
-*Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L39)*
+*Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L39)*
 
 ___
 
@@ -1320,7 +1320,7 @@ ___
 
 • **takerAssetAmount**: *string*
 
-*Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L43)*
+*Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L43)*
 
 ___
 
@@ -1328,7 +1328,7 @@ ___
 
 • **takerAssetData**: *string*
 
-*Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L45)*
+*Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L45)*
 
 ___
 
@@ -1336,7 +1336,7 @@ ___
 
 • **takerFee**: *string*
 
-*Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L41)*
+*Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L41)*
 
 <hr />
 
@@ -1359,7 +1359,7 @@ ___
 
 • **accepted**: *[AcceptedOrderInfo](#interface-acceptedorderinfo)[]*
 
-*Defined in [types.ts:164](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L164)*
+*Defined in [types.ts:164](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L164)*
 
 ___
 
@@ -1367,7 +1367,7 @@ ___
 
 • **rejected**: *[RejectedOrderInfo](#interface-rejectedorderinfo)[]*
 
-*Defined in [types.ts:165](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L165)*
+*Defined in [types.ts:165](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L165)*
 
 <hr />
 
@@ -1390,7 +1390,7 @@ ___
 
 • **type**: *string*
 
-*Defined in [types.ts:174](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L174)*
+*Defined in [types.ts:174](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L174)*
 
 ___
 
@@ -1398,7 +1398,7 @@ ___
 
 • **utf8Data**: *string*
 
-*Defined in [types.ts:175](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L175)*
+*Defined in [types.ts:175](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L175)*
 
 <hr />
 
@@ -1432,7 +1432,7 @@ reconnectAfter: time in milliseconds after which to attempt to reconnect to WS s
 
 • **clientConfig**? : *[ClientConfig](#interface-clientconfig)*
 
-*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L32)*
+*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L32)*
 
 ___
 
@@ -1440,7 +1440,7 @@ ___
 
 • **headers**? : *undefined | `__type`*
 
-*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L30)*
+*Defined in [types.ts:30](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L30)*
 
 ___
 
@@ -1448,7 +1448,7 @@ ___
 
 • **protocol**? : *undefined | string*
 
-*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L31)*
+*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L31)*
 
 ___
 
@@ -1456,7 +1456,7 @@ ___
 
 • **reconnectAfter**? : *undefined | number*
 
-*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L33)*
+*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L33)*
 
 ___
 
@@ -1464,7 +1464,7 @@ ___
 
 • **timeout**? : *undefined | number*
 
-*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/22c2a55/rpc/clients/typescript/src/types.ts#L29)*
+*Defined in [types.ts:29](https://github.com/0xProject/0x-mesh/blob/05b67ab/rpc/clients/typescript/src/types.ts#L29)*
 
 <hr />
 
