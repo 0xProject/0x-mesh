@@ -577,7 +577,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, has
 	for _, orderWithTxHashes := range hashToOrderWithTxHashes {
 		order := orderWithTxHashes.Order
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
-			if err := w.permanentlyDeleteOrder(order); err != nil {
+			if err := w.permanentlyDeleteOrder(ordersColTxn, order); err != nil {
 				return err
 			}
 			continue
@@ -749,8 +749,8 @@ func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFil
 	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) permanentlyDeleteOrder(order *meshdb.Order) error {
-	err := w.meshDB.Orders.Delete(order.Hash.Bytes())
+func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *meshdb.Order) error {
+	err := ordersColTxn.Delete(order.Hash.Bytes())
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
