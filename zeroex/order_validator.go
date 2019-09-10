@@ -25,12 +25,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
-var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
-
-// GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
-var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
-
 // The context timeout length to use for requests to getOrderRelevantStateTimeout
 const getOrderRelevantStateTimeout = 15 * time.Second
 
@@ -40,16 +34,6 @@ const getCoordinatorEndpointTimeout = 10 * time.Second
 // Specifies the max number of eth_call requests we want to make concurrently.
 // Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
-
-// OrderInfo represents the order information emitted from Mesh
-type OrderInfo struct {
-	OrderHash                common.Hash
-	SignedOrder              *SignedOrder
-	FillableTakerAssetAmount *big.Int
-	OrderStatus              OrderStatus
-	// The hash of the Ethereum transaction that caused the order status to change
-	TxHash common.Hash
-}
 
 // RejectedOrderInfo encapsulates all the needed information to understand _why_ a 0x order
 // was rejected (i.e. did not pass) order validation. Since there are many potential reasons, some
@@ -113,6 +97,10 @@ type RejectedOrderStatus struct {
 	Message string `json:"message"`
 }
 
+// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
+// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
+const MaxOrderSizeInBytes = 8192
+
 // RejectedOrderStatus values
 var (
 	ROEthRPCRequestFailed = RejectedOrderStatus{
@@ -171,7 +159,30 @@ var (
 		Code:    "OrderMaxExpirationExceeded",
 		Message: "order expiration too far in the future",
 	}
+	ROInternalError = RejectedOrderStatus{
+		Code:    "InternalError",
+		Message: "an unexpected internal error has occurred",
+	}
+	ROMaxOrderSizeExceeded = RejectedOrderStatus{
+		Code:    "MaxOrderSizeExceeded",
+		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", MaxOrderSizeInBytes),
+	}
+	ROOrderAlreadyStoredAndUnfillable = RejectedOrderStatus{
+		Code:    "OrderAlreadyStoredAndUnfillable",
+		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
+	}
+	ROIncorrectNetwork = RejectedOrderStatus{
+		Code:    "OrderForIncorrectNetwork",
+		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	}
+	ROSenderAddressNotAllowed = RejectedOrderStatus{
+		Code:    "SenderAddressNotAllowed",
+		Message: "orders with a senderAddress are not currently supported",
+	}
 )
+
+// ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema
+const ROInvalidSchemaCode = "InvalidSchema"
 
 // ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
 func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (OrderEventKind, bool) {

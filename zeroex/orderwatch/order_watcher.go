@@ -220,18 +220,12 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			}).Trace("Order expired that was no longer in DB")
 			continue
 		}
-		orderInfo := &zeroex.OrderInfo{
-			OrderHash:                common.HexToHash(expiredOrder.ID),
-			SignedOrder:              order.SignedOrder,
-			FillableTakerAssetAmount: big.NewInt(0),
-			OrderStatus:              zeroex.OSExpired,
-		}
 		w.unwatchOrder(w.meshDB.Orders, order, order.FillableTakerAssetAmount)
 
 		orderEvent := &zeroex.OrderEvent{
-			OrderHash:                orderInfo.OrderHash,
-			SignedOrder:              orderInfo.SignedOrder,
-			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			OrderHash:                common.HexToHash(expiredOrder.ID),
+			SignedOrder:              order.SignedOrder,
+			FillableTakerAssetAmount: big.NewInt(0),
 			Kind:                     zeroex.EKOrderExpired,
 		}
 		orderEvents = append(orderEvents, orderEvent)
