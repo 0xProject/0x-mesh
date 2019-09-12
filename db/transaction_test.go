@@ -13,7 +13,7 @@ import (
 
 // transactionExclusionTestTimeout is used in transaction exclusion tests to
 // timeout while waiting for one transaction to open.
-const transactionExclusionTestTimeout = 100 * time.Millisecond
+const transactionExclusionTestTimeout = 500 * time.Millisecond
 
 func TestTransaction(t *testing.T) {
 	t.Parallel()
