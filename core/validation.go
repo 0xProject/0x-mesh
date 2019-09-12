@@ -2,8 +2,6 @@ package core
 
 import (
 	"fmt"
-	"math/big"
-	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -14,10 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
 )
-
-// maxOrderExpirationDuration is the maximum duration between the current time and the expiration
-// set on an order that will be accepted by Mesh.
-const maxOrderExpirationDuration = 9 * 30 * 24 * time.Hour // 9 months
 
 var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", zeroex.MaxOrderSizeInBytes)
 
@@ -140,16 +134,6 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 				SignedOrder: order,
 				Kind:        zeroex.MeshValidation,
 				Status:      zeroex.ROIncorrectNetwork,
-			})
-			continue
-		}
-		maxExpiration := big.NewInt(time.Now().Add(maxOrderExpirationDuration).Unix())
-		if order.ExpirationTimeSeconds.Cmp(maxExpiration) > 0 {
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        zeroex.MeshValidation,
-				Status:      zeroex.ROMaxExpirationExceeded,
 			})
 			continue
 		}
