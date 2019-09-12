@@ -2,9 +2,9 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v5.0.0-beta
+## v4.1.0-beta
 
-### Breaking changes 🛠 
+### Features ✅ 
 
 - Removed the max expiration limit for orders. The only remaining expiration constraint is that the unix timestamp does not overflow int64 (i.e., is not larger than 9223372036854775807). ([#400](https://github.com/0xProject/0x-mesh/pull/400))
 
