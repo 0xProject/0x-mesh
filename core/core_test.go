@@ -12,7 +12,7 @@ import (
 )
 
 func TestEthereumNetworkDetection(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), 0)
 	require.NoError(t, err)
 	defer meshDB.Close()
 

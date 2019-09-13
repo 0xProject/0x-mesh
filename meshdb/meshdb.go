@@ -2,6 +2,7 @@ package meshdb
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -11,6 +12,22 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 )
+
+// orderFreeSpaceRatio is the ratio of (orders currently stored / max orders) to
+// target when deleting orders from the database. In other words, if we run out
+// of space for storing orders, we will delete orders until the ratio of (orders
+// currently stored / max orders) equals this number (or slightly less due to
+// rounding).
+const orderFreeSpaceRatio = 0.9
+
+// MeshDB instantiates the DB connection and creates all the collections used by the application
+type MeshDB struct {
+	database    *db.DB
+	metadata    *MetadataCollection
+	MiniHeaders *MiniHeadersCollection
+	Orders      *OrdersCollection
+	maxOrders   int
+}
 
 // Order is the database representation a 0x order along with some relevant metadata
 type Order struct {
@@ -44,14 +61,6 @@ func (m Metadata) ID() []byte {
 	return []byte{0}
 }
 
-// MeshDB instantiates the DB connection and creates all the collections used by the application
-type MeshDB struct {
-	database    *db.DB
-	metadata    *MetadataCollection
-	MiniHeaders *MiniHeadersCollection
-	Orders      *OrdersCollection
-}
-
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
 type MiniHeadersCollection struct {
 	*db.Collection
@@ -74,7 +83,7 @@ type MetadataCollection struct {
 }
 
 // New instantiates a new MeshDB instance
-func New(path string) (*MeshDB, error) {
+func New(path string, maxOrders int) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err
@@ -280,23 +289,46 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	return orders, nil
 }
 
-// DeleteOldestOrders removes the last x orders with the oldest `createdAt` value
-func (m *MeshDB) DeleteOldestOrders(limit int) error {
-	orders := []*Order{}
-	if err := m.Orders.NewQuery(m.Orders.CreatedAtIndex.All()).Reverse().Max(limit).Run(&orders); err != nil {
-		return err
-	}
-	// Delete the orders in a single transaction as a performance optimization.
+func (m *MeshDB) InsertOrder(order *Order) error {
 	txn := m.Orders.OpenTransaction()
 	defer func() {
 		_ = txn.Discard()
 	}()
+	currentCount, err := m.Orders.Count()
+	if err != nil {
+		return err
+	}
+	if currentCount+1 >= m.maxOrders {
+		// If the current number of orders stored plus the number of incoming orders
+		// is greater than or equal to m.maxOrders, we need to delete orders to make
+		// room. As a performance optimization, we don't just make enough space for
+		// the incoming orders. We also delete orders such that the ratio of (orders
+		// currently stored / max orders) will equal orderFreeSpaceRatio *after*
+		// insertion. This leads to less frequent deletions.
+		targetOrdersToRemove := int(math.Ceil((1 - orderFreeSpaceRatio) * float64(currentCount)))
+		if err := m.deleteOldestOrders(txn, targetOrdersToRemove+1); err != nil {
+			return err
+		}
+	}
+	if err := txn.Insert(order); err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+// deleteOldestOrders removes the oldest count orders based on the CreatedAt
+// timestamp.
+func (m *MeshDB) deleteOldestOrders(txn *db.Transaction, count int) error {
+	orders := []*Order{}
+	if err := m.Orders.NewQuery(m.Orders.CreatedAtIndex.All()).Reverse().Max(count).Run(&orders); err != nil {
+		return err
+	}
 	for _, order := range orders {
 		if err := txn.Delete(order.ID()); err != nil {
 			return err
 		}
 	}
-	return txn.Commit()
+	return nil
 }
 
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).

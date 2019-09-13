@@ -482,7 +482,7 @@ func (w *Watcher) Add(orderInfo *zeroex.AcceptedOrderInfo) error {
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
-	err := w.meshDB.Orders.Insert(order)
+	err := w.meshDB.InsertOrder(order)
 	if err != nil {
 		if _, ok := err.(db.AlreadyExistsError); ok {
 			// If we're already watching the order, that's fine in this case. Don't

@@ -23,7 +23,7 @@ var (
 )
 
 func TestDBStackPushPeekPop(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), 0)
 	require.NoError(t, err)
 	stack := New(meshDB, 10)
 	err = stack.Push(miniHeaderOne)

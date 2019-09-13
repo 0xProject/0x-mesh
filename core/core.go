@@ -145,7 +145,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath)
+	meshDB, err := meshdb.New(databasePath, 10000)
 	if err != nil {
 		return nil, err
 	}

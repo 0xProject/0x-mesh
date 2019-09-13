@@ -15,8 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testingMaxOrders = 1000
+
 func TestOrderCRUDOperations(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), testingMaxOrders)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
