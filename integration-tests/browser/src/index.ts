@@ -1,4 +1,4 @@
-import { Mesh, OrderEvent, BigNumber } from '@0x/mesh-browser';
+import { Mesh, OrderEvent, BigNumber, Verbosity } from '@0x/mesh-browser';
 import { Web3ProviderEngine, RPCSubprovider } from '@0x/subproviders';
 import { signatureUtils, Order, orderHashUtils } from '@0x/order-utils';
 
@@ -41,7 +41,7 @@ provider.start();
     // Configure Mesh to use our local Ganache instance and local bootstrap
     // node.
     const mesh = new Mesh({
-        verbosity: 5,
+        verbosity: Verbosity.Debug,
         ethereumRPCURL,
         ethereumNetworkID: 50,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
