@@ -32,7 +32,7 @@ declare global {
 export interface Config {
     // Verbosity is the logging verbosity. Defaults to Verbosity.Error meaning
     // only errors will be logged.
-    verbosity: Verbosity;
+    verbosity?: Verbosity;
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
@@ -68,7 +68,7 @@ export interface Config {
     ethereumRPCMaxContentLength?: number;
 }
 
-enum Verbosity {
+export enum Verbosity {
     Panic = 0,
     Fatal = 1,
     Error = 2,
@@ -95,7 +95,7 @@ interface MeshWrapper {
 
 // The type for configuration exposed by MeshWrapper.
 interface WrapperConfig {
-    verbosity: number;
+    verbosity?: number;
     ethereumRPCURL: string;
     ethereumNetworkID: number;
     useBootstrapList?: boolean;
