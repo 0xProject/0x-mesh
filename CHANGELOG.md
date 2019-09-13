@@ -8,6 +8,10 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Removed the max expiration limit for orders. The only remaining expiration constraint is that the unix timestamp does not overflow int64 (i.e., is not larger than 9223372036854775807). ([#400](https://github.com/0xProject/0x-mesh/pull/400))
 
+### Bug fixes 🐞 
+
+- Made `verbosity` field optional in the TypeScript `Config` type. ([#410](https://github.com/0xProject/0x-mesh/pull/410))
+
 ## v4.0.1-beta
 
 ### Bug fixes 🐞 
