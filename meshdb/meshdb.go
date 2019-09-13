@@ -10,6 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -109,6 +110,7 @@ func New(path string, maxOrders int) (*MeshDB, error) {
 		metadata:    metadata,
 		MiniHeaders: miniHeaders,
 		Orders:      orders,
+		maxOrders:   maxOrders,
 	}, nil
 }
 
@@ -312,6 +314,10 @@ func (m *MeshDB) InsertOrder(order *Order) error {
 		// currently stored / max orders) will equal orderFreeSpaceRatio *after*
 		// insertion. This leads to less frequent deletions.
 		targetOrdersToRemove := int(math.Ceil((1 - orderFreeSpaceRatio) * float64(currentCount)))
+		log.WithFields(logrus.Fields{
+			"maxOrders":            m.maxOrders,
+			"targetOrdersToRemove": targetOrdersToRemove,
+		}).Debug("Removing orders to make space in database")
 		if err := m.deleteOldestOrders(txn, targetOrdersToRemove+1); err != nil {
 			return err
 		}
@@ -330,6 +336,7 @@ func (m *MeshDB) deleteOldestOrders(txn *db.Transaction, count int) error {
 		return err
 	}
 	for _, order := range orders {
+		log.WithField("orderHash", order.Hash.Hex()).Debug("Removing old order")
 		if err := txn.Delete(order.ID()); err != nil {
 			return err
 		}
