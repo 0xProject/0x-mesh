@@ -289,6 +289,12 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	return orders, nil
 }
 
+// InsertOrder atomically inserts the given order and deletes existing orders in
+// order to make space if needed. It *must* be called instead of calling
+// Orders.Insert directly.
+//
+// TODO(albrow): return hash of any orders that were deleted so we can fire the
+// appropriate events.
 func (m *MeshDB) InsertOrder(order *Order) error {
 	txn := m.Orders.OpenTransaction()
 	defer func() {
