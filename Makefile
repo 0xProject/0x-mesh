@@ -89,3 +89,21 @@ cut-release:
 
 .PHONY: all
 all: mesh mesh-keygen mesh-bootstrap db-integrity-check
+
+
+# Docker images
+
+
+.PHONY: docker-mesh
+docker-mesh:
+	docker build . -t 0xorg/mesh -f ./dockerfiles/mesh/Dockerfile
+
+
+.PHONY: docker-mesh-bootstrap
+docker-mesh:
+	docker build . -t 0xorg/mesh-bootstrap -f ./dockerfiles/mesh-bootstrap/Dockerfile
+
+
+.PHONY: docker-mesh-fluent-bit
+docker-mesh-fluent-bit:
+	docker build ./dockerfiles/mesh-fluent-bit -t 0xorg/mesh-fluent-bit -f ./dockerfiles/mesh-fluent-bit/Dockerfile
