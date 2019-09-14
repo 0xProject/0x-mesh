@@ -417,7 +417,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.Equal(t, true, orders[0].IsRemoved)
 }
 
-func TestOrderWatcherCanceledUpTo(t *testing.T) {
+func TestOrderWatcherCancelUpTo(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
