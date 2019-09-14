@@ -18,6 +18,11 @@ import (
 // SetupBalancesAndAllowances sets up the proper balance/allowance for the maker/taker of
 // ZRX/WETH respectively so that the created orders are fillable.
 func SetupBalancesAndAllowances(t *testing.T, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) {
+	// All 1 billion ZRX start in this address
+	zrxCoinbase := constants.GanacheAccount0
+	if makerAddress == zrxCoinbase {
+		t.Errorf("makerAddress cannot be set to the ZRX coinbase address (e.g., the address with the 1 billion ZRX at Genesis)")
+	}
 
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
 
@@ -41,6 +46,17 @@ func SetupBalancesAndAllowances(t *testing.T, makerAddress, takerAddress common.
 
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	require.NoError(t, err)
+
+	// Transfer ZRX to makerAddress
+	opts = &bind.TransactOpts{
+		From:   zrxCoinbase,
+		Signer: GetTestSignerFn(zrxCoinbase),
+	}
+	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
+	require.NoError(t, err)
+	receipt, err = bind.WaitMined(context.Background(), ethClient, txn)
+	require.NoError(t, err)
+	require.Equal(t, receipt.Status, uint64(1))
 
 	// SET ZRX allowance
 	opts = &bind.TransactOpts{

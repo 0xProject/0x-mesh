@@ -26,8 +26,8 @@ import (
 
 const areNewOrders = false
 
-var makerAddress = constants.GanacheAccount0
-var takerAddress = constants.GanacheAccount1
+var makerAddress = constants.GanacheAccount1
+var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
