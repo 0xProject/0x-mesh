@@ -29,8 +29,8 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, makerAddress, takerAddress co
 		Salt:                  big.NewInt(1548619145450),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(1000),
-		TakerAssetAmount:      big.NewInt(2000),
+		MakerAssetAmount:      zrxAmount,
+		TakerAssetAmount:      wethAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
 		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	}
