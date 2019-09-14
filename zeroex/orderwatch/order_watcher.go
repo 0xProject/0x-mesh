@@ -271,10 +271,16 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrders(transferEvent.From, log.Address, nil)
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
 				if err != nil {
 					return err
 				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
 
 			case "ERC20ApprovalEvent":
 				var approvalEvent ERC20ApprovalEvent
@@ -303,10 +309,16 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					}
 					return err
 				}
-				orders, err = w.findOrders(transferEvent.From, log.Address, transferEvent.TokenId)
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, transferEvent.TokenId)
 				if err != nil {
 					return err
 				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, transferEvent.TokenId)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
 
 			case "ERC721ApprovalEvent":
 				var approvalEvent ERC721ApprovalEvent
