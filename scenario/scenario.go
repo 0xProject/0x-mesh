@@ -50,7 +50,7 @@ func SetupBalancesAndAllowances(t *testing.T, makerAddress, takerAddress common.
 	// Transfer ZRX to makerAddress
 	opts = &bind.TransactOpts{
 		From:   zrxCoinbase,
-		Signer: GetTestSignerFn(zrxCoinbase),
+		Signer: getTestSignerFn(zrxCoinbase),
 	}
 	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)

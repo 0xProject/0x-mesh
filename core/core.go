@@ -23,6 +23,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
 	"github.com/ethereum/go-ethereum/common"
@@ -111,7 +112,7 @@ type App struct {
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
-	orderValidator            *zeroex.OrderValidator
+	orderValidator            *ordervalidate.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
@@ -138,8 +139,8 @@ func New(config Config) (*App, error) {
 	}
 	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < zeroex.MaxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", zeroex.MaxOrderSizeInBytes)
+	if config.EthereumRPCMaxContentLength < ordervalidate.MaxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", ordervalidate.MaxOrderSizeInBytes)
 	}
 	config = unquoteConfig(config)
 
@@ -179,7 +180,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidate.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -555,10 +556,10 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
-	allValidationResults := &zeroex.ValidationResults{
-		Accepted: []*zeroex.AcceptedOrderInfo{},
-		Rejected: []*zeroex.RejectedOrderInfo{},
+func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidate.ValidationResults, error) {
+	allValidationResults := &ordervalidate.ValidationResults{
+		Accepted: []*ordervalidate.AcceptedOrderInfo{},
+		Rejected: []*ordervalidate.RejectedOrderInfo{},
 	}
 	orderHashesSeen := map[common.Hash]struct{}{}
 	schemaValidOrders := []*zeroex.SignedOrder{}
@@ -571,11 +572,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 				signedOrder = nil
 			}
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
-			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidate.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        zeroex.MeshValidation,
-				Status: zeroex.RejectedOrderStatus{
-					Code:    zeroex.ROInvalidSchemaCode,
+				Kind:        ordervalidate.MeshValidation,
+				Status: ordervalidate.RejectedOrderStatus{
+					Code:    ordervalidate.ROInvalidSchemaCode,
 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
 				},
 			})
@@ -583,17 +584,17 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		}
 		if !result.Valid() {
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
-			status := zeroex.RejectedOrderStatus{
-				Code:    zeroex.ROInvalidSchemaCode,
+			status := ordervalidate.RejectedOrderStatus{
+				Code:    ordervalidate.ROInvalidSchemaCode,
 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
 			}
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
-			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidate.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        zeroex.MeshValidation,
+				Kind:        ordervalidate.MeshValidation,
 				Status:      status,
 			})
 			continue

@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
 	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
@@ -70,7 +71,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (*rpc
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidate.ValidationResults, error) {
 	log.WithField("count", len(signedOrdersRaw)).Debug("received AddOrders request via RPC")
 	validationResults, err := handler.app.AddOrders(signedOrdersRaw)
 	if err != nil {
