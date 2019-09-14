@@ -256,8 +256,8 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvent = orderEvents[0]
 	require.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
 
-	newOrders := []*meshdb.Order{}
-	err = meshDB.Orders.FindAll(&orders)
+	var newOrders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
 	require.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
@@ -299,8 +299,8 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	newOrders := []*meshdb.Order{}
-	err = meshDB.Orders.FindAll(&orders)
+	var newOrders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
 	require.NotEqual(t, dbOrder.LastUpdated, newOrders[0].Hash)
@@ -367,8 +367,8 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvent = orderEvents[0]
 	require.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
 
-	newOrders := []*meshdb.Order{}
-	err = meshDB.Orders.FindAll(&orders)
+	var newOrders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
 	require.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
