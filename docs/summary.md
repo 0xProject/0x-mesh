@@ -20,5 +20,5 @@
 
 ## Contributing
 
-* [Development guide](development.md)
+* [Development and contribution guide](../CONTRIBUTING.md)
 * [CHANGELOG](../CHANGELOG.md)
