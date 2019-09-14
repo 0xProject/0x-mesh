@@ -27,8 +27,6 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
-	"github.com/ethereum/go-ethereum/common"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,7 +111,7 @@ func TestBrowserIntegration(t *testing.T) {
 
 	// standaloneOrder is an order that will be sent to the network by the
 	// standalone node.
-	standaloneOrder := createSignedTestOrder(t)
+	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
@@ -486,38 +484,10 @@ func extractOrderHashFromLog(msg string) (string, error) {
 	return holder.OrderHash, nil
 }
 
-func createSignedTestOrder(t *testing.T) *zeroex.SignedOrder {
-	testOrder := &zeroex.Order{
-		MakerAddress:          makerAddress,
-		TakerAddress:          constants.NullAddress,
-		SenderAddress:         constants.NullAddress,
-		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
-		Salt:                  big.NewInt(1548619145450),
-		MakerFee:              big.NewInt(0),
-		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(1000),
-		TakerAssetAmount:      big.NewInt(2000),
-		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
-	}
-
-	ethClient, err := ethrpc.Dial(ethereumRPCURL)
-	require.NoError(t, err, "could not create Ethereum RPC client")
-
-	signer := ethereum.NewEthRPCSigner(ethClient)
-	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
-	require.NoError(t, err, "could not sign order")
-
-	return signedTestOrder
-}
-
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}

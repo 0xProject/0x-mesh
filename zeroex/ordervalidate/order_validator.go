@@ -614,7 +614,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 // - `AssetData` fields contain properly encoded, and currently supported assetData (ERC20 & ERC721 for now)
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
-// Returns an orderHashToInfo mapping with all invalid orders added to it, and an array of the valid signedOrders
+// Returns the signedOrders that are off-chain valid along with an array of orderInfo for the rejected orders
 func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	offchainValidSignedOrders := []*zeroex.SignedOrder{}

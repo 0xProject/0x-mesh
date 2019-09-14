@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -78,25 +78,16 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			IsValid:     true,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			IsValid:     true,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROUnfunded,
+			IsValid:                     true,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			SignedOrder: signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:     true,
 		},
 		testCase{
@@ -144,15 +135,39 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 		require.NoError(t, err)
 
-		validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
-		isValid := len(validationResults.Accepted) == 1
+		offchainValidOrders, rejectedOrderInfos := orderValidator.BatchOffchainValidation(signedOrders)
+		isValid := len(offchainValidOrders) == 1
 		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
-			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
+			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, rejectedOrderInfos[0].Status)
 		}
 
 		teardownSubTest(t)
 	}
+}
+
+func TestBatchValidateAValidOrder(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
+
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	require.NoError(t, err)
+
+	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
+	assert.Len(t, validationResults.Accepted, 1)
+	require.Len(t, validationResults.Rejected, 0)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
@@ -336,7 +351,6 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
