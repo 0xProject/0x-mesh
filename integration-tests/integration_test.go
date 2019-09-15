@@ -27,6 +27,8 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	"github.com/ethereum/go-ethereum/ethclient"
+	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,9 +68,13 @@ func init() {
 	flag.Parse()
 }
 
+var ethRPCClient *ethRpc.Client
+
 func TestSetup(t *testing.T) {
 	var err error
-	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
+	ethRPCClient, err = ethRpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(ethRPCClient)
 	require.NoError(t, err)
 }
 
@@ -111,7 +117,8 @@ func TestBrowserIntegration(t *testing.T) {
 
 	// standaloneOrder is an order that will be sent to the network by the
 	// standalone node.
-	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
+	ethClient := ethclient.NewClient(ethRPCClient)
+	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 

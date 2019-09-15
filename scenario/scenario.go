@@ -19,7 +19,7 @@ import (
 )
 
 // CreateZRXForWETHSignedTestOrder creates a valid 0x orders where the maker wishes to trade ZRX for WETH
-func CreateZRXForWETHSignedTestOrder(t *testing.T, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
+func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
 	// Create order
 	testOrder := &zeroex.Order{
 		MakerAddress:          makerAddress,
@@ -50,9 +50,6 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, makerAddress, takerAddress co
 	}
 
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -109,7 +106,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, makerAddress, takerAddress co
 }
 
 // CreateWETHForZRXSignedTestOrder creates a valid 0x orders where the maker wishes to trade WETH for ZRX
-func CreateWETHForZRXSignedTestOrder(t *testing.T, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
+func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
 	// Create order
 	testOrder := &zeroex.Order{
 		MakerAddress:          makerAddress,
@@ -140,9 +137,6 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, makerAddress, takerAddress co
 	}
 
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -199,10 +193,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, makerAddress, takerAddress co
 }
 
 // CreateNFTForZRXSignedTestOrder creates a valid 0x orders where the maker wishes to trade WETH for ZRX
-func CreateNFTForZRXSignedTestOrder(t *testing.T, makerAddress, takerAddress common.Address, tokenID *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
+func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, tokenID *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
 	dummyERC721Token, err := wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
 	require.NoError(t, err)
 

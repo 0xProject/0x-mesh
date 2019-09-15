@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +63,9 @@ func TestAddingAddressesToETHWatcher(t *testing.T) {
 }
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
-	blockchainLifecycle, err := NewBlockchainLifecycle(constants.GanacheEndpoint)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	blockchainLifecycle, err := NewBlockchainLifecycle(rpcClient)
 	require.NoError(t, err)
 	blockchainLifecycle.Start(t)
 	defer blockchainLifecycle.Revert(t)

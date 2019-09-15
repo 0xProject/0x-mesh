@@ -14,13 +14,14 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,11 +63,14 @@ type testCase struct {
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
+var rpcClient *ethRpc.Client
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
 func TestSetup(t *testing.T) {
 	var err error
-	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
+	rpcClient, err = ethRpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
 	require.NoError(t, err)
 }
 
@@ -125,8 +129,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	for _, testCase := range testCases {
 		teardownSubTest := setupSubTest(t)
 
-		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-		require.NoError(t, err)
+		ethClient := ethclient.NewClient(rpcClient)
 
 		signedOrders := []*zeroex.SignedOrder{
 			&testCase.SignedOrder,
@@ -150,14 +153,12 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
+	ethClient := ethclient.NewClient(rpcClient)
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 
 	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -185,8 +186,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -214,8 +214,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -239,8 +238,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
@@ -282,8 +280,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize - 10
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
@@ -299,8 +296,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
@@ -336,8 +332,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	signedMultiAssetOrder, err := zeroex.SignTestOrder(&testMultiAssetSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
