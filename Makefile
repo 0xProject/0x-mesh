@@ -39,7 +39,7 @@ test-all: test-go test-wasm-node test-wasm-browser
 
 .PHONY: test-go
 test-go:
-	go test ./... -race -timeout 30s
+	go test ./... -race -timeout 30s -p=1
 
 
 .PHONY: test-integration
