@@ -127,8 +127,8 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		teardownSubTest := setupSubTest(t)
 
+		
 		ethClient := ethclient.NewClient(rpcClient)
 
 		signedOrders := []*zeroex.SignedOrder{
@@ -144,8 +144,6 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		if !isValid {
 			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, rejectedOrderInfos[0].Status)
 		}
-
-		teardownSubTest(t)
 	}
 }
 
@@ -172,9 +170,6 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
 	signedOrder := &testSignedOrder
 	// Add a correctly formatted signature that does not correspond to this order
 	signedOrder.Signature = common.Hex2Bytes("1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603")
@@ -199,9 +194,6 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 }
 
 func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
 	signedOrder := &testSignedOrder
 	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
