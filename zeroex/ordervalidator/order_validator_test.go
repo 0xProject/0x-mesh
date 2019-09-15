@@ -87,10 +87,6 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                     true,
-		},
-		testCase{
 			SignedOrder: signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:     true,
 		},
@@ -127,7 +123,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-
+		
 		
 		ethClient := ethclient.NewClient(rpcClient)
 
