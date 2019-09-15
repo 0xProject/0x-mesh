@@ -138,6 +138,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 
 	for _, testCase := range testCases {
 
+		
 		ethClient := ethclient.NewClient(rpcClient)
 
 		signedOrders := []*zeroex.SignedOrder{
