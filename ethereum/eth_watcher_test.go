@@ -8,6 +8,7 @@ package ethereum
 
 import (
 	"context"
+	"flag"
 	"math/big"
 	"testing"
 	"time"
@@ -30,6 +31,15 @@ var secondAccount = constants.GanacheAccount1
 var secondAccountBalance, _ = math.ParseBig256("100000000000000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
 var randomAccount = common.HexToAddress("0x49fea72f146d41bfc5b9329e4ebbc3c382589f37")
+
+// Since these tests must be run sequentially, we don't want them to run as part of
+// the normal testing process. They will only be run if the "--serial" flag is used.
+var serialTestsEnabled bool
+
+func init() {
+	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	flag.Parse()
+}
 
 var ethAccountToBalance = map[common.Address]*big.Int{
 	firstAccount:              firstAccountBalance,
@@ -63,6 +73,10 @@ func TestAddingAddressesToETHWatcher(t *testing.T) {
 }
 
 func TestUpdateBalancesETHWatcher(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 	blockchainLifecycle, err := NewBlockchainLifecycle(rpcClient)

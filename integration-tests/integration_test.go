@@ -84,7 +84,7 @@ func init() {
 
 func TestBrowserIntegration(t *testing.T) {
 	if !integrationTestsEnabled {
-		t.Skip("Integration tests are disabled. You can enable them with the --integration")
+		t.Skip("Integration tests are disabled. You can enable them with the --integration flag")
 	}
 
 	teardownSubTest := setupSubTest(t)

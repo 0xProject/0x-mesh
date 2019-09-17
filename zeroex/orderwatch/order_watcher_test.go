@@ -4,6 +4,7 @@ package orderwatch
 
 import (
 	"context"
+	"flag"
 	"math/big"
 	"testing"
 	"time"
@@ -21,14 +22,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
-	ethereumRPCRequestTimeout  = 30 * time.Second
-	blockWatcherRetentionLimit = 20
-	blockPollingInterval       = 1000 * time.Millisecond
+	ethereumRPCRequestTimeout   = 30 * time.Second
+	blockWatcherRetentionLimit  = 20
+	blockPollingInterval        = 1000 * time.Millisecond
 	ethereumRPCMaxContentLength = 524288
 )
 
@@ -38,6 +39,16 @@ var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18
 var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 var tokenID = big.NewInt(1)
+
+// Since these tests must be run sequentially, we don't want them to run as part of
+// the normal testing process. They will only be run if the "--serial" flag is used.
+var serialTestsEnabled bool
+
+func init() {
+	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	flag.Parse()
+}
+
 var rpcClient *ethrpc.Client
 var ethClient *ethclient.Client
 var zrx *wrappers.ZRXToken
@@ -76,6 +87,10 @@ func init() {
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -92,17 +107,17 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -117,6 +132,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -133,17 +152,17 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	}
 	txn, err := dummyERC721Token.TransferFrom(opts, makerAddress, constants.GanacheAccount4, tokenID)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -158,6 +177,10 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -175,17 +198,17 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -200,6 +223,10 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -217,17 +244,17 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	}
 	txn, err := zrx.Approve(opts, ganacheAddresses.ERC20Proxy, big.NewInt(0))
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -258,17 +285,17 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -289,7 +316,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	}
 	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
@@ -332,7 +359,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
@@ -366,17 +393,17 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	}
 	txn, err := weth.Withdraw(opts, wethAmount)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -396,7 +423,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	}
 	txn, err = weth.Deposit(opts)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
@@ -432,17 +459,17 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	txn, err := exchange.CancelOrder(opts, orderWithoutExchangeAddress)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -474,17 +501,17 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	targetOrderEpoch := signedOrder.Salt
 	txn, err := exchange.CancelOrdersUpTo(opts, targetOrderEpoch)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
@@ -516,17 +543,17 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, wethAmount, signedOrder.Signature)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
-    case orderEvents = <- orderEventChan:
-        // continue with the test
-    case <-time.After(10 * time.Second):
-        t.Fatal("timed out waiting for order event")
+	case orderEvents = <-orderEventChan:
+		// continue with the test
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for order event")
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
