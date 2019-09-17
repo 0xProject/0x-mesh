@@ -281,6 +281,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 }
 
 func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -351,6 +355,10 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 }
 
 func TestOrderWatcherNoChange(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -392,6 +400,10 @@ func TestOrderWatcherNoChange(t *testing.T) {
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -465,6 +477,10 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 }
 
 func TestOrderWatcherCanceled(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -510,6 +526,10 @@ func TestOrderWatcherCanceled(t *testing.T) {
 }
 
 func TestOrderWatcherCancelUpTo(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -555,6 +575,10 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 }
 
 func TestOrderWatcherERC20Filled(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+	
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
