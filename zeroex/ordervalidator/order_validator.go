@@ -812,8 +812,7 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	signatureType := zeroex.SignatureType(signature[len(signature)-1])
 
 	switch signatureType {
-	case zeroex.IllegalSignature:
-	case zeroex.InvalidSignature:
+	case zeroex.InvalidSignature, zeroex.IllegalSignature:
 		return false
 
 	case zeroex.EIP712Signature:
@@ -834,8 +833,7 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 			return false
 		}
 
-	case zeroex.WalletSignature:
-	case zeroex.PreSignedSignature:
+	case zeroex.PreSignedSignature, zeroex.WalletSignature:
 		return true
 
 	default:
