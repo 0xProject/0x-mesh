@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall/js"
 
-	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -68,34 +68,34 @@ func (c ContractEvent) JSValue() js.Value {
 	}
 	switch c.Kind {
 	case "ERC20TransferEvent":
-		m["parameters"] = c.Parameters.(ethereum.ERC20TransferEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent)
 
 	case "ERC20ApprovalEvent":
-		m["parameters"] = c.Parameters.(ethereum.ERC20ApprovalEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent)
 
 	case "ERC721TransferEvent":
-		m["parameters"] = c.Parameters.(ethereum.ERC721TransferEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent)
 
 	case "ERC721ApprovalEvent":
-		m["parameters"] = c.Parameters.(ethereum.ERC721ApprovalEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent)
 
 	case "ERC721ApprovalForAllEvent":
-		m["parameters"] = c.Parameters.(ethereum.ERC721ApprovalForAllEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent)
 
 	case "WethWithdrawalEvent":
-		m["parameters"] = c.Parameters.(ethereum.WethWithdrawalEvent)
+		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent)
 
 	case "WethDepositEvent":
-		m["parameters"] = c.Parameters.(ethereum.WethDepositEvent)
+		m["parameters"] = c.Parameters.(decoder.WethDepositEvent)
 
 	case "ExchangeFillEvent":
-		m["parameters"] = c.Parameters.(ethereum.ExchangeFillEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent)
 
 	case "ExchangeCancelEvent":
-		m["parameters"] = c.Parameters.(ethereum.ExchangeCancelEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent)
 
 	case "ExchangeCancelUpToEvent":
-		m["parameters"] = c.Parameters.(ethereum.ExchangeCancelUpToEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent)
 
 	default:
 		panic(fmt.Sprintf("Unrecognized event encountered: %s", c.Kind))
