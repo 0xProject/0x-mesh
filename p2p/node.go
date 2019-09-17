@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	mathrand "math/rand"
 	"net"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
@@ -45,7 +48,20 @@ const (
 	// TODO(albrow): Is there a way to use a custom protocol ID with GossipSub?
 	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
 	pubsubProtocolID = pubsub.GossipSubID
+	// chanceToCheckBandwidthUsage is the approximate ratio of (number of main
+	// loop iterations in which we check bandwidth usage) to (total number of main
+	// loop iterations). We check bandwidth non-deterministically in order to
+	// prevent spammers from avoiding detection by carefully timing their
+	// bandwidth usage. So on each iteration of the main loop we generate a number
+	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
+	// a bandwidth check.
+	chanceToCheckBandiwdthUsage = 0.1
+	// peerBandwidthLimit is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check.
+	peerBandwidthLimit = 104857600 // 100 MiB. Set extremely high for now.
 )
+
+var errProtectedIP = errors.New("cannot ban protected IP address")
 
 // Node is the main type for the p2p package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
@@ -63,6 +79,7 @@ type Node struct {
 	sub              *pubsub.Subscription
 	protectedIPsMut  sync.RWMutex
 	protectedIPs     stringset.Set
+	bandwidthCounter *metrics.BandwidthCounter
 }
 
 // Config contains configuration options for a Node.
@@ -137,6 +154,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	filters := filter.NewFilters()
 
 	// Set up and append environment agnostic host options.
+	bandwidthCounter := metrics.NewBandwidthCounter()
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts = append(opts, []libp2p.Option{
 		libp2p.Routing(newDHT),
@@ -144,6 +162,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.Identity(config.PrivateKey),
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
+		libp2p.BandwidthReporter(bandwidthCounter),
 		Filters(filters),
 	}...)
 	if config.Insecure {
@@ -190,6 +209,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
 		protectedIPs:     stringset.New(),
+		bandwidthCounter: bandwidthCounter,
 	}
 
 	return node, nil
@@ -334,13 +354,22 @@ func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
 func (n *Node) BanIP(maddr ma.Multiaddr) error {
 	ipNet, err := ipNetFromMaddr(maddr)
 	if err != nil {
+		// HACK(albrow) relay addresses don't include the full transport address
+		// (IP, port, etc) for older versions of libp2p-circuit. (See
+		// https://github.com/libp2p/go-libp2p/issues/723). As a temporary
+		// workaround, we no-op for relayed connections. We can remove this after
+		// updating our bootstrap nodes to the latest version. We detect relay
+		// addresses by looking for the /ipfs prefix.
+		if strings.HasPrefix(maddr.String(), "/ipfs") {
+			return nil
+		}
 		return err
 	}
 	n.protectedIPsMut.RLock()
 	defer n.protectedIPsMut.RUnlock()
 	if n.protectedIPs.Contains(ipNet.IP.String()) {
 		// IP address is protected. no-op.
-		return nil
+		return errProtectedIP
 	}
 	n.filters.AddFilter(ipNet, filter.ActionDeny)
 	return nil
@@ -398,6 +427,12 @@ func (n *Node) runOnce() error {
 	}
 	if err := n.messageHandler.HandleMessages(incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
+	}
+
+	// Check bandwidth usage non-deterministically
+	if mathrand.Float64() <= chanceToCheckBandiwdthUsage {
+		log.Error("Checking bandwidth usage...")
+		n.checkBandwidthUsage()
 	}
 
 	// Send up to maxSendBatch messages.
@@ -494,6 +529,44 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 			continue
 		}
 		messages = append(messages, msg)
+	}
+}
+
+// checkBandwidthUsage checks the amount of data sent by each connected peer and
+// bans (via IP address) any peers which have exceeded the bandwidth limit.
+func (n *Node) checkBandwidthUsage() {
+	for _, remotePeerID := range n.host.Network().Peers() {
+		stats := n.bandwidthCounter.GetBandwidthForPeer(remotePeerID)
+		// If the peer is sending is data at a higher rate than is allowed, ban
+		// them.
+		if stats.RateIn > peerBandwidthLimit {
+			log.WithFields(log.Fields{
+				"remotePeerID": remotePeerID.String(),
+				"rateIn":       stats.RateIn,
+			}).Warn("banning peer due to high bandwidth usage")
+			// There are possibly multiple connections to each peer. We ban the IP
+			// address associated with each connection.
+			for _, conn := range n.host.Network().ConnsToPeer(remotePeerID) {
+				if err := n.BanIP(conn.RemoteMultiaddr()); err != nil {
+					if err == errProtectedIP {
+						continue
+					}
+					log.WithFields(log.Fields{
+						"remotePeerID":    remotePeerID.String(),
+						"remoteMultiaddr": conn.RemoteMultiaddr().String(),
+						"error":           err.Error(),
+					}).Error("could not ban peer")
+				}
+				log.WithFields(log.Fields{
+					"remotePeerID":    remotePeerID.String(),
+					"remoteMultiaddr": conn.RemoteMultiaddr().String(),
+					"rateIn":          stats.RateIn,
+				}).Trace("banning IP/multiaddress due to high bandwidth usage")
+				// Banning the IP doesn't close the connection, so we do that
+				// separately.
+				_ = conn.Close()
+			}
+		}
 	}
 }
 
