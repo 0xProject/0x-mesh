@@ -22,6 +22,7 @@ import (
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -38,6 +39,11 @@ var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 var tokenID = big.NewInt(1)
 var rpcClient *ethrpc.Client
+var ethClient *ethclient.Client
+var zrx *wrappers.ZRXToken
+var dummyERC721Token *wrappers.DummyERC721Token
+var exchange *wrappers.Exchange
+var weth *wrappers.WETH9
 
 func init() {
 	var err error
@@ -46,6 +52,24 @@ func init() {
 		panic(err)
 	}
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
+	if err != nil {
+		panic(err)
+	}
+	ethClient = ethclient.NewClient(rpcClient)
+	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	zrx, err = wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
+	if err != nil {
+		panic(err)
+	}
+	dummyERC721Token, err = wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
+	if err != nil {
+		panic(err)
+	}
+	exchange, err = wrappers.NewExchange(ganacheAddresses.Exchange, ethClient)
+	if err != nil {
+		panic(err)
+	}
+	weth, err = wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	if err != nil {
 		panic(err)
 	}
@@ -58,14 +82,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
-	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
-	require.NoError(t, err)
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -102,13 +122,10 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
-	dummyERC721Token, err := wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
-	require.NoError(t, err)
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -145,13 +162,10 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy
-	dummyERC721Token, err := wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
-	require.NoError(t, err)
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -190,13 +204,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.NoError(t, err)
 
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
-	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
-	require.NoError(t, err)
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -233,14 +244,10 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
-	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
-	require.NoError(t, err)
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -301,8 +308,6 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
@@ -314,8 +319,6 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	assert.Equal(t, false, dbOrder.IsRemoved)
 
 	// Transfer more ZRX to makerAddress (doesn't impact the order)
-	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
-	require.NoError(t, err)
 	zrxCoinbase := constants.GanacheAccount0
 	opts := &bind.TransactOpts{
 		From:   zrxCoinbase,
@@ -342,15 +345,10 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Withdraw maker's WETH
-	weth, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
-	require.NoError(t, err)
-
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
 	// estimated gas amount
 	gasLimit := uint64(50000)
@@ -414,15 +412,10 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Cancel order
-	exchange, err := wrappers.NewExchange(ganacheAddresses.Exchange, ethClient)
-	require.NoError(t, err)
-
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -460,15 +453,10 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Cancel order with epoch
-	exchange, err := wrappers.NewExchange(ganacheAddresses.Exchange, ethClient)
-	require.NoError(t, err)
-
 	opts := &bind.TransactOpts{
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
@@ -506,15 +494,10 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
-	ethClient := ethclient.NewClient(rpcClient)
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	orderEventChan := setupOrderWatcherScenario(t, ethClient, meshDB, signedOrder)
 
 	// Fill order
-	exchange, err := wrappers.NewExchange(ganacheAddresses.Exchange, ethClient)
-	require.NoError(t, err)
-
 	opts := &bind.TransactOpts{
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
