@@ -1,4 +1,4 @@
-package ordervalidate
+package ordervalidator
 
 import (
 	"bytes"

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/albrow/stringset"
 	"github.com/ocdogan/rbt"
 	log "github.com/sirupsen/logrus"
@@ -137,7 +137,7 @@ func (w *Watcher) prune() []ExpiredItem {
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
 		expirationTime := time.Unix(expirationTimeSeconds, 0)
-		if !ordervalidate.IsExpired(expirationTime, w.expirationBuffer) {
+		if !ordervalidator.IsExpired(expirationTime, w.expirationBuffer) {
 			break
 		}
 		ids := value.(stringset.Set)

@@ -14,7 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
@@ -51,13 +51,13 @@ type Watcher struct {
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	contractAddressToSeenCount map[common.Address]uint
-	orderValidator             *ordervalidate.OrderValidator
+	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
 	mu                         sync.Mutex
 }
 
 // New instantiates a new order watcher
-func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator *ordervalidate.OrderValidator, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
+func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator *ordervalidator.OrderValidator, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
 	decoder, err := NewDecoder()
 	if err != nil {
 		return nil, err
@@ -473,7 +473,7 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added.
-func (w *Watcher) Add(orderInfo *ordervalidate.AcceptedOrderInfo) error {
+func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
@@ -600,7 +600,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, has
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		expirationTime := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
-		isExpired := ordervalidate.IsExpired(expirationTime, w.expirationBuffer)
+		isExpired := ordervalidator.IsExpired(expirationTime, w.expirationBuffer)
 		if !isExpired && oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
@@ -644,9 +644,9 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, has
 	}
 	for _, rejectedOrderInfo := range validationResults.Rejected {
 		switch rejectedOrderInfo.Kind {
-		case ordervalidate.MeshError:
+		case ordervalidator.MeshError:
 			// TODO(fabio): Do we want to handle MeshErrors somehow here?
-		case ordervalidate.ZeroExValidation:
+		case ordervalidator.ZeroExValidation:
 			orderWithTxHashes := hashToOrderWithTxHashes[rejectedOrderInfo.OrderHash]
 			order := orderWithTxHashes.Order
 			oldFillableAmount := order.FillableTakerAssetAmount
@@ -657,7 +657,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, has
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
-				kind, ok := ordervalidate.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
+				kind, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventKind corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
 					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventKind corresponding to RejectedOrderStatus")
@@ -711,7 +711,7 @@ func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) 
 	}
 }
 
-func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderInfo *ordervalidate.AcceptedOrderInfo) {
+func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderInfo *ordervalidator.AcceptedOrderInfo) {
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount

@@ -14,7 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -27,14 +27,14 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*ordervalidate.ValidationResults, error)
+	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
-func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidate.ValidationResults, error) {
+func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
@@ -125,16 +125,16 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*ordervalidate.ValidationResults, error) {
+		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
 			require.Len(t, signedOrdersRaw, 1)
-			validationResponse := &ordervalidate.ValidationResults{}
+			validationResponse := &ordervalidator.ValidationResults{}
 			for _, signedOrderRaw := range signedOrdersRaw {
 				signedOrder := &zeroex.SignedOrder{}
 				err := signedOrder.UnmarshalJSON([]byte(*signedOrderRaw))
 				require.NoError(t, err)
 				orderHash, err := signedOrder.ComputeOrderHash()
 				require.NoError(t, err)
-				validationResponse.Accepted = append(validationResponse.Accepted, &ordervalidate.AcceptedOrderInfo{
+				validationResponse.Accepted = append(validationResponse.Accepted, &ordervalidator.AcceptedOrderInfo{
 					OrderHash:                orderHash,
 					SignedOrder:              signedOrder,
 					FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
