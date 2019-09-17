@@ -6,6 +6,7 @@ package ordervalidator
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -14,13 +15,14 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +39,15 @@ var unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d
 var malformedAssetData = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var multiAssetAssetData = common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+// Since these tests must be run sequentially, we don't want them to run as part of
+// the normal testing process. They will only be run if the "--serial" flag is used.
+var serialTestsEnabled bool
+
+func init() {
+	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	flag.Parse()
+}
 
 var testSignedOrder = zeroex.SignedOrder{
 	Order: zeroex.Order{
@@ -62,12 +73,19 @@ type testCase struct {
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
+var rpcClient *ethrpc.Client
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
-func TestSetup(t *testing.T) {
+func init() {
 	var err error
-	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {
@@ -81,10 +99,6 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			SignedOrder:                 signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
-		},
-		testCase{
-			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                     true,
 		},
 		testCase{
 			SignedOrder: signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
@@ -123,10 +137,8 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		teardownSubTest := setupSubTest(t)
 
-		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-		require.NoError(t, err)
+		ethClient := ethclient.NewClient(rpcClient)
 
 		signedOrders := []*zeroex.SignedOrder{
 			&testCase.SignedOrder,
@@ -141,23 +153,23 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		if !isValid {
 			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, rejectedOrderInfos[0].Status)
 		}
-
-		teardownSubTest(t)
 	}
 }
 
 func TestBatchValidateAValidOrder(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
+	ethClient := ethclient.NewClient(rpcClient)
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 
 	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
-
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -171,9 +183,6 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
 	signedOrder := &testSignedOrder
 	// Add a correctly formatted signature that does not correspond to this order
 	signedOrder.Signature = common.Hex2Bytes("1c3582f06356a1314dbf1c0e534c4d8e92e59b056ee607a7ff5a825f5f2cc5e6151c5cc7fdd420f5608e4d5bef108e42ad90c7a4b408caef32e24374cf387b0d7603")
@@ -185,8 +194,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -199,9 +207,6 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 }
 
 func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
 	signedOrder := &testSignedOrder
 	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
@@ -214,8 +219,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
@@ -228,6 +232,10 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 }
 
 func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -239,8 +247,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
@@ -282,8 +289,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize - 10
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
@@ -299,8 +305,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
@@ -336,8 +341,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	signedMultiAssetOrder, err := zeroex.SignTestOrder(&testMultiAssetSignedOrder.Order)
 	require.NoError(t, err)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)

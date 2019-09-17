@@ -15,7 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -104,7 +104,7 @@ func (handler *rpcHandler) GetStats() (*rpc.GetStatsResponse, error) {
 }
 
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
-func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subscription, error) {
+func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethrpc.Subscription, error) {
 	log.Debug("received order event subscription request via RPC")
 	subscription, err := SetupOrderStream(ctx, handler.app)
 	if err != nil {
@@ -115,10 +115,10 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subsc
 }
 
 // SetupOrderStream sets up the order stream for a subscription
-func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription, error) {
-	notifier, supported := ethRpc.NotifierFromContext(ctx)
+func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription, error) {
+	notifier, supported := ethrpc.NotifierFromContext(ctx)
 	if !supported {
-		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+		return &ethrpc.Subscription{}, ethrpc.ErrNotificationsUnsupported
 	}
 
 	rpcSub := notifier.CreateSubscription()

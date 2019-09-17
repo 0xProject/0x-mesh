@@ -38,8 +38,15 @@ test-all: test-go test-wasm-node test-wasm-browser
 
 
 .PHONY: test-go
-test-go:
+test-go: test-go-parallel test-go-serial
+
+.PHONY: test-go-parallel
+test-go-parallel:
 	go test ./... -race -timeout 30s
+
+.PHONY: test-go-serial
+test-go-serial:
+	go test ./ethereum ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
 
 
 .PHONY: test-integration

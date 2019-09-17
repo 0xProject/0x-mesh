@@ -10,7 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/rpc"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -56,10 +56,10 @@ func (s *rpcService) Heartbeat(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 // SetupHeartbeat sets up the heartbeat for a subscription
-func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
-	notifier, supported := ethRpc.NotifierFromContext(ctx)
+func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
+	notifier, supported := ethrpc.NotifierFromContext(ctx)
 	if !supported {
-		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+		return &ethrpc.Subscription{}, ethrpc.ErrNotificationsUnsupported
 	}
 
 	rpcSub := notifier.CreateSubscription()
