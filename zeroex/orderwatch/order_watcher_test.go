@@ -76,7 +76,13 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -113,7 +119,13 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -151,7 +163,13 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -189,7 +207,13 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -227,7 +251,13 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -335,7 +365,13 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -398,7 +434,13 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -438,7 +480,13 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -478,7 +526,13 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents := <-orderEventChan
+	var orderEvents []*zeroex.OrderEvent
+	select {
+    case orderEvents = <- orderEventChan:
+        // continue with the test
+    case <-time.After(10 * time.Second):
+        t.Fatal("timed out waiting for order event")
+	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	require.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
