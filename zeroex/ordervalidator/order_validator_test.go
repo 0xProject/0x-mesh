@@ -66,12 +66,16 @@ type testCase struct {
 var rpcClient *ethRpc.Client
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
-func TestSetup(t *testing.T) {
+func init() {
 	var err error
 	rpcClient, err = ethRpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestBatchValidateOffChainCases(t *testing.T) {

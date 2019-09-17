@@ -38,12 +38,16 @@ var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 var tokenID = big.NewInt(1)
 var rpcClient *ethrpc.Client
 
-func TestSetup(t *testing.T) {
+func init() {
 	var err error
 	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {

@@ -70,12 +70,16 @@ func init() {
 
 var ethRPCClient *ethRpc.Client
 
-func TestSetup(t *testing.T) {
+func init() {
 	var err error
 	ethRPCClient, err = ethRpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(ethRPCClient)
-	require.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestBrowserIntegration(t *testing.T) {
