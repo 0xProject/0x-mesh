@@ -21,7 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,12 +63,12 @@ type testCase struct {
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
 
-var rpcClient *ethRpc.Client
+var rpcClient *ethrpc.Client
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
 func init() {
 	var err error
-	rpcClient, err = ethRpc.Dial(constants.GanacheEndpoint)
+	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
 	if err != nil {
 		panic(err)
 	}

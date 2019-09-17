@@ -28,7 +28,7 @@ import (
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/ethereum/go-ethereum/ethclient"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,11 +68,11 @@ func init() {
 	flag.Parse()
 }
 
-var ethRPCClient *ethRpc.Client
+var ethRPCClient *ethrpc.Client
 
 func init() {
 	var err error
-	ethRPCClient, err = ethRpc.Dial(constants.GanacheEndpoint)
+	ethRPCClient, err = ethrpc.Dial(constants.GanacheEndpoint)
 	if err != nil {
 		panic(err)
 	}
