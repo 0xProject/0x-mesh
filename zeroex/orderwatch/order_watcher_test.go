@@ -16,7 +16,7 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidate"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -492,7 +492,7 @@ func setupOrderWatcherScenario(t *testing.T, ethClient *ethclient.Client, meshDB
 	// Start watching an order
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	orderInfo := &ordervalidate.AcceptedOrderInfo{
+	orderInfo := &ordervalidator.AcceptedOrderInfo{
 		SignedOrder:              signedOrder,
 		OrderHash:                orderHash,
 		FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
@@ -523,7 +523,7 @@ func setupOrderWatcher(t *testing.T, ethClient *ethclient.Client, meshDB *meshdb
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidate.NewOrderValidator(ethClient, constants.TestNetworkID, 524288, 0)
+	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, 524288, 0)
 	require.NoError(t, err)
 	orderWatcher, err := New(meshDB, blockWatcher, orderValidator, constants.TestNetworkID, 0)
 	require.NoError(t, err)
