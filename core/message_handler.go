@@ -6,6 +6,7 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 )
@@ -76,7 +77,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			log.WithFields(map[string]interface{}{
 				"error":               err,
 				"from":                msg.From,
-				"maxOrderSizeInBytes": zeroex.MaxOrderSizeInBytes,
+				"maxOrderSizeInBytes": ordervalidator.MaxOrderSizeInBytes,
 				"actualSizeInBytes":   len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
@@ -168,7 +169,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"from":              msg.From.String(),
 		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
-		case zeroex.ROInternalError, zeroex.ROEthRPCRequestFailed, zeroex.ROCoordinatorRequestFailed:
+		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed:
 			// Don't incur a negative score for these status types (it might not be
 			// their fault).
 		default:

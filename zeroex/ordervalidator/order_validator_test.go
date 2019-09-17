@@ -2,7 +2,7 @@
 
 // We currently don't run these tests in WASM because of an issue in Go. See the header of
 // eth_watcher_test.go for more details.
-package zeroex
+package ordervalidator
 
 import (
 	"context"
@@ -14,8 +14,9 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -26,8 +27,8 @@ import (
 
 const areNewOrders = false
 
-var makerAddress = constants.GanacheAccount0
-var takerAddress = constants.GanacheAccount1
+var makerAddress = constants.GanacheAccount1
+var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
@@ -37,8 +38,8 @@ var malformedAssetData = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var malformedSignature = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 var multiAssetAssetData = common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
-var testSignedOrder = SignedOrder{
-	Order: Order{
+var testSignedOrder = zeroex.SignedOrder{
+	Order: zeroex.Order{
 		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -56,7 +57,7 @@ var testSignedOrder = SignedOrder{
 }
 
 type testCase struct {
-	SignedOrder                 SignedOrder
+	SignedOrder                 zeroex.SignedOrder
 	IsValid                     bool
 	ExpectedRejectedOrderStatus RejectedOrderStatus
 }
@@ -77,25 +78,16 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomMakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			IsValid:     true,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(0)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomTakerAssetAmount(t, testSignedOrder, big.NewInt(1000000)),
-			IsValid:     true,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROUnfunded,
+			IsValid:                     true,
 		},
 		testCase{
-			SignedOrder: signedOrderWithCustomTakerAssetData(t, testSignedOrder, multiAssetAssetData),
+			SignedOrder: signedOrderWithCustomMakerAssetData(t, testSignedOrder, multiAssetAssetData),
 			IsValid:     true,
 		},
 		testCase{
@@ -136,22 +128,46 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 		require.NoError(t, err)
 
-		signedOrders := []*SignedOrder{
+		signedOrders := []*zeroex.SignedOrder{
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+		orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 		require.NoError(t, err)
 
-		validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
-		isValid := len(validationResults.Accepted) == 1
+		offchainValidOrders, rejectedOrderInfos := orderValidator.BatchOffchainValidation(signedOrders)
+		isValid := len(offchainValidOrders) == 1
 		assert.Equal(t, testCase.IsValid, isValid, testCase.ExpectedRejectedOrderStatus)
 		if !isValid {
-			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, validationResults.Rejected[0].Status)
+			assert.Equal(t, testCase.ExpectedRejectedOrderStatus, rejectedOrderInfos[0].Status)
 		}
 
 		teardownSubTest(t)
 	}
+}
+
+func TestBatchValidateAValidOrder(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, makerAddress, takerAddress, wethAmount, zrxAmount)
+
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	require.NoError(t, err)
+
+	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
+	assert.Len(t, validationResults.Accepted, 1)
+	require.Len(t, validationResults.Rejected, 0)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
@@ -165,14 +181,14 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
-	signedOrders := []*SignedOrder{
+	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
@@ -194,14 +210,14 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
-	signedOrders := []*SignedOrder{
+	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders)
@@ -219,13 +235,13 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	signedOrders := []*SignedOrder{
+	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -263,41 +279,41 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 const singleOrderPayloadSize = 1980
 
 func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
-	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
-	signedOrders := []*SignedOrder{signedOrder}
+	signedOrders := []*zeroex.SignedOrder{signedOrder}
 	assert.Panics(t, func() {
 		orderValidator.computeOptimalChunkSizes(signedOrders)
 	})
 }
 
 func TestComputeOptimalChunkSizes(t *testing.T) {
-	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
-	signedOrders := []*SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
+	signedOrders := []*zeroex.SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
 	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
 	expectedChunkSizes := []int{3, 1}
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
-var testMultiAssetSignedOrder = SignedOrder{
-	Order: Order{
+var testMultiAssetSignedOrder = zeroex.SignedOrder{
+	Order: zeroex.Order{
 		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -315,19 +331,19 @@ var testMultiAssetSignedOrder = SignedOrder{
 }
 
 func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
-	signedOrder, err := SignTestOrder(&testSignedOrder.Order)
+	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
-	signedMultiAssetOrder, err := SignTestOrder(&testMultiAssetSignedOrder.Order)
+	signedMultiAssetOrder, err := zeroex.SignTestOrder(&testMultiAssetSignedOrder.Order)
 	require.NoError(t, err)
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := NewOrderValidator(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
 	require.NoError(t, err)
 
-	signedOrders := []*SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}
+	signedOrders := []*zeroex.SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}
 	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
 	expectedChunkSizes := []int{2, 3} // MultiAsset order is larger so can only fit two orders in first chunk
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
@@ -335,52 +351,51 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
 }
 
-func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder SignedOrder, makerAssetAmount *big.Int) SignedOrder {
+func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder zeroex.SignedOrder, makerAssetAmount *big.Int) zeroex.SignedOrder {
 	signedOrder.MakerAssetAmount = makerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder SignedOrder, takerAssetAmount *big.Int) SignedOrder {
+func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder zeroex.SignedOrder, takerAssetAmount *big.Int) zeroex.SignedOrder {
 	signedOrder.TakerAssetAmount = takerAssetAmount
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder SignedOrder, makerAssetData []byte) SignedOrder {
+func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder zeroex.SignedOrder, makerAssetData []byte) zeroex.SignedOrder {
 	signedOrder.MakerAssetData = makerAssetData
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder SignedOrder, takerAssetData []byte) SignedOrder {
+func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder zeroex.SignedOrder, takerAssetData []byte) zeroex.SignedOrder {
 	signedOrder.TakerAssetData = takerAssetData
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signedOrder SignedOrder, expirationTimeSeconds *big.Int) SignedOrder {
+func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signedOrder zeroex.SignedOrder, expirationTimeSeconds *big.Int) zeroex.SignedOrder {
 	signedOrder.ExpirationTimeSeconds = expirationTimeSeconds
-	signedOrderWithSignature, err := SignTestOrder(&signedOrder.Order)
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
 }
 
-func signedOrderWithCustomSignature(t *testing.T, signedOrder SignedOrder, signature []byte) SignedOrder {
+func signedOrderWithCustomSignature(t *testing.T, signedOrder zeroex.SignedOrder, signature []byte) zeroex.SignedOrder {
 	signedOrder.Signature = signature
 	return signedOrder
 }
 
-func copyOrder(order Order) Order {
+func copyOrder(order zeroex.Order) zeroex.Order {
 	return order
 }

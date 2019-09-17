@@ -15,13 +15,13 @@ provider.start();
     const currentTime = Math.floor(Date.now() / 1000);
     const expirationTime = currentTime + 24 * 60 * 60;
     const order: Order = {
-        makerAddress: '0x5409ed021d9299bf6814279a6a1411a7e866a631',
+        makerAddress: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
         makerAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
-        makerAssetAmount: new BigNumber('1000') as any,
+        makerAssetAmount: new BigNumber('100000000000000000000') as any,
         makerFee: new BigNumber('0') as any,
         takerAddress: '0x0000000000000000000000000000000000000000',
         takerAssetData: '0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082',
-        takerAssetAmount: new BigNumber('2000') as any,
+        takerAssetAmount: new BigNumber('50000000000000000000') as any,
         takerFee: new BigNumber('0') as any,
         senderAddress: '0x0000000000000000000000000000000000000000',
         exchangeAddress: '0x48bacb9266a570d521063ef5dd96e61686dbe788',
