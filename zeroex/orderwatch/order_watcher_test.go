@@ -124,7 +124,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -166,7 +166,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -209,7 +209,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -252,7 +252,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -294,7 +294,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 
@@ -344,7 +344,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	dbOrder := orders[0]
 	assert.Equal(t, false, dbOrder.IsRemoved)
 
@@ -411,7 +411,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 
@@ -479,7 +479,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -522,7 +522,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
@@ -565,7 +565,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	assert.Len(t, orders, 1)
+	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 }
