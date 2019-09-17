@@ -28,6 +28,7 @@ const (
 	ethereumRPCRequestTimeout  = 30 * time.Second
 	blockWatcherRetentionLimit = 20
 	blockPollingInterval       = 1000 * time.Millisecond
+	ethereumRPCMaxContentLength = 524288
 )
 
 var makerAddress = constants.GanacheAccount1
@@ -527,7 +528,7 @@ func setupOrderWatcher(t *testing.T, ethClient *ethclient.Client, meshDB *meshdb
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, 524288, 0)
+	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, ethereumRPCMaxContentLength, 0)
 	require.NoError(t, err)
 	orderWatcher, err := New(meshDB, blockWatcher, orderValidator, constants.TestNetworkID, 0)
 	require.NoError(t, err)
