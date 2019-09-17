@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"testing"
 	"time"
+	"fmt"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -100,7 +101,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -111,17 +112,11 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -148,7 +143,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -159,17 +154,11 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -196,7 +185,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy
 	opts := &bind.TransactOpts{
@@ -208,17 +197,11 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -246,7 +229,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
 	opts := &bind.TransactOpts{
@@ -257,17 +240,11 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -294,7 +271,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -305,17 +282,11 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -337,11 +308,11 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents = <-orderEventChan
+	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
@@ -387,8 +358,8 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
 	var newOrders []*meshdb.Order
@@ -413,7 +384,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	signedOrder := scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Withdraw maker's WETH
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
@@ -428,17 +399,11 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -459,11 +424,11 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	orderEvents = <-orderEventChan
+	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
@@ -490,7 +455,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Cancel order
 	opts := &bind.TransactOpts{
@@ -502,17 +467,11 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -539,7 +498,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Cancel order with epoch
 	opts := &bind.TransactOpts{
@@ -551,17 +510,11 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -578,7 +531,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
-	
+
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -588,7 +541,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	orderEventChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Fill order
 	opts := &bind.TransactOpts{
@@ -600,17 +553,11 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.NoError(t, err)
 	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
 	require.NoError(t, err)
+	cancelFn()
 	assert.Equal(t, receipt.Status, uint64(1))
 
-	var orderEvents []*zeroex.OrderEvent
-	select {
-	case orderEvents = <-orderEventChan:
-		// continue with the test
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for order event")
-	}
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
@@ -639,10 +586,10 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 	require.NoError(t, err)
 
 	// Subscribe to OrderWatcher
-	orderEventChan := make(chan []*zeroex.OrderEvent, 10)
-	orderWatcher.Subscribe(orderEventChan)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
+	orderWatcher.Subscribe(orderEventsChan)
 
-	return orderEventChan
+	return orderEventsChan
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
@@ -688,3 +635,18 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
 }
+
+func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, timeout time.Duration) []*zeroex.OrderEvent {
+	start := time.Now()
+	select {
+	case orderEvents := <-orderEventsChan:
+		fmt.Println("orderEvents!", orderEvents)
+		return orderEvents
+	case <-time.After(timeout):
+		elapsed := time.Since(start)
+		fmt.Println("elapsed", elapsed)
+		fmt.Println("timeout!")
+		t.Fatal("timed out waiting for order events")
+	}
+	return []*zeroex.OrderEvent{}
+} 
