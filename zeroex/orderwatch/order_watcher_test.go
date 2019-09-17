@@ -5,10 +5,10 @@ package orderwatch
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
-	"fmt"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -20,6 +20,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
@@ -110,13 +111,9 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -152,13 +149,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	}
 	txn, err := dummyERC721Token.TransferFrom(opts, makerAddress, constants.GanacheAccount4, tokenID)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -195,13 +188,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -238,13 +227,9 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	}
 	txn, err := zrx.Approve(opts, ganacheAddresses.ERC20Proxy, big.NewInt(0))
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -280,13 +265,9 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -306,11 +287,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	}
 	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
@@ -356,11 +333,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	}
 	txn, err := zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
@@ -397,13 +370,9 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	}
 	txn, err := weth.Withdraw(opts, wethAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
@@ -422,11 +391,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	}
 	txn, err = weth.Deposit(opts)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
@@ -465,13 +430,9 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	txn, err := exchange.CancelOrder(opts, orderWithoutExchangeAddress)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -508,13 +469,9 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	targetOrderEpoch := signedOrder.Salt
 	txn, err := exchange.CancelOrdersUpTo(opts, targetOrderEpoch)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
@@ -551,13 +508,9 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, wethAmount, signedOrder.Signature)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	require.NoError(t, err)
-	cancelFn()
-	assert.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4 * time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
@@ -649,4 +602,12 @@ func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEven
 		t.Fatal("timed out waiting for order events")
 	}
 	return []*zeroex.OrderEvent{}
-} 
+}
+
+func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
+	receipt, err := bind.WaitMined(ctx, ethClient, txn)
+	require.NoError(t, err)
+	cancelFn()
+	require.Equal(t, receipt.Status, uint64(1))
+}

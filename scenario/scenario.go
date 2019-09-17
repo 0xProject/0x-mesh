@@ -62,11 +62,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err := weth9.Deposit(opts)
 	require.NoError(t, err)
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	require.NoError(t, err)
@@ -78,11 +74,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// SET ZRX allowance
 	opts = &bind.TransactOpts{
@@ -91,11 +83,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// SET WETH allowance
 	opts = &bind.TransactOpts{
@@ -104,11 +92,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, wethAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	return signedTestOrder
 }
@@ -157,11 +141,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err := weth9.Deposit(opts)
 	require.NoError(t, err)
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	require.NoError(t, err)
@@ -173,11 +153,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Transfer(opts, takerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// SET ZRX allowance
 	opts = &bind.TransactOpts{
@@ -186,11 +162,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// SET WETH allowance
 	opts = &bind.TransactOpts{
@@ -199,11 +171,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, wethAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	return signedTestOrder
 }
@@ -219,11 +187,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err := dummyERC721Token.Mint(makerOpts, makerAddress, tokenID)
 	require.NoError(t, err)
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err := bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	makerAssetDataHex := fmt.Sprintf("%s000000000000000000000000%s000000000000000000000000000000000000000000000000000000000000000%s", zeroex.ERC721AssetDataID, constants.GanacheDummyERC721TokenAddress.Hex()[2:], tokenID)
 	makerAssetData := common.Hex2Bytes(
@@ -258,11 +222,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	// SET NFT allowance
 	txn, err = dummyERC721Token.SetApprovalForAll(makerOpts, ganacheAddresses.ERC721Proxy, true)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// All 1 billion ZRX start in this address
 	zrxCoinbase := constants.GanacheAccount0
@@ -280,11 +240,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err = zrx.Transfer(opts, takerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// SET ZRX allowance
 	opts = &bind.TransactOpts{
@@ -293,11 +249,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
-	receipt, err = bind.WaitMined(ctx, ethClient, txn)
-	cancelFn()
-	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	return signedTestOrder
 }
@@ -312,4 +264,12 @@ func GetTestSignerFn(signerAddress common.Address) func(signer types.Signer, add
 		}
 		return tx.WithSignature(signer, signature)
 	}
+}
+
+func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
+	receipt, err := bind.WaitMined(ctx, ethClient, txn)
+	require.NoError(t, err)
+	cancelFn()
+	require.Equal(t, receipt.Status, uint64(1))
 }
