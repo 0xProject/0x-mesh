@@ -25,6 +25,8 @@ Subscribe to the Mesh node's `orders` subscription over a WS connection. This ca
 
 **Note:** Updates refer to updating the order's `fillableTakerAssetAmount` in the DB.
 
+**Note 2:** If we receive any event other than `ADDED` and `FILLABILITY_INCREASED` for an order we do not find in our database, we ignore the event and noop.
+
 #### 2. Get all orders currently stored in Mesh
 
 There might have been orders stored in Mesh that the DB doesn't know about at this time. Because of this, we must fetch all currently stored orders in the Mesh node and upsert them in the database. This can be done using the [mesh_getOrders](rpc_api.md#mesh_getorders) JSON-RPC method. This method creates a snapshot of the Mesh node's internal DB of orders when first called, and allows for subsequent paginated requests against this snapshot. Because we are already subscribed to order events, any new orders added/removed after the snapshot is made will be discovered via that subscription.
