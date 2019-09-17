@@ -236,8 +236,8 @@ type OrderValidator struct {
 	expirationBuffer             time.Duration
 }
 
-// NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+// New instantiates a new order validator
+func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err

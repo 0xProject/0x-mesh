@@ -180,7 +180,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := ordervalidator.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidator.New(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
