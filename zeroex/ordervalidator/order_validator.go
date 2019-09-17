@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
@@ -273,7 +274,7 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If it some requests fail, this method still returns whatever order information it was able to
 // retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool) *ValidationResults {
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -334,6 +335,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 				opts := &bind.CallOpts{
 					Pending: false,
 					Context: ctx,
+				}
+				if blockNumber == rpc.PendingBlockNumber {
+					opts.Pending = true
+				} else if blockNumber != rpc.LatestBlockNumber {
+					opts.BlockNumber = big.NewInt(int64(blockNumber))
 				}
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)

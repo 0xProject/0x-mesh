@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -74,6 +75,68 @@ const (
 	OSInvalidTakerAssetData
 )
 
+// ContractEvent is an event emitted by a smart contract
+type ContractEvent struct {
+	BlockHash  common.Hash
+	TxHash     common.Hash
+	TxIndex    uint
+	LogIndex   uint
+	IsRemoved  bool
+	Address    common.Address
+	Kind       string
+	Parameters interface{}
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ContractEvent type
+func (c ContractEvent) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{
+		"blockHash": c.BlockHash.Hex(),
+		"txHash":    c.TxHash.Hex(),
+		"txIndex":   c.TxIndex,
+		"logIndex":  c.LogIndex,
+		"isRemoved": c.IsRemoved,
+		"address":   c.Address,
+		"kind":      c.Kind,
+	}
+	switch c.Kind {
+	case "ERC20TransferEvent":
+		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent)
+		return json.Marshal(m)
+
+	case "ERC20ApprovalEvent":
+		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent)
+
+	case "ERC721TransferEvent":
+		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent)
+
+	case "ERC721ApprovalEvent":
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent)
+
+	case "ERC721ApprovalForAllEvent":
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent)
+
+	case "WethWithdrawalEvent":
+		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent)
+
+	case "WethDepositEvent":
+		m["parameters"] = c.Parameters.(decoder.WethDepositEvent)
+
+	case "ExchangeFillEvent":
+		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent)
+
+	case "ExchangeCancelEvent":
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent)
+
+	case "ExchangeCancelUpToEvent":
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent)
+
+	default:
+		panic(fmt.Sprintf("Unrecognized event encountered: %s", c.Kind))
+	}
+
+	return json.Marshal(m)
+}
+
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {
@@ -81,31 +144,28 @@ type OrderEvent struct {
 	SignedOrder              *SignedOrder   `json:"signedOrder"`
 	Kind                     OrderEventKind `json:"kind"`
 	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
-	// The hashes of the Ethereum transactions that caused the order status to change.
-	// Could be because of multiple transactions, not just a single transaction.
-	TxHashes []common.Hash `json:"txHashes"`
+	// All the contract events that triggered this orders re-evaluation. They did not
+	// all necessarily cause the orders state change itself, only it's re-evaluation.
+	// Since it's state _did_ change, at least one of them did cause the actual state change.
+	ContractEvents []*ContractEvent `json:"contractEvents"`
 }
 
 type orderEventJSON struct {
-	OrderHash                string       `json:"orderHash"`
-	SignedOrder              *SignedOrder `json:"signedOrder"`
-	Kind                     string       `json:"kind"`
-	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
-	TxHashes                 []string     `json:"txHashes"`
+	OrderHash                string           `json:"orderHash"`
+	SignedOrder              *SignedOrder     `json:"signedOrder"`
+	Kind                     string           `json:"kind"`
+	FillableTakerAssetAmount string           `json:"fillableTakerAssetAmount"`
+	ContractEvents           []*ContractEvent `json:"contractEvents"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
-	stringifiedTxHashes := []string{}
-	for _, txHash := range o.TxHashes {
-		stringifiedTxHashes = append(stringifiedTxHashes, txHash.Hex())
-	}
 	return json.Marshal(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
 		"kind":                     o.Kind,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"txHashes":                 stringifiedTxHashes,
+		"contractEvents":           o.ContractEvents,
 	})
 }
 
@@ -128,11 +188,7 @@ func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	if !ok {
 		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
 	}
-	txHashes := []common.Hash{}
-	for _, txHash := range orderEventJSON.TxHashes {
-		txHashes = append(txHashes, common.HexToHash(txHash))
-	}
-	o.TxHashes = txHashes
+	o.ContractEvents = orderEventJSON.ContractEvents
 	return nil
 }
 

@@ -1,6 +1,7 @@
-package orderwatch
+package decoder
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -40,11 +41,29 @@ type ERC20TransferEvent struct {
 	Value *big.Int
 }
 
+// MarshalJSON implements a custom JSON marshaller for the ERC20TransferEvent type
+func (e ERC20TransferEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"from":  e.From.Hex(),
+		"to":    e.To.Hex(),
+		"value": e.Value.String(),
+	})
+}
+
 // ERC20ApprovalEvent represents an ERC20 Approval event
 type ERC20ApprovalEvent struct {
 	Owner   common.Address
 	Spender common.Address
 	Value   *big.Int
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ERC20ApprovalEvent type
+func (e ERC20ApprovalEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner":   e.Owner.Hex(),
+		"spender": e.Spender.Hex(),
+		"value":   e.Value.String(),
+	})
 }
 
 // ERC721TransferEvent represents an ERC721 Transfer event
@@ -54,6 +73,15 @@ type ERC721TransferEvent struct {
 	TokenId *big.Int
 }
 
+// MarshalJSON implements a custom JSON marshaller for the ERC721TransferEvent type
+func (e ERC721TransferEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"from":    e.From.Hex(),
+		"to":      e.To.Hex(),
+		"tokenId": e.TokenId.String(),
+	})
+}
+
 // ERC721ApprovalEvent represents an ERC721 Approval event
 type ERC721ApprovalEvent struct {
 	Owner    common.Address
@@ -61,11 +89,29 @@ type ERC721ApprovalEvent struct {
 	TokenId  *big.Int
 }
 
+// MarshalJSON implements a custom JSON marshaller for the ERC721ApprovalEvent type
+func (e ERC721ApprovalEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner":    e.Owner.Hex(),
+		"approved": e.Approved.Hex(),
+		"tokenId":  e.TokenId.String(),
+	})
+}
+
 // ERC721ApprovalForAllEvent represents an ERC721 ApprovalForAll event
 type ERC721ApprovalForAllEvent struct {
 	Owner    common.Address
 	Operator common.Address
 	Approved bool
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ERC721ApprovalForAllEvent type
+func (e ERC721ApprovalForAllEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner":    e.Owner.Hex(),
+		"operator": e.Operator.Hex(),
+		"approved": e.Approved,
+	})
 }
 
 // ExchangeFillEvent represents a 0x Exchange Fill event
@@ -83,6 +129,31 @@ type ExchangeFillEvent struct {
 	TakerAssetData         []byte
 }
 
+// MarshalJSON implements a custom JSON marshaller for the ExchangeFillEvent type
+func (e ExchangeFillEvent) MarshalJSON() ([]byte, error) {
+	makerAssetData := ""
+	if len(e.MakerAssetData) != 0 {
+		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerAssetData))
+	}
+	takerAssetData := ""
+	if len(e.TakerAssetData) != 0 {
+		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
+	}
+	return json.Marshal(map[string]interface{}{
+		"makerAddress":           e.MakerAddress.Hex(),
+		"takerAddress":           e.TakerAddress.Hex(),
+		"senderAddress":          e.SenderAddress.Hex(),
+		"feeRecipientAddress":    e.FeeRecipientAddress.Hex(),
+		"makerAssetFilledAmount": e.MakerAssetFilledAmount.String(),
+		"takerAssetFilledAmount": e.TakerAssetFilledAmount.String(),
+		"makerFeePaid":           e.MakerFeePaid.String(),
+		"takerFeePaid":           e.TakerFeePaid.String(),
+		"orderHash":              e.OrderHash.Hex(),
+		"makerAssetData":         makerAssetData,
+		"takerAssetData":         takerAssetData,
+	})
+}
+
 // ExchangeCancelEvent represents a 0x Exchange Cancel event
 type ExchangeCancelEvent struct {
 	MakerAddress        common.Address
@@ -93,11 +164,40 @@ type ExchangeCancelEvent struct {
 	TakerAssetData      []byte
 }
 
+// MarshalJSON implements a custom JSON marshaller for the ExchangeCancelEvent type
+func (e ExchangeCancelEvent) MarshalJSON() ([]byte, error) {
+	makerAssetData := ""
+	if len(e.MakerAssetData) != 0 {
+		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerAssetData))
+	}
+	takerAssetData := ""
+	if len(e.TakerAssetData) != 0 {
+		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
+	}
+	return json.Marshal(map[string]interface{}{
+		"makerAddress":        e.MakerAddress.Hex(),
+		"senderAddress":       e.SenderAddress.Hex(),
+		"feeRecipientAddress": e.FeeRecipientAddress.Hex(),
+		"orderHash":           e.OrderHash.Hex(),
+		"makerAssetData":      makerAssetData,
+		"takerAssetData":      takerAssetData,
+	})
+}
+
 // ExchangeCancelUpToEvent represents a 0x Exchange CancelUpTo event
 type ExchangeCancelUpToEvent struct {
 	MakerAddress  common.Address
 	SenderAddress common.Address
 	OrderEpoch    *big.Int
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ExchangeCancelUpToEvent type
+func (e ExchangeCancelUpToEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"makerAddress":  e.MakerAddress.Hex(),
+		"senderAddress": e.SenderAddress.Hex(),
+		"orderEpoch":    e.OrderEpoch.String(),
+	})
 }
 
 // WethWithdrawalEvent represents a wrapped Ether Withdraw event
@@ -106,10 +206,26 @@ type WethWithdrawalEvent struct {
 	Value *big.Int
 }
 
+// MarshalJSON implements a custom JSON marshaller for the WethWithdrawalEvent type
+func (e WethWithdrawalEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner": e.Owner.Hex(),
+		"value": e.Value.String(),
+	})
+}
+
 // WethDepositEvent represents a wrapped Ether Deposit event
 type WethDepositEvent struct {
 	Owner common.Address
 	Value *big.Int
+}
+
+// MarshalJSON implements a custom JSON marshaller for the WethDepositEvent type
+func (e WethDepositEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner": e.Owner.Hex(),
+		"value": e.Value.String(),
+	})
 }
 
 // UnsupportedEventError is thrown when an unsupported topic is encountered
@@ -151,8 +267,8 @@ type Decoder struct {
 	exchangeTopicToEventName map[common.Hash]string
 }
 
-// NewDecoder instantiates a new 0x order-relevant events decoder
-func NewDecoder() (*Decoder, error) {
+// New instantiates a new 0x order-relevant events decoder
+func New() (*Decoder, error) {
 	erc20ABI, err := abi.JSON(strings.NewReader(erc20EventsAbi))
 	if err != nil {
 		return nil, err
