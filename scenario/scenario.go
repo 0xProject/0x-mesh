@@ -268,8 +268,8 @@ func GetTestSignerFn(signerAddress common.Address) func(signer types.Signer, add
 
 func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancelFn()
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
-	cancelFn()
 	require.Equal(t, receipt.Status, uint64(1))
 }
