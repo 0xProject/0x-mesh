@@ -62,8 +62,9 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err := weth9.Deposit(opts)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -77,8 +78,9 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -89,8 +91,9 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -101,8 +104,9 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, wethAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -153,8 +157,9 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err := weth9.Deposit(opts)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -168,8 +173,9 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Transfer(opts, takerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -180,8 +186,9 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -192,8 +199,9 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	}
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, wethAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -211,8 +219,9 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err := dummyERC721Token.Mint(makerOpts, makerAddress, tokenID)
 	require.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -249,8 +258,9 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	// SET NFT allowance
 	txn, err = dummyERC721Token.SetApprovalForAll(makerOpts, ganacheAddresses.ERC721Proxy, true)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -270,8 +280,9 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err = zrx.Transfer(opts, takerAddress, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
@@ -282,8 +293,9 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, zrxAmount)
 	require.NoError(t, err)
-	ctx, _ = context.WithTimeout(context.Background(), 4 * time.Second)
+	ctx, cancelFn = context.WithTimeout(context.Background(), 4*time.Second)
 	receipt, err = bind.WaitMined(ctx, ethClient, txn)
+	cancelFn()
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
 
