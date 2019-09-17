@@ -74,7 +74,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -85,14 +85,14 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
@@ -117,7 +117,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -128,14 +128,14 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
@@ -161,7 +161,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -172,14 +172,14 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
@@ -205,7 +205,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -216,14 +216,14 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
@@ -249,7 +249,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -260,14 +260,14 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 
 	// Transfer makerAsset back to maker address
 	zrxCoinbase := constants.GanacheAccount0
@@ -279,19 +279,19 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	orderEvents = <-orderEventChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
-	require.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	require.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	require.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
+	assert.Equal(t, false, newOrders[0].IsRemoved)
 }
 
 func TestOrderWatcherNoChange(t *testing.T) {
@@ -309,9 +309,9 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
+	assert.Len(t, orders, 1)
 	dbOrder := orders[0]
-	require.Equal(t, false, dbOrder.IsRemoved)
+	assert.Equal(t, false, dbOrder.IsRemoved)
 
 	// Transfer more ZRX to makerAddress (doesn't impact the order)
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
@@ -325,14 +325,14 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
 	require.NotEqual(t, dbOrder.LastUpdated, newOrders[0].Hash)
-	require.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, false, newOrders[0].IsRemoved)
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
@@ -363,7 +363,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -374,14 +374,14 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 
 	opts = &bind.TransactOpts{
 		From:   makerAddress,
@@ -392,19 +392,19 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	orderEvents = <-orderEventChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
-	require.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	require.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	require.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
+	assert.Equal(t, false, newOrders[0].IsRemoved)
 }
 
 func TestOrderWatcherCanceled(t *testing.T) {
@@ -432,7 +432,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -443,14 +443,14 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherCancelUpTo(t *testing.T) {
@@ -478,7 +478,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -489,14 +489,14 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherERC20Filled(t *testing.T) {
@@ -524,7 +524,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), ethClient, txn)
 	require.NoError(t, err)
-	require.Equal(t, receipt.Status, uint64(1))
+	assert.Equal(t, receipt.Status, uint64(1))
 
 	var orderEvents []*zeroex.OrderEvent
 	select {
@@ -535,14 +535,14 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	}
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	require.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
+	assert.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	require.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	require.Equal(t, true, orders[0].IsRemoved)
+	assert.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func setupOrderWatcherScenario(t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) chan []*zeroex.OrderEvent {
