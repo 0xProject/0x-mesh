@@ -2,7 +2,11 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v4.1.0-beta
+## v5.0.0-beta
+
+### Breaking changes 🛠 
+
+- Removes the `txHashes` key in the `OrderEvent`s emitted from the `orders` JSON-RPC subscription and replaced it with `contractEvents`, an array of decoded order-relevant contract events. Parsing these events allows callers to find every discrete order fill/cancel event.
 
 ### Features ✅ 
 
