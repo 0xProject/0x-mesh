@@ -207,10 +207,10 @@ type WethWithdrawalEvent struct {
 }
 
 // MarshalJSON implements a custom JSON marshaller for the WethWithdrawalEvent type
-func (e WethWithdrawalEvent) MarshalJSON() ([]byte, error) {
+func (w WethWithdrawalEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"owner": e.Owner.Hex(),
-		"value": e.Value.String(),
+		"owner": w.Owner.Hex(),
+		"value": w.Value.String(),
 	})
 }
 
@@ -221,10 +221,10 @@ type WethDepositEvent struct {
 }
 
 // MarshalJSON implements a custom JSON marshaller for the WethDepositEvent type
-func (e WethDepositEvent) MarshalJSON() ([]byte, error) {
+func (w WethDepositEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"owner": e.Owner.Hex(),
-		"value": e.Value.String(),
+		"owner": w.Owner.Hex(),
+		"value": w.Value.String(),
 	})
 }
 

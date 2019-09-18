@@ -12,16 +12,16 @@ import (
 )
 
 func (o OrderEvent) JSValue() js.Value {
-	contractEventsJSValues := []js.Value{}
-	for _, contractEvent := range o.ContractEvents {
-		contractEventsJSValues = append(contractEventsJSValues, contractEvent.JSValue())
+	contractEventsJS := make([]interface{}, len(o.ContractEvents))
+	for i, contractEvent := range o.ContractEvents {
+		contractEventsJS[i] = contractEvent.JSValue()
 	}
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
 		"kind":                     string(o.Kind),
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"contractEvents":           contractEventsJSValues,
+		"contractEvents":           contractEventsJS,
 	})
 }
 
@@ -68,34 +68,34 @@ func (c ContractEvent) JSValue() js.Value {
 	}
 	switch c.Kind {
 	case "ERC20TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent).JSValue()
 
 	case "ERC20ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent).JSValue()
 
 	case "ERC721TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent).JSValue()
 
 	case "ERC721ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent).JSValue()
 
 	case "ERC721ApprovalForAllEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent)
+		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent).JSValue()
 
 	case "WethWithdrawalEvent":
-		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent)
+		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent).JSValue()
 
 	case "WethDepositEvent":
-		m["parameters"] = c.Parameters.(decoder.WethDepositEvent)
+		m["parameters"] = c.Parameters.(decoder.WethDepositEvent).JSValue()
 
 	case "ExchangeFillEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent).JSValue()
 
 	case "ExchangeCancelEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent).JSValue()
 
 	case "ExchangeCancelUpToEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent)
+		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent).JSValue()
 
 	default:
 		panic(fmt.Sprintf("Unrecognized event encountered: %s", c.Kind))
