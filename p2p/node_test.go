@@ -502,7 +502,7 @@ func TestProtectIP(t *testing.T) {
 	// Ban all node1 IP addresses (this should have no effect since the IP
 	// addresses are protected).
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.EqualError(t, node0.BanIP(maddr), errProtectedIP.Error())
 	}
 
 	// Each node should now be able to connect to the other.

@@ -58,7 +58,9 @@ const (
 	chanceToCheckBandiwdthUsage = 0.1
 	// peerBandwidthLimit is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check.
-	peerBandwidthLimit = 104857600 // 100 MiB. Set extremely high for now.
+	// TODO(albrow): Reduce this limit once we have a better picture of what
+	// real-world bandwidth should be.
+	peerBandwidthLimit = 104857600 // 100 MiB.
 	// logBandwidthUsageInterval is how often to log bandwidth usage data.
 	logBandwidthUsageInterval = 5 * time.Minute
 )
@@ -353,9 +355,9 @@ func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
 
 // BanIP adds the IP address of the given Multiaddr to the blacklist. The
 // node will no longer dial or accept connections from this IP address. However,
-// if the IP address is protected, calling BanIP is a no-op. BanIP does not
-// automatically disconnect from the given multiaddress if there is currently an
-// open connection.
+// if the IP address is protected, calling BanIP will not ban the IP address and
+// will instead return errProtectedIP. BanIP does not automatically disconnect
+// from the given multiaddress if there is currently an open connection.
 func (n *Node) BanIP(maddr ma.Multiaddr) error {
 	ipNet, err := ipNetFromMaddr(maddr)
 	if err != nil {
