@@ -59,6 +59,8 @@ const (
 	// peerBandwidthLimit is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check.
 	peerBandwidthLimit = 104857600 // 100 MiB. Set extremely high for now.
+	// logBandwidthUsageInterval is how often to log bandwidth usage data.
+	logBandwidthUsageInterval = 5 * time.Minute
 )
 
 var errProtectedIP = errors.New("cannot ban protected IP address")
@@ -285,6 +287,9 @@ func (n *Node) Start() error {
 
 	// Advertise ourselves for the purposes of peer discovery.
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
+
+	// Start logging bandwidth in the background.
+	go n.logBandwidthUsage(n.ctx)
 
 	return n.mainLoop()
 }
@@ -529,6 +534,35 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 			continue
 		}
 		messages = append(messages, msg)
+	}
+}
+
+func (n *Node) logBandwidthUsage(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Log the bandwidth used by each peer.
+		for _, remotePeerID := range n.host.Network().Peers() {
+			stats := n.bandwidthCounter.GetBandwidthForPeer(remotePeerID)
+			log.WithFields(log.Fields{
+				"remotePeerID": remotePeerID.String(),
+				"rateIn":       stats.RateIn,
+			}).Debug("bandwidth used by peer")
+		}
+
+		// Log the bandwidth used by each protocol.
+		for protocolID, stats := range n.bandwidthCounter.GetBandwidthByProtocol() {
+			log.WithFields(log.Fields{
+				"protocolID": protocolID,
+				"rateIn":     stats.RateIn,
+			}).Debug("bandwidth used by protocol")
+		}
+
+		time.Sleep(logBandwidthUsageInterval)
 	}
 }
 
