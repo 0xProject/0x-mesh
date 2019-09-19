@@ -306,9 +306,9 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder, i int) {
-			orders := []wrappers.OrderWithoutExchangeAddress{}
+			orders := []wrappers.OrderWithoutDomain{}
 			for _, signedOrder := range signedOrders {
-				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
+				orders = append(orders, signedOrder.ConvertToOrderWithoutDomain())
 			}
 			signatures := [][]byte{}
 			for _, signedOrder := range signedOrders {
@@ -767,10 +767,10 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
-	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutDomain()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
-		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
+		[]wrappers.OrderWithoutDomain{orderWithExchangeAddress},
 		[][]byte{signedOrder.Signature},
 	)
 	if err != nil {

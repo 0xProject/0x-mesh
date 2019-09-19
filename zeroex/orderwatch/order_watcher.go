@@ -545,7 +545,11 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error
 		return err
 	}
 
-	w.eventDecoder.AddKnownExchange(signedOrder.ExchangeAddress)
+	exchangeAddress, err := ethereum.GetExchangeAddressForDomainHash(signedOrder.DomainHash)
+	if err != nil {
+		return err
+	}
+	w.eventDecoder.AddKnownExchange(exchangeAddress)
 
 	err = w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
 	if err != nil {

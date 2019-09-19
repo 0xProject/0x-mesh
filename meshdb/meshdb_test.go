@@ -31,14 +31,16 @@ func TestOrderCRUDOperations(t *testing.T) {
 		SenderAddress:         constants.NullAddress,
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+		TakerFeeAssetData:     constants.NullBytes,
 		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+		MakerFeeAssetData:     constants.NullBytes,
 		Salt:                  salt,
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		ExchangeAddress:       contractAddresses.Exchange,
+		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 	signedOrder, err := zeroex.SignTestOrder(o)
 	require.NoError(t, err)

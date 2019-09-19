@@ -99,7 +99,6 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +129,10 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 			})
 			continue
 		}
-		if order.ExchangeAddress != contractAddresses.Exchange {
+		// TODO(fabio): This check now also checks that the order is for the right protocol version.
+		// Should we update the status code to reflect this?
+		expectedDomainHash := constants.NetworkIdToDomainHash[app.networkID]
+		if order.DomainHash != expectedDomainHash {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,

@@ -112,13 +112,15 @@ interface WrapperSignedOrder {
     makerAddress: string;
     makerAssetData: string;
     makerAssetAmount: string;
+    makerFeeAssetAmount: string;
     makerFee: string;
     takerAddress: string;
     takerAssetData: string;
+    takerFeeAssetData: string;
     takerAssetAmount: string;
     takerFee: string;
     senderAddress: string;
-    exchangeAddress: string;
+    domainHash: string;
     feeRecipientAddress: string;
     expirationTimeSeconds: string;
     salt: string;
