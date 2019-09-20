@@ -56,11 +56,6 @@ const (
 	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
 	// a bandwidth check.
 	chanceToCheckBandiwdthUsage = 0.1
-	// peerBandwidthLimit is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check.
-	// TODO(albrow): Reduce this limit once we have a better picture of what
-	// real-world bandwidth should be.
-	peerBandwidthLimit = 104857600 // 100 MiB.
 	// logBandwidthUsageInterval is how often to log bandwidth usage data.
 	logBandwidthUsageInterval = 5 * time.Minute
 )
@@ -83,7 +78,7 @@ type Node struct {
 	sub              *pubsub.Subscription
 	protectedIPsMut  sync.RWMutex
 	protectedIPs     stringset.Set
-	bandwidthCounter *metrics.BandwidthCounter
+	bandwidthChecker *bandwidthChecker
 }
 
 // Config contains configuration options for a Node.
@@ -213,8 +208,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
 		protectedIPs:     stringset.New(),
-		bandwidthCounter: bandwidthCounter,
 	}
+	node.bandwidthChecker = newBandwidthChecker(node, bandwidthCounter)
 
 	return node, nil
 }
@@ -291,7 +286,7 @@ func (n *Node) Start() error {
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
 	// Start logging bandwidth in the background.
-	go n.logBandwidthUsage(n.ctx)
+	go n.bandwidthChecker.logBandwidthUsage(n.ctx)
 
 	return n.mainLoop()
 }
@@ -438,8 +433,7 @@ func (n *Node) runOnce() error {
 
 	// Check bandwidth usage non-deterministically
 	if mathrand.Float64() <= chanceToCheckBandiwdthUsage {
-		log.Error("Checking bandwidth usage...")
-		n.checkBandwidthUsage()
+		n.bandwidthChecker.checkUsage()
 	}
 
 	// Send up to maxSendBatch messages.
@@ -536,73 +530,6 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 			continue
 		}
 		messages = append(messages, msg)
-	}
-}
-
-func (n *Node) logBandwidthUsage(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		// Log the bandwidth used by each peer.
-		for _, remotePeerID := range n.host.Network().Peers() {
-			stats := n.bandwidthCounter.GetBandwidthForPeer(remotePeerID)
-			log.WithFields(log.Fields{
-				"remotePeerID": remotePeerID.String(),
-				"rateIn":       stats.RateIn,
-			}).Debug("bandwidth used by peer")
-		}
-
-		// Log the bandwidth used by each protocol.
-		for protocolID, stats := range n.bandwidthCounter.GetBandwidthByProtocol() {
-			log.WithFields(log.Fields{
-				"protocolID": protocolID,
-				"rateIn":     stats.RateIn,
-			}).Debug("bandwidth used by protocol")
-		}
-
-		time.Sleep(logBandwidthUsageInterval)
-	}
-}
-
-// checkBandwidthUsage checks the amount of data sent by each connected peer and
-// bans (via IP address) any peers which have exceeded the bandwidth limit.
-func (n *Node) checkBandwidthUsage() {
-	for _, remotePeerID := range n.host.Network().Peers() {
-		stats := n.bandwidthCounter.GetBandwidthForPeer(remotePeerID)
-		// If the peer is sending is data at a higher rate than is allowed, ban
-		// them.
-		if stats.RateIn > peerBandwidthLimit {
-			log.WithFields(log.Fields{
-				"remotePeerID": remotePeerID.String(),
-				"rateIn":       stats.RateIn,
-			}).Warn("banning peer due to high bandwidth usage")
-			// There are possibly multiple connections to each peer. We ban the IP
-			// address associated with each connection.
-			for _, conn := range n.host.Network().ConnsToPeer(remotePeerID) {
-				if err := n.BanIP(conn.RemoteMultiaddr()); err != nil {
-					if err == errProtectedIP {
-						continue
-					}
-					log.WithFields(log.Fields{
-						"remotePeerID":    remotePeerID.String(),
-						"remoteMultiaddr": conn.RemoteMultiaddr().String(),
-						"error":           err.Error(),
-					}).Error("could not ban peer")
-				}
-				log.WithFields(log.Fields{
-					"remotePeerID":    remotePeerID.String(),
-					"remoteMultiaddr": conn.RemoteMultiaddr().String(),
-					"rateIn":          stats.RateIn,
-				}).Trace("banning IP/multiaddress due to high bandwidth usage")
-				// Banning the IP doesn't close the connection, so we do that
-				// separately.
-				_ = conn.Close()
-			}
-		}
 	}
 }
 
