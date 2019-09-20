@@ -26,7 +26,7 @@ import (
 
 // Values taken from Ganache snapshot
 var firstAccount = constants.GanacheAccount0
-var firstAccountBalance, _ = math.ParseBig256("99924554854000000000")
+var firstAccountBalance, _ = math.ParseBig256("99723678048000000000")
 var secondAccount = constants.GanacheAccount1
 var secondAccountBalance, _ = math.ParseBig256("100000000000000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")

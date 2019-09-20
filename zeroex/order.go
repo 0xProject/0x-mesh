@@ -200,7 +200,7 @@ var eip712OrderTypes = signer.Types{
 			Type: "uint256",
 		},
 		{
-			Name: "verifyingContract",
+			Name: "verifyingContractAddress",
 			Type: "address",
 		},
 	},
@@ -280,9 +280,9 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		return *o.hash, err
 	}
 	var domain = signer.TypedDataDomain{
-		Name:              "0x Protocol",
-		Version:           "2",
-		VerifyingContract: exchangeAddress.Hex(),
+		Name:                     "0x Protocol",
+		Version:                  "2",
+		VerifyingContractAddress: exchangeAddress.Hex(),
 	}
 
 	var message = map[string]interface{}{

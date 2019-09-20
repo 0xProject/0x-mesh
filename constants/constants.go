@@ -30,7 +30,7 @@ var DomainHashToNetworkID = map[common.Hash]int{
 }
 
 // GanacheDomainHash is the domain hash for the Ganache network
-var GanacheDomainHash = common.HexToHash("0xd6eb5582150d348b0025791b2daf2e809f8479a96b311b16b83e60a940a0ed77")
+var GanacheDomainHash = common.HexToHash("0x702b03cdb81aac5ae02a3438ef3dfd4a4ad7c5c42f5968b0abbac02a5725b71d")
 
 // NullAddress is an Ethereum address with all zeroes.
 var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
