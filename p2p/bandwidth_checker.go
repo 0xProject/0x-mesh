@@ -45,16 +45,22 @@ func (checker *bandwidthChecker) logBandwidthUsage(ctx context.Context) {
 		for _, remotePeerID := range checker.node.host.Network().Peers() {
 			stats := checker.counter.GetBandwidthForPeer(remotePeerID)
 			log.WithFields(log.Fields{
-				"remotePeerID": remotePeerID.String(),
-				"rateIn":       stats.RateIn,
+				"remotePeerID":      remotePeerID.String(),
+				"bytesPerSecondIn":  stats.RateIn,
+				"totalBytesIn":      stats.TotalIn,
+				"bytesPerSecondOut": stats.RateOut,
+				"totalBytesOut":     stats.TotalOut,
 			}).Debug("bandwidth used by peer")
 		}
 
 		// Log the bandwidth used by each protocol.
 		for protocolID, stats := range checker.counter.GetBandwidthByProtocol() {
 			log.WithFields(log.Fields{
-				"protocolID": protocolID,
-				"rateIn":     stats.RateIn,
+				"protocolID":        protocolID,
+				"bytesPerSecondIn":  stats.RateIn,
+				"totalBytesIn":      stats.TotalIn,
+				"bytesPerSecondOut": stats.RateOut,
+				"totalBytesOut":     stats.TotalOut,
 			}).Debug("bandwidth used by protocol")
 		}
 
@@ -71,8 +77,8 @@ func (checker *bandwidthChecker) checkUsage() {
 		// them.
 		if stats.RateIn > checker.maxBytesPerSecond {
 			log.WithFields(log.Fields{
-				"remotePeerID": remotePeerID.String(),
-				"rateIn":       stats.RateIn,
+				"remotePeerID":     remotePeerID.String(),
+				"bytesPerSecondIn": stats.RateIn,
 			}).Warn("banning peer due to high bandwidth usage")
 			// There are possibly multiple connections to each peer. We ban the IP
 			// address associated with each connection.
