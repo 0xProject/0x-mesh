@@ -9,6 +9,7 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -390,8 +391,8 @@ func (_Exchange *ExchangeCallerSession) GetAssetProxy(assetProxyId [4]byte) (com
 
 // GetOrderInfo is a free data retrieval call binding the contract method 0x9d3fa4b9.
 //
-// Solidity: function getOrderInfo(Struct1 order) constant returns(Struct5 orderInfo)
-func (_Exchange *ExchangeCaller) GetOrderInfo(opts *bind.CallOpts, order Struct1) (Struct5, error) {
+// Solidity: function getOrderInfo(Struct0 order) constant returns(Struct5 orderInfo)
+func (_Exchange *ExchangeCaller) GetOrderInfo(opts *bind.CallOpts, order Struct0) (Struct5, error) {
 	var (
 		ret0 = new(Struct5)
 	)
@@ -402,15 +403,15 @@ func (_Exchange *ExchangeCaller) GetOrderInfo(opts *bind.CallOpts, order Struct1
 
 // GetOrderInfo is a free data retrieval call binding the contract method 0x9d3fa4b9.
 //
-// Solidity: function getOrderInfo(Struct1 order) constant returns(Struct5 orderInfo)
-func (_Exchange *ExchangeSession) GetOrderInfo(order Struct1) (Struct5, error) {
+// Solidity: function getOrderInfo(Struct0 order) constant returns(Struct5 orderInfo)
+func (_Exchange *ExchangeSession) GetOrderInfo(order Struct0) (Struct5, error) {
 	return _Exchange.Contract.GetOrderInfo(&_Exchange.CallOpts, order)
 }
 
 // GetOrderInfo is a free data retrieval call binding the contract method 0x9d3fa4b9.
 //
-// Solidity: function getOrderInfo(Struct1 order) constant returns(Struct5 orderInfo)
-func (_Exchange *ExchangeCallerSession) GetOrderInfo(order Struct1) (Struct5, error) {
+// Solidity: function getOrderInfo(Struct0 order) constant returns(Struct5 orderInfo)
+func (_Exchange *ExchangeCallerSession) GetOrderInfo(order Struct0) (Struct5, error) {
 	return _Exchange.Contract.GetOrderInfo(&_Exchange.CallOpts, order)
 }
 
@@ -442,8 +443,8 @@ func (_Exchange *ExchangeCallerSession) IsValidHashSignature(hash [32]byte, sign
 
 // IsValidOrderSignature is a free data retrieval call binding the contract method 0xa12dcc6f.
 //
-// Solidity: function isValidOrderSignature(Struct1 order, bytes signature) constant returns(bool isValid)
-func (_Exchange *ExchangeCaller) IsValidOrderSignature(opts *bind.CallOpts, order Struct1, signature []byte) (bool, error) {
+// Solidity: function isValidOrderSignature(Struct0 order, bytes signature) constant returns(bool isValid)
+func (_Exchange *ExchangeCaller) IsValidOrderSignature(opts *bind.CallOpts, order Struct0, signature []byte) (bool, error) {
 	var (
 		ret0 = new(bool)
 	)
@@ -454,15 +455,15 @@ func (_Exchange *ExchangeCaller) IsValidOrderSignature(opts *bind.CallOpts, orde
 
 // IsValidOrderSignature is a free data retrieval call binding the contract method 0xa12dcc6f.
 //
-// Solidity: function isValidOrderSignature(Struct1 order, bytes signature) constant returns(bool isValid)
-func (_Exchange *ExchangeSession) IsValidOrderSignature(order Struct1, signature []byte) (bool, error) {
+// Solidity: function isValidOrderSignature(Struct0 order, bytes signature) constant returns(bool isValid)
+func (_Exchange *ExchangeSession) IsValidOrderSignature(order Struct0, signature []byte) (bool, error) {
 	return _Exchange.Contract.IsValidOrderSignature(&_Exchange.CallOpts, order, signature)
 }
 
 // IsValidOrderSignature is a free data retrieval call binding the contract method 0xa12dcc6f.
 //
-// Solidity: function isValidOrderSignature(Struct1 order, bytes signature) constant returns(bool isValid)
-func (_Exchange *ExchangeCallerSession) IsValidOrderSignature(order Struct1, signature []byte) (bool, error) {
+// Solidity: function isValidOrderSignature(Struct0 order, bytes signature) constant returns(bool isValid)
+func (_Exchange *ExchangeCallerSession) IsValidOrderSignature(order Struct0, signature []byte) (bool, error) {
 	return _Exchange.Contract.IsValidOrderSignature(&_Exchange.CallOpts, order, signature)
 }
 
@@ -650,22 +651,22 @@ func (_Exchange *ExchangeCallerSession) TransactionsExecuted(arg0 [32]byte) (boo
 
 // BatchCancelOrders is a paid mutator transaction binding the contract method 0xdedfc1f1.
 //
-// Solidity: function batchCancelOrders([]Struct1 orders) returns()
-func (_Exchange *ExchangeTransactor) BatchCancelOrders(opts *bind.TransactOpts, orders []Struct1) (*types.Transaction, error) {
+// Solidity: function batchCancelOrders([]Struct0 orders) returns()
+func (_Exchange *ExchangeTransactor) BatchCancelOrders(opts *bind.TransactOpts, orders []Struct0) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchCancelOrders", orders)
 }
 
 // BatchCancelOrders is a paid mutator transaction binding the contract method 0xdedfc1f1.
 //
-// Solidity: function batchCancelOrders([]Struct1 orders) returns()
-func (_Exchange *ExchangeSession) BatchCancelOrders(orders []Struct1) (*types.Transaction, error) {
+// Solidity: function batchCancelOrders([]Struct0 orders) returns()
+func (_Exchange *ExchangeSession) BatchCancelOrders(orders []Struct0) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchCancelOrders(&_Exchange.TransactOpts, orders)
 }
 
 // BatchCancelOrders is a paid mutator transaction binding the contract method 0xdedfc1f1.
 //
-// Solidity: function batchCancelOrders([]Struct1 orders) returns()
-func (_Exchange *ExchangeTransactorSession) BatchCancelOrders(orders []Struct1) (*types.Transaction, error) {
+// Solidity: function batchCancelOrders([]Struct0 orders) returns()
+func (_Exchange *ExchangeTransactorSession) BatchCancelOrders(orders []Struct0) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchCancelOrders(&_Exchange.TransactOpts, orders)
 }
 
@@ -692,127 +693,127 @@ func (_Exchange *ExchangeTransactorSession) BatchExecuteTransactions(transaction
 
 // BatchFillOrKillOrders is a paid mutator transaction binding the contract method 0xbeee2e14.
 //
-// Solidity: function batchFillOrKillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) BatchFillOrKillOrders(opts *bind.TransactOpts, orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrKillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) BatchFillOrKillOrders(opts *bind.TransactOpts, orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchFillOrKillOrders", orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrKillOrders is a paid mutator transaction binding the contract method 0xbeee2e14.
 //
-// Solidity: function batchFillOrKillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeSession) BatchFillOrKillOrders(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrKillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeSession) BatchFillOrKillOrders(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrKillOrders(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrKillOrders is a paid mutator transaction binding the contract method 0xbeee2e14.
 //
-// Solidity: function batchFillOrKillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) BatchFillOrKillOrders(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrKillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) BatchFillOrKillOrders(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrKillOrders(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrders is a paid mutator transaction binding the contract method 0x9694a402.
 //
-// Solidity: function batchFillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) BatchFillOrders(opts *bind.TransactOpts, orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) BatchFillOrders(opts *bind.TransactOpts, orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchFillOrders", orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrders is a paid mutator transaction binding the contract method 0x9694a402.
 //
-// Solidity: function batchFillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeSession) BatchFillOrders(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeSession) BatchFillOrders(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrders(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrders is a paid mutator transaction binding the contract method 0x9694a402.
 //
-// Solidity: function batchFillOrders([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) BatchFillOrders(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrders([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) BatchFillOrders(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrders(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrdersNoThrow is a paid mutator transaction binding the contract method 0x8ea8dfe4.
 //
-// Solidity: function batchFillOrdersNoThrow([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) BatchFillOrdersNoThrow(opts *bind.TransactOpts, orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrdersNoThrow([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) BatchFillOrdersNoThrow(opts *bind.TransactOpts, orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchFillOrdersNoThrow", orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrdersNoThrow is a paid mutator transaction binding the contract method 0x8ea8dfe4.
 //
-// Solidity: function batchFillOrdersNoThrow([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeSession) BatchFillOrdersNoThrow(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrdersNoThrow([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeSession) BatchFillOrdersNoThrow(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrdersNoThrow(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchFillOrdersNoThrow is a paid mutator transaction binding the contract method 0x8ea8dfe4.
 //
-// Solidity: function batchFillOrdersNoThrow([]Struct1 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) BatchFillOrdersNoThrow(orders []Struct1, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchFillOrdersNoThrow([]Struct0 orders, uint256[] takerAssetFillAmounts, bytes[] signatures) returns([]Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) BatchFillOrdersNoThrow(orders []Struct0, takerAssetFillAmounts []*big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchFillOrdersNoThrow(&_Exchange.TransactOpts, orders, takerAssetFillAmounts, signatures)
 }
 
 // BatchMatchOrders is a paid mutator transaction binding the contract method 0x6fcf3e9e.
 //
-// Solidity: function batchMatchOrders([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeTransactor) BatchMatchOrders(opts *bind.TransactOpts, leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrders([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeTransactor) BatchMatchOrders(opts *bind.TransactOpts, leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchMatchOrders", leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // BatchMatchOrders is a paid mutator transaction binding the contract method 0x6fcf3e9e.
 //
-// Solidity: function batchMatchOrders([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeSession) BatchMatchOrders(leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrders([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeSession) BatchMatchOrders(leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchMatchOrders(&_Exchange.TransactOpts, leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // BatchMatchOrders is a paid mutator transaction binding the contract method 0x6fcf3e9e.
 //
-// Solidity: function batchMatchOrders([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeTransactorSession) BatchMatchOrders(leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrders([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeTransactorSession) BatchMatchOrders(leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchMatchOrders(&_Exchange.TransactOpts, leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // BatchMatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0x6a1a80fd.
 //
-// Solidity: function batchMatchOrdersWithMaximalFill([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeTransactor) BatchMatchOrdersWithMaximalFill(opts *bind.TransactOpts, leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrdersWithMaximalFill([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeTransactor) BatchMatchOrdersWithMaximalFill(opts *bind.TransactOpts, leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "batchMatchOrdersWithMaximalFill", leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // BatchMatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0x6a1a80fd.
 //
-// Solidity: function batchMatchOrdersWithMaximalFill([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeSession) BatchMatchOrdersWithMaximalFill(leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrdersWithMaximalFill([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeSession) BatchMatchOrdersWithMaximalFill(leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchMatchOrdersWithMaximalFill(&_Exchange.TransactOpts, leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // BatchMatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0x6a1a80fd.
 //
-// Solidity: function batchMatchOrdersWithMaximalFill([]Struct1 leftOrders, []Struct1 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
-func (_Exchange *ExchangeTransactorSession) BatchMatchOrdersWithMaximalFill(leftOrders []Struct1, rightOrders []Struct1, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
+// Solidity: function batchMatchOrdersWithMaximalFill([]Struct0 leftOrders, []Struct0 rightOrders, bytes[] leftSignatures, bytes[] rightSignatures) returns(Struct4 batchMatchedFillResults)
+func (_Exchange *ExchangeTransactorSession) BatchMatchOrdersWithMaximalFill(leftOrders []Struct0, rightOrders []Struct0, leftSignatures [][]byte, rightSignatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.BatchMatchOrdersWithMaximalFill(&_Exchange.TransactOpts, leftOrders, rightOrders, leftSignatures, rightSignatures)
 }
 
 // CancelOrder is a paid mutator transaction binding the contract method 0x2da62987.
 //
-// Solidity: function cancelOrder(Struct1 order) returns()
-func (_Exchange *ExchangeTransactor) CancelOrder(opts *bind.TransactOpts, order Struct1) (*types.Transaction, error) {
+// Solidity: function cancelOrder(Struct0 order) returns()
+func (_Exchange *ExchangeTransactor) CancelOrder(opts *bind.TransactOpts, order Struct0) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "cancelOrder", order)
 }
 
 // CancelOrder is a paid mutator transaction binding the contract method 0x2da62987.
 //
-// Solidity: function cancelOrder(Struct1 order) returns()
-func (_Exchange *ExchangeSession) CancelOrder(order Struct1) (*types.Transaction, error) {
+// Solidity: function cancelOrder(Struct0 order) returns()
+func (_Exchange *ExchangeSession) CancelOrder(order Struct0) (*types.Transaction, error) {
 	return _Exchange.Contract.CancelOrder(&_Exchange.TransactOpts, order)
 }
 
 // CancelOrder is a paid mutator transaction binding the contract method 0x2da62987.
 //
-// Solidity: function cancelOrder(Struct1 order) returns()
-func (_Exchange *ExchangeTransactorSession) CancelOrder(order Struct1) (*types.Transaction, error) {
+// Solidity: function cancelOrder(Struct0 order) returns()
+func (_Exchange *ExchangeTransactorSession) CancelOrder(order Struct0) (*types.Transaction, error) {
 	return _Exchange.Contract.CancelOrder(&_Exchange.TransactOpts, order)
 }
 
@@ -860,169 +861,169 @@ func (_Exchange *ExchangeTransactorSession) ExecuteTransaction(transaction Struc
 
 // FillOrKillOrder is a paid mutator transaction binding the contract method 0xe14b58c4.
 //
-// Solidity: function fillOrKillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) FillOrKillOrder(opts *bind.TransactOpts, order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrKillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) FillOrKillOrder(opts *bind.TransactOpts, order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "fillOrKillOrder", order, takerAssetFillAmount, signature)
 }
 
 // FillOrKillOrder is a paid mutator transaction binding the contract method 0xe14b58c4.
 //
-// Solidity: function fillOrKillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) FillOrKillOrder(order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrKillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) FillOrKillOrder(order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.FillOrKillOrder(&_Exchange.TransactOpts, order, takerAssetFillAmount, signature)
 }
 
 // FillOrKillOrder is a paid mutator transaction binding the contract method 0xe14b58c4.
 //
-// Solidity: function fillOrKillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) FillOrKillOrder(order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrKillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) FillOrKillOrder(order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.FillOrKillOrder(&_Exchange.TransactOpts, order, takerAssetFillAmount, signature)
 }
 
 // FillOrder is a paid mutator transaction binding the contract method 0x9b44d556.
 //
-// Solidity: function fillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) FillOrder(opts *bind.TransactOpts, order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) FillOrder(opts *bind.TransactOpts, order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "fillOrder", order, takerAssetFillAmount, signature)
 }
 
 // FillOrder is a paid mutator transaction binding the contract method 0x9b44d556.
 //
-// Solidity: function fillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) FillOrder(order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) FillOrder(order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.FillOrder(&_Exchange.TransactOpts, order, takerAssetFillAmount, signature)
 }
 
 // FillOrder is a paid mutator transaction binding the contract method 0x9b44d556.
 //
-// Solidity: function fillOrder(Struct1 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) FillOrder(order Struct1, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
+// Solidity: function fillOrder(Struct0 order, uint256 takerAssetFillAmount, bytes signature) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) FillOrder(order Struct0, takerAssetFillAmount *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.FillOrder(&_Exchange.TransactOpts, order, takerAssetFillAmount, signature)
 }
 
 // MarketBuyOrdersFillOrKill is a paid mutator transaction binding the contract method 0x8bc8efb3.
 //
-// Solidity: function marketBuyOrdersFillOrKill([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) MarketBuyOrdersFillOrKill(opts *bind.TransactOpts, orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersFillOrKill([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) MarketBuyOrdersFillOrKill(opts *bind.TransactOpts, orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "marketBuyOrdersFillOrKill", orders, makerAssetFillAmount, signatures)
 }
 
 // MarketBuyOrdersFillOrKill is a paid mutator transaction binding the contract method 0x8bc8efb3.
 //
-// Solidity: function marketBuyOrdersFillOrKill([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) MarketBuyOrdersFillOrKill(orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersFillOrKill([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) MarketBuyOrdersFillOrKill(orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketBuyOrdersFillOrKill(&_Exchange.TransactOpts, orders, makerAssetFillAmount, signatures)
 }
 
 // MarketBuyOrdersFillOrKill is a paid mutator transaction binding the contract method 0x8bc8efb3.
 //
-// Solidity: function marketBuyOrdersFillOrKill([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) MarketBuyOrdersFillOrKill(orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersFillOrKill([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) MarketBuyOrdersFillOrKill(orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketBuyOrdersFillOrKill(&_Exchange.TransactOpts, orders, makerAssetFillAmount, signatures)
 }
 
 // MarketBuyOrdersNoThrow is a paid mutator transaction binding the contract method 0x78d29ac1.
 //
-// Solidity: function marketBuyOrdersNoThrow([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) MarketBuyOrdersNoThrow(opts *bind.TransactOpts, orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersNoThrow([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) MarketBuyOrdersNoThrow(opts *bind.TransactOpts, orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "marketBuyOrdersNoThrow", orders, makerAssetFillAmount, signatures)
 }
 
 // MarketBuyOrdersNoThrow is a paid mutator transaction binding the contract method 0x78d29ac1.
 //
-// Solidity: function marketBuyOrdersNoThrow([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) MarketBuyOrdersNoThrow(orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersNoThrow([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) MarketBuyOrdersNoThrow(orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketBuyOrdersNoThrow(&_Exchange.TransactOpts, orders, makerAssetFillAmount, signatures)
 }
 
 // MarketBuyOrdersNoThrow is a paid mutator transaction binding the contract method 0x78d29ac1.
 //
-// Solidity: function marketBuyOrdersNoThrow([]Struct1 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) MarketBuyOrdersNoThrow(orders []Struct1, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketBuyOrdersNoThrow([]Struct0 orders, uint256 makerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) MarketBuyOrdersNoThrow(orders []Struct0, makerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketBuyOrdersNoThrow(&_Exchange.TransactOpts, orders, makerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersFillOrKill is a paid mutator transaction binding the contract method 0xa6c3bf33.
 //
-// Solidity: function marketSellOrdersFillOrKill([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) MarketSellOrdersFillOrKill(opts *bind.TransactOpts, orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersFillOrKill([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) MarketSellOrdersFillOrKill(opts *bind.TransactOpts, orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "marketSellOrdersFillOrKill", orders, takerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersFillOrKill is a paid mutator transaction binding the contract method 0xa6c3bf33.
 //
-// Solidity: function marketSellOrdersFillOrKill([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) MarketSellOrdersFillOrKill(orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersFillOrKill([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) MarketSellOrdersFillOrKill(orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketSellOrdersFillOrKill(&_Exchange.TransactOpts, orders, takerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersFillOrKill is a paid mutator transaction binding the contract method 0xa6c3bf33.
 //
-// Solidity: function marketSellOrdersFillOrKill([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) MarketSellOrdersFillOrKill(orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersFillOrKill([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) MarketSellOrdersFillOrKill(orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketSellOrdersFillOrKill(&_Exchange.TransactOpts, orders, takerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersNoThrow is a paid mutator transaction binding the contract method 0x369da099.
 //
-// Solidity: function marketSellOrdersNoThrow([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactor) MarketSellOrdersNoThrow(opts *bind.TransactOpts, orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersNoThrow([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactor) MarketSellOrdersNoThrow(opts *bind.TransactOpts, orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "marketSellOrdersNoThrow", orders, takerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersNoThrow is a paid mutator transaction binding the contract method 0x369da099.
 //
-// Solidity: function marketSellOrdersNoThrow([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeSession) MarketSellOrdersNoThrow(orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersNoThrow([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeSession) MarketSellOrdersNoThrow(orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketSellOrdersNoThrow(&_Exchange.TransactOpts, orders, takerAssetFillAmount, signatures)
 }
 
 // MarketSellOrdersNoThrow is a paid mutator transaction binding the contract method 0x369da099.
 //
-// Solidity: function marketSellOrdersNoThrow([]Struct1 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
-func (_Exchange *ExchangeTransactorSession) MarketSellOrdersNoThrow(orders []Struct1, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
+// Solidity: function marketSellOrdersNoThrow([]Struct0 orders, uint256 takerAssetFillAmount, bytes[] signatures) returns(Struct5 fillResults)
+func (_Exchange *ExchangeTransactorSession) MarketSellOrdersNoThrow(orders []Struct0, takerAssetFillAmount *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MarketSellOrdersNoThrow(&_Exchange.TransactOpts, orders, takerAssetFillAmount, signatures)
 }
 
 // MatchOrders is a paid mutator transaction binding the contract method 0x88ec79fb.
 //
-// Solidity: function matchOrders(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeTransactor) MatchOrders(opts *bind.TransactOpts, leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrders(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeTransactor) MatchOrders(opts *bind.TransactOpts, leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "matchOrders", leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
 // MatchOrders is a paid mutator transaction binding the contract method 0x88ec79fb.
 //
-// Solidity: function matchOrders(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeSession) MatchOrders(leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrders(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeSession) MatchOrders(leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MatchOrders(&_Exchange.TransactOpts, leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
 // MatchOrders is a paid mutator transaction binding the contract method 0x88ec79fb.
 //
-// Solidity: function matchOrders(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeTransactorSession) MatchOrders(leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrders(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeTransactorSession) MatchOrders(leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MatchOrders(&_Exchange.TransactOpts, leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
 // MatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0xb718e292.
 //
-// Solidity: function matchOrdersWithMaximalFill(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeTransactor) MatchOrdersWithMaximalFill(opts *bind.TransactOpts, leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrdersWithMaximalFill(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeTransactor) MatchOrdersWithMaximalFill(opts *bind.TransactOpts, leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "matchOrdersWithMaximalFill", leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
 // MatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0xb718e292.
 //
-// Solidity: function matchOrdersWithMaximalFill(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeSession) MatchOrdersWithMaximalFill(leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrdersWithMaximalFill(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeSession) MatchOrdersWithMaximalFill(leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MatchOrdersWithMaximalFill(&_Exchange.TransactOpts, leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
 // MatchOrdersWithMaximalFill is a paid mutator transaction binding the contract method 0xb718e292.
 //
-// Solidity: function matchOrdersWithMaximalFill(Struct1 leftOrder, Struct1 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
-func (_Exchange *ExchangeTransactorSession) MatchOrdersWithMaximalFill(leftOrder Struct1, rightOrder Struct1, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
+// Solidity: function matchOrdersWithMaximalFill(Struct0 leftOrder, Struct0 rightOrder, bytes leftSignature, bytes rightSignature) returns(Struct2 matchedFillResults)
+func (_Exchange *ExchangeTransactorSession) MatchOrdersWithMaximalFill(leftOrder Struct0, rightOrder Struct0, leftSignature []byte, rightSignature []byte) (*types.Transaction, error) {
 	return _Exchange.Contract.MatchOrdersWithMaximalFill(&_Exchange.TransactOpts, leftOrder, rightOrder, leftSignature, rightSignature)
 }
 
