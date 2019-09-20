@@ -9,16 +9,17 @@ import (
 )
 
 const (
-	// peerBandwidthLimit is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check.
+	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
+	// peer is allowed to send before failing the bandwidth check.
 	// TODO(albrow): Reduce this limit once we have a better picture of what
 	// real-world bandwidth should be.
-	peerBandwidthLimit = 104857600 // 100 MiB.
+	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
 )
 
 type bandwidthChecker struct {
-	node    *Node
-	counter *metrics.BandwidthCounter
+	node              *Node
+	counter           *metrics.BandwidthCounter
+	maxBytesPerSecond float64
 	// TODO(albrow): We'll use these later.
 	// lastSnapshot     map[peer.ID]metrics.Stats
 	// lastSnapshotTime time.Time
@@ -26,8 +27,9 @@ type bandwidthChecker struct {
 
 func newBandwidthChecker(node *Node, counter *metrics.BandwidthCounter) *bandwidthChecker {
 	return &bandwidthChecker{
-		node:    node,
-		counter: counter,
+		node:              node,
+		counter:           counter,
+		maxBytesPerSecond: defaultMaxBytesPerSecond,
 	}
 }
 
@@ -67,7 +69,7 @@ func (checker *bandwidthChecker) checkUsage() {
 		stats := checker.counter.GetBandwidthForPeer(remotePeerID)
 		// If the peer is sending is data at a higher rate than is allowed, ban
 		// them.
-		if stats.RateIn > peerBandwidthLimit {
+		if stats.RateIn > checker.maxBytesPerSecond {
 			log.WithFields(log.Fields{
 				"remotePeerID": remotePeerID.String(),
 				"rateIn":       stats.RateIn,
