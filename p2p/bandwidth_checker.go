@@ -74,8 +74,9 @@ func (checker *bandwidthChecker) checkUsage() {
 		// them.
 		if stats.RateIn > checker.maxBytesPerSecond {
 			log.WithFields(log.Fields{
-				"remotePeerID":     remotePeerID.String(),
-				"bytesPerSecondIn": stats.RateIn,
+				"remotePeerID":      remotePeerID.String(),
+				"bytesPerSecondIn":  stats.RateIn,
+				"maxBytesPerSecond": checker.maxBytesPerSecond,
 			}).Warn("banning peer due to high bandwidth usage")
 			// There are possibly multiple connections to each peer. We ban the IP
 			// address associated with each connection.
@@ -91,9 +92,10 @@ func (checker *bandwidthChecker) checkUsage() {
 					}).Error("could not ban peer")
 				}
 				log.WithFields(log.Fields{
-					"remotePeerID":    remotePeerID.String(),
-					"remoteMultiaddr": conn.RemoteMultiaddr().String(),
-					"rateIn":          stats.RateIn,
+					"remotePeerID":      remotePeerID.String(),
+					"remoteMultiaddr":   conn.RemoteMultiaddr().String(),
+					"rateIn":            stats.RateIn,
+					"maxBytesPerSecond": checker.maxBytesPerSecond,
 				}).Trace("banning IP/multiaddress due to high bandwidth usage")
 			}
 			// Banning the IP doesn't close the connection, so we do that
