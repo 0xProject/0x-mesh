@@ -841,7 +841,7 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 			return false
 		}
 
-	case zeroex.PreSignedSignature, zeroex.WalletSignature:
+	case zeroex.PreSignedSignature, zeroex.WalletSignature, zeroex.EIP1271WalletSignature:
 		return true
 
 	default:

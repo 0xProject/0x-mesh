@@ -56,6 +56,7 @@ const (
 	WalletSignature
 	ValidatorSignature
 	PreSignedSignature
+	EIP1271WalletSignature
 	NSignatureTypesSignature
 )
 
