@@ -5,7 +5,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
-	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -22,7 +21,7 @@ var (
 	addressSchemaLoader     = gojsonschema.NewStringLoader(`{"id":"/addressSchema","type":"string","pattern":"^0x[0-9a-fA-F]{40}$"}`)
 	wholeNumberSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/wholeNumberSchema","anyOf":[{"type":"string","pattern":"^\\d+$"},{"type":"integer"}]}`)
 	hexSchemaLoader         = gojsonschema.NewStringLoader(`{"id":"/hexSchema","type":"string","pattern":"^0x(([0-9a-fA-F][0-9a-fA-F])+)?$"}`)
-	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"exchangeAddress":{"$ref":"/addressSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","salt","exchangeAddress","feeRecipientAddress","expirationTimeSeconds"],"type":"object"}`)
+	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"makerFeeAssetData":{"$ref":"/hexSchema"},"takerFeeAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"},"domainHash":{"$ref":"/hexSchema"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","makerFeeAssetData","takerFeeAssetData","salt","feeRecipientAddress","expirationTimeSeconds","domainHash"],"type":"object"}`)
 	signedOrderSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/signedOrderSchema","allOf":[{"$ref":"/orderSchema"},{"properties":{"signature":{"$ref":"/hexSchema"}},"required":["signature"]}]}`)
 	meshMessageSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/meshMessageSchema","properties":{"MessageType":{"type":"string"},"Order":{"$ref":"/signedOrderSchema"}},"required":["MessageType","Order"]}`)
 )
@@ -99,9 +98,6 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	if err != nil {
-		return nil, err
-	}
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
@@ -131,7 +127,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 		}
 		// TODO(fabio): This check now also checks that the order is for the right protocol version.
 		// Should we update the status code to reflect this?
-		expectedDomainHash := constants.NetworkIdToDomainHash[app.networkID]
+		expectedDomainHash := constants.NetworkIDToDomainHash[app.networkID]
 		if order.DomainHash != expectedDomainHash {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
