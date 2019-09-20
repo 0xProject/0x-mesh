@@ -5,7 +5,6 @@ package orderwatch
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -642,15 +641,10 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 }
 
 func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, timeout time.Duration) []*zeroex.OrderEvent {
-	start := time.Now()
 	select {
 	case orderEvents := <-orderEventsChan:
-		fmt.Println("orderEvents!", orderEvents)
 		return orderEvents
 	case <-time.After(timeout):
-		elapsed := time.Since(start)
-		fmt.Println("elapsed", elapsed)
-		fmt.Println("timeout!")
 		t.Fatal("timed out waiting for order events")
 	}
 	return []*zeroex.OrderEvent{}
