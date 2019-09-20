@@ -98,10 +98,10 @@ func (checker *bandwidthChecker) checkUsage() {
 					"remoteMultiaddr": conn.RemoteMultiaddr().String(),
 					"rateIn":          stats.RateIn,
 				}).Trace("banning IP/multiaddress due to high bandwidth usage")
-				// Banning the IP doesn't close the connection, so we do that
-				// separately.
-				_ = conn.Close()
 			}
+			// Banning the IP doesn't close the connection, so we do that
+			// separately. ClosePeer closes all connections to the given peer.
+			_ = checker.node.host.Network().ClosePeer(remotePeerID)
 		}
 	}
 }
