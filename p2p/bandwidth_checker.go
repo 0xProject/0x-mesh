@@ -12,7 +12,7 @@ const (
 	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
 	// peer is allowed to send before failing the bandwidth check.
 	// TODO(albrow): Reduce this limit once we have a better picture of what
-	// real-world bandwidth should be.
+	// real world bandwidth should be.
 	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
 )
 
@@ -20,9 +20,6 @@ type bandwidthChecker struct {
 	node              *Node
 	counter           *metrics.BandwidthCounter
 	maxBytesPerSecond float64
-	// TODO(albrow): We'll use these later.
-	// lastSnapshot     map[peer.ID]metrics.Stats
-	// lastSnapshotTime time.Time
 }
 
 func newBandwidthChecker(node *Node, counter *metrics.BandwidthCounter) *bandwidthChecker {
