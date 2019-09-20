@@ -286,7 +286,7 @@ func (n *Node) Start() error {
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
 	// Start logging bandwidth in the background.
-	go n.bandwidthChecker.logBandwidthUsage(n.ctx)
+	go n.bandwidthChecker.continuouslyLogBandwidthUsage(n.ctx)
 
 	return n.mainLoop()
 }

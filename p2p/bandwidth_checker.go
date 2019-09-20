@@ -30,38 +30,36 @@ func newBandwidthChecker(node *Node, counter *metrics.BandwidthCounter) *bandwid
 	}
 }
 
-func (checker *bandwidthChecker) logBandwidthUsage(ctx context.Context) {
+func (checker *bandwidthChecker) continuouslyLogBandwidthUsage(ctx context.Context) {
+	logTicker := time.Tick(logBandwidthUsageInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-		}
+		case <-logTicker:
+			// Log the bandwidth used by each peer.
+			for _, remotePeerID := range checker.node.host.Network().Peers() {
+				stats := checker.counter.GetBandwidthForPeer(remotePeerID)
+				log.WithFields(log.Fields{
+					"remotePeerID":      remotePeerID.String(),
+					"bytesPerSecondIn":  stats.RateIn,
+					"totalBytesIn":      stats.TotalIn,
+					"bytesPerSecondOut": stats.RateOut,
+					"totalBytesOut":     stats.TotalOut,
+				}).Debug("bandwidth used by peer")
+			}
 
-		// Log the bandwidth used by each peer.
-		for _, remotePeerID := range checker.node.host.Network().Peers() {
-			stats := checker.counter.GetBandwidthForPeer(remotePeerID)
-			log.WithFields(log.Fields{
-				"remotePeerID":      remotePeerID.String(),
-				"bytesPerSecondIn":  stats.RateIn,
-				"totalBytesIn":      stats.TotalIn,
-				"bytesPerSecondOut": stats.RateOut,
-				"totalBytesOut":     stats.TotalOut,
-			}).Debug("bandwidth used by peer")
+			// Log the bandwidth used by each protocol.
+			for protocolID, stats := range checker.counter.GetBandwidthByProtocol() {
+				log.WithFields(log.Fields{
+					"protocolID":        protocolID,
+					"bytesPerSecondIn":  stats.RateIn,
+					"totalBytesIn":      stats.TotalIn,
+					"bytesPerSecondOut": stats.RateOut,
+					"totalBytesOut":     stats.TotalOut,
+				}).Debug("bandwidth used by protocol")
+			}
 		}
-
-		// Log the bandwidth used by each protocol.
-		for protocolID, stats := range checker.counter.GetBandwidthByProtocol() {
-			log.WithFields(log.Fields{
-				"protocolID":        protocolID,
-				"bytesPerSecondIn":  stats.RateIn,
-				"totalBytesIn":      stats.TotalIn,
-				"bytesPerSecondOut": stats.RateOut,
-				"totalBytesOut":     stats.TotalOut,
-			}).Debug("bandwidth used by protocol")
-		}
-
-		time.Sleep(logBandwidthUsageInterval)
 	}
 }
 
