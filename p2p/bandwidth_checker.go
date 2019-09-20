@@ -14,6 +14,8 @@ const (
 	// TODO(albrow): Reduce this limit once we have a better picture of what
 	// real world bandwidth should be.
 	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
+	// logBandwidthUsageInterval is how often to log bandwidth usage data.
+	logBandwidthUsageInterval = 5 * time.Minute
 )
 
 type bandwidthChecker struct {

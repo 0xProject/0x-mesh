@@ -56,8 +56,6 @@ const (
 	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
 	// a bandwidth check.
 	chanceToCheckBandiwdthUsage = 0.1
-	// logBandwidthUsageInterval is how often to log bandwidth usage data.
-	logBandwidthUsageInterval = 5 * time.Minute
 )
 
 var errProtectedIP = errors.New("cannot ban protected IP address")
