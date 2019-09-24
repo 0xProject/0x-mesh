@@ -408,7 +408,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
 	makerFeeAssetData := ""
-	if len(s.MakerAssetData) != 0 {
+	if len(s.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
 	}
 	takerAssetData := ""
@@ -416,7 +416,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
 	}
 	takerFeeAssetData := ""
-	if len(s.TakerAssetData) != 0 {
+	if len(s.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
 	}
 	signature := ""
