@@ -134,3 +134,144 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 		assert.Equal(t, expectedSingleAssetData.TokenID, singleAssetData.TokenID)
 	}
 }
+
+func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
+	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	defer meshDB.Close()
+
+	makerAddress := constants.GanacheAccount0
+	nextSalt := big.NewInt(1548619145450)
+
+	zeroexOrders := []*zeroex.Order{
+		// No Maker fee
+		&zeroex.Order{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			TakerFeeAssetData:     constants.NullBytes,
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			MakerFeeAssetData:     constants.NullBytes,
+			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(1548619325),
+			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
+		},
+		// ERC20 maker fee
+		&zeroex.Order{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			TakerFeeAssetData:     constants.NullBytes,
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			MakerFeeAssetData:     common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32"),
+			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(1548619325),
+			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
+		},
+		// ERC721 maker fee with token id = 1
+		&zeroex.Order{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			TakerFeeAssetData:     constants.NullBytes,
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			MakerFeeAssetData:     common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(1548619325),
+			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
+		},
+		// ERC721 maker fee with token id = 2
+		&zeroex.Order{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			TakerFeeAssetData:     constants.NullBytes,
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			MakerFeeAssetData:     common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000002"),
+			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(1548619325),
+			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
+		},
+	}
+	orders := make([]*Order, len(zeroexOrders))
+	for i, o := range zeroexOrders {
+		signedOrder, err := zeroex.SignTestOrder(o)
+		require.NoError(t, err)
+		orderHash, err := o.ComputeOrderHash()
+		require.NoError(t, err)
+
+		orders[i] = &Order{
+			Hash:                     orderHash,
+			SignedOrder:              signedOrder,
+			FillableTakerAssetAmount: big.NewInt(1),
+			LastUpdated:              time.Now().UTC(),
+			IsRemoved:                false,
+		}
+		require.NoError(t, meshDB.Orders.Insert(orders[i]))
+		// We need to call ResetHash so that unexported hash field is equal in later
+		// assertions.
+		signedOrder.ResetHash()
+	}
+
+	testCases := []struct {
+		makerFeeAssetAddress common.Address
+		makerFeeTokenID      *big.Int
+		expectedOrders       []*Order
+	}{
+		{
+			makerFeeAssetAddress: constants.NullAddress,
+			makerFeeTokenID:      nil,
+			expectedOrders:       orders[0:1],
+		},
+		{
+			makerFeeAssetAddress: common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32"),
+			makerFeeTokenID:      nil,
+			expectedOrders:       orders[1:2],
+		},
+		{
+			// Since no token id was specified, this query should match all token ids.
+			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+			makerFeeTokenID:      nil,
+			expectedOrders:       orders[2:4],
+		},
+		{
+			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+			makerFeeTokenID:      big.NewInt(1),
+			expectedOrders:       orders[2:3],
+		},
+		{
+			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+			makerFeeTokenID:      big.NewInt(2),
+			expectedOrders:       orders[3:4],
+		},
+	}
+	for i, tc := range testCases {
+		foundOrders, err := meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressTokenID(makerAddress, tc.makerFeeAssetAddress, tc.makerFeeTokenID)
+		require.NoError(t, err)
+		assert.Equal(t, tc.expectedOrders, foundOrders, "test case %d", i)
+	}
+}

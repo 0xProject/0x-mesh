@@ -1,9 +1,12 @@
 package meshdb
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/0xProject/0x-mesh/constants"
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
@@ -59,10 +62,11 @@ type MiniHeadersCollection struct {
 // OrdersCollection represents a DB collection of 0x orders
 type OrdersCollection struct {
 	*db.Collection
-	MakerAddressAndSaltIndex             *db.Index
-	MakerAddressTokenAddressTokenIDIndex *db.Index
-	LastUpdatedIndex                     *db.Index
-	IsRemovedIndex                       *db.Index
+	MakerAddressAndSaltIndex                     *db.Index
+	MakerAddressTokenAddressTokenIDIndex         *db.Index
+	MakerAddressMakerFeeAssetAddressTokenIDIndex *db.Index
+	LastUpdatedIndex                             *db.Index
+	IsRemovedIndex                               *db.Index
 }
 
 // MetadataCollection represents a DB collection used to store instance metadata
@@ -140,6 +144,35 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		}
 		return indexValues
 	})
+	makerAddressMakerFeeAssetAddressTokenIDIndex := col.AddMultiIndex("makerAddressMakerFeeAssetAddressTokenID", func(m db.Model) [][]byte {
+		order := m.(*Order)
+
+		if bytes.Equal(order.SignedOrder.MakerFeeAssetData, constants.NullBytes) {
+			// MakerFeeAssetData is optional and the lack of a maker fee is indicated
+			// by null bytes ("0x0"). We still want to index this value so we can look
+			// up orders without a maker fee.
+			return [][]byte{
+				[]byte(order.SignedOrder.MakerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|"),
+			}
+		}
+
+		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerFeeAssetData)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Panic("Parsing assetData failed")
+		}
+
+		indexValues := make([][]byte, len(singleAssetDatas))
+		for i, singleAssetData := range singleAssetDatas {
+			indexValue := []byte(order.SignedOrder.MakerAddress.Hex() + "|" + singleAssetData.Address.Hex() + "|")
+			if singleAssetData.TokenID != nil {
+				indexValue = append(indexValue, singleAssetData.TokenID.Bytes()...)
+			}
+			indexValues[i] = indexValue
+		}
+		return indexValues
+	})
 
 	isRemovedIndex := col.AddIndex("isRemoved", func(m db.Model) []byte {
 		order := m.(*Order)
@@ -151,11 +184,12 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 	})
 
 	return &OrdersCollection{
-		Collection:                           col,
-		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
-		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
-		LastUpdatedIndex:                     lastUpdatedIndex,
-		IsRemovedIndex:                       isRemovedIndex,
+		Collection:                                   col,
+		MakerAddressTokenAddressTokenIDIndex:         makerAddressTokenAddressTokenIDIndex,
+		MakerAddressMakerFeeAssetAddressTokenIDIndex: makerAddressMakerFeeAssetAddressTokenIDIndex,
+		MakerAddressAndSaltIndex:                     makerAddressAndSaltIndex,
+		LastUpdatedIndex:                             lastUpdatedIndex,
+		IsRemovedIndex:                               isRemovedIndex,
 	}, nil
 }
 
@@ -235,6 +269,29 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 		prefix = append(prefix, tokenID.Bytes()...)
 	}
 	filter := m.Orders.MakerAddressTokenAddressTokenIDIndex.PrefixFilter(prefix)
+	orders := []*Order{}
+	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+// FindOrdersByMakerAddressMakerFeeAssetAddressTokenID finds all orders belonging to
+// a particular maker address where makerFeeAssetData encodes for a particular
+// token contract and optionally a token ID. To find orders without a maker fee,
+// use constants.NullAddress for makerFeeAssetAddress.
+func (m *MeshDB) FindOrdersByMakerAddressMakerFeeAssetAddressTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
+	var prefix []byte
+	if makerFeeAssetAddress == constants.NullAddress {
+		prefix = []byte(makerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|")
+	} else {
+		prefix = []byte(makerAddress.Hex() + "|" + makerFeeAssetAddress.Hex() + "|")
+		if tokenID != nil {
+			prefix = append(prefix, tokenID.Bytes()...)
+		}
+	}
+
+	filter := m.Orders.MakerAddressMakerFeeAssetAddressTokenIDIndex.PrefixFilter(prefix)
 	orders := []*Order{}
 	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
 		return nil, err
