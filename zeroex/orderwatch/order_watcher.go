@@ -278,12 +278,12 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 				parameters = transferEvent
-				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
+				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, nil)
 				if err != nil {
 					return err
 				}
 				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -303,7 +303,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					continue
 				}
 				parameters = approvalEvent
-				orders, err = w.findOrders(approvalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -318,12 +318,12 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 				parameters = transferEvent
-				fromOrders, err := w.findOrders(transferEvent.From, log.Address, transferEvent.TokenId)
+				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId)
 				if err != nil {
 					return err
 				}
 				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrders(transferEvent.To, log.Address, transferEvent.TokenId)
+				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId)
 				if err != nil {
 					return err
 				}
@@ -343,7 +343,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					continue
 				}
 				parameters = approvalEvent
-				orders, err = w.findOrders(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
+				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
 				if err != nil {
 					return err
 				}
@@ -362,7 +362,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					continue
 				}
 				parameters = approvalForAllEvent
-				orders, err = w.findOrders(approvalForAllEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalForAllEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -377,7 +377,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 				parameters = withdrawalEvent
-				orders, err = w.findOrders(withdrawalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddressAndTokenID(withdrawalEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -392,7 +392,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 				parameters = depositEvent
-				orders, err = w.findOrders(depositEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddressAndTokenID(depositEvent.Owner, log.Address, nil)
 				if err != nil {
 					return err
 				}
@@ -587,15 +587,27 @@ func (w *Watcher) findOrder(orderHash common.Hash) *meshdb.Order {
 	return &order
 }
 
-func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*meshdb.Order, error) {
-	orders, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
+// findOrdersByTokenAddressAndTokenID finds and returns all orders that have
+// either a makerAsset or a makerFeeAsset matching the given tokenAddress and
+// tokenID.
+func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*meshdb.Order, error) {
+	ordersWithAffectedMakerAsset, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
-	return orders, nil
+	// TODO(albrow): Test that orders with a relevant MakerFeeAssetData are
+	// included here.
+	ordersWithAffectedMakerFeeAsset, err := w.meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, tokenAddress, tokenID)
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("unexpected query error encountered")
+		return nil, err
+	}
+	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
 }
 
 func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, orderHashToDBOrder map[common.Hash]*meshdb.Order, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent, validationBlockNumber rpc.BlockNumber) error {

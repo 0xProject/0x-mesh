@@ -270,7 +270,7 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 		},
 	}
 	for i, tc := range testCases {
-		foundOrders, err := meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressTokenID(makerAddress, tc.makerFeeAssetAddress, tc.makerFeeTokenID)
+		foundOrders, err := meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, tc.makerFeeAssetAddress, tc.makerFeeTokenID)
 		require.NoError(t, err)
 		assert.Equal(t, tc.expectedOrders, foundOrders, "test case %d", i)
 	}

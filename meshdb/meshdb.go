@@ -280,7 +280,7 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 // a particular maker address where makerFeeAssetData encodes for a particular
 // token contract and optionally a token ID. To find orders without a maker fee,
 // use constants.NullAddress for makerFeeAssetAddress.
-func (m *MeshDB) FindOrdersByMakerAddressMakerFeeAssetAddressTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
+func (m *MeshDB) FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
 	var prefix []byte
 	if makerFeeAssetAddress == constants.NullAddress {
 		prefix = []byte(makerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|")
