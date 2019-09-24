@@ -767,10 +767,10 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
-	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutDomain()
+	orderWithoutDomain := signedOrder.ConvertToOrderWithoutDomain()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
-		[]wrappers.OrderWithoutDomain{orderWithExchangeAddress},
+		[]wrappers.OrderWithoutDomain{orderWithoutDomain},
 		[][]byte{signedOrder.Signature},
 	)
 	if err != nil {
