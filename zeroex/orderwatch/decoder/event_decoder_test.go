@@ -6,9 +6,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
@@ -180,15 +179,13 @@ func TestDecodeExchangeFill(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	// TODO(fabio): Figure out why Equal is failing without a diff when BigInt values are the same, but they
-	// aren't the exact same instances
 	expectedEvent := ExchangeFillEvent{
 		MakerAddress:           common.HexToAddress("0x6ecbe1db9ef729cbe972c83fb886247691fb6beb"),
 		TakerAddress:           common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84"),
 		SenderAddress:          common.HexToAddress("0xe36ea790bc9d7ab70c55260c66d52b1eca985f84"),
 		FeeRecipientAddress:    common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		MakerAssetFilledAmount: actualEvent.MakerAssetFilledAmount, //new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits),
-		TakerAssetFilledAmount: actualEvent.TakerAssetFilledAmount, // new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits),
+		MakerAssetFilledAmount: actualEvent.MakerAssetFilledAmount,
+		TakerAssetFilledAmount: actualEvent.TakerAssetFilledAmount,
 		MakerFeePaid:           actualEvent.MakerFeePaid,
 		TakerFeePaid:           actualEvent.TakerFeePaid,
 		OrderHash:              common.HexToHash("0xddb8be9f6fed5209693ecce4eb127252827c1c331d661ae7a2491c80355f3fdd"),
@@ -196,9 +193,22 @@ func TestDecodeExchangeFill(t *testing.T) {
 		TakerAssetData:         common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		MakerFeeAssetData:      common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerFeeAssetData:      common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		ProtocolFeePaid:        actualEvent.ProtocolFeePaid, // big.NewInt(0),
+		ProtocolFeePaid:        actualEvent.ProtocolFeePaid,
 	}
 	assert.Equal(t, expectedEvent, actualEvent, "Exchange Fill event decode")
+
+	// We do big.Int assertions separately due to the fact that the underlying
+	// struct fields sometimes aren't identical.
+	expectedMakerAssetFilledAmount := new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+	expectedTakerAssetFilledAmount := new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+	expectedMakerFeePaid := big.NewInt(0)
+	expectedTakerFeePaid := big.NewInt(0)
+	expectedProtocolFeePaid := big.NewInt(0)
+	assertBigIntEqual(t, expectedMakerAssetFilledAmount, actualEvent.MakerAssetFilledAmount, "MakerAssetFilledAmount was not equal")
+	assertBigIntEqual(t, expectedTakerAssetFilledAmount, actualEvent.TakerAssetFilledAmount, "TakerAssetFilledAmount was not equal")
+	assertBigIntEqual(t, expectedMakerFeePaid, actualEvent.MakerFeePaid, "MakerFeePaid was not equal")
+	assertBigIntEqual(t, expectedTakerFeePaid, actualEvent.TakerFeePaid, "TakerFeePaid was not equal")
+	assertBigIntEqual(t, expectedProtocolFeePaid, actualEvent.ProtocolFeePaid, "ProtocolFeePaid was not equal")
 }
 
 func TestDecodeExchangeCancel(t *testing.T) {
@@ -305,4 +315,11 @@ func unmarshalLogStr(logStr string, out interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func assertBigIntEqual(t *testing.T, expected *big.Int, actual *big.Int, msgAndArgs ...interface{}) {
+	// We need to account the fact that the represented value can be the same even
+	// if the struct fields are different (e.g. 5 * 10^3 and 50 * 10^2 are the
+	// same number).
+	assert.Equal(t, expected.String(), actual.String(), msgAndArgs...)
 }
