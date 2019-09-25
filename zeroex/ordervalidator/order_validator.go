@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -335,6 +336,12 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
 				defer cancel()
 				opts := &bind.CallOpts{
+					// HACK(albrow): From field should not be required for eth_call but
+					// including it here is a workaround for a bug in Ganache. Removing
+					// this line causes Ganache to crash.
+					// TODO(albrow): Test if this causes problems for real Ethereum nodes
+					// and if so figure out a way to only do this on Ganache.
+					From:    constants.GanacheDummyERC721TokenAddress,
 					Pending: false,
 					Context: ctx,
 				}
