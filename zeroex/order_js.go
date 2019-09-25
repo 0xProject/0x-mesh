@@ -46,23 +46,24 @@ func (s SignedOrder) JSValue() js.Value {
 	}
 
 	return js.ValueOf(map[string]interface{}{
-		"makerAddress":          strings.ToLower(s.MakerAddress.Hex()),
-		"makerAssetData":        makerAssetData,
-		"makerFeeAssetData":        makerFeeAssetData,
-		"makerAssetAmount":      s.MakerAssetAmount.String(),
-		"makerFee":              s.MakerFee.String(),
-		"takerAddress":          strings.ToLower(s.TakerAddress.Hex()),
-		"takerAssetData":        takerAssetData,
-		"takerFeeAssetData":        takerFeeAssetData,
-		"takerAssetAmount":      s.TakerAssetAmount.String(),
-		"takerFee":              s.TakerFee.String(),
-		"senderAddress":         strings.ToLower(s.SenderAddress.Hex()),
-		"verifyingContractAddress":       strings.ToLower(s.verifyingContractAddress.Hex()),
+		"makerAddress":      strings.ToLower(s.MakerAddress.Hex()),
+		"makerAssetData":    makerAssetData,
+		"makerFeeAssetData": makerFeeAssetData,
+		"makerAssetAmount":  s.MakerAssetAmount.String(),
+		"makerFee":          s.MakerFee.String(),
+		"takerAddress":      strings.ToLower(s.TakerAddress.Hex()),
+		"takerAssetData":    takerAssetData,
+		"takerFeeAssetData": takerFeeAssetData,
+		"takerAssetAmount":  s.TakerAssetAmount.String(),
+		"takerFee":          s.TakerFee.String(),
+		"senderAddress":     strings.ToLower(s.SenderAddress.Hex()),
+		// "verifyingContract":     strings.ToLower(s.verifyingContract.Hex()),
 		"feeRecipientAddress":   strings.ToLower(s.FeeRecipientAddress.Hex()),
 		"expirationTimeSeconds": s.ExpirationTimeSeconds.String(),
 		"salt":                  s.Salt.String(),
-		"chainId":				s.ChainId.String(),
-		"signature":             signature,
+		// TOOD(albrow): Update with latest v3 order schema.
+		// "chainId":               s.ChainId.String(),
+		"signature": signature,
 	})
 }
 

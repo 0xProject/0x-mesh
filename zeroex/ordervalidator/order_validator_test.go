@@ -52,14 +52,15 @@ func init() {
 
 var testSignedOrder = zeroex.SignedOrder{
 	Order: zeroex.Order{
-		MakerAddress:          makerAddress,
-		TakerAddress:          constants.NullAddress,
-		SenderAddress:         constants.NullAddress,
-		FeeRecipientAddress:   constants.GanacheAccount3,
-		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		MakerFeeAssetData:     constants.NullBytes,
+		MakerAddress:        makerAddress,
+		TakerAddress:        constants.NullAddress,
+		SenderAddress:       constants.NullAddress,
+		FeeRecipientAddress: constants.GanacheAccount3,
+		MakerAssetData:      common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+		// TODO(albrow): We should remove MakerFeeAssetData and TakerFeeAssetData after the DevUtils contract is fixed
+		MakerFeeAssetData:     common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
-		TakerFeeAssetData:     constants.NullBytes,
+		TakerFeeAssetData:     common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		Salt:                  big.NewInt(1548619145450),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
