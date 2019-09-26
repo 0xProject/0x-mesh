@@ -22,9 +22,11 @@ import (
 func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
 	// Create order
 	testOrder := &zeroex.Order{
-		MakerAddress:  makerAddress,
-		TakerAddress:  constants.NullAddress,
-		SenderAddress: constants.NullAddress,
+		ChainID:         big.NewInt(constants.TestNetworkID),
+		ExchangeAddress: ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		MakerAddress:    makerAddress,
+		TakerAddress:    constants.NullAddress,
+		SenderAddress:   constants.NullAddress,
 		// TODO(albrow): We should remove MakerFeeAssetData and TakerFeeAssetData after the DevUtils contract is fixed
 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
@@ -37,7 +39,6 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      zrxAmount,
 		TakerAssetAmount:      wethAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 
 	// Sign Order
@@ -104,6 +105,8 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
 	// Create order
 	testOrder := &zeroex.Order{
+		ChainID:             big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:     ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:        makerAddress,
 		TakerAddress:        constants.NullAddress,
 		SenderAddress:       constants.NullAddress,
@@ -119,7 +122,6 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      wethAmount,
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 
 	// Sign Order
@@ -202,6 +204,8 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 
 	// Create order
 	testOrder := &zeroex.Order{
+		ChainID:             big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:     ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:        makerAddress,
 		TakerAddress:        constants.NullAddress,
 		SenderAddress:       constants.NullAddress,
@@ -217,7 +221,6 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 
 	// Sign Order
@@ -284,6 +287,8 @@ func CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t *testing.T, ethClient *eth
 
 	// Create order
 	testOrder := &zeroex.Order{
+		ChainID:             big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:     ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:        makerAddress,
 		TakerAddress:        constants.NullAddress,
 		SenderAddress:       constants.NullAddress,
@@ -299,7 +304,6 @@ func CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t *testing.T, ethClient *eth
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 
 	// Sign Order

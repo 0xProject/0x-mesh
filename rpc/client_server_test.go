@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
@@ -99,6 +100,8 @@ func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler, ctx conte
 }
 
 var testOrder = &zeroex.Order{
+	ChainID:               big.NewInt(constants.TestNetworkID),
+	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -113,7 +116,6 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(3551808554499581700),
 	TakerAssetAmount:      big.NewInt(300000000000000),
 	ExpirationTimeSeconds: big.NewInt(1548619325),
-	DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 }
 
 func TestAddOrdersSuccess(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -22,6 +23,8 @@ func TestOrderCRUDOperations(t *testing.T) {
 	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
 	o := &zeroex.Order{
+		ChainID:               big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -36,7 +39,6 @@ func TestOrderCRUDOperations(t *testing.T) {
 		MakerAssetAmount:      big.NewInt(3551808554499581700),
 		TakerAssetAmount:      big.NewInt(1),
 		ExpirationTimeSeconds: big.NewInt(1548619325),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	}
 	signedOrder, err := zeroex.SignTestOrder(o)
 	require.NoError(t, err)
@@ -146,6 +148,8 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 	zeroexOrders := []*zeroex.Order{
 		// No Maker fee
 		&zeroex.Order{
+			ChainID:               big.NewInt(constants.TestNetworkID),
+			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -160,10 +164,11 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 			MakerAssetAmount:      big.NewInt(3551808554499581700),
 			TakerAssetAmount:      big.NewInt(1),
 			ExpirationTimeSeconds: big.NewInt(1548619325),
-			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 		},
 		// ERC20 maker fee
 		&zeroex.Order{
+			ChainID:               big.NewInt(constants.TestNetworkID),
+			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -178,10 +183,11 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 			MakerAssetAmount:      big.NewInt(3551808554499581700),
 			TakerAssetAmount:      big.NewInt(1),
 			ExpirationTimeSeconds: big.NewInt(1548619325),
-			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 		},
 		// ERC721 maker fee with token id = 1
 		&zeroex.Order{
+			ChainID:               big.NewInt(constants.TestNetworkID),
+			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -196,10 +202,11 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 			MakerAssetAmount:      big.NewInt(3551808554499581700),
 			TakerAssetAmount:      big.NewInt(1),
 			ExpirationTimeSeconds: big.NewInt(1548619325),
-			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 		},
 		// ERC721 maker fee with token id = 2
 		&zeroex.Order{
+			ChainID:               big.NewInt(constants.TestNetworkID),
+			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -214,7 +221,6 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 			MakerAssetAmount:      big.NewInt(3551808554499581700),
 			TakerAssetAmount:      big.NewInt(1),
 			ExpirationTimeSeconds: big.NewInt(1548619325),
-			DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 		},
 	}
 	orders := make([]*Order, len(zeroexOrders))

@@ -52,6 +52,8 @@ func init() {
 
 var testSignedOrder = zeroex.SignedOrder{
 	Order: zeroex.Order{
+		ChainID:             big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:     ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:        makerAddress,
 		TakerAddress:        constants.NullAddress,
 		SenderAddress:       constants.NullAddress,
@@ -67,7 +69,6 @@ var testSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	},
 }
 
@@ -325,6 +326,8 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 
 var testMultiAssetSignedOrder = zeroex.SignedOrder{
 	Order: zeroex.Order{
+		ChainID:               big.NewInt(constants.TestNetworkID),
+		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 		MakerAddress:          constants.GanacheAccount0,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -339,7 +342,6 @@ var testMultiAssetSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	},
 }
 

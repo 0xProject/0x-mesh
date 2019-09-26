@@ -2,9 +2,11 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -125,10 +127,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 			})
 			continue
 		}
-		// TODO(fabio): This check now also checks that the order is for the right protocol version.
-		// Should we update the status code to reflect this?
-		expectedDomainHash := constants.NetworkIDToDomainHash[app.networkID]
-		if order.DomainHash != expectedDomainHash {
+		if order.ChainID.Cmp(big.NewInt(int64(app.networkID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -136,6 +135,22 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 				Status:      ordervalidator.ROIncorrectNetwork,
 			})
 			continue
+		}
+		contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
+		if err == nil {
+			// Only check the ExchangeAddress if we know the expected address for the
+			// given chainID/networkID. If we don't know it, the order could still be
+			// valid.
+			expectedExchangeAddress := contractAddresses.Exchange
+			if order.ExchangeAddress != expectedExchangeAddress {
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: order,
+					Kind:        ordervalidator.MeshValidation,
+					Status:      ordervalidator.ROIncorrectExchangeAddress,
+				})
+				continue
+			}
 		}
 		if err := validateOrderSize(order); err != nil {
 			if err == errMaxSize {

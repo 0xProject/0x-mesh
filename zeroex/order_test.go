@@ -8,12 +8,15 @@ import (
 	"testing"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var testOrder = &Order{
+	ChainID:               big.NewInt(constants.TestNetworkID),
+	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -22,7 +25,6 @@ var testOrder = &Order{
 	MakerFeeAssetData:     constants.NullBytes,
 	TakerAssetData:        constants.NullAddress.Bytes(),
 	TakerFeeAssetData:     constants.NullBytes,
-	DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	Salt:                  big.NewInt(200),
 	MakerFee:              big.NewInt(201),
 	TakerFee:              big.NewInt(202),
@@ -32,6 +34,8 @@ var testOrder = &Order{
 }
 
 var testHashOrder = &Order{
+	ChainID:               big.NewInt(constants.TestNetworkID),
+	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	MakerAddress:          constants.NullAddress,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -40,7 +44,6 @@ var testHashOrder = &Order{
 	MakerFeeAssetData:     constants.NullAddress.Bytes(),
 	TakerAssetData:        constants.NullAddress.Bytes(),
 	TakerFeeAssetData:     constants.NullAddress.Bytes(),
-	DomainHash:            constants.NetworkIDToDomainHash[constants.TestNetworkID],
 	Salt:                  big.NewInt(0),
 	MakerFee:              big.NewInt(0),
 	TakerFee:              big.NewInt(0),

@@ -178,6 +178,10 @@ var (
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
 	}
+	ROIncorrectExchangeAddress = RejectedOrderStatus{
+		Code:    "IncorrectExchangeAddress",
+		Message: "the exchange address for the order does not match the chain ID/network ID",
+	}
 	ROSenderAddressNotAllowed = RejectedOrderStatus{
 		Code:    "SenderAddressNotAllowed",
 		Message: "orders with a senderAddress are not currently supported",
@@ -307,9 +311,9 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder, i int) {
-			orders := []wrappers.OrderWithoutDomain{}
+			trimmedOrders := []wrappers.TrimmedOrder{}
 			for _, signedOrder := range signedOrders {
-				orders = append(orders, signedOrder.ConvertToOrderWithoutDomain())
+				trimmedOrders = append(trimmedOrders, signedOrder.Trim())
 			}
 			signatures := [][]byte{}
 			for _, signedOrder := range signedOrders {
@@ -351,19 +355,19 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 					opts.BlockNumber = big.NewInt(int64(blockNumber))
 				}
 
-				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
+				results, err := o.devUtils.GetOrderRelevantStates(opts, trimmedOrders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"error":     err.Error(),
 						"attempt":   b.Attempt(),
-						"numOrders": len(orders),
+						"numOrders": len(trimmedOrders),
 					}).Info("GetOrderRelevantStates request failed")
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
 						log.WithFields(log.Fields{
 							"error":     err.Error(),
-							"numOrders": len(orders),
+							"numOrders": len(trimmedOrders),
 						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
@@ -774,10 +778,10 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
-	orderWithoutDomain := signedOrder.ConvertToOrderWithoutDomain()
+	trimmedOrder := signedOrder.Trim()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
-		[]wrappers.OrderWithoutDomain{orderWithoutDomain},
+		[]wrappers.TrimmedOrder{trimmedOrder},
 		[][]byte{signedOrder.Signature},
 	)
 	if err != nil {

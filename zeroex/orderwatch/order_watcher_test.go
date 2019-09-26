@@ -473,8 +473,8 @@ func TestOrderWatcherCanceled(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	OrderWithoutDomain := signedOrder.ConvertToOrderWithoutDomain()
-	txn, err := exchange.CancelOrder(opts, OrderWithoutDomain)
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -553,8 +553,8 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
 	}
-	OrderWithoutDomain := signedOrder.ConvertToOrderWithoutDomain()
-	txn, err := exchange.FillOrder(opts, OrderWithoutDomain, wethAmount, signedOrder.Signature)
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
