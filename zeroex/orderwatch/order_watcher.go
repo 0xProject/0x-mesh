@@ -551,9 +551,16 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error
 	}
 	w.eventDecoder.AddKnownExchange(exchangeAddress)
 
+	// Add MakerAssetData and MakerFeeAssetData to EventDecoder
 	err = w.addAssetDataAddressToEventDecoder(signedOrder.MakerAssetData)
 	if err != nil {
 		return err
+	}
+	if signedOrder.MakerFee.Cmp(big.NewInt(0)) == 1 {
+		err = w.addAssetDataAddressToEventDecoder(signedOrder.MakerFeeAssetData)
+		if err != nil {
+			return err
+		}
 	}
 
 	expirationTimestamp := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
@@ -607,6 +614,7 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
+
 	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
 }
 

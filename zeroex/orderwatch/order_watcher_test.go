@@ -126,6 +126,45 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
+func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
+	signedOrder := scenario.CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, wethFeeAmount)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Transfer makerAsset out of maker address
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	txn, err := weth.Transfer(opts, constants.GanacheAccount4, wethFeeAmount)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+}
+
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
