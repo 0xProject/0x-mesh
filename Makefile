@@ -107,7 +107,7 @@ docker-mesh:
 
 
 .PHONY: docker-mesh-bootstrap
-docker-mesh:
+docker-mesh-bootstrap:
 	docker build . -t 0xorg/mesh-bootstrap -f ./dockerfiles/mesh-bootstrap/Dockerfile
 
 
