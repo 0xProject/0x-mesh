@@ -26,12 +26,7 @@ jobs:
       - run: node --version
       - run:
           name: Install yarn
-          command: npm i -g yarn@^1.15
-      - run:
-        # HACK(albrow): Workaround for the "Incorrect integrity when fetching
-        # from the cache" error on CircleCI.
-          name: Clean yarn cache
-          command: yarn cache clean
+          command: npm i -g yarn@1.17
       - run:
           name: Install dependencies
           command: make deps-no-lockfile
