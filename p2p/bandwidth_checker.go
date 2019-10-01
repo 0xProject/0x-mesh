@@ -70,7 +70,7 @@ func (checker *bandwidthChecker) continuouslyLogBandwidthUsage(ctx context.Conte
 func (checker *bandwidthChecker) checkUsage() {
 	for _, remotePeerID := range checker.node.host.Network().Peers() {
 		stats := checker.counter.GetBandwidthForPeer(remotePeerID)
-		// If the peer is sending is data at a higher rate than is allowed, ban
+		// If the peer is sending data at a higher rate than is allowed, ban
 		// them.
 		if stats.RateIn > checker.maxBytesPerSecond {
 			log.WithFields(log.Fields{
