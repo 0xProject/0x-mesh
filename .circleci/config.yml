@@ -26,7 +26,7 @@ jobs:
       - run: node --version
       - run:
           name: Install yarn
-          command: npm i -g yarn@^1.15
+          command: npm i -g yarn@1.17
       - run:
           name: Install dependencies
           command: make deps-no-lockfile
