@@ -35,7 +35,7 @@ var testOrder = &Order{
 
 var testHashOrder = &Order{
 	ChainID:               big.NewInt(constants.TestNetworkID),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ExchangeAddress:       common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 	MakerAddress:          constants.NullAddress,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -54,7 +54,7 @@ var testHashOrder = &Order{
 
 func TestGenerateOrderHash(t *testing.T) {
 	// expectedOrderHash copied over from canonical order hashing test in Typescript library
-	expectedOrderHash := common.HexToHash("0x224d188cf6709804d400e3ad6bd2311a99c25a3d24372a8a53fda5c71866f657")
+	expectedOrderHash := common.HexToHash("0x331cb7e07a757bae130702da6646c26531798c92bcfaf671817268fd2c188531")
 	actualOrderHash, err := testHashOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
@@ -64,7 +64,7 @@ func TestSignOrder(t *testing.T) {
 	signedOrder, err := SignTestOrder(testOrder)
 	require.NoError(t, err)
 
-	expectedSignature := "0x1b66bd3722e2225d9ecfd2e086a199c1131e46fe4f892430fc717e9a7b4f74ffed10ef3c8068863a0a91e6454dc5fd4222284aaeac1df37cc79ede60067d0cdddc03"
+	expectedSignature := "0x1b0eeb97bdc4d1297185378ab66597a51bf26fe67576c1418e7af2242cd4e0683b195095785dd301fad23ac005888254b80abaff3e1e9a1c841522c33371b702a303"
 	actualSignature := fmt.Sprintf("0x%s", common.Bytes2Hex(signedOrder.Signature))
 	assert.Equal(t, expectedSignature, actualSignature)
 }
