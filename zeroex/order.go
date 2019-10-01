@@ -278,7 +278,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
-		Version:           "2",
+		Version:           "3.0.0",
 		ChainId:           o.ChainID,
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
