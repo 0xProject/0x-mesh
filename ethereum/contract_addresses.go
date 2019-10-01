@@ -3,7 +3,6 @@ package ethereum
 import (
 	"fmt"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,16 +13,6 @@ func GetContractAddressesForNetworkID(networkID int) (ContractAddresses, error) 
 		return contractAddresses, nil
 	}
 	return ContractAddresses{}, fmt.Errorf("invalid network: %d", networkID)
-}
-
-// GetExchangeAddressForDomainHash returns the Exchange address corresponding to a DomainHash
-func GetExchangeAddressForDomainHash(domainHash common.Hash) (common.Address, error) {
-	networkID := constants.DomainHashToNetworkID[domainHash]
-	contractAddresses, err := GetContractAddressesForNetworkID(networkID)
-	if err != nil {
-		return common.Address{}, err
-	}
-	return contractAddresses.Exchange, nil
 }
 
 // ContractAddresses maps a contract's name to it's Ethereum address

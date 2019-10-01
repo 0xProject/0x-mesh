@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -308,11 +307,10 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		Message:     message,
 	}
 
-	if !o.ChainID.IsInt64() {
-		return common.Hash{}, fmt.Errorf("unexpected ChainID: %s", o.ChainID)
+	domainSeparator, err := typedData.HashStruct("EIP712Domain", typedData.Domain.Map())
+	if err != nil {
+		return common.Hash{}, err
 	}
-	domainHash := constants.NetworkIDToDomainHash[int(o.ChainID.Int64())]
-	domainSeparator := domainHash.Bytes()
 	typedDataHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
 	if err != nil {
 		return common.Hash{}, err
