@@ -430,7 +430,7 @@ func (n *Node) runOnce() error {
 	}
 
 	// Check bandwidth usage non-deterministically
-	if mathrand.Float64() <= chanceToCheckBandiwdthUsage {
+	if mathrand.Float64() <= chanceToCheckBandwidthUsage {
 		n.bandwidthChecker.checkUsage()
 	}
 
