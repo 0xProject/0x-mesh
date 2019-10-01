@@ -55,7 +55,7 @@ const (
 	// bandwidth usage. So on each iteration of the main loop we generate a number
 	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
 	// a bandwidth check.
-	chanceToCheckBandiwdthUsage = 0.1
+	chanceToCheckBandwidthUsage = 0.1
 )
 
 var errProtectedIP = errors.New("cannot ban protected IP address")
