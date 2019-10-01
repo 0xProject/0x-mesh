@@ -46,7 +46,9 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "development"
+	// logStatsInterval is how often to log stats for this node.
+	logStatsInterval = 5 * time.Minute
+	version          = "development"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -404,6 +406,13 @@ func (app *App) Start(ctx context.Context) error {
 		p2pErrChan <- app.node.Start()
 	}()
 
+	// Start loop for periodically logging stats.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.periodicallyLogStats(innerCtx)
+	}()
+
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
 	// that occurs.
@@ -671,6 +680,33 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		NumPeers:          app.node.GetNumPeers(),
 	}
 	return response, nil
+}
+
+func (app *App) periodicallyLogStats(ctx context.Context) {
+	ticker := time.NewTicker(logStatsInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-ticker.C:
+		}
+
+		stats, err := app.GetStats()
+		if err != nil {
+			log.WithError(err).Error("could not get stats")
+			continue
+		}
+		log.WithFields(log.Fields{
+			"version":           stats.Version,
+			"pubSubTopic":       stats.PubSubTopic,
+			"rendezvous":        stats.Rendezvous,
+			"ethereumNetworkID": stats.EthereumNetworkID,
+			"latestBlock":       stats.LatestBlock,
+			"numOrders":         stats.NumOrders,
+			"numPeers":          stats.NumPeers,
+		}).Info("current stats")
+	}
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
