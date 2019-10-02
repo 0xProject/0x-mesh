@@ -56,7 +56,7 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	orderEvent := OrderEvent{
 		OrderHash:                orderHash,
 		SignedOrder:              signedOrder,
-		Kind:                     EKOrderAdded,
+		EndState:                     ESOrderAdded,
 		FillableTakerAssetAmount: big.NewInt(2000),
 		ContractEvents:           []*ContractEvent{},
 	}

@@ -186,20 +186,20 @@ var (
 // ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema
 const ROInvalidSchemaCode = "InvalidSchema"
 
-// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
-func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventKind, bool) {
+// ConvertRejectOrderCodeToOrderEventEndState converts an RejectOrderCode to an OrderEventEndState type
+func ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventEndState, bool) {
 	switch rejectedOrderStatus {
 	case ROExpired:
-		return zeroex.EKOrderExpired, true
+		return zeroex.ESOrderExpired, true
 	case ROFullyFilled:
-		return zeroex.EKOrderFullyFilled, true
+		return zeroex.ESOrderFullyFilled, true
 	case ROCancelled:
-		return zeroex.EKOrderCancelled, true
+		return zeroex.ESOrderCancelled, true
 	case ROUnfunded:
-		return zeroex.EKOrderBecameUnfunded, true
+		return zeroex.ESOrderBecameUnfunded, true
 	default:
-		// Catch-all returns Invalid OrderEventKind
-		return zeroex.EKInvalid, false
+		// Catch-all returns Invalid OrderEventEndState
+		return zeroex.ESInvalid, false
 	}
 }
 

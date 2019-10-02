@@ -14,9 +14,9 @@ When first connecting the DB and Mesh node, we first need to make sure both have
 
 #### 1. Subscribe to Mesh
 
-Subscribe to the Mesh node's `orders` subscription over a WS connection. This can be done using our [golang](https://godoc.org/github.com/0xProject/0x-mesh/rpc) or [Typescript/Javascript](json_rpc_clients/typescript/README.md) clients or any other JSON-RPC WebSocket client. Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each order event has an associated [OrderEventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
+Subscribe to the Mesh node's `orders` subscription over a WS connection. This can be done using our [golang](https://godoc.org/github.com/0xProject/0x-mesh/rpc) or [Typescript/Javascript](json_rpc_clients/typescript/README.md) clients or any other JSON-RPC WebSocket client. Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each order event has an associated [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
 
-| Kind                                       | DB operation                    |
+| End state                                       | DB operation                    |
 |--------------------------------------------|---------------------------------|
 | ADDED                                      | Insert                    |
 | FILLED                                     | Update |

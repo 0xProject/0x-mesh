@@ -321,7 +321,7 @@ describe('WSClient', () => {
                                                     "salt": "1559422141994",
                                                     "signature": "0x1cf16c2f3a210965b5e17f51b57b869ba4ddda33df92b0017b4d8da9dacd3152b122a73844eaf50ccde29a42950239ba36a525ed7f1698a8a5e1896cf7d651aed203"
                                                 },
-                                                "kind": "CANCELLED",
+                                                "endState": "CANCELLED",
                                                 "fillableTakerAssetAmount": 0,
                                                 "contractEvents": [
                                                     {

@@ -211,7 +211,7 @@ Gets certain configurations and stats about a Mesh node.
 
 ### `mesh_subscribe` to `orders` topic
 
-Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined block.
+Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined/reverted blocks.
 
 **Example:** If an order is both `filled` and `cancelled` within a single block, only a cancellation `OrderEvent` will be emitted (since this is the final state of the order after this block is mined). The cancellation `OrderEvent` _will_ however list the contract events intercepted that could have impacted this orders fillability. This list will include both the fill event and cancellation event.
 
@@ -265,7 +265,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
                     "salt": "1559422141994",
                     "signature": "0x1cf16c2f3a210965b5e17f51b57b869ba4ddda33df92b0017b4d8da9dacd3152b122a73844eaf50ccde29a42950239ba36a525ed7f1698a8a5e1896cf7d651aed203"
                 },
-                "kind": "CANCELLED",
+                "endState": "CANCELLED",
                 "fillableTakerAssetAmount": 0,
                 "contractEvents": [
                     {
@@ -292,7 +292,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
 }
 ```
 
-See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [EventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) event types for a complete list of the events that could be emitted.
+See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) types for a complete list of the events that could be emitted.
 
 To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId`.
 

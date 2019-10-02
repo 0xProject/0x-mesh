@@ -19,7 +19,7 @@ func (o OrderEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
-		"kind":                     string(o.Kind),
+		"endState":                     string(o.EndState),
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           contractEventsJS,
 	})

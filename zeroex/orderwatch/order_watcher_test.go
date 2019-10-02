@@ -116,7 +116,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -154,7 +154,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -193,7 +193,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -232,7 +232,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -270,7 +270,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -292,7 +292,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
@@ -375,7 +375,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -396,7 +396,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvents = <-orderEventsChan
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderAdded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
 	var newOrders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&newOrders)
@@ -435,7 +435,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -474,7 +474,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderCancelled, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -513,7 +513,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderFullyFilled, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)

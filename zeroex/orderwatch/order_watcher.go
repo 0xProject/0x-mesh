@@ -229,7 +229,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			OrderHash:                common.HexToHash(expiredOrder.ID),
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: big.NewInt(0),
-			Kind:                     zeroex.EKOrderExpired,
+			EndState:                     zeroex.ESOrderExpired,
 		}
 		orderEvents = append(orderEvents, orderEvent)
 	}
@@ -532,7 +532,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		OrderHash:                orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-		Kind:                     zeroex.EKOrderAdded,
+		EndState:                     zeroex.ESOrderAdded,
 	}
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
@@ -629,7 +629,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				Kind:                     zeroex.EKOrderAdded,
+				EndState:                     zeroex.ESOrderAdded,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
 			orderEvents = append(orderEvents, orderEvent)
@@ -642,7 +642,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
-				Kind:                     zeroex.EKOrderFilled,
+				EndState:                     zeroex.ESOrderFilled,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
@@ -654,7 +654,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
-				Kind:                     zeroex.EKOrderFillabilityIncreased,
+				EndState:                     zeroex.ESOrderFillabilityIncreased,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
@@ -675,17 +675,17 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
-				kind, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventKind(rejectedOrderInfo.Status)
+				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
-					err := fmt.Errorf("no OrderEventKind corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
-					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventKind corresponding to RejectedOrderStatus")
+					err := fmt.Errorf("no OrderEventEndState corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
+					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventEndState corresponding to RejectedOrderStatus")
 					return err
 				}
 				orderEvent := &zeroex.OrderEvent{
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
-					Kind:                     kind,
+					EndState:                     endState,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
 				orderEvents = append(orderEvents, orderEvent)

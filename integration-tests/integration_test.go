@@ -196,7 +196,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Next, wait for the order to be received.
 		expectedOrderEventLog := orderEventLog{
 			OrderHash: standaloneOrderHash.Hex(),
-			Kind:      "ADDED",
+			EndState:      "ADDED",
 		}
 		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
 		assert.NoError(t, err, "Browser node did not receive order sent by standalone node")
@@ -419,7 +419,7 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 // by Mesh. They need to be explicitly logged.
 type orderEventLog struct {
 	OrderHash string `json:"orderHash"`
-	Kind      string `json:"kind"`
+	EndState      string `json:"endState"`
 }
 
 func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expectedLog orderEventLog) (string, error) {
@@ -429,7 +429,7 @@ func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expect
 			return false
 		}
 		return foundLog.OrderHash == expectedLog.OrderHash &&
-			foundLog.Kind == expectedLog.Kind
+			foundLog.EndState == expectedLog.EndState
 	})
 }
 

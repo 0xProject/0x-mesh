@@ -291,7 +291,7 @@ export interface WrapperContractEvent {
     parameters: WrapperContractEventParameters;
 }
 
-export enum OrderEventKind {
+export enum OrderEventEndState {
     Invalid = 'INVALID',
     Added = 'ADDED',
     Filled = 'FILLED',
@@ -305,7 +305,7 @@ export enum OrderEventKind {
 export interface WrapperOrderEvent {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: string;
     contractEvents: WrapperContractEvent[];
 }
@@ -313,7 +313,7 @@ export interface WrapperOrderEvent {
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
 }

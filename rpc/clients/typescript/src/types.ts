@@ -211,7 +211,7 @@ export interface ContractEvent {
     parameters: ContractEventParameters;
 }
 
-export enum OrderEventKind {
+export enum OrderEventEndState {
     Invalid = 'INVALID',
     Added = 'ADDED',
     Filled = 'FILLED',
@@ -235,7 +235,7 @@ export interface HeartbeatEventPayload {
 export interface RawOrderEvent {
     orderHash: string;
     signedOrder: StringifiedSignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: string;
     contractEvents: StringifiedContractEvent[];
 }
@@ -243,7 +243,7 @@ export interface RawOrderEvent {
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
 }

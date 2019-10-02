@@ -280,7 +280,7 @@ export class WSClient {
                 const orderEvent = {
                     orderHash: rawOrderEvent.orderHash,
                     signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderEvent.signedOrder),
-                    kind: rawOrderEvent.kind,
+                    endState: rawOrderEvent.endState,
                     fillableTakerAssetAmount: new BigNumber(rawOrderEvent.fillableTakerAssetAmount),
                     contractEvents: WSClient._convertStringifiedContractEvents(rawOrderEvent.contractEvents),
                 };
