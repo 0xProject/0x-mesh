@@ -264,10 +264,6 @@ type WrapperContractEventParameters =  WrapperERC20TransferEvent | WrapperERC20A
 
 type ContractEventParameters =  ERC20TransferEvent | ERC20ApprovalEvent | ERC721TransferEvent | ERC721ApprovalEvent | ExchangeFillEvent | ExchangeCancelUpToEvent | WethWithdrawalEvent | WethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
 
-/**
- * Order events are fired by Mesh whenever an order is added, canceled, expired,
- * or filled.
- */
 export interface ContractEvent {
     blockHash: string;
     txHash: string;
@@ -310,6 +306,10 @@ interface WrapperOrderEvent {
     contractEvents: WrapperContractEvent[];
 }
 
+/**
+ * Order events are fired by Mesh whenever an order is added, canceled, expired,
+ * or filled.
+ */
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
