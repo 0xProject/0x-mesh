@@ -213,7 +213,10 @@ Gets certain configurations and stats about a Mesh node.
 
 Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined/reverted blocks.
 
-**Example:** If an order is both `filled` and `cancelled` within a single block, only a cancellation `OrderEvent` will be emitted (since this is the final state of the order after this block is mined). The cancellation `OrderEvent` _will_ however list the contract events intercepted that could have impacted this orders fillability. This list will include both the fill event and cancellation event.
+**Example:** If an order is both `filled` and `cancelled` within a single block, the `EndState`
+of the `OrderEvent` will be `CANCELLED` (since this is the final state of the order after this block is
+mined). The `OrderEvent` _will_ however list the contract events intercepted that could have impacted
+this orders fillability. This list will include both the fill event and cancellation event.
 
 Mesh has implemented subscriptions in the [same manner as Geth](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB). In order to start a subscription, you must send the following payload:
 
