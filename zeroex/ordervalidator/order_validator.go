@@ -272,8 +272,10 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 // BatchValidate retrieves all the information needed to validate the supplied orders.
 // It splits the orders into chunks of `chunkSize`, and makes no more then `concurrencyLimit`
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
-// If it some requests fail, this method still returns whatever order information it was able to
-// retrieve.
+// If some requests fail, this method still returns whatever order information it was able to
+// retrieve up until the failure.
+// The `blockNumber` parameter lets the caller specify a specific block height at which to validate
+// the orders. This can be set to the `latest` block or any other historical block number.
 func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
