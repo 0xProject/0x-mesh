@@ -131,7 +131,7 @@ export interface ERC20TransferEvent {
     value: BigNumber;
 }
 
-export interface WrapperERC20TransferEvent {
+interface WrapperERC20TransferEvent {
     from: string;
     to: string;
     value: string;
@@ -143,7 +143,7 @@ export interface ERC20ApprovalEvent {
     value: BigNumber;
 }
 
-export interface WrapperERC20ApprovalEvent {
+interface WrapperERC20ApprovalEvent {
     owner: string;
     spender: string;
     value: string;
@@ -155,7 +155,7 @@ export interface ERC721TransferEvent {
     tokenId: BigNumber;
 }
 
-export interface WrapperERC721TransferEvent {
+interface WrapperERC721TransferEvent {
     from: string;
     to: string;
     tokenId: string;
@@ -167,7 +167,7 @@ export interface ERC721ApprovalEvent {
     tokenId: BigNumber;
 }
 
-export interface WrapperERC721ApprovalEvent {
+interface WrapperERC721ApprovalEvent {
     owner: string;
     approved: string;
     tokenId: string;
@@ -193,7 +193,7 @@ export interface ExchangeFillEvent {
     takerAssetData: string;
 }
 
-export interface WrapperExchangeFillEvent {
+interface WrapperExchangeFillEvent {
     makerAddress: string;
     takerAddress: string;
     senderAddress: string;
@@ -222,7 +222,7 @@ export interface ExchangeCancelUpToEvent {
     orderEpoch: BigNumber;
 }
 
-export interface WrapperExchangeCancelUpToEvent {
+interface WrapperExchangeCancelUpToEvent {
     makerAddress: string;
     senderAddress: string;
     orderEpoch: string;
@@ -233,7 +233,7 @@ export interface WethWithdrawalEvent {
     value: BigNumber;
 }
 
-export interface WrapperWethWithdrawalEvent {
+interface WrapperWethWithdrawalEvent {
     owner: string;
     value: string;
 }
@@ -243,7 +243,7 @@ export interface WethDepositEvent {
     value: BigNumber;
 }
 
-export interface WrapperWethDepositEvent {
+interface WrapperWethDepositEvent {
     owner: string;
     value: string;
 }
@@ -280,7 +280,7 @@ export interface ContractEvent {
 }
 
 // The type for order events exposed by MeshWrapper.
-export interface WrapperContractEvent {
+interface WrapperContractEvent {
     blockHash: string;
     txHash: string;
     txIndex: number;
@@ -302,7 +302,7 @@ export enum OrderEventEndState {
     FillabilityIncreased = 'FILLABILITY_INCREASED',
 }
 
-export interface WrapperOrderEvent {
+interface WrapperOrderEvent {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
     endState: OrderEventEndState;
