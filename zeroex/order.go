@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core"
@@ -75,6 +75,11 @@ const (
 	OSInvalidTakerAssetData
 )
 
+// ContractEventParameters is the parameters of a ContractEvent
+type ContractEventParameters interface {
+	json.Marshaler
+}
+
 // ContractEvent is an event emitted by a smart contract
 type ContractEvent struct {
 	BlockHash  common.Hash
@@ -84,7 +89,7 @@ type ContractEvent struct {
 	IsRemoved  bool
 	Address    common.Address
 	Kind       string
-	Parameters interface{}
+	Parameters ContractEventParameters
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ContractEvent type
@@ -140,10 +145,10 @@ func (c ContractEvent) MarshalJSON() ([]byte, error) {
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {
-	OrderHash                common.Hash    `json:"orderHash"`
-	SignedOrder              *SignedOrder   `json:"signedOrder"`
-	EndState                     OrderEventEndState `json:"endState"`
-	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
+	OrderHash                common.Hash        `json:"orderHash"`
+	SignedOrder              *SignedOrder       `json:"signedOrder"`
+	EndState                 OrderEventEndState `json:"endState"`
+	FillableTakerAssetAmount *big.Int           `json:"fillableTakerAssetAmount"`
 	// All the contract events that triggered this orders re-evaluation. They did not
 	// all necessarily cause the orders state change itself, only it's re-evaluation.
 	// Since it's state _did_ change, at least one of them did cause the actual state change.
@@ -153,7 +158,7 @@ type OrderEvent struct {
 type orderEventJSON struct {
 	OrderHash                string           `json:"orderHash"`
 	SignedOrder              *SignedOrder     `json:"signedOrder"`
-	EndState                     string           `json:"endState"`
+	EndState                 string           `json:"endState"`
 	FillableTakerAssetAmount string           `json:"fillableTakerAssetAmount"`
 	ContractEvents           []*ContractEvent `json:"contractEvents"`
 }
@@ -163,7 +168,7 @@ func (o OrderEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
-		"endState":                     o.EndState,
+		"endState":                 o.EndState,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           o.ContractEvents,
 	})
