@@ -12,10 +12,16 @@ deps-js:
 	yarn install
 
 
+# gobin allows us to install specific versions of binary tools written in Go.
+.PHONY: gobin
+gobin:
+	GO111MODULE=off go get -u github.com/myitcv/gobin
+
+
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
-wasmbrowsertest:
-	go get -u github.com/agnivade/wasmbrowsertest
+wasmbrowsertest: gobin
+	gobin github.com/agnivade/wasmbrowsertest@v0.3.0
 
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
