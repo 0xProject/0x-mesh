@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/rpc"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -28,7 +28,7 @@ type rpcService struct {
 // RPCHandler is used to respond to incoming requests from the client.
 type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
-	AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error)
+	AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error)
 	// GetOrders is called when the clients sends a GetOrders request
 	GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
@@ -56,10 +56,10 @@ func (s *rpcService) Heartbeat(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 // SetupHeartbeat sets up the heartbeat for a subscription
-func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
-	notifier, supported := ethRpc.NotifierFromContext(ctx)
+func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
+	notifier, supported := ethrpc.NotifierFromContext(ctx)
 	if !supported {
-		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+		return &ethrpc.Subscription{}, ethrpc.ErrNotificationsUnsupported
 	}
 
 	rpcSub := notifier.CreateSubscription()
@@ -118,7 +118,7 @@ func SetupHeartbeat(ctx context.Context) (*ethRpc.Subscription, error) {
 }
 
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
-func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
 	return s.rpcHandler.AddOrders(signedOrdersRaw)
 }
 

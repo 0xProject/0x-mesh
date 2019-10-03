@@ -6,21 +6,20 @@ import (
 	"fmt"
 	"strings"
 	"syscall/js"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func (o OrderEvent) JSValue() js.Value {
-	stringifiedTxHashes := []interface{}{}
-	for _, txHash := range o.TxHashes {
-		stringifiedTxHashes = append(stringifiedTxHashes, txHash.Hex())
+	contractEventsJS := make([]interface{}, len(o.ContractEvents))
+	for i, contractEvent := range o.ContractEvents {
+		contractEventsJS[i] = contractEvent.JSValue()
 	}
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
-		"kind":                     string(o.Kind),
+		"endState":                     string(o.EndState),
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"txHashes":                 stringifiedTxHashes,
+		"contractEvents":           contractEventsJS,
 	})
 }
 
@@ -54,4 +53,17 @@ func (s SignedOrder) JSValue() js.Value {
 		"salt":                  s.Salt.String(),
 		"signature":             signature,
 	})
+}
+
+func (c ContractEvent) JSValue() js.Value {
+	m := map[string]interface{}{
+		"blockHash": c.BlockHash.Hex(),
+		"txHash":    c.TxHash.Hex(),
+		"txIndex":   c.TxIndex,
+		"logIndex":  c.LogIndex,
+		"isRemoved": c.IsRemoved,
+		"kind":      c.Kind,
+		"parameters": c.Parameters.(js.Wrapper).JSValue(),
+	}
+	return js.ValueOf(m)
 }

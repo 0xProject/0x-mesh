@@ -56,9 +56,9 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	orderEvent := OrderEvent{
 		OrderHash:                orderHash,
 		SignedOrder:              signedOrder,
-		Kind:                     EKOrderAdded,
+		EndState:                     ESOrderAdded,
 		FillableTakerAssetAmount: big.NewInt(2000),
-		TxHashes:                 []common.Hash{common.HexToHash("0x3fcd58a6613265e2b0deba902d7ff693f330a0af6e5b04805b44bbffd8a415d3")},
+		ContractEvents:           []*ContractEvent{},
 	}
 
 	buf := &bytes.Buffer{}

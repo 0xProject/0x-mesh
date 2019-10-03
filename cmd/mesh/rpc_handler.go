@@ -14,7 +14,8 @@ import (
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
-	ethRpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
 )
@@ -70,7 +71,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (*rpc
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
 	log.WithField("count", len(signedOrdersRaw)).Debug("received AddOrders request via RPC")
 	validationResults, err := handler.app.AddOrders(signedOrdersRaw)
 	if err != nil {
@@ -103,7 +104,7 @@ func (handler *rpcHandler) GetStats() (*rpc.GetStatsResponse, error) {
 }
 
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
-func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subscription, error) {
+func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethrpc.Subscription, error) {
 	log.Debug("received order event subscription request via RPC")
 	subscription, err := SetupOrderStream(ctx, handler.app)
 	if err != nil {
@@ -114,10 +115,10 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (*ethRpc.Subsc
 }
 
 // SetupOrderStream sets up the order stream for a subscription
-func SetupOrderStream(ctx context.Context, app *core.App) (*ethRpc.Subscription, error) {
-	notifier, supported := ethRpc.NotifierFromContext(ctx)
+func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription, error) {
+	notifier, supported := ethrpc.NotifierFromContext(ctx)
 	if !supported {
-		return &ethRpc.Subscription{}, ethRpc.ErrNotificationsUnsupported
+		return &ethrpc.Subscription{}, ethrpc.ErrNotificationsUnsupported
 	}
 
 	rpcSub := notifier.CreateSubscription()

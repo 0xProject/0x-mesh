@@ -74,38 +74,67 @@ const (
 	OSInvalidTakerAssetData
 )
 
+// ContractEventParameters is the parameters of a ContractEvent
+type ContractEventParameters interface {
+	json.Marshaler
+}
+
+// ContractEvent is an event emitted by a smart contract
+type ContractEvent struct {
+	BlockHash  common.Hash
+	TxHash     common.Hash
+	TxIndex    uint
+	LogIndex   uint
+	IsRemoved  bool
+	Address    common.Address
+	Kind       string
+	Parameters ContractEventParameters
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ContractEvent type
+func (c ContractEvent) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{
+		"blockHash":  c.BlockHash.Hex(),
+		"txHash":     c.TxHash.Hex(),
+		"txIndex":    c.TxIndex,
+		"logIndex":   c.LogIndex,
+		"isRemoved":  c.IsRemoved,
+		"address":    c.Address,
+		"kind":       c.Kind,
+		"parameters": c.Parameters,
+	}
+	return json.Marshal(m)
+}
+
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {
-	OrderHash                common.Hash    `json:"orderHash"`
-	SignedOrder              *SignedOrder   `json:"signedOrder"`
-	Kind                     OrderEventKind `json:"kind"`
-	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
-	// The hashes of the Ethereum transactions that caused the order status to change.
-	// Could be because of multiple transactions, not just a single transaction.
-	TxHashes []common.Hash `json:"txHashes"`
+	OrderHash                common.Hash        `json:"orderHash"`
+	SignedOrder              *SignedOrder       `json:"signedOrder"`
+	EndState                 OrderEventEndState `json:"endState"`
+	FillableTakerAssetAmount *big.Int           `json:"fillableTakerAssetAmount"`
+	// All the contract events that triggered this orders re-evaluation. They did not
+	// all necessarily cause the orders state change itself, only it's re-evaluation.
+	// Since it's state _did_ change, at least one of them did cause the actual state change.
+	ContractEvents []*ContractEvent `json:"contractEvents"`
 }
 
 type orderEventJSON struct {
-	OrderHash                string       `json:"orderHash"`
-	SignedOrder              *SignedOrder `json:"signedOrder"`
-	Kind                     string       `json:"kind"`
-	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
-	TxHashes                 []string     `json:"txHashes"`
+	OrderHash                string           `json:"orderHash"`
+	SignedOrder              *SignedOrder     `json:"signedOrder"`
+	EndState                 string           `json:"endState"`
+	FillableTakerAssetAmount string           `json:"fillableTakerAssetAmount"`
+	ContractEvents           []*ContractEvent `json:"contractEvents"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
-	stringifiedTxHashes := []string{}
-	for _, txHash := range o.TxHashes {
-		stringifiedTxHashes = append(stringifiedTxHashes, txHash.Hex())
-	}
 	return json.Marshal(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
-		"kind":                     o.Kind,
+		"endState":                 o.EndState,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"txHashes":                 stringifiedTxHashes,
+		"contractEvents":           o.ContractEvents,
 	})
 }
 
@@ -122,37 +151,34 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
-	o.Kind = OrderEventKind(orderEventJSON.Kind)
+	o.EndState = OrderEventEndState(orderEventJSON.EndState)
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
 	if !ok {
 		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
 	}
-	txHashes := []common.Hash{}
-	for _, txHash := range orderEventJSON.TxHashes {
-		txHashes = append(txHashes, common.HexToHash(txHash))
-	}
-	o.TxHashes = txHashes
+	o.ContractEvents = orderEventJSON.ContractEvents
 	return nil
 }
 
-// OrderEventKind enumerates all the possible order event types
-type OrderEventKind string
+// OrderEventEndState enumerates all the possible order event types. An OrderEventEndState describes the
+// end state of a 0x order after revalidation
+type OrderEventEndState string
 
-// OrderEventKind values
+// OrderEventEndState values
 const (
-	EKInvalid          = OrderEventKind("INVALID")
-	EKOrderAdded       = OrderEventKind("ADDED")
-	EKOrderFilled      = OrderEventKind("FILLED")
-	EKOrderFullyFilled = OrderEventKind("FULLY_FILLED")
-	EKOrderCancelled   = OrderEventKind("CANCELLED")
-	EKOrderExpired     = OrderEventKind("EXPIRED")
+	ESInvalid          = OrderEventEndState("INVALID")
+	ESOrderAdded       = OrderEventEndState("ADDED")
+	ESOrderFilled      = OrderEventEndState("FILLED")
+	ESOrderFullyFilled = OrderEventEndState("FULLY_FILLED")
+	ESOrderCancelled   = OrderEventEndState("CANCELLED")
+	ESOrderExpired     = OrderEventEndState("EXPIRED")
 	// An order becomes unfunded if the maker transfers the balance / changes their
 	// allowance backing an order
-	EKOrderBecameUnfunded = OrderEventKind("UNFUNDED")
+	ESOrderBecameUnfunded = OrderEventEndState("UNFUNDED")
 	// Fillability for an order can increase if a previously processed fill event
 	// gets reverted, or if a maker tops up their balance/allowance backing an order
-	EKOrderFillabilityIncreased = OrderEventKind("FILLABILITY_INCREASED")
+	ESOrderFillabilityIncreased = OrderEventEndState("FILLABILITY_INCREASED")
 )
 
 var eip712OrderTypes = signer.Types{

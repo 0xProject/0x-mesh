@@ -28,10 +28,10 @@ include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB
 
 ### Recommended Clients:
 
--   Javascript/Typescript: We've published a [Typescript RPC client](json_rpc_clients/typescript/README.md)
--   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use
+-   Javascript/Typescript: We've published a [Typescript RPC client](json_rpc_clients/typescript/README.md).
+-   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use.
 -   Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
-    -   see the [demos](cmd/demo) for example usage
+    -   see the [examples](../examples/go/) directory for example usage.
 
 ## API
 
@@ -211,9 +211,12 @@ Gets certain configurations and stats about a Mesh node.
 
 ### `mesh_subscribe` to `orders` topic
 
-Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined block.
+Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined/reverted blocks.
 
-**Example:** If an order is both `filled` and `cancelled` within a single block, only a cancellation `OrderEvent` will be emitted (since this is the final state of the order after this block is mined). The cancellation `OrderEvent` _will_ however list the hashes of all transactions that impacted the order's fillability within the block. Using these `txHashes`, one can fetch all the individual smart contract events impacting to an order if they are needed.
+**Example:** If an order is both `filled` and `cancelled` within a single block, the `EndState`
+of the `OrderEvent` will be `CANCELLED` (since this is the final state of the order after this block is
+mined). The `OrderEvent` _will_ however list the contract events intercepted that could have impacted
+this orders fillability. This list will include both the fill event and cancellation event.
 
 Mesh has implemented subscriptions in the [same manner as Geth](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB). In order to start a subscription, you must send the following payload:
 
@@ -265,16 +268,34 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
                     "salt": "1559422141994",
                     "signature": "0x1cf16c2f3a210965b5e17f51b57b869ba4ddda33df92b0017b4d8da9dacd3152b122a73844eaf50ccde29a42950239ba36a525ed7f1698a8a5e1896cf7d651aed203"
                 },
-                "kind": "CANCELLED",
+                "endState": "CANCELLED",
                 "fillableTakerAssetAmount": 0,
-                "txHashes": ["0x9e6830a7044b39e107f410e4f765995fd0d3d69d5c3b3582a1701b9d68167560"]
+                "contractEvents": [
+                    {
+                        "blockHash": "0x1be2eb6174dbf0458686bdae44c9a330d9a9eb563962512a7be545c4ec11a4d2",
+                        "txHash": "0xbcce172374dbf0458686bdae44c9a330d9a9eb563962512a7be545c4ec232e3a",
+                        "txIndex": 23,
+                        "logIndex": 0,
+                        "isRemoved": false,
+                        "address": "0x4f833a24e1f95d70f028921e27040ca56e09ab0b",
+                        "kind": "ExchangeCancelEvent",
+                        "parameters": {
+                            "makerAddress": "0x50f84bbee6fb250d6f49e854fa280445369d64d9",
+                            "senderAddress": "0x0000000000000000000000000000000000000000",
+                            "feeRecipientAddress": "0xa258b39954cef5cb142fd567a46cddb31a670124",
+                            "orderHash": "0x96e6eb6174dbf0458686bdae44c9a330d9a9eb563962512a7be545c4ecc13fd4",
+                            "makerAssetData": "0xf47261b00000000000000000000000000f5d2fb29fb7d3cfee444a200298f468908cc942",
+                            "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+                        }
+                    }
+                ]
             }
         ]
     }
 }
 ```
 
-See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [EventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) event types for a complete list of the events that could be emitted.
+See the [OrderEvent](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#OrderEvent) type declaration as well as the [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants) types for a complete list of the events that could be emitted.
 
 To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId`.
 

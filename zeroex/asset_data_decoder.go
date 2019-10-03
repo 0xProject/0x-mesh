@@ -11,9 +11,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const erc20AssetDataId = "f47261b0"
-const erc721AssetDataId = "02571792"
-const multiAssetDataId = "94cfcdd7"
+// ERC20AssetDataID is the assetDataId for ERC20 tokens
+const ERC20AssetDataID = "f47261b0"
+
+// ERC721AssetDataID is the assetDataId for ERC721 tokens
+const ERC721AssetDataID = "02571792"
+
+// MultiAssetDataID is the assetDataId for multiAsset tokens
+const MultiAssetDataID = "94cfcdd7"
 
 const erc20AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"}],\"name\":\"ERC20Token\",\"type\":\"function\"}]"
 const erc721AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721Token\",\"type\":\"function\"}]"
@@ -61,15 +66,15 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 		log.WithField("erc20AssetDataAbi", erc20AssetDataAbi).Panic("erc20AssetDataAbi should be ABI parsable")
 	}
 	idToAssetDataInfo := map[string]assetDataInfo{
-		erc20AssetDataId: assetDataInfo{
+		ERC20AssetDataID: assetDataInfo{
 			name: "ERC20Token",
 			abi:  erc20AssetDataABI,
 		},
-		erc721AssetDataId: assetDataInfo{
+		ERC721AssetDataID: assetDataInfo{
 			name: "ERC721Token",
 			abi:  erc721AssetDataABI,
 		},
-		multiAssetDataId: assetDataInfo{
+		MultiAssetDataID: assetDataInfo{
 			name: "MultiAsset",
 			abi:  multiAssetDataABI,
 		},
