@@ -48,7 +48,7 @@ const (
 	expirationPollingInterval  = 50 * time.Millisecond
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "4.0.1-beta"
+	version          = "5.0.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
