@@ -10,6 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -192,7 +193,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 		validMeshOrders = append(validMeshOrders, order)
 	}
 	areNewOrders := true
-	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders)
+	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
 	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil

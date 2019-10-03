@@ -125,13 +125,185 @@ interface WrapperSignedOrder {
     signature: string;
 }
 
+export interface ERC20TransferEvent {
+    from: string;
+    to: string;
+    value: BigNumber;
+}
+
+interface WrapperERC20TransferEvent {
+    from: string;
+    to: string;
+    value: string;
+}
+
+export interface ERC20ApprovalEvent {
+    owner: string;
+    spender: string;
+    value: BigNumber;
+}
+
+interface WrapperERC20ApprovalEvent {
+    owner: string;
+    spender: string;
+    value: string;
+}
+
+export interface ERC721TransferEvent {
+    from: string;
+    to: string;
+    tokenId: BigNumber;
+}
+
+interface WrapperERC721TransferEvent {
+    from: string;
+    to: string;
+    tokenId: string;
+}
+
+export interface ERC721ApprovalEvent {
+    owner: string;
+    approved: string;
+    tokenId: BigNumber;
+}
+
+interface WrapperERC721ApprovalEvent {
+    owner: string;
+    approved: string;
+    tokenId: string;
+}
+
+export interface ERC721ApprovalForAllEvent {
+    owner: string;
+    operator: string;
+    approved: boolean;
+}
+
+export interface ExchangeFillEvent {
+    makerAddress: string;
+    takerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    makerAssetFilledAmount: BigNumber;
+    takerAssetFilledAmount: BigNumber;
+    makerFeePaid: BigNumber;
+    takerFeePaid: BigNumber;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+interface WrapperExchangeFillEvent {
+    makerAddress: string;
+    takerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    makerAssetFilledAmount: string;
+    takerAssetFilledAmount: string;
+    makerFeePaid: string;
+    takerFeePaid: string;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+export interface ExchangeCancelEvent {
+    makerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+export interface ExchangeCancelUpToEvent {
+    makerAddress: string;
+    senderAddress: string;
+    orderEpoch: BigNumber;
+}
+
+interface WrapperExchangeCancelUpToEvent {
+    makerAddress: string;
+    senderAddress: string;
+    orderEpoch: string;
+}
+
+export interface WethWithdrawalEvent {
+    owner: string;
+    value: BigNumber;
+}
+
+interface WrapperWethWithdrawalEvent {
+    owner: string;
+    value: string;
+}
+
+export interface WethDepositEvent {
+    owner: string;
+    value: BigNumber;
+}
+
+interface WrapperWethDepositEvent {
+    owner: string;
+    value: string;
+}
+
+enum ContractEventKind {
+    ERC20TransferEvent = 'ERC20TransferEvent',
+    ERC20ApprovalEvent = 'ERC20ApprovalEvent',
+    ERC721TransferEvent = 'ERC721TransferEvent',
+    ERC721ApprovalEvent = 'ERC721ApprovalEvent',
+    ExchangeFillEvent = 'ExchangeFillEvent',
+    ExchangeCancelEvent = 'ExchangeCancelEvent',
+    ExchangeCancelUpToEvent = 'ExchangeCancelUpToEvent',
+    WethDepositEvent = 'WethDepositEvent',
+    WethWithdrawalEvent = 'WethWithdrawalEvent',
+}
+
+type WrapperContractEventParameters =  WrapperERC20TransferEvent | WrapperERC20ApprovalEvent | WrapperERC721TransferEvent | WrapperERC721ApprovalEvent | WrapperExchangeFillEvent | WrapperExchangeCancelUpToEvent | WrapperWethWithdrawalEvent | WrapperWethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+
+type ContractEventParameters =  ERC20TransferEvent | ERC20ApprovalEvent | ERC721TransferEvent | ERC721ApprovalEvent | ExchangeFillEvent | ExchangeCancelUpToEvent | WethWithdrawalEvent | WethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+
+export interface ContractEvent {
+    blockHash: string;
+    txHash: string;
+    txIndex: number;
+    logIndex: number;
+    isRemoved: string;
+    address: string;
+    kind: ContractEventKind;
+    parameters: ContractEventParameters;
+}
+
 // The type for order events exposed by MeshWrapper.
+interface WrapperContractEvent {
+    blockHash: string;
+    txHash: string;
+    txIndex: number;
+    logIndex: number;
+    isRemoved: string;
+    address: string;
+    kind: string;
+    parameters: WrapperContractEventParameters;
+}
+
+export enum OrderEventEndState {
+    Invalid = 'INVALID',
+    Added = 'ADDED',
+    Filled = 'FILLED',
+    FullyFilled = 'FULLY_FILLED',
+    Cancelled = 'CANCELLED',
+    Expired = 'EXPIRED',
+    Unfunded = 'UNFUNDED',
+    FillabilityIncreased = 'FILLABILITY_INCREASED',
+}
+
 interface WrapperOrderEvent {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
-    kind: string;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: string;
-    txHashes: string[];
+    contractEvents: WrapperContractEvent[];
 }
 
 /**
@@ -141,9 +313,9 @@ interface WrapperOrderEvent {
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
-    kind: string;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
-    txHashes: string[];
+    contractEvents: ContractEvent[];
 }
 
 // The type for validation results exposed by MeshWrapper.
@@ -367,6 +539,107 @@ function wrapperSignedOrderToSignedOrder(wrapperSignedOrder: WrapperSignedOrder)
     };
 }
 
+function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperContractEvent[]): ContractEvent[] {
+        const contractEvents: ContractEvent[] = [];
+        if (wrapperContractEvents === null) {
+            return contractEvents;
+        }
+        wrapperContractEvents.forEach(wrapperContractEvent => {
+            const kind = wrapperContractEvent.kind as ContractEventKind;
+            const rawParameters = wrapperContractEvent.parameters;
+            let parameters: ContractEventParameters;
+            switch (kind) {
+                case ContractEventKind.ERC20TransferEvent:
+                    const erc20TransferEvent = rawParameters as WrapperERC20TransferEvent;
+                    parameters = {
+                        from: erc20TransferEvent.from,
+                        to: erc20TransferEvent.to,
+                        value: new BigNumber(erc20TransferEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC20ApprovalEvent:
+                    const erc20ApprovalEvent = rawParameters as WrapperERC20ApprovalEvent;
+                    parameters = {
+                        owner: erc20ApprovalEvent.owner,
+                        spender: erc20ApprovalEvent.spender,
+                        value: new BigNumber(erc20ApprovalEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC721TransferEvent:
+                    const erc721TransferEvent = rawParameters as WrapperERC721TransferEvent;
+                    parameters = {
+                        from: erc721TransferEvent.from,
+                        to: erc721TransferEvent.to,
+                        tokenId: new BigNumber(erc721TransferEvent.tokenId),
+                    };
+                    break;
+                case ContractEventKind.ERC721ApprovalEvent:
+                    const erc721ApprovalEvent = rawParameters as WrapperERC721ApprovalEvent;
+                    parameters = {
+                        owner: erc721ApprovalEvent.owner,
+                        approved: erc721ApprovalEvent.approved,
+                        tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
+                    };
+                    break;
+                case ContractEventKind.ExchangeFillEvent:
+                    const exchangeFillEvent = rawParameters as WrapperExchangeFillEvent;
+                    parameters = {
+                        makerAddress: exchangeFillEvent.makerAddress,
+                        takerAddress: exchangeFillEvent.takerAddress,
+                        senderAddress: exchangeFillEvent.senderAddress,
+                        feeRecipientAddress: exchangeFillEvent.feeRecipientAddress,
+                        makerAssetFilledAmount: new BigNumber(exchangeFillEvent.makerAssetFilledAmount),
+                        takerAssetFilledAmount: new BigNumber(exchangeFillEvent.takerAssetFilledAmount),
+                        makerFeePaid: new BigNumber(exchangeFillEvent.makerFeePaid),
+                        takerFeePaid: new BigNumber(exchangeFillEvent.takerFeePaid),
+                        orderHash: exchangeFillEvent.orderHash,
+                        makerAssetData: exchangeFillEvent.makerAssetData,
+                        takerAssetData: exchangeFillEvent.takerAssetData,
+                    };
+                    break;
+                case ContractEventKind.ExchangeCancelEvent:
+                    parameters = rawParameters as ExchangeCancelEvent;
+                    break;
+                case ContractEventKind.ExchangeCancelUpToEvent:
+                    const exchangeCancelUpToEvent = rawParameters as WrapperExchangeCancelUpToEvent;
+                    parameters = {
+                        makerAddress: exchangeCancelUpToEvent.makerAddress,
+                        senderAddress: exchangeCancelUpToEvent.senderAddress,
+                        orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
+                    };
+                    break;
+                case ContractEventKind.WethDepositEvent:
+                    const wethDepositEvent = rawParameters as WrapperWethDepositEvent;
+                    parameters = {
+                        owner: wethDepositEvent.owner,
+                        value: new BigNumber(wethDepositEvent.value),
+                    };
+                    break;
+                case ContractEventKind.WethWithdrawalEvent:
+                    const wethWithdrawalEvent = rawParameters as WrapperWethWithdrawalEvent;
+                    parameters = {
+                        owner: wethWithdrawalEvent.owner,
+                        value: new BigNumber(wethWithdrawalEvent.value),
+                    };
+                    break;
+                default:
+                    throw new Error(`Unrecognized ContractEventKind: ${kind}`);
+            }
+            const contractEvent: ContractEvent = {
+                blockHash: wrapperContractEvent.blockHash,
+                txHash:  wrapperContractEvent.txHash,
+                txIndex:  wrapperContractEvent.txIndex,
+                logIndex:  wrapperContractEvent.logIndex,
+                isRemoved:  wrapperContractEvent.isRemoved,
+                address:  wrapperContractEvent.address,
+                kind,
+                parameters,
+            };
+            contractEvents.push(contractEvent);
+        });
+        return contractEvents;
+    }
+
 function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSignedOrder {
     return {
         ...signedOrder,
@@ -384,6 +657,7 @@ function wrapperOrderEventToOrderEvent(wrapperOrderEvent: WrapperOrderEvent): Or
         ...wrapperOrderEvent,
         signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderEvent.signedOrder),
         fillableTakerAssetAmount: new BigNumber(wrapperOrderEvent.fillableTakerAssetAmount),
+        contractEvents: wrapperContractEventsToContractEvents(wrapperOrderEvent.contractEvents),
     };
 }
 

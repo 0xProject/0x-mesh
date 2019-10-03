@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
@@ -185,20 +186,20 @@ var (
 // ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema
 const ROInvalidSchemaCode = "InvalidSchema"
 
-// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
-func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventKind, bool) {
+// ConvertRejectOrderCodeToOrderEventEndState converts an RejectOrderCode to an OrderEventEndState type
+func ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventEndState, bool) {
 	switch rejectedOrderStatus {
 	case ROExpired:
-		return zeroex.EKOrderExpired, true
+		return zeroex.ESOrderExpired, true
 	case ROFullyFilled:
-		return zeroex.EKOrderFullyFilled, true
+		return zeroex.ESOrderFullyFilled, true
 	case ROCancelled:
-		return zeroex.EKOrderCancelled, true
+		return zeroex.ESOrderCancelled, true
 	case ROUnfunded:
-		return zeroex.EKOrderBecameUnfunded, true
+		return zeroex.ESOrderBecameUnfunded, true
 	default:
-		// Catch-all returns Invalid OrderEventKind
-		return zeroex.EKInvalid, false
+		// Catch-all returns Invalid OrderEventEndState
+		return zeroex.ESInvalid, false
 	}
 }
 
@@ -271,9 +272,11 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 // BatchValidate retrieves all the information needed to validate the supplied orders.
 // It splits the orders into chunks of `chunkSize`, and makes no more then `concurrencyLimit`
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
-// If it some requests fail, this method still returns whatever order information it was able to
-// retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool) *ValidationResults {
+// If some requests fail, this method still returns whatever order information it was able to
+// retrieve up until the failure.
+// The `blockNumber` parameter lets the caller specify a specific block height at which to validate
+// the orders. This can be set to the `latest` block or any other historical block number.
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -334,6 +337,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 				opts := &bind.CallOpts{
 					Pending: false,
 					Context: ctx,
+				}
+				if blockNumber == rpc.PendingBlockNumber {
+					opts.Pending = true
+				} else if blockNumber != rpc.LatestBlockNumber {
+					opts.BlockNumber = big.NewInt(int64(blockNumber))
 				}
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
