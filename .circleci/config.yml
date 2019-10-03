@@ -65,5 +65,5 @@ jobs:
           command: cd rpc/clients/typescript && yarn test
       - run:
           name: Run cut-release script to test it still works
-          command: make cut-release
+          command: VERSION=100.0.0 make cut-release
 
