@@ -532,7 +532,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		OrderHash:                orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-		EndState:                     zeroex.ESOrderAdded,
+		EndState:                 zeroex.ESOrderAdded,
 	}
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
@@ -638,6 +638,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			w.updateOrderDBEntry(ordersColTxn, order)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
+			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -650,6 +651,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 			// Update order in DB and emit event
+			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
