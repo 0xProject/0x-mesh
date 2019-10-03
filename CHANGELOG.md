@@ -15,6 +15,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞 
 
+- Fixed bug where we weren't updating an orders `fillableTakerAssetAmount` in the DB when orders were being partially filled or when their fillability increased due to a block re-org. ([#439](https://github.com/0xProject/0x-mesh/pull/439))
 - Made `verbosity` field optional in the TypeScript `Config` type. ([#410](https://github.com/0xProject/0x-mesh/pull/410))
 - Fixed issue where we weren't re-validating orders potentially impacted by the balance increase of the recipient of an ERC20 or ERC721 transfer. ([#416](https://github.com/0xProject/0x-mesh/pull/416))
 
