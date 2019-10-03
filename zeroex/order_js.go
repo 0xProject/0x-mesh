@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"syscall/js"
-
-	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -65,40 +63,7 @@ func (c ContractEvent) JSValue() js.Value {
 		"logIndex":  c.LogIndex,
 		"isRemoved": c.IsRemoved,
 		"kind":      c.Kind,
-	}
-	switch c.Kind {
-	case "ERC20TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent).JSValue()
-
-	case "ERC20ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent).JSValue()
-
-	case "ERC721TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent).JSValue()
-
-	case "ERC721ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent).JSValue()
-
-	case "ERC721ApprovalForAllEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent).JSValue()
-
-	case "WethWithdrawalEvent":
-		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent).JSValue()
-
-	case "WethDepositEvent":
-		m["parameters"] = c.Parameters.(decoder.WethDepositEvent).JSValue()
-
-	case "ExchangeFillEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent).JSValue()
-
-	case "ExchangeCancelEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent).JSValue()
-
-	case "ExchangeCancelUpToEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent).JSValue()
-
-	default:
-		panic(fmt.Sprintf("Unrecognized event encountered: %s", c.Kind))
+		"parameters": c.Parameters.(js.Wrapper).JSValue(),
 	}
 	return js.ValueOf(m)
 }

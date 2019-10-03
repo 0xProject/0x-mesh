@@ -9,7 +9,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
-	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core"
@@ -95,50 +94,15 @@ type ContractEvent struct {
 // MarshalJSON implements a custom JSON marshaller for the ContractEvent type
 func (c ContractEvent) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
-		"blockHash": c.BlockHash.Hex(),
-		"txHash":    c.TxHash.Hex(),
-		"txIndex":   c.TxIndex,
-		"logIndex":  c.LogIndex,
-		"isRemoved": c.IsRemoved,
-		"address":   c.Address,
-		"kind":      c.Kind,
+		"blockHash":  c.BlockHash.Hex(),
+		"txHash":     c.TxHash.Hex(),
+		"txIndex":    c.TxIndex,
+		"logIndex":   c.LogIndex,
+		"isRemoved":  c.IsRemoved,
+		"address":    c.Address,
+		"kind":       c.Kind,
+		"parameters": c.Parameters,
 	}
-	switch c.Kind {
-	case "ERC20TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20TransferEvent)
-		return json.Marshal(m)
-
-	case "ERC20ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC20ApprovalEvent)
-
-	case "ERC721TransferEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721TransferEvent)
-
-	case "ERC721ApprovalEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalEvent)
-
-	case "ERC721ApprovalForAllEvent":
-		m["parameters"] = c.Parameters.(decoder.ERC721ApprovalForAllEvent)
-
-	case "WethWithdrawalEvent":
-		m["parameters"] = c.Parameters.(decoder.WethWithdrawalEvent)
-
-	case "WethDepositEvent":
-		m["parameters"] = c.Parameters.(decoder.WethDepositEvent)
-
-	case "ExchangeFillEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeFillEvent)
-
-	case "ExchangeCancelEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelEvent)
-
-	case "ExchangeCancelUpToEvent":
-		m["parameters"] = c.Parameters.(decoder.ExchangeCancelUpToEvent)
-
-	default:
-		panic(fmt.Sprintf("Unrecognized event encountered: %s", c.Kind))
-	}
-
 	return json.Marshal(m)
 }
 
