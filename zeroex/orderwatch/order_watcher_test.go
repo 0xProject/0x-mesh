@@ -593,9 +593,9 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
 	}
-	orderWithoutExchangeAddress := signedOrder.Trim()
+	trimmedOrder := signedOrder.Trim()
 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
-	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, halfAmount, signedOrder.Signature)
+	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 

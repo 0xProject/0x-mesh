@@ -17,10 +17,12 @@ provider.start();
     const order: Order = {
         makerAddress: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
         makerAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+        makerFeeAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
         makerAssetAmount: new BigNumber('100000000000000000000') as any,
         makerFee: new BigNumber('0') as any,
         takerAddress: '0x0000000000000000000000000000000000000000',
         takerAssetData: '0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082',
+        takerFeeAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
         takerAssetAmount: new BigNumber('50000000000000000000') as any,
         takerFee: new BigNumber('0') as any,
         senderAddress: '0x0000000000000000000000000000000000000000',
@@ -28,6 +30,7 @@ provider.start();
         feeRecipientAddress: '0xa258b39954cef5cb142fd567a46cddb31a670124',
         expirationTimeSeconds: new BigNumber(expirationTime) as any,
         salt: new BigNumber('1548619145450') as any,
+        chainId: 50,
     };
     const signedOrder = await signatureUtils.ecSignOrderAsync(provider, order, order.makerAddress);
     const orderHash = orderHashUtils.getOrderHashHex(order);

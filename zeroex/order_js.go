@@ -46,7 +46,7 @@ func (s SignedOrder) JSValue() js.Value {
 	}
 
 	return js.ValueOf(map[string]interface{}{
-		"chainId":               s.ChainID.String(),
+		"chainId":               s.ChainID.Int64(),
 		"exchangeAddress":       strings.ToLower(s.ExchangeAddress.Hex()),
 		"makerAddress":          strings.ToLower(s.MakerAddress.Hex()),
 		"makerAssetData":        makerAssetData,

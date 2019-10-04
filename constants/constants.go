@@ -19,9 +19,6 @@ const TestNetworkID = 50
 // GanacheEndpoint specifies the Ganache test Ethereum node JSON RPC endpoint used in tests
 const GanacheEndpoint = "http://localhost:8545"
 
-// GanacheDomainHash is the domain hash for the Ganache network
-var GanacheDomainHash = common.HexToHash("0x702b03cdb81aac5ae02a3438ef3dfd4a4ad7c5c42f5968b0abbac02a5725b71d")
-
 // NullAddress is an Ethereum address with all zeroes.
 var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
 

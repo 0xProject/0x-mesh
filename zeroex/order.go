@@ -382,7 +382,7 @@ func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
 
 // SignedOrderJSON is an unmodified JSON representation of a SignedOrder
 type SignedOrderJSON struct {
-	ChainID               string `json:"chainId"`
+	ChainID               int64 `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
 	MakerAssetData        string `json:"makerAssetData"`
@@ -425,7 +425,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	}
 
 	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
-		ChainID:               s.ChainID.String(),
+		ChainID:               s.ChainID.Int64(),
 		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
 		MakerAssetData:        makerAssetData,
@@ -456,12 +456,7 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var ok bool
-	if signedOrderJSON.ChainID != "" {
-		s.ChainID, ok = math.ParseBig256(signedOrderJSON.ChainID)
-		if !ok {
-			s.ChainID = nil
-		}
-	}
+	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
 	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
 	s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
 	s.MakerAssetData = common.FromHex(signedOrderJSON.MakerAssetData)
