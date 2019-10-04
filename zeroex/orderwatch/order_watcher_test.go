@@ -155,7 +155,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.EKOrderBecameUnfunded, orderEvent.Kind)
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
@@ -593,7 +593,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
 	}
-	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	orderWithoutExchangeAddress := signedOrder.Trim()
 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
 	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, halfAmount, signedOrder.Signature)
 	require.NoError(t, err)
