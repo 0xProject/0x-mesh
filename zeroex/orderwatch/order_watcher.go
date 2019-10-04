@@ -532,7 +532,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		OrderHash:                orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-		EndState:                     zeroex.ESOrderAdded,
+		EndState:                 zeroex.ESOrderAdded,
 	}
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
@@ -629,7 +629,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				EndState:                     zeroex.ESOrderAdded,
+				EndState:                 zeroex.ESOrderAdded,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
 			orderEvents = append(orderEvents, orderEvent)
@@ -638,11 +638,12 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			w.updateOrderDBEntry(ordersColTxn, order)
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
+			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
-				EndState:                     zeroex.ESOrderFilled,
+				EndState:                 zeroex.ESOrderFilled,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
@@ -650,11 +651,12 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 			// Update order in DB and emit event
+			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
-				EndState:                     zeroex.ESOrderFillabilityIncreased,
+				EndState:                 zeroex.ESOrderFillabilityIncreased,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
@@ -685,7 +687,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
-					EndState:                     endState,
+					EndState:                 endState,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
 				orderEvents = append(orderEvents, orderEvent)

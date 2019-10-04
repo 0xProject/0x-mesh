@@ -124,6 +124,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
@@ -162,6 +163,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
@@ -201,6 +203,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
@@ -240,6 +243,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
@@ -278,6 +282,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 
 	// Transfer makerAsset back to maker address
 	zrxCoinbase := constants.GanacheAccount0
@@ -300,6 +305,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.Len(t, newOrders, 1)
 	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
 	assert.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherNoChange(t *testing.T) {
@@ -341,6 +347,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	require.Len(t, newOrders, 1)
 	require.NotEqual(t, dbOrder.LastUpdated, newOrders[0].Hash)
 	assert.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
@@ -404,6 +411,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.Len(t, newOrders, 1)
 	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
 	assert.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherCanceled(t *testing.T) {
@@ -443,6 +451,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherCancelUpTo(t *testing.T) {
@@ -482,6 +491,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
 func TestOrderWatcherERC20Filled(t *testing.T) {
@@ -521,6 +531,48 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+}
+
+func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Partially fill order
+	opts := &bind.TransactOpts{
+		From:   takerAddress,
+		Signer: scenario.GetTestSignerFn(takerAddress),
+	}
+	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
+	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, halfAmount, signedOrder.Signature)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, false, orders[0].IsRemoved)
+	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) chan []*zeroex.OrderEvent {
