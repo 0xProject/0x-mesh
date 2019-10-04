@@ -63,4 +63,7 @@ jobs:
       - run:
           name: Run TS RPC client tests
           command: cd rpc/clients/typescript && yarn test
+      - run:
+          name: Run cut-release script to test it still works
+          command: VERSION=100.0.0 make cut-release
 
