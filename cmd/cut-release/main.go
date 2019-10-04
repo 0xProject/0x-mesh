@@ -25,6 +25,7 @@ func main() {
 	updateHardCodedVersions(env.Version)
 
 	generateTypescriptClientDocs()
+	generateTypescriptBrowserDocs()
 }
 
 func generateTypescriptClientDocs() {
@@ -40,6 +41,26 @@ func generateTypescriptClientDocs() {
 	// Run `yarn docs:md` to generate MD docs
 	cmd = exec.Command("yarn", "docs:md")
 	cmd.Dir = "rpc/clients/typescript"
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+}
+
+func generateTypescriptBrowserDocs() {
+	// Run `yarn install` to make sure `TypeDoc` dep is installed
+	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
+	cmd.Dir = "browser"
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+
+	// Run `yarn docs:md` to generate MD docs
+	cmd = exec.Command("yarn", "docs:md")
+	cmd.Dir = "browser"
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -74,14 +95,8 @@ func updateHardCodedVersions(version string) {
 	regex = `(## Upcoming release)`
 	updateFileWithRegex(changelog, regex, newChangelogSection)
 
-	// Update `beta_telemetry_node/docker-compose.yml`
-	dockerComposePath := "examples/beta_telemetry_node/docker-compose.yml"
-	newVersionString = fmt.Sprintf(`image: 0xorg/mesh:%s`, version)
-	regex = `image: 0xorg/mesh:(.*)`
-	updateFileWithRegex(dockerComposePath, regex, newVersionString)
-
 	// Update badge in README.md
-	pathToMDFilesWithBadges := []string{"README.md", "docs/rpc_api.md", "docs/development.md", "docs/deployment.md"}
+	pathToMDFilesWithBadges := []string{"README.md", "docs/rpc_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
 	regex = `version-(.*)-orange.svg`

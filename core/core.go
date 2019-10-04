@@ -14,8 +14,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -23,6 +23,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,7 +46,9 @@ const (
 	peerConnectTimeout         = 60 * time.Second
 	checkNewAddrInterval       = 20 * time.Second
 	expirationPollingInterval  = 50 * time.Millisecond
-	version                    = "4.0.1-beta"
+	// logStatsInterval is how often to log stats for this node.
+	logStatsInterval = 5 * time.Minute
+	version          = "4.0.1-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -111,7 +114,7 @@ type App struct {
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
-	orderValidator            *zeroex.OrderValidator
+	orderValidator            *ordervalidator.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
 	snapshotExpirationWatcher *expirationwatch.Watcher
@@ -138,8 +141,8 @@ func New(config Config) (*App, error) {
 	}
 	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < maxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then maxOrderSizeInBytes: %d", maxOrderSizeInBytes)
+	if config.EthereumRPCMaxContentLength < ordervalidator.MaxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", ordervalidator.MaxOrderSizeInBytes)
 	}
 	config = unquoteConfig(config)
 
@@ -179,7 +182,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := zeroex.NewOrderValidator(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidator.New(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -403,6 +406,13 @@ func (app *App) Start(ctx context.Context) error {
 		p2pErrChan <- app.node.Start()
 	}()
 
+	// Start loop for periodically logging stats.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.periodicallyLogStats(innerCtx)
+	}()
+
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
 	// that occurs.
@@ -555,10 +565,10 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
 // and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.ValidationResults, error) {
-	allValidationResults := &zeroex.ValidationResults{
-		Accepted: []*zeroex.AcceptedOrderInfo{},
-		Rejected: []*zeroex.RejectedOrderInfo{},
+func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+	allValidationResults := &ordervalidator.ValidationResults{
+		Accepted: []*ordervalidator.AcceptedOrderInfo{},
+		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
 	orderHashesSeen := map[common.Hash]struct{}{}
 	schemaValidOrders := []*zeroex.SignedOrder{}
@@ -571,11 +581,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 				signedOrder = nil
 			}
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
-			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        zeroex.MeshValidation,
-				Status: zeroex.RejectedOrderStatus{
-					Code:    ROInvalidSchemaCode,
+				Kind:        ordervalidator.MeshValidation,
+				Status: ordervalidator.RejectedOrderStatus{
+					Code:    ordervalidator.ROInvalidSchemaCode,
 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
 				},
 			})
@@ -583,17 +593,17 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*zeroex.Validatio
 		}
 		if !result.Valid() {
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
-			status := zeroex.RejectedOrderStatus{
-				Code:    ROInvalidSchemaCode,
+			status := ordervalidator.RejectedOrderStatus{
+				Code:    ordervalidator.ROInvalidSchemaCode,
 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
 			}
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
-			allValidationResults.Rejected = append(allValidationResults.Rejected, &zeroex.RejectedOrderInfo{
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
 				SignedOrder: signedOrder,
-				Kind:        zeroex.MeshValidation,
+				Kind:        ordervalidator.MeshValidation,
 				Status:      status,
 			})
 			continue
@@ -670,6 +680,33 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		NumPeers:          app.node.GetNumPeers(),
 	}
 	return response, nil
+}
+
+func (app *App) periodicallyLogStats(ctx context.Context) {
+	ticker := time.NewTicker(logStatsInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-ticker.C:
+		}
+
+		stats, err := app.GetStats()
+		if err != nil {
+			log.WithError(err).Error("could not get stats")
+			continue
+		}
+		log.WithFields(log.Fields{
+			"version":           stats.Version,
+			"pubSubTopic":       stats.PubSubTopic,
+			"rendezvous":        stats.Rendezvous,
+			"ethereumNetworkID": stats.EthereumNetworkID,
+			"latestBlock":       stats.LatestBlock,
+			"numOrders":         stats.NumOrders,
+			"numPeers":          stats.NumPeers,
+		}).Info("current stats")
+	}
 }
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher

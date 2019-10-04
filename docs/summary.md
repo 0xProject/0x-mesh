@@ -3,6 +3,7 @@
 ## Getting started
 
 * [Deployment guide](deployment.md)
+* [Deploying a Telemetry-Enabled Mesh Node](deployment_with_telemetry.md)
 * [Mesh Beta participation guide](../examples/beta_telemetry_node/README.md)
 * [JSON-RPC API documentation](rpc_api.md)
 * [Browser API documentation](browser/reference.md)
@@ -20,5 +21,5 @@
 
 ## Contributing
 
-* [Development guide](development.md)
+* [Development and contribution guide](../CONTRIBUTING.md)
 * [CHANGELOG](../CHANGELOG.md)

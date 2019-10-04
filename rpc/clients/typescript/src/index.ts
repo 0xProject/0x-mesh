@@ -2,7 +2,7 @@ export { WSClient } from './ws_client';
 export {
     ClientConfig,
     WSOpts,
-    OrderEventKind,
+    OrderEventEndState,
     OrderEventPayload,
     OrderEvent,
     OrderInfo,
