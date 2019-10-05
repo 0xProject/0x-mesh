@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -30,8 +31,8 @@ func NewClient(addr string) (*Client, error) {
 
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	var validationResults zeroex.ValidationResults
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
+	var validationResults ordervalidator.ValidationResults
 	if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders); err != nil {
 		return nil, err
 	}

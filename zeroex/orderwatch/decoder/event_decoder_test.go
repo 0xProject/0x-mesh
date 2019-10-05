@@ -1,4 +1,4 @@
-package orderwatch
+package decoder
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ func TestDecodeERC20Transfer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -62,7 +62,7 @@ func TestDecodeERC20Approval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -89,7 +89,7 @@ func TestDecodeERC721Transfer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -115,7 +115,7 @@ func TestDecodeERC721Approval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -141,7 +141,7 @@ func TestDecodeERC721ApprovalForAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -167,7 +167,7 @@ func TestDecodeExchangeFill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -200,7 +200,7 @@ func TestDecodeExchangeCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -227,7 +227,7 @@ func TestDecodeExchangeCancelUpTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -251,7 +251,7 @@ func TestDecodeWethDeposit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -274,7 +274,7 @@ func TestDecodeWethWithdrawal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	decoder, err := NewDecoder()
+	decoder, err := New()
 	if err != nil {
 		t.Fatal(err.Error())
 	}

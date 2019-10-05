@@ -12,10 +12,16 @@ deps-js:
 	yarn install
 
 
+# gobin allows us to install specific versions of binary tools written in Go.
+.PHONY: gobin
+gobin:
+	GO111MODULE=off go get -u github.com/myitcv/gobin
+
+
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
-wasmbrowsertest:
-	go get -u github.com/agnivade/wasmbrowsertest
+wasmbrowsertest: gobin
+	gobin github.com/agnivade/wasmbrowsertest@v0.3.0
 
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
@@ -38,8 +44,15 @@ test-all: test-go test-wasm-node test-wasm-browser
 
 
 .PHONY: test-go
-test-go:
+test-go: test-go-parallel test-go-serial
+
+.PHONY: test-go-parallel
+test-go-parallel:
 	go test ./... -race -timeout 30s
+
+.PHONY: test-go-serial
+test-go-serial:
+	go test ./ethereum ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
 
 
 .PHONY: test-integration
@@ -89,3 +102,21 @@ cut-release:
 
 .PHONY: all
 all: mesh mesh-keygen mesh-bootstrap db-integrity-check
+
+
+# Docker images
+
+
+.PHONY: docker-mesh
+docker-mesh:
+	docker build . -t 0xorg/mesh -f ./dockerfiles/mesh/Dockerfile
+
+
+.PHONY: docker-mesh-bootstrap
+docker-mesh-bootstrap:
+	docker build . -t 0xorg/mesh-bootstrap -f ./dockerfiles/mesh-bootstrap/Dockerfile
+
+
+.PHONY: docker-mesh-fluent-bit
+docker-mesh-fluent-bit:
+	docker build ./dockerfiles/mesh-fluent-bit -t 0xorg/mesh-fluent-bit -f ./dockerfiles/mesh-fluent-bit/Dockerfile

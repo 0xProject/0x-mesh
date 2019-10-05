@@ -14,9 +14,9 @@ When first connecting the DB and Mesh node, we first need to make sure both have
 
 #### 1. Subscribe to Mesh
 
-Subscribe to the Mesh node's `orders` subscription over a WS connection. This can be done using our [golang](https://godoc.org/github.com/0xProject/0x-mesh/rpc) or [Typescript/Javascript](json_rpc_clients/typescript/README.md) clients or any other JSON-RPC WebSocket client. Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each order event has an associated [OrderEventKind](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
+Subscribe to the Mesh node's `orders` subscription over a WS connection. This can be done using our [golang](https://godoc.org/github.com/0xProject/0x-mesh/rpc) or [Typescript/Javascript](json_rpc_clients/typescript/README.md) clients or any other JSON-RPC WebSocket client. Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each order event has an associated [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
 
-| Kind                                       | DB operation                    |
+| End state                                       | DB operation                    |
 |--------------------------------------------|---------------------------------|
 | ADDED                                      | Insert                    |
 | FILLED                                     | Update |
@@ -25,11 +25,13 @@ Subscribe to the Mesh node's `orders` subscription over a WS connection. This ca
 
 **Note:** Updates refer to updating the order's `fillableTakerAssetAmount` in the DB.
 
+**Note 2:** If we receive any event other than `ADDED` and `FILLABILITY_INCREASED` for an order we do not find in our database, we ignore the event and noop.
+
 #### 2. Get all orders currently stored in Mesh
 
 There might have been orders stored in Mesh that the DB doesn't know about at this time. Because of this, we must fetch all currently stored orders in the Mesh node and upsert them in the database. This can be done using the [mesh_getOrders](rpc_api.md#mesh_getorders) JSON-RPC method. This method creates a snapshot of the Mesh node's internal DB of orders when first called, and allows for subsequent paginated requests against this snapshot. Because we are already subscribed to order events, any new orders added/removed after the snapshot is made will be discovered via that subscription.
 
-**Note:** The [Mesh Typescript client](json-rpc-clients/typescript) has a convenience method that does the multiple paginated requests for you under-the-hood. You can simply call the [getOrders](json-rpc-clients/typescript/classes/_ws_client_.wsclient#getordersasync) method.
+**Note:** The [Mesh Typescript client](json_rpc_clients/typescript/README.md) has a convenience method that does the multiple paginated requests for you under-the-hood. You can simply call the [getOrders](json_rpc_clients/typescript/reference.md#getordersasync) method.
 
 #### 3. Add all database orders to the Mesh node
 
@@ -47,8 +49,8 @@ If an order was rejected with a code related to the "failure to validate the ord
 
 After performing the first 3 steps above, the Mesh node and database will be in-sync, and continue to remain in-sync thanks to the active order event subscription. If any new orders are added to the database, they will also need to be added to Mesh of course. But what if the WebSocket connection to the Mesh node goes down? In that case, it must be re-established and steps 1, 2 & 3 must be performed once again.
 
-**Note:** The [Mesh Typescript client](json-rpc-clients/typescript/classes/_ws_client_.wsclient#getordersasync) takes care of re-connecting and re-establishing _all_ active subscriptions once it detects a disconnection. You can subscribe to a `reconnected` event using the [onReconnected](json-rpc-clients/typescript/classes/_ws_client_.wsclient#onreconnected) method. Whenever this callback is fired is when you need to re-run steps 2 and 3.
+**Note:** The [Mesh Typescript client](json_rpc_clients/typescript/reference.md#getordersasync) takes care of re-connecting and re-establishing _all_ active subscriptions once it detects a disconnection. You can subscribe to a `reconnected` event using the [onReconnected](json_rpc_clients/typescript/reference.md#onreconnected) method. Whenever this callback is fired is when you need to re-run steps 2 and 3.
 
-**Note 2:** With some WebSocket clients, we've noticed that the client is not always aware of when the connection has been dropped. It can be hard for clients to discern between a network disruption and latency. Because of this, we added an explicit [heartbeat subscription](rpc_api.md#mesh_subscribe-to-heartbeat-topic) to Mesh that you can subscribe to. If a heartbeat isn't received after some interval (e.g., 20 seconds), the client can forcible drop the connection and re-establish a new one. This too is already taken care of under-the-hood for those using the [Mesh Typescript client](json-rpc-clients/typescript/classes/_ws_client_.wsclient#getordersasync).
+**Note 2:** With some WebSocket clients, we've noticed that the client is not always aware of when the connection has been dropped. It can be hard for clients to discern between a network disruption and latency. Because of this, we added an explicit [heartbeat subscription](rpc_api.md#mesh_subscribe-to-heartbeat-topic) to Mesh that you can subscribe to. If a heartbeat isn't received after some interval (e.g., 20 seconds), the client can forcible drop the connection and re-establish a new one. This too is already taken care of under-the-hood for those using the [Mesh Typescript client](json_rpc_clients/typescript/reference.md#getordersasync).
 
 Happy database syncing!

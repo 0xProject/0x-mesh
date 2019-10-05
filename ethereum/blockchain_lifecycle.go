@@ -1,7 +1,6 @@
 package ethereum
 
 import (
-	"context"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -17,11 +16,7 @@ type BlockchainLifecycle struct {
 }
 
 // NewBlockchainLifecycle instantiates a new blockchainLifecycle instance
-func NewBlockchainLifecycle(rpcURL string) (*BlockchainLifecycle, error) {
-	rpcClient, err := rpc.DialContext(context.Background(), rpcURL)
-	if err != nil {
-		return nil, err
-	}
+func NewBlockchainLifecycle(rpcClient *rpc.Client) (*BlockchainLifecycle, error) {
 	return &BlockchainLifecycle{
 		rpcClient:       rpcClient,
 		snapshotIdStack: []string{},

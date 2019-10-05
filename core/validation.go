@@ -2,8 +2,6 @@ package core
 
 import (
 	"fmt"
-	"math/big"
-	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -11,45 +9,13 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// maxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
-// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
-const maxOrderSizeInBytes = 8192
-
-// maxOrderExpirationDuration is the maximum duration between the current time and the expiration
-// set on an order that will be accepted by Mesh.
-const maxOrderExpirationDuration = 9 * 30 * 24 * time.Hour // 9 months
-
-var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", maxOrderSizeInBytes)
-
-// RejectedOrderStatus values
-var (
-	ROInternalError = zeroex.RejectedOrderStatus{
-		Code:    "InternalError",
-		Message: "an unexpected internal error has occurred",
-	}
-	ROMaxOrderSizeExceeded = zeroex.RejectedOrderStatus{
-		Code:    "MaxOrderSizeExceeded",
-		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", maxOrderSizeInBytes),
-	}
-	ROOrderAlreadyStoredAndUnfillable = zeroex.RejectedOrderStatus{
-		Code:    "OrderAlreadyStoredAndUnfillable",
-		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
-	}
-	ROIncorrectNetwork = zeroex.RejectedOrderStatus{
-		Code:    "OrderForIncorrectNetwork",
-		Message: "order was created for a different network than the one this Mesh node is configured to support",
-	}
-	ROSenderAddressNotAllowed = zeroex.RejectedOrderStatus{
-		Code:    "SenderAddressNotAllowed",
-		Message: "orders with a senderAddress are not currently supported",
-	}
-)
-
-const ROInvalidSchemaCode = "InvalidSchema"
+var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", ordervalidator.MaxOrderSizeInBytes)
 
 // JSON-schema schemas
 var (
@@ -130,8 +96,8 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 
 // validateOrders applies general 0x validation and Mesh-specific validation to
 // the given orders.
-func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.ValidationResults, error) {
-	results := &zeroex.ValidationResults{}
+func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
+	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
 	if err != nil {
@@ -141,11 +107,11 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
 			log.WithField("error", err).Error("could not compute order hash")
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        zeroex.MeshError,
-				Status:      ROInternalError,
+				Kind:        ordervalidator.MeshError,
+				Status:      ordervalidator.ROInternalError,
 			})
 			continue
 		}
@@ -156,49 +122,39 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 		// validating Coordinator orders. What we're missing is a way to effeciently
 		// remove orders that are soft-canceled via the Coordinator API).
 		if order.SenderAddress != constants.NullAddress {
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        zeroex.MeshValidation,
-				Status:      ROSenderAddressNotAllowed,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROSenderAddressNotAllowed,
 			})
 			continue
 		}
 		if order.ExchangeAddress != contractAddresses.Exchange {
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
-				Kind:        zeroex.MeshValidation,
-				Status:      ROIncorrectNetwork,
-			})
-			continue
-		}
-		maxExpiration := big.NewInt(time.Now().Add(maxOrderExpirationDuration).Unix())
-		if order.ExpirationTimeSeconds.Cmp(maxExpiration) > 0 {
-			results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        zeroex.MeshValidation,
-				Status:      zeroex.ROMaxExpirationExceeded,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROIncorrectNetwork,
 			})
 			continue
 		}
 		if err := validateOrderSize(order); err != nil {
 			if err == errMaxSize {
-				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
-					Kind:        zeroex.MeshValidation,
-					Status:      ROMaxOrderSizeExceeded,
+					Kind:        ordervalidator.MeshValidation,
+					Status:      ordervalidator.ROMaxOrderSizeExceeded,
 				})
 				continue
 			} else {
 				log.WithField("error", err).Error("could not validate order size")
-				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
-					Kind:        zeroex.MeshError,
-					Status:      ROInternalError,
+					Kind:        ordervalidator.MeshError,
+					Status:      ordervalidator.ROInternalError,
 				})
 				continue
 			}
@@ -215,16 +171,16 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 		} else {
 			// If stored but flagged for removal, reject it
 			if dbOrder.IsRemoved {
-				results.Rejected = append(results.Rejected, &zeroex.RejectedOrderInfo{
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
-					Kind:        zeroex.MeshValidation,
-					Status:      ROOrderAlreadyStoredAndUnfillable,
+					Kind:        ordervalidator.MeshValidation,
+					Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
 				})
 				continue
 			} else {
 				// If stored but not flagged for removal, accept it without re-validation
-				results.Accepted = append(results.Accepted, &zeroex.AcceptedOrderInfo{
+				results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
 					OrderHash:                orderHash,
 					SignedOrder:              order,
 					FillableTakerAssetAmount: dbOrder.FillableTakerAssetAmount,
@@ -237,14 +193,14 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*zeroex.Validation
 		validMeshOrders = append(validMeshOrders, order)
 	}
 	areNewOrders := true
-	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders)
+	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
 	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil
 }
 
 func validateMessageSize(message *p2p.Message) error {
-	if len(message.Data) > maxOrderSizeInBytes {
+	if len(message.Data) > ordervalidator.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil
@@ -255,7 +211,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	if err != nil {
 		return err
 	}
-	if len(encoded) > maxOrderSizeInBytes {
+	if len(encoded) > ordervalidator.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil

@@ -8,6 +8,10 @@ import * as WebSocket from 'websocket';
 
 import {
     AcceptedOrderInfo,
+    ContractEvent,
+    ContractEventKind,
+    ContractEventParameters,
+    ExchangeCancelEvent,
     GetOrdersResponse,
     GetStatsResponse,
     HeartbeatEventPayload,
@@ -19,6 +23,15 @@ import {
     RawOrderInfo,
     RawValidationResults,
     RejectedOrderInfo,
+    StringifiedContractEvent,
+    StringifiedERC20ApprovalEvent,
+    StringifiedERC20TransferEvent,
+    StringifiedERC721ApprovalEvent,
+    StringifiedERC721TransferEvent,
+    StringifiedExchangeCancelUpToEvent,
+    StringifiedExchangeFillEvent,
+    StringifiedWethDepositEvent,
+    StringifiedWethWithdrawalEvent,
     ValidationResults,
     WSOpts,
 } from './types';
@@ -68,6 +81,106 @@ export class WSClient {
             orderInfos.push(orderInfo);
         });
         return orderInfos;
+    }
+    private static _convertStringifiedContractEvents(rawContractEvents: StringifiedContractEvent[]): ContractEvent[] {
+        const contractEvents: ContractEvent[] = [];
+        if (rawContractEvents === null) {
+            return contractEvents;
+        }
+        rawContractEvents.forEach(rawContractEvent => {
+            const kind = rawContractEvent.kind as ContractEventKind;
+            const rawParameters = rawContractEvent.parameters;
+            let parameters: ContractEventParameters;
+            switch (kind) {
+                case ContractEventKind.ERC20TransferEvent:
+                    const erc20TransferEvent = rawParameters as StringifiedERC20TransferEvent;
+                    parameters = {
+                        from: erc20TransferEvent.from,
+                        to: erc20TransferEvent.to,
+                        value: new BigNumber(erc20TransferEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC20ApprovalEvent:
+                    const erc20ApprovalEvent = rawParameters as StringifiedERC20ApprovalEvent;
+                    parameters = {
+                        owner: erc20ApprovalEvent.owner,
+                        spender: erc20ApprovalEvent.spender,
+                        value: new BigNumber(erc20ApprovalEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC721TransferEvent:
+                    const erc721TransferEvent = rawParameters as StringifiedERC721TransferEvent;
+                    parameters = {
+                        from: erc721TransferEvent.from,
+                        to: erc721TransferEvent.to,
+                        tokenId: new BigNumber(erc721TransferEvent.tokenId),
+                    };
+                    break;
+                case ContractEventKind.ERC721ApprovalEvent:
+                    const erc721ApprovalEvent = rawParameters as StringifiedERC721ApprovalEvent;
+                    parameters = {
+                        owner: erc721ApprovalEvent.owner,
+                        approved: erc721ApprovalEvent.approved,
+                        tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
+                    };
+                    break;
+                case ContractEventKind.ExchangeFillEvent:
+                    const exchangeFillEvent = rawParameters as StringifiedExchangeFillEvent;
+                    parameters = {
+                        makerAddress: exchangeFillEvent.makerAddress,
+                        takerAddress: exchangeFillEvent.takerAddress,
+                        senderAddress: exchangeFillEvent.senderAddress,
+                        feeRecipientAddress: exchangeFillEvent.feeRecipientAddress,
+                        makerAssetFilledAmount: new BigNumber(exchangeFillEvent.makerAssetFilledAmount),
+                        takerAssetFilledAmount: new BigNumber(exchangeFillEvent.takerAssetFilledAmount),
+                        makerFeePaid: new BigNumber(exchangeFillEvent.makerFeePaid),
+                        takerFeePaid: new BigNumber(exchangeFillEvent.takerFeePaid),
+                        orderHash: exchangeFillEvent.orderHash,
+                        makerAssetData: exchangeFillEvent.makerAssetData,
+                        takerAssetData: exchangeFillEvent.takerAssetData,
+                    };
+                    break;
+                case ContractEventKind.ExchangeCancelEvent:
+                    parameters = rawParameters as ExchangeCancelEvent;
+                    break;
+                case ContractEventKind.ExchangeCancelUpToEvent:
+                    const exchangeCancelUpToEvent = rawParameters as StringifiedExchangeCancelUpToEvent;
+                    parameters = {
+                        makerAddress: exchangeCancelUpToEvent.makerAddress,
+                        senderAddress: exchangeCancelUpToEvent.senderAddress,
+                        orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
+                    };
+                    break;
+                case ContractEventKind.WethDepositEvent:
+                    const wethDepositEvent = rawParameters as StringifiedWethDepositEvent;
+                    parameters = {
+                        owner: wethDepositEvent.owner,
+                        value: new BigNumber(wethDepositEvent.value),
+                    };
+                    break;
+                case ContractEventKind.WethWithdrawalEvent:
+                    const wethWithdrawalEvent = rawParameters as StringifiedWethWithdrawalEvent;
+                    parameters = {
+                        owner: wethWithdrawalEvent.owner,
+                        value: new BigNumber(wethWithdrawalEvent.value),
+                    };
+                    break;
+                default:
+                    throw new Error(`Unrecognized ContractEventKind: ${kind}`);
+            }
+            const contractEvent: ContractEvent = {
+                blockHash: rawContractEvent.blockHash,
+                txHash:  rawContractEvent.txHash,
+                txIndex:  rawContractEvent.txIndex,
+                logIndex:  rawContractEvent.logIndex,
+                isRemoved:  rawContractEvent.isRemoved,
+                address:  rawContractEvent.address,
+                kind,
+                parameters,
+            };
+            contractEvents.push(contractEvent);
+        });
+        return contractEvents;
     }
     /**
      * Instantiates a new WSClient instance
@@ -167,9 +280,9 @@ export class WSClient {
                 const orderEvent = {
                     orderHash: rawOrderEvent.orderHash,
                     signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderEvent.signedOrder),
-                    kind: rawOrderEvent.kind,
+                    endState: rawOrderEvent.endState,
                     fillableTakerAssetAmount: new BigNumber(rawOrderEvent.fillableTakerAssetAmount),
-                    txHashes: rawOrderEvent.txHashes,
+                    contractEvents: WSClient._convertStringifiedContractEvents(rawOrderEvent.contractEvents),
                 };
                 orderEvents.push(orderEvent);
             });

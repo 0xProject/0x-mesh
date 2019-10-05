@@ -1,4 +1,4 @@
-package zeroex
+package ordervalidator
 
 import (
 	"bytes"
@@ -15,21 +15,17 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
-
-// MainnetOrderValidatorAddress is the mainnet OrderValidator contract address
-var MainnetOrderValidatorAddress = common.HexToAddress("0x9463e518dea6810309563c81d5266c1b1d149138")
-
-// GanacheOrderValidatorAddress is the ganache snapshot OrderValidator contract address
-var GanacheOrderValidatorAddress = common.HexToAddress("0x32eecaf51dfea9618e9bc94e9fbfddb1bbdcba15")
 
 // The context timeout length to use for requests to getOrderRelevantStateTimeout
 const getOrderRelevantStateTimeout = 15 * time.Second
@@ -41,16 +37,6 @@ const getCoordinatorEndpointTimeout = 10 * time.Second
 // Additional requests will block until an ongoing request has completed.
 const concurrencyLimit = 5
 
-// OrderInfo represents the order information emitted from Mesh
-type OrderInfo struct {
-	OrderHash                common.Hash
-	SignedOrder              *SignedOrder
-	FillableTakerAssetAmount *big.Int
-	OrderStatus              OrderStatus
-	// The hash of the Ethereum transaction that caused the order status to change
-	TxHash common.Hash
-}
-
 // RejectedOrderInfo encapsulates all the needed information to understand _why_ a 0x order
 // was rejected (i.e. did not pass) order validation. Since there are many potential reasons, some
 // Mesh-specific, others 0x-specific and others due to external factors (i.e., network
@@ -58,24 +44,24 @@ type OrderInfo struct {
 // machines with a `Code`
 type RejectedOrderInfo struct {
 	OrderHash   common.Hash         `json:"orderHash"`
-	SignedOrder *SignedOrder        `json:"signedOrder"`
+	SignedOrder *zeroex.SignedOrder `json:"signedOrder"`
 	Kind        RejectedOrderKind   `json:"kind"`
 	Status      RejectedOrderStatus `json:"status"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
 type AcceptedOrderInfo struct {
-	OrderHash                common.Hash  `json:"orderHash"`
-	SignedOrder              *SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int     `json:"fillableTakerAssetAmount"`
-	IsNew                    bool         `json:"isNew"`
+	OrderHash                common.Hash         `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
-	OrderHash                string       `json:"orderHash"`
-	SignedOrder              *SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string       `json:"fillableTakerAssetAmount"`
-	IsNew                    bool         `json:"isNew"`
+	OrderHash                string              `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
+	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
@@ -112,6 +98,10 @@ type RejectedOrderStatus struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
+
+// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
+// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
+const MaxOrderSizeInBytes = 8192
 
 // RejectedOrderStatus values
 var (
@@ -171,22 +161,45 @@ var (
 		Code:    "OrderMaxExpirationExceeded",
 		Message: "order expiration too far in the future",
 	}
+	ROInternalError = RejectedOrderStatus{
+		Code:    "InternalError",
+		Message: "an unexpected internal error has occurred",
+	}
+	ROMaxOrderSizeExceeded = RejectedOrderStatus{
+		Code:    "MaxOrderSizeExceeded",
+		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", MaxOrderSizeInBytes),
+	}
+	ROOrderAlreadyStoredAndUnfillable = RejectedOrderStatus{
+		Code:    "OrderAlreadyStoredAndUnfillable",
+		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
+	}
+	ROIncorrectNetwork = RejectedOrderStatus{
+		Code:    "OrderForIncorrectNetwork",
+		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	}
+	ROSenderAddressNotAllowed = RejectedOrderStatus{
+		Code:    "SenderAddressNotAllowed",
+		Message: "orders with a senderAddress are not currently supported",
+	}
 )
 
-// ConvertRejectOrderCodeToOrderEventKind converts an RejectOrderCode to an OrderEventKind type
-func ConvertRejectOrderCodeToOrderEventKind(rejectedOrderStatus RejectedOrderStatus) (OrderEventKind, bool) {
+// ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema
+const ROInvalidSchemaCode = "InvalidSchema"
+
+// ConvertRejectOrderCodeToOrderEventEndState converts an RejectOrderCode to an OrderEventEndState type
+func ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventEndState, bool) {
 	switch rejectedOrderStatus {
 	case ROExpired:
-		return EKOrderExpired, true
+		return zeroex.ESOrderExpired, true
 	case ROFullyFilled:
-		return EKOrderFullyFilled, true
+		return zeroex.ESOrderFullyFilled, true
 	case ROCancelled:
-		return EKOrderCancelled, true
+		return zeroex.ESOrderCancelled, true
 	case ROUnfunded:
-		return EKOrderBecameUnfunded, true
+		return zeroex.ESOrderBecameUnfunded, true
 	default:
-		// Catch-all returns Invalid OrderEventKind
-		return EKInvalid, false
+		// Catch-all returns Invalid OrderEventEndState
+		return zeroex.ESInvalid, false
 	}
 }
 
@@ -217,15 +230,15 @@ type OrderValidator struct {
 	devUtilsABI                  abi.ABI
 	devUtils                     *wrappers.DevUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
-	assetDataDecoder             *AssetDataDecoder
+	assetDataDecoder             *zeroex.AssetDataDecoder
 	networkID                    int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
 }
 
-// NewOrderValidator instantiates a new order validator
-func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+// New instantiates a new order validator
+func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
 	if err != nil {
 		return nil, err
@@ -242,7 +255,7 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 	if err != nil {
 		return nil, err
 	}
-	assetDataDecoder := NewAssetDataDecoder()
+	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
 	return &OrderValidator{
 		maxRequestContentLength:      maxRequestContentLength,
@@ -259,9 +272,11 @@ func NewOrderValidator(ethClient *ethclient.Client, networkID int, maxRequestCon
 // BatchValidate retrieves all the information needed to validate the supplied orders.
 // It splits the orders into chunks of `chunkSize`, and makes no more then `concurrencyLimit`
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
-// If it some requests fail, this method still returns whatever order information it was able to
-// retrieve.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrders bool) *ValidationResults {
+// If some requests fail, this method still returns whatever order information it was able to
+// retrieve up until the failure.
+// The `blockNumber` parameter lets the caller specify a specific block height at which to validate
+// the orders. This can be set to the `latest` block or any other historical block number.
+func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -277,7 +292,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
 	}
 
-	signedOrderChunks := [][]*SignedOrder{}
+	signedOrderChunks := [][]*zeroex.SignedOrder{}
 	chunkSizes := o.computeOptimalChunkSizes(signedOrders)
 	for _, chunkSize := range chunkSizes {
 		signedOrderChunks = append(signedOrderChunks, signedOrders[:chunkSize])
@@ -290,7 +305,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 	wg := &sync.WaitGroup{}
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
-		go func(signedOrders []*SignedOrder, i int) {
+		go func(signedOrders []*zeroex.SignedOrder, i int) {
 			orders := []wrappers.OrderWithoutExchangeAddress{}
 			for _, signedOrder := range signedOrders {
 				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
@@ -322,6 +337,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 				opts := &bind.CallOpts{
 					Pending: false,
 					Context: ctx,
+				}
+				if blockNumber == rpc.PendingBlockNumber {
+					opts.Pending = true
+				} else if blockNumber != rpc.LatestBlockNumber {
+					opts.BlockNumber = big.NewInt(int64(blockNumber))
 				}
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
@@ -362,21 +382,21 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[j]
-					orderStatus := OrderStatus(orderInfo.OrderStatus)
+					orderStatus := zeroex.OrderStatus(orderInfo.OrderStatus)
 					if !isValidSignature {
-						orderStatus = OSSignatureInvalid
+						orderStatus = zeroex.OSSignatureInvalid
 					}
 					switch orderStatus {
-					case OSExpired, OSFullyFilled, OSCancelled, OSSignatureInvalid:
+					case zeroex.OSExpired, zeroex.OSFullyFilled, zeroex.OSCancelled, zeroex.OSSignatureInvalid:
 						var status RejectedOrderStatus
 						switch orderStatus {
-						case OSExpired:
+						case zeroex.OSExpired:
 							status = ROExpired
-						case OSFullyFilled:
+						case zeroex.OSFullyFilled:
 							status = ROFullyFilled
-						case OSCancelled:
+						case zeroex.OSCancelled:
 							status = ROCancelled
-						case OSSignatureInvalid:
+						case zeroex.OSSignatureInvalid:
 							status = ROInvalidSignature
 						}
 						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
@@ -386,7 +406,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*SignedOrder, areNewOrd
 							Status:      status,
 						})
 						continue
-					case OSFillable:
+					case zeroex.OSFillable:
 						remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
 						// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 						// partially fillable orders as invalid
@@ -427,11 +447,11 @@ type softCancelResponse struct {
 // that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
 // given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
 // been soft cancelled.
-func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
+func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
-	validSignedOrders := []*SignedOrder{}
+	validSignedOrders := []*zeroex.SignedOrder{}
 
-	endpointToSignedOrders := map[string][]*SignedOrder{}
+	endpointToSignedOrders := map[string][]*zeroex.SignedOrder{}
 	for _, signedOrder := range signedOrders {
 		if signedOrder.SenderAddress != o.contractAddresses.Coordinator {
 			validSignedOrders = append(validSignedOrders, signedOrder)
@@ -479,14 +499,14 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 		}
 		existingOrders, ok := endpointToSignedOrders[endpoint]
 		if !ok {
-			endpointToSignedOrders[endpoint] = []*SignedOrder{signedOrder}
+			endpointToSignedOrders[endpoint] = []*zeroex.SignedOrder{signedOrder}
 		} else {
 			endpointToSignedOrders[endpoint] = append(existingOrders, signedOrder)
 		}
 	}
 
 	for endpoint, signedOrders := range endpointToSignedOrders {
-		orderHashToSignedOrder := map[common.Hash]*SignedOrder{}
+		orderHashToSignedOrder := map[common.Hash]*zeroex.SignedOrder{}
 		orderHashes := []common.Hash{}
 		for _, signedOrder := range signedOrders {
 			orderHash, err := signedOrder.ComputeOrderHash()
@@ -602,10 +622,10 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*SignedOrder)
 // - `AssetData` fields contain properly encoded, and currently supported assetData (ERC20 & ERC721 for now)
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
-// Returns an orderHashToInfo mapping with all invalid orders added to it, and an array of the valid signedOrders
-func (o *OrderValidator) BatchOffchainValidation(signedOrders []*SignedOrder) ([]*SignedOrder, []*RejectedOrderInfo) {
+// Returns the signedOrders that are off-chain valid along with an array of orderInfo for the rejected orders
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
-	offchainValidSignedOrders := []*SignedOrder{}
+	offchainValidSignedOrders := []*zeroex.SignedOrder{}
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
@@ -697,19 +717,19 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 	}
 	switch assetDataName {
 	case "ERC20Token":
-		var decodedAssetData ERC20AssetData
+		var decodedAssetData zeroex.ERC20AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "ERC721Token":
-		var decodedAssetData ERC721AssetData
+		var decodedAssetData zeroex.ERC721AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "MultiAsset":
-		var decodedAssetData MultiAssetData
+		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
@@ -746,7 +766,7 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 */
 const jsonRPCPayloadByteLength = 444
 
-func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *SignedOrder) (int, error) {
+func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
 	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
@@ -769,7 +789,7 @@ func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *Sig
 // is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
 // encodes signedOrders one at a time until the computed payload size is as close to the
 // maxRequestContentLength as possible.
-func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) []int {
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedOrder) []int {
 	chunkSizes := []int{}
 
 	payloadLength := jsonRPCPayloadByteLength
@@ -797,33 +817,31 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*SignedOrder) [
 }
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
-	signatureType := SignatureType(signature[len(signature)-1])
+	signatureType := zeroex.SignatureType(signature[len(signature)-1])
 
 	switch signatureType {
-	case IllegalSignature:
-	case InvalidSignature:
+	case zeroex.InvalidSignature, zeroex.IllegalSignature:
 		return false
 
-	case EIP712Signature:
+	case zeroex.EIP712Signature:
 		if len(signature) != 66 {
 			return false
 		}
 		// TODO(fabio): Do further validation by splitting into r,s,v and do ECRecover
 
-	case EthSignSignature:
+	case zeroex.EthSignSignature:
 		if len(signature) != 66 {
 			return false
 		}
 		// TODO(fabio): Do further validation by splitting into r,s,v, add prefix to hash
 		// and do ECRecover
 
-	case ValidatorSignature:
+	case zeroex.ValidatorSignature:
 		if len(signature) < 21 {
 			return false
 		}
 
-	case WalletSignature:
-	case PreSignedSignature:
+	case zeroex.PreSignedSignature, zeroex.WalletSignature:
 		return true
 
 	default:

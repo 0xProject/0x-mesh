@@ -50,7 +50,168 @@ export interface StringifiedSignedOrder {
     signature: string;
 }
 
-export enum OrderEventKind {
+export interface ERC20TransferEvent {
+    from: string;
+    to: string;
+    value: BigNumber;
+}
+
+export interface StringifiedERC20TransferEvent {
+    from: string;
+    to: string;
+    value: string;
+}
+
+export interface ERC20ApprovalEvent {
+    owner: string;
+    spender: string;
+    value: BigNumber;
+}
+
+export interface StringifiedERC20ApprovalEvent {
+    owner: string;
+    spender: string;
+    value: string;
+}
+
+export interface ERC721TransferEvent {
+    from: string;
+    to: string;
+    tokenId: BigNumber;
+}
+
+export interface StringifiedERC721TransferEvent {
+    from: string;
+    to: string;
+    tokenId: string;
+}
+
+export interface ERC721ApprovalEvent {
+    owner: string;
+    approved: string;
+    tokenId: BigNumber;
+}
+
+export interface StringifiedERC721ApprovalEvent {
+    owner: string;
+    approved: string;
+    tokenId: string;
+}
+
+export interface ERC721ApprovalForAllEvent {
+    owner: string;
+    operator: string;
+    approved: boolean;
+}
+
+export interface ExchangeFillEvent {
+    makerAddress: string;
+    takerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    makerAssetFilledAmount: BigNumber;
+    takerAssetFilledAmount: BigNumber;
+    makerFeePaid: BigNumber;
+    takerFeePaid: BigNumber;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+export interface StringifiedExchangeFillEvent {
+    makerAddress: string;
+    takerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    makerAssetFilledAmount: string;
+    takerAssetFilledAmount: string;
+    makerFeePaid: string;
+    takerFeePaid: string;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+export interface ExchangeCancelEvent {
+    makerAddress: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    orderHash: string;
+    makerAssetData: string;
+    takerAssetData: string;
+}
+
+export interface ExchangeCancelUpToEvent {
+    makerAddress: string;
+    senderAddress: string;
+    orderEpoch: BigNumber;
+}
+
+export interface StringifiedExchangeCancelUpToEvent {
+    makerAddress: string;
+    senderAddress: string;
+    orderEpoch: string;
+}
+
+export interface WethWithdrawalEvent {
+    owner: string;
+    value: BigNumber;
+}
+
+export interface StringifiedWethWithdrawalEvent {
+    owner: string;
+    value: string;
+}
+
+export interface WethDepositEvent {
+    owner: string;
+    value: BigNumber;
+}
+
+export interface StringifiedWethDepositEvent {
+    owner: string;
+    value: string;
+}
+
+export enum ContractEventKind {
+    ERC20TransferEvent = 'ERC20TransferEvent',
+    ERC20ApprovalEvent = 'ERC20ApprovalEvent',
+    ERC721TransferEvent = 'ERC721TransferEvent',
+    ERC721ApprovalEvent = 'ERC721ApprovalEvent',
+    ExchangeFillEvent = 'ExchangeFillEvent',
+    ExchangeCancelEvent = 'ExchangeCancelEvent',
+    ExchangeCancelUpToEvent = 'ExchangeCancelUpToEvent',
+    WethDepositEvent = 'WethDepositEvent',
+    WethWithdrawalEvent = 'WethWithdrawalEvent',
+}
+
+export type StringifiedContractEventParameters =  StringifiedERC20TransferEvent | StringifiedERC20ApprovalEvent | StringifiedERC721TransferEvent | StringifiedERC721ApprovalEvent | StringifiedExchangeFillEvent | StringifiedExchangeCancelUpToEvent | StringifiedWethWithdrawalEvent | StringifiedWethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+
+export interface StringifiedContractEvent {
+    blockHash: string;
+    txHash: string;
+    txIndex: number;
+    logIndex: number;
+    isRemoved: string;
+    address: string;
+    kind: string;
+    parameters: StringifiedContractEventParameters;
+}
+
+export type ContractEventParameters =  ERC20TransferEvent | ERC20ApprovalEvent | ERC721TransferEvent | ERC721ApprovalEvent | ExchangeFillEvent | ExchangeCancelUpToEvent | WethWithdrawalEvent | WethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+
+export interface ContractEvent {
+    blockHash: string;
+    txHash: string;
+    txIndex: number;
+    logIndex: number;
+    isRemoved: string;
+    address: string;
+    kind: ContractEventKind;
+    parameters: ContractEventParameters;
+}
+
+export enum OrderEventEndState {
     Invalid = 'INVALID',
     Added = 'ADDED',
     Filled = 'FILLED',
@@ -74,17 +235,17 @@ export interface HeartbeatEventPayload {
 export interface RawOrderEvent {
     orderHash: string;
     signedOrder: StringifiedSignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: string;
-    txHashes: string[];
+    contractEvents: StringifiedContractEvent[];
 }
 
 export interface OrderEvent {
     orderHash: string;
     signedOrder: SignedOrder;
-    kind: OrderEventKind;
+    endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
-    txHashes: string[];
+    contractEvents: ContractEvent[];
 }
 
 export interface RawAcceptedOrderInfo {

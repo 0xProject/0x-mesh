@@ -27,7 +27,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,8 +53,8 @@ const (
 	standaloneRPCPort     = 60501
 )
 
-var makerAddress = constants.GanacheAccount0
-var takerAddress = constants.GanacheAccount1
+var makerAddress = constants.GanacheAccount1
+var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
@@ -68,15 +68,23 @@ func init() {
 	flag.Parse()
 }
 
-func TestSetup(t *testing.T) {
+var ethRPCClient *ethrpc.Client
+
+func init() {
 	var err error
-	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(constants.GanacheEndpoint)
-	require.NoError(t, err)
+	ethRPCClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(ethRPCClient)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestBrowserIntegration(t *testing.T) {
 	if !integrationTestsEnabled {
-		t.Skip("Integration tests are disabled. You can enable them with the --integration")
+		t.Skip("Integration tests are disabled. You can enable them with the --integration flag")
 	}
 
 	teardownSubTest := setupSubTest(t)
@@ -113,7 +121,8 @@ func TestBrowserIntegration(t *testing.T) {
 
 	// standaloneOrder is an order that will be sent to the network by the
 	// standalone node.
-	standaloneOrder := createSignedTestOrder(t)
+	ethClient := ethclient.NewClient(ethRPCClient)
+	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
@@ -187,7 +196,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Next, wait for the order to be received.
 		expectedOrderEventLog := orderEventLog{
 			OrderHash: standaloneOrderHash.Hex(),
-			Kind:      "ADDED",
+			EndState:  "ADDED",
 		}
 		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
 		assert.NoError(t, err, "Browser node did not receive order sent by standalone node")
@@ -235,6 +244,12 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	cmd.Dir = "../cmd/mesh-bootstrap"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
+
+	fmt.Println("Clear yarn cache...")
+	cmd = exec.CommandContext(ctx, "yarn", "cache", "clean")
+	cmd.Dir = "../browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
 
 	fmt.Println("Installing dependencies for TypeScript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "install")
@@ -410,7 +425,7 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 // by Mesh. They need to be explicitly logged.
 type orderEventLog struct {
 	OrderHash string `json:"orderHash"`
-	Kind      string `json:"kind"`
+	EndState  string `json:"endState"`
 }
 
 func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expectedLog orderEventLog) (string, error) {
@@ -420,7 +435,7 @@ func waitForOrderEventLog(ctx context.Context, logMessages <-chan string, expect
 			return false
 		}
 		return foundLog.OrderHash == expectedLog.OrderHash &&
-			foundLog.Kind == expectedLog.Kind
+			foundLog.EndState == expectedLog.EndState
 	})
 }
 
@@ -486,38 +501,10 @@ func extractOrderHashFromLog(msg string) (string, error) {
 	return holder.OrderHash, nil
 }
 
-func createSignedTestOrder(t *testing.T) *zeroex.SignedOrder {
-	testOrder := &zeroex.Order{
-		MakerAddress:          makerAddress,
-		TakerAddress:          constants.NullAddress,
-		SenderAddress:         constants.NullAddress,
-		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
-		Salt:                  big.NewInt(1548619145450),
-		MakerFee:              big.NewInt(0),
-		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(1000),
-		TakerAssetAmount:      big.NewInt(2000),
-		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
-	}
-
-	ethClient, err := ethrpc.Dial(ethereumRPCURL)
-	require.NoError(t, err, "could not create Ethereum RPC client")
-
-	signer := ethereum.NewEthRPCSigner(ethClient)
-	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
-	require.NoError(t, err, "could not sign order")
-
-	return signedTestOrder
-}
-
 var blockchainLifecycle *ethereum.BlockchainLifecycle
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
-	scenario.SetupBalancesAndAllowances(t, makerAddress, takerAddress, wethAmount, zrxAmount)
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}

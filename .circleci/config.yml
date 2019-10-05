@@ -26,7 +26,7 @@ jobs:
       - run: node --version
       - run:
           name: Install yarn
-          command: npm i -g yarn@^1.15
+          command: npm i -g yarn@1.17
       - run:
           name: Install dependencies
           command: make deps-no-lockfile
@@ -63,4 +63,7 @@ jobs:
       - run:
           name: Run TS RPC client tests
           command: cd rpc/clients/typescript && yarn test
+      - run:
+          name: Run cut-release script to test it still works
+          command: VERSION=100.0.0 make cut-release
 

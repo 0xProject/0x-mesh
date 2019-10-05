@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	mathrand "math/rand"
 	"net"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
@@ -45,7 +48,17 @@ const (
 	// TODO(albrow): Is there a way to use a custom protocol ID with GossipSub?
 	// pubsubProtocolID = protocol.ID("/0x-mesh-gossipsub/0.0.1")
 	pubsubProtocolID = pubsub.GossipSubID
+	// chanceToCheckBandwidthUsage is the approximate ratio of (number of main
+	// loop iterations in which we check bandwidth usage) to (total number of main
+	// loop iterations). We check bandwidth non-deterministically in order to
+	// prevent spammers from avoiding detection by carefully timing their
+	// bandwidth usage. So on each iteration of the main loop we generate a number
+	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
+	// a bandwidth check.
+	chanceToCheckBandwidthUsage = 0.1
 )
+
+var errProtectedIP = errors.New("cannot ban protected IP address")
 
 // Node is the main type for the p2p package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
@@ -63,6 +76,7 @@ type Node struct {
 	sub              *pubsub.Subscription
 	protectedIPsMut  sync.RWMutex
 	protectedIPs     stringset.Set
+	bandwidthChecker *bandwidthChecker
 }
 
 // Config contains configuration options for a Node.
@@ -137,6 +151,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	filters := filter.NewFilters()
 
 	// Set up and append environment agnostic host options.
+	bandwidthCounter := metrics.NewBandwidthCounter()
 	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
 	opts = append(opts, []libp2p.Option{
 		libp2p.Routing(newDHT),
@@ -144,6 +159,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.Identity(config.PrivateKey),
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
+		libp2p.BandwidthReporter(bandwidthCounter),
 		Filters(filters),
 	}...)
 	if config.Insecure {
@@ -191,6 +207,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		pubsub:           pubsub,
 		protectedIPs:     stringset.New(),
 	}
+	node.bandwidthChecker = newBandwidthChecker(node, bandwidthCounter)
 
 	return node, nil
 }
@@ -266,6 +283,9 @@ func (n *Node) Start() error {
 	// Advertise ourselves for the purposes of peer discovery.
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
+	// Start logging bandwidth in the background.
+	go n.bandwidthChecker.continuouslyLogBandwidthUsage(n.ctx)
+
 	return n.mainLoop()
 }
 
@@ -328,19 +348,28 @@ func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
 
 // BanIP adds the IP address of the given Multiaddr to the blacklist. The
 // node will no longer dial or accept connections from this IP address. However,
-// if the IP address is protected, calling BanIP is a no-op. BanIP does not
-// automatically disconnect from the given multiaddress if there is currently an
-// open connection.
+// if the IP address is protected, calling BanIP will not ban the IP address and
+// will instead return errProtectedIP. BanIP does not automatically disconnect
+// from the given multiaddress if there is currently an open connection.
 func (n *Node) BanIP(maddr ma.Multiaddr) error {
 	ipNet, err := ipNetFromMaddr(maddr)
 	if err != nil {
+		// HACK(albrow) relay addresses don't include the full transport address
+		// (IP, port, etc) for older versions of libp2p-circuit. (See
+		// https://github.com/libp2p/go-libp2p/issues/723). As a temporary
+		// workaround, we no-op for relayed connections. We can remove this after
+		// updating our bootstrap nodes to the latest version. We detect relay
+		// addresses by looking for the /ipfs prefix.
+		if strings.HasPrefix(maddr.String(), "/ipfs") {
+			return nil
+		}
 		return err
 	}
 	n.protectedIPsMut.RLock()
 	defer n.protectedIPsMut.RUnlock()
 	if n.protectedIPs.Contains(ipNet.IP.String()) {
 		// IP address is protected. no-op.
-		return nil
+		return errProtectedIP
 	}
 	n.filters.AddFilter(ipNet, filter.ActionDeny)
 	return nil
@@ -398,6 +427,11 @@ func (n *Node) runOnce() error {
 	}
 	if err := n.messageHandler.HandleMessages(incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
+	}
+
+	// Check bandwidth usage non-deterministically
+	if mathrand.Float64() <= chanceToCheckBandwidthUsage {
+		n.bandwidthChecker.checkUsage()
 	}
 
 	// Send up to maxSendBatch messages.
