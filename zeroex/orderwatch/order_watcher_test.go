@@ -5,7 +5,6 @@ package orderwatch
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -125,6 +124,45 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+}
+
+func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
+	signedOrder := scenario.CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, wethFeeAmount)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Transfer makerAsset out of maker address
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	txn, err := weth.Transfer(opts, constants.GanacheAccount4, wethFeeAmount)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
@@ -435,8 +473,8 @@ func TestOrderWatcherCanceled(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
-	txn, err := exchange.CancelOrder(opts, orderWithoutExchangeAddress)
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -515,8 +553,8 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
 	}
-	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
-	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, wethAmount, signedOrder.Signature)
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -555,9 +593,9 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
 	}
-	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	trimmedOrder := signedOrder.Trim()
 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
-	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, halfAmount, signedOrder.Signature)
+	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -642,15 +680,10 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 }
 
 func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, timeout time.Duration) []*zeroex.OrderEvent {
-	start := time.Now()
 	select {
 	case orderEvents := <-orderEventsChan:
-		fmt.Println("orderEvents!", orderEvents)
 		return orderEvents
 	case <-time.After(timeout):
-		elapsed := time.Since(start)
-		fmt.Println("elapsed", elapsed)
-		fmt.Println("timeout!")
 		t.Fatal("timed out waiting for order events")
 	}
 	return []*zeroex.OrderEvent{}

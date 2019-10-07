@@ -28,9 +28,17 @@ func (s SignedOrder) JSValue() js.Value {
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
+	makerFeeAssetData := ""
+	if len(s.MakerFeeAssetData) != 0 {
+		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
+	}
 	takerAssetData := ""
 	if len(s.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
+	}
+	takerFeeAssetData := ""
+	if len(s.TakerFeeAssetData) != 0 {
+		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
 	}
 	signature := ""
 	if len(s.Signature) != 0 {
@@ -38,16 +46,19 @@ func (s SignedOrder) JSValue() js.Value {
 	}
 
 	return js.ValueOf(map[string]interface{}{
+		"chainId":               s.ChainID.Int64(),
+		"exchangeAddress":       strings.ToLower(s.ExchangeAddress.Hex()),
 		"makerAddress":          strings.ToLower(s.MakerAddress.Hex()),
 		"makerAssetData":        makerAssetData,
+		"makerFeeAssetData":     makerFeeAssetData,
 		"makerAssetAmount":      s.MakerAssetAmount.String(),
 		"makerFee":              s.MakerFee.String(),
 		"takerAddress":          strings.ToLower(s.TakerAddress.Hex()),
 		"takerAssetData":        takerAssetData,
+		"takerFeeAssetData":     takerFeeAssetData,
 		"takerAssetAmount":      s.TakerAssetAmount.String(),
 		"takerFee":              s.TakerFee.String(),
 		"senderAddress":         strings.ToLower(s.SenderAddress.Hex()),
-		"exchangeAddress":       strings.ToLower(s.ExchangeAddress.Hex()),
 		"feeRecipientAddress":   strings.ToLower(s.FeeRecipientAddress.Hex()),
 		"expirationTimeSeconds": s.ExpirationTimeSeconds.String(),
 		"salt":                  s.Salt.String(),

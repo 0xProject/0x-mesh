@@ -20,9 +20,9 @@ var EVENT_SIGNATURES = [...]string{
 	"ApprovalForAll(address,address,bool)", // ERC721
 	"Deposit(address,uint256)",             // WETH9
 	"Withdrawal(address,uint256)",          // WETH9
-	"Fill(address,address,address,address,uint256,uint256,uint256,uint256,bytes32,bytes,bytes)", // Exchange
-	"Cancel(address,address,address,bytes32,bytes,bytes)",                                       // Exchange
-	"CancelUpTo(address,address,uint256)",                                                       // Exchange
+	"Fill(address,address,bytes,bytes,bytes,bytes,bytes32,address,address,uint256,uint256,uint256,uint256,uint256)", // Exchange
+	"Cancel(address,address,bytes,bytes,address,bytes32)",                                                           // Exchange
+	"CancelUpTo(address,address,uint256)",                                                                           // Exchange
 }
 
 // Includes ERC20 `Transfer` & `Approval` events as well as WETH `Deposit` & `Withdraw` events
@@ -32,7 +32,7 @@ const erc20EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"na
 const erc721EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_approved\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"}]"
 
 // Includes Exchange `Fill`, `Cancel`, `CancelUpTo` events
-const exchangeEventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"takerAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"makerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"makerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerFeePaid\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Fill\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Cancel\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"orderEpoch\",\"type\":\"uint256\"}],\"name\":\"CancelUpTo\",\"type\":\"event\"}]"
+const exchangeEventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"transactionHash\",\"type\":\"bytes32\"}],\"name\":\"TransactionExecution\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"signerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"validatorAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isApproved\",\"type\":\"bool\"}],\"name\":\"SignatureValidatorApproval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes4\",\"name\":\"id\",\"type\":\"bytes4\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"assetProxy\",\"type\":\"address\"}],\"name\":\"AssetProxyRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldProtocolFeeMultiplier\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"updatedProtocolFeeMultiplier\",\"type\":\"uint256\"}],\"name\":\"ProtocolFeeMultiplier\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oldProtocolFeeCollector\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"updatedProtocolFeeCollector\",\"type\":\"address\"}],\"name\":\"ProtocolFeeCollectorAddress\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"makerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"takerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"makerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"takerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"protocolFeePaid\",\"type\":\"uint256\"}],\"name\":\"Fill\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"}],\"name\":\"Cancel\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"orderSenderAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"orderEpoch\",\"type\":\"uint256\"}],\"name\":\"CancelUpTo\",\"type\":\"event\"}]"
 
 // ERC20TransferEvent represents an ERC20 Transfer event
 type ERC20TransferEvent struct {
@@ -124,9 +124,12 @@ type ExchangeFillEvent struct {
 	TakerAssetFilledAmount *big.Int
 	MakerFeePaid           *big.Int
 	TakerFeePaid           *big.Int
+	ProtocolFeePaid        *big.Int
 	OrderHash              common.Hash
 	MakerAssetData         []byte
 	TakerAssetData         []byte
+	MakerFeeAssetData      []byte
+	TakerFeeAssetData      []byte
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ExchangeFillEvent type
@@ -139,6 +142,14 @@ func (e ExchangeFillEvent) MarshalJSON() ([]byte, error) {
 	if len(e.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
 	}
+	makerFeeAssetData := ""
+	if len(e.MakerAssetData) != 0 {
+		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerFeeAssetData))
+	}
+	takerFeeAssetData := ""
+	if len(e.TakerFeeAssetData) != 0 {
+		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerFeeAssetData))
+	}
 	return json.Marshal(map[string]interface{}{
 		"makerAddress":           e.MakerAddress.Hex(),
 		"takerAddress":           e.TakerAddress.Hex(),
@@ -148,9 +159,12 @@ func (e ExchangeFillEvent) MarshalJSON() ([]byte, error) {
 		"takerAssetFilledAmount": e.TakerAssetFilledAmount.String(),
 		"makerFeePaid":           e.MakerFeePaid.String(),
 		"takerFeePaid":           e.TakerFeePaid.String(),
+		"protocolFeePaid":        e.ProtocolFeePaid.String(),
 		"orderHash":              e.OrderHash.Hex(),
 		"makerAssetData":         makerAssetData,
 		"takerAssetData":         takerAssetData,
+		"makerFeeAssetData":      makerFeeAssetData,
+		"takerFeeAssetData":      takerFeeAssetData,
 	})
 }
 
@@ -186,17 +200,17 @@ func (e ExchangeCancelEvent) MarshalJSON() ([]byte, error) {
 
 // ExchangeCancelUpToEvent represents a 0x Exchange CancelUpTo event
 type ExchangeCancelUpToEvent struct {
-	MakerAddress  common.Address
-	SenderAddress common.Address
-	OrderEpoch    *big.Int
+	MakerAddress       common.Address
+	OrderSenderAddress common.Address
+	OrderEpoch         *big.Int
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ExchangeCancelUpToEvent type
 func (e ExchangeCancelUpToEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"makerAddress":  e.MakerAddress.Hex(),
-		"senderAddress": e.SenderAddress.Hex(),
-		"orderEpoch":    e.OrderEpoch.String(),
+		"makerAddress":       e.MakerAddress.Hex(),
+		"orderSenderAddress": e.OrderSenderAddress.Hex(),
+		"orderEpoch":         e.OrderEpoch.String(),
 	})
 }
 
@@ -236,7 +250,11 @@ type UnsupportedEventError struct {
 
 // Error returns the error string
 func (e UnsupportedEventError) Error() string {
-	return fmt.Sprintf("unsupported event: contract address: %s, topics: %v", e.ContractAddress, e.Topics)
+	hexTopics := []string{}
+	for _, topic := range e.Topics {
+		hexTopics = append(hexTopics, topic.Hex())
+	}
+	return fmt.Sprintf("unsupported event: contract address: %s, topics: %v", e.ContractAddress.Hex(), hexTopics)
 }
 
 type UntrackedTokenError struct {

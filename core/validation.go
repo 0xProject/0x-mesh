@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -21,8 +22,8 @@ var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", orderval
 var (
 	addressSchemaLoader     = gojsonschema.NewStringLoader(`{"id":"/addressSchema","type":"string","pattern":"^0x[0-9a-fA-F]{40}$"}`)
 	wholeNumberSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/wholeNumberSchema","anyOf":[{"type":"string","pattern":"^\\d+$"},{"type":"integer"}]}`)
-	hexSchemaLoader         = gojsonschema.NewStringLoader(`{"id":"/hexSchema","type":"string","pattern":"^0x(([0-9a-fA-F][0-9a-fA-F])+)?$"}`)
-	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"exchangeAddress":{"$ref":"/addressSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","salt","exchangeAddress","feeRecipientAddress","expirationTimeSeconds"],"type":"object"}`)
+	hexSchemaLoader         = gojsonschema.NewStringLoader(`{"id":"/hexSchema","type":"string","pattern":"^0x(([0-9a-fA-F])*)?$"}`)
+	orderSchemaLoader       = gojsonschema.NewStringLoader(`{"id":"/orderSchema","properties":{"makerAddress":{"$ref":"/addressSchema"},"takerAddress":{"$ref":"/addressSchema"},"makerFee":{"$ref":"/wholeNumberSchema"},"takerFee":{"$ref":"/wholeNumberSchema"},"senderAddress":{"$ref":"/addressSchema"},"makerAssetAmount":{"$ref":"/wholeNumberSchema"},"takerAssetAmount":{"$ref":"/wholeNumberSchema"},"makerAssetData":{"$ref":"/hexSchema"},"takerAssetData":{"$ref":"/hexSchema"},"makerFeeAssetData":{"$ref":"/hexSchema"},"takerFeeAssetData":{"$ref":"/hexSchema"},"salt":{"$ref":"/wholeNumberSchema"},"feeRecipientAddress":{"$ref":"/addressSchema"},"expirationTimeSeconds":{"$ref":"/wholeNumberSchema"},"exchangeAddress":{"$ref":"/addressSchema"},"chainId": {"type": "number"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","makerFeeAssetData","takerFeeAssetData","salt","feeRecipientAddress","expirationTimeSeconds","exchangeAddress","chainId"],"type":"object"}`)
 	signedOrderSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/signedOrderSchema","allOf":[{"$ref":"/orderSchema"},{"properties":{"signature":{"$ref":"/hexSchema"}},"required":["signature"]}]}`)
 	meshMessageSchemaLoader = gojsonschema.NewStringLoader(`{"id":"/meshMessageSchema","properties":{"MessageType":{"type":"string"},"Order":{"$ref":"/signedOrderSchema"}},"required":["MessageType","Order"]}`)
 )
@@ -99,10 +100,6 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
-	if err != nil {
-		return nil, err
-	}
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
@@ -130,7 +127,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 			})
 			continue
 		}
-		if order.ExchangeAddress != contractAddresses.Exchange {
+		if order.ChainID.Cmp(big.NewInt(int64(app.networkID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -138,6 +135,22 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 				Status:      ordervalidator.ROIncorrectNetwork,
 			})
 			continue
+		}
+		contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
+		if err == nil {
+			// Only check the ExchangeAddress if we know the expected address for the
+			// given chainID/networkID. If we don't know it, the order could still be
+			// valid.
+			expectedExchangeAddress := contractAddresses.Exchange
+			if order.ExchangeAddress != expectedExchangeAddress {
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: order,
+					Kind:        ordervalidator.MeshValidation,
+					Status:      ordervalidator.ROIncorrectExchangeAddress,
+				})
+				continue
+			}
 		}
 		if err := validateOrderSize(order); err != nil {
 			if err == errMaxSize {

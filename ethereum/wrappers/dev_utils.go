@@ -28,7 +28,7 @@ var (
 )
 
 // DevUtilsABI is the input ABI used to generate the binding from.
-const DevUtilsABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC721AssetData\",\"outputs\":[{\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalanceAndAssetProxyAllowance\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"},{\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC1155_PROXY_ID\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getTransferableAssetAmount\",\"outputs\":[{\"name\":\"transferableAssetAmount\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchAssetProxyAllowances\",\"outputs\":[{\"name\":\"allowances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"}],\"name\":\"encodeERC20AssetData\",\"outputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"transactionData\",\"type\":\"bytes\"}],\"name\":\"decodeZeroExTransactionData\",\"outputs\":[{\"name\":\"functionName\",\"type\":\"string\"},{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"takerAssetFillAmounts\",\"type\":\"uint256[]\"},{\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalance\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"orders\",\"type\":\"tuple[]\"},{\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"getOrderRelevantStates\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"ordersInfo\",\"type\":\"tuple[]\"},{\"name\":\"fillableTakerAssetAmounts\",\"type\":\"uint256[]\"},{\"name\":\"isValidSignature\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC20_PROXY_ID\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC20AssetData\",\"outputs\":[{\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"name\":\"tokenAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"name\":\"makerAddress\",\"type\":\"address\"},{\"name\":\"takerAddress\",\"type\":\"address\"},{\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"name\":\"senderAddress\",\"type\":\"address\"},{\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"makerFee\",\"type\":\"uint256\"},{\"name\":\"takerFee\",\"type\":\"uint256\"},{\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"order\",\"type\":\"tuple\"},{\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"getOrderRelevantState\",\"outputs\":[{\"components\":[{\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"name\":\"orderInfo\",\"type\":\"tuple\"},{\"name\":\"fillableTakerAssetAmount\",\"type\":\"uint256\"},{\"name\":\"isValidSignature\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC1155AssetData\",\"outputs\":[{\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"tokenIds\",\"type\":\"uint256[]\"},{\"name\":\"tokenValues\",\"type\":\"uint256[]\"},{\"name\":\"callbackData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addresses\",\"type\":\"address[]\"}],\"name\":\"getEthBalances\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC721_PROXY_ID\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"encodeERC721AssetData\",\"outputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"MULTI_ASSET_PROXY_ID\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"tokenIds\",\"type\":\"uint256[]\"},{\"name\":\"tokenValues\",\"type\":\"uint256[]\"},{\"name\":\"callbackData\",\"type\":\"bytes\"}],\"name\":\"encodeERC1155AssetData\",\"outputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getERC721TokenOwner\",\"outputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeMultiAssetData\",\"outputs\":[{\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchBalances\",\"outputs\":[{\"name\":\"balances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getAssetProxyAllowance\",\"outputs\":[{\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"encodeMultiAssetData\",\"outputs\":[{\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"STATIC_CALL_PROXY_ID\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"ownerAddress\",\"type\":\"address\"},{\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchBalancesAndAssetProxyAllowances\",\"outputs\":[{\"name\":\"balances\",\"type\":\"uint256[]\"},{\"name\":\"allowances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_exchange\",\"type\":\"address\"},{\"name\":\"_zrxAssetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+const DevUtilsABI = "[{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeOrderStatusError\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"enumLibOrder.OrderStatus\",\"name\":\"orderStatus\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC721AssetData\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalanceAndAssetProxyAllowance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"balance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeIncompleteFillError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.IncompleteFillErrorCode\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"uint256\",\"name\":\"expectedAssetFillAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"actualAssetFillAmount\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getTransferableAssetAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"transferableAssetAmount\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeAssetProxyTransferError\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeNegativeSpreadError\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"leftOrderHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"rightOrderHash\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeAssetProxyDispatchError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.AssetProxyDispatchErrorCodes\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeSignatureWalletError\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"signerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeFillError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.FillErrorCodes\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes[]\",\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchAssetProxyAllowances\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"allowances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"}],\"name\":\"encodeERC20AssetData\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeOrderEpochError\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"orderSenderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"currentEpoch\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"transactionData\",\"type\":\"bytes\"}],\"name\":\"decodeZeroExTransactionData\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"functionName\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"makerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"salt\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"}],\"internalType\":\"structLibOrder.Order[]\",\"name\":\"orders\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256[]\",\"name\":\"takerAssetFillAmounts\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeAssetProxyExistsError\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"internalType\":\"address\",\"name\":\"assetProxyAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeSignatureValidatorNotApprovedError\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"signerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"validatorAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"balance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC20AssetData\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeSignatureError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.SignatureErrorCodes\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"signerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeERC1155AssetData\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"tokenValues\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"callbackData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"addresses\",\"type\":\"address[]\"}],\"name\":\"getEthBalances\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"makerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"salt\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"}],\"internalType\":\"structLibOrder.Order[]\",\"name\":\"orders\",\"type\":\"tuple[]\"},{\"internalType\":\"address[]\",\"name\":\"takerAddresses\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"takerAssetFillAmounts\",\"type\":\"uint256[]\"}],\"name\":\"getSimulatedOrdersTransferResults\",\"outputs\":[{\"internalType\":\"enumOrderTransferSimulationUtils.OrderTransferResults[]\",\"name\":\"orderTransferResults\",\"type\":\"uint8[]\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"encodeERC721AssetData\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeEIP1271SignatureError\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"verifyingContractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"tokenValues\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"callbackData\",\"type\":\"bytes\"}],\"name\":\"encodeERC1155AssetData\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"decodeMultiAssetData\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"assetProxyId\",\"type\":\"bytes4\"},{\"internalType\":\"uint256[]\",\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeTransactionExecutionError\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"transactionHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeTransactionError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.TransactionErrorCodes\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"transactionHash\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes[]\",\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchBalances\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"balances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"name\":\"getAssetProxyAllowance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"allowance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"makerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"salt\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"}],\"internalType\":\"structLibOrder.Order\",\"name\":\"order\",\"type\":\"tuple\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetFillAmount\",\"type\":\"uint256\"}],\"name\":\"getSimulatedOrderTransferResults\",\"outputs\":[{\"internalType\":\"enumOrderTransferSimulationUtils.OrderTransferResults\",\"name\":\"orderTransferResults\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"encodeMultiAssetData\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"assetData\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"makerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"salt\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"}],\"internalType\":\"structLibOrder.Order[]\",\"name\":\"orders\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"getOrderRelevantStates\",\"outputs\":[{\"components\":[{\"internalType\":\"uint8\",\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"internalType\":\"structLibOrder.OrderInfo[]\",\"name\":\"ordersInfo\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256[]\",\"name\":\"fillableTakerAssetAmounts\",\"type\":\"uint256[]\"},{\"internalType\":\"bool[]\",\"name\":\"isValidSignature\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"ownerAddress\",\"type\":\"address\"},{\"internalType\":\"bytes[]\",\"name\":\"assetData\",\"type\":\"bytes[]\"}],\"name\":\"getBatchBalancesAndAssetProxyAllowances\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"balances\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"allowances\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"makerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takerFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTimeSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"salt\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"}],\"internalType\":\"structLibOrder.Order\",\"name\":\"order\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"getOrderRelevantState\",\"outputs\":[{\"components\":[{\"internalType\":\"uint8\",\"name\":\"orderStatus\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"orderTakerAssetFilledAmount\",\"type\":\"uint256\"}],\"internalType\":\"structLibOrder.OrderInfo\",\"name\":\"orderInfo\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"fillableTakerAssetAmount\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isValidSignature\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"encoded\",\"type\":\"bytes\"}],\"name\":\"decodeExchangeInvalidContextError\",\"outputs\":[{\"internalType\":\"enumLibExchangeRichErrors.ExchangeContextErrorCodes\",\"name\":\"errorCode\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"contextAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_exchange\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
 
 // DevUtils is an auto generated Go binding around an Ethereum contract.
 type DevUtils struct {
@@ -186,6 +186,8 @@ type Struct0 struct {
 	Salt                  *big.Int
 	MakerAssetData        []byte
 	TakerAssetData        []byte
+	MakerFeeAssetData     []byte
+	TakerFeeAssetData     []byte
 }
 
 // Struct1 is an auto generated low-level Go binding around an user-defined struct.
@@ -195,134 +197,164 @@ type Struct1 struct {
 	OrderTakerAssetFilledAmount *big.Int
 }
 
-// ERC1155PROXYID is a free data retrieval call binding the contract method 0x1bd0eb8f.
+// DecodeAssetProxyDispatchError is a free data retrieval call binding the contract method 0x32aae3ad.
 //
-// Solidity: function ERC1155_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCaller) ERC1155PROXYID(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "ERC1155_PROXY_ID")
-	return *ret0, err
+// Solidity: function decodeAssetProxyDispatchError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, bytes assetData)
+func (_DevUtils *DevUtilsCaller) DecodeAssetProxyDispatchError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+	AssetData []byte
+}, error) {
+	ret := new(struct {
+		ErrorCode uint8
+		OrderHash [32]byte
+		AssetData []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeAssetProxyDispatchError", encoded)
+	return *ret, err
 }
 
-// ERC1155PROXYID is a free data retrieval call binding the contract method 0x1bd0eb8f.
+// DecodeAssetProxyDispatchError is a free data retrieval call binding the contract method 0x32aae3ad.
 //
-// Solidity: function ERC1155_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsSession) ERC1155PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC1155PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyDispatchError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, bytes assetData)
+func (_DevUtils *DevUtilsSession) DecodeAssetProxyDispatchError(encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+	AssetData []byte
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyDispatchError(&_DevUtils.CallOpts, encoded)
 }
 
-// ERC1155PROXYID is a free data retrieval call binding the contract method 0x1bd0eb8f.
+// DecodeAssetProxyDispatchError is a free data retrieval call binding the contract method 0x32aae3ad.
 //
-// Solidity: function ERC1155_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCallerSession) ERC1155PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC1155PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyDispatchError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, bytes assetData)
+func (_DevUtils *DevUtilsCallerSession) DecodeAssetProxyDispatchError(encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+	AssetData []byte
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyDispatchError(&_DevUtils.CallOpts, encoded)
 }
 
-// ERC20PROXYID is a free data retrieval call binding the contract method 0x8ee1a642.
+// DecodeAssetProxyExistsError is a free data retrieval call binding the contract method 0x7914b2ec.
 //
-// Solidity: function ERC20_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCaller) ERC20PROXYID(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "ERC20_PROXY_ID")
-	return *ret0, err
+// Solidity: function decodeAssetProxyExistsError(bytes encoded) constant returns(bytes4 assetProxyId, address assetProxyAddress)
+func (_DevUtils *DevUtilsCaller) DecodeAssetProxyExistsError(opts *bind.CallOpts, encoded []byte) (struct {
+	AssetProxyId      [4]byte
+	AssetProxyAddress common.Address
+}, error) {
+	ret := new(struct {
+		AssetProxyId      [4]byte
+		AssetProxyAddress common.Address
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeAssetProxyExistsError", encoded)
+	return *ret, err
 }
 
-// ERC20PROXYID is a free data retrieval call binding the contract method 0x8ee1a642.
+// DecodeAssetProxyExistsError is a free data retrieval call binding the contract method 0x7914b2ec.
 //
-// Solidity: function ERC20_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsSession) ERC20PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC20PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyExistsError(bytes encoded) constant returns(bytes4 assetProxyId, address assetProxyAddress)
+func (_DevUtils *DevUtilsSession) DecodeAssetProxyExistsError(encoded []byte) (struct {
+	AssetProxyId      [4]byte
+	AssetProxyAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyExistsError(&_DevUtils.CallOpts, encoded)
 }
 
-// ERC20PROXYID is a free data retrieval call binding the contract method 0x8ee1a642.
+// DecodeAssetProxyExistsError is a free data retrieval call binding the contract method 0x7914b2ec.
 //
-// Solidity: function ERC20_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCallerSession) ERC20PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC20PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyExistsError(bytes encoded) constant returns(bytes4 assetProxyId, address assetProxyAddress)
+func (_DevUtils *DevUtilsCallerSession) DecodeAssetProxyExistsError(encoded []byte) (struct {
+	AssetProxyId      [4]byte
+	AssetProxyAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyExistsError(&_DevUtils.CallOpts, encoded)
 }
 
-// ERC721PROXYID is a free data retrieval call binding the contract method 0xa28fe02e.
+// DecodeAssetProxyTransferError is a free data retrieval call binding the contract method 0x314853ff.
 //
-// Solidity: function ERC721_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCaller) ERC721PROXYID(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "ERC721_PROXY_ID")
-	return *ret0, err
+// Solidity: function decodeAssetProxyTransferError(bytes encoded) constant returns(bytes32 orderHash, bytes assetData, bytes errorData)
+func (_DevUtils *DevUtilsCaller) DecodeAssetProxyTransferError(opts *bind.CallOpts, encoded []byte) (struct {
+	OrderHash [32]byte
+	AssetData []byte
+	ErrorData []byte
+}, error) {
+	ret := new(struct {
+		OrderHash [32]byte
+		AssetData []byte
+		ErrorData []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeAssetProxyTransferError", encoded)
+	return *ret, err
 }
 
-// ERC721PROXYID is a free data retrieval call binding the contract method 0xa28fe02e.
+// DecodeAssetProxyTransferError is a free data retrieval call binding the contract method 0x314853ff.
 //
-// Solidity: function ERC721_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsSession) ERC721PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC721PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyTransferError(bytes encoded) constant returns(bytes32 orderHash, bytes assetData, bytes errorData)
+func (_DevUtils *DevUtilsSession) DecodeAssetProxyTransferError(encoded []byte) (struct {
+	OrderHash [32]byte
+	AssetData []byte
+	ErrorData []byte
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyTransferError(&_DevUtils.CallOpts, encoded)
 }
 
-// ERC721PROXYID is a free data retrieval call binding the contract method 0xa28fe02e.
+// DecodeAssetProxyTransferError is a free data retrieval call binding the contract method 0x314853ff.
 //
-// Solidity: function ERC721_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCallerSession) ERC721PROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.ERC721PROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeAssetProxyTransferError(bytes encoded) constant returns(bytes32 orderHash, bytes assetData, bytes errorData)
+func (_DevUtils *DevUtilsCallerSession) DecodeAssetProxyTransferError(encoded []byte) (struct {
+	OrderHash [32]byte
+	AssetData []byte
+	ErrorData []byte
+}, error) {
+	return _DevUtils.Contract.DecodeAssetProxyTransferError(&_DevUtils.CallOpts, encoded)
 }
 
-// MULTIASSETPROXYID is a free data retrieval call binding the contract method 0xb37fda04.
+// DecodeEIP1271SignatureError is a free data retrieval call binding the contract method 0xacaedc74.
 //
-// Solidity: function MULTI_ASSET_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCaller) MULTIASSETPROXYID(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "MULTI_ASSET_PROXY_ID")
-	return *ret0, err
+// Solidity: function decodeEIP1271SignatureError(bytes encoded) constant returns(address verifyingContractAddress, bytes data, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsCaller) DecodeEIP1271SignatureError(opts *bind.CallOpts, encoded []byte) (struct {
+	VerifyingContractAddress common.Address
+	Data                     []byte
+	Signature                []byte
+	ErrorData                []byte
+}, error) {
+	ret := new(struct {
+		VerifyingContractAddress common.Address
+		Data                     []byte
+		Signature                []byte
+		ErrorData                []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeEIP1271SignatureError", encoded)
+	return *ret, err
 }
 
-// MULTIASSETPROXYID is a free data retrieval call binding the contract method 0xb37fda04.
+// DecodeEIP1271SignatureError is a free data retrieval call binding the contract method 0xacaedc74.
 //
-// Solidity: function MULTI_ASSET_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsSession) MULTIASSETPROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.MULTIASSETPROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeEIP1271SignatureError(bytes encoded) constant returns(address verifyingContractAddress, bytes data, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsSession) DecodeEIP1271SignatureError(encoded []byte) (struct {
+	VerifyingContractAddress common.Address
+	Data                     []byte
+	Signature                []byte
+	ErrorData                []byte
+}, error) {
+	return _DevUtils.Contract.DecodeEIP1271SignatureError(&_DevUtils.CallOpts, encoded)
 }
 
-// MULTIASSETPROXYID is a free data retrieval call binding the contract method 0xb37fda04.
+// DecodeEIP1271SignatureError is a free data retrieval call binding the contract method 0xacaedc74.
 //
-// Solidity: function MULTI_ASSET_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCallerSession) MULTIASSETPROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.MULTIASSETPROXYID(&_DevUtils.CallOpts)
-}
-
-// STATICCALLPROXYID is a free data retrieval call binding the contract method 0xd965b998.
-//
-// Solidity: function STATIC_CALL_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCaller) STATICCALLPROXYID(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "STATIC_CALL_PROXY_ID")
-	return *ret0, err
-}
-
-// STATICCALLPROXYID is a free data retrieval call binding the contract method 0xd965b998.
-//
-// Solidity: function STATIC_CALL_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsSession) STATICCALLPROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.STATICCALLPROXYID(&_DevUtils.CallOpts)
-}
-
-// STATICCALLPROXYID is a free data retrieval call binding the contract method 0xd965b998.
-//
-// Solidity: function STATIC_CALL_PROXY_ID() constant returns(bytes4)
-func (_DevUtils *DevUtilsCallerSession) STATICCALLPROXYID() ([4]byte, error) {
-	return _DevUtils.Contract.STATICCALLPROXYID(&_DevUtils.CallOpts)
+// Solidity: function decodeEIP1271SignatureError(bytes encoded) constant returns(address verifyingContractAddress, bytes data, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsCallerSession) DecodeEIP1271SignatureError(encoded []byte) (struct {
+	VerifyingContractAddress common.Address
+	Data                     []byte
+	Signature                []byte
+	ErrorData                []byte
+}, error) {
+	return _DevUtils.Contract.DecodeEIP1271SignatureError(&_DevUtils.CallOpts, encoded)
 }
 
 // DecodeERC1155AssetData is a free data retrieval call binding the contract method 0x9eadc835.
@@ -449,6 +481,122 @@ func (_DevUtils *DevUtilsCallerSession) DecodeERC721AssetData(assetData []byte) 
 	return _DevUtils.Contract.DecodeERC721AssetData(&_DevUtils.CallOpts, assetData)
 }
 
+// DecodeExchangeInvalidContextError is a free data retrieval call binding the contract method 0xee4f5a94.
+//
+// Solidity: function decodeExchangeInvalidContextError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, address contextAddress)
+func (_DevUtils *DevUtilsCaller) DecodeExchangeInvalidContextError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode      uint8
+	OrderHash      [32]byte
+	ContextAddress common.Address
+}, error) {
+	ret := new(struct {
+		ErrorCode      uint8
+		OrderHash      [32]byte
+		ContextAddress common.Address
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeExchangeInvalidContextError", encoded)
+	return *ret, err
+}
+
+// DecodeExchangeInvalidContextError is a free data retrieval call binding the contract method 0xee4f5a94.
+//
+// Solidity: function decodeExchangeInvalidContextError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, address contextAddress)
+func (_DevUtils *DevUtilsSession) DecodeExchangeInvalidContextError(encoded []byte) (struct {
+	ErrorCode      uint8
+	OrderHash      [32]byte
+	ContextAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeExchangeInvalidContextError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeExchangeInvalidContextError is a free data retrieval call binding the contract method 0xee4f5a94.
+//
+// Solidity: function decodeExchangeInvalidContextError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash, address contextAddress)
+func (_DevUtils *DevUtilsCallerSession) DecodeExchangeInvalidContextError(encoded []byte) (struct {
+	ErrorCode      uint8
+	OrderHash      [32]byte
+	ContextAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeExchangeInvalidContextError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeFillError is a free data retrieval call binding the contract method 0x459be5e2.
+//
+// Solidity: function decodeFillError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash)
+func (_DevUtils *DevUtilsCaller) DecodeFillError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+}, error) {
+	ret := new(struct {
+		ErrorCode uint8
+		OrderHash [32]byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeFillError", encoded)
+	return *ret, err
+}
+
+// DecodeFillError is a free data retrieval call binding the contract method 0x459be5e2.
+//
+// Solidity: function decodeFillError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash)
+func (_DevUtils *DevUtilsSession) DecodeFillError(encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeFillError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeFillError is a free data retrieval call binding the contract method 0x459be5e2.
+//
+// Solidity: function decodeFillError(bytes encoded) constant returns(uint8 errorCode, bytes32 orderHash)
+func (_DevUtils *DevUtilsCallerSession) DecodeFillError(encoded []byte) (struct {
+	ErrorCode uint8
+	OrderHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeFillError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeIncompleteFillError is a free data retrieval call binding the contract method 0x165979e1.
+//
+// Solidity: function decodeIncompleteFillError(bytes encoded) constant returns(uint8 errorCode, uint256 expectedAssetFillAmount, uint256 actualAssetFillAmount)
+func (_DevUtils *DevUtilsCaller) DecodeIncompleteFillError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode               uint8
+	ExpectedAssetFillAmount *big.Int
+	ActualAssetFillAmount   *big.Int
+}, error) {
+	ret := new(struct {
+		ErrorCode               uint8
+		ExpectedAssetFillAmount *big.Int
+		ActualAssetFillAmount   *big.Int
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeIncompleteFillError", encoded)
+	return *ret, err
+}
+
+// DecodeIncompleteFillError is a free data retrieval call binding the contract method 0x165979e1.
+//
+// Solidity: function decodeIncompleteFillError(bytes encoded) constant returns(uint8 errorCode, uint256 expectedAssetFillAmount, uint256 actualAssetFillAmount)
+func (_DevUtils *DevUtilsSession) DecodeIncompleteFillError(encoded []byte) (struct {
+	ErrorCode               uint8
+	ExpectedAssetFillAmount *big.Int
+	ActualAssetFillAmount   *big.Int
+}, error) {
+	return _DevUtils.Contract.DecodeIncompleteFillError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeIncompleteFillError is a free data retrieval call binding the contract method 0x165979e1.
+//
+// Solidity: function decodeIncompleteFillError(bytes encoded) constant returns(uint8 errorCode, uint256 expectedAssetFillAmount, uint256 actualAssetFillAmount)
+func (_DevUtils *DevUtilsCallerSession) DecodeIncompleteFillError(encoded []byte) (struct {
+	ErrorCode               uint8
+	ExpectedAssetFillAmount *big.Int
+	ActualAssetFillAmount   *big.Int
+}, error) {
+	return _DevUtils.Contract.DecodeIncompleteFillError(&_DevUtils.CallOpts, encoded)
+}
+
 // DecodeMultiAssetData is a free data retrieval call binding the contract method 0xbbb2dcf6.
 //
 // Solidity: function decodeMultiAssetData(bytes assetData) constant returns(bytes4 assetProxyId, uint256[] amounts, bytes[] nestedAssetData)
@@ -487,6 +635,314 @@ func (_DevUtils *DevUtilsCallerSession) DecodeMultiAssetData(assetData []byte) (
 	NestedAssetData [][]byte
 }, error) {
 	return _DevUtils.Contract.DecodeMultiAssetData(&_DevUtils.CallOpts, assetData)
+}
+
+// DecodeNegativeSpreadError is a free data retrieval call binding the contract method 0x327d3054.
+//
+// Solidity: function decodeNegativeSpreadError(bytes encoded) constant returns(bytes32 leftOrderHash, bytes32 rightOrderHash)
+func (_DevUtils *DevUtilsCaller) DecodeNegativeSpreadError(opts *bind.CallOpts, encoded []byte) (struct {
+	LeftOrderHash  [32]byte
+	RightOrderHash [32]byte
+}, error) {
+	ret := new(struct {
+		LeftOrderHash  [32]byte
+		RightOrderHash [32]byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeNegativeSpreadError", encoded)
+	return *ret, err
+}
+
+// DecodeNegativeSpreadError is a free data retrieval call binding the contract method 0x327d3054.
+//
+// Solidity: function decodeNegativeSpreadError(bytes encoded) constant returns(bytes32 leftOrderHash, bytes32 rightOrderHash)
+func (_DevUtils *DevUtilsSession) DecodeNegativeSpreadError(encoded []byte) (struct {
+	LeftOrderHash  [32]byte
+	RightOrderHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeNegativeSpreadError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeNegativeSpreadError is a free data retrieval call binding the contract method 0x327d3054.
+//
+// Solidity: function decodeNegativeSpreadError(bytes encoded) constant returns(bytes32 leftOrderHash, bytes32 rightOrderHash)
+func (_DevUtils *DevUtilsCallerSession) DecodeNegativeSpreadError(encoded []byte) (struct {
+	LeftOrderHash  [32]byte
+	RightOrderHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeNegativeSpreadError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeOrderEpochError is a free data retrieval call binding the contract method 0x65129042.
+//
+// Solidity: function decodeOrderEpochError(bytes encoded) constant returns(address makerAddress, address orderSenderAddress, uint256 currentEpoch)
+func (_DevUtils *DevUtilsCaller) DecodeOrderEpochError(opts *bind.CallOpts, encoded []byte) (struct {
+	MakerAddress       common.Address
+	OrderSenderAddress common.Address
+	CurrentEpoch       *big.Int
+}, error) {
+	ret := new(struct {
+		MakerAddress       common.Address
+		OrderSenderAddress common.Address
+		CurrentEpoch       *big.Int
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeOrderEpochError", encoded)
+	return *ret, err
+}
+
+// DecodeOrderEpochError is a free data retrieval call binding the contract method 0x65129042.
+//
+// Solidity: function decodeOrderEpochError(bytes encoded) constant returns(address makerAddress, address orderSenderAddress, uint256 currentEpoch)
+func (_DevUtils *DevUtilsSession) DecodeOrderEpochError(encoded []byte) (struct {
+	MakerAddress       common.Address
+	OrderSenderAddress common.Address
+	CurrentEpoch       *big.Int
+}, error) {
+	return _DevUtils.Contract.DecodeOrderEpochError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeOrderEpochError is a free data retrieval call binding the contract method 0x65129042.
+//
+// Solidity: function decodeOrderEpochError(bytes encoded) constant returns(address makerAddress, address orderSenderAddress, uint256 currentEpoch)
+func (_DevUtils *DevUtilsCallerSession) DecodeOrderEpochError(encoded []byte) (struct {
+	MakerAddress       common.Address
+	OrderSenderAddress common.Address
+	CurrentEpoch       *big.Int
+}, error) {
+	return _DevUtils.Contract.DecodeOrderEpochError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeOrderStatusError is a free data retrieval call binding the contract method 0x02d0aec3.
+//
+// Solidity: function decodeOrderStatusError(bytes encoded) constant returns(bytes32 orderHash, uint8 orderStatus)
+func (_DevUtils *DevUtilsCaller) DecodeOrderStatusError(opts *bind.CallOpts, encoded []byte) (struct {
+	OrderHash   [32]byte
+	OrderStatus uint8
+}, error) {
+	ret := new(struct {
+		OrderHash   [32]byte
+		OrderStatus uint8
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeOrderStatusError", encoded)
+	return *ret, err
+}
+
+// DecodeOrderStatusError is a free data retrieval call binding the contract method 0x02d0aec3.
+//
+// Solidity: function decodeOrderStatusError(bytes encoded) constant returns(bytes32 orderHash, uint8 orderStatus)
+func (_DevUtils *DevUtilsSession) DecodeOrderStatusError(encoded []byte) (struct {
+	OrderHash   [32]byte
+	OrderStatus uint8
+}, error) {
+	return _DevUtils.Contract.DecodeOrderStatusError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeOrderStatusError is a free data retrieval call binding the contract method 0x02d0aec3.
+//
+// Solidity: function decodeOrderStatusError(bytes encoded) constant returns(bytes32 orderHash, uint8 orderStatus)
+func (_DevUtils *DevUtilsCallerSession) DecodeOrderStatusError(encoded []byte) (struct {
+	OrderHash   [32]byte
+	OrderStatus uint8
+}, error) {
+	return _DevUtils.Contract.DecodeOrderStatusError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureError is a free data retrieval call binding the contract method 0x9a7e7526.
+//
+// Solidity: function decodeSignatureError(bytes encoded) constant returns(uint8 errorCode, bytes32 hash, address signerAddress, bytes signature)
+func (_DevUtils *DevUtilsCaller) DecodeSignatureError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode     uint8
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+}, error) {
+	ret := new(struct {
+		ErrorCode     uint8
+		Hash          [32]byte
+		SignerAddress common.Address
+		Signature     []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeSignatureError", encoded)
+	return *ret, err
+}
+
+// DecodeSignatureError is a free data retrieval call binding the contract method 0x9a7e7526.
+//
+// Solidity: function decodeSignatureError(bytes encoded) constant returns(uint8 errorCode, bytes32 hash, address signerAddress, bytes signature)
+func (_DevUtils *DevUtilsSession) DecodeSignatureError(encoded []byte) (struct {
+	ErrorCode     uint8
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureError is a free data retrieval call binding the contract method 0x9a7e7526.
+//
+// Solidity: function decodeSignatureError(bytes encoded) constant returns(uint8 errorCode, bytes32 hash, address signerAddress, bytes signature)
+func (_DevUtils *DevUtilsCallerSession) DecodeSignatureError(encoded []byte) (struct {
+	ErrorCode     uint8
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureValidatorNotApprovedError is a free data retrieval call binding the contract method 0x7b66ad34.
+//
+// Solidity: function decodeSignatureValidatorNotApprovedError(bytes encoded) constant returns(address signerAddress, address validatorAddress)
+func (_DevUtils *DevUtilsCaller) DecodeSignatureValidatorNotApprovedError(opts *bind.CallOpts, encoded []byte) (struct {
+	SignerAddress    common.Address
+	ValidatorAddress common.Address
+}, error) {
+	ret := new(struct {
+		SignerAddress    common.Address
+		ValidatorAddress common.Address
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeSignatureValidatorNotApprovedError", encoded)
+	return *ret, err
+}
+
+// DecodeSignatureValidatorNotApprovedError is a free data retrieval call binding the contract method 0x7b66ad34.
+//
+// Solidity: function decodeSignatureValidatorNotApprovedError(bytes encoded) constant returns(address signerAddress, address validatorAddress)
+func (_DevUtils *DevUtilsSession) DecodeSignatureValidatorNotApprovedError(encoded []byte) (struct {
+	SignerAddress    common.Address
+	ValidatorAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureValidatorNotApprovedError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureValidatorNotApprovedError is a free data retrieval call binding the contract method 0x7b66ad34.
+//
+// Solidity: function decodeSignatureValidatorNotApprovedError(bytes encoded) constant returns(address signerAddress, address validatorAddress)
+func (_DevUtils *DevUtilsCallerSession) DecodeSignatureValidatorNotApprovedError(encoded []byte) (struct {
+	SignerAddress    common.Address
+	ValidatorAddress common.Address
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureValidatorNotApprovedError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureWalletError is a free data retrieval call binding the contract method 0x3db6dc61.
+//
+// Solidity: function decodeSignatureWalletError(bytes encoded) constant returns(bytes32 hash, address signerAddress, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsCaller) DecodeSignatureWalletError(opts *bind.CallOpts, encoded []byte) (struct {
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+	ErrorData     []byte
+}, error) {
+	ret := new(struct {
+		Hash          [32]byte
+		SignerAddress common.Address
+		Signature     []byte
+		ErrorData     []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeSignatureWalletError", encoded)
+	return *ret, err
+}
+
+// DecodeSignatureWalletError is a free data retrieval call binding the contract method 0x3db6dc61.
+//
+// Solidity: function decodeSignatureWalletError(bytes encoded) constant returns(bytes32 hash, address signerAddress, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsSession) DecodeSignatureWalletError(encoded []byte) (struct {
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+	ErrorData     []byte
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureWalletError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeSignatureWalletError is a free data retrieval call binding the contract method 0x3db6dc61.
+//
+// Solidity: function decodeSignatureWalletError(bytes encoded) constant returns(bytes32 hash, address signerAddress, bytes signature, bytes errorData)
+func (_DevUtils *DevUtilsCallerSession) DecodeSignatureWalletError(encoded []byte) (struct {
+	Hash          [32]byte
+	SignerAddress common.Address
+	Signature     []byte
+	ErrorData     []byte
+}, error) {
+	return _DevUtils.Contract.DecodeSignatureWalletError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeTransactionError is a free data retrieval call binding the contract method 0xcafd3a07.
+//
+// Solidity: function decodeTransactionError(bytes encoded) constant returns(uint8 errorCode, bytes32 transactionHash)
+func (_DevUtils *DevUtilsCaller) DecodeTransactionError(opts *bind.CallOpts, encoded []byte) (struct {
+	ErrorCode       uint8
+	TransactionHash [32]byte
+}, error) {
+	ret := new(struct {
+		ErrorCode       uint8
+		TransactionHash [32]byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeTransactionError", encoded)
+	return *ret, err
+}
+
+// DecodeTransactionError is a free data retrieval call binding the contract method 0xcafd3a07.
+//
+// Solidity: function decodeTransactionError(bytes encoded) constant returns(uint8 errorCode, bytes32 transactionHash)
+func (_DevUtils *DevUtilsSession) DecodeTransactionError(encoded []byte) (struct {
+	ErrorCode       uint8
+	TransactionHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeTransactionError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeTransactionError is a free data retrieval call binding the contract method 0xcafd3a07.
+//
+// Solidity: function decodeTransactionError(bytes encoded) constant returns(uint8 errorCode, bytes32 transactionHash)
+func (_DevUtils *DevUtilsCallerSession) DecodeTransactionError(encoded []byte) (struct {
+	ErrorCode       uint8
+	TransactionHash [32]byte
+}, error) {
+	return _DevUtils.Contract.DecodeTransactionError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeTransactionExecutionError is a free data retrieval call binding the contract method 0xbc03f964.
+//
+// Solidity: function decodeTransactionExecutionError(bytes encoded) constant returns(bytes32 transactionHash, bytes errorData)
+func (_DevUtils *DevUtilsCaller) DecodeTransactionExecutionError(opts *bind.CallOpts, encoded []byte) (struct {
+	TransactionHash [32]byte
+	ErrorData       []byte
+}, error) {
+	ret := new(struct {
+		TransactionHash [32]byte
+		ErrorData       []byte
+	})
+	out := ret
+	err := _DevUtils.contract.Call(opts, out, "decodeTransactionExecutionError", encoded)
+	return *ret, err
+}
+
+// DecodeTransactionExecutionError is a free data retrieval call binding the contract method 0xbc03f964.
+//
+// Solidity: function decodeTransactionExecutionError(bytes encoded) constant returns(bytes32 transactionHash, bytes errorData)
+func (_DevUtils *DevUtilsSession) DecodeTransactionExecutionError(encoded []byte) (struct {
+	TransactionHash [32]byte
+	ErrorData       []byte
+}, error) {
+	return _DevUtils.Contract.DecodeTransactionExecutionError(&_DevUtils.CallOpts, encoded)
+}
+
+// DecodeTransactionExecutionError is a free data retrieval call binding the contract method 0xbc03f964.
+//
+// Solidity: function decodeTransactionExecutionError(bytes encoded) constant returns(bytes32 transactionHash, bytes errorData)
+func (_DevUtils *DevUtilsCallerSession) DecodeTransactionExecutionError(encoded []byte) (struct {
+	TransactionHash [32]byte
+	ErrorData       []byte
+}, error) {
+	return _DevUtils.Contract.DecodeTransactionExecutionError(&_DevUtils.CallOpts, encoded)
 }
 
 // DecodeZeroExTransactionData is a free data retrieval call binding the contract method 0x6f83188e.
@@ -813,32 +1269,6 @@ func (_DevUtils *DevUtilsCallerSession) GetBatchBalancesAndAssetProxyAllowances(
 	return _DevUtils.Contract.GetBatchBalancesAndAssetProxyAllowances(&_DevUtils.CallOpts, ownerAddress, assetData)
 }
 
-// GetERC721TokenOwner is a free data retrieval call binding the contract method 0xb6988463.
-//
-// Solidity: function getERC721TokenOwner(address tokenAddress, uint256 tokenId) constant returns(address ownerAddress)
-func (_DevUtils *DevUtilsCaller) GetERC721TokenOwner(opts *bind.CallOpts, tokenAddress common.Address, tokenId *big.Int) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _DevUtils.contract.Call(opts, out, "getERC721TokenOwner", tokenAddress, tokenId)
-	return *ret0, err
-}
-
-// GetERC721TokenOwner is a free data retrieval call binding the contract method 0xb6988463.
-//
-// Solidity: function getERC721TokenOwner(address tokenAddress, uint256 tokenId) constant returns(address ownerAddress)
-func (_DevUtils *DevUtilsSession) GetERC721TokenOwner(tokenAddress common.Address, tokenId *big.Int) (common.Address, error) {
-	return _DevUtils.Contract.GetERC721TokenOwner(&_DevUtils.CallOpts, tokenAddress, tokenId)
-}
-
-// GetERC721TokenOwner is a free data retrieval call binding the contract method 0xb6988463.
-//
-// Solidity: function getERC721TokenOwner(address tokenAddress, uint256 tokenId) constant returns(address ownerAddress)
-func (_DevUtils *DevUtilsCallerSession) GetERC721TokenOwner(tokenAddress common.Address, tokenId *big.Int) (common.Address, error) {
-	return _DevUtils.Contract.GetERC721TokenOwner(&_DevUtils.CallOpts, tokenAddress, tokenId)
-}
-
 // GetEthBalances is a free data retrieval call binding the contract method 0xa0901e51.
 //
 // Solidity: function getEthBalances(address[] addresses) constant returns(uint256[])
@@ -865,7 +1295,7 @@ func (_DevUtils *DevUtilsCallerSession) GetEthBalances(addresses []common.Addres
 	return _DevUtils.Contract.GetEthBalances(&_DevUtils.CallOpts, addresses)
 }
 
-// GetOrderRelevantState is a free data retrieval call binding the contract method 0x8f5afa52.
+// GetOrderRelevantState is a free data retrieval call binding the contract method 0xe77286eb.
 //
 // Solidity: function getOrderRelevantState(Struct0 order, bytes signature) constant returns(Struct1 orderInfo, uint256 fillableTakerAssetAmount, bool isValidSignature)
 func (_DevUtils *DevUtilsCaller) GetOrderRelevantState(opts *bind.CallOpts, order Struct0, signature []byte) (struct {
@@ -883,7 +1313,7 @@ func (_DevUtils *DevUtilsCaller) GetOrderRelevantState(opts *bind.CallOpts, orde
 	return *ret, err
 }
 
-// GetOrderRelevantState is a free data retrieval call binding the contract method 0x8f5afa52.
+// GetOrderRelevantState is a free data retrieval call binding the contract method 0xe77286eb.
 //
 // Solidity: function getOrderRelevantState(Struct0 order, bytes signature) constant returns(Struct1 orderInfo, uint256 fillableTakerAssetAmount, bool isValidSignature)
 func (_DevUtils *DevUtilsSession) GetOrderRelevantState(order Struct0, signature []byte) (struct {
@@ -894,7 +1324,7 @@ func (_DevUtils *DevUtilsSession) GetOrderRelevantState(order Struct0, signature
 	return _DevUtils.Contract.GetOrderRelevantState(&_DevUtils.CallOpts, order, signature)
 }
 
-// GetOrderRelevantState is a free data retrieval call binding the contract method 0x8f5afa52.
+// GetOrderRelevantState is a free data retrieval call binding the contract method 0xe77286eb.
 //
 // Solidity: function getOrderRelevantState(Struct0 order, bytes signature) constant returns(Struct1 orderInfo, uint256 fillableTakerAssetAmount, bool isValidSignature)
 func (_DevUtils *DevUtilsCallerSession) GetOrderRelevantState(order Struct0, signature []byte) (struct {
@@ -905,7 +1335,7 @@ func (_DevUtils *DevUtilsCallerSession) GetOrderRelevantState(order Struct0, sig
 	return _DevUtils.Contract.GetOrderRelevantState(&_DevUtils.CallOpts, order, signature)
 }
 
-// GetOrderRelevantStates is a free data retrieval call binding the contract method 0x7f46448d.
+// GetOrderRelevantStates is a free data retrieval call binding the contract method 0xe25cabf7.
 //
 // Solidity: function getOrderRelevantStates([]Struct0 orders, bytes[] signatures) constant returns([]Struct1 ordersInfo, uint256[] fillableTakerAssetAmounts, bool[] isValidSignature)
 func (_DevUtils *DevUtilsCaller) GetOrderRelevantStates(opts *bind.CallOpts, orders []Struct0, signatures [][]byte) (struct {
@@ -923,7 +1353,7 @@ func (_DevUtils *DevUtilsCaller) GetOrderRelevantStates(opts *bind.CallOpts, ord
 	return *ret, err
 }
 
-// GetOrderRelevantStates is a free data retrieval call binding the contract method 0x7f46448d.
+// GetOrderRelevantStates is a free data retrieval call binding the contract method 0xe25cabf7.
 //
 // Solidity: function getOrderRelevantStates([]Struct0 orders, bytes[] signatures) constant returns([]Struct1 ordersInfo, uint256[] fillableTakerAssetAmounts, bool[] isValidSignature)
 func (_DevUtils *DevUtilsSession) GetOrderRelevantStates(orders []Struct0, signatures [][]byte) (struct {
@@ -934,7 +1364,7 @@ func (_DevUtils *DevUtilsSession) GetOrderRelevantStates(orders []Struct0, signa
 	return _DevUtils.Contract.GetOrderRelevantStates(&_DevUtils.CallOpts, orders, signatures)
 }
 
-// GetOrderRelevantStates is a free data retrieval call binding the contract method 0x7f46448d.
+// GetOrderRelevantStates is a free data retrieval call binding the contract method 0xe25cabf7.
 //
 // Solidity: function getOrderRelevantStates([]Struct0 orders, bytes[] signatures) constant returns([]Struct1 ordersInfo, uint256[] fillableTakerAssetAmounts, bool[] isValidSignature)
 func (_DevUtils *DevUtilsCallerSession) GetOrderRelevantStates(orders []Struct0, signatures [][]byte) (struct {
@@ -970,3 +1400,46 @@ func (_DevUtils *DevUtilsSession) GetTransferableAssetAmount(ownerAddress common
 func (_DevUtils *DevUtilsCallerSession) GetTransferableAssetAmount(ownerAddress common.Address, assetData []byte) (*big.Int, error) {
 	return _DevUtils.Contract.GetTransferableAssetAmount(&_DevUtils.CallOpts, ownerAddress, assetData)
 }
+
+// GetSimulatedOrderTransferResults is a paid mutator transaction binding the contract method 0xd3637905.
+//
+// Solidity: function getSimulatedOrderTransferResults(Struct0 order, address takerAddress, uint256 takerAssetFillAmount) returns(uint8 orderTransferResults)
+func (_DevUtils *DevUtilsTransactor) GetSimulatedOrderTransferResults(opts *bind.TransactOpts, order Struct0, takerAddress common.Address, takerAssetFillAmount *big.Int) (*types.Transaction, error) {
+	return _DevUtils.contract.Transact(opts, "getSimulatedOrderTransferResults", order, takerAddress, takerAssetFillAmount)
+}
+
+// GetSimulatedOrderTransferResults is a paid mutator transaction binding the contract method 0xd3637905.
+//
+// Solidity: function getSimulatedOrderTransferResults(Struct0 order, address takerAddress, uint256 takerAssetFillAmount) returns(uint8 orderTransferResults)
+func (_DevUtils *DevUtilsSession) GetSimulatedOrderTransferResults(order Struct0, takerAddress common.Address, takerAssetFillAmount *big.Int) (*types.Transaction, error) {
+	return _DevUtils.Contract.GetSimulatedOrderTransferResults(&_DevUtils.TransactOpts, order, takerAddress, takerAssetFillAmount)
+}
+
+// GetSimulatedOrderTransferResults is a paid mutator transaction binding the contract method 0xd3637905.
+//
+// Solidity: function getSimulatedOrderTransferResults(Struct0 order, address takerAddress, uint256 takerAssetFillAmount) returns(uint8 orderTransferResults)
+func (_DevUtils *DevUtilsTransactorSession) GetSimulatedOrderTransferResults(order Struct0, takerAddress common.Address, takerAssetFillAmount *big.Int) (*types.Transaction, error) {
+	return _DevUtils.Contract.GetSimulatedOrderTransferResults(&_DevUtils.TransactOpts, order, takerAddress, takerAssetFillAmount)
+}
+
+// GetSimulatedOrdersTransferResults is a paid mutator transaction binding the contract method 0xa5cd62ba.
+//
+// Solidity: function getSimulatedOrdersTransferResults([]Struct0 orders, address[] takerAddresses, uint256[] takerAssetFillAmounts) returns(uint8[] orderTransferResults)
+func (_DevUtils *DevUtilsTransactor) GetSimulatedOrdersTransferResults(opts *bind.TransactOpts, orders []Struct0, takerAddresses []common.Address, takerAssetFillAmounts []*big.Int) (*types.Transaction, error) {
+	return _DevUtils.contract.Transact(opts, "getSimulatedOrdersTransferResults", orders, takerAddresses, takerAssetFillAmounts)
+}
+
+// GetSimulatedOrdersTransferResults is a paid mutator transaction binding the contract method 0xa5cd62ba.
+//
+// Solidity: function getSimulatedOrdersTransferResults([]Struct0 orders, address[] takerAddresses, uint256[] takerAssetFillAmounts) returns(uint8[] orderTransferResults)
+func (_DevUtils *DevUtilsSession) GetSimulatedOrdersTransferResults(orders []Struct0, takerAddresses []common.Address, takerAssetFillAmounts []*big.Int) (*types.Transaction, error) {
+	return _DevUtils.Contract.GetSimulatedOrdersTransferResults(&_DevUtils.TransactOpts, orders, takerAddresses, takerAssetFillAmounts)
+}
+
+// GetSimulatedOrdersTransferResults is a paid mutator transaction binding the contract method 0xa5cd62ba.
+//
+// Solidity: function getSimulatedOrdersTransferResults([]Struct0 orders, address[] takerAddresses, uint256[] takerAssetFillAmounts) returns(uint8[] orderTransferResults)
+func (_DevUtils *DevUtilsTransactorSession) GetSimulatedOrdersTransferResults(orders []Struct0, takerAddresses []common.Address, takerAssetFillAmounts []*big.Int) (*types.Transaction, error) {
+	return _DevUtils.Contract.GetSimulatedOrdersTransferResults(&_DevUtils.TransactOpts, orders, takerAddresses, takerAssetFillAmounts)
+}
+

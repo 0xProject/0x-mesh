@@ -22,6 +22,9 @@ const GanacheEndpoint = "http://localhost:8545"
 // NullAddress is an Ethereum address with all zeroes.
 var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
 
+// NullBytes is an empty byte array
+var NullBytes = common.FromHex("0x")
+
 var (
 	// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
 	GanacheAccount0           = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")

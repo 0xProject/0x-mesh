@@ -113,16 +113,19 @@ interface WrapperSignedOrder {
     makerAssetData: string;
     makerAssetAmount: string;
     makerFee: string;
+    makerFeeAssetData: string;
     takerAddress: string;
     takerAssetData: string;
+    takerFeeAssetData: string;
     takerAssetAmount: string;
     takerFee: string;
     senderAddress: string;
-    exchangeAddress: string;
     feeRecipientAddress: string;
     expirationTimeSeconds: string;
     salt: string;
     signature: string;
+    exchangeAddress: string;
+    chainId: number;
 }
 
 export interface ERC20TransferEvent {
