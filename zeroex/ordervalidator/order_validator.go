@@ -343,8 +343,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 					// HACK(albrow): From field should not be required for eth_call but
 					// including it here is a workaround for a bug in Ganache. Removing
 					// this line causes Ganache to crash.
-					// TODO(albrow): Test if this causes problems for real Ethereum nodes
-					// and if so figure out a way to only do this on Ganache.
 					From:    constants.GanacheDummyERC721TokenAddress,
 					Pending: false,
 					Context: ctx,
