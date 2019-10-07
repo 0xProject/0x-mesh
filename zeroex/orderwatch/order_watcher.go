@@ -600,8 +600,6 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
-	// TODO(albrow): Test that orders with a relevant MakerFeeAssetData are
-	// included here.
 	ordersWithAffectedMakerFeeAsset, err := w.meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
