@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -178,10 +177,6 @@ var (
 		Code:    "OrderForIncorrectNetwork",
 		Message: "order was created for a different network than the one this Mesh node is configured to support",
 	}
-	ROIncorrectExchangeAddress = RejectedOrderStatus{
-		Code:    "IncorrectExchangeAddress",
-		Message: "the exchange address for the order does not match the chain ID/network ID",
-	}
 	ROSenderAddressNotAllowed = RejectedOrderStatus{
 		Code:    "SenderAddressNotAllowed",
 		Message: "orders with a senderAddress are not currently supported",
@@ -311,9 +306,9 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder, i int) {
-			trimmedOrders := []wrappers.TrimmedOrder{}
+			orders := []wrappers.OrderWithoutExchangeAddress{}
 			for _, signedOrder := range signedOrders {
-				trimmedOrders = append(trimmedOrders, signedOrder.Trim())
+				orders = append(orders, signedOrder.ConvertToOrderWithoutExchangeAddress())
 			}
 			signatures := [][]byte{}
 			for _, signedOrder := range signedOrders {
@@ -340,10 +335,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
 				defer cancel()
 				opts := &bind.CallOpts{
-					// HACK(albrow): From field should not be required for eth_call but
-					// including it here is a workaround for a bug in Ganache. Removing
-					// this line causes Ganache to crash.
-					From:    constants.GanacheDummyERC721TokenAddress,
 					Pending: false,
 					Context: ctx,
 				}
@@ -353,19 +344,19 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 					opts.BlockNumber = big.NewInt(int64(blockNumber))
 				}
 
-				results, err := o.devUtils.GetOrderRelevantStates(opts, trimmedOrders, signatures)
+				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"error":     err.Error(),
 						"attempt":   b.Attempt(),
-						"numOrders": len(trimmedOrders),
+						"numOrders": len(orders),
 					}).Info("GetOrderRelevantStates request failed")
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
 						log.WithFields(log.Fields{
 							"error":     err.Error(),
-							"numOrders": len(trimmedOrders),
+							"numOrders": len(orders),
 						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
@@ -776,10 +767,10 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 const jsonRPCPayloadByteLength = 444
 
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
-	trimmedOrder := signedOrder.Trim()
+	orderWithExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
-		[]wrappers.TrimmedOrder{trimmedOrder},
+		[]wrappers.OrderWithoutExchangeAddress{orderWithExchangeAddress},
 		[][]byte{signedOrder.Signature},
 	)
 	if err != nil {
@@ -850,7 +841,7 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 			return false
 		}
 
-	case zeroex.PreSignedSignature, zeroex.WalletSignature, zeroex.EIP1271WalletSignature:
+	case zeroex.PreSignedSignature, zeroex.WalletSignature:
 		return true
 
 	default:

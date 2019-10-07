@@ -58,14 +58,6 @@ func (e ExchangeFillEvent) JSValue() js.Value {
 	if len(e.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
 	}
-	makerFeeAssetData := ""
-	if len(e.MakerFeeAssetData) != 0 {
-		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerFeeAssetData))
-	}
-	takerFeeAssetData := ""
-	if len(e.TakerFeeAssetData) != 0 {
-		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerFeeAssetData))
-	}
 	return js.ValueOf(map[string]interface{}{
 		"makerAddress":           e.MakerAddress.Hex(),
 		"takerAddress":           e.TakerAddress.Hex(),
@@ -75,12 +67,9 @@ func (e ExchangeFillEvent) JSValue() js.Value {
 		"takerAssetFilledAmount": e.TakerAssetFilledAmount.String(),
 		"makerFeePaid":           e.MakerFeePaid.String(),
 		"takerFeePaid":           e.TakerFeePaid.String(),
-		"protocolFeePaid":           e.ProtocolFeePaid.String(),
 		"orderHash":              e.OrderHash.Hex(),
 		"makerAssetData":         makerAssetData,
 		"takerAssetData":         takerAssetData,
-		"makerFeeAssetData":         makerFeeAssetData,
-		"takerFeeAssetData":         takerFeeAssetData,
 	})
 }
 
@@ -106,7 +95,7 @@ func (e ExchangeCancelEvent) JSValue() js.Value {
 func (e ExchangeCancelUpToEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"makerAddress":  e.MakerAddress.Hex(),
-		"orderSenderAddress": e.OrderSenderAddress.Hex(),
+		"senderAddress": e.SenderAddress.Hex(),
 		"orderEpoch":    e.OrderEpoch.String(),
 	})
 }

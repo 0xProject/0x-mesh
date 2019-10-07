@@ -100,22 +100,19 @@ func newTestServerAndClient(t *testing.T, rpcHandler *dummyRPCHandler, ctx conte
 }
 
 var testOrder = &zeroex.Order{
-	ChainID:               big.NewInt(constants.TestNetworkID),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
 	FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 	MakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-	MakerFeeAssetData:     constants.NullBytes,
 	TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
-	TakerFeeAssetData:     constants.NullBytes,
 	Salt:                  big.NewInt(1548619145450),
 	MakerFee:              big.NewInt(0),
 	TakerFee:              big.NewInt(0),
 	MakerAssetAmount:      big.NewInt(3551808554499581700),
 	TakerAssetAmount:      big.NewInt(300000000000000),
 	ExpirationTimeSeconds: big.NewInt(1548619325),
+	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
 }
 
 func TestAddOrdersSuccess(t *testing.T) {

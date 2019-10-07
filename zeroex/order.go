@@ -17,19 +17,16 @@ import (
 
 // Order represents an unsigned 0x order
 type Order struct {
-	ChainID               *big.Int       `json:"chainId"`
-	ExchangeAddress       common.Address `json:"exchangeAddress"`
 	MakerAddress          common.Address `json:"makerAddress"`
 	MakerAssetData        []byte         `json:"makerAssetData"`
-	MakerFeeAssetData     []byte         `json:"makerFeeAssetData"`
 	MakerAssetAmount      *big.Int       `json:"makerAssetAmount"`
 	MakerFee              *big.Int       `json:"makerFee"`
 	TakerAddress          common.Address `json:"takerAddress"`
 	TakerAssetData        []byte         `json:"takerAssetData"`
-	TakerFeeAssetData     []byte         `json:"takerFeeAssetData"`
 	TakerAssetAmount      *big.Int       `json:"takerAssetAmount"`
 	TakerFee              *big.Int       `json:"takerFee"`
 	SenderAddress         common.Address `json:"senderAddress"`
+	ExchangeAddress       common.Address `json:"exchangeAddress"`
 	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
 	Salt                  *big.Int       `json:"salt"`
@@ -56,7 +53,6 @@ const (
 	WalletSignature
 	ValidatorSignature
 	PreSignedSignature
-	EIP1271WalletSignature
 	NSignatureTypesSignature
 )
 
@@ -196,10 +192,6 @@ var eip712OrderTypes = signer.Types{
 			Type: "string",
 		},
 		{
-			Name: "chainId",
-			Type: "uint256",
-		},
-		{
 			Name: "verifyingContract",
 			Type: "address",
 		},
@@ -253,18 +245,10 @@ var eip712OrderTypes = signer.Types{
 			Name: "takerAssetData",
 			Type: "bytes",
 		},
-		{
-			Name: "makerFeeAssetData",
-			Type: "bytes",
-		},
-		{
-			Name: "takerFeeAssetData",
-			Type: "bytes",
-		},
 	},
 }
 
-// ResetHash resets the cached order hash. Usually only required for testing.
+// Resets the cached order hash. Usually only required for testing.
 func (o *Order) ResetHash() {
 	o.hash = nil
 }
@@ -277,8 +261,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 
 	var domain = signer.TypedDataDomain{
 		Name:              "0x Protocol",
-		Version:           "3.0.0",
-		ChainId:           o.ChainID,
+		Version:           "2",
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
 
@@ -288,9 +271,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		"senderAddress":         o.SenderAddress.Hex(),
 		"feeRecipientAddress":   o.FeeRecipientAddress.Hex(),
 		"makerAssetData":        o.MakerAssetData,
-		"makerFeeAssetData":     o.MakerFeeAssetData,
 		"takerAssetData":        o.TakerAssetData,
-		"takerFeeAssetData":     o.TakerFeeAssetData,
 		"salt":                  o.Salt,
 		"makerFee":              o.MakerFee,
 		"takerFee":              o.TakerFee,
@@ -359,10 +340,10 @@ func SignTestOrder(order *Order) (*SignedOrder, error) {
 	return signedOrder, nil
 }
 
-// Trim converts the order to a TrimmedOrder, which is the format expected by
-// our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
-	return wrappers.TrimmedOrder{
+// ConvertToOrderWithoutExchangeAddress re-formats a SignedOrder into the format expected by the 0x
+// smart contracts.
+func (s *SignedOrder) ConvertToOrderWithoutExchangeAddress() wrappers.OrderWithoutExchangeAddress {
+	orderWithoutExchangeAddress := wrappers.OrderWithoutExchangeAddress{
 		MakerAddress:          s.MakerAddress,
 		TakerAddress:          s.TakerAddress,
 		FeeRecipientAddress:   s.FeeRecipientAddress,
@@ -374,27 +355,23 @@ func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
 		ExpirationTimeSeconds: s.ExpirationTimeSeconds,
 		Salt:                  s.Salt,
 		MakerAssetData:        s.MakerAssetData,
-		MakerFeeAssetData:     s.MakerFeeAssetData,
 		TakerAssetData:        s.TakerAssetData,
-		TakerFeeAssetData:     s.TakerFeeAssetData,
 	}
+	return orderWithoutExchangeAddress
 }
 
 // SignedOrderJSON is an unmodified JSON representation of a SignedOrder
 type SignedOrderJSON struct {
-	ChainID               int64 `json:"chainId"`
-	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
 	MakerAssetData        string `json:"makerAssetData"`
-	MakerFeeAssetData     string `json:"makerFeeAssetData"`
 	MakerAssetAmount      string `json:"makerAssetAmount"`
 	MakerFee              string `json:"makerFee"`
 	TakerAddress          string `json:"takerAddress"`
 	TakerAssetData        string `json:"takerAssetData"`
-	TakerFeeAssetData     string `json:"takerFeeAssetData"`
 	TakerAssetAmount      string `json:"takerAssetAmount"`
 	TakerFee              string `json:"takerFee"`
 	SenderAddress         string `json:"senderAddress"`
+	ExchangeAddress       string `json:"exchangeAddress"`
 	FeeRecipientAddress   string `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
 	Salt                  string `json:"salt"`
@@ -407,17 +384,9 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
-	makerFeeAssetData := "0x"
-	if len(s.MakerFeeAssetData) != 0 {
-		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
-	}
 	takerAssetData := ""
 	if len(s.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
-	}
-	takerFeeAssetData := "0x"
-	if len(s.TakerFeeAssetData) != 0 {
-		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
 	}
 	signature := ""
 	if len(s.Signature) != 0 {
@@ -425,19 +394,16 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	}
 
 	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
-		ChainID:               s.ChainID.Int64(),
-		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
 		MakerAssetData:        makerAssetData,
-		MakerFeeAssetData:     makerFeeAssetData,
 		MakerAssetAmount:      s.MakerAssetAmount.String(),
 		MakerFee:              s.MakerFee.String(),
 		TakerAddress:          strings.ToLower(s.TakerAddress.Hex()),
 		TakerAssetData:        takerAssetData,
-		TakerFeeAssetData:     takerFeeAssetData,
 		TakerAssetAmount:      s.TakerAssetAmount.String(),
 		TakerFee:              s.TakerFee.String(),
 		SenderAddress:         strings.ToLower(s.SenderAddress.Hex()),
+		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
 		FeeRecipientAddress:   strings.ToLower(s.FeeRecipientAddress.Hex()),
 		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
 		Salt:                  s.Salt.String(),
@@ -455,12 +421,9 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	var ok bool
-	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
-	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
 	s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
 	s.MakerAssetData = common.FromHex(signedOrderJSON.MakerAssetData)
-	s.MakerFeeAssetData = common.FromHex(signedOrderJSON.MakerFeeAssetData)
+	var ok bool
 	if signedOrderJSON.MakerAssetAmount != "" {
 		s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
 		if !ok {
@@ -475,7 +438,6 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	}
 	s.TakerAddress = common.HexToAddress(signedOrderJSON.TakerAddress)
 	s.TakerAssetData = common.FromHex(signedOrderJSON.TakerAssetData)
-	s.TakerFeeAssetData = common.FromHex(signedOrderJSON.TakerFeeAssetData)
 	if signedOrderJSON.TakerAssetAmount != "" {
 		s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
 		if !ok {
@@ -489,6 +451,7 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 		}
 	}
 	s.SenderAddress = common.HexToAddress(signedOrderJSON.SenderAddress)
+	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
 	s.FeeRecipientAddress = common.HexToAddress(signedOrderJSON.FeeRecipientAddress)
 	if signedOrderJSON.ExpirationTimeSeconds != "" {
 		s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
