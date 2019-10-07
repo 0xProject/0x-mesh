@@ -62,9 +62,9 @@ Adds an array of 0x signed orders to the Mesh node.
                 "signature": "0x1b6a49302774b0b0e14ef59e91fcf950dfb7db5705ae6929e06198518b1105301d4ef94b1b4760e550378bb5b7746b1a29c174290afe9448324cef4112dd03d7a103",
                 "salt": "1545196045897",
                 "makerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                "makerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                "makerFeeAssetData": "0x",
                 "takerAssetData": "0xf47261b00000000000000000000000000d8775f648430679a709e98d2b0cb6250d2887ef",
-                "takerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+                "takerFeeAssetData": "0x"
             }
         ]
     ],
@@ -85,12 +85,12 @@ Adds an array of 0x signed orders to the Mesh node.
                 "signedOrder": {
                     "makerAddress": "0x8cff49b26d4d13e0601769f8a60fd697b713b9c6",
                     "makerAssetData": "0xf47261b0000000000000000000000000c778417e063141139fce010982780140aa0cd5ab",
-                    "makerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "makerFeeAssetData": "0x",
                     "makerAssetAmount": "100000000000000000",
                     "makerFee": "0",
                     "takerAddress": "0x0000000000000000000000000000000000000000",
                     "takerAssetData": "0xf47261b0000000000000000000000000ff67881f8d12f372d91baae9752eb3631ff0ed00",
-                    "takerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "takerFeeAssetData": "0x",
                     "takerAssetAmount": "1000000000000000000",
                     "takerFee": "0",
                     "senderAddress": "0x0000000000000000000000000000000000000000",
@@ -157,12 +157,12 @@ This payload is requesting 100 orders from the 1st page (think: offset). The thi
                 "signedOrder": {
                     "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
                     "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
-                    "makerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "makerFeeAssetData": "0x",
                     "makerAssetAmount": "1000000000000000000",
                     "makerFee": "0",
                     "takerAddress": "0x0000000000000000000000000000000000000000",
                     "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                    "takerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "takerFeeAssetData": "0x",
                     "takerAssetAmount": "10000000000000000000000",
                     "takerFee": "0",
                     "senderAddress": "0x0000000000000000000000000000000000000000",
@@ -264,12 +264,12 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
                 "signedOrder": {
                     "makerAddress": "0x50f84bbee6fb250d6f49e854fa280445369d64d9",
                     "makerAssetData": "0xf47261b00000000000000000000000000f5d2fb29fb7d3cfee444a200298f468908cc942",
-                    "makerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "makerFeeAssetData": "0x",
                     "makerAssetAmount": "4424020538752105500000",
                     "makerFee": "0",
                     "takerAddress": "0x0000000000000000000000000000000000000000",
                     "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                    "takerFeeAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "takerFeeAssetData": "0x",
                     "takerAssetAmount": "1000000000000000061",
                     "takerFee": "0",
                     "senderAddress": "0x0000000000000000000000000000000000000000",
