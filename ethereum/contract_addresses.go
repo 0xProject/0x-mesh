@@ -3,6 +3,7 @@ package ethereum
 import (
 	"fmt"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -15,16 +16,40 @@ func GetContractAddressesForNetworkID(networkID int) (ContractAddresses, error) 
 	return ContractAddresses{}, fmt.Errorf("invalid network: %d", networkID)
 }
 
+func AddContractAddressesForNetworkID(networkID int, addresses ContractAddresses) error {
+	if _, alreadExists := NetworkIDToContractAddresses[networkID]; alreadExists {
+		return fmt.Errorf("cannot add contract addresses for network ID %d: addresses for this network id are already defined", networkID)
+	}
+	if addresses.Exchange == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for network ID %d: Exchange address is required", networkID)
+	}
+	if addresses.DevUtils == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for network ID %d: DevUtils address is required", networkID)
+	}
+	if addresses.ERC20Proxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for network ID %d: ERC20Proxy address is required", networkID)
+	}
+	if addresses.ERC721Proxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for network ID %d: ERC721Proxy address is required", networkID)
+	}
+	// TODO(albrow): Uncomment this if we re-add coordinator support.
+	// if addresses.CoordinatorRegistry == constants.NullAddress {
+	// 	return fmt.Errorf("cannot add contract addresses for network ID %d: CoordinatorRegistry address is required", networkID)
+	// }
+	NetworkIDToContractAddresses[networkID] = addresses
+	return nil
+}
+
 // ContractAddresses maps a contract's name to it's Ethereum address
 type ContractAddresses struct {
-	ERC20Proxy          common.Address
-	ERC721Proxy         common.Address
-	Exchange            common.Address
-	Coordinator         common.Address
-	CoordinatorRegistry common.Address
-	DevUtils            common.Address
-	WETH9               common.Address
-	ZRXToken            common.Address
+	ERC20Proxy          common.Address `json:"erc20Proxy"`
+	ERC721Proxy         common.Address `json:"erc721Proxy"`
+	Exchange            common.Address `json:"exchange"`
+	Coordinator         common.Address `json:"coordinator"`
+	CoordinatorRegistry common.Address `json:"coordinatorRegistry"`
+	DevUtils            common.Address `json:"devUtils"`
+	WETH9               common.Address `json:"weth9"`
+	ZRXToken            common.Address `json:"zrxToken"`
 }
 
 // NetworkIDToContractAddresses maps networkId to a mapping of contract name to Ethereum address
