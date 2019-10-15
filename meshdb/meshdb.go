@@ -63,6 +63,7 @@ type OrdersCollection struct {
 	MakerAddressTokenAddressTokenIDIndex *db.Index
 	LastUpdatedIndex                     *db.Index
 	IsRemovedIndex                       *db.Index
+	ExpirationTimeIndex                  *db.Index
 }
 
 // MetadataCollection represents a DB collection used to store instance metadata
@@ -115,7 +116,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
 		// length of the number is always 80.
 		signedOrder := m.(*Order).SignedOrder
-		index := []byte(fmt.Sprintf("%s|%080s", signedOrder.MakerAddress.Hex(), signedOrder.Salt.String()))
+		index := []byte(fmt.Sprintf("%s|%s", signedOrder.MakerAddress.Hex(), uint256ToConstantLengthBytes(signedOrder.Salt)))
 		return index
 	})
 	// TODO(fabio): Optimize this index callback since it gets called many times under-the-hood.
@@ -150,12 +151,18 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		return []byte{0}
 	})
 
+	expirationTimeIndex := col.AddIndex("expirationTime", func(m db.Model) []byte {
+		order := m.(*Order)
+		return uint256ToConstantLengthBytes(order.SignedOrder.ExpirationTimeSeconds)
+	})
+
 	return &OrdersCollection{
 		Collection:                           col,
 		MakerAddressTokenAddressTokenIDIndex: makerAddressTokenAddressTokenIDIndex,
 		MakerAddressAndSaltIndex:             makerAddressAndSaltIndex,
 		LastUpdatedIndex:                     lastUpdatedIndex,
 		IsRemovedIndex:                       isRemovedIndex,
+		ExpirationTimeIndex:                  expirationTimeIndex,
 	}, nil
 }
 
@@ -170,7 +177,7 @@ func setupMiniHeaders(database *db.DB) (*MiniHeadersCollection, error) {
 		// unsigned 256 bit integer is 80, so we pad with zeroes such that the
 		// length of the number is always 80.
 		number := model.(*miniheader.MiniHeader).Number
-		return []byte(fmt.Sprintf("%080s", number.String()))
+		return uint256ToConstantLengthBytes(number)
 	})
 
 	return &MiniHeadersCollection{
@@ -250,7 +257,7 @@ func (m *MeshDB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address,
 	// particular use-case, we add 1 to the supplied salt (making the query inclusive instead)
 	saltPlusOne := new(big.Int).Add(salt, big.NewInt(1))
 	start := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), "0"))
-	limit := []byte(fmt.Sprintf("%s|%080s", makerAddress.Hex(), saltPlusOne.String()))
+	limit := []byte(fmt.Sprintf("%s|%s", makerAddress.Hex(), uint256ToConstantLengthBytes(saltPlusOne)))
 	filter := m.Orders.MakerAddressAndSaltIndex.RangeFilter(start, limit)
 	orders := []*Order{}
 	if err := m.Orders.NewQuery(filter).Run(&orders); err != nil {
@@ -354,4 +361,8 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleA
 		return nil, fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return singleAssetDatas, nil
+}
+
+func uint256ToConstantLengthBytes(v *big.Int) []byte {
+	return []byte(fmt.Sprintf("%080s", v.String()))
 }
