@@ -45,6 +45,21 @@ provider.start();
         ethereumRPCURL,
         ethereumNetworkID: 50,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
+        // Note(albrow): customContractAddresses is not actually required for
+        // the integration tests. Including them it here to test parsing and
+        // passing custom contract addresses to Go.
+        customContractAddresses: {
+            '999': {
+                erc20Proxy: '0x1dc4c1cefef38a777b15aa20260a54e584b16c48',
+                erc721Proxy: '0x1d7022f5b17d2f8b695918fb48fa1089c9f85401',
+                exchange: '0x48bacb9266a570d521063ef5dd96e61686dbe788',
+                coordinator: '0x0d8b0dd11f5d34ed41d556def5f841900d5b1c6b',
+                coordinatorRegistry: '0x1941ff73d1154774d87521d2d0aaad5d19c8df60',
+                devUtils: '0x38ef19fdf8e8415f18c307ed71967e19aac28ba1',
+                weth9: '0x0b1ba0af832d7c05fd64161e0db78e85978e8082',
+                zrxToken: '0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            },
+        },
     });
 
     // This handler will be called whenver there is a critical error.
