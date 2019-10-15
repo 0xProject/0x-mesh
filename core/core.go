@@ -97,22 +97,20 @@ type Config struct {
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
-	// CustomContractAddresses is a JSON-encoded string representing a mapping of
-	// network ID to contract addresses for that network ID. The contract
+	// CustomContractAddresses is a JSON-encoded string representing a set of
+	// custom addresses to use for the configured network ID. The contract
 	// addresses for most common networks are already included by default, so this
 	// is typically only needed for testing on custom networks. The given
 	// addresses are added to the default list of addresses for known networks and
-	// overriding any known contract addresses is not allowed. The addresses for
-	// exchange, devUtils, erc20Proxy, and erc721Proxy are required for each
-	// network. For example:
+	// overriding any contract addresses for known networks is not allowed. The
+	// addresses for exchange, devUtils, erc20Proxy, and erc721Proxy are required
+	// for each network. For example:
 	//
 	//    {
-	//        "999": {
-	//            "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
-	//            "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
-	//            "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
-	//            "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
-	//         }
+	//        "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
+	//        "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
+	//        "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
+	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
@@ -150,7 +148,7 @@ func New(config Config) (*App, error) {
 
 	// Add custom contract addresses if needed.
 	if config.CustomContractAddresses != "" {
-		if err := parseAndAddCustomContractAddresses(config.CustomContractAddresses); err != nil {
+		if err := parseAndAddCustomContractAddresses(config.EthereumNetworkID, config.CustomContractAddresses); err != nil {
 			return nil, err
 		}
 	}
@@ -741,19 +739,13 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 	return subscription
 }
 
-func parseAndAddCustomContractAddresses(encodedContractAddresses string) error {
-	customAddresses := map[string]ethereum.ContractAddresses{}
+func parseAndAddCustomContractAddresses(networkID int, encodedContractAddresses string) error {
+	customAddresses := ethereum.ContractAddresses{}
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	for networkIDString, contractAddresses := range customAddresses {
-		networkID, err := strconv.Atoi(networkIDString)
-		if err != nil {
-			return fmt.Errorf("config.CustomContractAddresses is invalid: could not decode networkID: %s", err.Error())
-		}
-		if err := ethereum.AddContractAddressesForNetworkID(networkID, contractAddresses); err != nil {
-			return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
-		}
+	if err := ethereum.AddContractAddressesForNetworkID(networkID, customAddresses); err != nil {
+		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
 	return nil
 }

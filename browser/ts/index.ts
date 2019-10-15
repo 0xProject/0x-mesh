@@ -66,36 +66,30 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // customContractAddresses is a mapping of
-    // network ID to contract addresses for that network ID. The contract
-    // addresses for most common networks are already included by default, so this
-    // is typically only needed for testing on custom networks. The given
-    // addresses are added to the default list of addresses for known networks and
-    // overriding any known contract addresses is not allowed. The addresses for
-    // exchange, devUtils, erc20Proxy, and erc721Proxy are required for each
-    // network. For example:
+    // customContractAddresses is set of custom addresses to use for the
+    // configured network ID. The contract addresses for most common networks
+    // are already included by default, so this is typically only needed for
+    // testing on custom networks. The given addresses are added to the default
+    // list of addresses for known networks and overriding any contract
+    // addresses for known networks is not allowed. The addresses for exchange,
+    // devUtils, erc20Proxy, and erc721Proxy are required for each network. For
+    // example:
     //
     //    {
-    //        "999": {
-    //            "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
-    //            "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
-    //            "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
-    //            "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
-    //         }
+    //        exchange: "0x48bacb9266a570d521063ef5dd96e61686dbe788",
+    //        devUtils: "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
+    //        erc20Proxy: "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
+    //        erc721Proxy: "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
     //    }
     //
-    customContractAddresses?: NetworkIDToContractAddresses;
-}
-
-export interface NetworkIDToContractAddresses {
-    [networkID: string]: ContractAddresses;
+    customContractAddresses?: ContractAddresses;
 }
 
 export interface ContractAddresses {
-    erc20Proxy: string;
-    erc721Proxy: string;
     exchange: string;
     devUtils: string;
+    erc20Proxy: string;
+    erc721Proxy: string;
     coordinator?: string;
     coordinatorRegistry?: string;
     weth9?: string;
