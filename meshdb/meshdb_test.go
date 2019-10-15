@@ -136,3 +136,119 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 		assert.Equal(t, expectedSingleAssetData.TokenID, singleAssetData.TokenID)
 	}
 }
+
+func TestTrimOrdersByExpirationTime(t *testing.T) {
+	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	defer meshDB.Close()
+
+	// TODO(albrow): Move these to top of file.
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	require.NoError(t, err)
+	makerAddress := constants.GanacheAccount0
+
+	// Note: most of the fields in these orders are the same. For the purposes of
+	// this test, the only thing that matters is the Salt and ExpirationTime.
+	rawOrders := []*zeroex.Order{
+		{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			Salt:                  big.NewInt(0),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(100),
+			ExchangeAddress:       contractAddresses.Exchange,
+		},
+		{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			Salt:                  big.NewInt(1),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(200),
+			ExchangeAddress:       contractAddresses.Exchange,
+		},
+		{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			Salt:                  big.NewInt(2),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(200),
+			ExchangeAddress:       contractAddresses.Exchange,
+		},
+		{
+			MakerAddress:          makerAddress,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
+			Salt:                  big.NewInt(3),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      big.NewInt(3551808554499581700),
+			TakerAssetAmount:      big.NewInt(1),
+			ExpirationTimeSeconds: big.NewInt(300),
+			ExchangeAddress:       contractAddresses.Exchange,
+		},
+	}
+
+	orders := make([]*Order, len(rawOrders))
+	for i, order := range rawOrders {
+		// Sign, compute order hash, and insert.
+		signedOrder, err := zeroex.SignTestOrder(order)
+		require.NoError(t, err)
+		orderHash, err := order.ComputeOrderHash()
+		require.NoError(t, err)
+
+		order := &Order{
+			Hash:                     orderHash,
+			SignedOrder:              signedOrder,
+			FillableTakerAssetAmount: big.NewInt(1),
+			LastUpdated:              time.Now(),
+			IsRemoved:                false,
+		}
+		orders[i] = order
+		require.NoError(t, meshDB.Orders.Insert(order))
+	}
+
+	// Call CalculateNewMaxExpirationTimeAndTrimDatabase and check the results.
+	targetMaxOrders := 2
+	gotExpirationTime, gotRemovedOrders, err := meshDB.TrimOrdersByExpirationTime(targetMaxOrders)
+	require.NoError(t, err)
+	assert.Equal(t, "199", gotExpirationTime.String(), "newMaxExpirationTime")
+	assert.Len(t, gotRemovedOrders, 2, "wrong number of orders removed")
+	// Check that the expiration time of each removed order is >= the new max.
+	for _, removedOrder := range gotRemovedOrders {
+		expirationTimeOfRemovedOrder := removedOrder.SignedOrder.ExpirationTimeSeconds
+		assert.True(t, expirationTimeOfRemovedOrder.Cmp(gotExpirationTime) != -1, "an order was removed with expiration time (%s) less than the new max (%s)", expirationTimeOfRemovedOrder, gotExpirationTime)
+	}
+	var remainingOrders []*Order
+	require.NoError(t, meshDB.Orders.FindAll(&remainingOrders))
+	assert.Len(t, remainingOrders, 2, "wrong number of orders remaining")
+	// Check that the expiration time of each remaining order is <= the new max.
+	for _, removedOrder := range remainingOrders {
+		expirationTimeOfRemovedOrder := removedOrder.SignedOrder.ExpirationTimeSeconds
+		newMaxPlusOne := big.NewInt(0).Add(gotExpirationTime, big.NewInt(1))
+		assert.True(t, expirationTimeOfRemovedOrder.Cmp(newMaxPlusOne) != 1, "a remaining order had an expiration time (%s) greater than the new max + 1 (%s)", expirationTimeOfRemovedOrder, newMaxPlusOne)
+	}
+}

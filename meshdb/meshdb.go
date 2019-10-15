@@ -12,6 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// unlimitedExpirationTime is the maximum value for uint256, which mens there is
+// effectively no limit on the maximum expiration time for orders.
+var unlimitedExpirationTime *big.Int
+
+func init() {
+	unlimitedExpirationTime, _ = big.NewInt(2).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+}
+
 // Order is the database representation a 0x order along with some relevant metadata
 type Order struct {
 	Hash        common.Hash
@@ -365,4 +373,52 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleA
 
 func uint256ToConstantLengthBytes(v *big.Int) []byte {
 	return []byte(fmt.Sprintf("%080s", v.String()))
+}
+
+// TrimOrdersByExpirationTime removes existing orders with the highest
+// expiration time until the number of remaining orders is <= targetMaxOrders.
+// It returns any orders that were removed and the new max expiration time that
+// can be used to eliminate incoming orders that expire too far in the future.
+func (m *MeshDB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirationTime *big.Int, removedOrders []*Order, err error) {
+	txn := m.Orders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	numOrders, err := m.Orders.Count()
+	if err != nil {
+		return nil, nil, err
+	}
+	if numOrders <= targetMaxOrders {
+		// If the number of orders is less than the target, we don't need to remove
+		// any orders. Return the unlimitedExpirationTime.
+		return unlimitedExpirationTime, nil, nil
+	}
+
+	// Find the orders which we need to remove.
+	filter := m.Orders.ExpirationTimeIndex.All()
+	numOrdersToRemove := numOrders - targetMaxOrders
+	if err := m.Orders.NewQuery(filter).Reverse().Max(numOrdersToRemove).Run(&removedOrders); err != nil {
+		return nil, nil, err
+	}
+
+	// Remove those orders and commit the transaction.
+	for _, order := range removedOrders {
+		if err := txn.Delete(order.Hash.Bytes()); err != nil {
+			return nil, nil, err
+		}
+	}
+	if err := txn.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	// The new max expiration time is simply the minimum expiration time of the
+	// orders that were removed (i.e., the expiration time of the last order in
+	// the slice). We add a buffer of -1 just to make sure we don't exceed
+	// targetMaxOrders. This means it is technically possible that there are a
+	// number of orders currently in the database that exceed the max expiration
+	// time, but no new orders that exceed this time will be added.
+	newMaxExpirationTime = removedOrders[len(removedOrders)-1].SignedOrder.ExpirationTimeSeconds
+	newMaxExpirationTime = newMaxExpirationTime.Sub(newMaxExpirationTime, big.NewInt(1))
+	return newMaxExpirationTime, removedOrders, nil
 }
