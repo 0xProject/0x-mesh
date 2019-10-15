@@ -71,7 +71,7 @@ var NetworkIDToContractAddresses = map[int]ContractAddresses{
 		Exchange:            common.HexToAddress("0x30589010550762d2f0d06f650d8e8b6ade6dbf4b"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
-		DevUtils:            common.HexToAddress("0xb1863ac46ae23ec55d6eeb8ecc8815655ee638a8"),
+		DevUtils:            common.HexToAddress("0x6387a62a340de79f2f0353bd05d9567fe0aca955"),
 		WETH9:               common.HexToAddress("0xd0a1e359811322d97991e03f863a0c30c2cf029c"),
 		ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 	},
