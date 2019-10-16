@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞 
 
 - Updated DevUtils.sol contract address for the Kovan network to one including a bug fix for validating orders with nulled out `feeAssetData` fields. ([#446](https://github.com/0xProject/0x-mesh/pull/446)])
+- Added back Ropsten and Rinkeby support and fixed `exchange` address on Kovan ([#451](https://github.com/0xProject/0x-mesh/pull/451))
 
 ## v5.0.0-beta
 
