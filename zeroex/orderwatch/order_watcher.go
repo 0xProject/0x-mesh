@@ -691,6 +691,12 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 	return nil
 }
 
+// MaxExpirationTime returns the current maximum expiration time for incoming
+// orders.
+func (w *Watcher) MaxExpirationTime() *big.Int {
+	return w.maxExpirationTime
+}
+
 func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	if err != nil {
