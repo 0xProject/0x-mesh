@@ -114,6 +114,7 @@ type Config struct {
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
+	// TODO(albrow): Add max orders as an env var.
 }
 
 type snapshotInfo struct {
@@ -213,7 +214,13 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(meshDB, blockWatcher, orderValidator, config.EthereumNetworkID, config.OrderExpirationBuffer)
+	orderWatcher, err := orderwatch.New(orderwatch.Config{
+		MeshDB:           meshDB,
+		BlockWatcher:     blockWatcher,
+		OrderValidator:   orderValidator,
+		NetworkID:        config.EthereumNetworkID,
+		ExpirationBuffer: config.OrderExpirationBuffer,
+	})
 	if err != nil {
 		return nil, err
 	}

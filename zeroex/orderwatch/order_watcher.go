@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
@@ -40,6 +41,14 @@ var permanentlyDeleteAfter = 4 * time.Minute
 // orders
 var expirationPollingInterval = 50 * time.Millisecond
 
+// maxOrdersTrimRatio affects how many orders are trimmed whenver we reach the
+// maximum number of orders. When order storage is full, Watcher will remove
+// orders until the total number of remaining orders is equal to
+// maxOrdersTrimRatio * maxOrders.
+const maxOrdersTrimRatio = 0.9
+
+const defaultMaxOrders = 10000
+
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
 	meshDB                     *meshdb.MeshDB
@@ -56,30 +65,46 @@ type Watcher struct {
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
 	mu                         sync.Mutex
+	maxExpirationTime          *big.Int
+	maxOrders                  int
+}
+
+type Config struct {
+	MeshDB           *meshdb.MeshDB
+	BlockWatcher     *blockwatch.Watcher
+	OrderValidator   *ordervalidator.OrderValidator
+	NetworkID        int
+	ExpirationBuffer time.Duration
+	MaxOrders        int
 }
 
 // New instantiates a new order watcher
-func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator *ordervalidator.OrderValidator, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
+func New(config Config) (*Watcher, error) {
 	decoder, err := decoder.New()
 	if err != nil {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(config.NetworkID)
 	if err != nil {
 		return nil, err
 	}
 
+	if config.MaxOrders == 0 {
+		config.MaxOrders = defaultMaxOrders
+	}
 	w := &Watcher{
-		meshDB:                     meshDB,
-		blockWatcher:               blockWatcher,
-		expirationBuffer:           expirationBuffer,
-		expirationWatcher:          expirationwatch.New(expirationBuffer),
+		meshDB:                     config.MeshDB,
+		blockWatcher:               config.BlockWatcher,
+		expirationBuffer:           config.ExpirationBuffer,
+		expirationWatcher:          expirationwatch.New(config.ExpirationBuffer),
 		contractAddressToSeenCount: map[common.Address]uint{},
-		orderValidator:             orderValidator,
+		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractAddresses:          contractAddresses,
+		maxExpirationTime:          constants.UnlimitedExpirationTime,
+		maxOrders:                  config.MaxOrders,
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
@@ -574,6 +599,29 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added.
 func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
+	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+		return err
+	} else if orderCount+1 >= w.maxOrders {
+		if err := w.trimOrdersAndFireEvents(); err != nil {
+			return err
+		}
+	} else {
+		// TODO(albrow): We have enough space for new orders. Should Slowly increase
+		// max expiration time.
+	}
+
+	// Final expiration time check before inserting the order. We might have just
+	// changed max expiration time above.
+	//
+	// TODO(albrow): We should really use a transaction starting here in order to
+	// ensure consistency. It's okay if we don't use a transaction above since in
+	// the worst case it would result in more orders being removed than necessary.
+	// But if we don't do it here it could result in too many orders being *added*
+	// and could exceed maxOrders.
+	if orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+		return nil
+	}
+
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
@@ -603,6 +651,41 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		EndState:                 zeroex.ESOrderAdded,
 	}
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+
+	return nil
+}
+
+func (w *Watcher) trimOrdersAndFireEvents() error {
+	targetMaxOrders := int(maxOrdersTrimRatio * float64(w.maxOrders))
+	newMaxExpirationTime, removedOrders, err := w.meshDB.TrimOrdersByExpirationTime(targetMaxOrders)
+	if err != nil {
+		return err
+	}
+	if len(removedOrders) > 0 {
+		logger.WithFields(logger.Fields{
+			"numOrdersRemoved": len(removedOrders),
+			"targetMaxOrders":  targetMaxOrders,
+		}).Debug("removing orders to make space")
+	}
+	for _, removedOrder := range removedOrders {
+		// Fire a "REMOVED" event for each order that was removed.
+		orderEvent := &zeroex.OrderEvent{
+			OrderHash:                removedOrder.Hash,
+			SignedOrder:              removedOrder.SignedOrder,
+			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderRemoved,
+		}
+		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+	}
+	if newMaxExpirationTime.Cmp(w.maxExpirationTime) == -1 {
+		// Decrease the max expiration time to account for the fact that orders were
+		// removed.
+		logger.WithFields(logger.Fields{
+			"oldMaxExpirationTime": w.maxExpirationTime.String(),
+			"newMaxExpirationTime": newMaxExpirationTime.String(),
+		}).Debug("decreasing max expiration time")
+		w.maxExpirationTime = newMaxExpirationTime
+	}
 
 	return nil
 }

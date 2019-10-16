@@ -5,20 +5,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 )
-
-// unlimitedExpirationTime is the maximum value for uint256, which mens there is
-// effectively no limit on the maximum expiration time for orders.
-var unlimitedExpirationTime *big.Int
-
-func init() {
-	unlimitedExpirationTime, _ = big.NewInt(2).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
-}
 
 // Order is the database representation a 0x order along with some relevant metadata
 type Order struct {
@@ -391,8 +384,8 @@ func (m *MeshDB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirati
 	}
 	if numOrders <= targetMaxOrders {
 		// If the number of orders is less than the target, we don't need to remove
-		// any orders. Return the unlimitedExpirationTime.
-		return unlimitedExpirationTime, nil, nil
+		// any orders. Return UnlimitedExpirationTime.
+		return constants.UnlimitedExpirationTime, nil, nil
 	}
 
 	// Find the orders which we need to remove.

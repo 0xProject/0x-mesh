@@ -179,6 +179,12 @@ const (
 	// Fillability for an order can increase if a previously processed fill event
 	// gets reverted, or if a maker tops up their balance/allowance backing an order
 	ESOrderFillabilityIncreased = OrderEventEndState("FILLABILITY_INCREASED")
+	// Order is potentially still valid but was removed for a different reason
+	// (e.g. the database is full or the peer that sent the order was
+	// misbehaving). The order will no longer be watched and no further events for
+	// this order will be emitted. In some cases, the order may be re-added in the
+	// future.
+	ESOrderRemoved = OrderEventEndState("REMOVED")
 )
 
 var eip712OrderTypes = signer.Types{
