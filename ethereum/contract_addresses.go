@@ -42,33 +42,33 @@ var NetworkIDToContractAddresses = map[int]ContractAddresses{
 	// 	WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
 	// 	ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 	// },
-	// // Ropsten
-	// 3: ContractAddresses{
-	// 	ERC20Proxy:          common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
-	// 	ERC721Proxy:         common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
-	// 	Exchange:            common.HexToAddress("0xbff9493f92a3df4b0429b6d00743b3cfb4c85831"),
-	// 	Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
-	// 	CoordinatorRegistry: common.HexToAddress("0x403cc23e88c17c4652fb904784d1af640a6722d9"),
-	// 	DevUtils:            common.HexToAddress("0x3e0b46bad8e374e4a110c12b832cb120dbe4a479"),
-	// 	WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
-	// 	ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
-	// },
-	// // Rinkeby
-	// 4: ContractAddresses{
-	// 	ERC20Proxy:          common.HexToAddress("0x3e809c563c15a295e832e37053798ddc8d6c8dab"),
-	// 	ERC721Proxy:         common.HexToAddress("0x8e1ff02637cb5e39f2fa36c14706aa348b065b09"),
-	// 	Exchange:            common.HexToAddress("0xbff9493f92a3df4b0429b6d00743b3cfb4c85831"),
-	// 	Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
-	// 	CoordinatorRegistry: common.HexToAddress("0x1084b6a398e47907bae43fec3ff4b677db6e4fee"),
-	// 	DevUtils:            common.HexToAddress("0x2d4a9abda7b8b3605c8dbd34e3550a7467c78287"),
-	// 	WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
-	// 	ZRXToken:            common.HexToAddress("0x2727e688b8fd40b198cd5fe6e408e00494a06f07"),
-	// },
+	// Ropsten
+	3: ContractAddresses{
+		ERC20Proxy:          common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
+		ERC721Proxy:         common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
+		Exchange:            common.HexToAddress("0x725bc2f8c85ed0289d3da79cde3125d33fc1d7e6"),
+		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
+		CoordinatorRegistry: common.HexToAddress("0x403cc23e88c17c4652fb904784d1af640a6722d9"),
+		DevUtils:            common.HexToAddress("0x3dfd5157eec10eb1a357c1074de30787ce92cb43"),
+		WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
+		ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
+	},
+	// Rinkeby
+	4: ContractAddresses{
+		ERC20Proxy:          common.HexToAddress("0x2f5ae4f6106e89b4147651688a92256885c5f410"),
+		ERC721Proxy:         common.HexToAddress("0x7656d773e11ff7383a14dcf09a9c50990481cd10"),
+		Exchange:            common.HexToAddress("0x8e1dfaf747b804d041adaed79d68dcef85b8de85"),
+		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
+		CoordinatorRegistry: common.HexToAddress("0x1084b6a398e47907bae43fec3ff4b677db6e4fee"),
+		DevUtils:            common.HexToAddress("0xcfc66b8e75e8f075c3e1d61e6487d73dfe35d808"),
+		WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
+		ZRXToken:            common.HexToAddress("0x8080c7e4b81ecf23aa6f877cfbfd9b0c228c6ffa"),
+	},
 	// Kovan
 	42: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 		ERC721Proxy:         common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
-		Exchange:            common.HexToAddress("0x30589010550762d2f0d06f650d8e8b6ade6dbf4b"),
+		Exchange:            common.HexToAddress("0x617602cd3f734cf1e028c96b3f54c0489bed8022"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
 		DevUtils:            common.HexToAddress("0x6387a62a340de79f2f0353bd05d9567fe0aca955"),
