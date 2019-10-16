@@ -114,7 +114,11 @@ type Config struct {
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
-	// TODO(albrow): Add max orders as an env var.
+	// MaxOrdersInStorage is the maximum number of orders that Mesh will keep in
+	// storage. As the number of orders in storage grows, Mesh will begin
+	// enforcing a limit on maximum expiration time for incoming orders and remove
+	// any orders with an expiration time too far in the future.
+	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"10000"`
 }
 
 type snapshotInfo struct {
@@ -220,6 +224,7 @@ func New(config Config) (*App, error) {
 		OrderValidator:   orderValidator,
 		NetworkID:        config.EthereumNetworkID,
 		ExpirationBuffer: config.OrderExpirationBuffer,
+		MaxOrders:        config.MaxOrdersInStorage,
 	})
 	if err != nil {
 		return nil, err

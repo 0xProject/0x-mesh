@@ -676,6 +676,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 			EndState:                 zeroex.ESOrderRemoved,
 		}
 		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+		// TODO(albrow): remove order from in-memory state.
 	}
 	if newMaxExpirationTime.Cmp(w.maxExpirationTime) == -1 {
 		// Decrease the max expiration time to account for the fact that orders were
