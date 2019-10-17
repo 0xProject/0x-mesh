@@ -247,11 +247,11 @@ func unquoteConfig(config Config) Config {
 }
 
 func getPubSubTopic(networkID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/1", networkID)
+	return fmt.Sprintf("/0x-orders/network/%d/version/2", networkID)
 }
 
 func getRendezvous(networkID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/1", networkID)
+	return fmt.Sprintf("/0x-mesh/network/%d/version/2", networkID)
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
