@@ -676,7 +676,20 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 			EndState:                 zeroex.ESOrderRemoved,
 		}
 		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
-		// TODO(albrow): remove order from in-memory state.
+
+		// Remove in-memory state
+		expirationTimestamp := time.Unix(removedOrder.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+		w.expirationWatcher.Remove(expirationTimestamp, removedOrder.Hash.Hex())
+		err = w.removeAssetDataAddressFromEventDecoder(removedOrder.SignedOrder.MakerAssetData)
+		if err != nil {
+			// This should never happen since the same error would have happened when adding
+			// the assetData to the EventDecoder.
+			logger.WithFields(logger.Fields{
+				"error":       err.Error(),
+				"signedOrder": removedOrder.SignedOrder,
+			}).Error("Unexpected error when trying to remove an assetData from decoder")
+			return err
+		}
 	}
 	if newMaxExpirationTime.Cmp(w.maxExpirationTime) == -1 {
 		// Decrease the max expiration time to account for the fact that orders were
