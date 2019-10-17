@@ -62,7 +62,7 @@ var ErrInternal = errors.New("internal error")
 // TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
 var TestMaxContentLength = 1024 * 512
 
-// UnlimitedExpirationTime is the maximum value for uint256, which mens there is
+// UnlimitedExpirationTime is the maximum value for uint256, which means there is
 // effectively no limit on the maximum expiration time for orders.
 var UnlimitedExpirationTime *big.Int
 
