@@ -41,7 +41,7 @@ var permanentlyDeleteAfter = 4 * time.Minute
 // orders
 var expirationPollingInterval = 50 * time.Millisecond
 
-// maxOrdersTrimRatio affects how many orders are trimmed whenver we reach the
+// maxOrdersTrimRatio affects how many orders are trimmed whenever we reach the
 // maximum number of orders. When order storage is full, Watcher will remove
 // orders until the total number of remaining orders is equal to
 // maxOrdersTrimRatio * maxOrders.
