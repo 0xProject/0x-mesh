@@ -47,7 +47,7 @@ var expirationPollingInterval = 50 * time.Millisecond
 // maxOrdersTrimRatio * maxOrders.
 const maxOrdersTrimRatio = 0.9
 
-const defaultMaxOrders = 10000
+const defaultMaxOrders = 100000
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {

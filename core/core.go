@@ -118,7 +118,7 @@ type Config struct {
 	// storage. As the number of orders in storage grows, Mesh will begin
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
-	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"10000"`
+	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
 }
 
 type snapshotInfo struct {
