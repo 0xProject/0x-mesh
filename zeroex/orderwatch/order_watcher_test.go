@@ -40,6 +40,7 @@ var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+var erc1155FungibleAmount = big.NewInt(100)
 var tokenID = big.NewInt(1)
 
 // Since these tests must be run sequentially, we don't want them to run as part of
@@ -55,6 +56,7 @@ var rpcClient *ethrpc.Client
 var ethClient *ethclient.Client
 var zrx *wrappers.ZRXToken
 var dummyERC721Token *wrappers.DummyERC721Token
+var erc1155Mintable *wrappers.ERC1155Mintable
 var exchange *wrappers.Exchange
 var weth *wrappers.WETH9
 
@@ -75,6 +77,10 @@ func init() {
 		panic(err)
 	}
 	dummyERC721Token, err = wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
+	if err != nil {
+		panic(err)
+	}
+	erc1155Mintable, err = wrappers.NewERC1155Mintable(constants.GanacheDummyERC1155MintableAddress, ethClient)
 	if err != nil {
 		panic(err)
 	}
@@ -189,6 +195,85 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	}
 	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+}
+
+func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Remove Maker's ERC1155 approval to ERC1155Proxy
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	txn, err := erc1155Mintable.SetApprovalForAll(opts, ganacheAddresses.ERC1155Proxy, false)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+}
+
+func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Reduce Maker's ERC1155 balance
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	txn, err := erc1155Mintable.SafeTransferFrom(opts, makerAddress, constants.GanacheAccount4, tokenID, erc1155FungibleAmount, []byte{})
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
