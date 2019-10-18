@@ -2,6 +2,16 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v6.0.0-beta
+
+### Breaking changes 🛠 
+
+- Modified `mesh_getStats` so that it returns the topics used in the pubsub layer differentiated between those that are published to, and those that the node is subscribed to. Mesh nodes can publish to multiple topics but only ever subscribe to a single topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
+
+### Features ✅ 
+
+- Added the ability to specify a custom pubsub topic at instantiation and have the Mesh node receive orders exclusively from peers subscribed to the same topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
+
 ## v5.0.0-beta
 
 ### Breaking changes 🛠 
@@ -55,16 +65,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Fixed bug where block number would sometimes be converted to hex with a leading zero, an invalid hex value per the [Ethereum JSON-RPC specification](https://github.com/ethereum/wiki/wiki/JSON-RPC#hex-value-encoding). ([#353](https://github.com/0xProject/0x-mesh/pull/353))
 - Fixed bug which resulted in orders that were close to expiring being re-added and removed multiple times, resulting in multiple ADDED and EXPIRED events for the same order ([#352](https://github.com/0xProject/0x-mesh/pull/352)).
-
-## v3.0.0-beta
-
-### Breaking changes 🛠 
-
-- Modified `mesh_getStats` so that it returns the topics used in the pubsub layer differentiated between those that are published to, and those that the node is subscribed to. Mesh nodes can publish to multiple topics but only ever subscribe to a single topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
-
-### Features ✅ 
-
-- Added the ability to specify a custom pubsub topic at instantiation and have the Mesh node receive orders exclusively from peers subscribed to the same topic. ([#349](https://github.com/0xProject/0x-mesh/pull/349))
 
 ## v3.0.0-beta
 
