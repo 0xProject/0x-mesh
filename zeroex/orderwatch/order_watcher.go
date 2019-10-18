@@ -97,14 +97,13 @@ func New(config Config) (*Watcher, error) {
 	}
 
 	// Configure a SlowCounter to be used for increasing max expiration time.
+	// This configuration means the first increment will increase the max
+	// expiration time by 10 seconds. Each subsequent increment will double the
+	// amount by which we increase the max expiration time (by 20 seconds, 40
+	// seconds, 80 seconds, etc.).
 	slowCounterConfig := slowcounter.Config{
-		// TODO(albrow): the way rate works makes it difficult to tune. Ideally we
-		// would like to increase by one hour, then two, then four, etc. But the
-		// fact that we are dealing with a time means the magnitude of the number is
-		// quite high. So if we wanted to increase by one hour, the next iteration
-		// would only increase by slightly more than an hour. Could improve by using
-		// a more complicated exponential growth formula.
-		Rate:               1.125,
+		StartingOffset:     big.NewInt(5),
+		Rate:               2,
 		MinDelayBeforeIncr: 5 * time.Minute,
 		MinTicksBeforeIncr: 10,
 		MaxCount:           constants.UnlimitedExpirationTime,

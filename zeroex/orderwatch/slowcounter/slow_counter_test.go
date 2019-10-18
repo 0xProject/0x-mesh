@@ -9,62 +9,122 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSlowCounter(t *testing.T) {
+func TestSlowCounterWithNoDelay(t *testing.T) {
 	t.Parallel()
+
 	config := Config{
-		Rate:               2.0,
+		StartingOffset:     big.NewInt(10),
+		Rate:               2,
+		MinDelayBeforeIncr: 0,
+		MinTicksBeforeIncr: 3,
+		MaxCount:           big.NewInt(1000),
+	}
+
+	testCases := []struct {
+		startingCount *big.Int
+		ticks         int
+		expectedCount *big.Int
+	}{
+		{
+			startingCount: big.NewInt(0),
+			ticks:         0,
+			expectedCount: big.NewInt(0),
+		},
+		{
+			startingCount: big.NewInt(10),
+			ticks:         0,
+			expectedCount: big.NewInt(10),
+		},
+		{
+			startingCount: big.NewInt(0),
+			ticks:         2,
+			expectedCount: big.NewInt(0),
+		},
+		{
+			startingCount: big.NewInt(10),
+			ticks:         2,
+			expectedCount: big.NewInt(10),
+		},
+		{
+			startingCount: big.NewInt(0),
+			ticks:         3,
+			expectedCount: big.NewInt(20),
+		},
+		{
+			startingCount: big.NewInt(10),
+			ticks:         3,
+			expectedCount: big.NewInt(30),
+		},
+		{
+			startingCount: big.NewInt(0),
+			ticks:         6,
+			expectedCount: big.NewInt(40),
+		},
+		{
+			startingCount: big.NewInt(0),
+			ticks:         18,
+			expectedCount: big.NewInt(640),
+		},
+		{
+			startingCount: big.NewInt(0),
+			ticks:         21,
+			expectedCount: big.NewInt(1000), // max count
+		},
+	}
+
+	for _, tc := range testCases {
+		counter, err := New(config, tc.startingCount)
+		require.NoError(t, err)
+
+		for i := 0; i < tc.ticks; i++ {
+			counter.Tick()
+		}
+
+		actualCount := counter.Count()
+		assert.Equal(t, tc.expectedCount.String(), actualCount.String(), "incorrect count (started at %s and did %d ticks)", tc.startingCount, tc.ticks)
+	}
+}
+
+func TestSlowCounterWithDelay(t *testing.T) {
+	t.Parallel()
+
+	config := Config{
+		StartingOffset:     big.NewInt(10),
+		Rate:               2,
 		MinDelayBeforeIncr: 10 * time.Millisecond,
 		MinTicksBeforeIncr: 3,
 		MaxCount:           big.NewInt(1000),
 	}
-	startingCount := big.NewInt(100)
-	sc, err := New(config, startingCount)
+	counter, err := New(config, big.NewInt(0))
 	require.NoError(t, err)
 
-	// Since min ticks has not been met, the counter should not be incremented.
-	for i := 0; i < config.MinTicksBeforeIncr-1; i++ {
-		sc.Tick()
-		assert.Equal(t, startingCount.String(), sc.Count().String(), "after %d ticks, count should not yet be incremented", i+1)
+	for i := 0; i < 5; i++ {
+		wasIncremented := counter.Tick()
+		assert.False(t, wasIncremented, "counter should not be incremented before min delay")
 	}
 
-	// Since the time hasn't elapsed yet, the next tick should *not* increment the
-	// counter.
-	sc.Tick()
-	assert.Equal(t, startingCount.String(), sc.Count().String(), "count should not yet be incremented because MinDelayBeforeIncr has not passed")
+	time.Sleep(config.MinDelayBeforeIncr)
 
-	// Sleep until MinDelayBeforeIncr is satisfied.
-	time.Sleep(config.MinDelayBeforeIncr + time.Since(sc.lastIncr))
-
-	// On the next tick, the counter should be incremented once.
-	expectedCount := big.NewInt(200)
-	for i := 0; i < config.MinTicksBeforeIncr; i++ {
-		sc.Tick()
-		assert.Equal(t, expectedCount.String(), sc.Count().String(), "after %d ticks, count should be incremented once", i+config.MinTicksBeforeIncr)
+	{
+		wasIncremented := counter.Tick()
+		assert.True(t, wasIncremented, "counter should be incremented after min delay")
+		expectedCount := big.NewInt(20)
+		actualCount := counter.Count()
+		assert.Equal(t, expectedCount, actualCount, "wrong count after counter was incremented")
 	}
 
-	// Sleep until MinDelayBeforeIncr is satisfied.
-	time.Sleep(config.MinDelayBeforeIncr + time.Since(sc.lastIncr))
-
-	// On the next tick, the counter should be incremented *twice* total.
-	expectedCount = big.NewInt(400)
-	sc.Tick()
-	assert.Equal(t, expectedCount.String(), sc.Count().String(), "after %d ticks, count should be incremented twice", config.MinTicksBeforeIncr*2)
-
-	// Reset the counter.
-	newStart := big.NewInt(150)
-	sc.Reset(newStart)
-	assert.Equal(t, newStart.String(), sc.Count().String(), "after being reset, count should be the new starting value")
-
-	// Wait for conditions to be met.
-	for i := 0; i < config.MinTicksBeforeIncr-1; i++ {
-		sc.Tick()
-		assert.Equal(t, newStart.String(), sc.Count().String(), "after %d ticks after being reset, count should not yet be incremented", i+1)
+	for i := 0; i < 5; i++ {
+		wasIncremented := counter.Tick()
+		assert.False(t, wasIncremented, "counter should not be incremented before min delay")
 	}
-	time.Sleep(config.MinDelayBeforeIncr + time.Since(sc.lastIncr))
 
-	// On the next tick, the counter should be incremented *once* from its *new*
-	// starting value.
-	expectedCount = big.NewInt(300)
-	sc.Tick()
-	assert.Equal(t, expectedCount.String(), sc.Count().String(), "after being reset, count should be incremented once")
+	time.Sleep(config.MinDelayBeforeIncr)
+
+	{
+		wasIncremented := counter.Tick()
+		assert.True(t, wasIncremented, "counter should be incremented after min delay")
+		expectedCount := big.NewInt(40)
+		actualCount := counter.Count()
+		assert.Equal(t, expectedCount, actualCount, "wrong count after counter was incremented")
+	}
 }
