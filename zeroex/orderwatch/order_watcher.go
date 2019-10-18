@@ -632,24 +632,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 			return err
 		}
 	} else {
-		// We have enough space for new orders. Trigger a tick for the counter which
-		// will slowly increase max expiration time.
-		if wasIncremented := w.maxExpirationCounter.Tick(); wasIncremented {
-			newMaxExpiration := w.maxExpirationCounter.Count()
-			logger.WithFields(logger.Fields{
-				"oldMaxExpirationTime": w.maxExpirationTime.String(),
-				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
-			}).Debug("increasing max expiration time")
-			w.maxExpirationTime.Set(newMaxExpiration)
-
-			// Save the new max expiration time in the database.
-			if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
-				metadata.MaxExpirationTime = w.maxExpirationTime
-				return metadata
-			}); err != nil {
-				logger.WithError(err).Error("could not update max expiration time in database")
-			}
-		}
+		w.checkIncreaseMaxExpirationTime()
 	}
 
 	// Final expiration time check before inserting the order. We might have just
@@ -1006,6 +989,17 @@ func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *me
 		}).Error("Unexpected error when trying to remove an assetData from decoder")
 		return err
 	}
+
+	// Finally, check if removing this order means we can increase the max
+	// expiration time.
+	currentCount, err := w.meshDB.Orders.Count()
+	if err != nil {
+		return err
+	}
+	if currentCount < w.maxOrders {
+		w.checkIncreaseMaxExpirationTime()
+	}
+
 	return nil
 }
 
@@ -1134,4 +1128,25 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return nil
+}
+
+func (w *Watcher) checkIncreaseMaxExpirationTime() {
+	// We have enough space for new orders. Trigger a tick for the counter which
+	// will slowly increase max expiration time.
+	if wasIncremented := w.maxExpirationCounter.Tick(); wasIncremented {
+		newMaxExpiration := w.maxExpirationCounter.Count()
+		logger.WithFields(logger.Fields{
+			"oldMaxExpirationTime": w.maxExpirationTime.String(),
+			"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
+		}).Debug("increasing max expiration time")
+		w.maxExpirationTime.Set(newMaxExpiration)
+
+		// Save the new max expiration time in the database.
+		if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+			metadata.MaxExpirationTime = w.maxExpirationTime
+			return metadata
+		}); err != nil {
+			logger.WithError(err).Error("could not update max expiration time in database")
+		}
+	}
 }
