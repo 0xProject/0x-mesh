@@ -13,13 +13,13 @@ import (
 type SlowCounter struct {
 	mut                sync.Mutex
 	config             Config
-	rateRat            *big.Rat
 	lastIncr           time.Time
 	ticksSinceLastIncr int
-	interval           float64
-	currentCount       *big.Rat
+	// currentCount tracks the current count. We use a big.Float here to preserve
+	// accuracy (i.e., big.Int might not increase after an incr due to rounding).
+	currentCount *big.Float
 	// placeholder to minimize memory allocations.
-	nextCount *big.Rat
+	nextCount *big.Float
 }
 
 // Config is a set of configuration options for SlowCounter.
@@ -29,7 +29,9 @@ type Config struct {
 	//
 	//     nextCount = currentCount * rate
 	//
-	Rate *big.Rat
+	Rate float64
+	// rateBig is Rate converted to a big.Float in order to make the math easier.
+	rateBig *big.Float
 	// MinDelayBeforeIncr is the minum amount of time to wait before the counter
 	// is incremented. Both MinDelayBeforeIncr and MinTicksBeforeIncr conditions
 	// must be satisfied in order for the counter to be incremented.
@@ -40,19 +42,24 @@ type Config struct {
 	MinTicksBeforeIncr int
 	// MaxCount is the maximum value for the counter. After reaching MaxCount, the
 	// counter will stop incrementing.
-	MaxCount *big.Rat
+	MaxCount *big.Int
+	// maxCountFloat is CaxCount converted to a big.Float in order to make the
+	// math easier.
+	maxCountFloat *big.Float
 }
 
 // New returns a new SlowCounter with the given start count.
-func New(config Config, start *big.Rat) (*SlowCounter, error) {
+func New(config Config, start *big.Int) (*SlowCounter, error) {
 	if config.MaxCount == nil {
 		return nil, errors.New("config.MaxCount cannot be nil")
 	}
+	config.rateBig = big.NewFloat(config.Rate)
+	config.maxCountFloat = big.NewFloat(1).SetInt(config.MaxCount)
 	return &SlowCounter{
 		config:       config,
 		lastIncr:     time.Now(),
-		currentCount: start,
-		nextCount:    big.NewRat(1, 1),
+		currentCount: big.NewFloat(0).SetInt(start),
+		nextCount:    big.NewFloat(0),
 	}, nil
 }
 
@@ -62,7 +69,7 @@ func (sc *SlowCounter) Tick() bool {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
-	if sc.currentCount.Cmp(sc.config.MaxCount) == 0 {
+	if sc.currentCount.Cmp(sc.config.maxCountFloat) != -1 {
 		// Count is already at maximum. Don't need to do anything.
 		return false
 	}
@@ -85,27 +92,28 @@ func (sc *SlowCounter) incr() {
 
 	// Use the exponential growth forumula to determine nextCount. The following
 	// is written to minimize new memory allocations.
-	sc.currentCount = sc.currentCount.Mul(sc.currentCount, sc.config.Rate)
+	sc.currentCount = sc.currentCount.Mul(sc.currentCount, sc.config.rateBig)
 
 	// If currentCount is greater than MaxCount, set it to MaxCount.
-	if sc.currentCount.Cmp(sc.config.MaxCount) == 1 {
-		sc.currentCount.Set(sc.config.MaxCount)
+	if sc.currentCount.Cmp(sc.config.maxCountFloat) == 1 {
+		sc.currentCount.Set(sc.config.maxCountFloat)
 	}
 }
 
 // Count returns the current count.
-func (sc *SlowCounter) Count() *big.Rat {
-	return sc.currentCount
+func (sc *SlowCounter) Count() *big.Int {
+	countInt := big.NewInt(0)
+	sc.currentCount.Int(countInt)
+	return countInt
 }
 
 // Reset resets the counter to the given count. This also resets the conditions
 // for MinDelayBeforeIncr and MinTicksBeforeIncr.
-func (sc *SlowCounter) Reset(count *big.Rat) {
+func (sc *SlowCounter) Reset(count *big.Int) {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
 	sc.lastIncr = time.Now()
 	sc.ticksSinceLastIncr = 0
-	sc.interval = 0
-	sc.currentCount.Set(count)
+	sc.currentCount.SetInt(count)
 }

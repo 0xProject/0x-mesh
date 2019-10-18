@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sync"
 	"time"
-
-	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -20,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -106,12 +104,12 @@ func New(config Config) (*Watcher, error) {
 		// quite high. So if we wanted to increase by one hour, the next iteration
 		// would only increase by slightly more than an hour. Could improve by using
 		// a more complicated exponential growth formula.
-		Rate:               big.NewRat(9, 8), // 1.125
+		Rate:               1.125,
 		MinDelayBeforeIncr: 5 * time.Minute,
 		MinTicksBeforeIncr: 10,
-		MaxCount:           big.NewRat(1, 1).SetInt(constants.UnlimitedExpirationTime),
+		MaxCount:           constants.UnlimitedExpirationTime,
 	}
-	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, big.NewRat(1, 1).SetInt(constants.UnlimitedExpirationTime))
+	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, constants.UnlimitedExpirationTime)
 	if err != nil {
 		return nil, err
 	}
@@ -633,15 +631,12 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		// We have enough space for new orders. Trigger a tick for the counter which
 		// will slowly increase max expiration time.
 		if wasIncremented := w.maxExpirationCounter.Tick(); wasIncremented {
-			// TODO(albrow): Optimize by only using big.Int and big.Rat types when
-			// necessary. Inside of SlowCounter we don't need them.
-			newMaxFloat, _ := w.maxExpirationCounter.Count().Float64()
-			newMaxInt := int64(math.Floor(newMaxFloat))
+			newMaxExpiration := w.maxExpirationCounter.Count()
 			logger.WithFields(logger.Fields{
 				"oldMaxExpirationTime": w.maxExpirationTime.String(),
-				"newMaxExpirationTime": fmt.Sprint(newMaxInt),
+				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
 			}).Debug("increasing max expiration time")
-			w.maxExpirationTime.SetInt64(newMaxInt)
+			w.maxExpirationTime.Set(newMaxExpiration)
 		}
 	}
 
@@ -734,7 +729,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 			"newMaxExpirationTime": newMaxExpirationTime.String(),
 		}).Debug("decreasing max expiration time")
 		w.maxExpirationTime = newMaxExpirationTime
-		w.maxExpirationCounter.Reset(big.NewRat(newMaxExpirationTime.Int64(), 1))
+		w.maxExpirationCounter.Reset(newMaxExpirationTime)
 	}
 
 	return nil

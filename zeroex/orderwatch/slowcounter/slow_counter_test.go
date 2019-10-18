@@ -12,12 +12,12 @@ import (
 func TestSlowCounter(t *testing.T) {
 	t.Parallel()
 	config := Config{
-		Rate:               big.NewRat(2, 1),
+		Rate:               2.0,
 		MinDelayBeforeIncr: 10 * time.Millisecond,
 		MinTicksBeforeIncr: 3,
-		MaxCount:           big.NewRat(1000, 1),
+		MaxCount:           big.NewInt(1000),
 	}
-	startingCount := big.NewRat(100, 1)
+	startingCount := big.NewInt(100)
 	sc, err := New(config, startingCount)
 	require.NoError(t, err)
 
@@ -36,7 +36,7 @@ func TestSlowCounter(t *testing.T) {
 	time.Sleep(config.MinDelayBeforeIncr + time.Since(sc.lastIncr))
 
 	// On the next tick, the counter should be incremented once.
-	expectedCount := big.NewRat(200, 1)
+	expectedCount := big.NewInt(200)
 	for i := 0; i < config.MinTicksBeforeIncr; i++ {
 		sc.Tick()
 		assert.Equal(t, expectedCount.String(), sc.Count().String(), "after %d ticks, count should be incremented once", i+config.MinTicksBeforeIncr)
@@ -46,12 +46,12 @@ func TestSlowCounter(t *testing.T) {
 	time.Sleep(config.MinDelayBeforeIncr + time.Since(sc.lastIncr))
 
 	// On the next tick, the counter should be incremented *twice* total.
-	expectedCount = big.NewRat(400, 1)
+	expectedCount = big.NewInt(400)
 	sc.Tick()
 	assert.Equal(t, expectedCount.String(), sc.Count().String(), "after %d ticks, count should be incremented twice", config.MinTicksBeforeIncr*2)
 
 	// Reset the counter.
-	newStart := big.NewRat(150, 1)
+	newStart := big.NewInt(150)
 	sc.Reset(newStart)
 	assert.Equal(t, newStart.String(), sc.Count().String(), "after being reset, count should be the new starting value")
 
@@ -64,7 +64,7 @@ func TestSlowCounter(t *testing.T) {
 
 	// On the next tick, the counter should be incremented *once* from its *new*
 	// starting value.
-	expectedCount = big.NewRat(300, 1)
+	expectedCount = big.NewInt(300)
 	sc.Tick()
 	assert.Equal(t, expectedCount.String(), sc.Count().String(), "after being reset, count should be incremented once")
 }
