@@ -90,6 +90,7 @@ export interface ContractAddresses {
     devUtils: string;
     erc20Proxy: string;
     erc721Proxy: string;
+    erc1155Proxy: string;
     coordinator?: string;
     coordinatorRegistry?: string;
     weth9?: string;
