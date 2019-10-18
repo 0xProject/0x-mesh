@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -66,6 +69,7 @@ type Watcher struct {
 	wasStartedOnce             bool
 	mu                         sync.Mutex
 	maxExpirationTime          *big.Int
+	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
 }
 
@@ -93,6 +97,25 @@ func New(config Config) (*Watcher, error) {
 	if config.MaxOrders == 0 {
 		config.MaxOrders = defaultMaxOrders
 	}
+
+	// Configure a SlowCounter to be used for increasing max expiration time.
+	slowCounterConfig := slowcounter.Config{
+		// TODO(albrow): the way rate works makes it difficult to tune. Ideally we
+		// would like to increase by one hour, then two, then four, etc. But the
+		// fact that we are dealing with a time means the magnitude of the number is
+		// quite high. So if we wanted to increase by one hour, the next iteration
+		// would only increase by slightly more than an hour. Could improve by using
+		// a more complicated exponential growth formula.
+		Rate:               big.NewRat(9, 8), // 1.125
+		MinDelayBeforeIncr: 5 * time.Minute,
+		MinTicksBeforeIncr: 10,
+		MaxCount:           big.NewRat(1, 1).SetInt(constants.UnlimitedExpirationTime),
+	}
+	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, big.NewRat(1, 1).SetInt(constants.UnlimitedExpirationTime))
+	if err != nil {
+		return nil, err
+	}
+
 	w := &Watcher{
 		meshDB:                     config.MeshDB,
 		blockWatcher:               config.BlockWatcher,
@@ -103,7 +126,8 @@ func New(config Config) (*Watcher, error) {
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractAddresses:          contractAddresses,
-		maxExpirationTime:          constants.UnlimitedExpirationTime,
+		maxExpirationTime:          big.NewInt(1).Set(constants.UnlimitedExpirationTime),
+		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
 	}
 
@@ -606,8 +630,19 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 			return err
 		}
 	} else {
-		// TODO(albrow): We have enough space for new orders. Should Slowly increase
-		// max expiration time.
+		// We have enough space for new orders. Trigger a tick for the counter which
+		// will slowly increase max expiration time.
+		if wasIncremented := w.maxExpirationCounter.Tick(); wasIncremented {
+			// TODO(albrow): Optimize by only using big.Int and big.Rat types when
+			// necessary. Inside of SlowCounter we don't need them.
+			newMaxFloat, _ := w.maxExpirationCounter.Count().Float64()
+			newMaxInt := int64(math.Floor(newMaxFloat))
+			logger.WithFields(logger.Fields{
+				"oldMaxExpirationTime": w.maxExpirationTime.String(),
+				"newMaxExpirationTime": fmt.Sprint(newMaxInt),
+			}).Debug("increasing max expiration time")
+			w.maxExpirationTime.SetInt64(newMaxInt)
+		}
 	}
 
 	// Final expiration time check before inserting the order. We might have just
@@ -699,6 +734,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 			"newMaxExpirationTime": newMaxExpirationTime.String(),
 		}).Debug("decreasing max expiration time")
 		w.maxExpirationTime = newMaxExpirationTime
+		w.maxExpirationCounter.Reset(big.NewRat(newMaxExpirationTime.Int64(), 1))
 	}
 
 	return nil

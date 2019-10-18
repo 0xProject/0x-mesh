@@ -57,14 +57,14 @@ func New(config Config, start *big.Rat) (*SlowCounter, error) {
 }
 
 // Tick processes a single tick and may increment the counter if the required
-// conditions are met.
-func (sc *SlowCounter) Tick() {
+// conditions are met. Returns true if the counter was incremented.
+func (sc *SlowCounter) Tick() bool {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
 	if sc.currentCount.Cmp(sc.config.MaxCount) == 0 {
 		// Count is already at maximum. Don't need to do anything.
-		return
+		return false
 	}
 
 	sc.ticksSinceLastIncr += 1
@@ -72,7 +72,10 @@ func (sc *SlowCounter) Tick() {
 	minTimeHasPassed := time.Now().After(sc.lastIncr.Add(sc.config.MinDelayBeforeIncr))
 	if minTicksHaveOccurred && minTimeHasPassed {
 		sc.incr()
+		return true
 	}
+
+	return false
 }
 
 // incr increments the counter.
