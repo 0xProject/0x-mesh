@@ -218,6 +218,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize order watcher (but don't start it yet).
+	// TODO(albrow): Load previous max expiration time from the database.
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
 		MeshDB:           meshDB,
 		BlockWatcher:     blockWatcher,
