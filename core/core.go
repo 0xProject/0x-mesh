@@ -137,6 +137,11 @@ type App struct {
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
+	messageHandler            *MessageHandler
+}
+
+type MessageHandler struct {
+	nextOffset int
 }
 
 func New(config Config) (*App, error) {
@@ -234,6 +239,9 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	messageHandler := &MessageHandler{
+		nextOffset: 0,
+	}
 
 	app := &App{
 		config:                    config,
@@ -249,6 +257,7 @@ func New(config Config) (*App, error) {
 		meshMessageJSONSchema:     meshMessageJSONSchema,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
+		messageHandler:            messageHandler,
 	}
 
 	log.WithFields(map[string]interface{}{
