@@ -72,12 +72,13 @@ type Watcher struct {
 }
 
 type Config struct {
-	MeshDB           *meshdb.MeshDB
-	BlockWatcher     *blockwatch.Watcher
-	OrderValidator   *ordervalidator.OrderValidator
-	NetworkID        int
-	ExpirationBuffer time.Duration
-	MaxOrders        int
+	MeshDB            *meshdb.MeshDB
+	BlockWatcher      *blockwatch.Watcher
+	OrderValidator    *ordervalidator.OrderValidator
+	NetworkID         int
+	ExpirationBuffer  time.Duration
+	MaxOrders         int
+	MaxExpirationTime *big.Int
 }
 
 // New instantiates a new order watcher
@@ -92,8 +93,12 @@ func New(config Config) (*Watcher, error) {
 		return nil, err
 	}
 
+	// Apply defaults to config.
 	if config.MaxOrders == 0 {
 		config.MaxOrders = defaultMaxOrders
+	}
+	if config.MaxExpirationTime == nil {
+		config.MaxExpirationTime = constants.UnlimitedExpirationTime
 	}
 
 	// Configure a SlowCounter to be used for increasing max expiration time.
@@ -108,7 +113,7 @@ func New(config Config) (*Watcher, error) {
 		MinTicksBeforeIncr: 10,
 		MaxCount:           constants.UnlimitedExpirationTime,
 	}
-	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, constants.UnlimitedExpirationTime)
+	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, config.MaxExpirationTime)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +128,7 @@ func New(config Config) (*Watcher, error) {
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractAddresses:          contractAddresses,
-		maxExpirationTime:          big.NewInt(1).Set(constants.UnlimitedExpirationTime),
+		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
 		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
 	}
@@ -636,6 +641,14 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
 			}).Debug("increasing max expiration time")
 			w.maxExpirationTime.Set(newMaxExpiration)
+
+			// Save the new max expiration time in the database.
+			if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+				metadata.MaxExpirationTime = w.maxExpirationTime
+				return metadata
+			}); err != nil {
+				logger.WithError(err).Error("could not update max expiration time in database")
+			}
 		}
 	}
 
@@ -729,6 +742,14 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 		}).Debug("decreasing max expiration time")
 		w.maxExpirationTime = newMaxExpirationTime
 		w.maxExpirationCounter.Reset(newMaxExpirationTime)
+
+		// Save the new max expiration time in the database.
+		if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+			metadata.MaxExpirationTime = w.maxExpirationTime
+			return metadata
+		}); err != nil {
+			logger.WithError(err).Error("could not update max expiration time in database")
+		}
 	}
 
 	return nil

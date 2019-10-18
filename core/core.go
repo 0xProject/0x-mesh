@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
@@ -183,8 +184,9 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	// Check if the DB has been previously intialized with a different networkId
-	if err = initNetworkID(config.EthereumNetworkID, meshDB); err != nil {
+	// Initialize metadata and check stored network id (if any).
+	metadata, err := initMetadata(config.EthereumNetworkID, meshDB)
+	if err != nil {
 		return nil, err
 	}
 
@@ -218,14 +220,14 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize order watcher (but don't start it yet).
-	// TODO(albrow): Load previous max expiration time from the database.
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:           meshDB,
-		BlockWatcher:     blockWatcher,
-		OrderValidator:   orderValidator,
-		NetworkID:        config.EthereumNetworkID,
-		ExpirationBuffer: config.OrderExpirationBuffer,
-		MaxOrders:        config.MaxOrdersInStorage,
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		NetworkID:         config.EthereumNetworkID,
+		ExpirationBuffer:  config.OrderExpirationBuffer,
+		MaxOrders:         config.MaxOrdersInStorage,
+		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
@@ -310,27 +312,30 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initNetworkID(networkID int, meshDB *meshdb.MeshDB) error {
+func initMetadata(networkID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
 	metadata, err := meshDB.GetMetadata()
 	if err != nil {
 		if _, ok := err.(db.NotFoundError); ok {
 			// No stored metadata found (first startup)
-			metadata = &meshdb.Metadata{EthereumNetworkID: networkID}
-			if err := meshDB.SaveMetadata(metadata); err != nil {
-				return err
+			metadata = &meshdb.Metadata{
+				EthereumNetworkID: networkID,
+				MaxExpirationTime: constants.UnlimitedExpirationTime,
 			}
-			return nil
+			if err := meshDB.SaveMetadata(metadata); err != nil {
+				return nil, err
+			}
+			return metadata, nil
 		}
-		return err
+		return nil, err
 	}
 
 	// on subsequent startups, verify we are on the same network
 	if metadata.EthereumNetworkID != networkID {
 		err := fmt.Errorf("expected networkID to be %d but got %d", metadata.EthereumNetworkID, networkID)
 		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
-		return err
+		return nil, err
 	}
-	return nil
+	return metadata, nil
 }
 
 func (app *App) Start(ctx context.Context) error {

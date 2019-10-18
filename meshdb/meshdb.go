@@ -36,6 +36,7 @@ func (o Order) ID() []byte {
 // Metadata is the database representation of MeshDB instance metadata
 type Metadata struct {
 	EthereumNetworkID int
+	MaxExpirationTime *big.Int
 }
 
 // ID returns the id used for the metadata collection (one per DB)
@@ -289,12 +290,34 @@ func (m *MeshDB) GetMetadata() (*Metadata, error) {
 	return &metadata, nil
 }
 
-// SaveMetadata inserts the metadata into the database.
+// SaveMetadata inserts the metadata into the database, overwriting any existing
+// metadata.
 func (m *MeshDB) SaveMetadata(metadata *Metadata) error {
 	if err := m.metadata.Insert(metadata); err != nil {
 		return err
 	}
 	return nil
+}
+
+// UpdateMetadata updates the metadata in the database via a transaction. It
+// accepts a callback function which will be provided with the old metadata and
+// should return the new metadata to save.
+func (m *MeshDB) UpdateMetadata(updater func(oldmetadata Metadata) (newMetadata Metadata)) error {
+	txn := m.metadata.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	oldMetadata, err := m.GetMetadata()
+	if err != nil {
+		return err
+	}
+	newMetadata := updater(*oldMetadata)
+	if err := txn.Update(&newMetadata); err != nil {
+		return err
+	}
+
+	return txn.Commit()
 }
 
 type singleAssetData struct {
