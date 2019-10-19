@@ -11,6 +11,8 @@ import {
     ContractEvent,
     ContractEventKind,
     ContractEventParameters,
+    ERC1155ApprovalForAllEvent,
+    ERC721ApprovalForAllEvent,
     ExchangeCancelEvent,
     GetOrdersResponse,
     GetStatsResponse,
@@ -24,6 +26,8 @@ import {
     RawValidationResults,
     RejectedOrderInfo,
     StringifiedContractEvent,
+    StringifiedERC1155TransferBatchEvent,
+    StringifiedERC1155TransferSingleEvent,
     StringifiedERC20ApprovalEvent,
     StringifiedERC20TransferEvent,
     StringifiedERC721ApprovalEvent,
@@ -31,7 +35,7 @@ import {
     StringifiedExchangeCancelUpToEvent,
     StringifiedExchangeFillEvent,
     StringifiedWethDepositEvent,
-    StringifiedWethWithdrawalEvent,
+StringifiedWethWithdrawalEvent,
     ValidationResults,
     WSOpts,
 } from './types';
@@ -122,6 +126,40 @@ export class WSClient {
                         owner: erc721ApprovalEvent.owner,
                         approved: erc721ApprovalEvent.approved,
                         tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
+                    };
+                    break;
+                case ContractEventKind.ERC721ApprovalForAllEvent:
+                    parameters = rawParameters as ERC721ApprovalForAllEvent;
+                    break;
+                case ContractEventKind.ERC1155ApprovalForAllEvent:
+                    parameters = rawParameters as ERC1155ApprovalForAllEvent;
+                    break;
+                case ContractEventKind.ERC1155TransferSingleEvent:
+                    const erc1155TransferSingleEvent = rawParameters as StringifiedERC1155TransferSingleEvent;
+                    parameters = {
+                        operator: erc1155TransferSingleEvent.operator,
+                        from: erc1155TransferSingleEvent.from,
+                        to: erc1155TransferSingleEvent.to,
+                        id: new BigNumber(erc1155TransferSingleEvent.id),
+                        value: new BigNumber(erc1155TransferSingleEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC1155TransferBatchEvent:
+                    const erc1155TransferBatchEvent = rawParameters as StringifiedERC1155TransferBatchEvent;
+                    const ids: BigNumber[] = [];
+                    erc1155TransferBatchEvent.ids.forEach(id => {
+                        ids.push(new BigNumber(id));
+                    });
+                    const values: BigNumber[] = [];
+                    erc1155TransferBatchEvent.values.forEach(value => {
+                        values.push(new BigNumber(value));
+                    });
+                    parameters = {
+                        operator: erc1155TransferBatchEvent.operator,
+                        from: erc1155TransferBatchEvent.from,
+                        to: erc1155TransferBatchEvent.to,
+                        ids,
+                        values,
                     };
                     break;
                 case ContractEventKind.ExchangeFillEvent:

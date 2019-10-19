@@ -90,6 +90,7 @@ export interface ContractAddresses {
     devUtils: string;
     erc20Proxy: string;
     erc721Proxy: string;
+    erc1155Proxy: string;
     coordinator?: string;
     coordinatorRegistry?: string;
     weth9?: string;
@@ -208,6 +209,45 @@ export interface ERC721ApprovalForAllEvent {
     approved: boolean;
 }
 
+
+export interface ERC1155TransferSingleEvent {
+    operator: string;
+    from: string;
+    to: string;
+    id: BigNumber;
+    value: BigNumber;
+}
+
+interface WrapperERC1155TransferSingleEvent {
+    operator: string;
+    from: string;
+    to: string;
+    id: string;
+    value: string;
+}
+
+export interface ERC1155TransferBatchEvent {
+    operator: string;
+    from: string;
+    to: string;
+    ids: BigNumber[];
+    values: BigNumber[];
+}
+
+interface WrapperERC1155TransferBatchEvent {
+    operator: string;
+    from: string;
+    to: string;
+    ids: string[];
+    values: string[];
+}
+
+export interface ERC1155ApprovalForAllEvent {
+    owner: string;
+    operator: string;
+    approved: boolean;
+}
+
 export interface ExchangeFillEvent {
     makerAddress: string;
     takerAddress: string;
@@ -282,6 +322,10 @@ enum ContractEventKind {
     ERC20ApprovalEvent = 'ERC20ApprovalEvent',
     ERC721TransferEvent = 'ERC721TransferEvent',
     ERC721ApprovalEvent = 'ERC721ApprovalEvent',
+    ERC721ApprovalForAllEvent = 'ERC721ApprovalForAllEvent',
+    ERC1155ApprovalForAllEvent = 'ERC1155ApprovalForAllEvent',
+    ERC1155TransferSingleEvent = 'ERC1155TransferSingleEvent',
+    ERC1155TransferBatchEvent = 'ERC1155TransferBatchEvent',
     ExchangeFillEvent = 'ExchangeFillEvent',
     ExchangeCancelEvent = 'ExchangeCancelEvent',
     ExchangeCancelUpToEvent = 'ExchangeCancelUpToEvent',
@@ -299,7 +343,10 @@ type WrapperContractEventParameters =
     | WrapperWethWithdrawalEvent
     | WrapperWethDepositEvent
     | ERC721ApprovalForAllEvent
-    | ExchangeCancelEvent;
+    | ExchangeCancelEvent
+    | WrapperERC1155TransferSingleEvent
+    | WrapperERC1155TransferBatchEvent
+    | ERC1155ApprovalForAllEvent;
 
 type ContractEventParameters =
     | ERC20TransferEvent
@@ -311,7 +358,10 @@ type ContractEventParameters =
     | WethWithdrawalEvent
     | WethDepositEvent
     | ERC721ApprovalForAllEvent
-    | ExchangeCancelEvent;
+    | ExchangeCancelEvent
+    | ERC1155TransferSingleEvent
+    | ERC1155TransferBatchEvent
+    | ERC1155ApprovalForAllEvent;
 
 export interface ContractEvent {
     blockHash: string;
@@ -631,6 +681,40 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                     owner: erc721ApprovalEvent.owner,
                     approved: erc721ApprovalEvent.approved,
                     tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
+                };
+                break;
+            case ContractEventKind.ERC721ApprovalForAllEvent:
+                parameters = rawParameters as ERC721ApprovalForAllEvent;
+                break;
+            case ContractEventKind.ERC1155ApprovalForAllEvent:
+                parameters = rawParameters as ERC1155ApprovalForAllEvent;
+                break;
+            case ContractEventKind.ERC1155TransferSingleEvent:
+                const erc1155TransferSingleEvent = rawParameters as WrapperERC1155TransferSingleEvent;
+                parameters = {
+                    operator: erc1155TransferSingleEvent.operator,
+                    from: erc1155TransferSingleEvent.from,
+                    to: erc1155TransferSingleEvent.to,
+                    id: new BigNumber(erc1155TransferSingleEvent.id),
+                    value: new BigNumber(erc1155TransferSingleEvent.value),
+                };
+                break;
+            case ContractEventKind.ERC1155TransferBatchEvent:
+                const erc1155TransferBatchEvent = rawParameters as WrapperERC1155TransferBatchEvent;
+                const ids: BigNumber[] = []
+                erc1155TransferBatchEvent.ids.forEach(id => {
+                    ids.push(new BigNumber(id))
+                })
+                const values: BigNumber[] = []
+                erc1155TransferBatchEvent.values.forEach(value => {
+                    values.push(new BigNumber(value))
+                })
+                parameters = {
+                    operator: erc1155TransferBatchEvent.operator,
+                    from: erc1155TransferBatchEvent.from,
+                    to: erc1155TransferBatchEvent.to,
+                    ids,
+                    values,
                 };
                 break;
             case ContractEventKind.ExchangeFillEvent:

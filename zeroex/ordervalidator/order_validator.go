@@ -728,6 +728,12 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		if err != nil {
 			return false
 		}
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
