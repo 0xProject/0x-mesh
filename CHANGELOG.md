@@ -2,12 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v5.0.1-beta-0xv3
+## v5.0.2-beta-0xv3
 
 ### Bug fixes 🐞 
 
 - Updated DevUtils.sol contract address for the Kovan network to one including a bug fix for validating orders with nulled out `feeAssetData` fields. ([#446](https://github.com/0xProject/0x-mesh/pull/446)])
 - Added back Ropsten and Rinkeby support and fixed `exchange` address on Kovan ([#451](https://github.com/0xProject/0x-mesh/pull/451))
+- Segregate V3 Mesh network from V2 network ([#455](https://github.com/0xProject/0x-mesh/pull/455))
 
 ## v5.0.0-beta
 
