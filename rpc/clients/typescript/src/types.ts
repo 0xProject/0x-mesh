@@ -419,4 +419,5 @@ export interface GetStatsResponse {
     numPeers: number;
     numOrders: number;
     numOrdersIncludingRemoved: number;
+    maxExpirationTime: string;
 }

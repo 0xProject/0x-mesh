@@ -748,6 +748,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		NumOrders:                 numOrders,
 		NumPeers:                  app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
+		MaxExpirationTime:         app.orderWatcher.MaxExpirationTime().String(),
 	}
 	return response, nil
 }
@@ -776,6 +777,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"numOrders":                 stats.NumOrders,
 			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
 			"numPeers":                  stats.NumPeers,
+			"maxExpirationTime":         stats.MaxExpirationTime,
 		}).Info("current stats")
 	}
 }

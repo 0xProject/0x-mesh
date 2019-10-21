@@ -85,6 +85,7 @@ type GetStatsResponse struct {
 	NumPeers                  int         `json:"numPeers"`
 	NumOrders                 int         `json:"numOrders"`
 	NumOrdersIncludingRemoved int         `json:"numOrdersIncludingRemoved"`
+	MaxExpirationTime         string      `json:"maxExpirationTime"`
 }
 
 // GetStats retrieves stats about the Mesh node
