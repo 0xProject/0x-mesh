@@ -99,6 +99,9 @@ func New(config Config) (*Watcher, error) {
 	}
 	if config.MaxExpirationTime == nil {
 		config.MaxExpirationTime = constants.UnlimitedExpirationTime
+	} else if big.NewInt(time.Now().Unix()).Cmp(config.MaxExpirationTime) == 1 {
+		// MaxExpirationTime should never be in the past.
+		config.MaxExpirationTime = big.NewInt(time.Now().Unix())
 	}
 
 	// Configure a SlowCounter to be used for increasing max expiration time.
