@@ -150,9 +150,17 @@ var (
 		Code:    "OrderHasInvalidMakerAssetData",
 		Message: "order makerAssetData must encode a supported assetData type",
 	}
+	ROInvalidMakerFeeAssetData = RejectedOrderStatus{
+		Code:    "OrderHasInvalidMakerFeeAssetData",
+		Message: "order makerFeeAssetData must encode a supported assetData type",
+	}
 	ROInvalidTakerAssetData = RejectedOrderStatus{
 		Code:    "OrderHasInvalidTakerAssetData",
 		Message: "order takerAssetData must encode a supported assetData type",
+	}
+	ROInvalidTakerFeeAssetData = RejectedOrderStatus{
+		Code:    "OrderHasInvalidTakerFeeAssetData",
+		Message: "order takerFeeAssetData must encode a supported assetData type",
 	}
 	ROInvalidSignature = RejectedOrderStatus{
 		Code:    "OrderHasInvalidSignature",
@@ -702,6 +710,31 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
+		if len(signedOrder.MakerFeeAssetData) != 0 {
+			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData)
+			if !isMakerFeeAssetDataSupported {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        ZeroExValidation,
+					Status:      ROInvalidMakerFeeAssetData,
+				})
+				continue
+			}	
+		}
+		if len(signedOrder.TakerFeeAssetData) != 0 {
+			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
+			if !isTakerFeeAssetDataSupported {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        ZeroExValidation,
+					Status:      ROInvalidTakerFeeAssetData,
+				})
+				continue
+			}	
+		}
+
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
 		if !isSupportedSignature {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
@@ -733,6 +766,12 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false

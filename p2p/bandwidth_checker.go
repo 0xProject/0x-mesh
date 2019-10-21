@@ -77,26 +77,30 @@ func (checker *bandwidthChecker) checkUsage() {
 				"remotePeerID":      remotePeerID.String(),
 				"bytesPerSecondIn":  stats.RateIn,
 				"maxBytesPerSecond": checker.maxBytesPerSecond,
-			}).Warn("banning peer due to high bandwidth usage")
+			}).Warn("would ban peer due to high bandwidth usage")
 			// There are possibly multiple connections to each peer. We ban the IP
 			// address associated with each connection.
 			for _, conn := range checker.node.host.Network().ConnsToPeer(remotePeerID) {
-				if err := checker.node.BanIP(conn.RemoteMultiaddr()); err != nil {
-					if err == errProtectedIP {
-						continue
-					}
-					log.WithFields(log.Fields{
-						"remotePeerID":    remotePeerID.String(),
-						"remoteMultiaddr": conn.RemoteMultiaddr().String(),
-						"error":           err.Error(),
-					}).Error("could not ban peer")
-				}
+				// TODO(albrow): We don't actually ban for now due to an apparent bug in
+				// libp2p's BandwidthCounter. Uncomment this once the issue is resolved.
+				// See: https://github.com/libp2p/go-libp2p-core/issues/65
+				//
+				// if err := checker.node.BanIP(conn.RemoteMultiaddr()); err != nil {
+				// 	if err == errProtectedIP {
+				// 		continue
+				// 	}
+				// 	log.WithFields(log.Fields{
+				// 		"remotePeerID":    remotePeerID.String(),
+				// 		"remoteMultiaddr": conn.RemoteMultiaddr().String(),
+				// 		"error":           err.Error(),
+				// 	}).Error("could not ban peer")
+				// }
 				log.WithFields(log.Fields{
 					"remotePeerID":      remotePeerID.String(),
 					"remoteMultiaddr":   conn.RemoteMultiaddr().String(),
 					"rateIn":            stats.RateIn,
 					"maxBytesPerSecond": checker.maxBytesPerSecond,
-				}).Trace("banning IP/multiaddress due to high bandwidth usage")
+				}).Trace("would ban IP/multiaddress due to high bandwidth usage")
 			}
 			// Banning the IP doesn't close the connection, so we do that
 			// separately. ClosePeer closes all connections to the given peer.

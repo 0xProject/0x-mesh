@@ -2,10 +2,13 @@ package decoder
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,6 +27,12 @@ var erc721TokenAddress common.Address = common.HexToAddress("0x5d00d312e171be534
 const erc721TransferLog string = "{\"address\":\"0x5d00d312e171be5342067c09bae883f9bcb2003b\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x000000000000000000000000d8c67d024db85b271b6f6eeac5234e29c4d6bbb5\",\"0x000000000000000000000000f13685a175b95faa79db765631483ac79fb3d8e8\",\"0x000000000000000000000000000000000000000000000000000000000000c5b1\"],\"data\":\"0x\",\"blockNumber\":\"0x6f503c\",\"transactionHash\":\"0x9f2b5ef09d2cebd36ee2accd8a95eb3def06c59d984f177c134b34fa5444b102\",\"transactionIndex\":\"0x20\",\"blockHash\":\"0x8c65e77bde1be54e4ca53c1eaf0936ae136a67afe58a4a0e482560f5f98a5cab\",\"logIndex\":\"0x2d\",\"removed\":false}"
 const erc721ApprovalLog string = "{\"address\":\"0x5d00d312e171be5342067c09bae883f9bcb2003b\",\"topics\":[\"0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925\",\"0x000000000000000000000000f4985070ce32b6b1994329df787d1acc9a2dd9e2\",\"0x0000000000000000000000000000000000000000000000000000000000000000\", \"0x000000000000000000000000000000000000000000000000000000000000a986\"],\"data\":\"0x\",\"blockNumber\":\"0x726650\",\"transactionHash\":\"0x8bf55be2fddbe9a941fd376e571cc0d6270f7b7bb87cb3c7c4476d8ed6e51bb0\",\"transactionIndex\":\"0x43\",\"blockHash\":\"0x2c14bdc4f78019146ca5fa7aeac6211c055059a00468867c2ccde1b66120e1dc\",\"logIndex\":\"0x19\",\"removed\":false}"
 const erc721ApprovalForAllLog string = "{\"address\":\"0x5d00d312e171be5342067c09bae883f9bcb2003b\",\"topics\":[\"0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31\",\"0x0000000000000000000000006aa0fc9fc46acb60e98439f9f89782ca78fb0990\",\"0x000000000000000000000000185b257aa51fdc45176cf1ffac6a0bfb5cf28afd\"],\"data\":\"0x0000000000000000000000000000000000000000000000000000000000000001\",\"blockNumber\":\"0x725f70\",\"transactionHash\":\"0x0145607687ed9156c62abe5f42bdb8bf35ba7e4c05e0fb6f4d1addff0ff78619\",\"transactionIndex\":\"0x76\",\"blockHash\":\"0x86acc4d742f16e9a427906c1a21d68de7e26274dee9645ad84e6b3fe1e37d161\",\"logIndex\":\"0x43\",\"removed\":false}"
+
+var erc1155TokenAddress common.Address = common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48")
+
+const erc1155TransferSingleLog string = "{\"logIndex\":\"0x1d\",\"transactionIndex\":\"0x3f\",\"transactionHash\":\"0xaf8c9ead387b4ccf18b906e16e98bcda7d090f8fbd8e82e6df61f3675000bc24\",\"blockHash\":\"0x022af48193c9ae95c9fb7b0f6b132c891ecf86061afa9a34d729e95f518c07d3\",\"blockNumber\":\"0x725f88\",\"address\":\"0x1dc4c1cefef38a777b15aa20260a54e584b16c48\",\"data\":\"0x000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fa\",\"topics\":[\"0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62\",\"0x0000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"0x0000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"0x0000000000000000000000001d7022f5b17d2f8b695918fb48fa1089c9f85401\"],\"type\":\"mined\",\"event\":\"TransferSingle\",\"args\":{\"operator\":\"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"from\":\"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"to\":\"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401\",\"id\":340282366920938463463374607431768211456,\"value\":250}}"
+const erc1155TransferBatchLog string = "{\"logIndex\":\"0x1d\",\"transactionIndex\":\"0x3f\",\"transactionHash\":\"0x1eafccb276f41f6fad122eade75ee9a871a3b2d9353c5cac9e7e09c106524e24\",\"blockHash\":\"0xaa0b09ebd9b425e7f3fc5ee9a8d00e1492e798a14bf56b043c391b181b9c38b6\",\"blockNumber\":\"0x725f88\",\"address\":\"0x1dc4c1cefef38a777b15aa20260a54e584b16c48\",\"data\":\"0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000020000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001\",\"topics\":[\"0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb\",\"0x0000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"0x0000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"0x0000000000000000000000001d7022f5b17d2f8b695918fb48fa1089c9f85401\"],\"type\":\"mined\",\"event\":\"TransferBatch\",\"args\":{\"operator\":\"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"from\":\"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"to\":\"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401\",\"ids\":[{\"_hex\":\"0x8000000000000000000000000000000200000000000000000000000000000001\"}],\"values\":[{\"_hex\":\"0x01\"}]}}"
+const erc1155ApprovalForAllLog string = "{\"logIndex\":\"0x1d\",\"transactionIndex\":\"0x3f\",\"transactionHash\":\"0xf16a225332fa1de3a42c697e01065fade994d9987fff745f2faaec0bb9cbbf4b\",\"blockHash\":\"0xbd26cffbf58d54e4281297d02c1da9737e34366b857e914cf70f132b70da7ca2\",\"blockNumber\":\"0x725f88\",\"address\":\"0x1dc4c1cefef38a777b15aa20260a54e584b16c48\",\"data\":\"0x0000000000000000000000000000000000000000000000000000000000000001\",\"topics\":[\"0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31\",\"0x0000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"0x000000000000000000000000e36ea790bc9d7ab70c55260c66d52b1eca985f84\"],\"type\":\"mined\",\"event\":\"ApprovalForAll\",\"args\":{\"owner\":\"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb\",\"operator\":\"0xe36ea790bc9d7ab70c55260c66d52b1eca985f84\",\"approved\":true}}"
 
 var exchangeAddress common.Address = common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788")
 
@@ -156,6 +165,98 @@ func TestDecodeERC721ApprovalForAll(t *testing.T) {
 	expectedEvent := ERC721ApprovalForAllEvent{
 		Owner:    common.HexToAddress("0x6aA0FC9fc46Acb60E98439f9F89782ca78fB0990"),
 		Operator: common.HexToAddress("0x185b257AA51Fdc45176cF1FfaC6a0bFB5cF28afD"),
+		Approved: true,
+	}
+
+	assert.Equal(t, expectedEvent, actualEvent, "ApprovalForAll event decode")
+}
+
+func TestDecodeERC1155TransferSingle(t *testing.T) {
+	var transferLog types.Log
+	err := unmarshalLogStr(erc1155TransferSingleLog, &transferLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder, err := New()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder.AddKnownERC1155(erc1155TokenAddress)
+	var actualEvent ERC1155TransferSingleEvent
+	err = decoder.Decode(transferLog, &actualEvent)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	idStr := "340282366920938463463374607431768211456"
+	id, ok := math.ParseBig256(idStr)
+	if !ok {
+		t.Fatal(fmt.Sprintf("Failed to parse `id` into Big.Int: %s", idStr))
+	}
+	expectedEvent := ERC1155TransferSingleEvent{
+		Operator: common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		From:     common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		To:       common.HexToAddress("0x1D7022f5B17d2F8B695918FB48fa1089C9f85401"),
+		Id:       id,
+		Value:    big.NewInt(250),
+	}
+
+	assert.Equal(t, expectedEvent, actualEvent, "TransferSingle event decode")
+}
+
+func TestDecodeERC1155TransferBatch(t *testing.T) {
+	var transferLog types.Log
+	err := unmarshalLogStr(erc1155TransferBatchLog, &transferLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder, err := New()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder.AddKnownERC1155(erc1155TokenAddress)
+	var actualEvent ERC1155TransferBatchEvent
+	err = decoder.Decode(transferLog, &actualEvent)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	idStr := "57896044618658097711785492504343953927315557066662158946655541218820101242881"
+	id, ok := math.ParseBig256(idStr)
+	if !ok {
+		t.Fatal(fmt.Sprintf("Failed to parse `id` into Big.Int: %s", idStr))
+	}
+	expectedEvent := ERC1155TransferBatchEvent{
+		Operator: common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		From:     common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		To:       common.HexToAddress("0x1D7022f5B17d2F8B695918FB48fa1089C9f85401"),
+		Ids:      []*big.Int{id},
+		Values:   []*big.Int{big.NewInt(1)},
+	}
+
+	assert.Equal(t, expectedEvent, actualEvent, "TransferBatch event decode")
+}
+
+func TestDecodeERC1155ApprovalForAll(t *testing.T) {
+	var approvalForAllLog types.Log
+	err := unmarshalLogStr(erc1155ApprovalForAllLog, &approvalForAllLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder, err := New()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder.AddKnownERC1155(erc1155TokenAddress)
+	var actualEvent ERC1155ApprovalForAllEvent
+	err = decoder.Decode(approvalForAllLog, &actualEvent)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedEvent := ERC1155ApprovalForAllEvent{
+		Owner:    common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		Operator: common.HexToAddress("0xE36Ea790bc9d7AB70C55260C66D52b1eca985f84"),
 		Approved: true,
 	}
 

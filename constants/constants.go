@@ -55,6 +55,9 @@ var GanacheAccountToPrivateKey = map[common.Address][]byte{
 // GanacheDummyERC721TokenAddress is the dummy ERC721 token address in the Ganache snapshot
 var GanacheDummyERC721TokenAddress = common.HexToAddress("0x07f96aa816c1f244cbc6ef114bb2b023ba54a2eb")
 
+// GanacheDummyERC1155MintableAddress is the dummy ERC1155 token address in the Ganache snapshot
+var GanacheDummyERC1155MintableAddress = common.HexToAddress("0xc4df27466183c0fe2a5924d6ea56e334deff146a")
+
 // ErrInternal is used whenever we don't wish to expose internal errors to a client
 var ErrInternal = errors.New("internal error")
 

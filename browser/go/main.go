@@ -120,6 +120,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
 		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
 	}
+	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
+		config.CustomContractAddresses = customContractAddresses.String()
+	}
 
 	return config, nil
 }

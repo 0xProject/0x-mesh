@@ -49,6 +49,42 @@ func (e ERC721ApprovalForAllEvent) JSValue() js.Value {
 	})
 }
 
+func (e ERC1155ApprovalForAllEvent) JSValue() js.Value {
+	return js.ValueOf(map[string]interface{}{
+		"owner":                e.Owner.Hex(),
+		"operator":             e.Operator.Hex(),
+		"approved":             e.Approved,
+	})
+}
+
+func (e ERC1155TransferSingleEvent) JSValue() js.Value {
+	return js.ValueOf(map[string]interface{}{
+		"operator":    e.Operator.Hex(),
+		"from":      e.From.Hex(),
+		"to":      e.To.Hex(),
+		"id": e.Id.String(),
+		"value": e.Value.String(),
+	})
+}
+
+func (e ERC1155TransferBatchEvent) JSValue() js.Value {
+	ids := []string{}
+	for _, id := range e.Ids {
+		ids = append(ids, id.String())
+	}
+	values := []string{}
+	for _, value := range e.Values {
+		values = append(values, value.String())
+	}
+	return js.ValueOf(map[string]interface{}{
+		"operator":    e.Operator.Hex(),
+		"from":      e.From.Hex(),
+		"to":      e.To.Hex(),
+		"ids": ids,
+		"values": values,
+	})
+}
+
 func (e ExchangeFillEvent) JSValue() js.Value {
 	makerAssetData := ""
 	if len(e.MakerAssetData) != 0 {

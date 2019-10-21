@@ -381,6 +381,19 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleA
 			TokenID: decodedAssetData.TokenId,
 		}
 		singleAssetDatas = append(singleAssetDatas, a)
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range decodedAssetData.Ids {
+			a := singleAssetData{
+				Address: decodedAssetData.Address,
+				TokenID: id,
+			}
+			singleAssetDatas = append(singleAssetDatas, a)
+		}
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := assetDataDecoder.Decode(assetData, &decodedAssetData)

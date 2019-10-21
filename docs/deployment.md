@@ -16,7 +16,7 @@ node.
 
 ## Running Mesh
 
-If you would like to participate in the Mesh Beta, check out [this guide](../examples/beta_telemetry_node/README.md) to deploying a telemetry-enabled Mesh node.
+If you would like to participate in the Mesh Beta, check out [this guide](deployment_with_telemetry.md) to deploying a telemetry-enabled Mesh node.
 
 Make sure you have Docker installed. Then run:
 
