@@ -16,16 +16,10 @@ import (
 //
 // where n is the number of increments that have occurred.
 type SlowCounter struct {
-	mut                sync.Mutex
-	config             Config
-	startingCount      *big.Int
-	lastIncr           time.Time
-	ticksSinceLastIncr int
-	// currentOffset tracks the current offset. We use a big.Float here to
-	// preserve accuracy (i.e., big.Int might not increase after an incr due to
-	// rounding).
-	currentOffset *big.Float
-	currentCount  *big.Float
+	mut           sync.Mutex
+	config        Config
+	startingCount *big.Int
+	startingTime  time.Time
 }
 
 // Config is a set of configuration options for SlowCounter.
@@ -35,14 +29,8 @@ type Config struct {
 	StartingOffset *big.Int
 	// Rate controls how fast the offset increases after each increment.
 	Rate float64
-	// MinDelayBeforeIncr is the minum amount of time to wait before the counter
-	// is incremented. Both MinDelayBeforeIncr and MinTicksBeforeIncr conditions
-	// must be satisfied in order for the counter to be incremented.
-	MinDelayBeforeIncr time.Duration
-	// MinTicksBeforeIncr is the minimum number of ticks befer the counter is
-	// incremented. Both MinDelayBeforeIncr and MinTicksBeforeIncr conditions
-	// must be satisfied in order for the counter to be incremented.
-	MinTicksBeforeIncr int
+	// Interval is the amount of time to wait before the counter is incremented.
+	Interval time.Duration
 	// MaxCount is the maximum value for the counter. After reaching MaxCount, the
 	// counter will stop incrementing until reset.
 	MaxCount *big.Int
@@ -58,58 +46,16 @@ type Config struct {
 func New(config Config, startingCount *big.Int) (*SlowCounter, error) {
 	if config.MaxCount == nil {
 		return nil, errors.New("config.MaxCount cannot be nil")
+	} else if config.Interval == 0 {
+		return nil, errors.New("config.Interval cannot be 0")
 	}
 	config.rateBig = big.NewFloat(config.Rate)
 	config.maxCountFloat = big.NewFloat(1).SetInt(config.MaxCount)
 	return &SlowCounter{
 		config:        config,
 		startingCount: big.NewInt(0).Set(startingCount),
-		lastIncr:      time.Now(),
-		currentOffset: big.NewFloat(0).SetInt(config.StartingOffset),
-		currentCount:  big.NewFloat(0).SetInt(startingCount),
+		startingTime:  time.Now(),
 	}, nil
-}
-
-// Tick processes a single tick and may increment the counter if the required
-// conditions are met. Returns true if the counter was incremented.
-func (sc *SlowCounter) Tick() bool {
-	sc.mut.Lock()
-	defer sc.mut.Unlock()
-
-	if sc.currentCount.Cmp(sc.config.maxCountFloat) != -1 {
-		// Count is already at maximum. Don't need to do anything.
-		return false
-	}
-
-	sc.ticksSinceLastIncr += 1
-	minTicksHaveOccurred := sc.ticksSinceLastIncr >= sc.config.MinTicksBeforeIncr
-	minTimeHasPassed := time.Now().After(sc.lastIncr.Add(sc.config.MinDelayBeforeIncr))
-	if minTicksHaveOccurred && minTimeHasPassed {
-		sc.incr()
-		return true
-	}
-
-	return false
-}
-
-// incr increments the counter.
-func (sc *SlowCounter) incr() {
-	sc.lastIncr = time.Now()
-	sc.ticksSinceLastIncr = 0
-
-	// Use the exponential growth forumula to adjust currentOffset.
-	//
-	//    currentOffset = currentOffset * rate
-	//    currentCount = startingCount + currentOffset
-	//
-	sc.currentOffset.Mul(sc.currentOffset, sc.config.rateBig)
-	sc.currentCount.SetInt(sc.startingCount)
-	sc.currentCount.Add(sc.currentCount, sc.currentOffset)
-
-	// If currentCount is greater than MaxCount, set it to MaxCount.
-	if sc.currentCount.Cmp(sc.config.maxCountFloat) == 1 {
-		sc.currentCount.Set(sc.config.maxCountFloat)
-	}
 }
 
 // Count returns the current count.
@@ -117,21 +63,36 @@ func (sc *SlowCounter) Count() *big.Int {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
+	// TODO(albrow): Could be optimized.
+	// currentCount = startingCount + startingOffset * (rate ^ numIncrements)
+	numIncrements := time.Since(sc.startingTime) / sc.config.Interval
+	if numIncrements == 0 {
+		currentCount := big.NewInt(0).Set(sc.startingCount)
+		return currentCount
+	}
+	currentCount := big.NewFloat(0).SetInt(sc.startingCount)
+	offset := big.NewFloat(0).SetInt(sc.config.StartingOffset)
+	rate := big.NewFloat(sc.config.Rate)
+	for i := 0; i < int(numIncrements)-1; i++ {
+		offset.Mul(offset, rate)
+	}
+	currentCount.Add(currentCount, offset)
 	currentCountInt := big.NewInt(0)
-	sc.currentCount.Int(currentCountInt)
+	currentCount.Int(currentCountInt)
+
+	// If current count exceeds max, return max.
+	if currentCountInt.Cmp(sc.config.MaxCount) == 1 {
+		currentCountInt.Set(sc.config.MaxCount)
+	}
+
 	return currentCountInt
 }
 
-// Reset resets the counter to the given count. This also sets startingCount to
-// count, sets currentOffset to config.StartingOffset, and resets the conditions
-// for MinDelayBeforeIncr and MinTicksBeforeIncr.
+// Reset resets the counter to the given count.
 func (sc *SlowCounter) Reset(count *big.Int) {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
 	sc.startingCount.Set(count)
-	sc.lastIncr = time.Now()
-	sc.ticksSinceLastIncr = 0
-	sc.currentOffset.SetInt(sc.config.StartingOffset)
-	sc.currentCount.SetInt(count)
+	sc.startingTime = time.Now()
 }

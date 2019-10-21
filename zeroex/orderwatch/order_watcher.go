@@ -107,11 +107,10 @@ func New(config Config) (*Watcher, error) {
 	// amount by which we increase the max expiration time (by 20 seconds, 40
 	// seconds, 80 seconds, etc.).
 	slowCounterConfig := slowcounter.Config{
-		StartingOffset:     big.NewInt(5),
-		Rate:               2,
-		MinDelayBeforeIncr: 5 * time.Minute,
-		MinTicksBeforeIncr: 10,
-		MaxCount:           constants.UnlimitedExpirationTime,
+		StartingOffset: big.NewInt(5),
+		Rate:           2,
+		Interval:       5 * time.Minute,
+		MaxCount:       constants.UnlimitedExpirationTime,
 	}
 	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, config.MaxExpirationTime)
 	if err != nil {
@@ -144,9 +143,6 @@ func New(config Config) (*Watcher, error) {
 		if err != nil {
 			return nil, err
 		}
-	}
-	if len(orders) == 0 {
-		w.setMaxExpirationTimeToUnlimited()
 	}
 
 	return w, nil
@@ -986,18 +982,6 @@ func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *me
 		return err
 	}
 
-	// Finally, check if removing this order means we can increase the max
-	// expiration time.
-	currentCount, err := w.meshDB.Orders.Count()
-	if err != nil {
-		return err
-	}
-	if currentCount < w.maxOrders {
-		w.checkIncreaseMaxExpirationTime()
-	} else if currentCount == 0 {
-		w.setMaxExpirationTimeToUnlimited()
-	}
-
 	return nil
 }
 
@@ -1129,10 +1113,10 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 }
 
 func (w *Watcher) checkIncreaseMaxExpirationTime() {
-	// We have enough space for new orders. Trigger a tick for the counter which
-	// will slowly increase max expiration time.
-	if wasIncremented := w.maxExpirationCounter.Tick(); wasIncremented {
-		newMaxExpiration := w.maxExpirationCounter.Count()
+	// We have enough space for new orders. Set the new max expiration time to the
+	// value of slow counter.
+	newMaxExpiration := w.maxExpirationCounter.Count()
+	if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
 		logger.WithFields(logger.Fields{
 			"oldMaxExpirationTime": w.maxExpirationTime.String(),
 			"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
@@ -1150,18 +1134,4 @@ func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
 	}); err != nil {
 		logger.WithError(err).Error("could not update max expiration time in database")
 	}
-}
-
-func (w *Watcher) setMaxExpirationTimeToUnlimited() {
-	// Catch-all just in case we get into a situation where our max expiration
-	// time is so low that we can't store any orders at all. This is an
-	// exceptional circumstance and shouldn't happen often, if ever. It could
-	// occur if the node was restarted after a very long time.
-	logger.WithFields(logger.Fields{
-		"oldMaxExpirationTime": w.maxExpirationTime.String(),
-		"newMaxExpirationTime": constants.UnlimitedExpirationTime.String(),
-	}).Debug("setting max expiration time to unlimitted because database is empty")
-	w.maxExpirationTime = constants.UnlimitedExpirationTime
-	w.maxExpirationCounter.Reset(w.maxExpirationTime)
-	w.saveMaxExpirationTime(w.maxExpirationTime)
 }
