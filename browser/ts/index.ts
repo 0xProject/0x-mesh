@@ -85,7 +85,7 @@ export interface Config {
     // The maximum number of orders that Mesh will keep in storage. As the
     // number of orders in storage grows, Mesh will begin enforcing a limit on
     // maximum expiration time for incoming orders and remove any orders with an
-    // expiration time too far in the future.
+    // expiration time too far in the future. Defaults to 100,000.
     maxOrdersInStorage?: number;
 }
 
