@@ -203,7 +203,8 @@ Gets certain configurations and stats about a Mesh node.
             "hash": "0x84aaae84147fc42fc77b33e2d3e05d86272663792d9cacaa8dc89f207b4d0642"
         },
         "numPeers": 18,
-        "numOrders": 1095
+        "numOrders": 1095,
+        "numOrdersIncludingRemoved": 1134
     },
     "id": 1
 }

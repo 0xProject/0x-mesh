@@ -1,8 +1,6 @@
 package core
 
 import (
-	"math/rand"
-
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -14,8 +12,19 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
+type MessageHandler struct {
+	nextOffset int
+}
+
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
-	// For now, we just select a random set of orders from those we have stored.
+	// For now, we use a round robin strategy to select a set of orders to share.
 	// We might return less than max even if there are max or greater orders
 	// currently stored.
 	// Use a snapshot to make sure state doesn't change between our two queries.
@@ -32,18 +41,37 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	if count == 0 {
 		return nil, nil
 	}
-	// If count is less than max, we use an offset of 0 to simply return all
-	// orders we have stored.
-	offset := 0
-	if count > max {
-		// If count is greater than max, choose an offset such that we always return
-		// at least max orders.
-		offset = rand.Intn(count - max)
-	}
+
+	// Select up to the maximum number of orders starting at the offset that was
+	// calculated the last time this was called with `app`.
+	offset := min(app.messageHandler.nextOffset, count)
 	var selectedOrders []*meshdb.Order
-	err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
-	if err != nil {
-		return nil, err
+	if offset != count {
+		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If more orders can be shared than were selected, append the maximum amount of
+	// unique (in this round) orders that can be added to the selected orders without
+	// exceeding the maximum number to share.
+	overflow := min(max-len(selectedOrders), offset)
+	if overflow > 0 {
+		var overflowSelectedOrders []*meshdb.Order
+		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(0).Max(overflow).Run(&overflowSelectedOrders)
+		if err != nil {
+			return nil, err
+		}
+		selectedOrders = append(selectedOrders, overflowSelectedOrders...)
+		app.messageHandler.nextOffset = overflow
+	} else {
+		// Calculate the next offset and wrap back to 0 if the next offset is larger
+		// than or equal to count.
+		app.messageHandler.nextOffset += max
+		if app.messageHandler.nextOffset >= count {
+			app.messageHandler.nextOffset = 0
+		}
 	}
 
 	log.WithFields(map[string]interface{}{
