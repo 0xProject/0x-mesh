@@ -301,7 +301,7 @@ func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
-			if err := w.checkIncreaseMaxExpirationTime(); err != nil {
+			if err := w.increaseMaxExpirationTimeIfPossible(); err != nil {
 				return err
 			}
 		}
@@ -1170,7 +1170,7 @@ func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() error {
 	return nil
 }
 
-func (w *Watcher) checkIncreaseMaxExpirationTime() error {
+func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
 	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
 		return err
 	} else if orderCount < w.maxOrders {
