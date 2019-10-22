@@ -13,10 +13,10 @@ func TestSlowCounter(t *testing.T) {
 	t.Parallel()
 
 	config := Config{
-		StartingOffset: big.NewInt(10),
-		Rate:           2,
-		Interval:       250 * time.Millisecond,
-		MaxCount:       big.NewInt(1000),
+		Offset:   big.NewInt(10),
+		Rate:     2,
+		Interval: 250 * time.Millisecond,
+		MaxCount: big.NewInt(1000),
 	}
 	counter, err := New(config, big.NewInt(0))
 	require.NoError(t, err)
@@ -48,10 +48,10 @@ func TestSlowCounterReset(t *testing.T) {
 	t.Parallel()
 
 	config := Config{
-		StartingOffset: big.NewInt(10),
-		Rate:           2,
-		Interval:       250 * time.Millisecond,
-		MaxCount:       big.NewInt(1000),
+		Offset:   big.NewInt(10),
+		Rate:     2,
+		Interval: 250 * time.Millisecond,
+		MaxCount: big.NewInt(1000),
 	}
 	counter, err := New(config, big.NewInt(20))
 	require.NoError(t, err)
@@ -80,8 +80,8 @@ func TestSlowCounterMaxCount(t *testing.T) {
 	t.Parallel()
 
 	config := Config{
-		StartingOffset: big.NewInt(10),
-		Rate:           2,
+		Offset: big.NewInt(10),
+		Rate:   2,
 		// Note(albrow): For this test, we're okay with a much faster interval since
 		// we don't need to be precise. We only need to check that *at least* N
 		// increments have occurred. It is okay if more than N have occurred.

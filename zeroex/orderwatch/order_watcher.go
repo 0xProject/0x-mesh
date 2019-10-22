@@ -24,31 +24,47 @@ import (
 	logger "github.com/sirupsen/logrus"
 )
 
-// minCleanupInterval specified the minimum amount of time between orderbook
-// cleanups. These cleanups are meant to catch any stale orders that somehow
-// were not caught by the event watcher process.
-var minCleanupInterval = 1 * time.Hour
+const (
+	// minCleanupInterval specified the minimum amount of time between orderbook
+	// cleanups. These cleanups are meant to catch any stale orders that somehow
+	// were not caught by the event watcher process.
+	minCleanupInterval = 1 * time.Hour
 
-// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
-// be re-validated by the cleanup worker
-var lastUpdatedBuffer = 30 * time.Minute
+	// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
+	// be re-validated by the cleanup worker
+	lastUpdatedBuffer = 30 * time.Minute
 
-// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
-// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 4 minutes
-// corresponds to a block depth of ~20.
-var permanentlyDeleteAfter = 4 * time.Minute
+	// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
+	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 4 minutes
+	// corresponds to a block depth of ~20.
+	permanentlyDeleteAfter = 4 * time.Minute
 
-// expirationPollingInterval specifies the interval in which the order watcher should check for expired
-// orders
-var expirationPollingInterval = 50 * time.Millisecond
+	// expirationPollingInterval specifies the interval in which the order watcher should check for expired
+	// orders
+	expirationPollingInterval = 50 * time.Millisecond
 
-// maxOrdersTrimRatio affects how many orders are trimmed whenever we reach the
-// maximum number of orders. When order storage is full, Watcher will remove
-// orders until the total number of remaining orders is equal to
-// maxOrdersTrimRatio * maxOrders.
-const maxOrdersTrimRatio = 0.9
+	// maxOrdersTrimRatio affects how many orders are trimmed whenever we reach the
+	// maximum number of orders. When order storage is full, Watcher will remove
+	// orders until the total number of remaining orders is equal to
+	// maxOrdersTrimRatio * maxOrders.
+	maxOrdersTrimRatio = 0.9
 
-const defaultMaxOrders = 100000
+	// defaultMaxOrders is the default max number of orders in storage.
+	defaultMaxOrders = 100000
+
+	// maxExpirationTimeCheckInterval is how often to check whether we can
+	// increase the max expiration time.
+	maxExpirationTimeCheckInterval = 30 * time.Second
+
+	// configuration options for the SlowCounter used for increasing max
+	// expiration time. Effectively, we will increase every 5 minutes as long as
+	// there is enough space in the database for orders. The first increase will
+	// be 5 seconds and the amount doubles from there (second increase will be 10
+	// seconds, then 20 seconds, then 40, etc.)
+	slowCounterOffset   = 5 // seconds
+	slowCounterRate     = 2.0
+	slowCounterInterval = 5 * time.Minute
+)
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
@@ -105,15 +121,11 @@ func New(config Config) (*Watcher, error) {
 	}
 
 	// Configure a SlowCounter to be used for increasing max expiration time.
-	// This configuration means the first increment will increase the max
-	// expiration time by 10 seconds. Each subsequent increment will double the
-	// amount by which we increase the max expiration time (by 20 seconds, 40
-	// seconds, 80 seconds, etc.).
 	slowCounterConfig := slowcounter.Config{
-		StartingOffset: big.NewInt(5),
-		Rate:           2,
-		Interval:       5 * time.Minute,
-		MaxCount:       constants.UnlimitedExpirationTime,
+		Offset:   big.NewInt(slowCounterOffset),
+		Rate:     slowCounterRate,
+		Interval: slowCounterInterval,
+		MaxCount: constants.UnlimitedExpirationTime,
 	}
 	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, config.MaxExpirationTime)
 	if err != nil {
@@ -133,6 +145,12 @@ func New(config Config) (*Watcher, error) {
 		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
 		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
+	}
+
+	// Check if any orders need to be rmoved right away due to high expiration
+	// times.
+	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
+		return nil, err
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
@@ -191,6 +209,12 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		defer wg.Done()
 		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
 	}()
+	maxExpirationTimeLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		maxExpirationTimeLoopErrChan <- w.maxExpirationTimeLoop(innerCtx)
+	}()
 
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
@@ -207,6 +231,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return err
 		}
 	case err := <-cleanupLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-maxExpirationTimeLoopErrChan:
 		if err != nil {
 			cancel()
 			return err
@@ -260,6 +289,21 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 		start = time.Now()
 		if err := w.cleanup(ctx); err != nil {
 			return err
+		}
+	}
+}
+
+func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
+	ticker := time.NewTicker(maxExpirationTimeCheckInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			if err := w.checkIncreaseMaxExpirationTime(); err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -627,14 +671,8 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added.
 func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
-	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
 		return err
-	} else if orderCount+1 >= w.maxOrders {
-		if err := w.trimOrdersAndFireEvents(); err != nil {
-			return err
-		}
-	} else {
-		w.checkIncreaseMaxExpirationTime()
 	}
 
 	// Final expiration time check before inserting the order. We might have just
@@ -1115,18 +1153,35 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-func (w *Watcher) checkIncreaseMaxExpirationTime() {
-	// We have enough space for new orders. Set the new max expiration time to the
-	// value of slow counter.
-	newMaxExpiration := w.maxExpirationCounter.Count()
-	if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
-		logger.WithFields(logger.Fields{
-			"oldMaxExpirationTime": w.maxExpirationTime.String(),
-			"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
-		}).Debug("increasing max expiration time")
-		w.maxExpirationTime.Set(newMaxExpiration)
-		w.saveMaxExpirationTime(newMaxExpiration)
+func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() error {
+	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+		return err
+	} else if orderCount+1 >= w.maxOrders {
+		if err := w.trimOrdersAndFireEvents(); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (w *Watcher) checkIncreaseMaxExpirationTime() error {
+	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+		return err
+	} else if orderCount < w.maxOrders {
+		// We have enough space for new orders. Set the new max expiration time to the
+		// value of slow counter.
+		newMaxExpiration := w.maxExpirationCounter.Count()
+		if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
+			logger.WithFields(logger.Fields{
+				"oldMaxExpirationTime": w.maxExpirationTime.String(),
+				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
+			}).Debug("increasing max expiration time")
+			w.maxExpirationTime.Set(newMaxExpiration)
+			w.saveMaxExpirationTime(newMaxExpiration)
+		}
+	}
+
+	return nil
 }
 
 // saveMaxExpirationTime save the new max expiration time in the database.

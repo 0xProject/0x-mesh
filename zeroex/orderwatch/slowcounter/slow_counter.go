@@ -12,7 +12,7 @@ import (
 // few configuration  options to control the rate of increase. SlowCounter
 // uses the following exponential growth formula:
 //
-//    currentCount(n) = startingCount + startingOffset * (rate ^ n)
+//    currentCount(n) = startingCount + offset * (rate ^ n)
 //
 // where n is the number of increments that have occurred.
 type SlowCounter struct {
@@ -24,9 +24,9 @@ type SlowCounter struct {
 
 // Config is a set of configuration options for SlowCounter.
 type Config struct {
-	// StartingOffset affects how much the count is increased on the first
+	// Offset affects how much the count is increased on the first
 	// increment.
-	StartingOffset *big.Int
+	Offset *big.Int
 	// Rate controls how fast the offset increases after each increment.
 	Rate float64
 	// Interval is the amount of time to wait before the counter is incremented.
@@ -63,15 +63,16 @@ func (sc *SlowCounter) Count() *big.Int {
 	sc.mut.Lock()
 	defer sc.mut.Unlock()
 
-	// TODO(albrow): Could be optimized.
-	// currentCount = startingCount + startingOffset * (rate ^ numIncrements)
+	// TODO(albrow): Could be optimized. Especially important to no-op if count
+	// == max count.
+	// currentCount = startingCount + offset * (rate ^ numIncrements)
 	numIncrements := time.Since(sc.startingTime) / sc.config.Interval
 	if numIncrements == 0 {
 		currentCount := big.NewInt(0).Set(sc.startingCount)
 		return currentCount
 	}
 	currentCount := big.NewFloat(0).SetInt(sc.startingCount)
-	offset := big.NewFloat(0).SetInt(sc.config.StartingOffset)
+	offset := big.NewFloat(0).SetInt(sc.config.Offset)
 	rate := big.NewFloat(sc.config.Rate)
 	for i := 0; i < int(numIncrements)-1; i++ {
 		offset.Mul(offset, rate)
