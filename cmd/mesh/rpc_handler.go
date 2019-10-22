@@ -24,11 +24,11 @@ type rpcHandler struct {
 	app *core.App
 }
 
-// listenRPC starts the RPC server and listens on config.RPCPort. It blocks
+// listenRPC starts the RPC server and listens on config.RPCAddr. It blocks
 // until there is an error or the RPC server is closed.
 func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
-	rpcAddr := fmt.Sprintf(":%d", config.RPCPort)
+	rpcAddr := fmt.Sprintf("%s", config.RPCAddr)
 	rpcHandler := &rpcHandler{
 		app: app,
 	}
@@ -71,9 +71,12 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (*rpc
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
-	log.WithField("count", len(signedOrdersRaw)).Debug("received AddOrders request via RPC")
-	validationResults, err := handler.app.AddOrders(signedOrdersRaw)
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rpc.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+	log.WithFields(log.Fields{
+		"count":  len(signedOrdersRaw),
+		"pinned": opts.Pinned,
+	}).Info("received AddOrders request via RPC")
+	validationResults, err := handler.app.AddOrders(signedOrdersRaw, opts.Pinned)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")

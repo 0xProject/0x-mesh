@@ -2,6 +2,7 @@ package constants
 
 import (
 	"errors"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -13,8 +14,8 @@ import (
  * General
  */
 
-// TestNetworkID is the test (Ganache) networkId used for testing
-const TestNetworkID = 50
+// TestChainID is the test (Ganache) chainId used for testing
+const TestChainID = 1337
 
 // GanacheEndpoint specifies the Ganache test Ethereum node JSON RPC endpoint used in tests
 const GanacheEndpoint = "http://localhost:8545"
@@ -52,8 +53,20 @@ var GanacheAccountToPrivateKey = map[common.Address][]byte{
 // GanacheDummyERC721TokenAddress is the dummy ERC721 token address in the Ganache snapshot
 var GanacheDummyERC721TokenAddress = common.HexToAddress("0x07f96aa816c1f244cbc6ef114bb2b023ba54a2eb")
 
+// GanacheDummyERC1155MintableAddress is the dummy ERC1155 token address in the Ganache snapshot
+var GanacheDummyERC1155MintableAddress = common.HexToAddress("0xc4df27466183c0fe2a5924d6ea56e334deff146a")
+
 // ErrInternal is used whenever we don't wish to expose internal errors to a client
 var ErrInternal = errors.New("internal error")
 
 // TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
 var TestMaxContentLength = 1024 * 512
+
+// UnlimitedExpirationTime is the maximum value for uint256 (2^256-1), which
+// means there is effectively no limit on the maximum expiration time for
+// orders.
+var UnlimitedExpirationTime *big.Int
+
+func init() {
+	UnlimitedExpirationTime, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+}

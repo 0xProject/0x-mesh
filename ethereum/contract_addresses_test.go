@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetContractAddressesForNetworkID(t *testing.T) {
-	// a valid network returns no error
-	_, err := GetContractAddressesForNetworkID(constants.TestNetworkID)
+func TestGetContractAddressesForChainID(t *testing.T) {
+	// a valid chainId returns no error
+	_, err := GetContractAddressesForChainID(constants.TestChainID)
 	require.NoError(t, err)
 
-	// an invalid network returns an error stating the desired network id
-	_, err = GetContractAddressesForNetworkID(-1)
-	assert.EqualError(t, err, "invalid network: -1")
+	// an invalid chainId returns an error stating the desired chain id
+	_, err = GetContractAddressesForChainID(-1)
+	assert.EqualError(t, err, "invalid chain: -1")
 }

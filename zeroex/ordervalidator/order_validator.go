@@ -21,17 +21,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
-
-// The context timeout length to use for requests to getOrderRelevantStateTimeout
-const getOrderRelevantStateTimeout = 15 * time.Second
-
-// The context timeout length to use for requests to getCoordinatorEndpoint
-const getCoordinatorEndpointTimeout = 10 * time.Second
 
 // Specifies the max number of eth_call requests we want to make concurrently.
 // Additional requests will block until an ongoing request has completed.
@@ -173,13 +166,17 @@ var (
 		Code:    "OrderAlreadyStoredAndUnfillable",
 		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
 	}
-	ROIncorrectNetwork = RejectedOrderStatus{
-		Code:    "OrderForIncorrectNetwork",
-		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	ROIncorrectChain = RejectedOrderStatus{
+		Code:    "OrderForIncorrectChain",
+		Message: "order was created for a different chain than the one this Mesh node is configured to support",
 	}
 	ROSenderAddressNotAllowed = RejectedOrderStatus{
 		Code:    "SenderAddressNotAllowed",
 		Message: "orders with a senderAddress are not currently supported",
+	}
+	RODatabaseFullOfOrders = RejectedOrderStatus{
+		Code:    "DatabaseFullOfOrders",
+		Message: "database is full of pinned orders and no orders can be deleted to make space (consider increasing MAX_ORDERS_IN_STORAGE)",
 	}
 )
 
@@ -228,18 +225,18 @@ type ValidationResults struct {
 type OrderValidator struct {
 	maxRequestContentLength      int
 	devUtilsABI                  abi.ABI
-	devUtils                     *wrappers.DevUtils
-	coordinatorRegistry          *wrappers.CoordinatorRegistry
+	devUtils                     *wrappers.DevUtilsCaller
+	coordinatorRegistry          *wrappers.CoordinatorRegistryCaller
 	assetDataDecoder             *zeroex.AssetDataDecoder
-	networkID                    int
+	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -247,11 +244,11 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 	if err != nil {
 		return nil, err
 	}
-	devUtils, err := wrappers.NewDevUtils(contractAddresses.DevUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, contractCaller)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractAddresses.CoordinatorRegistry, ethClient)
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistryCaller(contractAddresses.CoordinatorRegistry, contractCaller)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +260,7 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 		devUtils:                     devUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
-		networkID:                    networkID,
+		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
 	}, nil
@@ -276,7 +273,7 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 // retrieve up until the failure.
 // The `blockNumber` parameter lets the caller specify a specific block height at which to validate
 // the orders. This can be set to the `latest` block or any other historical block number.
-func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
+func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -287,7 +284,7 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 	}
 
 	// Validate Coordinator orders for soft-cancels
-	signedOrders, coordinatorRejectedOrderInfos := o.batchValidateSoftCancelled(offchainValidSignedOrders)
+	signedOrders, coordinatorRejectedOrderInfos := o.batchValidateSoftCancelled(ctx, offchainValidSignedOrders)
 	for _, rejectedOrderInfo := range coordinatorRejectedOrderInfos {
 		validationResults.Rejected = append(validationResults.Rejected, rejectedOrderInfo)
 	}
@@ -330,10 +327,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 			}
 
 			for {
-				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
-				// any one request from taking longer then 15 seconds
-				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
-				defer cancel()
 				opts := &bind.CallOpts{
 					Pending: false,
 					Context: ctx,
@@ -447,7 +440,7 @@ type softCancelResponse struct {
 // that it hasn't been cancelled off-chain (soft cancellation). It does this by looking up the Coordinator server endpoint
 // given the `feeRecipientAddress` specified in the order, and then hitting that endpoint to query whether the orders have
 // been soft cancelled.
-func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
+func (o *OrderValidator) batchValidateSoftCancelled(ctx context.Context, signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	validSignedOrders := []*zeroex.SignedOrder{}
 
@@ -464,8 +457,6 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 		}
 		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
 		if !ok {
-			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
-			defer cancel()
 			opts := &bind.CallOpts{
 				Pending: false,
 				Context: ctx,
@@ -522,7 +513,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 			log.WithError(err).WithField("orderHashes", orderHashes).Error("Unable to marshal `orderHashes` into JSON")
 		}
 		// Check if the orders have been soft-cancelled by querying the Coordinator server
-		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
+		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.chainID)
 		resp, err := http.Post(requestURL, "application/json", payload)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
@@ -724,6 +715,12 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false

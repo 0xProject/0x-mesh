@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
@@ -16,29 +17,58 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	logger "github.com/sirupsen/logrus"
 )
 
-// minCleanupInterval specified the minimum amount of time between orderbook
-// cleanups. These cleanups are meant to catch any stale orders that somehow
-// were not caught by the event watcher process.
-var minCleanupInterval = 1 * time.Hour
+const (
+	// minCleanupInterval specified the minimum amount of time between orderbook
+	// cleanups. These cleanups are meant to catch any stale orders that somehow
+	// were not caught by the event watcher process.
+	minCleanupInterval = 1 * time.Hour
 
-// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
-// be re-validated by the cleanup worker
-var lastUpdatedBuffer = 30 * time.Minute
+	// minRemovedCheckInterval specifies the minimum amount of time between checks
+	// on whether to remove orders flaggged for removal from the DB
+	minRemovedCheckInterval = 5 * time.Minute
 
-// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
-// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 4 minutes
-// corresponds to a block depth of ~20.
-var permanentlyDeleteAfter = 4 * time.Minute
+	// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
+	// be re-validated by the cleanup worker
+	lastUpdatedBuffer = 30 * time.Minute
 
-// expirationPollingInterval specifies the interval in which the order watcher should check for expired
-// orders
-var expirationPollingInterval = 50 * time.Millisecond
+	// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
+	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 5 minutes
+	// corresponds to a block depth of ~25.
+	permanentlyDeleteAfter = 5 * time.Minute
+
+	// expirationPollingInterval specifies the interval in which the order watcher should check for expired
+	// orders
+	expirationPollingInterval = 50 * time.Millisecond
+
+	// maxOrdersTrimRatio affects how many orders are trimmed whenever we reach the
+	// maximum number of orders. When order storage is full, Watcher will remove
+	// orders until the total number of remaining orders is equal to
+	// maxOrdersTrimRatio * maxOrders.
+	maxOrdersTrimRatio = 0.9
+
+	// defaultMaxOrders is the default max number of orders in storage.
+	defaultMaxOrders = 100000
+
+	// maxExpirationTimeCheckInterval is how often to check whether we can
+	// increase the max expiration time.
+	maxExpirationTimeCheckInterval = 30 * time.Second
+
+	// configuration options for the SlowCounter used for increasing max
+	// expiration time. Effectively, we will increase every 5 minutes as long as
+	// there is enough space in the database for orders. The first increase will
+	// be 5 seconds and the amount doubles from there (second increase will be 10
+	// seconds, then 20 seconds, then 40, etc.)
+	slowCounterOffset   = 5 // seconds
+	slowCounterRate     = 2.0
+	slowCounterInterval = 5 * time.Minute
+)
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
@@ -56,30 +86,75 @@ type Watcher struct {
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
 	mu                         sync.Mutex
+	maxExpirationTime          *big.Int
+	maxExpirationCounter       *slowcounter.SlowCounter
+	maxOrders                  int
+}
+
+type Config struct {
+	MeshDB            *meshdb.MeshDB
+	BlockWatcher      *blockwatch.Watcher
+	OrderValidator    *ordervalidator.OrderValidator
+	ChainID           int
+	ExpirationBuffer  time.Duration
+	MaxOrders         int
+	MaxExpirationTime *big.Int
 }
 
 // New instantiates a new order watcher
-func New(meshDB *meshdb.MeshDB, blockWatcher *blockwatch.Watcher, orderValidator *ordervalidator.OrderValidator, networkID int, expirationBuffer time.Duration) (*Watcher, error) {
+func New(config Config) (*Watcher, error) {
 	decoder, err := decoder.New()
 	if err != nil {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(config.ChainID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate config.
+	if config.MaxOrders == 0 {
+		return nil, errors.New("config.MaxOrders is required and cannot be zero")
+	}
+	if config.MaxExpirationTime == nil {
+		return nil, errors.New("config.MaxExpirationTime is required and cannot be nil")
+	} else if big.NewInt(time.Now().Unix()).Cmp(config.MaxExpirationTime) == 1 {
+		// MaxExpirationTime should never be in the past.
+		config.MaxExpirationTime = big.NewInt(time.Now().Unix())
+	}
+
+	// Configure a SlowCounter to be used for increasing max expiration time.
+	slowCounterConfig := slowcounter.Config{
+		Offset:   big.NewInt(slowCounterOffset),
+		Rate:     slowCounterRate,
+		Interval: slowCounterInterval,
+		MaxCount: constants.UnlimitedExpirationTime,
+	}
+	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, config.MaxExpirationTime)
 	if err != nil {
 		return nil, err
 	}
 
 	w := &Watcher{
-		meshDB:                     meshDB,
-		blockWatcher:               blockWatcher,
-		expirationBuffer:           expirationBuffer,
-		expirationWatcher:          expirationwatch.New(expirationBuffer),
+		meshDB:                     config.MeshDB,
+		blockWatcher:               config.BlockWatcher,
+		expirationBuffer:           config.ExpirationBuffer,
+		expirationWatcher:          expirationwatch.New(config.ExpirationBuffer),
 		contractAddressToSeenCount: map[common.Address]uint{},
-		orderValidator:             orderValidator,
+		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractAddresses:          contractAddresses,
+		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
+		maxExpirationCounter:       maxExpirationCounter,
+		maxOrders:                  config.MaxOrders,
+	}
+
+	// Check if any orders need to be removed right away due to high expiration
+	// times.
+	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
+		return nil, err
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
@@ -138,6 +213,18 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		defer wg.Done()
 		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
 	}()
+	maxExpirationTimeLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		maxExpirationTimeLoopErrChan <- w.maxExpirationTimeLoop(innerCtx)
+	}()
+	removedCheckerLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		removedCheckerLoopErrChan <- w.removedCheckerLoop(innerCtx)
+	}()
 
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
@@ -154,6 +241,16 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return err
 		}
 	case err := <-cleanupLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-maxExpirationTimeLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-removedCheckerLoopErrChan:
 		if err != nil {
 			cancel()
 			return err
@@ -211,6 +308,40 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 	}
 }
 
+func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
+	ticker := time.NewTicker(maxExpirationTimeCheckInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			if err := w.increaseMaxExpirationTimeIfPossible(); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
+	for {
+		start := time.Now()
+		if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		// Wait minRemovedCheckInterval before calling permanentlyDeleteStaleRemovedOrders again. Since
+		// we only start waiting _after_ permanentlyDeleteStaleRemovedOrders completes, we will never
+		// have multiple calls to permanentlyDeleteStaleRemovedOrders running in parallel
+		case <-time.After(minRemovedCheckInterval - time.Since(start)):
+			continue
+		}
+	}
+}
+
 func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) {
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, expiredOrder := range expiredOrders {
@@ -229,7 +360,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			OrderHash:                common.HexToHash(expiredOrder.ID),
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: big.NewInt(0),
-			EndState:                     zeroex.ESOrderExpired,
+			EndState:                 zeroex.ESOrderExpired,
 		}
 		orderEvents = append(orderEvents, orderEvent)
 	}
@@ -367,6 +498,74 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 					return err
 				}
 
+			case "ERC1155TransferSingleEvent":
+				var transferEvent decoder.ERC1155TransferSingleEvent
+				err = w.eventDecoder.Decode(log, &transferEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				// HACK(fabio): Currently we simply revalidate all orders involving assets in this
+				// ERC1155 contract from this particular maker. We could however revalidate fewer orders
+				// by also taking into account the `ID` of the assets affected. We punt on this for now
+				// in order to support Augur's use-case of a dummy ERC1155 contract. In their case, we
+				// need to revalidate all maker orders within the single ERC1155 contract and cannot optimize
+				// further. In the future, we might want to special-case this broader approach for the Augur
+				// contract address specifically.
+				parameters = transferEvent
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
+
+			case "ERC1155TransferBatchEvent":
+				var transferEvent decoder.ERC1155TransferBatchEvent
+				err = w.eventDecoder.Decode(log, &transferEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				parameters = transferEvent
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
+
+			case "ERC1155ApprovalForAllEvent":
+				var approvalForAllEvent decoder.ERC1155ApprovalForAllEvent
+				err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				// Ignores approvals set to anyone except the AssetProxy
+				if approvalForAllEvent.Operator != w.contractAddresses.ERC1155Proxy {
+					continue
+				}
+				parameters = approvalForAllEvent
+				orders, err = w.findOrders(approvalForAllEvent.Owner, log.Address, nil)
+				if err != nil {
+					return err
+				}
+
 			case "WethWithdrawalEvent":
 				var withdrawalEvent decoder.WethWithdrawalEvent
 				err = w.eventDecoder.Decode(log, &withdrawalEvent)
@@ -472,7 +671,10 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 			}
 		}
 	}
-	return w.generateOrderEventsIfChanged(ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
+	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, done := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer done()
+	return w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
 }
 
 func (w *Watcher) cleanup(ctx context.Context) error {
@@ -500,26 +702,99 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 		orderHashToDBOrder[order.Hash] = order
 		orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{}
 	}
-	return w.generateOrderEventsIfChanged(ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
+	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+	return w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
+}
+
+func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
+	removedOrders, err := w.meshDB.FindRemovedOrders()
+	if err != nil {
+		return err
+	}
+
+	for _, order := range removedOrders {
+		if time.Since(order.LastUpdated) > permanentlyDeleteAfter {
+			if err := w.permanentlyDeleteOrder(w.meshDB.Orders, order); err != nil {
+				return err
+			}
+			continue
+		}
+	}
+
+	return nil
 }
 
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
-// will no-op (and return nil) if the order has already been added.
-func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
+// will no-op (and return nil) if the order has already been added. If pinned is
+// true, the orders will be marked as pinned. Pinned orders will not be affected
+// by any DDoS prevention or incentive mechanisms and will always stay in
+// storage until they are no longer fillable.
+func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool) error {
+	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
+		return err
+	}
+
+	// TODO(albrow): technically we should count the current number of orders,
+	// remove some if needed, and then insert the order in a single transaction to
+	// ensure that we don't accidentally exceed the maximum. In practice, and
+	// because of the way OrderWatcher works, the distinction shouldn't matter.
+	txn := w.meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	// Final expiration time check before inserting the order. We might have just
+	// changed max expiration time above.
+	if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+		// HACK(albrow): This is technically not the ideal way to respond to this
+		// situation, but it is a lot easier to implement for the time being. In the
+		// future, we should return an error and then react to that error
+		// differently depending on whether the order was received via RPC or from a
+		// peer. In the former case, we should return an RPC error response
+		// indicating that the order was not in fact added. In the latter case, we
+		// should effectively no-op, neither penalizing the peer or emitting any
+		// order events. For now, we respond by emitting an ADDED event immediately
+		// followed by a STOPPED_WATCHING event. If this order was submitted via
+		// RPC, the RPC client will see a response that indicates the order was
+		// successfully added, and then it will look like we immediately stopped
+		// watching it. This is not too far off from what really happened but is
+		// slightly inefficient.
+		addedEvent := &zeroex.OrderEvent{
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderAdded,
+		}
+		stoppedWatchingEvent := &zeroex.OrderEvent{
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESStoppedWatching,
+		}
+		w.orderFeed.Send([]*zeroex.OrderEvent{addedEvent, stoppedWatchingEvent})
+		return nil
+	}
+
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		LastUpdated:              time.Now().UTC(),
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
+		IsPinned:                 pinned,
 	}
-	err := w.meshDB.Orders.Insert(order)
+	err := txn.Insert(order)
 	if err != nil {
 		if _, ok := err.(db.AlreadyExistsError); ok {
 			// If we're already watching the order, that's fine in this case. Don't
 			// return an error.
 			return nil
 		}
+		return err
+	}
+	if err := txn.Commit(); err != nil {
 		return err
 	}
 
@@ -537,6 +812,63 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 	w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 
 	return nil
+}
+
+func (w *Watcher) trimOrdersAndFireEvents() error {
+	targetMaxOrders := int(maxOrdersTrimRatio * float64(w.maxOrders))
+	newMaxExpirationTime, removedOrders, err := w.meshDB.TrimOrdersByExpirationTime(targetMaxOrders)
+	if err != nil {
+		return err
+	}
+	if len(removedOrders) > 0 {
+		logger.WithFields(logger.Fields{
+			"numOrdersRemoved": len(removedOrders),
+			"targetMaxOrders":  targetMaxOrders,
+		}).Debug("removing orders to make space")
+	}
+	for _, removedOrder := range removedOrders {
+		// Fire a "STOPPED_WATCHING" event for each order that was removed.
+		orderEvent := &zeroex.OrderEvent{
+			OrderHash:                removedOrder.Hash,
+			SignedOrder:              removedOrder.SignedOrder,
+			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESStoppedWatching,
+		}
+		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+
+		// Remove in-memory state
+		expirationTimestamp := time.Unix(removedOrder.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+		w.expirationWatcher.Remove(expirationTimestamp, removedOrder.Hash.Hex())
+		err = w.removeAssetDataAddressFromEventDecoder(removedOrder.SignedOrder.MakerAssetData)
+		if err != nil {
+			// This should never happen since the same error would have happened when adding
+			// the assetData to the EventDecoder.
+			logger.WithFields(logger.Fields{
+				"error":       err.Error(),
+				"signedOrder": removedOrder.SignedOrder,
+			}).Error("Unexpected error when trying to remove an assetData from decoder")
+			return err
+		}
+	}
+	if newMaxExpirationTime.Cmp(w.maxExpirationTime) == -1 {
+		// Decrease the max expiration time to account for the fact that orders were
+		// removed.
+		logger.WithFields(logger.Fields{
+			"oldMaxExpirationTime": w.maxExpirationTime.String(),
+			"newMaxExpirationTime": newMaxExpirationTime.String(),
+		}).Debug("decreasing max expiration time")
+		w.maxExpirationTime = newMaxExpirationTime
+		w.maxExpirationCounter.Reset(newMaxExpirationTime)
+		w.saveMaxExpirationTime(newMaxExpirationTime)
+	}
+
+	return nil
+}
+
+// MaxExpirationTime returns the current maximum expiration time for incoming
+// orders.
+func (w *Watcher) MaxExpirationTime() *big.Int {
+	return w.maxExpirationTime
 }
 
 func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error {
@@ -594,7 +926,7 @@ func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID 
 	return orders, nil
 }
 
-func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, orderHashToDBOrder map[common.Hash]*meshdb.Order, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent, validationBlockNumber rpc.BlockNumber) error {
+func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn *db.Transaction, orderHashToDBOrder map[common.Hash]*meshdb.Order, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent, validationBlockNumber rpc.BlockNumber) error {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orderHashToDBOrder {
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
@@ -609,7 +941,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 		return nil
 	}
 	areNewOrders := false
-	validationResults := w.orderValidator.BatchValidate(signedOrders, areNewOrders, validationBlockNumber)
+	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlockNumber)
 
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
@@ -634,8 +966,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-			// No important state-change happened, simply update lastUpdated timestamp in DB
-			w.updateOrderDBEntry(ordersColTxn, order)
+			// No important state-change happened
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
 			order.FillableTakerAssetAmount = newFillableAmount
@@ -672,8 +1003,6 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			oldFillableAmount := order.FillableTakerAssetAmount
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
-				// Update it's lastUpdated timestamp in DB
-				w.updateOrderDBEntry(ordersColTxn, order)
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
@@ -710,11 +1039,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 	return nil
 }
 
-type updatableOrdersCol interface {
+type orderUpdater interface {
 	Update(model db.Model) error
 }
 
-func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) {
+func (w *Watcher) updateOrderDBEntry(u orderUpdater, order *meshdb.Order) {
 	order.LastUpdated = time.Now().UTC()
 	err := u.Update(order)
 	if err != nil {
@@ -725,7 +1054,7 @@ func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) 
 	}
 }
 
-func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderInfo *ordervalidator.AcceptedOrderInfo) {
+func (w *Watcher) rewatchOrder(u orderUpdater, order *meshdb.Order, orderInfo *ordervalidator.AcceptedOrderInfo) {
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
@@ -742,7 +1071,7 @@ func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderI
 	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFillableAmount *big.Int) {
+func (w *Watcher) unwatchOrder(u orderUpdater, order *meshdb.Order, newFillableAmount *big.Int) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = newFillableAmount
@@ -758,8 +1087,12 @@ func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFil
 	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *meshdb.Order) error {
-	err := ordersColTxn.Delete(order.Hash.Bytes())
+type orderDeleter interface {
+	Delete(id []byte) error
+}
+
+func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Order) error {
+	err := deleter.Delete(order.Hash.Bytes())
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
@@ -784,6 +1117,7 @@ func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *me
 		}).Error("Unexpected error when trying to remove an assetData from decoder")
 		return err
 	}
+
 	return nil
 }
 
@@ -832,6 +1166,14 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		}
 		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -879,6 +1221,16 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
 			w.eventDecoder.RemoveKnownERC721(decodedAssetData.Address)
 		}
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
+		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
+		}
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -894,4 +1246,45 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return nil
+}
+
+func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() error {
+	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+		return err
+	} else if orderCount+1 > w.maxOrders {
+		if err := w.trimOrdersAndFireEvents(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
+	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
+		return err
+	} else if orderCount < w.maxOrders {
+		// We have enough space for new orders. Set the new max expiration time to the
+		// value of slow counter.
+		newMaxExpiration := w.maxExpirationCounter.Count()
+		if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
+			logger.WithFields(logger.Fields{
+				"oldMaxExpirationTime": w.maxExpirationTime.String(),
+				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
+			}).Debug("increasing max expiration time")
+			w.maxExpirationTime.Set(newMaxExpiration)
+			w.saveMaxExpirationTime(newMaxExpiration)
+		}
+	}
+
+	return nil
+}
+
+// saveMaxExpirationTime saves the new max expiration time in the database.
+func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
+	if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+		metadata.MaxExpirationTime = maxExpirationTime
+		return metadata
+	}); err != nil {
+		logger.WithError(err).Error("could not update max expiration time in database")
+	}
 }

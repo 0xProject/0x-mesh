@@ -11,6 +11,8 @@ import {
     ContractEvent,
     ContractEventKind,
     ContractEventParameters,
+    ERC1155ApprovalForAllEvent,
+    ERC721ApprovalForAllEvent,
     ExchangeCancelEvent,
     GetOrdersResponse,
     GetStatsResponse,
@@ -24,6 +26,8 @@ import {
     RawValidationResults,
     RejectedOrderInfo,
     StringifiedContractEvent,
+    StringifiedERC1155TransferBatchEvent,
+    StringifiedERC1155TransferSingleEvent,
     StringifiedERC20ApprovalEvent,
     StringifiedERC20TransferEvent,
     StringifiedERC721ApprovalEvent,
@@ -124,6 +128,40 @@ export class WSClient {
                         tokenId: new BigNumber(erc721ApprovalEvent.tokenId),
                     };
                     break;
+                case ContractEventKind.ERC721ApprovalForAllEvent:
+                    parameters = rawParameters as ERC721ApprovalForAllEvent;
+                    break;
+                case ContractEventKind.ERC1155ApprovalForAllEvent:
+                    parameters = rawParameters as ERC1155ApprovalForAllEvent;
+                    break;
+                case ContractEventKind.ERC1155TransferSingleEvent:
+                    const erc1155TransferSingleEvent = rawParameters as StringifiedERC1155TransferSingleEvent;
+                    parameters = {
+                        operator: erc1155TransferSingleEvent.operator,
+                        from: erc1155TransferSingleEvent.from,
+                        to: erc1155TransferSingleEvent.to,
+                        id: new BigNumber(erc1155TransferSingleEvent.id),
+                        value: new BigNumber(erc1155TransferSingleEvent.value),
+                    };
+                    break;
+                case ContractEventKind.ERC1155TransferBatchEvent:
+                    const erc1155TransferBatchEvent = rawParameters as StringifiedERC1155TransferBatchEvent;
+                    const ids: BigNumber[] = [];
+                    erc1155TransferBatchEvent.ids.forEach(id => {
+                        ids.push(new BigNumber(id));
+                    });
+                    const values: BigNumber[] = [];
+                    erc1155TransferBatchEvent.values.forEach(value => {
+                        values.push(new BigNumber(value));
+                    });
+                    parameters = {
+                        operator: erc1155TransferBatchEvent.operator,
+                        from: erc1155TransferBatchEvent.from,
+                        to: erc1155TransferBatchEvent.to,
+                        ids,
+                        values,
+                    };
+                    break;
                 case ContractEventKind.ExchangeFillEvent:
                     const exchangeFillEvent = rawParameters as StringifiedExchangeFillEvent;
                     parameters = {
@@ -170,11 +208,11 @@ export class WSClient {
             }
             const contractEvent: ContractEvent = {
                 blockHash: rawContractEvent.blockHash,
-                txHash:  rawContractEvent.txHash,
-                txIndex:  rawContractEvent.txIndex,
-                logIndex:  rawContractEvent.logIndex,
-                isRemoved:  rawContractEvent.isRemoved,
-                address:  rawContractEvent.address,
+                txHash: rawContractEvent.txHash,
+                txIndex: rawContractEvent.txIndex,
+                logIndex: rawContractEvent.logIndex,
+                isRemoved: rawContractEvent.isRemoved,
+                address: rawContractEvent.address,
                 kind,
                 parameters,
             };
@@ -204,12 +242,17 @@ export class WSClient {
     /**
      * Adds an array of 0x signed orders to the Mesh node.
      * @param signedOrders signedOrders to add
+     * @param pinned       Whether or not the orders should be pinned. Pinned
+     * orders will not be affected by any DDoS prevention or incentive
+     * mechanisms and will always stay in storage until they are no longer
+     * fillable.
      * @returns validation results
      */
-    public async addOrdersAsync(signedOrders: SignedOrder[]): Promise<ValidationResults> {
+    public async addOrdersAsync(signedOrders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         assert.isArray('signedOrders', signedOrders);
         const rawValidationResults: RawValidationResults = await (this._wsProvider as any).send('mesh_addOrders', [
             signedOrders,
+            pinned,
         ]);
         const validationResults: ValidationResults = {
             accepted: WSClient._convertRawAcceptedOrderInfos(rawValidationResults.accepted),
@@ -239,13 +282,11 @@ export class WSClient {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders',
-            [
-                page,
-                perPage,
-                snapshotID,
-            ],
-        );
+        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+            page,
+            perPage,
+            snapshotID,
+        ]);
         snapshotID = getOrdersResponse.snapshotID;
         let ordersInfos = getOrdersResponse.ordersInfos;
 
@@ -253,8 +294,7 @@ export class WSClient {
         do {
             rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
             page++;
-            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID]))
-                .ordersInfos;
+            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
         } while (Object.keys(ordersInfos).length > 0);
 
         const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);

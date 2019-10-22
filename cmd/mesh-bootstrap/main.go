@@ -2,12 +2,13 @@
 
 // mesh-bootstrap is a separate executable for bootstrap nodes. Bootstrap nodes
 // will not share or receive any orders and its sole responsibility is to
-// facilitate peer discovery.
+// facilitate peer discovery and/or serve as a relay for peer connections.
 package main
 
 import (
 	"context"
 	"fmt"
+	mathrand "math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,35 +17,43 @@ import (
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/p2p/banner"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
+	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 1000
-	// peerCountHigh is the maximum number of peers to be connected to. If the
-	// number of connections exceeds this number, we will prune connections until
-	// we reach peerCountLow.
-	peerCountHigh = 1100
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
 	defaultNetworkTimeout = 30 * time.Second
+	// checkBandwidthLoopInterval is how often to potentially check bandwidth usage
+	// for peers.
+	checkBandwidthLoopInterval = 5 * time.Second
+	// chanceToCheckBandwidthUsage is the approximate ratio of (number of check
+	// bandwidth loop iterations in which we check bandwidth usage) to (total
+	// number of check bandwidth loop iterations). We check bandwidth
+	// non-deterministically in order to prevent spammers from avoiding detection
+	// by carefully timing their bandwidth usage. So on each iteration of the
+	// check bandwidth loop we generate a number between 0 and 1. If its less than
+	// chanceToCheckBandiwdthUsage, we perform a bandwidth check.
+	chanceToCheckBandwidthUsage = 0.1
 )
 
 // Config contains configuration options for a Node.
@@ -64,6 +73,21 @@ type Config struct {
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
 	// If empty, the default bootstrap list will be used.
 	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
+	// EnableRelayHost is whether or not the node should serve as a relay host.
+	// Defaults to true.
+	EnableRelayHost bool `envvar:"ENABLE_RELAY_HOST" default:"true"`
+	// PeerCountLow is the target number of peers to connect to at any given time.
+	// Defaults to 100.
+	PeerCountLow int `envvar:"PEER_COUNT_LOW" default:"100"`
+	// PeerCountHigh is the maximum number of peers to be connected to. If the
+	// number of connections exceeds this number, we will prune connections until
+	// we reach PeerCountLow. Defaults to 110.
+	PeerCountHigh int `envvar:"PEER_COUNT_HIGH" default:"110"`
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check.
+	// TODO(albrow): Reduce this limit once we have a better picture of what real
+	// world bandwidth should be. Defaults to 100 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"104857600"`
 }
 
 func init() {
@@ -135,16 +159,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Initialize filters.
+	filters := filter.NewFilters()
+
 	// Set up the transport and the host.
-	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
+	connManager := connmgr.NewConnManager(config.PeerCountLow, config.PeerCountHigh, peerGraceDuration)
+	bandwidthCounter := metrics.NewBandwidthCounter()
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(bindAddrs...),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
-		libp2p.EnableRelay(circuit.OptHop),
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
+		libp2p.BandwidthReporter(bandwidthCounter),
+		p2p.Filters(filters),
+	}
+
+	if config.EnableRelayHost {
+		opts = append(opts, libp2p.EnableRelay(circuit.OptHop))
+	} else {
+		opts = append(opts, libp2p.EnableRelay())
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
@@ -171,14 +206,27 @@ func main() {
 		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
 	}
 
+	// Configure banner.
+	banner := banner.New(ctx, banner.Config{
+		Host:                   basicHost,
+		Filters:                filters,
+		BandwidthCounter:       bandwidthCounter,
+		MaxBytesPerSecond:      config.MaxBytesPerSecond,
+		LogBandwidthUsageStats: true,
+	})
+
 	// Protect each other bootstrap peer via the connection manager so that we
-	// maintain an active connection to them.
+	// maintain an active connection to them. Also prevent other bootstrap nodes
+	// from being banned.
 	bootstrapAddrInfos, err := p2p.BootstrapListToAddrInfos(bootstrapList)
 	if err != nil {
 		log.WithField("error", err).Fatal("could not parse bootstrap list")
 	}
 	for _, addrInfo := range bootstrapAddrInfos {
 		connManager.Protect(addrInfo.ID, "bootstrap-peer")
+		for _, addr := range addrInfo.Addrs {
+			_ = banner.ProtectIP(addr)
+		}
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -254,4 +302,19 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
+}
+
+func continuoslyCheckBandwidth(ctx context.Context, banner *banner.Banner) error {
+	ticker := time.NewTicker(checkBandwidthLoopInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			// Check bandwidth usage non-deterministically
+			if mathrand.Float64() <= chanceToCheckBandwidthUsage {
+				banner.CheckBandwidthUsage()
+			}
+		}
+	}
 }

@@ -89,6 +89,11 @@ func updateHardCodedVersions(version string) {
 	regex = `version(.*)= "(.*)"`
 	updateFileWithRegex(corePath, regex, newVersionString)
 
+	// Update `docs/deployment_with_telemetry.md`
+	newVersionString = fmt.Sprintf(`image: 0xorg/mesh:%s`, version)
+	regex = `image: 0xorg/mesh:latest`
+	updateFileWithRegex("docs/deployment_with_telemetry.md", regex, newVersionString)
+
 	// Update `CHANGELOG.md`
 	changelog := "CHANGELOG.md"
 	newChangelogSection := fmt.Sprintf(`## v%s`, version)

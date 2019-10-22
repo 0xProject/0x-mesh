@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -99,7 +101,7 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(app.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +114,15 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 				SignedOrder: order,
 				Kind:        ordervalidator.MeshError,
 				Status:      ordervalidator.ROInternalError,
+			})
+			continue
+		}
+		if order.ExpirationTimeSeconds.Cmp(app.orderWatcher.MaxExpirationTime()) == 1 {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROMaxExpirationExceeded,
 			})
 			continue
 		}
@@ -135,7 +146,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROIncorrectNetwork,
+				Status:      ordervalidator.ROIncorrectChain,
 			})
 			continue
 		}
@@ -193,7 +204,10 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 		validMeshOrders = append(validMeshOrders, order)
 	}
 	areNewOrders := true
-	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
+	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	zeroexResults := app.orderValidator.BatchValidate(ctx, validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
 	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil

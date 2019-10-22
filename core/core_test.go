@@ -11,20 +11,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEthereumNetworkDetection(t *testing.T) {
+func TestEthereumChainDetection(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
 	// simulate starting up on mainnet
-	err = initNetworkID(1, meshDB)
+	_, err = initMetadata(1, meshDB)
 	require.NoError(t, err)
 
-	// simulate restart on same network
-	err = initNetworkID(1, meshDB)
+	// simulate restart on same chain
+	_, err = initMetadata(1, meshDB)
 	require.NoError(t, err)
 
-	// should error when attempting to start on different network
-	err = initNetworkID(2, meshDB)
+	// should error when attempting to start on different chain
+	_, err = initMetadata(2, meshDB)
 	assert.Error(t, err)
 }

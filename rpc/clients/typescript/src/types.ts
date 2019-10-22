@@ -104,6 +104,44 @@ export interface ERC721ApprovalForAllEvent {
     approved: boolean;
 }
 
+export interface ERC1155TransferSingleEvent {
+    operator: string;
+    from: string;
+    to: string;
+    id: BigNumber;
+    value: BigNumber;
+}
+
+export interface StringifiedERC1155TransferSingleEvent {
+    operator: string;
+    from: string;
+    to: string;
+    id: string;
+    value: string;
+}
+
+export interface ERC1155TransferBatchEvent {
+    operator: string;
+    from: string;
+    to: string;
+    ids: BigNumber[];
+    values: BigNumber[];
+}
+
+export interface StringifiedERC1155TransferBatchEvent {
+    operator: string;
+    from: string;
+    to: string;
+    ids: string[];
+    values: string[];
+}
+
+export interface ERC1155ApprovalForAllEvent {
+    owner: string;
+    operator: string;
+    approved: boolean;
+}
+
 export interface ExchangeFillEvent {
     makerAddress: string;
     takerAddress: string;
@@ -178,6 +216,10 @@ export enum ContractEventKind {
     ERC20ApprovalEvent = 'ERC20ApprovalEvent',
     ERC721TransferEvent = 'ERC721TransferEvent',
     ERC721ApprovalEvent = 'ERC721ApprovalEvent',
+    ERC721ApprovalForAllEvent = 'ERC721ApprovalForAllEvent',
+    ERC1155ApprovalForAllEvent = 'ERC1155ApprovalForAllEvent',
+    ERC1155TransferSingleEvent = 'ERC1155TransferSingleEvent',
+    ERC1155TransferBatchEvent = 'ERC1155TransferBatchEvent',
     ExchangeFillEvent = 'ExchangeFillEvent',
     ExchangeCancelEvent = 'ExchangeCancelEvent',
     ExchangeCancelUpToEvent = 'ExchangeCancelUpToEvent',
@@ -185,7 +227,20 @@ export enum ContractEventKind {
     WethWithdrawalEvent = 'WethWithdrawalEvent',
 }
 
-export type StringifiedContractEventParameters =  StringifiedERC20TransferEvent | StringifiedERC20ApprovalEvent | StringifiedERC721TransferEvent | StringifiedERC721ApprovalEvent | StringifiedExchangeFillEvent | StringifiedExchangeCancelUpToEvent | StringifiedWethWithdrawalEvent | StringifiedWethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+export type StringifiedContractEventParameters =
+    | StringifiedERC20TransferEvent
+    | StringifiedERC20ApprovalEvent
+    | StringifiedERC721TransferEvent
+    | StringifiedERC721ApprovalEvent
+    | StringifiedExchangeFillEvent
+    | StringifiedExchangeCancelUpToEvent
+    | StringifiedWethWithdrawalEvent
+    | StringifiedWethDepositEvent
+    | ERC721ApprovalForAllEvent
+    | ERC1155ApprovalForAllEvent
+    | StringifiedERC1155TransferSingleEvent
+    | StringifiedERC1155TransferBatchEvent
+    | ExchangeCancelEvent;
 
 export interface StringifiedContractEvent {
     blockHash: string;
@@ -198,7 +253,20 @@ export interface StringifiedContractEvent {
     parameters: StringifiedContractEventParameters;
 }
 
-export type ContractEventParameters =  ERC20TransferEvent | ERC20ApprovalEvent | ERC721TransferEvent | ERC721ApprovalEvent | ExchangeFillEvent | ExchangeCancelUpToEvent | WethWithdrawalEvent | WethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent;
+export type ContractEventParameters =
+    | ERC20TransferEvent
+    | ERC20ApprovalEvent
+    | ERC721TransferEvent
+    | ERC721ApprovalEvent
+    | ExchangeFillEvent
+    | ExchangeCancelUpToEvent
+    | WethWithdrawalEvent
+    | WethDepositEvent
+    | ERC721ApprovalForAllEvent
+    | ExchangeCancelEvent
+    | ERC1155ApprovalForAllEvent
+    | ERC1155TransferSingleEvent
+    | ERC1155TransferBatchEvent;
 
 export interface ContractEvent {
     blockHash: string;
@@ -284,7 +352,7 @@ export enum RejectedCode {
     InternalError = 'InternalError',
     MaxOrderSizeExceeded = 'MaxOrderSizeExceeded',
     OrderAlreadyStored = 'OrderAlreadyStored',
-    OrderForIncorrectNetwork = 'OrderForIncorrectNetwork',
+    OrderForIncorrectChain = 'OrderForIncorrectChain',
     NetworkRequestFailed = 'NetworkRequestFailed',
     OrderHasInvalidMakerAssetAmount = 'OrderHasInvalidMakerAssetAmount',
     OrderHasInvalidTakerAssetAmount = 'OrderHasInvalidTakerAssetAmount',
@@ -342,12 +410,18 @@ export interface LatestBlock {
 }
 
 export interface GetStatsResponse {
-    Version: string;
-    PubSubTopic: string;
-    Rendezvous: string;
-    PeerID: string;
-    EthereumNetworkID: number;
-    LatestBlock: LatestBlock;
-    NumPeers: number;
-    NumOrders: number;
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumChainID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
+    numPinnedOrders: number;
+    maxExpirationTime: string;
+    startOfCurrentUTCDay: string;
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
 }
