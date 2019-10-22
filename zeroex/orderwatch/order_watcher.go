@@ -675,14 +675,17 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		return err
 	}
 
+	// TODO(albrow): technically we should count the current number of orders,
+	// remove some if needed, and then insert the order in a single transaction to
+	// ensure that we don't accidentally exceed the maximum. In practice, and
+	// because of the way OrderWatcher works, the distinction shouldn't matter.
+	txn := w.meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
 	// Final expiration time check before inserting the order. We might have just
 	// changed max expiration time above.
-	//
-	// TODO(albrow): We should really use a transaction starting here in order to
-	// ensure consistency. It's okay if we don't use a transaction above since in
-	// the worst case it would result in more orders being removed than necessary.
-	// But if we don't do it here it could result in too many orders being *added*
-	// and could exceed maxOrders.
 	if orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
 		return nil
 	}
@@ -694,13 +697,16 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 	}
-	err := w.meshDB.Orders.Insert(order)
+	err := txn.Insert(order)
 	if err != nil {
 		if _, ok := err.(db.AlreadyExistsError); ok {
 			// If we're already watching the order, that's fine in this case. Don't
 			// return an error.
 			return nil
 		}
+		return err
+	}
+	if err := txn.Commit(); err != nil {
 		return err
 	}
 
