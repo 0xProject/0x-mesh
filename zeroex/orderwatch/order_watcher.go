@@ -1162,7 +1162,7 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() error {
 	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
 		return err
-	} else if orderCount+1 >= w.maxOrders {
+	} else if orderCount+1 > w.maxOrders {
 		if err := w.trimOrdersAndFireEvents(); err != nil {
 			return err
 		}
