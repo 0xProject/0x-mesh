@@ -43,8 +43,9 @@ func TestProcessesRequestsImmediatelyIfBufferedRequests(t *testing.T) {
 	time.Sleep(regularTimeBetweenRequests * 3)
 
 	wg := &sync.WaitGroup{}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
+		time.Sleep(10 * time.Millisecond)
 		go func(i int) {
 			defer wg.Done()
 			responseChan := make(chan struct{})
@@ -55,17 +56,12 @@ func TestProcessesRequestsImmediatelyIfBufferedRequests(t *testing.T) {
 			start := time.Now()
 			<-r.ResponseChan
 			elapsed := time.Since(start)
-			if i == 0 {
-				// First request should go through immediately
-				assert.Condition(t, func() bool {
-					return elapsed < 5*time.Millisecond
-				})
-			} else {
-				// Subsequent requests should wait at least minTimeBetweenRequests
-				assert.Condition(t, func() bool {
-					return elapsed > minTimeBetweenRequests && elapsed < regularTimeBetweenRequests
-				})
-			}
+			expectedElapsed := time.Duration(i) * minTimeBetweenRequests
+			diff := elapsed - expectedElapsed
+			// Subsequent requests should wait at least minTimeBetweenRequests
+			assert.Condition(t, func() bool {
+				return diff < 15*time.Millisecond
+			})
 		}(i)
 	}
 	wg.Wait()
