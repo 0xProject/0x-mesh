@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-5.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-5.1.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh JSON-RPC API Documentation
 
@@ -203,7 +203,8 @@ Gets certain configurations and stats about a Mesh node.
             "hash": "0x84aaae84147fc42fc77b33e2d3e05d86272663792d9cacaa8dc89f207b4d0642"
         },
         "numPeers": 18,
-        "numOrders": 1095
+        "numOrders": 1095,
+        "numOrdersIncludingRemoved": 1134
     },
     "id": 1
 }

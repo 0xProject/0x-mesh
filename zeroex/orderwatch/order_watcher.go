@@ -229,7 +229,7 @@ func (w *Watcher) handleExpiration(expiredOrders []expirationwatch.ExpiredItem) 
 			OrderHash:                common.HexToHash(expiredOrder.ID),
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: big.NewInt(0),
-			EndState:                     zeroex.ESOrderExpired,
+			EndState:                 zeroex.ESOrderExpired,
 		}
 		orderEvents = append(orderEvents, orderEvent)
 	}
@@ -359,6 +359,74 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 				}
 				// Ignores approvals set to anyone except the AssetProxy
 				if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
+					continue
+				}
+				parameters = approvalForAllEvent
+				orders, err = w.findOrders(approvalForAllEvent.Owner, log.Address, nil)
+				if err != nil {
+					return err
+				}
+
+			case "ERC1155TransferSingleEvent":
+				var transferEvent decoder.ERC1155TransferSingleEvent
+				err = w.eventDecoder.Decode(log, &transferEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				// HACK(fabio): Currently we simply revalidate all orders involving assets in this
+				// ERC1155 contract from this particular maker. We could however revalidate fewer orders
+				// by also taking into account the `ID` of the assets affected. We punt on this for now
+				// in order to support Augur's use-case of a dummy ERC1155 contract. In their case, we
+				// need to revalidate all maker orders within the single ERC1155 contract and cannot optimize
+				// further. In the future, we might want to special-case this broader approach for the Augur
+				// contract address specifically.
+				parameters = transferEvent
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
+
+			case "ERC1155TransferBatchEvent":
+				var transferEvent decoder.ERC1155TransferBatchEvent
+				err = w.eventDecoder.Decode(log, &transferEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				parameters = transferEvent
+				fromOrders, err := w.findOrders(transferEvent.From, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, fromOrders...)
+				toOrders, err := w.findOrders(transferEvent.To, log.Address, nil)
+				if err != nil {
+					return err
+				}
+				orders = append(orders, toOrders...)
+
+			case "ERC1155ApprovalForAllEvent":
+				var approvalForAllEvent decoder.ERC1155ApprovalForAllEvent
+				err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+				if err != nil {
+					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+						continue
+					}
+					return err
+				}
+				// Ignores approvals set to anyone except the AssetProxy
+				if approvalForAllEvent.Operator != w.contractAddresses.ERC1155Proxy {
 					continue
 				}
 				parameters = approvalForAllEvent
@@ -832,6 +900,14 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		}
 		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -878,6 +954,16 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
 		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
 			w.eventDecoder.RemoveKnownERC721(decodedAssetData.Address)
+		}
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
+		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
 		}
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData

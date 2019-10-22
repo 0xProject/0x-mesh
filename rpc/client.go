@@ -76,14 +76,15 @@ type LatestBlock struct {
 
 // GetStatsResponse is the response returned for an RPC request to mesh_getStats
 type GetStatsResponse struct {
-	Version           string      `json:"version"`
-	PubSubTopic       string      `json:"pubSubTopic"`
-	Rendezvous        string      `json:"rendervous"`
-	PeerID            string      `json:"peerID"`
-	EthereumNetworkID int         `json:"ethereumNetworkID"`
-	LatestBlock       LatestBlock `json:"latestBlock"`
-	NumPeers          int         `json:"numPeers"`
-	NumOrders         int         `json:"numOrders"`
+	Version                   string      `json:"version"`
+	PubSubTopic               string      `json:"pubSubTopic"`
+	Rendezvous                string      `json:"rendervous"`
+	PeerID                    string      `json:"peerID"`
+	EthereumNetworkID         int         `json:"ethereumNetworkID"`
+	LatestBlock               LatestBlock `json:"latestBlock"`
+	NumPeers                  int         `json:"numPeers"`
+	NumOrders                 int         `json:"numOrders"`
+	NumOrdersIncludingRemoved int         `json:"numOrdersIncludingRemoved"`
 }
 
 // GetStats retrieves stats about the Mesh node

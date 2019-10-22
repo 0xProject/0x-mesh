@@ -15,11 +15,13 @@ import (
 )
 
 var EVENT_SIGNATURES = [...]string{
-	"Transfer(address,address,uint256)",    // ERC20 & ERC721
-	"Approval(address,address,uint256)",    // ERC20 & ERC721
-	"ApprovalForAll(address,address,bool)", // ERC721
-	"Deposit(address,uint256)",             // WETH9
-	"Withdrawal(address,uint256)",          // WETH9
+	"Transfer(address,address,uint256)",                                                         // ERC20 & ERC721
+	"Approval(address,address,uint256)",                                                         // ERC20 & ERC721
+	"TransferSingle(address,address,address,uint256,uint256)",                                   // ERC1155
+	"TransferBatch(address,address,address,uint256[],uint256[])",                                // ERC1155
+	"ApprovalForAll(address,address,bool)",                                                      // ERC721 & ERC1155
+	"Deposit(address,uint256)",                                                                  // WETH9
+	"Withdrawal(address,uint256)",                                                               // WETH9
 	"Fill(address,address,address,address,uint256,uint256,uint256,uint256,bytes32,bytes,bytes)", // Exchange
 	"Cancel(address,address,address,bytes32,bytes,bytes)",                                       // Exchange
 	"CancelUpTo(address,address,uint256)",                                                       // Exchange
@@ -30,6 +32,9 @@ const erc20EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"na
 
 // Includes ERC721 `Transfer`, `Approval` & `ApprovalForAll` events
 const erc721EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_approved\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"}]"
+
+// Includes ERC1155 `TransferSingle`, `TransferBatch` & `ApprovalForAll` events
+const erc1155EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"name\":\"TransferBatch\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"TransferSingle\",\"type\":\"event\"}]"
 
 // Includes Exchange `Fill`, `Cancel`, `CancelUpTo` events
 const exchangeEventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"takerAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"makerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"makerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"takerFeePaid\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Fill\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"name\":\"takerAssetData\",\"type\":\"bytes\"}],\"name\":\"Cancel\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"orderEpoch\",\"type\":\"uint256\"}],\"name\":\"CancelUpTo\",\"type\":\"event\"}]"
@@ -111,6 +116,70 @@ func (e ERC721ApprovalForAllEvent) MarshalJSON() ([]byte, error) {
 		"owner":    e.Owner.Hex(),
 		"operator": e.Operator.Hex(),
 		"approved": e.Approved,
+	})
+}
+
+// ERC1155ApprovalForAllEvent represents an ERC1155 ApprovalForAll event
+type ERC1155ApprovalForAllEvent struct {
+	Owner    common.Address
+	Operator common.Address
+	Approved bool
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ERC1155ApprovalForAllEvent type
+func (e ERC1155ApprovalForAllEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"owner":    e.Owner.Hex(),
+		"operator": e.Operator.Hex(),
+		"approved": e.Approved,
+	})
+}
+
+// ERC1155TransferSingleEvent represents an ERC1155 TransfeSingler event
+type ERC1155TransferSingleEvent struct {
+	Operator common.Address
+	From     common.Address
+	To       common.Address
+	Id       *big.Int
+	Value    *big.Int
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ERC1155TransferSingleEvent type
+func (e ERC1155TransferSingleEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"operator": e.Operator.Hex(),
+		"from":     e.From.Hex(),
+		"to":       e.To.Hex(),
+		"id":       e.Id.String(),
+		"value":    e.Value.String(),
+	})
+}
+
+// ERC1155TransferBatchEvent represents an ERC1155 TransfeSingler event
+type ERC1155TransferBatchEvent struct {
+	Operator common.Address
+	From     common.Address
+	To       common.Address
+	Ids      []*big.Int
+	Values   []*big.Int
+}
+
+// MarshalJSON implements a custom JSON marshaller for the ERC1155TransferBatchEvent type
+func (e ERC1155TransferBatchEvent) MarshalJSON() ([]byte, error) {
+	ids := []string{}
+	for _, id := range e.Ids {
+		ids = append(ids, id.String())
+	}
+	values := []string{}
+	for _, value := range e.Values {
+		values = append(values, value.String())
+	}
+	return json.Marshal(map[string]interface{}{
+		"operator": e.Operator.Hex(),
+		"from":     e.From.Hex(),
+		"to":       e.To.Hex(),
+		"ids":      ids,
+		"values":   values,
 	})
 }
 
@@ -255,15 +324,19 @@ func (e UntrackedTokenError) Error() string {
 type Decoder struct {
 	knownERC20AddressesMu    sync.RWMutex
 	knownERC721AddressesMu   sync.RWMutex
+	knownERC1155AddressesMu  sync.RWMutex
 	knownExchangeAddressesMu sync.RWMutex
 	knownERC20Addresses      map[common.Address]bool
 	knownERC721Addresses     map[common.Address]bool
+	knownERC1155Addresses    map[common.Address]bool
 	knownExchangeAddresses   map[common.Address]bool
 	erc20ABI                 abi.ABI
 	erc721ABI                abi.ABI
+	erc1155ABI               abi.ABI
 	exchangeABI              abi.ABI
 	erc20TopicToEventName    map[common.Hash]string
 	erc721TopicToEventName   map[common.Hash]string
+	erc1155TopicToEventName  map[common.Hash]string
 	exchangeTopicToEventName map[common.Hash]string
 }
 
@@ -275,6 +348,11 @@ func New() (*Decoder, error) {
 	}
 
 	erc721ABI, err := abi.JSON(strings.NewReader(erc721EventsAbi))
+	if err != nil {
+		return nil, err
+	}
+
+	erc1155ABI, err := abi.JSON(strings.NewReader(erc1155EventsAbi))
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +370,10 @@ func New() (*Decoder, error) {
 	for _, event := range erc721ABI.Events {
 		erc721TopicToEventName[event.Id()] = event.Name
 	}
+	erc1155TopicToEventName := map[common.Hash]string{}
+	for _, event := range erc1155ABI.Events {
+		erc1155TopicToEventName[event.Id()] = event.Name
+	}
 	exchangeTopicToEventName := map[common.Hash]string{}
 	for _, event := range exchangeABI.Events {
 		exchangeTopicToEventName[event.Id()] = event.Name
@@ -300,12 +382,15 @@ func New() (*Decoder, error) {
 	return &Decoder{
 		knownERC20Addresses:      make(map[common.Address]bool),
 		knownERC721Addresses:     make(map[common.Address]bool),
+		knownERC1155Addresses:    make(map[common.Address]bool),
 		knownExchangeAddresses:   make(map[common.Address]bool),
 		erc20ABI:                 erc20ABI,
 		erc721ABI:                erc721ABI,
+		erc1155ABI:               erc1155ABI,
 		exchangeABI:              exchangeABI,
 		erc20TopicToEventName:    erc20TopicToEventName,
 		erc721TopicToEventName:   erc721TopicToEventName,
+		erc1155TopicToEventName:  erc1155TopicToEventName,
 		exchangeTopicToEventName: exchangeTopicToEventName,
 	}, nil
 }
@@ -360,6 +445,31 @@ func (d *Decoder) isKnownERC721(address common.Address) bool {
 	return exists
 }
 
+// AddKnownERC1155 registers the supplied contract address as an ERC1155 contract. If an event is found
+// from this contract address, the decoder will properly decode the `Transfer` and `Approve` events
+// including the correct event parameter names.
+func (d *Decoder) AddKnownERC1155(address common.Address) {
+	d.knownERC1155AddressesMu.Lock()
+	defer d.knownERC1155AddressesMu.Unlock()
+	d.knownERC1155Addresses[address] = true
+}
+
+// RemoveKnownERC1155 removes an ERC1155 address from the list of known addresses. We will no longer decode
+// events for this token.
+func (d *Decoder) RemoveKnownERC1155(address common.Address) {
+	d.knownERC1155AddressesMu.Lock()
+	defer d.knownERC1155AddressesMu.Unlock()
+	delete(d.knownERC1155Addresses, address)
+}
+
+// isKnownERC1155 checks if the supplied address is a known ERC1155 contract
+func (d *Decoder) isKnownERC1155(address common.Address) bool {
+	d.knownERC1155AddressesMu.RLock()
+	defer d.knownERC1155AddressesMu.RUnlock()
+	_, exists := d.knownERC1155Addresses[address]
+	return exists
+}
+
 // AddKnownExchange registers the supplied contract address as a 0x Exchange contract. If an event is found
 // from this contract address, the decoder will properly decode it's events including the correct event
 // parameter names.
@@ -406,6 +516,13 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 		}
 		return fmt.Sprintf("ERC721%sEvent", eventName), nil
 	}
+	if isKnown := d.isKnownERC1155(log.Address); isKnown {
+		eventName, ok := d.erc1155TopicToEventName[firstTopic]
+		if !ok {
+			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
+		}
+		return fmt.Sprintf("ERC1155%sEvent", eventName), nil
+	}
 	if isKnown := d.isKnownExchange(log.Address); isKnown {
 		eventName, ok := d.exchangeTopicToEventName[firstTopic]
 		if !ok {
@@ -425,6 +542,9 @@ func (d *Decoder) Decode(log types.Log, decodedLog interface{}) error {
 	}
 	if isKnown := d.isKnownERC721(log.Address); isKnown {
 		return d.decodeERC721(log, decodedLog)
+	}
+	if isKnown := d.isKnownERC1155(log.Address); isKnown {
+		return d.decodeERC1155(log, decodedLog)
 	}
 	if isKnown := d.isKnownExchange(log.Address); isKnown {
 		return d.decodeExchange(log, decodedLog)
@@ -453,6 +573,19 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 	}
 
 	err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Decoder) decodeERC1155(log types.Log, decodedLog interface{}) error {
+	eventName, ok := d.erc1155TopicToEventName[log.Topics[0]]
+	if !ok {
+		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
+	}
+
+	err := unpackLog(decodedLog, eventName, log, d.erc1155ABI)
 	if err != nil {
 		return err
 	}
