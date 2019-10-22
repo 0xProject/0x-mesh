@@ -123,6 +123,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()
 	}
+	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
+		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
+	}
 
 	return config, nil
 }
