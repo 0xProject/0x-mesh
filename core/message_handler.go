@@ -12,6 +12,10 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
+type MessageHandler struct {
+	nextOffset int
+}
+
 func min(a int, b int) int {
 	if a < b {
 		return a

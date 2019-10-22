@@ -140,10 +140,6 @@ type App struct {
 	messageHandler            *MessageHandler
 }
 
-type MessageHandler struct {
-	nextOffset int
-}
-
 func New(config Config) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
