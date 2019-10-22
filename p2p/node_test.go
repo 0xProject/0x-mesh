@@ -6,10 +6,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
@@ -27,6 +29,7 @@ const (
 	testTopic             = "0x-mesh-testing"
 	testRendezvousString  = "0x-mesh-testing-rendezvous"
 	testConnectionTimeout = 1 * time.Second
+	testStreamTimeout     = 10 * time.Second
 )
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
@@ -88,6 +91,18 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 		UseBootstrapList: false,
 		DataDir:          "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 	}
+
+	return newTestNodeWithConfig(t, ctx, notifee, config)
+}
+
+// newTestNodeWithConfig creates and returns a Node which is suitable for testing
+// purposes and allows a custom config object.
+func newTestNodeWithConfig(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee, config Config) *Node {
+	if config.PrivateKey == nil {
+		privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
+		require.NoError(t, err)
+		config.PrivateKey = privKey
+	}
 	node, err := New(ctx, config)
 	require.NoError(t, err)
 
@@ -127,6 +142,11 @@ func newInMemoryMessageHandler(validator func(*Message) (bool, error)) *inMemory
 	return &inMemoryMessageHandler{
 		validator: validator,
 	}
+}
+
+// count returns the current number of messages stored.
+func (mh *inMemoryMessageHandler) count() int {
+	return len(mh.messages)
 }
 
 func (mh *inMemoryMessageHandler) HandleMessages(messages []*Message) error {
@@ -200,32 +220,9 @@ func TestPingPong(t *testing.T) {
 	node1 := newTestNode(t, ctx, notifee)
 	connectTestNodes(t, node0, node1)
 
-	// Wait for the nodes to open a GossipSub stream.
-	streamCtx, cancel := context.WithTimeout(node0.ctx, 10*time.Second)
-	defer cancel()
-	streamCount := 0
-loop:
-	for {
-		select {
-		case <-streamCtx.Done():
-			t.Fatal("timed out waiting for pubsub stream to open")
-		case stream := <-notifee.streams:
-			if stream.Protocol() == pubsubProtocolID {
-				// Note: due to the way pusbsub works, we expect two streams to be
-				// opened for each host (one for each side). Four streams should be
-				// opened in total:
-				//
-				//      number of streams x number of hosts
-				//    = 2 x 2
-				//    = 4
-				//
-				streamCount += 1
-				if streamCount == 4 {
-					break loop
-				}
-			}
-		}
-	}
+	// Wait for a total of 2 x 2 = 4 GossipSub streams to open (2 streams per
+	// connection; 2 connections).
+	waitForGossipSubStreams(t, ctx, notifee, 4, testStreamTimeout)
 
 	// HACK(albrow): Even though the stream for GossipSub has already been
 	// opened on both sides, the ping message might *still* not be received by the
@@ -235,13 +232,13 @@ loop:
 
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
-	require.NoError(t, node0.send(pingMessage.Data))
+	require.NoError(t, node0.Send(pingMessage.Data))
 	const pingPongTimeout = 15 * time.Second
 	expectMessage(t, node1, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{From: node1.host.ID(), Data: []byte("pong\n")}
-	require.NoError(t, node1.send(pongMessage.Data))
+	require.NoError(t, node1.Send(pongMessage.Data))
 	expectMessage(t, node0, pongMessage, pingPongTimeout)
 }
 
@@ -431,7 +428,7 @@ func TestBanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// node0 should not be able to connect to node1 and vice versa.
@@ -463,12 +460,12 @@ func TestUnbanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// Unban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.UnbanIP(maddr))
+		require.NoError(t, node0.banner.UnbanIP(maddr))
 	}
 
 	// Each node should now be able to connect to the other.
@@ -496,16 +493,208 @@ func TestProtectIP(t *testing.T) {
 
 	// Protect all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.ProtectIP(maddr))
+		require.NoError(t, node0.banner.ProtectIP(maddr))
 	}
 
 	// Ban all node1 IP addresses (this should have no effect since the IP
 	// addresses are protected).
 	for _, maddr := range node1.Multiaddrs() {
-		require.EqualError(t, node0.BanIP(maddr), errProtectedIP.Error())
+		require.EqualError(t, node0.banner.BanIP(maddr), banner.ErrProtectedIP.Error())
 	}
 
 	// Each node should now be able to connect to the other.
 	require.NoError(t, node0.Connect(node1AddrInfo, testConnectionTimeout))
 	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
+}
+
+func TestRateValidatorGlobal(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create a test notifee which will be used to detect new streams.
+	notifee := &testNotifee{
+		streams: make(chan p2pnet.Stream),
+	}
+
+	node0Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:         testRendezvousString,
+		UseBootstrapList:         false,
+		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		GlobalPubSubMessageLimit: 1,
+		GlobalPubSubMessageBurst: 5,
+	}
+	node1Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:         testRendezvousString,
+		UseBootstrapList:         false,
+		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		GlobalPubSubMessageLimit: 1,
+		GlobalPubSubMessageBurst: 5,
+	}
+	node2Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:         testRendezvousString,
+		UseBootstrapList:         false,
+		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		GlobalPubSubMessageLimit: 1,
+		GlobalPubSubMessageBurst: 5,
+	}
+
+	// Create three test nodes. node0 is connected to node1. node1 is connected to
+	// node2.
+	node0 := newTestNodeWithConfig(t, ctx, notifee, node0Config)
+	node1 := newTestNodeWithConfig(t, ctx, notifee, node1Config)
+	node2 := newTestNodeWithConfig(t, ctx, notifee, node2Config)
+	connectTestNodes(t, node0, node1)
+	connectTestNodes(t, node1, node2)
+
+	// Wait for a total of 2 x 3 = 6 GossipSub streams to open (2 streams per
+	// connection; 3 connections).
+	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
+
+	// HACK(albrow): Wait for GossipSub to finish initializing.
+	time.Sleep(2 * time.Second)
+
+	require.NoError(t, node1.runOnce())
+	require.NoError(t, node2.runOnce())
+
+	// node0 sends config.GlobalPubSubMessageBurst*2 messages to node1.
+	for i := 0; i < node0.config.GlobalPubSubMessageBurst*2; i++ {
+		msg := []byte(fmt.Sprintf("message_%d", i))
+		require.NoError(t, node0.Send(msg))
+	}
+
+	// HACK(albrow): Wait for GossipSub messages to fully propagate.
+	time.Sleep(1 * time.Second)
+
+	require.NoError(t, node1.runOnce())
+	require.NoError(t, node2.runOnce())
+
+	// node1 and node2 should only have config.GlobalPubSubMessageBurst messages.
+	// The others are expected to have been dropped.
+	expectedMessageCount := node0.config.GlobalPubSubMessageBurst
+	node1MessageCount := node1.messageHandler.(*inMemoryMessageHandler).count()
+	assert.Equal(t, expectedMessageCount, node1MessageCount, "node1 received and stored the wrong number of messages")
+	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
+	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
+}
+
+func TestRateValidatorPerPeer(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create a test notifee which will be used to detect new streams.
+	notifee := &testNotifee{
+		streams: make(chan p2pnet.Stream),
+	}
+
+	node0Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+	node1Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+	node2Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+
+	// Create three test nodes. Both node0 and node1 are connected to node2.
+	node0 := newTestNodeWithConfig(t, ctx, notifee, node0Config)
+	node1 := newTestNodeWithConfig(t, ctx, notifee, node1Config)
+	node2 := newTestNodeWithConfig(t, ctx, notifee, node2Config)
+	connectTestNodes(t, node0, node2)
+	connectTestNodes(t, node1, node2)
+
+	// Wait for a total of 2 x 3 = 6 GossipSub streams to open (2 streams per
+	// connection; 3 connections).
+	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
+
+	// HACK(albrow): Wait for GossipSub to finish initializing.
+	time.Sleep(2 * time.Second)
+
+	require.NoError(t, node0.receiveAndHandleMessages())
+	require.NoError(t, node1.receiveAndHandleMessages())
+	require.NoError(t, node2.receiveAndHandleMessages())
+
+	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
+	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
+		msg := []byte(fmt.Sprintf("node0_message_%d", i))
+		require.NoError(t, node0.Send(msg))
+	}
+	// node1 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
+	for i := 0; i < node1.config.PerPeerPubSubMessageBurst*2; i++ {
+		msg := []byte(fmt.Sprintf("node1_message_%d", i))
+		require.NoError(t, node1.Send(msg))
+	}
+
+	// HACK(albrow): Wait for GossipSub messages to fully propagate.
+	time.Sleep(1 * time.Second)
+
+	require.NoError(t, node0.receiveAndHandleMessages())
+	require.NoError(t, node1.receiveAndHandleMessages())
+	require.NoError(t, node2.receiveAndHandleMessages())
+
+	// node2 should only have config.PerPeerPubSubMessageBurst*2 messages.
+	// The others are expected to have been dropped.
+	expectedMessageCount := node0.config.PerPeerPubSubMessageBurst * 2
+	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
+	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
+}
+
+func waitForGossipSubStreams(t *testing.T, ctx context.Context, notifee *testNotifee, count int, timeout time.Duration) {
+	streamCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	streamCount := 0
+loop:
+	for {
+		select {
+		case <-streamCtx.Done():
+			t.Fatal("timed out waiting for pubsub stream to open")
+		case stream := <-notifee.streams:
+			if stream.Protocol() == pubsubProtocolID {
+				streamCount += 1
+				if streamCount == count {
+					break loop
+				}
+			}
+		}
+	}
 }

@@ -6,7 +6,7 @@ Welcome to the [0x Mesh](https://github.com/0xProject/0x-mesh) Deployment Guide!
 This guide will walk you through how to configure and deploy your own 0x Mesh
 node.
 
-## Supported Networks
+## Supported Chains
 
 -   Mainnet
 -   Kovan
@@ -27,7 +27,7 @@ docker run \
 -p 60557:60557 \
 -p 60558:60558 \
 -p 60559:60559 \
--e ETHEREUM_NETWORK_ID="1" \
+-e ETHEREUM_CHAIN_ID="1" \
 -e ETHEREUM_RPC_URL="{your_ethereum_rpc_url}" \
 -e VERBOSITY=5 \
 -v {local_path_on_host_machine}/0x_mesh:/usr/mesh/0x_mesh
@@ -73,9 +73,9 @@ type Config struct {
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
-	// EthereumNetworkID is the network ID to use when communicating with
-	// Ethereum.
-	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
+	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+	// run your Mesh node for
+	EthereumChainID int `envvar:"ETHEREUM_CHAIN_ID"`
 	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
 	// specific set of peers.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
@@ -89,8 +89,8 @@ type Config struct {
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
 	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
-	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
-	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
+	// chains have different block producing intervals: POW chains are typically slower (e.g., Mainnet)
+	// and POA chains faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
 	// EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
 	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
@@ -107,8 +107,9 @@ Mesh executable](../cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
-	// RPCPort is the port to use for the JSON RPC API over WebSockets. By
-	// default, 0x Mesh will let the OS select a randomly available port.
-	RPCPort int `envvar:"RPC_PORT" default:"0"`
+	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WebSockets. By default, 0x Mesh will listen on localhost and will let the
+	// OS select a randomly available port.
+	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:0"`
 }
 ```
