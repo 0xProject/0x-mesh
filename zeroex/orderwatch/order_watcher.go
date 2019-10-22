@@ -739,12 +739,12 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 		}).Debug("removing orders to make space")
 	}
 	for _, removedOrder := range removedOrders {
-		// Fire a "REMOVED" event for each order that was removed.
+		// Fire a "STOPPED_WATCHING" event for each order that was removed.
 		orderEvent := &zeroex.OrderEvent{
 			OrderHash:                removedOrder.Hash,
 			SignedOrder:              removedOrder.SignedOrder,
 			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
-			EndState:                 zeroex.ESOrderRemoved,
+			EndState:                 zeroex.ESStoppedWatching,
 		}
 		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
 

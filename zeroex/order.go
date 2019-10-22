@@ -183,8 +183,8 @@ const (
 	// (e.g. the database is full or the peer that sent the order was
 	// misbehaving). The order will no longer be watched and no further events for
 	// this order will be emitted. In some cases, the order may be re-added in the
-	// future. TOOD(albrow): Rename this.
-	ESOrderRemoved = OrderEventEndState("REMOVED")
+	// future.
+	ESStoppedWatching = OrderEventEndState("STOPPED_WATCHING")
 )
 
 var eip712OrderTypes = signer.Types{

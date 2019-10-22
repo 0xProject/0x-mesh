@@ -700,13 +700,13 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
 	for i, orderEvent := range orderEvents {
-		// Last event should be ADDED. The other events should be REMOVED.
+		// Last event should be ADDED. The other events should be STOPPED_WATCHING.
 		if i == expectedOrderEvents-1 {
 			assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState, "order event %d had wrong EndState", i)
 		} else {
-			// For REMOVED events, we also make sure that the expiration time is after
+			// For STOPPED_WATCHING events, we also make sure that the expiration time is after
 			// the current max expiration time.
-			assert.Equal(t, zeroex.ESOrderRemoved, orderEvent.EndState, "order event %d had wrong EndState", i)
+			assert.Equal(t, zeroex.ESStoppedWatching, orderEvent.EndState, "order event %d had wrong EndState", i)
 			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(orderWatcher.MaxExpirationTime()) != -1, "remaining order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, orderWatcher.MaxExpirationTime())
 		}
