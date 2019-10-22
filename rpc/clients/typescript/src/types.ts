@@ -227,7 +227,20 @@ export enum ContractEventKind {
     WethWithdrawalEvent = 'WethWithdrawalEvent',
 }
 
-export type StringifiedContractEventParameters =  StringifiedERC20TransferEvent | StringifiedERC20ApprovalEvent | StringifiedERC721TransferEvent | StringifiedERC721ApprovalEvent | StringifiedExchangeFillEvent | StringifiedExchangeCancelUpToEvent | StringifiedWethWithdrawalEvent | StringifiedWethDepositEvent | ERC721ApprovalForAllEvent | ERC1155ApprovalForAllEvent | StringifiedERC1155TransferSingleEvent | StringifiedERC1155TransferBatchEvent | ExchangeCancelEvent;
+export type StringifiedContractEventParameters =
+    | StringifiedERC20TransferEvent
+    | StringifiedERC20ApprovalEvent
+    | StringifiedERC721TransferEvent
+    | StringifiedERC721ApprovalEvent
+    | StringifiedExchangeFillEvent
+    | StringifiedExchangeCancelUpToEvent
+    | StringifiedWethWithdrawalEvent
+    | StringifiedWethDepositEvent
+    | ERC721ApprovalForAllEvent
+    | ERC1155ApprovalForAllEvent
+    | StringifiedERC1155TransferSingleEvent
+    | StringifiedERC1155TransferBatchEvent
+    | ExchangeCancelEvent;
 
 export interface StringifiedContractEvent {
     blockHash: string;
@@ -240,7 +253,20 @@ export interface StringifiedContractEvent {
     parameters: StringifiedContractEventParameters;
 }
 
-export type ContractEventParameters =  ERC20TransferEvent | ERC20ApprovalEvent | ERC721TransferEvent | ERC721ApprovalEvent | ExchangeFillEvent | ExchangeCancelUpToEvent | WethWithdrawalEvent | WethDepositEvent | ERC721ApprovalForAllEvent | ExchangeCancelEvent | ERC1155ApprovalForAllEvent | ERC1155TransferSingleEvent | ERC1155TransferBatchEvent;
+export type ContractEventParameters =
+    | ERC20TransferEvent
+    | ERC20ApprovalEvent
+    | ERC721TransferEvent
+    | ERC721ApprovalEvent
+    | ExchangeFillEvent
+    | ExchangeCancelUpToEvent
+    | WethWithdrawalEvent
+    | WethDepositEvent
+    | ERC721ApprovalForAllEvent
+    | ExchangeCancelEvent
+    | ERC1155ApprovalForAllEvent
+    | ERC1155TransferSingleEvent
+    | ERC1155TransferBatchEvent;
 
 export interface ContractEvent {
     blockHash: string;
@@ -384,12 +410,13 @@ export interface LatestBlock {
 }
 
 export interface GetStatsResponse {
-    Version: string;
-    PubSubTopic: string;
-    Rendezvous: string;
-    PeerID: string;
-    EthereumNetworkID: number;
-    LatestBlock: LatestBlock;
-    NumPeers: number;
-    NumOrders: number;
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumNetworkID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
 }

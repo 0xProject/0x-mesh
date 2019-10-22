@@ -695,16 +695,21 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	numOrdersIncludingRemoved, err := app.db.Orders.Count()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &rpc.GetStatsResponse{
-		Version:           version,
-		PubSubTopic:       getPubSubTopic(app.config.EthereumNetworkID),
-		Rendezvous:        getRendezvous(app.config.EthereumNetworkID),
-		PeerID:            app.peerID.String(),
-		EthereumNetworkID: app.config.EthereumNetworkID,
-		LatestBlock:       latestBlock,
-		NumOrders:         numOrders,
-		NumPeers:          app.node.GetNumPeers(),
+		Version:                   version,
+		PubSubTopic:               getPubSubTopic(app.config.EthereumNetworkID),
+		Rendezvous:                getRendezvous(app.config.EthereumNetworkID),
+		PeerID:                    app.peerID.String(),
+		EthereumNetworkID:         app.config.EthereumNetworkID,
+		LatestBlock:               latestBlock,
+		NumOrders:                 numOrders,
+		NumPeers:                  app.node.GetNumPeers(),
+		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
 	}
 	return response, nil
 }
@@ -725,13 +730,14 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			continue
 		}
 		log.WithFields(log.Fields{
-			"version":           stats.Version,
-			"pubSubTopic":       stats.PubSubTopic,
-			"rendezvous":        stats.Rendezvous,
-			"ethereumNetworkID": stats.EthereumNetworkID,
-			"latestBlock":       stats.LatestBlock,
-			"numOrders":         stats.NumOrders,
-			"numPeers":          stats.NumPeers,
+			"version":                   stats.Version,
+			"pubSubTopic":               stats.PubSubTopic,
+			"rendezvous":                stats.Rendezvous,
+			"ethereumNetworkID":         stats.EthereumNetworkID,
+			"latestBlock":               stats.LatestBlock,
+			"numOrders":                 stats.NumOrders,
+			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
+			"numPeers":                  stats.NumPeers,
 		}).Info("current stats")
 	}
 }
