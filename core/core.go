@@ -152,7 +152,7 @@ type App struct {
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
-	messageHandler            *MessageHandler
+	orderSelector             *OrderSelector
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
 }
@@ -276,7 +276,7 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	messageHandler := &MessageHandler{
+	orderSelector := &OrderSelector{
 		nextOffset: 0,
 	}
 
@@ -293,7 +293,7 @@ func New(config Config) (*App, error) {
 		meshMessageJSONSchema:     meshMessageJSONSchema,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
-		messageHandler:            messageHandler,
+		orderSelector:             orderSelector,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
 	}
