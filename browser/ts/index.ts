@@ -209,7 +209,6 @@ export interface ERC721ApprovalForAllEvent {
     approved: boolean;
 }
 
-
 export interface ERC1155TransferSingleEvent {
     operator: string;
     from: string;
@@ -701,14 +700,14 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                 break;
             case ContractEventKind.ERC1155TransferBatchEvent:
                 const erc1155TransferBatchEvent = rawParameters as WrapperERC1155TransferBatchEvent;
-                const ids: BigNumber[] = []
+                const ids: BigNumber[] = [];
                 erc1155TransferBatchEvent.ids.forEach(id => {
-                    ids.push(new BigNumber(id))
-                })
-                const values: BigNumber[] = []
+                    ids.push(new BigNumber(id));
+                });
+                const values: BigNumber[] = [];
                 erc1155TransferBatchEvent.values.forEach(value => {
-                    values.push(new BigNumber(value))
-                })
+                    values.push(new BigNumber(value));
+                });
                 parameters = {
                     operator: erc1155TransferBatchEvent.operator,
                     from: erc1155TransferBatchEvent.from,
