@@ -540,15 +540,15 @@ func (n *Node) shareBatch() error {
 		return err
 	}
 	for _, data := range outgoing {
-		if err := n.send(data); err != nil {
+		if err := n.Send(data); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// send sends a message continaing the given data to all connected peers.
-func (n *Node) send(data []byte) error {
+// Send sends a message continaing the given data to all connected peers.
+func (n *Node) Send(data []byte) error {
 	return n.pubsub.Publish(n.config.Topic, data)
 }
 

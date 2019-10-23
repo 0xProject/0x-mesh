@@ -669,8 +669,14 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.V
 	}
 
 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
+		// Add the order to the OrderWatcher. This also saves the order in the
+		// database.
 		err = app.orderWatcher.Add(acceptedOrderInfo)
 		if err != nil {
+			return nil, err
+		}
+		// Share the order with our peers.
+		if err := app.ShareOrder(acceptedOrderInfo.SignedOrder); err != nil {
 			return nil, err
 		}
 	}
