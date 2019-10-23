@@ -2,7 +2,7 @@
 
 // mesh-bootstrap is a separate executable for bootstrap nodes. Bootstrap nodes
 // will not share or receive any orders and its sole responsibility is to
-// facilitate peer discovery.
+// facilitate peer discovery and/or serve as a relay for peer connections.
 package main
 
 import (
