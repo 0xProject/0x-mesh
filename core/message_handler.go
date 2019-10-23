@@ -207,12 +207,3 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	}
 	return nil
 }
-
-// Share order immediately shares the given order on the GossipSub network.
-func (app *App) ShareOrder(order *zeroex.SignedOrder) error {
-	encoded, err := encodeOrder(order)
-	if err != nil {
-		return err
-	}
-	return app.node.Send(encoded)
-}
