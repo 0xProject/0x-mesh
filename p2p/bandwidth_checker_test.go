@@ -42,7 +42,7 @@ func TestBandwidthChecker(t *testing.T) {
 	// limit.
 	newMaxBytesPerSecond := float64(1)
 	message := make([]byte, int(newMaxBytesPerSecond*100))
-	require.NoError(t, node0.send(message))
+	require.NoError(t, node0.Send(message))
 
 	// Wait for node1 to receive the message.
 	expectedMessage := &Message{

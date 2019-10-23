@@ -669,12 +669,27 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.V
 	}
 
 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
+		// Add the order to the OrderWatcher. This also saves the order in the
+		// database.
 		err = app.orderWatcher.Add(acceptedOrderInfo)
 		if err != nil {
 			return nil, err
 		}
+		// Share the order with our peers.
+		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
+			return nil, err
+		}
 	}
 	return allValidationResults, nil
+}
+
+// shareOrder immediately shares the given order on the GossipSub network.
+func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+	encoded, err := encodeOrder(order)
+	if err != nil {
+		return err
+	}
+	return app.node.Send(encoded)
 }
 
 // AddPeer can be used to manually connect to a new peer.
