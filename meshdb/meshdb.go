@@ -26,6 +26,9 @@ type Order struct {
 	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
 	// the order can be permanently deleted.
 	IsRemoved bool
+	// IsPinned indicates whether or not the order is pinned. Pinned orders are
+	// not removed from the database unless they become unfillable.
+	IsPinned bool
 }
 
 // ID returns the Order's ID
@@ -155,7 +158,14 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 
 	expirationTimeIndex := col.AddIndex("expirationTime", func(m db.Model) []byte {
 		order := m.(*Order)
-		return uint256ToConstantLengthBytes(order.SignedOrder.ExpirationTimeSeconds)
+		expTimeString := uint256ToConstantLengthBytes(order.SignedOrder.ExpirationTimeSeconds)
+		// We separate pinned and non-pinned orders via a prefix that is either 0 or
+		// 1.
+		pinnedString := "0"
+		if order.IsPinned {
+			pinnedString = "1"
+		}
+		return []byte(fmt.Sprintf("%s|%s", pinnedString, expTimeString))
 	})
 
 	return &OrdersCollection{
@@ -421,8 +431,9 @@ func (m *MeshDB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirati
 		return constants.UnlimitedExpirationTime, nil, nil
 	}
 
-	// Find the orders which we need to remove.
-	filter := m.Orders.ExpirationTimeIndex.All()
+	// Find the orders which we need to remove. We use a prefix filter of "0|: so
+	// that we only remove non-pinned orders.
+	filter := m.Orders.ExpirationTimeIndex.PrefixFilter([]byte("0|"))
 	numOrdersToRemove := numOrders - targetMaxOrders
 	if err := m.Orders.NewQuery(filter).Reverse().Max(numOrdersToRemove).Run(&removedOrders); err != nil {
 		return nil, nil, err
