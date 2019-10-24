@@ -44,7 +44,7 @@ type Config struct {
 	// counter will stop incrementing until reset.
 	MaxCount *big.Int
 
-	// maxCountFloat is CaxCount converted to a big.Float in order to make the
+	// maxCountFloat is MaxCount converted to a big.Float in order to make the
 	// math easier.
 	maxCountFloat *big.Float
 }
