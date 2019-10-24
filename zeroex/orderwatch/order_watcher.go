@@ -30,6 +30,10 @@ const (
 	// were not caught by the event watcher process.
 	minCleanupInterval = 1 * time.Hour
 
+	// minRemovedCheckInterval specifies the minimum amount of time between checks
+	// on whether to remove orders flaggged for removal from the DB
+	minRemovedCheckInterval = 5 * time.Minute
+
 	// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
 	// be re-validated by the cleanup worker
 	lastUpdatedBuffer = 30 * time.Minute
@@ -215,6 +219,12 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		defer wg.Done()
 		maxExpirationTimeLoopErrChan <- w.maxExpirationTimeLoop(innerCtx)
 	}()
+	removedCheckerLoopErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		removedCheckerLoopErrChan <- w.removedCheckerLoop(innerCtx)
+	}()
 
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
@@ -236,6 +246,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return err
 		}
 	case err := <-maxExpirationTimeLoopErrChan:
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-removedCheckerLoopErrChan:
 		if err != nil {
 			cancel()
 			return err
@@ -305,6 +320,27 @@ func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
 				return err
 			}
 		}
+	}
+}
+
+func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
+	start := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
+		start = time.Now()
+		if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+			return err
+		}
+
+		// Wait minRemovedCheckInterval before calling permanentlyDeleteStaleRemovedOrders again. Since
+		// we only start sleeping _after_ permanentlyDeleteStaleRemovedOrders completes, we will never
+		// have multiple calls to permanentlyDeleteStaleRemovedOrders running in parallel
+		time.Sleep(minRemovedCheckInterval - time.Since(start))
 	}
 }
 
@@ -668,6 +704,25 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 	return w.generateOrderEventsIfChanged(ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
 }
 
+func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
+	var removedOrders []*meshdb.Order
+	isRemovedFilter := w.meshDB.Orders.IsRemovedIndex.ValueFilter([]byte{1})
+	if err := w.meshDB.Orders.NewQuery(isRemovedFilter).Run(&removedOrders); err != nil {
+		return err
+	}
+
+	for _, order := range removedOrders {
+		if time.Since(order.LastUpdated) > permanentlyDeleteAfter {
+			if err := w.permanentlyDeleteOrder(w.meshDB.Orders, order); err != nil {
+				return err
+			}
+			continue
+		}
+	}
+
+	return nil
+}
+
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added.
 func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
@@ -1028,7 +1083,11 @@ func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFil
 	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) permanentlyDeleteOrder(ordersColTxn *db.Transaction, order *meshdb.Order) error {
+type deletableOrdersCol interface {
+	Delete(id []byte) error
+}
+
+func (w *Watcher) permanentlyDeleteOrder(ordersColTxn deletableOrdersCol, order *meshdb.Order) error {
 	err := ordersColTxn.Delete(order.Hash.Bytes())
 	if err != nil {
 		logger.WithFields(logger.Fields{
