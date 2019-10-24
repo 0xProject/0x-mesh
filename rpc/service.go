@@ -28,7 +28,7 @@ type rpcService struct {
 // RPCHandler is used to respond to incoming requests from the client.
 type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
-	AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error)
+	AddOrders(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
 	// GetOrders is called when the clients sends a GetOrders request
 	GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
@@ -117,9 +117,16 @@ func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
 	return rpcSub, nil
 }
 
+var defaultAddOrdersOpts = AddOrdersOpts{
+	Pin: true,
+}
+
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
-func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
-	return s.rpcHandler.AddOrders(signedOrdersRaw)
+func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage, opts *AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+	if opts == nil {
+		opts = &defaultAddOrdersOpts
+	}
+	return s.rpcHandler.AddOrders(signedOrdersRaw, *opts)
 }
 
 // GetOrders calls rpcHandler.GetOrders and returns the validation results.
