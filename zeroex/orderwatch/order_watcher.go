@@ -147,7 +147,7 @@ func New(config Config) (*Watcher, error) {
 		maxOrders:                  config.MaxOrders,
 	}
 
-	// Check if any orders need to be rmoved right away due to high expiration
+	// Check if any orders need to be removed right away due to high expiration
 	// times.
 	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
 		return nil, err
