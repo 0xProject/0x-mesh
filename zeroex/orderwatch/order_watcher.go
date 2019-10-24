@@ -39,9 +39,9 @@ const (
 	lastUpdatedBuffer = 30 * time.Minute
 
 	// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
-	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 4 minutes
-	// corresponds to a block depth of ~20.
-	permanentlyDeleteAfter = 4 * time.Minute
+	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 5 minutes
+	// corresponds to a block depth of ~25.
+	permanentlyDeleteAfter = 5 * time.Minute
 
 	// expirationPollingInterval specifies the interval in which the order watcher should check for expired
 	// orders
