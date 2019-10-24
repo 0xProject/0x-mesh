@@ -959,8 +959,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-			// No important state-change happened, simply update lastUpdated timestamp in DB
-			w.updateOrderDBEntry(ordersColTxn, order)
+			// No important state-change happened
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit  event and update order in DB
 			order.FillableTakerAssetAmount = newFillableAmount
@@ -997,8 +996,6 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 			oldFillableAmount := order.FillableTakerAssetAmount
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
-				// Update it's lastUpdated timestamp in DB
-				w.updateOrderDBEntry(ordersColTxn, order)
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded, emit event
 				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
