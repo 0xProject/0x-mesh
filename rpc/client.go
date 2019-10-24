@@ -29,10 +29,24 @@ func NewClient(addr string) (*Client, error) {
 	}, nil
 }
 
+// AddOrdersOpts is a set of options for the AddOrders RPC method.
+type AddOrdersOpts struct {
+	// Pin determines whether or not the added orders should be pinned. Pinned
+	// orders will not be affected by any DDoS prevention or incentive mechanisms
+	// and will always stay in storage until they are no longer fillable. Defaults
+	// to true.
+	Pin bool `json:"pin"`
+}
+
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	var validationResults ordervalidator.ValidationResults
+	if len(opts) > 0 {
+		if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders, opts[0]); err != nil {
+			return nil, err
+		}
+	}
 	if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders); err != nil {
 		return nil, err
 	}
