@@ -767,11 +767,13 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, ethereumRPCMaxContentLength, 0)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
-		MeshDB:           meshDB,
-		BlockWatcher:     blockWatcher,
-		OrderValidator:   orderValidator,
-		NetworkID:        constants.TestNetworkID,
-		ExpirationBuffer: 0,
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		NetworkID:         constants.TestNetworkID,
+		ExpirationBuffer:  0,
+		MaxExpirationTime: constants.UnlimitedExpirationTime,
+		MaxOrders:         1000,
 	})
 	require.NoError(t, err)
 

@@ -109,12 +109,12 @@ func New(config Config) (*Watcher, error) {
 		return nil, err
 	}
 
-	// Apply defaults to config.
+	// Validate config.
 	if config.MaxOrders == 0 {
-		config.MaxOrders = defaultMaxOrders
+		return nil, errors.New("config.MaxOrders is required and cannot be zero")
 	}
 	if config.MaxExpirationTime == nil {
-		config.MaxExpirationTime = constants.UnlimitedExpirationTime
+		return nil, errors.New("config.MaxExpirationTime is required and cannot be nil")
 	} else if big.NewInt(time.Now().Unix()).Cmp(config.MaxExpirationTime) == 1 {
 		// MaxExpirationTime should never be in the past.
 		config.MaxExpirationTime = big.NewInt(time.Now().Unix())
