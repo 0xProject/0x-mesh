@@ -2,7 +2,7 @@
 
 // mesh-bootstrap is a separate executable for bootstrap nodes. Bootstrap nodes
 // will not share or receive any orders and its sole responsibility is to
-// facilitate peer discovery.
+// facilitate peer discovery and/or serve as a relay for peer connections.
 package main
 
 import (
@@ -64,6 +64,9 @@ type Config struct {
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
 	// If empty, the default bootstrap list will be used.
 	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
+	// EnableRelayHost is whether or not the node should serve as a relay host.
+	// Defaults to true.
+	EnableRelayHost bool `envvar:"ENABLE_RELAY_HOST" default:"true"`
 }
 
 func init() {
@@ -141,10 +144,14 @@ func main() {
 		libp2p.ListenAddrs(bindAddrs...),
 		libp2p.Identity(privKey),
 		libp2p.ConnectionManager(connManager),
-		libp2p.EnableRelay(circuit.OptHop),
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
+	}
+	if config.EnableRelayHost {
+		opts = append(opts, libp2p.EnableRelay(circuit.OptHop))
+	} else {
+		opts = append(opts, libp2p.EnableRelay())
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
