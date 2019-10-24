@@ -693,7 +693,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		// differently depending on whether the order was received via RPC or from a
 		// peer. In the former case, we should return an RPC error response
 		// indicating that the order was not in fact added. In the latter case, we
-		// should effectively no-op, nether penalizing the peer or emitting any
+		// should effectively no-op, neither penalizing the peer or emitting any
 		// order events. For now, we respond by emitting an ADDED event immediately
 		// followed by a STOPPED_WATCHING event. If this order was submitted via
 		// RPC, the RPC client will see a response that indicates the order was
