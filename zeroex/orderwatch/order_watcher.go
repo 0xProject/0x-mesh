@@ -324,23 +324,21 @@ func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
-	start := time.Now()
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
-
-		start = time.Now()
+		start := time.Now()
 		if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
 			return err
 		}
 
+		select {
+		case <-ctx.Done():
+			return nil
 		// Wait minRemovedCheckInterval before calling permanentlyDeleteStaleRemovedOrders again. Since
-		// we only start sleeping _after_ permanentlyDeleteStaleRemovedOrders completes, we will never
+		// we only start waiting _after_ permanentlyDeleteStaleRemovedOrders completes, we will never
 		// have multiple calls to permanentlyDeleteStaleRemovedOrders running in parallel
-		time.Sleep(minRemovedCheckInterval - time.Since(start))
+		case <-time.After(minRemovedCheckInterval - time.Since(start)):
+			continue
+		}
 	}
 }
 
