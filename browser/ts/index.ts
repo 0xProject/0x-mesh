@@ -399,6 +399,7 @@ export enum OrderEventEndState {
     Expired = 'EXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
+    StoppedWatching = 'STOPPED_WATCHING',
 }
 
 interface WrapperOrderEvent {
