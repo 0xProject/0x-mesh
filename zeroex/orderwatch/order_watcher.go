@@ -1190,7 +1190,7 @@ func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
 	return nil
 }
 
-// saveMaxExpirationTime save the new max expiration time in the database.
+// saveMaxExpirationTime saves the new max expiration time in the database.
 func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
 	if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
 		metadata.MaxExpirationTime = maxExpirationTime
