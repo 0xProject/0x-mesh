@@ -87,6 +87,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		UseBootstrapList:            true,
 		BlockPollingInterval:        5 * time.Second,
 		EthereumRPCMaxContentLength: 524288,
+		MaxOrdersInStorage:          100000,
 	}
 
 	// Required config options
@@ -122,6 +123,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()
+	}
+	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
+		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
 	}
 
 	return config, nil

@@ -115,6 +115,15 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 			})
 			continue
 		}
+		if order.ExpirationTimeSeconds.Cmp(app.orderWatcher.MaxExpirationTime()) == 1 {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROMaxExpirationExceeded,
+			})
+			continue
+		}
 		// Note(albrow): Orders with a sender address can be canceled or invalidated
 		// off-chain which is difficult to support since we need to prune
 		// canceled/invalidated orders from the database. We can special-case some

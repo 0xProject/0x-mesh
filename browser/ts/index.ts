@@ -66,14 +66,13 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // customContractAddresses is set of custom addresses to use for the
-    // configured network ID. The contract addresses for most common networks
-    // are already included by default, so this is typically only needed for
-    // testing on custom networks. The given addresses are added to the default
-    // list of addresses for known networks and overriding any contract
-    // addresses for known networks is not allowed. The addresses for exchange,
-    // devUtils, erc20Proxy, and erc721Proxy are required for each network. For
-    // example:
+    // A set of custom addresses to use for the configured network ID. The
+    // contract addresses for most common networks are already included by
+    // default, so this is typically only needed for testing on custom networks.
+    // The given addresses are added to the default list of addresses for known
+    // networks and overriding any contract addresses for known networks is not
+    // allowed. The addresses for exchange, devUtils, erc20Proxy, and
+    // erc721Proxy are required for each network. For example:
     //
     //    {
     //        exchange: "0x48bacb9266a570d521063ef5dd96e61686dbe788",
@@ -83,6 +82,11 @@ export interface Config {
     //    }
     //
     customContractAddresses?: ContractAddresses;
+    // The maximum number of orders that Mesh will keep in storage. As the
+    // number of orders in storage grows, Mesh will begin enforcing a limit on
+    // maximum expiration time for incoming orders and remove any orders with an
+    // expiration time too far in the future. Defaults to 100,000.
+    maxOrdersInStorage?: number;
 }
 
 export interface ContractAddresses {
@@ -133,6 +137,7 @@ interface WrapperConfig {
     blockPollingIntervalSeconds?: number;
     ethereumRPCMaxContentLength?: number;
     customContractAddresses?: string; // json-encoded instead of Object.
+    maxOrdersInStorage?: number;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -394,6 +399,7 @@ export enum OrderEventEndState {
     Expired = 'EXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
+    StoppedWatching = 'STOPPED_WATCHING',
 }
 
 interface WrapperOrderEvent {
