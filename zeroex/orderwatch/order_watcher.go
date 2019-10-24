@@ -703,9 +703,8 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 }
 
 func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
-	var removedOrders []*meshdb.Order
-	isRemovedFilter := w.meshDB.Orders.IsRemovedIndex.ValueFilter([]byte{1})
-	if err := w.meshDB.Orders.NewQuery(isRemovedFilter).Run(&removedOrders); err != nil {
+	removedOrders, err := w.meshDB.FindRemovedOrders()
+	if err != nil {
 		return err
 	}
 
