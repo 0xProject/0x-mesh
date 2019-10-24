@@ -687,6 +687,32 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 	// Final expiration time check before inserting the order. We might have just
 	// changed max expiration time above.
 	if orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+		// HACK(albrow): This is technically not the ideal way to respond to this
+		// situation, but it is a lot easier to implement for the time being. In the
+		// future, we should return an error and then react to that error
+		// differently depending on whether the order was received via RPC or from a
+		// peer. In the former case, we should return an RPC error response
+		// indicating that the order was not in fact added. In the latter case, we
+		// should effectively no-op, nether penalizing the peer or emitting any
+		// order events. For now, we respond by emitting an ADDED event immediately
+		// followed by a STOPPED_WATCHING event. If this order was submitted via
+		// RPC, the RPC client will see a response that indicates the order was
+		// successfully added, and then it will look like we immediately stopped
+		// watching it. This is not too far off from what really happened but is
+		// slightly inefficient.
+		addedEvent := &zeroex.OrderEvent{
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderAdded,
+		}
+		stoppedWatchingEvent := &zeroex.OrderEvent{
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESStoppedWatching,
+		}
+		w.orderFeed.Send([]*zeroex.OrderEvent{addedEvent, stoppedWatchingEvent})
 		return nil
 	}
 
