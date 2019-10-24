@@ -1029,11 +1029,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 	return nil
 }
 
-type updatableOrdersCol interface {
+type orderUpdater interface {
 	Update(model db.Model) error
 }
 
-func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) {
+func (w *Watcher) updateOrderDBEntry(u orderUpdater, order *meshdb.Order) {
 	order.LastUpdated = time.Now().UTC()
 	err := u.Update(order)
 	if err != nil {
@@ -1044,7 +1044,7 @@ func (w *Watcher) updateOrderDBEntry(u updatableOrdersCol, order *meshdb.Order) 
 	}
 }
 
-func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderInfo *ordervalidator.AcceptedOrderInfo) {
+func (w *Watcher) rewatchOrder(u orderUpdater, order *meshdb.Order, orderInfo *ordervalidator.AcceptedOrderInfo) {
 	order.IsRemoved = false
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = orderInfo.FillableTakerAssetAmount
@@ -1061,7 +1061,7 @@ func (w *Watcher) rewatchOrder(u updatableOrdersCol, order *meshdb.Order, orderI
 	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFillableAmount *big.Int) {
+func (w *Watcher) unwatchOrder(u orderUpdater, order *meshdb.Order, newFillableAmount *big.Int) {
 	order.IsRemoved = true
 	order.LastUpdated = time.Now().UTC()
 	order.FillableTakerAssetAmount = newFillableAmount
@@ -1077,11 +1077,11 @@ func (w *Watcher) unwatchOrder(u updatableOrdersCol, order *meshdb.Order, newFil
 	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
-type deletableOrdersCol interface {
+type orderDeleter interface {
 	Delete(id []byte) error
 }
 
-func (w *Watcher) permanentlyDeleteOrder(ordersColTxn deletableOrdersCol, order *meshdb.Order) error {
+func (w *Watcher) permanentlyDeleteOrder(ordersColTxn orderDeleter, order *meshdb.Order) error {
 	err := ordersColTxn.Delete(order.Hash.Bytes())
 	if err != nil {
 		logger.WithFields(logger.Fields{
