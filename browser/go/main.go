@@ -207,7 +207,8 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
 	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.app.AddOrders(rawMessages)
+	// TODO(albrow): Support order pinning here.
+	results, err := cw.app.AddOrders(rawMessages, false)
 	if err != nil {
 		return js.Undefined(), err
 	}
