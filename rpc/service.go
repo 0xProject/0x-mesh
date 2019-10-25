@@ -118,7 +118,7 @@ func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
 }
 
 var defaultAddOrdersOpts = AddOrdersOpts{
-	Pin: true,
+	Pinned: true,
 }
 
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.

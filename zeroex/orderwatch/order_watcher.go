@@ -670,9 +670,9 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
 // will no-op (and return nil) if the order has already been added. If pinned is
-// true, the orders will be marked as pinned, which means they will only be
-// removed if they become unfillable and will not be removed due to having a
-// high expiration time or any incentive mechanisms.
+// true, the orders will be marked as pinned. Pinned orders will not be affected
+// by any DDoS prevention or incentive mechanisms and will always stay in
+// storage until they are no longer fillable.
 func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool) error {
 	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
 		return err

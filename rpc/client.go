@@ -31,11 +31,11 @@ func NewClient(addr string) (*Client, error) {
 
 // AddOrdersOpts is a set of options for the AddOrders RPC method.
 type AddOrdersOpts struct {
-	// Pin determines whether or not the added orders should be pinned. Pinned
+	// Pinned determines whether or not the added orders should be pinned. Pinned
 	// orders will not be affected by any DDoS prevention or incentive mechanisms
 	// and will always stay in storage until they are no longer fillable. Defaults
 	// to true.
-	Pin bool `json:"pin"`
+	Pinned bool `json:"pinned"`
 }
 
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
