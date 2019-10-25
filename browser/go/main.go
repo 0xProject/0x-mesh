@@ -199,7 +199,7 @@ func (cw *MeshWrapper) Start() error {
 // AddOrders converts raw JavaScript orders into the appropriate type, calls
 // core.App.AddOrders, converts the result into basic JavaScript types (string,
 // int, etc.) and returns it.
-func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
+func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
 	// HACK(albrow): There is a more effecient way to do this, but for now,
 	// just use JSON to convert to the Go type.
 	encodedOrders := js.Global().Get("JSON").Call("stringify", rawOrders).String()
@@ -207,8 +207,7 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
 	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	// TODO(albrow): Support order pinning here.
-	results, err := cw.app.AddOrders(rawMessages, false)
+	results, err := cw.app.AddOrders(rawMessages, pinned)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -243,7 +242,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return wrapInPromise(func() (interface{}, error) {
-				return cw.AddOrders(args[0])
+				return cw.AddOrders(args[0], args[1].Bool())
 			})
 		}),
 	})

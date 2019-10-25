@@ -123,7 +123,7 @@ interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
-    addOrdersAsync(orders: WrapperSignedOrder[]): Promise<WrapperValidationResults>;
+    addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
 // The type for configuration exposed by MeshWrapper.
@@ -593,10 +593,14 @@ export class Mesh {
      * results.rejected instead).
      *
      * @param   orders                An array of orders to add.
+     * @param   pinned Whether or not the orders should be pinned. Pinned orders
+     *          will only be removed if they become unfillable and will never be
+     *          removed due to having an expiration time too far in the future
+     *          or due to incentive mechanisms.
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
-    public async addOrdersAsync(orders: SignedOrder[]): Promise<ValidationResults> {
+    public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
@@ -605,7 +609,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
         const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
-        const meshResults = await this._wrapper.addOrdersAsync(meshOrders);
+        const meshResults = await this._wrapper.addOrdersAsync(meshOrders, pinned);
         return wrapperValidationResultsToValidationResults(meshResults);
     }
 }
