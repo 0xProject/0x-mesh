@@ -183,7 +183,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		}).Trace("all fields for new valid order received from peer")
 		// Add stores the message in the database.
 		if err := app.orderWatcher.Add(acceptedOrderInfo, false); err != nil {
-			if err == meshdb.ErrFilledWithPinnedOrders {
+			if err == meshdb.ErrDBFilledWithPinnedOrders {
 				// If the database is full of pinned orders, log and then continue.
 				log.WithFields(map[string]interface{}{
 					"error":     err.Error(),
