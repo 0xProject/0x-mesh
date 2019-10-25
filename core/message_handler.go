@@ -183,6 +183,16 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 		}).Trace("all fields for new valid order received from peer")
 		// Add stores the message in the database.
 		if err := app.orderWatcher.Add(acceptedOrderInfo, false); err != nil {
+			if err == meshdb.ErrFilledWithPinnedOrders {
+				// If the database is full of pinned orders, log and then continue.
+				log.WithFields(map[string]interface{}{
+					"error":     err.Error(),
+					"orderHash": acceptedOrderInfo.OrderHash.Hex(),
+					"from":      msg.From.String(),
+				}).Error("could not store valid order because database is full")
+				continue
+			}
+			// For any other type of error, return it.
 			return err
 		}
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
