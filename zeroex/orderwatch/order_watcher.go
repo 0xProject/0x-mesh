@@ -1081,8 +1081,8 @@ type orderDeleter interface {
 	Delete(id []byte) error
 }
 
-func (w *Watcher) permanentlyDeleteOrder(ordersColTxn orderDeleter, order *meshdb.Order) error {
-	err := ordersColTxn.Delete(order.Hash.Bytes())
+func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Order) error {
+	err := deleter.Delete(order.Hash.Bytes())
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
