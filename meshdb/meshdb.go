@@ -281,6 +281,16 @@ func (m *MeshDB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, e
 	return orders, nil
 }
 
+// FindRemovedOrders finds all orders that have been flagged for removal
+func (m *MeshDB) FindRemovedOrders() ([]*Order, error) {
+	var removedOrders []*Order
+	isRemovedFilter := m.Orders.IsRemovedIndex.ValueFilter([]byte{1})
+	if err := m.Orders.NewQuery(isRemovedFilter).Run(&removedOrders); err != nil {
+		return nil, err
+	}
+	return removedOrders, nil
+}
+
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
 func (m *MeshDB) GetMetadata() (*Metadata, error) {
 	var metadata Metadata
