@@ -183,7 +183,7 @@ var (
 	}
 	RODatabaseFullOfOrders = RejectedOrderStatus{
 		Code:    "DatabaseFullOfOrders",
-		Message: "database is full of pinned orders and no orders can be deleted to make space (consider increasing MAX_ORDERS)",
+		Message: "database is full of pinned orders and no orders can be deleted to make space (consider increasing MAX_ORDERS_IN_STORAGE)",
 	}
 )
 
