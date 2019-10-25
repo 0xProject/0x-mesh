@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrFilledWithPinnedOrders = errors.New("the database is full of pinned orders; no orders can be removed in order to make space")
+var ErrDBFilledWithPinnedOrders = errors.New("the database is full of pinned orders; no orders can be removed in order to make space")
 
 // Order is the database representation a 0x order along with some relevant metadata
 type Order struct {
@@ -446,7 +446,7 @@ func (m *MeshDB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirati
 	// is full of pinned orders. We still remove as many orders as we can and then
 	// return an error.
 	if len(removedOrders) < numOrdersToRemove {
-		return nil, nil, ErrFilledWithPinnedOrders
+		return nil, nil, ErrDBFilledWithPinnedOrders
 	}
 
 	// The new max expiration time is simply the minimum expiration time of the

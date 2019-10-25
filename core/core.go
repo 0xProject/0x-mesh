@@ -694,7 +694,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		// database.
 		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
 		if err != nil {
-			if err == meshdb.ErrFilledWithPinnedOrders {
+			if err == meshdb.ErrDBFilledWithPinnedOrders {
 				allValidationResults.Accepted = append(allValidationResults.Accepted[:i], allValidationResults.Accepted[i+1:]...)
 				allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   acceptedOrderInfo.OrderHash,

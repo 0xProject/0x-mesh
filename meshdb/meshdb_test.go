@@ -282,7 +282,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 	// Trying to trim orders when the database is full of pinned orders should
 	// return an error.
 	_, _, err = meshDB.TrimOrdersByExpirationTime(1)
-	assert.EqualError(t, err, ErrFilledWithPinnedOrders.Error(), "expected ErrFilledWithPinnedOrders when targetMaxOrders is less than the number of pinned orders")
+	assert.EqualError(t, err, ErrDBFilledWithPinnedOrders.Error(), "expected ErrFilledWithPinnedOrders when targetMaxOrders is less than the number of pinned orders")
 }
 
 func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, isPinned bool) []*Order {
