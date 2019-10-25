@@ -750,6 +750,10 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	numPinnedOrders, err := app.db.CountPinnedOrders()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &rpc.GetStatsResponse{
 		Version:                   version,
@@ -761,6 +765,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		NumOrders:                 numOrders,
 		NumPeers:                  app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
+		NumPinnedOrders:           numPinnedOrders,
 		MaxExpirationTime:         app.orderWatcher.MaxExpirationTime().String(),
 	}
 	return response, nil
@@ -789,6 +794,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"latestBlock":               stats.LatestBlock,
 			"numOrders":                 stats.NumOrders,
 			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
+			"numPinnedOrders":           stats.NumPinnedOrders,
 			"numPeers":                  stats.NumPeers,
 			"maxExpirationTime":         stats.MaxExpirationTime,
 		}).Info("current stats")

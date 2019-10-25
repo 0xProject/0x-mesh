@@ -99,6 +99,7 @@ type GetStatsResponse struct {
 	NumPeers                  int         `json:"numPeers"`
 	NumOrders                 int         `json:"numOrders"`
 	NumOrdersIncludingRemoved int         `json:"numOrdersIncludingRemoved"`
+	NumPinnedOrders           int         `json:"numPinnedOrders"`
 	MaxExpirationTime         string      `json:"maxExpirationTime"`
 }
 

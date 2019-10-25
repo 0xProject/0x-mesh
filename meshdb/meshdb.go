@@ -459,3 +459,10 @@ func (m *MeshDB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirati
 	newMaxExpirationTime = newMaxExpirationTime.Sub(newMaxExpirationTime, big.NewInt(1))
 	return newMaxExpirationTime, removedOrders, nil
 }
+
+// CountPinnedOrders returns the number of pinned orders.
+func (m *MeshDB) CountPinnedOrders() (int, error) {
+	// We use a prefix filter of "1|" so that we only count pinned orders.
+	filter := m.Orders.ExpirationTimeIndex.PrefixFilter([]byte("1|"))
+	return m.Orders.NewQuery(filter).Count()
+}
