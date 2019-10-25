@@ -592,11 +592,11 @@ export class Mesh {
      * the order; it will not be rejected for any invalid orders (check
      * results.rejected instead).
      *
-     * @param   orders                An array of orders to add.
-     * @param   pinned Whether or not the orders should be pinned. Pinned orders
-     *          will only be removed if they become unfillable and will never be
-     *          removed due to having an expiration time too far in the future
-     *          or due to incentive mechanisms.
+     * @param   orders      An array of orders to add.
+     * @param   pinned      Whether or not the orders should be pinned. Pinned
+     * orders will not be affected by any DDoS prevention or incentive
+     * mechanisms and will always stay in storage until they are no longer
+     * fillable.
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
