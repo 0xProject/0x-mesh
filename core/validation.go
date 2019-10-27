@@ -173,7 +173,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 
 		// Check if order is already stored in DB
 		var dbOrder meshdb.Order
-		err = app.db.Orders.FindByID(orderHash.Bytes(), &dbOrder)
+		err = app.orderSelector.db.Orders.FindByID(orderHash.Bytes(), &dbOrder)
 		if err != nil {
 			if _, ok := err.(db.NotFoundError); !ok {
 				log.WithField("error", err).Error("could not check if order was already stored")

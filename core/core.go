@@ -141,7 +141,6 @@ type App struct {
 	config                    Config
 	peerID                    peer.ID
 	privKey                   p2pcrypto.PrivKey
-	db                        *meshdb.MeshDB
 	node                      *p2p.Node
 	chainID                   int
 	blockWatcher              *blockwatch.Watcher
@@ -278,6 +277,7 @@ func New(config Config) (*App, error) {
 	}
 	orderSelector := &OrderSelector{
 		nextOffset: 0,
+		db:         meshDB,
 	}
 
 	app := &App{
@@ -381,7 +381,7 @@ func (app *App) Start(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		<-innerCtx.Done()
-		app.db.Close()
+		app.orderSelector.db.Close()
 	}()
 
 	// Start rateLimiter
@@ -582,7 +582,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
 		var err error
-		snapshot, err = app.db.Orders.GetSnapshot()
+		snapshot, err = app.orderSelector.db.Orders.GetSnapshot()
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +614,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		app.muIdToSnapshotInfo.Unlock()
 	}
 
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	notRemovedFilter := app.orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var selectedOrders []*meshdb.Order
 	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
 	if err != nil {
@@ -776,12 +776,12 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 			Hash:   latestBlockHeader.Hash,
 		}
 	}
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	notRemovedFilter := app.orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	numOrders, err := app.orderSelector.db.Orders.NewQuery(notRemovedFilter).Count()
 	if err != nil {
 		return nil, err
 	}
-	numOrdersIncludingRemoved, err := app.db.Orders.Count()
+	numOrdersIncludingRemoved, err := app.orderSelector.db.Orders.Count()
 	if err != nil {
 		return nil, err
 	}

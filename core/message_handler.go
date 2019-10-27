@@ -15,6 +15,7 @@ var _ p2p.MessageHandler = &App{}
 
 type OrderSelector struct {
 	nextOffset int
+	db         *meshdb.MeshDB
 }
 
 func min(a int, b int) int {
@@ -25,21 +26,20 @@ func min(a int, b int) int {
 }
 
 func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
-	selector := &OrderSelector{nextOffset: 0}
-	return selector.GetMessagesToShare(max, app.db)
+	return app.orderSelector.GetMessagesToShare(max)
 }
 
-func (orderSelector *OrderSelector) GetMessagesToShare(max int, db *meshdb.MeshDB) ([][]byte, error) {
+func (orderSelector *OrderSelector) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we use a round robin strategy to select a set of orders to share.
 	// We might return less than max even if there are max or greater orders
 	// currently stored.
 	// Use a snapshot to make sure state doesn't change between our two queries.
-	ordersSnapshot, err := db.Orders.GetSnapshot()
+	ordersSnapshot, err := orderSelector.db.Orders.GetSnapshot()
 	if err != nil {
 		return nil, err
 	}
 	defer ordersSnapshot.Release()
-	notRemovedFilter := db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	notRemovedFilter := orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	count, err := ordersSnapshot.NewQuery(notRemovedFilter).Count()
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (orderSelector *OrderSelector) GetMessagesToShare(max int, db *meshdb.MeshD
 	// calculated the last time this was called with `app`.
 	offset := min(orderSelector.nextOffset, count)
 	var selectedOrders []*meshdb.Order
-	if offset != count {
+	if offset < count {
 		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
 		if err != nil {
 			return nil, err
