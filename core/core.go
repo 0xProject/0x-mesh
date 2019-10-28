@@ -706,6 +706,10 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 				return nil, err
 			}
 		}
+		log.WithFields(log.Fields{
+			"orderHash": acceptedOrderInfo.OrderHash.String(),
+		}).Debug("added new valid order via RPC or browser callback")
+
 		// Share the order with our peers.
 		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
 			return nil, err
