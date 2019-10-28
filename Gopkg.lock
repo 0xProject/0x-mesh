@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:8dfbaa09c5bb2df7ba84be3bb47d045f10a75502e708a1c15fec690dbe2e46fc"
+  name = "github.com/ReneKroon/ttlcache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e9e37b599534bbeb6ec45a6215cda104ff212b69"
+  version = "v1.6.0"
+
+[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -429,6 +437,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:9642c35dd8d4b8981d58327a917f178898baf9b331373748dd50439aec5c2628"
+  name = "github.com/karlseguin/ccache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ec06cd93a07565b373789b0078ba88fe697fddd9"
+  version = "v2.0.3"
+
+[[projects]]
   branch = "master"
   digest = "1:8cb15b21828b36ad568850d0ecb9340e22b148c8c6755f4a3d7918021bfc38a2"
   name = "github.com/knq/sysutil"
@@ -467,14 +483,6 @@
   pruneopts = "UT"
   revision = "c4a5988a1e475884367015e1a2d0bd5fa4c491f4"
   version = "v0.0.2"
-
-[[projects]]
-  digest = "1:6a443af5bfbc3cd231972c06ce15d8e396486bf57a9115fac6c1bc76eb68bcc5"
-  name = "github.com/libp2p/go-conn-security"
-  packages = ["insecure"]
-  pruneopts = "UT"
-  revision = "5f8143019e00897f3f6776723f2ca9230904458b"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:041a5219e2f0c1fa2af5d25aee6970600ba2ac055ba386c18cfe960d392df3db"
@@ -720,14 +728,6 @@
   pruneopts = "UT"
   revision = "221d8d5e05a0252049203c8f74d4f38b64da9963"
   version = "v0.2.0"
-
-[[projects]]
-  digest = "1:f55b1d675b33c91230c833c99b7aa1a03f9eda84ab775d2ecddd8136cb2d2faa"
-  name = "github.com/libp2p/go-libp2p-transport"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "2406e91c260757c7cf63c70ad20073f5a7b29af4"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:2fcb80000123d80148ce210a053a226d52dc891419905d7ff076c164825da50d"
@@ -1343,6 +1343,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/ReneKroon/ttlcache",
     "github.com/albrow/stringset",
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
@@ -1362,23 +1363,19 @@
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
     "github.com/ipfs/go-ds-leveldb",
-    "github.com/ipfs/go-log",
     "github.com/jpillora/backoff",
-    "github.com/libp2p/go-conn-security-multistream",
-    "github.com/libp2p/go-conn-security/insecure",
+    "github.com/karlseguin/ccache",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-circuit",
     "github.com/libp2p/go-libp2p-connmgr",
     "github.com/libp2p/go-libp2p-core/crypto",
     "github.com/libp2p/go-libp2p-core/host",
-    "github.com/libp2p/go-libp2p-core/mux",
+    "github.com/libp2p/go-libp2p-core/metrics",
     "github.com/libp2p/go-libp2p-core/network",
     "github.com/libp2p/go-libp2p-core/peer",
-    "github.com/libp2p/go-libp2p-core/pnet",
     "github.com/libp2p/go-libp2p-core/protocol",
     "github.com/libp2p/go-libp2p-core/routing",
-    "github.com/libp2p/go-libp2p-core/sec",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-discovery",
     "github.com/libp2p/go-libp2p-kad-dht",
@@ -1388,14 +1385,8 @@
     "github.com/libp2p/go-libp2p-peerstore/pstoreds",
     "github.com/libp2p/go-libp2p-pubsub",
     "github.com/libp2p/go-libp2p-swarm",
-    "github.com/libp2p/go-libp2p-transport",
-    "github.com/libp2p/go-libp2p-transport-upgrader",
-    "github.com/libp2p/go-libp2p/config",
-    "github.com/libp2p/go-libp2p/p2p/host/basic",
     "github.com/libp2p/go-libp2p/p2p/host/relay",
-    "github.com/libp2p/go-libp2p/p2p/host/routed",
     "github.com/libp2p/go-maddr-filter",
-    "github.com/libp2p/go-stream-muxer-multistream",
     "github.com/libp2p/go-ws-transport",
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",

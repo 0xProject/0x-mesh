@@ -14,9 +14,6 @@ import (
 )
 
 func TestBandwidthChecker(t *testing.T) {
-	// TODO(albrow): Unskip this test.
-	t.Skip("Skipping due to apparent bug in libp2p's BandwidthCounter")
-
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -38,11 +35,22 @@ func TestBandwidthChecker(t *testing.T) {
 	require.NoError(t, node0.Connect(node1AddrInfo, testConnectionTimeout))
 	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
 
-	// Manually send a message from node0 to node1 that would exceed the bandwidth
-	// limit.
+	// Repeatedly send messages from node0 to node1 that would exceed the
+	// bandwidth limit.
 	newMaxBytesPerSecond := float64(1)
 	message := make([]byte, int(newMaxBytesPerSecond*100))
-	require.NoError(t, node0.Send(message))
+	ticker := time.NewTicker(500 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// Break the loop and exit goroutine when context is canceled.
+				return
+			case <-ticker.C:
+				require.NoError(t, node0.Send(message))
+			}
+		}
+	}()
 
 	// Wait for node1 to receive the message.
 	expectedMessage := &Message{
