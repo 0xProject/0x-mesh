@@ -129,3 +129,7 @@
 [[constraint]]
   name = "github.com/karlseguin/ccache"
   version = "2.0.3"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/time"
