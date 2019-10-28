@@ -745,7 +745,7 @@ func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedO
 		FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
 		IsNew:                    true,
 	}
-	err = orderWatcher.Add(orderInfo)
+	err = orderWatcher.Add(orderInfo, false)
 	require.NoError(t, err)
 }
 

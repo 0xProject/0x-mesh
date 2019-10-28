@@ -611,8 +611,11 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
-// and if they are valid, will store and eventually broadcast the orders to peers.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+// and if they are valid, will store and eventually broadcast the orders to
+// peers. If pinned is true, the orders will be marked as pinned, which means
+// they will only be removed if they become unfillable and will not be removed
+// due to having a high expiration time or any incentive mechanisms.
+func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
 	allValidationResults := &ordervalidator.ValidationResults{
 		Accepted: []*ordervalidator.AcceptedOrderInfo{},
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
@@ -686,12 +689,22 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.V
 		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
 	}
 
-	for _, acceptedOrderInfo := range allValidationResults.Accepted {
+	for i, acceptedOrderInfo := range allValidationResults.Accepted {
 		// Add the order to the OrderWatcher. This also saves the order in the
 		// database.
-		err = app.orderWatcher.Add(acceptedOrderInfo)
+		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
 		if err != nil {
-			return nil, err
+			if err == meshdb.ErrDBFilledWithPinnedOrders {
+				allValidationResults.Accepted = append(allValidationResults.Accepted[:i], allValidationResults.Accepted[i+1:]...)
+				allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   acceptedOrderInfo.OrderHash,
+					SignedOrder: acceptedOrderInfo.SignedOrder,
+					Kind:        ordervalidator.MeshError,
+					Status:      ordervalidator.RODatabaseFullOfOrders,
+				})
+			} else {
+				return nil, err
+			}
 		}
 		// Share the order with our peers.
 		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
@@ -737,6 +750,10 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	numPinnedOrders, err := app.db.CountPinnedOrders()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &rpc.GetStatsResponse{
 		Version:                   version,
@@ -748,6 +765,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		NumOrders:                 numOrders,
 		NumPeers:                  app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
+		NumPinnedOrders:           numPinnedOrders,
 		MaxExpirationTime:         app.orderWatcher.MaxExpirationTime().String(),
 	}
 	return response, nil
@@ -776,6 +794,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"latestBlock":               stats.LatestBlock,
 			"numOrders":                 stats.NumOrders,
 			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
+			"numPinnedOrders":           stats.NumPinnedOrders,
 			"numPeers":                  stats.NumPeers,
 			"maxExpirationTime":         stats.MaxExpirationTime,
 		}).Info("current stats")

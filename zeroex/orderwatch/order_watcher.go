@@ -721,8 +721,11 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error
 }
 
 // Add adds a 0x order to the DB and watches it for changes in fillability. It
-// will no-op (and return nil) if the order has already been added.
-func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
+// will no-op (and return nil) if the order has already been added. If pinned is
+// true, the orders will be marked as pinned. Pinned orders will not be affected
+// by any DDoS prevention or incentive mechanisms and will always stay in
+// storage until they are no longer fillable.
+func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool) error {
 	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
 		return err
 	}
@@ -738,7 +741,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 
 	// Final expiration time check before inserting the order. We might have just
 	// changed max expiration time above.
-	if orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+	if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
 		// HACK(albrow): This is technically not the ideal way to respond to this
 		// situation, but it is a lot easier to implement for the time being. In the
 		// future, we should return an error and then react to that error
@@ -774,6 +777,7 @@ func (w *Watcher) Add(orderInfo *ordervalidator.AcceptedOrderInfo) error {
 		LastUpdated:              time.Now().UTC(),
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
+		IsPinned:                 pinned,
 	}
 	err := txn.Insert(order)
 	if err != nil {
