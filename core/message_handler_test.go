@@ -23,80 +23,83 @@ func TestMessageSharingIsolated(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		orders     []*meshdb.Order
+		orderCount int
 		nextOffset int
 		max        int
 	}{
 		{
-			orders:     []*meshdb.Order{randomOrder(t)},
+			orderCount: 1,
 			nextOffset: 0,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, 2),
+			orderCount: 2,
 			nextOffset: 0,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, 2),
+			orderCount: 2,
 			nextOffset: 1,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, 2),
+			orderCount: 2,
 			nextOffset: 1,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, 10),
+			orderCount: 10,
 			nextOffset: 5,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, 10),
+			orderCount: 10,
 			nextOffset: 1,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, 3),
+			orderCount: 3,
 			nextOffset: 1,
 			max:        4,
 		},
 		{
-			orders:     randomOrders(t, 3),
+			orderCount: 3,
 			nextOffset: 20,
 			max:        4,
 		},
 	}
 
 	for _, testCase := range testCases {
+		orders := randomOrders(t, testCase.orderCount)
+
 		selector := &OrderSelector{
 			nextOffset: testCase.nextOffset,
 			db:         meshDB,
 		}
 
 		// Insert the orders into the database
-		for _, order := range testCase.orders {
+		for _, order := range orders {
 			err := selector.db.Orders.Insert(order)
 			require.NoError(t, err)
 		}
 
-		var orderList []*meshdb.Order
 		notRemovedFilter := selector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 		ordersSnapshot, err := selector.db.Orders.GetSnapshot()
-		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(0).Max(len(testCase.orders)).Run(&orderList)
-		ordersLength := len(testCase.orders)
-		expectedOrdersLength := min(testCase.max, ordersLength)
+		expectedOrdersLength := min(testCase.max, len(orders))
 		expectedOrders := make([][]byte, expectedOrdersLength)
 
+		// Get all of the orders in the database.
+		var orderList []*meshdb.Order
+		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(0).Max(len(orders)).Run(&orderList)
+
 		// Update `nextOffset` to zero if it is larger than the number of orders that are stored
-		if testCase.nextOffset > ordersLength {
+		if testCase.nextOffset > len(orders) {
 			testCase.nextOffset = 0
 		}
 
 		// Calculate the orders that we expect to be shared
 		for i := 0; i < expectedOrdersLength; i++ {
-			encoding, err := encodeOrder(orderList[(testCase.nextOffset+i)%ordersLength].SignedOrder)
+			encoding, err := encodeOrder(orderList[(testCase.nextOffset+i)%len(orders)].SignedOrder)
 			require.NoError(t, err)
 
 			expectedOrders[i] = encoding
@@ -110,26 +113,17 @@ func TestMessageSharingIsolated(t *testing.T) {
 		assert.Equal(t, expectedOrders, actualOrders)
 
 		// Delete the orders from the database
-		for _, order := range testCase.orders {
+		for _, order := range orders {
 			err := selector.db.Orders.Delete(order.ID())
 			require.NoError(t, err)
 		}
 	}
 }
 
-func newOrderSelector(t *testing.T) *OrderSelector {
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
-	require.NoError(t, err)
-	return &OrderSelector{
-		nextOffset: 0,
-		db:         meshDB,
-	}
-}
+func randomOrders(t *testing.T, orderCount int) []*meshdb.Order {
+	orders := make([]*meshdb.Order, orderCount)
 
-func randomOrders(t *testing.T, count int) []*meshdb.Order {
-	orders := make([]*meshdb.Order, count)
-
-	for i := 0; i < count; i++ {
+	for i := 0; i < orderCount; i++ {
 		orders[i] = randomOrder(t)
 	}
 
@@ -171,8 +165,7 @@ func randomAddress(t *testing.T) string {
 }
 
 func randomAssetData(t *testing.T) string {
-	// Note: Asset data must begin with a valid asset proxy id or else
-	//       parsing will fail
+	// Note: Asset data must begin with a valid asset proxy id or parsing will fail
 	return "f47261b0000000000000000000000000" + randomHex(t, 20)
 }
 
