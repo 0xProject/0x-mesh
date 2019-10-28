@@ -9,20 +9,15 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMessageSharingIsolated(t *testing.T) {
-	ethClient, err := ethrpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-	signer := ethereum.NewEthRPCSigner(ethClient)
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	defer meshDB.Close()
 	require.NoError(t, err)
@@ -33,42 +28,42 @@ func TestMessageSharingIsolated(t *testing.T) {
 		max        int
 	}{
 		{
-			orders:     []*meshdb.Order{randomOrder(t, signer)},
+			orders:     []*meshdb.Order{randomOrder(t)},
 			nextOffset: 0,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, signer, 2),
+			orders:     randomOrders(t, 2),
 			nextOffset: 0,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, signer, 2),
+			orders:     randomOrders(t, 2),
 			nextOffset: 1,
 			max:        1,
 		},
 		{
-			orders:     randomOrders(t, signer, 2),
+			orders:     randomOrders(t, 2),
 			nextOffset: 1,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, signer, 10),
+			orders:     randomOrders(t, 10),
 			nextOffset: 5,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, signer, 10),
+			orders:     randomOrders(t, 10),
 			nextOffset: 1,
 			max:        2,
 		},
 		{
-			orders:     randomOrders(t, signer, 3),
+			orders:     randomOrders(t, 3),
 			nextOffset: 1,
 			max:        4,
 		},
 		{
-			orders:     randomOrders(t, signer, 3),
+			orders:     randomOrders(t, 3),
 			nextOffset: 20,
 			max:        4,
 		},
@@ -131,41 +126,42 @@ func newOrderSelector(t *testing.T) *OrderSelector {
 	}
 }
 
-func randomOrders(t *testing.T, signer ethereum.Signer, count int) []*meshdb.Order {
+func randomOrders(t *testing.T, count int) []*meshdb.Order {
 	orders := make([]*meshdb.Order, count)
 
 	for i := 0; i < count; i++ {
-		orders[i] = randomOrder(t, signer)
+		orders[i] = randomOrder(t)
 	}
 
 	return orders
 }
 
-func randomOrder(t *testing.T, signer ethereum.Signer) *meshdb.Order {
-	order := &zeroex.Order{
-		MakerAddress:          constants.GanacheAccount0,
-		TakerAddress:          common.HexToAddress(randomAddress(t)),
-		SenderAddress:         common.HexToAddress(randomAddress(t)),
-		FeeRecipientAddress:   common.HexToAddress(randomAddress(t)),
-		MakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
-		TakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
-		Salt:                  big.NewInt(rand.Int63()),
-		MakerFee:              big.NewInt(rand.Int63()),
-		TakerFee:              big.NewInt(rand.Int63()),
-		MakerAssetAmount:      big.NewInt(rand.Int63()),
-		TakerAssetAmount:      big.NewInt(rand.Int63()),
-		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       common.HexToAddress(randomAddress(t)),
+func randomOrder(t *testing.T) *meshdb.Order {
+	signedOrder := &zeroex.SignedOrder{
+		Order: zeroex.Order{
+			MakerAddress:          constants.GanacheAccount0,
+			TakerAddress:          common.HexToAddress(randomAddress(t)),
+			SenderAddress:         common.HexToAddress(randomAddress(t)),
+			FeeRecipientAddress:   common.HexToAddress(randomAddress(t)),
+			MakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
+			TakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
+			Salt:                  big.NewInt(rand.Int63()),
+			MakerFee:              big.NewInt(rand.Int63()),
+			TakerFee:              big.NewInt(rand.Int63()),
+			MakerAssetAmount:      big.NewInt(rand.Int63()),
+			TakerAssetAmount:      big.NewInt(rand.Int63()),
+			ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
+			ExchangeAddress:       common.HexToAddress(randomAddress(t)),
+		},
+		Signature: []byte(randomHex(t, 65)),
 	}
-	randomOrder, err := zeroex.SignOrder(signer, order)
-	require.NoError(t, err)
-	orderHash, err := randomOrder.ComputeOrderHash()
+	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	return &meshdb.Order{
 		Hash:                     orderHash,
-		SignedOrder:              randomOrder,
+		SignedOrder:              signedOrder,
 		LastUpdated:              time.Now().UTC(),
-		FillableTakerAssetAmount: randomOrder.Order.TakerAssetAmount,
+		FillableTakerAssetAmount: signedOrder.Order.TakerAssetAmount,
 		IsRemoved:                false,
 	}
 }
