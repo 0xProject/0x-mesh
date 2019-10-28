@@ -20,7 +20,7 @@ const (
 	logBandwidthUsageInterval = 5 * time.Minute
 	// violationsCacheSize is the size of the cache (number of entries) used for
 	// tracking bandwidth violations over time.
-	violationsCacheSize = 100
+	violationsCacheSize = peerCountHigh
 	// violationsBeforeBan is the number of times a peer is allowed to violate the
 	// bandwidth limits before being banned.
 	violationsBeforeBan = 4
