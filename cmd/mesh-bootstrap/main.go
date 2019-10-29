@@ -33,12 +33,6 @@ import (
 )
 
 const (
-	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 1000
-	// peerCountHigh is the maximum number of peers to be connected to. If the
-	// number of connections exceeds this number, we will prune connections until
-	// we reach peerCountLow.
-	peerCountHigh = 1100
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
@@ -67,6 +61,13 @@ type Config struct {
 	// EnableRelayHost is whether or not the node should serve as a relay host.
 	// Defaults to true.
 	EnableRelayHost bool `envvar:"ENABLE_RELAY_HOST" default:"true"`
+	// PeerCountLow is the target number of peers to connect to at any given time.
+	// Defaults to 100.
+	PeerCountLow int `envvar:"PEER_COUNT_LOW" default:"100"`
+	// PeerCountHigh is the maximum number of peers to be connected to. If the
+	// number of connections exceeds this number, we will prune connections until
+	// we reach PeerCountLow. Defaults to 110.
+	PeerCountHigh int `envvar:"PEER_COUNT_HIGH" default:"110"`
 }
 
 func init() {
@@ -139,7 +140,7 @@ func main() {
 	}
 
 	// Set up the transport and the host.
-	connManager := connmgr.NewConnManager(peerCountLow, peerCountHigh, peerGraceDuration)
+	connManager := connmgr.NewConnManager(config.PeerCountLow, config.PeerCountHigh, peerGraceDuration)
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(bindAddrs...),
 		libp2p.Identity(privKey),
