@@ -60,7 +60,7 @@ func TestBandwidthChecker(t *testing.T) {
 	expectMessage(t, node1, expectedMessage, 15*time.Second)
 
 	// Manually change the bandwidth limit for node1.
-	node1.bandwidthChecker.maxBytesPerSecond = newMaxBytesPerSecond
+	node1.banner.SetMaxBytesPerSecond(newMaxBytesPerSecond)
 
 	// Wait for node1 to block node0 and for the connection to close.
 	waitForNodeToBlockAddr(t, node1, node0AddrInfo.Addrs[0], 5*time.Second)
@@ -79,8 +79,8 @@ func waitForNodeToBlockAddr(t *testing.T, blocker *Node, addressToBlock ma.Multi
 		default:
 		}
 
-		blocker.bandwidthChecker.checkUsage()
-		isBlocked := blocker.filters.AddrBlocked(addressToBlock)
+		blocker.banner.CheckBandwidthUsage()
+		isBlocked := blocker.banner.IsAddrBanned(addressToBlock)
 		if isBlocked {
 			// This is what we want. Return and continue the test.
 			return
