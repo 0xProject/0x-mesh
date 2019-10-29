@@ -43,11 +43,6 @@ const (
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
 	defaultNetworkTimeout = 30 * time.Second
-	// maxBytesPerSecond is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check.
-	// TODO(albrow): Reduce this limit once we have a better picture of what real
-	// world bandwidth should be.
-	maxBytesPerSecond = 104857600 // 100 MiB.
 	// checkBandwidthLoopInterval is how often to potentially check bandwidth usage
 	// for peers.
 	checkBandwidthLoopInterval = 5 * time.Second
@@ -88,6 +83,11 @@ type Config struct {
 	// number of connections exceeds this number, we will prune connections until
 	// we reach PeerCountLow. Defaults to 110.
 	PeerCountHigh int `envvar:"PEER_COUNT_HIGH" default:"110"`
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check.
+	// TODO(albrow): Reduce this limit once we have a better picture of what real
+	// world bandwidth should be. Defaults to 100 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"104857600"`
 }
 
 func init() {
@@ -211,7 +211,7 @@ func main() {
 		Host:                   basicHost,
 		Filters:                filters,
 		BandwidthCounter:       bandwidthCounter,
-		MaxBytesPerSecond:      maxBytesPerSecond,
+		MaxBytesPerSecond:      config.MaxBytesPerSecond,
 		LogBandwidthUsageStats: true,
 	})
 
