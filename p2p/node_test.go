@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
@@ -431,7 +432,7 @@ func TestBanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// node0 should not be able to connect to node1 and vice versa.
@@ -463,12 +464,12 @@ func TestUnbanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// Unban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.UnbanIP(maddr))
+		require.NoError(t, node0.banner.UnbanIP(maddr))
 	}
 
 	// Each node should now be able to connect to the other.
@@ -496,13 +497,13 @@ func TestProtectIP(t *testing.T) {
 
 	// Protect all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.ProtectIP(maddr))
+		require.NoError(t, node0.banner.ProtectIP(maddr))
 	}
 
 	// Ban all node1 IP addresses (this should have no effect since the IP
 	// addresses are protected).
 	for _, maddr := range node1.Multiaddrs() {
-		require.EqualError(t, node0.BanIP(maddr), errProtectedIP.Error())
+		require.EqualError(t, node0.banner.BanIP(maddr), banner.ErrProtectedIP.Error())
 	}
 
 	// Each node should now be able to connect to the other.
