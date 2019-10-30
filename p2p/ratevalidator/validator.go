@@ -2,6 +2,7 @@ package ratevalidator
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/karlseguin/ccache"
@@ -26,10 +27,11 @@ var _ pubsub.Validator = (&Validator{}).Validate
 // Validator is a rate limiting pubsub validator that only allows messages to be
 // sent at a certain rate.
 type Validator struct {
-	ctx           context.Context
-	config        Config
-	globalLimiter *rate.Limiter
-	peerLimiters  *ccache.Cache
+	ctx             context.Context
+	config          Config
+	globalLimiter   *rate.Limiter
+	peerLimiters    *ccache.Cache
+	peerLimitersMut sync.RWMutex
 }
 
 // Config is a set of configuration options for the validator.
@@ -86,10 +88,14 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 }
 
 func (v *Validator) getOrCreateLimiterForPeer(peerID peer.ID) *rate.Limiter {
+	v.peerLimitersMut.RLock()
 	cacheItem := v.peerLimiters.Get(peerID.String())
+	v.peerLimitersMut.RUnlock()
 	if cacheItem != nil {
 		return cacheItem.Value().(*rate.Limiter)
 	} else {
+		v.peerLimitersMut.Lock()
+		defer v.peerLimitersMut.Unlock()
 		limiter := rate.NewLimiter(v.config.PerPeerLimit, v.config.PerPeerBurst)
 		v.peerLimiters.Set(peerID.String(), limiter, peerLimiterTTL)
 		return limiter
