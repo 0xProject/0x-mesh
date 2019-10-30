@@ -564,10 +564,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 	// connection; 3 connections).
 	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
 
-	// HACK(albrow): Even though the stream for GossipSub has already been
-	// opened on both sides, the ping message might *still* not be received by the
-	// other peer. Waiting for 1 second gives each peer enough time to finish
-	// setting up GossipSub. I couldn't find any way to avoid this hack :(
+	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
 
 	require.NoError(t, node1.runOnce())
@@ -651,10 +648,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	// connection; 3 connections).
 	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
 
-	// HACK(albrow): Even though the stream for GossipSub has already been
-	// opened on both sides, the ping message might *still* not be received by the
-	// other peer. Waiting for 1 second gives each peer enough time to finish
-	// setting up GossipSub. I couldn't find any way to avoid this hack :(
+	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
 
 	require.NoError(t, node0.runOnce())
