@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p/banner"
+	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -28,6 +29,7 @@ import (
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -58,6 +60,12 @@ const (
 	// TODO(albrow): Reduce this limit once we have a better picture of what
 	// real world bandwidth should be.
 	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
+	// defaultGlobalPubSubMessageLimit is the default value for
+	// GlobalPubSubMessageLimit.
+	defaultGlobalPubSubMessageLimit = maxShareBatch * peerCountHigh
+	// defaultGlobalPubSubMessageBurst is the default value for
+	// GlobalPubSubMessageBurst.
+	defaultGlobalPubSubMessageBurst = maxShareBatch * peerCountHigh * 5
 )
 
 // Node is the main type for the p2p package. It represents a particpant in the
@@ -106,6 +114,12 @@ type Config struct {
 	BootstrapList []string
 	// DataDir is the directory to use for storing data.
 	DataDir string
+	// GlobalPubSubMessageLimit is the maximum number of messages per second that
+	// will be forwarded through GossipSub on behalf of other peers.
+	GlobalPubSubMessageLimit rate.Limit
+	// GlobalPubSubMessageBurst is the maximum number of messages that will be
+	// forwarded through GossipSub at once.
+	GlobalPubSubMessageBurst int
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -123,6 +137,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, errors.New("config.MessageHandler is required")
 	} else if config.RendezvousString == "" {
 		return nil, errors.New("config.RendezvousString is required")
+	}
+	if config.GlobalPubSubMessageLimit == 0 {
+		config.GlobalPubSubMessageLimit = defaultGlobalPubSubMessageLimit
+	}
+	if config.GlobalPubSubMessageBurst == 0 {
+		config.GlobalPubSubMessageBurst = defaultGlobalPubSubMessageBurst
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -186,8 +206,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 
 	// Set up pubsub
 	pubsubOpts := getPubSubOptions()
-	pubsub, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
+	ps, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
+		return nil, err
+	}
+	rateValidator := ratevalidator.New(config.GlobalPubSubMessageLimit, config.GlobalPubSubMessageBurst)
+	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}
 
@@ -209,7 +233,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
-		pubsub:           pubsub,
+		pubsub:           ps,
 		banner:           banner,
 	}
 
