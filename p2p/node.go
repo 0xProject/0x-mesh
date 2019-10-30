@@ -66,6 +66,12 @@ const (
 	// defaultGlobalPubSubMessageBurst is the default value for
 	// GlobalPubSubMessageBurst.
 	defaultGlobalPubSubMessageBurst = maxShareBatch * peerCountHigh * 5
+	// defaultPerPeerPubSubMessageLimit is the default value for
+	// PerPeerPubSubMessageLimit.
+	defaultPerPeerPubSubMessageLimit = maxShareBatch
+	// defaultPerPeerPubSubMessageBurst is the default value for
+	// PerPeerPubSubMessageBurst.
+	defaultPerPeerPubSubMessageBurst = maxShareBatch * 5
 )
 
 // Node is the main type for the p2p package. It represents a particpant in the
@@ -120,6 +126,14 @@ type Config struct {
 	// GlobalPubSubMessageBurst is the maximum number of messages that will be
 	// forwarded through GossipSub at once.
 	GlobalPubSubMessageBurst int
+	// PerPeerPubSubMessageLimit is the maximum number of messages per second that
+	// each peer is allowed to send through the GossipSub network. Any additional
+	// messages will be dropped.
+	PerPeerPubSubMessageLimit rate.Limit
+	// PerPeerPubSubMessageBurst is the maximum number of messages that each peer
+	// is allowed to send at once through the GossipSub network. Any additional
+	// messages will be dropped.
+	PerPeerPubSubMessageBurst int
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -143,6 +157,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 	if config.GlobalPubSubMessageBurst == 0 {
 		config.GlobalPubSubMessageBurst = defaultGlobalPubSubMessageBurst
+	}
+	if config.PerPeerPubSubMessageLimit == 0 {
+		config.PerPeerPubSubMessageLimit = defaultPerPeerPubSubMessageLimit
+	}
+	if config.PerPeerPubSubMessageBurst == 0 {
+		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -204,13 +224,18 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	// Set up DHT for peer discovery.
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
-	// Set up pubsub
+	// Set up pubsub and custom validators.
 	pubsubOpts := getPubSubOptions()
 	ps, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
 		return nil, err
 	}
-	rateValidator := ratevalidator.New(config.GlobalPubSubMessageLimit, config.GlobalPubSubMessageBurst)
+	rateValidator := ratevalidator.New(ctx, ratevalidator.Config{
+		GlobalLimit:  config.GlobalPubSubMessageLimit,
+		GlobalBurst:  config.GlobalPubSubMessageBurst,
+		PerPeerLimit: config.PerPeerPubSubMessageLimit,
+		PerPeerBurst: config.PerPeerPubSubMessageBurst,
+	})
 	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}

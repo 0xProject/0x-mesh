@@ -507,7 +507,7 @@ func TestProtectIP(t *testing.T) {
 	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
 }
 
-func TestRateValidator(t *testing.T) {
+func TestRateValidatorGlobal(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -588,6 +588,95 @@ func TestRateValidator(t *testing.T) {
 	expectedMessageCount := node0.config.GlobalPubSubMessageBurst
 	node1MessageCount := node1.messageHandler.(*inMemoryMessageHandler).count()
 	assert.Equal(t, expectedMessageCount, node1MessageCount, "node1 received and stored the wrong number of messages")
+	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
+	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
+}
+
+func TestRateValidatorPerPeer(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create a test notifee which will be used to detect new streams.
+	notifee := &testNotifee{
+		streams: make(chan p2pnet.Stream),
+	}
+
+	node0Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+	node1Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+	node2Config := Config{
+		Topic: testTopic,
+		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
+			return true, nil
+		}),
+		RendezvousString:          testRendezvousString,
+		UseBootstrapList:          false,
+		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		PerPeerPubSubMessageLimit: 1,
+		PerPeerPubSubMessageBurst: 5,
+	}
+
+	// Create three test nodes. node0 is connected to node1. node1 is connected to
+	// node2.
+	node0 := newTestNodeWithConfig(t, ctx, notifee, node0Config)
+	node1 := newTestNodeWithConfig(t, ctx, notifee, node1Config)
+	node2 := newTestNodeWithConfig(t, ctx, notifee, node2Config)
+	connectTestNodes(t, node0, node1)
+	connectTestNodes(t, node1, node2)
+
+	// Wait for a total of 2 x 3 = 6 GossipSub streams to open (2 streams per
+	// connection; 3 connections).
+	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
+
+	// HACK(albrow): Even though the stream for GossipSub has already been
+	// opened on both sides, the ping message might *still* not be received by the
+	// other peer. Waiting for 1 second gives each peer enough time to finish
+	// setting up GossipSub. I couldn't find any way to avoid this hack :(
+	time.Sleep(2 * time.Second)
+
+	require.NoError(t, node0.runOnce())
+	require.NoError(t, node1.runOnce())
+	require.NoError(t, node2.runOnce())
+
+	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node1.
+	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
+		msg := []byte(fmt.Sprintf("node0_message_%d", i))
+		require.NoError(t, node0.Send(msg))
+	}
+	// node1 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
+	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
+		msg := []byte(fmt.Sprintf("node1_message_%d", i))
+		require.NoError(t, node1.Send(msg))
+	}
+
+	require.NoError(t, node0.runOnce())
+	require.NoError(t, node1.runOnce())
+	require.NoError(t, node2.runOnce())
+
+	// node2 should only have config.PerPeerPubSubMessageBurst*2 messages.
+	// The others are expected to have been dropped.
+	expectedMessageCount := node0.config.PerPeerPubSubMessageBurst * 2
 	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
 	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
 }
