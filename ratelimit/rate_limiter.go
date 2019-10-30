@@ -15,15 +15,15 @@ import (
 
 // RateLimiter is a rate-limiter for requests
 type RateLimiter struct {
-	aClock                clock.Clock
 	maxRequestsPer24Hrs   int
 	twentyFourHourLimiter *rate.Limiter
 	perSecondLimiter      *rate.Limiter
+	currentUTCCheckpoint  time.Time // Start of current UTC 24hr period
+	grantedInLast24hrsUTC int       // Number of granted requests issued in last 24hr UTC
 	meshDB                *meshdb.MeshDB
-	currentUTCCheckpoint  time.Time
-	grantedInLast24hrsUTC int
-	wasStartedOnce        bool // Whether the rate limiter has previously been started
-	startMutex            sync.Mutex
+	aClock                clock.Clock
+	wasStartedOnce        bool       // Whether the rate limiter has previously been started
+	startMutex            sync.Mutex // Mutex around the start check
 	mu                    sync.Mutex
 }
 
@@ -34,16 +34,15 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 		return nil, err
 	}
 
-	// Check if stored checkpoint in DB still relevant
+	// Check if stored checkpoint in DB is still relevant
 	now := aClock.Now()
 	currentUTCCheckpoint := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	storedUTCCheckpoint := metadata.StartOfCurrentUTCDay
 	storedGrantedInLast24HrsUTC := metadata.EthRPCRequestsSentInCurrentUTCDay
-	// Checkpoint in DB if from previous 24hr period and therefore no longer relevant
+	// Update DB if current values are from previous 24hr period and therefore no longer relevant
 	if currentUTCCheckpoint != storedUTCCheckpoint {
 		storedUTCCheckpoint = currentUTCCheckpoint
 		storedGrantedInLast24HrsUTC = 0
-		// Re-set DB state to current checkpoint and reset grants to 0
 		if err := meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
 			metadata.StartOfCurrentUTCDay = storedUTCCheckpoint
 			metadata.EthRPCRequestsSentInCurrentUTCDay = storedGrantedInLast24HrsUTC
@@ -54,24 +53,35 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 	}
 
 	// Compute the number of grants accrued since 12am UTC that have not been used. We will than
-	// instantiate the rate limiter to start with the accrued grants available for immediate use
+	// instantiate the rate limiter to start with the accrued grants remaining available for
+	// immediate use
 
-	// compute time past since last 12am UTC
 	timePassedSinceCheckpoint := aClock.Since(currentUTCCheckpoint)
 	// Translate time passed into theoretical # grants accrued
 	// (timePassed / 24hrs) * maxRequestsPer24hrs
-	theoreticalGrantsUsed := int((float64(timePassedSinceCheckpoint.Nanoseconds()) / float64((24 * time.Hour).Nanoseconds())) * float64(maxRequestsPer24Hrs))
-	// theoreticalGrants - storedGrantedInLast24HrsUTC = bufferedGrants
-	bufferedGrants := theoreticalGrantsUsed - storedGrantedInLast24HrsUTC
+	theoreticalGrantsAccrued := int((float64(timePassedSinceCheckpoint.Nanoseconds()) / float64((24 * time.Hour).Nanoseconds())) * float64(maxRequestsPer24Hrs))
+	// theoreticalGrants - storedGrantedInLast24HrsUTC = accruedGrants
+	accruedGrants := theoreticalGrantsAccrued - storedGrantedInLast24HrsUTC
 
-	twentyFourHourLimiter, err := instantiateTwentyFourHourLimiter(maxRequestsPer24Hrs, bufferedGrants)
+	// Instantiate limiter with `maxRequestsPer24Hrs` bucketsize and a limit
+	// that results in `maxRequestsPer24Hrs` requests being whitelisted in a 24hr period
+	limit := rate.Limit(float64(maxRequestsPer24Hrs) / (24 * 60 * 60))
+	twentyFourHourLimiter := rate.NewLimiter(limit, maxRequestsPer24Hrs)
+
+	// Since Limiter begins initially full, we drain it before use. i.e., We do not want 100k
+	// requests to already be queued up, instead we only want the number of accrued grants that
+	// have gone unused to be available at startup
+	amountToDrain := maxRequestsPer24Hrs - accruedGrants
+	ctx := context.Background()
+	err = twentyFourHourLimiter.WaitN(ctx, amountToDrain)
 	if err != nil {
 		return nil, err
 	}
 
-	// Instantiate limiter with a bucketsize of one and an eventsPerSecond rate that
-	// results in no more than 30 requests per second.
-	perSecondLimiter := rate.NewLimiter(rate.Limit(maxRequestsPerSecond), 1)
+	// Instantiate limiter with a bucketsize of one and a limit that results
+	// in no more than `maxRequestsPerSecond` requests per second.
+	limit = rate.Limit(maxRequestsPerSecond)
+	perSecondLimiter := rate.NewLimiter(limit, 1)
 
 	return &RateLimiter{
 		aClock:                aClock,
@@ -84,7 +94,9 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 	}, nil
 }
 
-// Start starts the rateLimiter
+// Start starts two background processes required for the RateLimiter to function. One that
+// stores it's state to the DB at a checkpoint interval, and another that clears accrued
+// grants when the UTC day time window elapses.
 func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duration) error {
 	r.startMutex.Lock()
 	if r.wasStartedOnce {
@@ -94,7 +106,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 	r.wasStartedOnce = true
 	r.startMutex.Unlock()
 
-	// Start 24hr UTC bucket resetter
+	// Start 24hr UTC accrued grants resetter
 	go func() {
 		for {
 			now := r.aClock.Now()
@@ -105,14 +117,14 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			case <-ctx.Done():
 				return
 			case <-r.aClock.After(untilNextUTCCheckpoint):
-				// Compute how many grants have buffered and remove that many from the bucket
-				// to clear it for the next 24hr period
+				// Compute how many grants have accrued and gone unused and remove that
+				// many from the bucket so that it starts empty for the next 24hr period
 				r.mu.Lock()
-				bufferedGrants := r.maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
-				if err := r.twentyFourHourLimiter.WaitN(ctx, bufferedGrants); err != nil {
+				accruedGrants := r.maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
+				if err := r.twentyFourHourLimiter.WaitN(ctx, accruedGrants); err != nil {
 					// Since we never set n to exceed the burst size, an error will only
 					// occur if the context is cancelled or it's deadline is exceeded. In
-					// these cases, we simply return.
+					// these cases, we simply return so that this go-routine exits.
 					// From docs: "It returns an error if n exceeds the Limiter's burst
 					// size, the Context is canceled, or the expected wait time exceeds the
 					// Context's Deadline."
@@ -134,7 +146,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
-			// Store grant count and current UTC checkpoint to DB
+			// Store grants issued and current UTC checkpoint to DB
 			r.mu.Lock()
 			err := r.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
 				metadata.StartOfCurrentUTCDay = r.currentUTCCheckpoint
@@ -153,26 +165,6 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			}
 		}
 	}
-}
-
-func instantiateTwentyFourHourLimiter(maxRequestsPer24Hrs, bufferedGrants int) (*rate.Limiter, error) {
-	// Instantiate limiter with 100k bucketsize and an eventsPerSecond rate that
-	// results in 100k requests being whitelisted in a 24hr period. This represents
-	// the request per 24 UTC period
-	eventsPerSecond := float64(maxRequestsPer24Hrs) / (24 * 60 * 60)
-	twentyFourHourLimiter := rate.NewLimiter(rate.Limit(eventsPerSecond), maxRequestsPer24Hrs)
-
-	// Since Limiter begins initially full, we drain it before use. i.e., We do not want 100k
-	// requests to already be queued up, instead we only want the number of buffered grants that
-	// have gone unused to be available at startup
-	amountToDrain := maxRequestsPer24Hrs - bufferedGrants
-	ctx := context.Background()
-	err := twentyFourHourLimiter.WaitN(ctx, amountToDrain)
-	if err != nil {
-		return nil, err
-	}
-
-	return twentyFourHourLimiter, nil
 }
 
 // Wait blocks until the rateLimiter allows for another request to be sent
