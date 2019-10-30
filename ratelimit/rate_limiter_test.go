@@ -44,8 +44,8 @@ func TestScenario1(t *testing.T) {
 
 	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
-	ctx := context.Background()
-	defer ctx.Done()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		err := rateLimiter.Start(ctx, defaultCheckpointInterval)
 		require.NoError(t, err)
@@ -99,8 +99,8 @@ func TestScenario2(t *testing.T) {
 
 	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
-	ctx := context.Background()
-	defer ctx.Done()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		err := rateLimiter.Start(ctx, defaultCheckpointInterval)
 		require.NoError(t, err)
@@ -200,15 +200,12 @@ func TestScenario3(t *testing.T) {
 	expectedCurrentUTCCheckpoint := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.currentUTCCheckpoint)
 
-	ctx := context.Background()
-	defer ctx.Done()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	checkpointInterval := 200 * time.Millisecond
 	go func() {
 		err := rateLimiter.Start(ctx, checkpointInterval)
-		if err != nil {
-			// Only error that could be throw in a DB closed err which causes the
-			// RateLimiter to stop so we safely noop
-		}
+		require.NoError(t, err)
 	}()
 
 	// Grant a request
