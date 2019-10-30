@@ -35,7 +35,7 @@ func TestScenario1(t *testing.T) {
 
 	initMetadata(t, meshDB)
 
-	// Set mock clock to start of UTC day
+	// Set mock clock to three grants past UTC midnight
 	aClock := clock.NewMock()
 	now := time.Now()
 	midnightUTC := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
