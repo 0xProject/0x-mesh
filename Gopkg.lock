@@ -38,6 +38,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:0ad5484a25fbd88409bae8b8b19134135fe73d3cb00e45d3255280b2ab975fcc"
+  name = "github.com/benbjohnson/clock"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19"
+
+[[projects]]
+  branch = "master"
   digest = "1:9e7c5138114ff9c51a60731b3a425c319305013c6ea8b3f60fd2435baba1a0db"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
@@ -1353,6 +1361,7 @@
   input-imports = [
     "github.com/ReneKroon/ttlcache",
     "github.com/albrow/stringset",
+    "github.com/benbjohnson/clock",
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
     "github.com/ethereum/go-ethereum",
