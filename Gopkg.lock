@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  digest = "1:8dfbaa09c5bb2df7ba84be3bb47d045f10a75502e708a1c15fec690dbe2e46fc"
-  name = "github.com/ReneKroon/ttlcache"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "e9e37b599534bbeb6ec45a6215cda104ff212b69"
-  version = "v1.6.0"
-
-[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -1359,7 +1351,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/ReneKroon/ttlcache",
     "github.com/albrow/stringset",
     "github.com/benbjohnson/clock",
     "github.com/chromedp/cdproto/runtime",
