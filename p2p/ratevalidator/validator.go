@@ -23,7 +23,7 @@ const (
 // Dummy declaration to ensure that Validate can be used as a pubsub.Validator
 var _ pubsub.Validator = (&Validator{}).Validate
 
-// Validator is a rate-limiting pubsub validator that only allows messages to be
+// Validator is a rate limiting pubsub validator that only allows messages to be
 // sent at a certain rate.
 type Validator struct {
 	ctx           context.Context
@@ -46,7 +46,7 @@ type Config struct {
 	PerPeerBurst int
 }
 
-// New creates and returns a new rate-limiting validator.
+// New creates and returns a new rate limiting validator.
 func New(ctx context.Context, config Config) *Validator {
 	validator := &Validator{
 		ctx:           ctx,
@@ -76,7 +76,7 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 	default:
 	}
 	// Note: We check the per-peer rate limiter first so that peers who are
-	// exceeding the limit do not contribute toward the global rate-limit.
+	// exceeding the limit do not contribute toward the global rate limit.
 	peerLimiter := v.getOrCreateLimiterForPeer(peerID)
 	if !peerLimiter.Allow() {
 		return false
