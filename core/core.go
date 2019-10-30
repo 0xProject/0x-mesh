@@ -145,7 +145,7 @@ type App struct {
 	privKey                   p2pcrypto.PrivKey
 	db                        *meshdb.MeshDB
 	node                      *p2p.Node
-	chainID                 int
+	chainID                   int
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
@@ -250,7 +250,7 @@ func New(config Config) (*App, error) {
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		ChainID:         config.EthereumChainID,
+		ChainID:           config.EthereumChainID,
 		ExpirationBuffer:  config.OrderExpirationBuffer,
 		MaxOrders:         config.MaxOrdersInStorage,
 		MaxExpirationTime: metadata.MaxExpirationTime,
@@ -285,7 +285,7 @@ func New(config Config) (*App, error) {
 		privKey:                   privKey,
 		peerID:                    peerID,
 		db:                        meshDB,
-		chainID:                 config.EthereumChainID,
+		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
 		ethWatcher:                ethWatcher,
@@ -345,7 +345,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 		if _, ok := err.(db.NotFoundError); ok {
 			// No stored metadata found (first startup)
 			metadata = &meshdb.Metadata{
-				EthereumChainID: chainID,
+				EthereumChainID:   chainID,
 				MaxExpirationTime: constants.UnlimitedExpirationTime,
 			}
 			if err := meshDB.SaveMetadata(metadata); err != nil {
@@ -799,19 +799,25 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	metadata, err := app.db.GetMetadata()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &rpc.GetStatsResponse{
-		Version:                   version,
-		PubSubTopic:               getPubSubTopic(app.config.EthereumChainID),
-		Rendezvous:                getRendezvous(app.config.EthereumChainID),
-		PeerID:                    app.peerID.String(),
-		EthereumChainID:         app.config.EthereumChainID,
-		LatestBlock:               latestBlock,
-		NumOrders:                 numOrders,
-		NumPeers:                  app.node.GetNumPeers(),
-		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
-		NumPinnedOrders:           numPinnedOrders,
-		MaxExpirationTime:         app.orderWatcher.MaxExpirationTime().String(),
+		Version:                           version,
+		PubSubTopic:                       getPubSubTopic(app.config.EthereumChainID),
+		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
+		PeerID:                            app.peerID.String(),
+		EthereumChainID:                   app.config.EthereumChainID,
+		LatestBlock:                       latestBlock,
+		NumOrders:                         numOrders,
+		NumPeers:                          app.node.GetNumPeers(),
+		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+		NumPinnedOrders:                   numPinnedOrders,
+		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 	}
 	return response, nil
 }
@@ -832,16 +838,18 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			continue
 		}
 		log.WithFields(log.Fields{
-			"version":                   stats.Version,
-			"pubSubTopic":               stats.PubSubTopic,
-			"rendezvous":                stats.Rendezvous,
-			"ethereumChainID":         stats.EthereumChainID,
-			"latestBlock":               stats.LatestBlock,
-			"numOrders":                 stats.NumOrders,
-			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
-			"numPinnedOrders":           stats.NumPinnedOrders,
-			"numPeers":                  stats.NumPeers,
-			"maxExpirationTime":         stats.MaxExpirationTime,
+			"version":                           stats.Version,
+			"pubSubTopic":                       stats.PubSubTopic,
+			"rendezvous":                        stats.Rendezvous,
+			"ethereumChainID":                   stats.EthereumChainID,
+			"latestBlock":                       stats.LatestBlock,
+			"numOrders":                         stats.NumOrders,
+			"numOrdersIncludingRemoved":         stats.NumOrdersIncludingRemoved,
+			"numPinnedOrders":                   stats.NumPinnedOrders,
+			"numPeers":                          stats.NumPeers,
+			"maxExpirationTime":                 stats.MaxExpirationTime,
+			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,
+			"ethRPCRequestsSentInCurrentUTCDay": stats.EthRPCRequestsSentInCurrentUTCDay,
 		}).Info("current stats")
 	}
 }

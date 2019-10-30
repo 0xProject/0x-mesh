@@ -421,4 +421,6 @@ export interface GetStatsResponse {
     numOrdersIncludingRemoved: number;
     numPinnedOrders: number;
     maxExpirationTime: string;
+    startOfCurrentUTCDay: string;
+    ethRPCRequestsSentInCurrentUTCDay: number;
 }

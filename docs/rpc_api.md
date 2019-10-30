@@ -205,6 +205,8 @@ Gets certain configurations and stats about a Mesh node.
         "numPeers": 18,
         "numOrders": 1095,
         "numOrdersIncludingRemoved": 1134,
+        "startOfCurrentUTCDay": "1257811200",
+        "ethRPCRequestsSentInCurrentUTCDay": 5039,
         "maxExpirationTime": "717784680"
     },
     "id": 1
