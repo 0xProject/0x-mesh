@@ -75,11 +75,14 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 		return false
 	default:
 	}
-	if !v.globalLimiter.Allow() {
+	// Note: We check the per-peer rate limiter first so that peers who are
+	// exceeding the limit do not contribute toward the global rate-limit.
+	peerLimiter := v.getOrCreateLimiterForPeer(peerID)
+	if !peerLimiter.Allow() {
 		return false
 	}
-	peerLimiter := v.getOrCreateLimiterForPeer(peerID)
-	return peerLimiter.Allow()
+
+	return v.globalLimiter.Allow()
 }
 
 func (v *Validator) getOrCreateLimiterForPeer(peerID peer.ID) *rate.Limiter {
