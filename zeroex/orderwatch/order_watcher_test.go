@@ -34,13 +34,26 @@ const (
 	ethereumRPCMaxContentLength = 524288
 )
 
-var makerAddress = constants.GanacheAccount1
-var takerAddress = constants.GanacheAccount2
-var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-var erc1155FungibleAmount = big.NewInt(100)
-var tokenID = big.NewInt(1)
+var (
+	makerAddress                = constants.GanacheAccount1
+	takerAddress                = constants.GanacheAccount2
+	eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+	zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+	erc1155FungibleAmount       = big.NewInt(100)
+	tokenID                     = big.NewInt(1)
+)
+
+var (
+	rpcClient           *ethrpc.Client
+	ethClient           *ethclient.Client
+	zrx                 *wrappers.ZRXToken
+	dummyERC721Token    *wrappers.DummyERC721Token
+	erc1155Mintable     *wrappers.ERC1155Mintable
+	exchange            *wrappers.Exchange
+	weth                *wrappers.WETH9
+	blockchainLifecycle *ethereum.BlockchainLifecycle
+)
 
 // Since these tests must be run sequentially, we don't want them to run as part of
 // the normal testing process. They will only be run if the "--serial" flag is used.
@@ -50,14 +63,6 @@ func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
 	flag.Parse()
 }
-
-var rpcClient *ethrpc.Client
-var ethClient *ethclient.Client
-var zrx *wrappers.ZRXToken
-var dummyERC721Token *wrappers.DummyERC721Token
-var erc1155Mintable *wrappers.ERC1155Mintable
-var exchange *wrappers.Exchange
-var weth *wrappers.WETH9
 
 func init() {
 	var err error
@@ -118,7 +123,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -158,7 +163,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -196,7 +201,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -236,7 +241,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -276,7 +281,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -315,7 +320,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -355,7 +360,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -394,7 +399,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -502,7 +507,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
@@ -563,7 +568,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
@@ -603,7 +608,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
@@ -643,7 +648,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
@@ -684,7 +689,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
@@ -698,10 +703,79 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
 
+func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher. Manually change maxOrders.
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+	orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	orderWatcher.maxOrders = 20
+
+	// create and watch maxOrders orders
+	for i := 0; i < orderWatcher.maxOrders; i++ {
+		signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+time.Duration(i)*time.Minute))
+		watchOrder(t, orderWatcher, signedOrder)
+	}
+
+	// We don't care about the order events above for the purposes of this test,
+	// so we only subscribe now.
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// The next order should cause some orders to be removed and the appropriate
+	// events to fire.
+	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+1*time.Second))
+	watchOrder(t, orderWatcher, signedOrder)
+	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
+	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
+	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
+	for i, orderEvent := range orderEvents {
+		// Last event should be ADDED. The other events should be STOPPED_WATCHING.
+		if i == expectedOrderEvents-1 {
+			assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState, "order event %d had wrong EndState", i)
+		} else {
+			// For STOPPED_WATCHING events, we also make sure that the expiration time is after
+			// the current max expiration time.
+			assert.Equal(t, zeroex.ESStoppedWatching, orderEvent.EndState, "order event %d had wrong EndState", i)
+			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			assert.True(t, orderExpirationTime.Cmp(orderWatcher.MaxExpirationTime()) != -1, "remaining order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, orderWatcher.MaxExpirationTime())
+		}
+	}
+
+	// Now we check that the correct number of orders remain and that all
+	// remaining orders have an expiration time less than the current max.
+	expectedRemainingOrders := int(float64(orderWatcher.maxOrders)*maxOrdersTrimRatio) + 1
+	var remainingOrders []*meshdb.Order
+	require.NoError(t, meshDB.Orders.FindAll(&remainingOrders))
+	require.Len(t, remainingOrders, expectedRemainingOrders)
+	for _, order := range remainingOrders {
+		assert.True(t, order.SignedOrder.ExpirationTimeSeconds.Cmp(orderWatcher.MaxExpirationTime()) == -1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.SignedOrder.ExpirationTimeSeconds, orderWatcher.MaxExpirationTime())
+	}
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) chan []*zeroex.OrderEvent {
 	orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
 
 	// Start watching an order
+	watchOrder(t, orderWatcher, signedOrder)
+
+	// Subscribe to OrderWatcher
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	return orderEventsChan
+}
+
+func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedOrder) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	orderInfo := &ordervalidator.AcceptedOrderInfo{
@@ -710,14 +784,8 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 		FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
 		IsNew:                    true,
 	}
-	err = orderWatcher.Add(orderInfo)
+	err = orderWatcher.Add(orderInfo, false)
 	require.NoError(t, err)
-
-	// Subscribe to OrderWatcher
-	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
-	orderWatcher.Subscribe(orderEventsChan)
-
-	return orderEventsChan
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
@@ -737,7 +805,15 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, ethereumRPCMaxContentLength, 0)
 	require.NoError(t, err)
-	orderWatcher, err := New(meshDB, blockWatcher, orderValidator, constants.TestNetworkID, 0)
+	orderWatcher, err := New(Config{
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		NetworkID:         constants.TestNetworkID,
+		ExpirationBuffer:  0,
+		MaxExpirationTime: constants.UnlimitedExpirationTime,
+		MaxOrders:         1000,
+	})
 	require.NoError(t, err)
 
 	// Start the block watcher.
@@ -755,8 +831,6 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	return orderWatcher
 }
 
-var blockchainLifecycle *ethereum.BlockchainLifecycle
-
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
 	return func(t *testing.T) {
@@ -764,14 +838,20 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	}
 }
 
-func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, timeout time.Duration) []*zeroex.OrderEvent {
-	select {
-	case orderEvents := <-orderEventsChan:
-		return orderEvents
-	case <-time.After(timeout):
-		t.Fatal("timed out waiting for order events")
+func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, expectedNumberOfEvents int, timeout time.Duration) []*zeroex.OrderEvent {
+	allOrderEvents := []*zeroex.OrderEvent{}
+	for {
+		select {
+		case orderEvents := <-orderEventsChan:
+			allOrderEvents = append(allOrderEvents, orderEvents...)
+			if len(allOrderEvents) >= expectedNumberOfEvents {
+				return allOrderEvents
+			}
+			continue
+		case <-time.After(timeout):
+			t.Fatalf("timed out waiting for %d order events (received %d events)", expectedNumberOfEvents, len(allOrderEvents))
+		}
 	}
-	return []*zeroex.OrderEvent{}
 }
 
 func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {

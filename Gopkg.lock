@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:8dfbaa09c5bb2df7ba84be3bb47d045f10a75502e708a1c15fec690dbe2e46fc"
+  name = "github.com/ReneKroon/ttlcache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e9e37b599534bbeb6ec45a6215cda104ff212b69"
+  version = "v1.6.0"
+
+[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -427,6 +435,14 @@
   pruneopts = "T"
   revision = "6bbb8df5a4e3ebed3398a30bdbeb80682ffb76f8"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:9642c35dd8d4b8981d58327a917f178898baf9b331373748dd50439aec5c2628"
+  name = "github.com/karlseguin/ccache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ec06cd93a07565b373789b0078ba88fe697fddd9"
+  version = "v2.0.3"
 
 [[projects]]
   branch = "master"
@@ -1327,6 +1343,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/ReneKroon/ttlcache",
     "github.com/albrow/stringset",
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
@@ -1347,6 +1364,7 @@
     "github.com/hashicorp/golang-lru",
     "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
+    "github.com/karlseguin/ccache",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-circuit",

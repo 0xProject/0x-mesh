@@ -183,6 +183,12 @@ const (
 	// Fillability for an order can increase if a previously processed fill event
 	// gets reverted, or if a maker tops up their balance/allowance backing an order
 	ESOrderFillabilityIncreased = OrderEventEndState("FILLABILITY_INCREASED")
+	// Order is potentially still valid but was removed for a different reason
+	// (e.g. the database is full or the peer that sent the order was
+	// misbehaving). The order will no longer be watched and no further events for
+	// this order will be emitted. In some cases, the order may be re-added in the
+	// future.
+	ESStoppedWatching = OrderEventEndState("STOPPED_WATCHING")
 )
 
 var eip712OrderTypes = signer.Types{
@@ -281,6 +287,8 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		ChainId:           o.ChainID,
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
+
+	fmt.Println("domain", domain)
 
 	var message = map[string]interface{}{
 		"makerAddress":          o.MakerAddress.Hex(),
@@ -382,7 +390,7 @@ func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
 
 // SignedOrderJSON is an unmodified JSON representation of a SignedOrder
 type SignedOrderJSON struct {
-	ChainID               int64 `json:"chainId"`
+	ChainID               int64  `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
 	MakerAssetData        string `json:"makerAssetData"`

@@ -27,18 +27,18 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error)
+	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
-func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
-	return d.addOrdersHandler(signedOrdersRaw)
+	return d.addOrdersHandler(signedOrdersRaw, opts)
 }
 
 func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
@@ -128,7 +128,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 			require.Len(t, signedOrdersRaw, 1)
 			validationResponse := &ordervalidator.ValidationResults{}
 			for _, signedOrderRaw := range signedOrdersRaw {

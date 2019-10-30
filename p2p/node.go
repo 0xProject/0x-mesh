@@ -9,13 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	mathrand "math/rand"
-	"net"
 	"path/filepath"
-	"strings"
-	"sync"
 	"time"
 
-	"github.com/albrow/stringset"
+	"github.com/0xProject/0x-mesh/p2p/banner"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -56,9 +53,12 @@ const (
 	// between 0 and 1. If its less than chanceToCheckBandiwdthUsage, we perform
 	// a bandwidth check.
 	chanceToCheckBandwidthUsage = 0.1
+	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
+	// peer is allowed to send before failing the bandwidth check.
+	// TODO(albrow): Reduce this limit once we have a better picture of what
+	// real world bandwidth should be.
+	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
 )
-
-var errProtectedIP = errors.New("cannot ban protected IP address")
 
 // Node is the main type for the p2p package. It represents a particpant in the
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
@@ -68,15 +68,12 @@ type Node struct {
 	config           Config
 	messageHandler   MessageHandler
 	host             host.Host
-	filters          *filter.Filters
 	connManager      *connmgr.BasicConnMgr
 	dht              *dht.IpfsDHT
 	routingDiscovery discovery.Discovery
 	pubsub           *pubsub.PubSub
 	sub              *pubsub.Subscription
-	protectedIPsMut  sync.RWMutex
-	protectedIPs     stringset.Set
-	bandwidthChecker *bandwidthChecker
+	banner           *banner.Banner
 }
 
 // Config contains configuration options for a Node.
@@ -194,20 +191,27 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, err
 	}
 
+	// Configure banner.
+	banner := banner.New(ctx, banner.Config{
+		Host:                   basicHost,
+		Filters:                filters,
+		BandwidthCounter:       bandwidthCounter,
+		MaxBytesPerSecond:      defaultMaxBytesPerSecond,
+		LogBandwidthUsageStats: true,
+	})
+
 	// Create the Node.
 	node := &Node{
 		ctx:              ctx,
 		config:           config,
 		messageHandler:   config.MessageHandler,
 		host:             basicHost,
-		filters:          filters,
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
 		pubsub:           pubsub,
-		protectedIPs:     stringset.New(),
+		banner:           banner,
 	}
-	node.bandwidthChecker = newBandwidthChecker(node, bandwidthCounter)
 
 	return node, nil
 }
@@ -275,16 +279,13 @@ func (n *Node) Start() error {
 		}
 		for _, addrInfo := range bootstrapAddrInfos {
 			for _, addr := range addrInfo.Addrs {
-				_ = n.ProtectIP(addr)
+				_ = n.banner.ProtectIP(addr)
 			}
 		}
 	}
 
 	// Advertise ourselves for the purposes of peer discovery.
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
-
-	// Start logging bandwidth in the background.
-	go n.bandwidthChecker.continuouslyLogBandwidthUsage(n.ctx)
 
 	return n.mainLoop()
 }
@@ -330,72 +331,6 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 	return nil
 }
 
-// ProtectIP permanently adds the IP address of the given Multiaddr to a
-// list of protected IP addresses. Protected IPs can never be banned and will
-// not be added to the blacklist. If the IP address is already on the blacklist,
-// it will be removed.
-func (n *Node) ProtectIP(maddr ma.Multiaddr) error {
-	n.protectedIPsMut.Lock()
-	defer n.protectedIPsMut.Unlock()
-	ipNet, err := ipNetFromMaddr(maddr)
-	if err != nil {
-		return err
-	}
-	n.unbanIPNet(ipNet)
-	n.protectedIPs.Add(ipNet.IP.String())
-	return nil
-}
-
-// BanIP adds the IP address of the given Multiaddr to the blacklist. The
-// node will no longer dial or accept connections from this IP address. However,
-// if the IP address is protected, calling BanIP will not ban the IP address and
-// will instead return errProtectedIP. BanIP does not automatically disconnect
-// from the given multiaddress if there is currently an open connection.
-func (n *Node) BanIP(maddr ma.Multiaddr) error {
-	ipNet, err := ipNetFromMaddr(maddr)
-	if err != nil {
-		// HACK(albrow) relay addresses don't include the full transport address
-		// (IP, port, etc) for older versions of libp2p-circuit. (See
-		// https://github.com/libp2p/go-libp2p/issues/723). As a temporary
-		// workaround, we no-op for relayed connections. We can remove this after
-		// updating our bootstrap nodes to the latest version. We detect relay
-		// addresses by looking for the /ipfs prefix.
-		if strings.HasPrefix(maddr.String(), "/ipfs") {
-			return nil
-		}
-		return err
-	}
-	n.protectedIPsMut.RLock()
-	defer n.protectedIPsMut.RUnlock()
-	if n.protectedIPs.Contains(ipNet.IP.String()) {
-		// IP address is protected. no-op.
-		return errProtectedIP
-	}
-	n.filters.AddFilter(ipNet, filter.ActionDeny)
-	return nil
-}
-
-// UnbanIP removes the IP address of the given Multiaddr from the blacklist. If
-// the IP address is not currently on the blacklist this is a no-op.
-func (n *Node) UnbanIP(maddr ma.Multiaddr) error {
-	ipNet, err := ipNetFromMaddr(maddr)
-	if err != nil {
-		return err
-	}
-	n.unbanIPNet(ipNet)
-	return nil
-}
-
-func (n *Node) unbanIPNet(ipNet net.IPNet) {
-	// There is no guarantee in the public API of the filters package that would
-	// prevent multiple filters being added for the same IPNet (though it
-	// shouldn't happen in practice). We use a for loop here to make sure we
-	// remove all possible filters. RemoveLiteral returns false if no filter was
-	// removed.
-	for n.filters.RemoveLiteral(ipNet) {
-	}
-}
-
 // mainLoop is where the core logic for a Node is implemented. On each iteration
 // of the loop, the node receives new messages and sends messages to its peers.
 func (n *Node) mainLoop() error {
@@ -431,7 +366,7 @@ func (n *Node) runOnce() error {
 
 	// Check bandwidth usage non-deterministically
 	if mathrand.Float64() <= chanceToCheckBandwidthUsage {
-		n.bandwidthChecker.checkUsage()
+		n.banner.CheckBandwidthUsage()
 	}
 
 	// Send up to maxSendBatch messages.
@@ -540,15 +475,15 @@ func (n *Node) shareBatch() error {
 		return err
 	}
 	for _, data := range outgoing {
-		if err := n.send(data); err != nil {
+		if err := n.Send(data); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// send sends a message continaing the given data to all connected peers.
-func (n *Node) send(data []byte) error {
+// Send sends a message continaing the given data to all connected peers.
+func (n *Node) Send(data []byte) error {
 	return n.pubsub.Publish(n.config.Topic, data)
 }
 
@@ -567,58 +502,4 @@ func (n *Node) receive(ctx context.Context) (*Message, error) {
 		return nil, err
 	}
 	return &Message{From: msg.GetFrom(), Data: msg.Data}, nil
-}
-
-func ipNetFromMaddr(maddr ma.Multiaddr) (ipNet net.IPNet, err error) {
-	ip, err := ipFromMaddr(maddr)
-	if err != nil {
-		return net.IPNet{}, err
-	}
-	mask := getAllMaskForIP(ip)
-	return net.IPNet{
-		IP:   ip,
-		Mask: mask,
-	}, nil
-}
-
-func ipFromMaddr(maddr ma.Multiaddr) (net.IP, error) {
-	var (
-		ip    net.IP
-		found bool
-	)
-
-	ma.ForEach(maddr, func(c ma.Component) bool {
-		switch c.Protocol().Code {
-		case ma.P_IP6ZONE:
-			return true
-		case ma.P_IP6, ma.P_IP4:
-			found = true
-			ip = net.IP(c.RawValue())
-			return false
-		default:
-			return false
-		}
-	})
-
-	if !found {
-		return net.IP{}, fmt.Errorf("could not parse IP address from multiaddress: %s", maddr)
-	}
-	return ip, nil
-}
-
-var (
-	ipv4AllMask = net.IPMask{255, 255, 255, 255}
-	ipv6AllMask = net.IPMask{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
-)
-
-// getAllMaskForIP returns an IPMask that will match all IP addresses. The size
-// of the mask depends on whether the given IP address is an IPv4 or an IPv6
-// address.
-func getAllMaskForIP(ip net.IP) net.IPMask {
-	if ip.To4() != nil {
-		// This is an ipv4 address. Return 4 byte mask.
-		return ipv4AllMask
-	}
-	// Assume ipv6 address. Return 16 byte mask.
-	return ipv6AllMask
 }

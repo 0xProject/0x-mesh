@@ -66,14 +66,13 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // customContractAddresses is set of custom addresses to use for the
-    // configured network ID. The contract addresses for most common networks
-    // are already included by default, so this is typically only needed for
-    // testing on custom networks. The given addresses are added to the default
-    // list of addresses for known networks and overriding any contract
-    // addresses for known networks is not allowed. The addresses for exchange,
-    // devUtils, erc20Proxy, and erc721Proxy are required for each network. For
-    // example:
+    // A set of custom addresses to use for the configured network ID. The
+    // contract addresses for most common networks are already included by
+    // default, so this is typically only needed for testing on custom networks.
+    // The given addresses are added to the default list of addresses for known
+    // networks and overriding any contract addresses for known networks is not
+    // allowed. The addresses for exchange, devUtils, erc20Proxy, and
+    // erc721Proxy are required for each network. For example:
     //
     //    {
     //        exchange: "0x48bacb9266a570d521063ef5dd96e61686dbe788",
@@ -83,6 +82,11 @@ export interface Config {
     //    }
     //
     customContractAddresses?: ContractAddresses;
+    // The maximum number of orders that Mesh will keep in storage. As the
+    // number of orders in storage grows, Mesh will begin enforcing a limit on
+    // maximum expiration time for incoming orders and remove any orders with an
+    // expiration time too far in the future. Defaults to 100,000.
+    maxOrdersInStorage?: number;
 }
 
 export interface ContractAddresses {
@@ -119,7 +123,7 @@ interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
-    addOrdersAsync(orders: WrapperSignedOrder[]): Promise<WrapperValidationResults>;
+    addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
 // The type for configuration exposed by MeshWrapper.
@@ -133,6 +137,7 @@ interface WrapperConfig {
     blockPollingIntervalSeconds?: number;
     ethereumRPCMaxContentLength?: number;
     customContractAddresses?: string; // json-encoded instead of Object.
+    maxOrdersInStorage?: number;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -211,7 +216,6 @@ export interface ERC721ApprovalForAllEvent {
     operator: string;
     approved: boolean;
 }
-
 
 export interface ERC1155TransferSingleEvent {
     operator: string;
@@ -398,6 +402,7 @@ export enum OrderEventEndState {
     Expired = 'EXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
+    StoppedWatching = 'STOPPED_WATCHING',
 }
 
 interface WrapperOrderEvent {
@@ -590,11 +595,15 @@ export class Mesh {
      * the order; it will not be rejected for any invalid orders (check
      * results.rejected instead).
      *
-     * @param   orders                An array of orders to add.
+     * @param   orders      An array of orders to add.
+     * @param   pinned      Whether or not the orders should be pinned. Pinned
+     * orders will not be affected by any DDoS prevention or incentive
+     * mechanisms and will always stay in storage until they are no longer
+     * fillable.
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
-    public async addOrdersAsync(orders: SignedOrder[]): Promise<ValidationResults> {
+    public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
@@ -603,7 +612,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
         const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
-        const meshResults = await this._wrapper.addOrdersAsync(meshOrders);
+        const meshResults = await this._wrapper.addOrdersAsync(meshOrders, pinned);
         return wrapperValidationResultsToValidationResults(meshResults);
     }
 }
@@ -704,14 +713,14 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                 break;
             case ContractEventKind.ERC1155TransferBatchEvent:
                 const erc1155TransferBatchEvent = rawParameters as WrapperERC1155TransferBatchEvent;
-                const ids: BigNumber[] = []
+                const ids: BigNumber[] = [];
                 erc1155TransferBatchEvent.ids.forEach(id => {
-                    ids.push(new BigNumber(id))
-                })
-                const values: BigNumber[] = []
+                    ids.push(new BigNumber(id));
+                });
+                const values: BigNumber[] = [];
                 erc1155TransferBatchEvent.values.forEach(value => {
-                    values.push(new BigNumber(value))
-                })
+                    values.push(new BigNumber(value));
+                });
                 parameters = {
                     operator: erc1155TransferBatchEvent.operator,
                     from: erc1155TransferBatchEvent.from,

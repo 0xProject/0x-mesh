@@ -35,7 +35,7 @@ import {
     StringifiedExchangeCancelUpToEvent,
     StringifiedExchangeFillEvent,
     StringifiedWethDepositEvent,
-StringifiedWethWithdrawalEvent,
+    StringifiedWethWithdrawalEvent,
     ValidationResults,
     WSOpts,
 } from './types';
@@ -208,11 +208,11 @@ export class WSClient {
             }
             const contractEvent: ContractEvent = {
                 blockHash: rawContractEvent.blockHash,
-                txHash:  rawContractEvent.txHash,
-                txIndex:  rawContractEvent.txIndex,
-                logIndex:  rawContractEvent.logIndex,
-                isRemoved:  rawContractEvent.isRemoved,
-                address:  rawContractEvent.address,
+                txHash: rawContractEvent.txHash,
+                txIndex: rawContractEvent.txIndex,
+                logIndex: rawContractEvent.logIndex,
+                isRemoved: rawContractEvent.isRemoved,
+                address: rawContractEvent.address,
                 kind,
                 parameters,
             };
@@ -242,12 +242,17 @@ export class WSClient {
     /**
      * Adds an array of 0x signed orders to the Mesh node.
      * @param signedOrders signedOrders to add
+     * @param pinned       Whether or not the orders should be pinned. Pinned
+     * orders will not be affected by any DDoS prevention or incentive
+     * mechanisms and will always stay in storage until they are no longer
+     * fillable.
      * @returns validation results
      */
-    public async addOrdersAsync(signedOrders: SignedOrder[]): Promise<ValidationResults> {
+    public async addOrdersAsync(signedOrders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         assert.isArray('signedOrders', signedOrders);
         const rawValidationResults: RawValidationResults = await (this._wsProvider as any).send('mesh_addOrders', [
             signedOrders,
+            pinned,
         ]);
         const validationResults: ValidationResults = {
             accepted: WSClient._convertRawAcceptedOrderInfos(rawValidationResults.accepted),
@@ -277,13 +282,11 @@ export class WSClient {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders',
-            [
-                page,
-                perPage,
-                snapshotID,
-            ],
-        );
+        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+            page,
+            perPage,
+            snapshotID,
+        ]);
         snapshotID = getOrdersResponse.snapshotID;
         let ordersInfos = getOrdersResponse.ordersInfos;
 
@@ -291,8 +294,7 @@ export class WSClient {
         do {
             rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
             page++;
-            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID]))
-                .ordersInfos;
+            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
         } while (Object.keys(ordersInfos).length > 0);
 
         const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);

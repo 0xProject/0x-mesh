@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
@@ -235,13 +236,13 @@ loop:
 
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
-	require.NoError(t, node0.send(pingMessage.Data))
+	require.NoError(t, node0.Send(pingMessage.Data))
 	const pingPongTimeout = 15 * time.Second
 	expectMessage(t, node1, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{From: node1.host.ID(), Data: []byte("pong\n")}
-	require.NoError(t, node1.send(pongMessage.Data))
+	require.NoError(t, node1.Send(pongMessage.Data))
 	expectMessage(t, node0, pongMessage, pingPongTimeout)
 }
 
@@ -431,7 +432,7 @@ func TestBanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// node0 should not be able to connect to node1 and vice versa.
@@ -463,12 +464,12 @@ func TestUnbanIP(t *testing.T) {
 
 	// Ban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.BanIP(maddr))
+		require.NoError(t, node0.banner.BanIP(maddr))
 	}
 
 	// Unban all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.UnbanIP(maddr))
+		require.NoError(t, node0.banner.UnbanIP(maddr))
 	}
 
 	// Each node should now be able to connect to the other.
@@ -496,13 +497,13 @@ func TestProtectIP(t *testing.T) {
 
 	// Protect all node1 IP addresses.
 	for _, maddr := range node1.Multiaddrs() {
-		require.NoError(t, node0.ProtectIP(maddr))
+		require.NoError(t, node0.banner.ProtectIP(maddr))
 	}
 
 	// Ban all node1 IP addresses (this should have no effect since the IP
 	// addresses are protected).
 	for _, maddr := range node1.Multiaddrs() {
-		require.EqualError(t, node0.BanIP(maddr), errProtectedIP.Error())
+		require.EqualError(t, node0.banner.BanIP(maddr), banner.ErrProtectedIP.Error())
 	}
 
 	// Each node should now be able to connect to the other.

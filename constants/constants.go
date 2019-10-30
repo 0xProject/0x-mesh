@@ -2,6 +2,7 @@ package constants
 
 import (
 	"errors"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -63,3 +64,12 @@ var ErrInternal = errors.New("internal error")
 
 // TestMaxContentLength is the max Ethereum RPC Content-Length used in tests
 var TestMaxContentLength = 1024 * 512
+
+// UnlimitedExpirationTime is the maximum value for uint256 (2^256-1), which
+// means there is effectively no limit on the maximum expiration time for
+// orders.
+var UnlimitedExpirationTime *big.Int
+
+func init() {
+	UnlimitedExpirationTime, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+}

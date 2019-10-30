@@ -194,6 +194,10 @@ var (
 		Code:    "SenderAddressNotAllowed",
 		Message: "orders with a senderAddress are not currently supported",
 	}
+	RODatabaseFullOfOrders = RejectedOrderStatus{
+		Code:    "DatabaseFullOfOrders",
+		Message: "database is full of pinned orders and no orders can be deleted to make space (consider increasing MAX_ORDERS_IN_STORAGE)",
+	}
 )
 
 // ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema

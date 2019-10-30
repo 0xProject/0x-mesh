@@ -2,6 +2,31 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v5.2.0-beta-0xv3
+
+### Features ✅ 
+
+- Implemented a new strategy for limiting the amount of database storage used by Mesh and removing orders when the database is full. This strategy involves a dynamically adjusting maximum expiration time. When the database is full, Mesh will enforce a maximum expiration time for all incoming orders and remove any existing orders with an expiration time too far in the future. If conditions change and there is enough space in the database again, the max expiration time will slowly increase. This is a short term solution which solves the immediate issue of finite storage capacities and does a decent job of protecting against spam. We expect to improve and possibly replace it in the future. See [#450](https://github.com/0xProject/0x-mesh/pull/450) for more details.
+- Added support for a new feature called "order pinning" ([#474](https://github.com/0xProject/0x-mesh/pull/474)). Pinned orders will not be affected by any DDoS prevention or incentive mechanisms (including the new dynamic max expiration time feature) and will always stay in storage until they are no longer fillable. By default, all orders which are submitted via either the JSON-RPC API or the `addOrdersAsync` function in the TypeScript bindings will be pinned.
+- Re-enabled bandwidth-based peer banning with a workaround to deal with erroneous spikes [#478](https://github.com/0xProject/0x-mesh/pull/478).
+
+### Bug fixes 🐞 
+
+- Improved the aggressiveness at which we permanently delete orders that have been flagged for removal. Previously we would wait for the cleanup job to handle this (once an hour), but that meant many removed orders would accumulate. We now prune them every 5 minutes. ([#471](https://github.com/0xProject/0x-mesh/pull/471))
+
+## v5.1.0-beta
+
+### Features ✅ 
+
+- The `getStats` RPC endpoint now includes a new field which accounts for the number of orders that have been marked as "removed" but not yet permanently deleted ([#461](https://github.com/0xProject/0x-mesh/pull/461)).
+- Improved historical order sharing using round-robin algorithm instead of random selection ([#454](https://github.com/0xProject/0x-mesh/pull/454)). This will reduce the warm-up time for receiving existing orders when first joining the network.
+- Added ERC1155 assetData support ([#453](https://github.com/0xProject/0x-mesh/pull/453)). This includes order watching and order events for orders involving ERC1155 tokens.
+- Added Ability to specify custom contract addresses via the `CUSTOM_ADDRESSES` environment variable or the `customAddresses` field in the TypeScript bindings ([#451](https://github.com/0xProject/0x-mesh/pull/451)).
+
+### Bug fixes 🐞 
+
+- Temporarily disabled bandwidth-based peer banning ([#448](https://github.com/0xProject/0x-mesh/pull/448)). A [bug in libp2p](https://github.com/libp2p/go-libp2p-core/issues/65) was occasionally causing observed bandwidth usage to spike to unrealistic levels, which can result in peers being erroneously banned. We decided to temporarily stop banning peers while we're working with the libp2p team to resolve the issue.
+
 ## v5.0.2-beta-0xv3
 
 ### Bug fixes 🐞 
@@ -9,6 +34,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Updated DevUtils.sol contract address for the Kovan network to one including a bug fix for validating orders with nulled out `feeAssetData` fields. ([#446](https://github.com/0xProject/0x-mesh/pull/446)])
 - Added back Ropsten and Rinkeby support and fixed `exchange` address on Kovan ([#451](https://github.com/0xProject/0x-mesh/pull/451))
 - Segregate V3 Mesh network from V2 network ([#455](https://github.com/0xProject/0x-mesh/pull/455))
+
 
 ## v5.0.0-beta
 
