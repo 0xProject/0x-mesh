@@ -579,7 +579,9 @@ func TestRateValidatorGlobal(t *testing.T) {
 		require.NoError(t, node0.Send(msg))
 	}
 
-	// require.NoError(t, node0.runOnce())
+	// HACK(albrow): Wait for GossipSub messages to fully propagate.
+	time.Sleep(1 * time.Second)
+
 	require.NoError(t, node1.runOnce())
 	require.NoError(t, node2.runOnce())
 
@@ -669,6 +671,9 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		msg := []byte(fmt.Sprintf("node1_message_%d", i))
 		require.NoError(t, node1.Send(msg))
 	}
+
+	// HACK(albrow): Wait for GossipSub messages to fully propagate.
+	time.Sleep(1 * time.Second)
 
 	require.NoError(t, node0.runOnce())
 	require.NoError(t, node1.runOnce())
