@@ -15,6 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -239,11 +240,12 @@ type OrderValidator struct {
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
+	rateLimiter                  *ratelimit.RateLimiter
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
+func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration, rateLimiter *ratelimit.RateLimiter) (*OrderValidator, error) {
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -270,6 +272,7 @@ func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, 
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
+		rateLimiter:                  rateLimiter,
 	}, nil
 }
 
@@ -334,6 +337,8 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 			}
 
 			for {
+				o.rateLimiter.Wait(context.Background())
+
 				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
 				// any one request from taking longer then 15 seconds
 				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
@@ -468,6 +473,8 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 		}
 		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
 		if !ok {
+			o.rateLimiter.Wait(context.Background())
+
 			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
 			defer cancel()
 			opts := &bind.CallOpts{

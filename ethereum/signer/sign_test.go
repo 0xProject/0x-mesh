@@ -1,6 +1,6 @@
 // +build !js
 
-package ethereum
+package signer
 
 import (
 	"testing"

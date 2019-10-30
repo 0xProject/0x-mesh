@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -36,11 +37,12 @@ type ETHWatcher struct {
 	addressToBalanceMu sync.Mutex
 	wasStartedOnce     bool
 	mu                 sync.Mutex
+	rateLimiter *ratelimit.RateLimiter
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int) (*ETHWatcher, error) {
-	contractAddresses, err := GetContractAddressesForChainID(chainID)
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int, rateLimiter *ratelimit.RateLimiter) (*ETHWatcher, error) {
+	contractAddresses, err := GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +57,7 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 		minPollingInterval: minPollingInterval,
 		ethClient:          ethClient,
 		devUtils:           devUtils,
+		rateLimiter: rateLimiter,
 	}, nil
 }
 
@@ -186,6 +189,8 @@ func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address
 		wg.Add(1)
 		go func(chunk []common.Address) {
 			defer wg.Done()
+
+			e.rateLimiter.Wait(context.Background())
 
 			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
 			// any one request from taking longer then 20 seconds and as a consequence, hold

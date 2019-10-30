@@ -22,11 +22,13 @@ import (
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
+	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
@@ -41,12 +43,13 @@ import (
 )
 
 const (
-	blockWatcherRetentionLimit = 20
-	ethereumRPCRequestTimeout  = 30 * time.Second
-	ethWatcherPollingInterval  = 1 * time.Minute
-	peerConnectTimeout         = 60 * time.Second
-	checkNewAddrInterval       = 20 * time.Second
-	expirationPollingInterval  = 50 * time.Millisecond
+	blockWatcherRetentionLimit    = 20
+	ethereumRPCRequestTimeout     = 30 * time.Second
+	ethWatcherPollingInterval     = 1 * time.Minute
+	peerConnectTimeout            = 60 * time.Second
+	checkNewAddrInterval          = 20 * time.Second
+	expirationPollingInterval     = 50 * time.Millisecond
+	rateLimiterCheckpointInterval = 1 * time.Minute
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
 	version          = "development"
@@ -98,6 +101,15 @@ type Config struct {
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
+	// per 24hr UTC time window. It defaults to the 100k limit on Infura's free-tier but can be increased
+	// well beyond this limit for those using alternative infra/plans.
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
+	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
+	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
+	// It defaults to the recommended 30 rps for Infura's free-tier, and can be increased to 100 rpc for pro users,
+	// and potentially high on alternative infrastructure.
+	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
 	// custom addresses to use for the configured chain ID. The contract
 	// addresses for most common chains/networks are already included by default, so this
@@ -144,6 +156,7 @@ type App struct {
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 	messageHandler            *MessageHandler
+	rateLimiter               *ratelimit.RateLimiter
 }
 
 func New(config Config) (*App, error) {
@@ -190,6 +203,13 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize ETH JSON-RPC RateLimiter
+	clock := clock.New()
+	rateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+	if err != nil {
+		return nil, err
+	}
+
 	// Initialize the ETH client, which will be used by various watchers.
 	ethClient, err := ethclient.Dial(config.EthereumRPCURL)
 	if err != nil {
@@ -197,7 +217,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout)
+	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, rateLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +234,13 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := ordervalidator.New(ethClient, config.EthereumChainID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidator.New(
+		ethClient,
+		config.EthereumChainID,
+		config.EthereumRPCMaxContentLength,
+		config.OrderExpirationBuffer,
+		rateLimiter,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +260,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID)
+	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, rateLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +295,7 @@ func New(config Config) (*App, error) {
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		messageHandler:            messageHandler,
+		rateLimiter:               rateLimiter,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -355,6 +382,14 @@ func (app *App) Start(ctx context.Context) error {
 		defer wg.Done()
 		<-innerCtx.Done()
 		app.db.Close()
+	}()
+
+	// Start rateLimiter
+	rateLimiterErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rateLimiterErrChan <- app.rateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
 
 	// Set up and start the snapshot expiration watcher.
@@ -490,6 +525,12 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	case err := <-snapshotExpirationWatcherErrChan:
 		log.WithError(err).Error("snapshot expiration watcher exited with error")
+		if err != nil {
+			cancel()
+			return err
+		}
+	case err := <-rateLimiterErrChan:
+		log.WithError(err).Error("ratelimiter exited with error")
 		if err != nil {
 			cancel()
 			return err

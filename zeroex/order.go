@@ -7,11 +7,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	signer "github.com/ethereum/go-ethereum/signer/core"
+	gethsigner "github.com/ethereum/go-ethereum/signer/core"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -187,7 +187,7 @@ const (
 	ESStoppedWatching = OrderEventEndState("STOPPED_WATCHING")
 )
 
-var eip712OrderTypes = signer.Types{
+var eip712OrderTypes = gethsigner.Types{
 	"EIP712Domain": {
 		{
 			Name: "name",
@@ -265,7 +265,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		return *o.hash, nil
 	}
 
-	var domain = signer.TypedDataDomain{
+	var domain = gethsigner.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "2",
 		VerifyingContract: o.ExchangeAddress.Hex(),
@@ -287,7 +287,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		"expirationTimeSeconds": o.ExpirationTimeSeconds,
 	}
 
-	var typedData = signer.TypedData{
+	var typedData = gethsigner.TypedData{
 		Types:       eip712OrderTypes,
 		PrimaryType: "Order",
 		Domain:      domain,
@@ -310,7 +310,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 }
 
 // SignOrder signs the 0x order with the supplied Signer
-func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
+func SignOrder(signer signer.Signer, order *Order) (*SignedOrder, error) {
 	if order == nil {
 		return nil, errors.New("cannot sign nil order")
 	}
@@ -339,7 +339,7 @@ func SignOrder(signer ethereum.Signer, order *Order) (*SignedOrder, error) {
 
 // SignTestOrder signs the 0x order with the local test signer
 func SignTestOrder(order *Order) (*SignedOrder, error) {
-	testSigner := ethereum.NewTestSigner()
+	testSigner := signer.NewTestSigner()
 	signedOrder, err := SignOrder(testSigner, order)
 	if err != nil {
 		return nil, err

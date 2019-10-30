@@ -15,9 +15,11 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -32,6 +34,8 @@ const (
 	blockWatcherRetentionLimit  = 20
 	blockPollingInterval        = 1000 * time.Millisecond
 	ethereumRPCMaxContentLength = 524288
+	maxEthRPCRequestsPer24HrUTC = 1000000
+	maxEthRPCRequestsPerSeconds = float64(1000.0)
 )
 
 var (
@@ -751,7 +755,9 @@ func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedO
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
 	// Init OrderWatcher
-	blockWatcherClient, err := blockwatch.NewRpcClient(constants.GanacheEndpoint, ethereumRPCRequestTimeout)
+	clock := clock.NewMock()
+	rateLimiter, err := ratelimit.New(maxEthRPCRequestsPer24HrUTC, maxEthRPCRequestsPerSeconds, meshDB, clock)
+	blockWatcherClient, err := blockwatch.NewRpcClient(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
 	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
@@ -764,7 +770,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethClient, constants.TestChainID, ethereumRPCMaxContentLength, 0)
+	orderValidator, err := ordervalidator.New(ethClient, constants.TestChainID, ethereumRPCMaxContentLength, 0, rateLimiter)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		MeshDB:            meshDB,
