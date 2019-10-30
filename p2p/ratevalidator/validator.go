@@ -11,8 +11,13 @@ import (
 )
 
 const (
+	// peerLimiterSize is the maximum number of peers to keep track of at once. It
+	// controls the size of a cache that holds a rate limiter for each peer.
 	peerLimiterSize = 500
-	peerLimiterTTL  = 5 * time.Minute
+	// peerLimiterTTL is the TTL for rate limiters for each peer. If a peer does
+	// not send any messages for this duration, they will be removed from the
+	// cache and their rate limiter will be reset.
+	peerLimiterTTL = 5 * time.Minute
 )
 
 // Dummy declaration to ensure that Validate can be used as a pubsub.Validator
@@ -27,11 +32,17 @@ type Validator struct {
 	peerLimiters  *ccache.Cache
 }
 
-// TODO(albrow): Document this.
+// Config is a set of configuration options for the validator.
 type Config struct {
-	GlobalLimit  rate.Limit
-	GlobalBurst  int
+	// GlobalLimit is the maximum rate of messages per second across all peers.
+	GlobalLimit rate.Limit
+	// GlobalBurst is the maximum number of messages that can be received at once
+	// from all peers.
+	GlobalBurst int
+	// PerPeerLimit is the maximum rate of messages for each peer.
 	PerPeerLimit rate.Limit
+	// PerPeerBurst is the maximum number of messages that can be received at once
+	// from each peer.
 	PerPeerBurst int
 }
 
@@ -53,6 +64,9 @@ func New(ctx context.Context, config Config) *Validator {
 	return validator
 }
 
+// Validate validates a pubsub message based solely on the rate of messages
+// received. If either the global or per-peer limits are exceeded, the message
+// is considered "invalid" and will be dropped.
 func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Message) bool {
 	select {
 	case <-v.ctx.Done():
