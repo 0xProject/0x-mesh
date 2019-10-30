@@ -62,7 +62,7 @@ func TestScenario1(t *testing.T) {
 			assert.Condition(t, func() bool {
 				return elapsed < 1*time.Millisecond
 			})
-		} else if i == 1 || i == 2 || i == 3 {
+		} else if i > 0 && i <= 3 {
 			// Subsequent requests take 1sec / maxRequestsPerSecond
 			// Note: Despite initially waiting for 3 grants to accrue, by
 			// the time we request the 4th, another has accrued.
