@@ -8,6 +8,7 @@ import (
 	"github.com/karlseguin/ccache"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )
 
@@ -27,11 +28,11 @@ var _ pubsub.Validator = (&Validator{}).Validate
 // Validator is a rate limiting pubsub validator that only allows messages to be
 // sent at a certain rate.
 type Validator struct {
-	ctx             context.Context
-	config          Config
-	globalLimiter   *rate.Limiter
-	peerLimiters    *ccache.Cache
-	peerLimitersMut sync.RWMutex
+	ctx           context.Context
+	mut           sync.RWMutex
+	config        Config
+	globalLimiter *rate.Limiter
+	peerLimiters  *ccache.Cache
 }
 
 // Config is a set of configuration options for the validator.
@@ -57,9 +58,14 @@ func New(ctx context.Context, config Config) *Validator {
 		peerLimiters:  ccache.New(ccache.Configure().MaxSize(peerLimiterSize)),
 	}
 	go func() {
-		// Stop the cache when the context is canceled.
+		// Stop and clear the cache when the context is canceled.
 		select {
 		case <-ctx.Done():
+			// Hack(albrow): ccache.Cache.Stop() is not threadsafe so we need to
+			// protect calls to stop by a mutex.
+			validator.mut.Lock()
+			defer validator.mut.Unlock()
+			validator.peerLimiters.Clear()
 			validator.peerLimiters.Stop()
 		}
 	}()
@@ -70,16 +76,20 @@ func New(ctx context.Context, config Config) *Validator {
 // received. If either the global or per-peer limits are exceeded, the message
 // is considered "invalid" and will be dropped.
 func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Message) bool {
-	select {
-	case <-v.ctx.Done():
-		// If the context was canceled, don't propogate any more messages. This also
-		// prevents a nil pointer exception if the cache is stopped.
+	// Hack(albrow): ccache.Cache.Stop() is not threadsafe so we need to
+	// protect Get/Set/Fetch with a mutex.
+	v.mut.RLock()
+	defer v.mut.RUnlock()
+	if v.isClosed() {
 		return false
-	default:
 	}
 	// Note: We check the per-peer rate limiter first so that peers who are
 	// exceeding the limit do not contribute toward the global rate limit.
-	peerLimiter := v.getOrCreateLimiterForPeer(peerID)
+	peerLimiter, err := v.getOrCreateLimiterForPeer(peerID)
+	if err != nil {
+		log.WithError(err).Error("unexpected error in getOrCreateLimiterForPeer")
+		return false
+	}
 	if !peerLimiter.Allow() {
 		return false
 	}
@@ -87,17 +97,23 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 	return v.globalLimiter.Allow()
 }
 
-func (v *Validator) getOrCreateLimiterForPeer(peerID peer.ID) *rate.Limiter {
-	v.peerLimitersMut.RLock()
-	cacheItem := v.peerLimiters.Get(peerID.String())
-	v.peerLimitersMut.RUnlock()
-	if cacheItem != nil {
-		return cacheItem.Value().(*rate.Limiter)
-	} else {
-		v.peerLimitersMut.Lock()
-		defer v.peerLimitersMut.Unlock()
+func (v *Validator) getOrCreateLimiterForPeer(peerID peer.ID) (*rate.Limiter, error) {
+	item, err := v.peerLimiters.Fetch(peerID.String(), peerLimiterTTL, func() (interface{}, error) {
 		limiter := rate.NewLimiter(v.config.PerPeerLimit, v.config.PerPeerBurst)
-		v.peerLimiters.Set(peerID.String(), limiter, peerLimiterTTL)
-		return limiter
+		return limiter, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return item.Value().(*rate.Limiter), nil
+}
+
+// isClosed returns true if the context is done and false otherwise.
+func (v *Validator) isClosed() bool {
+	select {
+	case <-v.ctx.Done():
+		return true
+	default:
+		return false
 	}
 }
