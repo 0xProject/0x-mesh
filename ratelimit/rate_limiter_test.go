@@ -90,12 +90,12 @@ func TestScenario2(t *testing.T) {
 
 	initMetadata(t, meshDB)
 
-	// Set mock clock to start of UTC day
+	// Set mock clock close to end of current UTC day
 	aClock := clock.NewMock()
 	now := time.Now()
 	midnightUTC := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	rightBeforeMidNight := midnightUTC.Add(twentyFourHrs - (500 * time.Millisecond))
-	aClock.Set(rightBeforeMidNight)
+	rightBeforeMidnight := midnightUTC.Add(twentyFourHrs - (500 * time.Millisecond))
+	aClock.Set(rightBeforeMidnight)
 
 	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestScenario2(t *testing.T) {
 
 	// Move time forward by 500ms
 	// NOTE: This does not move time forward within the rate.Limiter instances
-	// we use. They unfortunately don't expose the clock they use
+	// we use. They unfortunately don't expose their internal clock to us
 	aClock.Add(500 * time.Millisecond)
 
 	// After moving into the next UTC day, the accrued grant requests should have been
@@ -146,15 +146,15 @@ func TestScenario2(t *testing.T) {
 		require.NoError(t, err)
 		elapsed := time.Since(now)
 
-		// First request takes 1 extra second because the clock within rate.Limiter
+		// First request takes 500 extra miliseconds because the clock within rate.Limiter
 		// is actually 500ms behind. This means the RateLimiter will attempt to
-		// empty the bucket AS IF the second has passed, but because it hasn't, we will
+		// empty the bucket AS IF the 500ms has passed, but because it hasn't, we will
 		// wait 500ms for those last grants to accrue before the bucket can clear.
 		// The remaining time is close to what we'd expect from an empty bucket the needs
 		// refilling.
 		if i == 0 {
 			assert.Condition(t, func() bool {
-				expectedDuration := (1 * time.Second) + maxExpectedDelay
+				expectedDuration := (500 * time.Millisecond) + maxExpectedDelay
 				delta := elapsed - expectedDuration
 				return delta < 55*time.Millisecond
 			})
