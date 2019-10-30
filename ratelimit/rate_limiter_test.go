@@ -205,7 +205,11 @@ func TestScenario3(t *testing.T) {
 	ctx := context.Background()
 	checkpointInterval := 200 * time.Millisecond
 	go func() {
-		rateLimiter.Start(ctx, checkpointInterval)
+		err := rateLimiter.Start(ctx, checkpointInterval)
+		if err != nil {
+			// Only error that could be throw in a DB closed err which causes the
+			// RateLimiter to stop so we safely noop
+		}
 	}()
 
 	// Grant a request
