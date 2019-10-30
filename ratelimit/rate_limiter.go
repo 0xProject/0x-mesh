@@ -36,7 +36,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 
 	// Check if stored checkpoint in DB is still relevant
 	now := aClock.Now()
-	currentUTCCheckpoint := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	currentUTCCheckpoint := getUTCMidnightOfDate(now)
 	storedUTCCheckpoint := metadata.StartOfCurrentUTCDay
 	storedGrantedInLast24HrsUTC := metadata.EthRPCRequestsSentInCurrentUTCDay
 	// Update DB if current values are from previous 24hr period and therefore no longer relevant
@@ -110,7 +110,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 	go func() {
 		for {
 			now := r.aClock.Now()
-			currentUTCCheckpoint := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+			currentUTCCheckpoint := getUTCMidnightOfDate(now)
 			nextUTCCheckpoint := currentUTCCheckpoint.Add(24 * time.Hour)
 			untilNextUTCCheckpoint := nextUTCCheckpoint.Sub(r.aClock.Now())
 			select {
@@ -165,6 +165,10 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			}
 		}
 	}
+}
+
+func getUTCMidnightOfDate(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // Wait blocks until the rateLimiter allows for another request to be sent
