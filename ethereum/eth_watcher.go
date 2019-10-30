@@ -190,7 +190,11 @@ func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address
 		go func(chunk []common.Address) {
 			defer wg.Done()
 
-			e.rateLimiter.Wait(context.Background())
+			err := e.rateLimiter.Wait(context.Background())
+			if err != nil {
+				// Context cancelled or deadline exceeded
+				return // Give up
+			}
 
 			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
 			// any one request from taking longer then 20 seconds and as a consequence, hold

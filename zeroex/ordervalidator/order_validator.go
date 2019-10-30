@@ -337,7 +337,11 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 			}
 
 			for {
-				o.rateLimiter.Wait(context.Background())
+				err := o.rateLimiter.Wait(context.Background())
+				if err != nil {
+					// Context cancelled or deadline exceeded
+					return // Give up
+				}
 
 				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
 				// any one request from taking longer then 15 seconds
@@ -473,7 +477,11 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 		}
 		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
 		if !ok {
-			o.rateLimiter.Wait(context.Background())
+			err = o.rateLimiter.Wait(context.Background())
+			if err != nil {
+				// Context cancelled or deadline exceeded
+				continue // Give up
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
 			defer cancel()
