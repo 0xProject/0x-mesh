@@ -108,7 +108,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 				// Compute how many grants have buffered and remove that many from the bucket
 				// to clear it for the next 24hr period
 				r.mu.Lock()
-				bufferedGrants := maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
+				bufferedGrants := r.maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
 				if err := r.twentyFourHourLimiter.WaitN(ctx, bufferedGrants); err != nil {
 					// Since we never set n to exceed the burst size, an error will only
 					// occur if the context is cancelled or it's deadline is exceeded. In
