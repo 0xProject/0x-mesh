@@ -754,7 +754,7 @@ func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedO
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
-	rateLimiter := ratelimit.NewFakeRateLimiter()
+	rateLimiter := ratelimit.NewFakeLimiter()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	require.NoError(t, err)
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
