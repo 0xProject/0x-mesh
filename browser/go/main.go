@@ -96,10 +96,10 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	} else {
 		config.EthereumRPCURL = ethereumRPCURL.String()
 	}
-	if ethereumNetworkID := jsConfig.Get("ethereumNetworkID"); isNullOrUndefined(ethereumNetworkID) {
-		return core.Config{}, errors.New("ethereumNetworkID is required")
+	if ethereumChainID := jsConfig.Get("ethereumChainID"); isNullOrUndefined(ethereumChainID) {
+		return core.Config{}, errors.New("ethereumChainID is required")
 	} else {
-		config.EthereumNetworkID = ethereumNetworkID.Int()
+		config.EthereumChainID = ethereumChainID.Int()
 	}
 
 	// Optional config options

@@ -99,7 +99,7 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(app.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROIncorrectNetwork,
+				Status:      ordervalidator.ROIncorrectChain,
 			})
 			continue
 		}

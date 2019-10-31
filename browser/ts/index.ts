@@ -36,8 +36,9 @@ export interface Config {
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
-    // The network ID to use when communicating with Ethereum.
-    ethereumNetworkID: number;
+	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+	// run your Mesh node for
+    ethereumChainID: number;
     // UseBootstrapList is whether to bootstrap the DHT by connecting to a
     // specific set of peers.
     useBootstrapList?: boolean;
@@ -52,9 +53,9 @@ export interface Config {
     orderExpirationBufferSeconds?: number;
     // The polling interval (in seconds) to wait before checking for a new
     // Ethereum block that might contain transactions that impact the
-    // fillability of orders stored by Mesh. Different networks have different
-    // block producing intervals: POW networks are typically slower (e.g.,
-    // Mainnet) and POA networks faster (e.g., Kovan) so one should adjust the
+    // fillability of orders stored by Mesh. Different chains have different
+    // block producing intervals: POW chains are typically slower (e.g.,
+    // Mainnet) and POA chains faster (e.g., Kovan) so one should adjust the
     // polling interval accordingly. Defaults to 5.
     blockPollingIntervalSeconds?: number;
     // The maximum request Content-Length accepted by the backing Ethereum RPC
@@ -66,13 +67,13 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // A set of custom addresses to use for the configured network ID. The
-    // contract addresses for most common networks are already included by
-    // default, so this is typically only needed for testing on custom networks.
+    // A set of custom addresses to use for the configured chain ID. The
+    // contract addresses for most common chains are already included by
+    // default, so this is typically only needed for testing on custom chains.
     // The given addresses are added to the default list of addresses for known
-    // networks and overriding any contract addresses for known networks is not
+    // chains and overriding any contract addresses for known chains is not
     // allowed. The addresses for exchange, devUtils, erc20Proxy, and
-    // erc721Proxy are required for each network. For example:
+    // erc721Proxy are required for each chain. For example:
     //
     //    {
     //        exchange: "0x48bacb9266a570d521063ef5dd96e61686dbe788",
@@ -130,7 +131,7 @@ interface MeshWrapper {
 interface WrapperConfig {
     verbosity?: number;
     ethereumRPCURL: string;
-    ethereumNetworkID: number;
+    ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.
     orderExpirationBufferSeconds?: number;

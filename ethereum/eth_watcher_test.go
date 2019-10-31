@@ -59,7 +59,7 @@ func TestAddingAddressesToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}
@@ -87,7 +87,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}

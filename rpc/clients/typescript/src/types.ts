@@ -352,7 +352,7 @@ export enum RejectedCode {
     InternalError = 'InternalError',
     MaxOrderSizeExceeded = 'MaxOrderSizeExceeded',
     OrderAlreadyStored = 'OrderAlreadyStored',
-    OrderForIncorrectNetwork = 'OrderForIncorrectNetwork',
+    OrderForIncorrectChain = 'OrderForIncorrectChain',
     NetworkRequestFailed = 'NetworkRequestFailed',
     OrderHasInvalidMakerAssetAmount = 'OrderHasInvalidMakerAssetAmount',
     OrderHasInvalidTakerAssetAmount = 'OrderHasInvalidTakerAssetAmount',
@@ -414,7 +414,7 @@ export interface GetStatsResponse {
     pubSubTopic: string;
     rendezvous: string;
     peerID: string;
-    ethereumNetworkID: number;
+    ethereumChainID: number;
     latestBlock: LatestBlock;
     numPeers: number;
     numOrders: number;

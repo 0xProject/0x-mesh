@@ -52,7 +52,7 @@ services:
             - '60559:60559'
         environment:
             - VERBOSITY=5
-            - ETHEREUM_NETWORK_ID=1
+            - ETHEREUM_CHAIN_ID=1
             # Set your backing Ethereum JSON RPC endpoint below
             - ETHEREUM_RPC_URL=
             - BLOCK_POLLING_INTERVAL=5s

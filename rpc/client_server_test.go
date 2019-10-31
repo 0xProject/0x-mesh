@@ -112,7 +112,7 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(3551808554499581700),
 	TakerAssetAmount:      big.NewInt(300000000000000),
 	ExpirationTimeSeconds: big.NewInt(1548619325),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 }
 
 func TestAddOrdersSuccess(t *testing.T) {
@@ -272,7 +272,7 @@ func TestGetStats(t *testing.T) {
 		PubSubTopic:       "/0x-orders/network/development/version/1",
 		Rendezvous:        "/0x-mesh/network/development/version/1",
 		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
-		EthereumNetworkID: 42,
+		EthereumChainID: 42,
 		LatestBlock: LatestBlock{
 			Number: 1,
 			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),

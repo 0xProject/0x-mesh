@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	ethereumRPCURL    = "http://localhost:8545"
-	ethereumNetworkID = 50
+	ethereumRPCURL  = "http://localhost:8545"
+	ethereumChainID = 1337
 
 	// Various config options/information for the bootstrap node. The private key
 	// for the bootstrap node is checked in to version control so we know it's
@@ -311,7 +311,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 		"DATA_DIR="+standaloneDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
-		"ETHEREUM_NETWORK_ID="+strconv.Itoa(ethereumNetworkID),
+		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
 		"RPC_PORT="+strconv.Itoa(standaloneRPCPort),
 	)
 
