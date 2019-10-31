@@ -121,6 +121,12 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
 		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
 	}
+	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !isNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
+		config.EthereumRPCMaxRequestsPer24HrUTC = ethereumRPCMaxRequestsPer24HrUTC.Int()
+	}
+	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
+		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
+	}
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()
 	}
