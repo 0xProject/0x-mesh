@@ -4,7 +4,7 @@
 // in-process network handler. This causes the tests to fail.
 // Source: https://github.com/golang/go/issues/31559
 
-package ethereum
+package ethwatch
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -86,7 +87,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	blockchainLifecycle, err := NewBlockchainLifecycle(rpcClient)
+	blockchainLifecycle, err := ethereum.NewBlockchainLifecycle(rpcClient)
 	require.NoError(t, err)
 	blockchainLifecycle.Start(t)
 	defer blockchainLifecycle.Revert(t)

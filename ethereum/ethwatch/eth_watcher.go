@@ -1,4 +1,4 @@
-package ethereum
+package ethwatch
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -42,7 +43,7 @@ type ETHWatcher struct {
 
 // NewETHWatcher creates a new instance of ETHWatcher
 func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int, rateLimiter ratelimit.IRateLimiter) (*ETHWatcher, error) {
-	contractAddresses, err := GetContractAddressesForNetworkID(chainID)
+	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
 	}

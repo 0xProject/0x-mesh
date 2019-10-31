@@ -19,7 +19,6 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
-	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -754,9 +753,7 @@ func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedO
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
-	// Init OrderWatcher
-	clock := clock.NewMock()
-	rateLimiter, err := ratelimit.New(maxEthRPCRequestsPer24HrUTC, maxEthRPCRequestsPerSeconds, meshDB, clock)
+	rateLimiter := ratelimit.NewFakeRateLimiter()
 	blockWatcherClient, err := blockwatch.NewRpcClient(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()

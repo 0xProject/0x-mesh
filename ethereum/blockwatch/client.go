@@ -30,12 +30,12 @@ type RpcClient struct {
 	rpcClient      *rpc.Client
 	client         *ethclient.Client
 	requestTimeout time.Duration
-	rateLimiter    *ratelimit.RateLimiter
+	rateLimiter    ratelimit.IRateLimiter
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(rpcURL string, requestTimeout time.Duration, rateLimiter *ratelimit.RateLimiter) (*RpcClient, error) {
+func NewRpcClient(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (*RpcClient, error) {
 	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return nil, err

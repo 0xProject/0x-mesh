@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
+	"github.com/0xProject/0x-mesh/ethereum/ethwatch"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -148,7 +149,7 @@ type App struct {
 	chainID                   int
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
-	ethWatcher                *ethereum.ETHWatcher
+	ethWatcher                *ethwatch.ETHWatcher
 	orderValidator            *ordervalidator.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
@@ -260,7 +261,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, rateLimiter)
+	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, rateLimiter)
 	if err != nil {
 		return nil, err
 	}
