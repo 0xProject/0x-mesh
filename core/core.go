@@ -157,7 +157,7 @@ type App struct {
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 	messageHandler            *MessageHandler
-	rateLimiter               *ratelimit.RateLimiter
+	ethRPCRateLimiter         *ratelimit.RateLimiter
 }
 
 func New(config Config) (*App, error) {
@@ -206,7 +206,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize ETH JSON-RPC RateLimiter
 	clock := clock.New()
-	rateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+	ethRPCRateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, rateLimiter)
+	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func New(config Config) (*App, error) {
 		config.EthereumChainID,
 		config.EthereumRPCMaxContentLength,
 		config.OrderExpirationBuffer,
-		rateLimiter,
+		ethRPCRateLimiter,
 	)
 	if err != nil {
 		return nil, err
@@ -261,7 +261,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, rateLimiter)
+	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func New(config Config) (*App, error) {
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		messageHandler:            messageHandler,
-		rateLimiter:               rateLimiter,
+		ethRPCRateLimiter:         ethRPCRateLimiter,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -386,11 +386,11 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 
 	// Start rateLimiter
-	rateLimiterErrChan := make(chan error, 1)
+	ethRPCRateLimiterErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		rateLimiterErrChan <- app.rateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
+		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
 
 	// Set up and start the snapshot expiration watcher.
@@ -530,8 +530,8 @@ func (app *App) Start(ctx context.Context) error {
 			cancel()
 			return err
 		}
-	case err := <-rateLimiterErrChan:
-		log.WithError(err).Error("ratelimiter exited with error")
+	case err := <-ethRPCRateLimiterErrChan:
+		log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
 		if err != nil {
 			cancel()
 			return err
