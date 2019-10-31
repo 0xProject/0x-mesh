@@ -22,7 +22,8 @@ type IEthRPCClient interface {
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 }
 
-// EthRPCClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
+// EthRPCClient is a Client through which _all_ Ethereum JSON-RPC requests should be routed through. It
+// enforces a max requestTimeout and also rate-limits requests
 type EthRPCClient struct {
 	rpcClient      *rpc.Client
 	client         *ethclient.Client
@@ -30,8 +31,7 @@ type EthRPCClient struct {
 	rateLimiter    ratelimit.IRateLimiter
 }
 
-// NewEthRPCClient returns a new Client for fetching Ethereum blocks using the given
-// ethclient.Client.
+// NewEthRPCClient returns a new instance of EthRPCClient
 func NewEthRPCClient(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (*EthRPCClient, error) {
 	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
