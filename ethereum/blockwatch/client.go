@@ -24,12 +24,12 @@ type Client interface {
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
-	ethRPCClient ethrpcclient.IEthRPCClient
+	ethRPCClient ethrpcclient.Client
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(ethRPCClient ethrpcclient.IEthRPCClient) (*RpcClient, error) {
+func NewRpcClient(ethRPCClient ethrpcclient.Client) (*RpcClient, error) {
 	return &RpcClient{
 		ethRPCClient: ethRPCClient,
 	}, nil

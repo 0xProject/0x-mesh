@@ -151,7 +151,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	for _, testCase := range testCases {
 
 		rateLimiter := ratelimit.NewFakeRateLimiter()
-		ethClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+		ethClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 		require.NoError(t, err)
 
 		signedOrders := []*zeroex.SignedOrder{
@@ -186,7 +186,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
@@ -213,7 +213,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
@@ -240,7 +240,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
@@ -270,7 +270,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
@@ -321,7 +321,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
@@ -339,7 +339,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
@@ -377,7 +377,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3

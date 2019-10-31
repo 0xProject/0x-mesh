@@ -66,7 +66,7 @@ var (
 
 func TestAddingAddressesToETHWatcher(t *testing.T) {
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
@@ -95,7 +95,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	defer blockchainLifecycle.Revert(t)
 
 	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	ethWatcher, err := NewETHWatcher(pollingInterval, ethRPCClient, constants.TestChainID)

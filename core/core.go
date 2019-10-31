@@ -212,7 +212,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
-	ethClient, err := ethrpcclient.NewEthRPCClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
+	ethClient, err := ethrpcclient.New(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}

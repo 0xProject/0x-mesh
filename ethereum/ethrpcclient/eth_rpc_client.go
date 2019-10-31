@@ -13,9 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// IEthRPCClient defines the methods needed to satisfy the subsdet of ETH JSON-RPC client
+// Client defines the methods needed to satisfy the subsdet of ETH JSON-RPC client
 // methods used by Mesh
-type IEthRPCClient interface {
+type Client interface {
 	HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)
 	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
@@ -23,17 +23,17 @@ type IEthRPCClient interface {
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 }
 
-// EthRPCClient is a Client through which _all_ Ethereum JSON-RPC requests should be routed through. It
+// client is a Client through which _all_ Ethereum JSON-RPC requests should be routed through. It
 // enforces a max requestTimeout and also rate-limits requests
-type EthRPCClient struct {
+type client struct {
 	rpcClient      *rpc.Client
 	client         *ethclient.Client
 	requestTimeout time.Duration
 	rateLimiter    ratelimit.IRateLimiter
 }
 
-// NewEthRPCClient returns a new instance of EthRPCClient
-func NewEthRPCClient(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (*EthRPCClient, error) {
+// New returns a new instance of client
+func New(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (Client, error) {
 	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func NewEthRPCClient(rpcURL string, requestTimeout time.Duration, rateLimiter ra
 	if err != nil {
 		return nil, err
 	}
-	return &EthRPCClient{
+	return &client{
 		client:         ethClient,
 		rpcClient:      rpcClient,
 		requestTimeout: requestTimeout,
@@ -55,7 +55,7 @@ func NewEthRPCClient(rpcURL string, requestTimeout time.Duration, rateLimiter ra
 //
 // The result must be a pointer so that package json can unmarshal into it. You
 // can also pass nil, in which case the result is ignored.
-func (ec *EthRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+func (ec *client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		// Context cancelled or deadline exceeded
@@ -69,7 +69,7 @@ func (ec *EthRPCClient) CallContext(ctx context.Context, result interface{}, met
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (ec *EthRPCClient) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		// Context cancelled or deadline exceeded
@@ -87,7 +87,7 @@ func (ec *EthRPCClient) HeaderByHash(ctx context.Context, hash common.Hash) (*ty
 
 // CodeAt returns the code of the given account. This is needed to differentiate
 // between contract internal errors and the local chain being out of sync.
-func (ec *EthRPCClient) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+func (ec *client) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		// Context cancelled or deadline exceeded
@@ -100,7 +100,7 @@ func (ec *EthRPCClient) CodeAt(ctx context.Context, contract common.Address, blo
 }
 
 // CallContract executes an Ethereum contract call with the specified data as the input.
-func (ec *EthRPCClient) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+func (ec *client) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		// Context cancelled or deadline exceeded
@@ -113,7 +113,7 @@ func (ec *EthRPCClient) CallContract(ctx context.Context, call ethereum.CallMsg,
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
-func (ec *EthRPCClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+func (ec *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		// Context cancelled or deadline exceeded
