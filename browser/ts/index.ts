@@ -36,8 +36,8 @@ export interface Config {
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
-	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
-	// run your Mesh node for
+    // EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+    // run your Mesh node for
     ethereumChainID: number;
     // UseBootstrapList is whether to bootstrap the DHT by connecting to a
     // specific set of peers.
