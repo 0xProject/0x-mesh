@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	maxRequestsPer24Hrs       = 300000
-	maxRequestsPerSecond      = 10.0
-	twentyFourHrs             = (24 * 60 * 60 * 1000 * time.Millisecond)
-	maxExpectedDelay          = twentyFourHrs / time.Duration(maxRequestsPer24Hrs)
-	minExpectedDelay          = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
-	defaultCheckpointInterval = 1 * time.Minute
+	maxRequestsPer24HrsWithoutBuffer = 301000
+	maxRequestsPer24hrs              = maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
+	maxRequestsPerSecond             = 10.0
+	twentyFourHrs                    = (24 * 60 * 60 * 1000 * time.Millisecond)
+	maxExpectedDelay                 = twentyFourHrs / time.Duration(maxRequestsPer24hrs)
+	minExpectedDelay                 = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
+	defaultCheckpointInterval        = 1 * time.Minute
 )
 
 // Scenario1: Mesh starts X seconds after UTC midnight (start of next UTC day) and
@@ -42,7 +43,7 @@ func TestScenario1(t *testing.T) {
 	threeGrantsPastUTCMidnight := midnightUTC.Add(maxExpectedDelay * 3)
 	aClock.Set(threeGrantsPastUTCMidnight)
 
-	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -97,7 +98,7 @@ func TestScenario2(t *testing.T) {
 	rightBeforeMidnight := midnightUTC.Add(twentyFourHrs - (500 * time.Millisecond))
 	aClock.Set(rightBeforeMidnight)
 
-	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -192,7 +193,7 @@ func TestScenario3(t *testing.T) {
 	require.NoError(t, err)
 
 	aClock := clock.NewMock()
-	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation

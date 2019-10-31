@@ -13,6 +13,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	maxRequestsPer24HrsBuffer = 1000
+)
+
 // IRateLimiter is the interface one must satisfy to be considered a RateLimiter
 type IRateLimiter interface {
 	Wait(ctx context.Context) error
@@ -34,7 +38,10 @@ type RateLimiter struct {
 }
 
 // New instantiates a new RateLimiter
-func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (*RateLimiter, error) {
+func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (*RateLimiter, error) {
+	// Reduce the requested maxRequestsPer24Hrs by maxRequestsPer24HrsBuffer out of extra precaution
+	maxRequestsPer24Hrs := maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
+
 	metadata, err := meshDB.GetMetadata()
 	if err != nil {
 		return nil, err
