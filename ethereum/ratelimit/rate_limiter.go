@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 const (
 	maxRequestsPer24HrsBuffer = 1000
+	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
 // IRateLimiter is the interface one must satisfy to be considered a RateLimiter
@@ -39,6 +41,9 @@ type RateLimiter struct {
 
 // New instantiates a new RateLimiter
 func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (*RateLimiter, error) {
+	if maxRequestsPer24HrsWithoutBuffer < lowestPossibleMaxRequestsPer24Hrs {
+		return nil, fmt.Errorf("EthereumRPCMaxRequestsPer24HrUTC too low. Should be at least %d", lowestPossibleMaxRequestsPer24Hrs)
+	}
 	// Reduce the requested maxRequestsPer24Hrs by maxRequestsPer24HrsBuffer out of extra precaution
 	maxRequestsPer24Hrs := maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
 

@@ -70,7 +70,7 @@ func TestScenario1(t *testing.T) {
 			// the time we request the 4th, another has accrued.
 			delta := math.Abs(float64(minExpectedDelay - elapsed))
 			assert.Condition(t, func() bool {
-				return time.Duration(delta) < 5*time.Millisecond
+				return time.Duration(delta) < 10*time.Millisecond
 			})
 		} else {
 			// Subsequent requests take 24hrs / maxRequestsPer24hrs
