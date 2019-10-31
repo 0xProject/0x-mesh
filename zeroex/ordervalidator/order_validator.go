@@ -240,11 +240,11 @@ type OrderValidator struct {
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
-	rateLimiter                  *ratelimit.RateLimiter
+	rateLimiter                  ratelimit.IRateLimiter
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration, rateLimiter *ratelimit.RateLimiter) (*OrderValidator, error) {
+func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration, rateLimiter ratelimit.IRateLimiter) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err

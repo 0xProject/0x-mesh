@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ratelimit"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -53,13 +54,19 @@ var ethAccountToBalance = map[common.Address]*big.Int{
 	common.HexToAddress("0x91c987bf62d25945db517bdaa840a6c661374402"): hundredEth,
 }
 
-var pollingInterval = 100 * time.Millisecond
+var (
+	pollingInterval             = 100 * time.Millisecond
+	maxEthRPCRequestsPer24HrUTC = 1000000
+	maxEthRPCRequestsPerSeconds = float64(1000.0)
+	defaultCheckpointInterval   = 1 * time.Minute
+)
 
 func TestAddingAddressesToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
+	rateLimiter := ratelimit.NewFakeRateLimiter()
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID, rateLimiter)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}
@@ -87,7 +94,8 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
+	rateLimiter := ratelimit.NewFakeRateLimiter()
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID, rateLimiter)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}

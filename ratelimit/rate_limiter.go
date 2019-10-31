@@ -13,6 +13,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// IRateLimiter is the interface one must satisfy to be considered a RateLimiter
+type IRateLimiter interface {
+	Wait(ctx context.Context) error
+	Start(ctx context.Context, checkpointInterval time.Duration) error
+}
+
 // RateLimiter is a rate-limiter for requests
 type RateLimiter struct {
 	maxRequestsPer24Hrs   int

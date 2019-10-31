@@ -37,11 +37,11 @@ type ETHWatcher struct {
 	addressToBalanceMu sync.Mutex
 	wasStartedOnce     bool
 	mu                 sync.Mutex
-	rateLimiter *ratelimit.RateLimiter
+	rateLimiter        ratelimit.IRateLimiter
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int, rateLimiter *ratelimit.RateLimiter) (*ETHWatcher, error) {
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int, rateLimiter ratelimit.IRateLimiter) (*ETHWatcher, error) {
 	contractAddresses, err := GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 		minPollingInterval: minPollingInterval,
 		ethClient:          ethClient,
 		devUtils:           devUtils,
-		rateLimiter: rateLimiter,
+		rateLimiter:        rateLimiter,
 	}, nil
 }
 

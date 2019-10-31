@@ -9,6 +9,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -57,7 +58,7 @@ func main() {
 		log.WithError(err).Fatal("could not create Ethereum rpc client")
 	}
 
-	signer := ethereum.NewEthRPCSigner(ethClient)
+	signer := signer.NewEthRPCSigner(ethClient)
 	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
 	if err != nil {
 		log.WithError(err).Fatal("could not sign 0x order")
