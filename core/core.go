@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ethwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
@@ -31,7 +32,6 @@ import (
 	"github.com/albrow/stringset"
 	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
@@ -212,13 +212,13 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
-	ethClient, err := ethclient.Dial(config.EthereumRPCURL)
+	ethClient, err := ethrpcclient.NewEthRPCClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
+	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,6 @@ func New(config Config) (*App, error) {
 		config.EthereumChainID,
 		config.EthereumRPCMaxContentLength,
 		config.OrderExpirationBuffer,
-		ethRPCRateLimiter,
 	)
 	if err != nil {
 		return nil, err
@@ -261,7 +260,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID, ethRPCRateLimiter)
+	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -60,14 +61,15 @@ var (
 	maxEthRPCRequestsPer24HrUTC = 1000000
 	maxEthRPCRequestsPerSeconds = float64(1000.0)
 	defaultCheckpointInterval   = 1 * time.Minute
+	defaultEthRPCTimeout        = 5 * time.Second
 )
 
 func TestAddingAddressesToETHWatcher(t *testing.T) {
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	rateLimiter := ratelimit.NewFakeRateLimiter()
+	ethClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID, rateLimiter)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}
@@ -92,11 +94,11 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	blockchainLifecycle.Start(t)
 	defer blockchainLifecycle.Revert(t)
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	rateLimiter := ratelimit.NewFakeRateLimiter()
+	ethRPCClient, err := ethrpcclient.NewEthRPCClient(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeRateLimiter()
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID, rateLimiter)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethRPCClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}
@@ -108,6 +110,8 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	assert.Len(t, addressToInitialBalance, len(ethAccountToBalance))
 
 	amount := big.NewInt(int64(1000000))
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
 	transferFunds(t, ethClient, constants.GanacheAccount0, randomAccount, amount)
 
 	ctx, cancel := context.WithCancel(context.Background())

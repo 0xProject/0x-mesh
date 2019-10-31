@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
-	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,21 +32,19 @@ type ETHWatcher struct {
 	addressToBalance   map[common.Address]*big.Int
 	minPollingInterval time.Duration
 	balanceChan        chan Balance
-	devUtils           *wrappers.DevUtils
-	ethClient          *ethclient.Client
+	devUtils           *wrappers.DevUtilsCaller
 	addressToBalanceMu sync.Mutex
 	wasStartedOnce     bool
 	mu                 sync.Mutex
-	rateLimiter        ratelimit.IRateLimiter
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int, rateLimiter ratelimit.IRateLimiter) (*ETHWatcher, error) {
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethrpcclient.EthRPCClient, chainID int) (*ETHWatcher, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
 	}
-	devUtils, err := wrappers.NewDevUtils(contractAddresses.DevUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +53,7 @@ func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client
 		addressToBalance:   make(map[common.Address]*big.Int),
 		balanceChan:        make(chan Balance, 100),
 		minPollingInterval: minPollingInterval,
-		ethClient:          ethClient,
 		devUtils:           devUtils,
-		rateLimiter:        rateLimiter,
 	}, nil
 }
 
@@ -190,12 +185,6 @@ func (e *ETHWatcher) getBalances(addresses []common.Address) (map[common.Address
 		wg.Add(1)
 		go func(chunk []common.Address) {
 			defer wg.Done()
-
-			err := e.rateLimiter.Wait(context.Background())
-			if err != nil {
-				// Context cancelled or deadline exceeded
-				return // Give up
-			}
 
 			// Pass a context with a 20 second timeout to `GetEthBalances` in order to avoid
 			// any one request from taking longer then 20 seconds and as a consequence, hold

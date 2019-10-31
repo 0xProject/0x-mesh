@@ -14,15 +14,14 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
-	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
@@ -233,18 +232,17 @@ type ValidationResults struct {
 type OrderValidator struct {
 	maxRequestContentLength      int
 	devUtilsABI                  abi.ABI
-	devUtils                     *wrappers.DevUtils
-	coordinatorRegistry          *wrappers.CoordinatorRegistry
+	devUtils                     *wrappers.DevUtilsCaller
+	coordinatorRegistry          *wrappers.CoordinatorRegistryCaller
 	assetDataDecoder             *zeroex.AssetDataDecoder
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
-	rateLimiter                  ratelimit.IRateLimiter
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration, rateLimiter ratelimit.IRateLimiter) (*OrderValidator, error) {
+func New(ethClient *ethrpcclient.EthRPCClient, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
@@ -253,11 +251,11 @@ func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, 
 	if err != nil {
 		return nil, err
 	}
-	devUtils, err := wrappers.NewDevUtils(contractAddresses.DevUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, ethClient)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(contractAddresses.CoordinatorRegistry, ethClient)
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistryCaller(contractAddresses.CoordinatorRegistry, ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +270,6 @@ func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, 
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
-		rateLimiter:                  rateLimiter,
 	}, nil
 }
 
@@ -337,12 +334,6 @@ func (o *OrderValidator) BatchValidate(rawSignedOrders []*zeroex.SignedOrder, ar
 			}
 
 			for {
-				err := o.rateLimiter.Wait(context.Background())
-				if err != nil {
-					// Context cancelled or deadline exceeded
-					return // Give up
-				}
-
 				// Pass a context with a 15 second timeout to `GetOrderRelevantStates` in order to avoid
 				// any one request from taking longer then 15 seconds
 				ctx, cancel := context.WithTimeout(context.Background(), getOrderRelevantStateTimeout)
@@ -477,12 +468,6 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 		}
 		endpoint, ok := o.cachedFeeRecipientToEndpoint[signedOrder.FeeRecipientAddress]
 		if !ok {
-			err = o.rateLimiter.Wait(context.Background())
-			if err != nil {
-				// Context cancelled or deadline exceeded
-				continue // Give up
-			}
-
 			ctx, cancel := context.WithTimeout(context.Background(), getCoordinatorEndpointTimeout)
 			defer cancel()
 			opts := &bind.CallOpts{

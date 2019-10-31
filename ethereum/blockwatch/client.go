@@ -4,17 +4,14 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
-	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Client defines the methods needed to satisfy the client expected when
@@ -27,28 +24,14 @@ type Client interface {
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
-	rpcClient      *rpc.Client
-	client         *ethclient.Client
-	requestTimeout time.Duration
-	rateLimiter    ratelimit.IRateLimiter
+	ethRpcClient *ethrpcclient.EthRPCClient
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (*RpcClient, error) {
-	ethClient, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	rpcClient, err := rpc.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
+func NewRpcClient(ethRpcClient *ethrpcclient.EthRPCClient) (*RpcClient, error) {
 	return &RpcClient{
-		rpcClient:      rpcClient,
-		client:         ethClient,
-		requestTimeout: requestTimeout,
-		rateLimiter:    rateLimiter,
+		ethRpcClient: ethRpcClient,
 	}, nil
 }
 
@@ -61,15 +44,6 @@ type GetBlockByNumberResponse struct {
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error) {
-	err := rc.rateLimiter.Wait(context.Background())
-	if err != nil {
-		// Context cancelled or deadline exceeded
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
-	defer cancel()
-
 	var blockParam string
 	if number == nil {
 		blockParam = "latest"
@@ -84,7 +58,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	// RPC response rather than re-compute it from the block header.
 	// Source: https://github.com/ethereum/go-ethereum/pull/18166
 	var header GetBlockByNumberResponse
-	err = rc.rpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
+	ctx := context.Background()
+	err := rc.ethRpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
 	}
@@ -108,15 +83,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
-	err := rc.rateLimiter.Wait(context.Background())
-	if err != nil {
-		// Context cancelled or deadline exceeded
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
-	defer cancel()
-	header, err := rc.client.HeaderByHash(ctx, hash)
+	ctx := context.Background()
+	header, err := rc.ethRpcClient.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -130,15 +98,8 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	err := rc.rateLimiter.Wait(context.Background())
-	if err != nil {
-		// Context cancelled or deadline exceeded
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
-	defer cancel()
-	logs, err := rc.client.FilterLogs(ctx, q)
+	ctx := context.Background()
+	logs, err := rc.ethRpcClient.FilterLogs(ctx, q)
 	if err != nil {
 		return nil, err
 	}
