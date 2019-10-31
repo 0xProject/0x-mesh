@@ -180,7 +180,6 @@ func getUTCMidnightOfDate(date time.Time) time.Time {
 
 // Wait blocks until the rateLimiter allows for another request to be sent
 func (r *RateLimiter) Wait(ctx context.Context) error {
-	fmt.Println("r.twentyFourHourLimiter", r.twentyFourHourLimiter)
 	if err := r.twentyFourHourLimiter.Wait(ctx); err != nil {
 		return err
 	}
