@@ -109,7 +109,7 @@ type Config struct {
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
-	// and potentially high on alternative infrastructure.
+	// and potentially higher on alternative infrastructure.
 	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
 	// custom addresses to use for the configured chain ID. The contract
