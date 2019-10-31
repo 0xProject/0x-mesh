@@ -8,19 +8,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -94,65 +90,6 @@ func init() {
 	// safely reduce AdvertiseBootDelay. This will allow the bootstrap nodes to
 	// advertise themselves as relays sooner.
 	relay.AdvertiseBootDelay = 30 * time.Second
-}
-
-func getPrivateKeyPath(config Config) string {
-	return filepath.Join(config.DataDir, "keys", "privkey")
-}
-
-func getDHTDir(config Config) string {
-	return filepath.Join(config.DataDir, "p2p", "dht")
-}
-
-func getPeerstoreDir(config Config) string {
-	return filepath.Join(config.DataDir, "p2p", "peerstore")
-}
-
-func getNewDHT(ctx context.Context, config Config, kadDHT *dht.IpfsDHT) func(h host.Host) (routing.PeerRouting, error) {
-	switch config.DataStoreType {
-	case leveldbDataStore:
-		newDHT := func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			dhtDir := getDHTDir(config)
-			kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-			return kadDHT, err
-		}
-
-		return newDHT
-	case postgresDataStore:
-		newDHT := func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			sqlOpts := &sqlds.Options{
-				Host:     config.DataDBHost,
-				Port:     config.DataDBPort,
-				User:     config.DataDBUser,
-				Password: config.DataDBPassword,
-				Database: config.DataDBDatabaseName,
-				Table:    "dhtkv",
-			}
-			store, err := sqlOpts.CreatePostgres()
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create postgres datastore")
-			}
-
-			kadDHT, err = p2p.NewDHTWithDatastore(ctx, store, h)
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-
-			return kadDHT, err
-		}
-
-		return newDHT
-
-	default:
-		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, postgresDataStore)
-		return nil
-
-	}
 }
 
 func main() {
@@ -231,6 +168,11 @@ func main() {
 
 	}
 
+	pstore, err := getNewPeerstore(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Parse multiaddresses given in the config
 	bindAddrs, err := parseAddrs(config.P2PBindAddrs)
 	if err != nil {
@@ -251,6 +193,7 @@ func main() {
 		libp2p.EnableAutoRelay(),
 		libp2p.Routing(newDHT),
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
+		libp2p.Peerstore(pstore),
 	}
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
@@ -294,20 +237,6 @@ func main() {
 
 	// Sleep until stopped
 	select {}
-}
-
-func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
-	privKey, err := keys.GetPrivateKeyFromPath(path)
-	if err == nil {
-		return privKey, nil
-	} else if os.IsNotExist(err) {
-		// If the private key doesn't exist, generate one.
-		log.Info("No private key found. Generating a new one.")
-		return keys.GenerateAndSavePrivateKey(path)
-	}
-
-	// For any other type of error, return it.
-	return nil, err
 }
 
 // notifee receives notifications for network-related events.
