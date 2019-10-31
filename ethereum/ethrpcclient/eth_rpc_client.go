@@ -18,6 +18,7 @@ import (
 type IEthRPCClient interface {
 	HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)
 	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
+	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 }
