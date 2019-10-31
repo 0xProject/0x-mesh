@@ -18,7 +18,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
-	"github.com/0xProject/0x-mesh/ethereum/ethwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
@@ -46,7 +45,6 @@ import (
 const (
 	blockWatcherRetentionLimit    = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
-	ethWatcherPollingInterval     = 1 * time.Minute
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
@@ -149,7 +147,6 @@ type App struct {
 	chainID                   int
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
-	ethWatcher                *ethwatch.ETHWatcher
 	orderValidator            *ordervalidator.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
@@ -259,13 +256,6 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethwatch.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID)
-	if err != nil {
-		return nil, err
-	}
-	// TODO(albrow): Call Add for all existing makers/signers in the database.
-
 	snapshotExpirationWatcher := expirationwatch.New(0 * time.Second)
 
 	orderJSONSchema, err := setupOrderSchemaValidator()
@@ -288,7 +278,6 @@ func New(config Config) (*App, error) {
 		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
-		ethWatcher:                ethWatcher,
 		orderValidator:            orderValidator,
 		orderJSONSchema:           orderJSONSchema,
 		meshMessageJSONSchema:     meshMessageJSONSchema,
@@ -420,17 +409,6 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Start the ETH balance watcher.
-	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
-	// for future use by the order storing algorithm.
-	ethWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.Info("starting ETH balance watcher")
-		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
-	}()
-
 	// Backfill block events if needed. This is a blocking call so we won't
 	// continue set up until its finished.
 	if err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx); err != nil {
@@ -513,12 +491,6 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	case err := <-blockWatcherErrChan:
 		log.WithError(err).Error("block watcher exited with error")
-		if err != nil {
-			cancel()
-			return err
-		}
-	case err := <-ethWatcherErrChan:
-		log.WithError(err).Error("eth watcher exited with error")
 		if err != nil {
 			cancel()
 			return err
