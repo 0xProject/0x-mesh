@@ -28,6 +28,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	ma "github.com/multiformats/go-multiaddr"
+	sqlds "github.com/opaolini/go-ds-sql"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -45,6 +46,9 @@ const (
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
 	defaultNetworkTimeout = 30 * time.Second
+	// DataStoreType constants
+	leveldbDataStore  = "leveldb"
+	postgresDataStore = "postgres"
 )
 
 // Config contains configuration options for a Node.
@@ -57,8 +61,27 @@ type Config struct {
 	// P2PAdvertiseAddrs is a comma separated list of libp2p multiaddresses which the
 	// bootstrap node will advertise to peers.
 	P2PAdvertiseAddrs string `envvar:"P2P_ADVERTISE_ADDRS"`
-	// DataDir is the directory used for storing data.
+	// DataStoreType is the data store which will be used to store DHT data
+	// for the bootstrap node.
+	// DataStoreType can be either: leveldb or postgres
+	DataStoreType string `envvar:"DATA_STORE_TYPE" default:"leveldb"`
+	// DataDir is the directory used for storing data when using leveldb as data store type.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
+	// DataDBHost is the database host used to connect to the database when
+	// using postgres as data store type.
+	DataDBHost string `envvar:"DATA_DB_HOST" default:"localhost"`
+	// DataDBPort is the database port used to connect to the database when
+	// using postgres as data store type.
+	DataDBPort string `envvar:"DATA_DB_PORT" default:"5432"`
+	// DataDBUser is the database user used to connect to the database when
+	// using postgres as data store type.
+	DataDBUser string `envvar:"DATA_DB_USER" default:"postgres"`
+	// DataDBPassword is the database password used to connect to the database when
+	// using postgres as data store type.
+	DataDBPassword string `envvar:"DATA_DB_PASSWORD" default:""`
+	// DataDBDatabaseName is the database name to connect to when using
+	// postgres as data store type.
+	DataDBDatabaseName string `envvar:"DATA_DB_NAME" default:"datastore"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
@@ -83,6 +106,53 @@ func getDHTDir(config Config) string {
 
 func getPeerstoreDir(config Config) string {
 	return filepath.Join(config.DataDir, "p2p", "peerstore")
+}
+
+func getNewDHT(ctx context.Context, config Config, kadDHT *dht.IpfsDHT) func(h host.Host) (routing.PeerRouting, error) {
+	switch config.DataStoreType {
+	case leveldbDataStore:
+		newDHT := func(h host.Host) (routing.PeerRouting, error) {
+			var err error
+			dhtDir := getDHTDir(config)
+			kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create DHT")
+			}
+			return kadDHT, err
+		}
+
+		return newDHT
+	case postgresDataStore:
+		newDHT := func(h host.Host) (routing.PeerRouting, error) {
+			var err error
+			sqlOpts := &sqlds.Options{
+				Host:     config.DataDBHost,
+				Port:     config.DataDBPort,
+				User:     config.DataDBUser,
+				Password: config.DataDBPassword,
+				Database: config.DataDBDatabaseName,
+				Table:    "dhtkv",
+			}
+			store, err := sqlOpts.CreatePostgres()
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create postgres datastore")
+			}
+
+			kadDHT, err = p2p.NewDHTWithDatastore(ctx, store, h)
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create DHT")
+			}
+
+			return kadDHT, err
+		}
+
+		return newDHT
+
+	default:
+		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, postgresDataStore)
+		return nil
+
+	}
 }
 
 func main() {
@@ -115,14 +185,50 @@ func main() {
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
-	newDHT := func(h host.Host) (routing.PeerRouting, error) {
-		var err error
-		dhtDir := getDHTDir(config)
-		kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not create DHT")
+	var newDHT func(h host.Host) (routing.PeerRouting, error)
+
+	// TODO(oskar) - Figure out why returning an anonymous function from
+	// getNewDHT() is making kadDHT.runBootstrap panicing.
+	// When solved this big switch case can be removed from main()
+	switch config.DataStoreType {
+	case leveldbDataStore:
+		newDHT = func(h host.Host) (routing.PeerRouting, error) {
+			var err error
+			dhtDir := getDHTDir(config)
+			kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create DHT")
+			}
+			return kadDHT, err
 		}
-		return kadDHT, err
+
+	case postgresDataStore:
+		newDHT = func(h host.Host) (routing.PeerRouting, error) {
+			var err error
+			sqlOpts := &sqlds.Options{
+				Host:     config.DataDBHost,
+				Port:     config.DataDBPort,
+				User:     config.DataDBUser,
+				Password: config.DataDBPassword,
+				Database: config.DataDBDatabaseName,
+				Table:    "dhtkv",
+			}
+			store, err := sqlOpts.CreatePostgres()
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create postgres datastore")
+			}
+
+			kadDHT, err = p2p.NewDHTWithDatastore(ctx, store, h)
+			if err != nil {
+				log.WithField("error", err).Fatal("could not create DHT")
+			}
+
+			return kadDHT, err
+		}
+
+	default:
+		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, postgresDataStore)
+
 	}
 
 	// Parse multiaddresses given in the config
