@@ -117,7 +117,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		for {
 			now := r.aClock.Now()
 			currentUTCCheckpoint := getUTCMidnightOfDate(now)
-			nextUTCCheckpoint := currentUTCCheckpoint.Add(24 * time.Hour)
+			nextUTCCheckpoint := time.Date(currentUTCCheckpoint.Year(), currentUTCCheckpoint.Month(), currentUTCCheckpoint.Day()+1, 0, 0, 0, 0, time.UTC)
 			untilNextUTCCheckpoint := nextUTCCheckpoint.Sub(r.aClock.Now())
 			select {
 			case <-ctx.Done():
