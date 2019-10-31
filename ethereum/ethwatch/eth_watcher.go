@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -39,12 +38,12 @@ type ETHWatcher struct {
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethrpcclient.EthRPCClient, chainID int) (*ETHWatcher, error) {
+func NewETHWatcher(minPollingInterval time.Duration, contractCaller bind.ContractCaller, chainID int) (*ETHWatcher, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
 	}
-	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, contractCaller)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -242,7 +241,7 @@ type OrderValidator struct {
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethrpcclient.EthRPCClient, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
 	if err != nil {
 		return nil, err
@@ -251,11 +250,11 @@ func New(ethClient *ethrpcclient.EthRPCClient, chainID int, maxRequestContentLen
 	if err != nil {
 		return nil, err
 	}
-	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, ethClient)
+	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, contractCaller)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistryCaller(contractAddresses.CoordinatorRegistry, ethClient)
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistryCaller(contractAddresses.CoordinatorRegistry, contractCaller)
 	if err != nil {
 		return nil, err
 	}
