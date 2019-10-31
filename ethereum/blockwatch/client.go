@@ -24,14 +24,14 @@ type Client interface {
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
-	ethRpcClient *ethrpcclient.EthRPCClient
+	ethRPCClient ethrpcclient.IEthRPCClient
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(ethRpcClient *ethrpcclient.EthRPCClient) (*RpcClient, error) {
+func NewRpcClient(ethRPCClient ethrpcclient.IEthRPCClient) (*RpcClient, error) {
 	return &RpcClient{
-		ethRpcClient: ethRpcClient,
+		ethRPCClient: ethRPCClient,
 	}, nil
 }
 
@@ -59,7 +59,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	// Source: https://github.com/ethereum/go-ethereum/pull/18166
 	var header GetBlockByNumberResponse
 	ctx := context.Background()
-	err := rc.ethRpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
+	err := rc.ethRPCClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 // a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
 	ctx := context.Background()
-	header, err := rc.ethRpcClient.HeaderByHash(ctx, hash)
+	header, err := rc.ethRPCClient.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 	ctx := context.Background()
-	logs, err := rc.ethRpcClient.FilterLogs(ctx, q)
+	logs, err := rc.ethRPCClient.FilterLogs(ctx, q)
 	if err != nil {
 		return nil, err
 	}
