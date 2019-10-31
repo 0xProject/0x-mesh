@@ -26,8 +26,8 @@ type clientEnvVars struct {
 }
 
 var testOrder = &zeroex.Order{
-	ChainID:               big.NewInt(constants.TestNetworkID),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ChainID:               big.NewInt(constants.TestChainID),
+	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,

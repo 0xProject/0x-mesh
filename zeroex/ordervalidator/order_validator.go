@@ -182,13 +182,13 @@ var (
 		Code:    "OrderAlreadyStoredAndUnfillable",
 		Message: "order is already stored and is unfillable. Mesh keeps unfillable orders in storage for a little while incase a block re-org makes them fillable again",
 	}
-	ROIncorrectNetwork = RejectedOrderStatus{
-		Code:    "OrderForIncorrectNetwork",
-		Message: "order was created for a different network than the one this Mesh node is configured to support",
+	ROIncorrectChain = RejectedOrderStatus{
+		Code:    "OrderForIncorrectChain",
+		Message: "order was created for a different chain than the one this Mesh node is configured to support",
 	}
 	ROIncorrectExchangeAddress = RejectedOrderStatus{
 		Code:    "IncorrectExchangeAddress",
-		Message: "the exchange address for the order does not match the chain ID/network ID",
+		Message: "the exchange address for the order does not match the chain ID",
 	}
 	ROSenderAddressNotAllowed = RejectedOrderStatus{
 		Code:    "SenderAddressNotAllowed",
@@ -248,15 +248,15 @@ type OrderValidator struct {
 	devUtils                     *wrappers.DevUtils
 	coordinatorRegistry          *wrappers.CoordinatorRegistry
 	assetDataDecoder             *zeroex.AssetDataDecoder
-	networkID                    int
+	chainID                    int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
 	expirationBuffer             time.Duration
 }
 
 // New instantiates a new order validator
-func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(networkID)
+func New(ethClient *ethclient.Client, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func New(ethClient *ethclient.Client, networkID int, maxRequestContentLength int
 		devUtils:                     devUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
-		networkID:                    networkID,
+		chainID:                    chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
 	}, nil
@@ -543,7 +543,7 @@ func (o *OrderValidator) batchValidateSoftCancelled(signedOrders []*zeroex.Signe
 			log.WithError(err).WithField("orderHashes", orderHashes).Error("Unable to marshal `orderHashes` into JSON")
 		}
 		// Check if the orders have been soft-cancelled by querying the Coordinator server
-		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.networkID)
+		requestURL := fmt.Sprintf("%s/v1/soft_cancels?networkId=%d", endpoint, o.chainID)
 		resp, err := http.Post(requestURL, "application/json", payload)
 		if err != nil {
 			log.WithFields(map[string]interface{}{

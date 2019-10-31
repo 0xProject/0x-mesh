@@ -95,7 +95,7 @@ type Config struct {
 	MeshDB            *meshdb.MeshDB
 	BlockWatcher      *blockwatch.Watcher
 	OrderValidator    *ordervalidator.OrderValidator
-	NetworkID         int
+	ChainID         int
 	ExpirationBuffer  time.Duration
 	MaxOrders         int
 	MaxExpirationTime *big.Int
@@ -108,7 +108,7 @@ func New(config Config) (*Watcher, error) {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(config.NetworkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(config.ChainID)
 	if err != nil {
 		return nil, err
 	}

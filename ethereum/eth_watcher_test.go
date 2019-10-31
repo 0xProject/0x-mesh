@@ -26,7 +26,7 @@ import (
 
 // Values taken from Ganache snapshot
 var firstAccount = constants.GanacheAccount0
-var firstAccountBalance, _ = math.ParseBig256("99921967638000000000")
+var firstAccountBalance, _ = math.ParseBig256("99921967510000000000")
 var secondAccount = constants.GanacheAccount1
 var secondAccountBalance, _ = math.ParseBig256("100000000000000000000")
 var hundredEth, _ = math.ParseBig256("100000000000000000000")
@@ -59,7 +59,7 @@ func TestAddingAddressesToETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}
@@ -87,7 +87,7 @@ func TestUpdateBalancesETHWatcher(t *testing.T) {
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
 
-	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestNetworkID)
+	ethWatcher, err := NewETHWatcher(pollingInterval, ethClient, constants.TestChainID)
 	require.NoError(t, err)
 
 	addresses := []common.Address{}

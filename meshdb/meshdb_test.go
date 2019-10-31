@@ -23,8 +23,8 @@ func TestOrderCRUDOperations(t *testing.T) {
 	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
 	o := &zeroex.Order{
-		ChainID:               big.NewInt(constants.TestNetworkID),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ChainID:               big.NewInt(constants.TestChainID),
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -143,7 +143,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 	defer meshDB.Close()
 
 	// TODO(albrow): Move these to top of file.
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
 	require.NoError(t, err)
 	makerAddress := constants.GanacheAccount0
 
@@ -157,7 +157,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(0),
@@ -175,7 +175,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(1),
@@ -193,7 +193,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(2),
@@ -211,7 +211,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(3),
@@ -231,7 +231,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(0),
@@ -249,7 +249,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-			ChainID:               big.NewInt(constants.TestNetworkID),
+			ChainID:               big.NewInt(constants.TestChainID),
 			TakerFeeAssetData:     constants.NullBytes,
 			MakerFeeAssetData:     constants.NullBytes,
 			Salt:                  big.NewInt(1),
@@ -314,8 +314,8 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 	zeroexOrders := []*zeroex.Order{
 		// No Maker fee
 		&zeroex.Order{
-			ChainID:               big.NewInt(constants.TestNetworkID),
-			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+			ChainID:               big.NewInt(constants.TestChainID),
+			ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -333,8 +333,8 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 		},
 		// ERC20 maker fee
 		&zeroex.Order{
-			ChainID:               big.NewInt(constants.TestNetworkID),
-			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+			ChainID:               big.NewInt(constants.TestChainID),
+			ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -352,8 +352,8 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 		},
 		// ERC721 maker fee with token id = 1
 		&zeroex.Order{
-			ChainID:               big.NewInt(constants.TestNetworkID),
-			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+			ChainID:               big.NewInt(constants.TestChainID),
+			ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,
@@ -371,8 +371,8 @@ func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 		},
 		// ERC721 maker fee with token id = 2
 		&zeroex.Order{
-			ChainID:               big.NewInt(constants.TestNetworkID),
-			ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+			ChainID:               big.NewInt(constants.TestChainID),
+			ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 			MakerAddress:          makerAddress,
 			TakerAddress:          constants.NullAddress,
 			SenderAddress:         constants.NullAddress,

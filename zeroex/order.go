@@ -287,6 +287,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		ChainId:           o.ChainID,
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
+	fmt.Println("domain", domain)
 
 	fmt.Println("domain", domain)
 

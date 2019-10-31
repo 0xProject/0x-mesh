@@ -136,19 +136,19 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 			})
 			continue
 		}
-		if order.ChainID.Cmp(big.NewInt(int64(app.networkID))) != 0 {
+		if order.ChainID.Cmp(big.NewInt(int64(app.chainID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
 				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROIncorrectNetwork,
+				Status:      ordervalidator.ROIncorrectChain,
 			})
 			continue
 		}
-		contractAddresses, err := ethereum.GetContractAddressesForNetworkID(app.networkID)
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(app.chainID)
 		if err == nil {
 			// Only check the ExchangeAddress if we know the expected address for the
-			// given chainID/networkID. If we don't know it, the order could still be
+			// given chainID/chainID. If we don't know it, the order could still be
 			// valid.
 			expectedExchangeAddress := contractAddresses.Exchange
 			if order.ExchangeAddress != expectedExchangeAddress {

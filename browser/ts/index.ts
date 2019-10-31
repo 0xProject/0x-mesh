@@ -36,8 +36,9 @@ export interface Config {
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
-    // The network ID to use when communicating with Ethereum.
-    ethereumNetworkID: number;
+	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+	// run your Mesh node for
+    ethereumChainID: number;
     // UseBootstrapList is whether to bootstrap the DHT by connecting to a
     // specific set of peers.
     useBootstrapList?: boolean;
@@ -66,7 +67,7 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // A set of custom addresses to use for the configured network ID. The
+    // A set of custom addresses to use for the configured chain ID. The
     // contract addresses for most common networks are already included by
     // default, so this is typically only needed for testing on custom networks.
     // The given addresses are added to the default list of addresses for known
@@ -130,7 +131,7 @@ interface MeshWrapper {
 interface WrapperConfig {
     verbosity?: number;
     ethereumRPCURL: string;
-    ethereumNetworkID: number;
+    ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.
     orderExpirationBufferSeconds?: number;

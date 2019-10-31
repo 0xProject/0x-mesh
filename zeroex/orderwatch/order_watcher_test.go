@@ -75,7 +75,7 @@ func init() {
 		panic(err)
 	}
 	ethClient = ethclient.NewClient(rpcClient)
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 	zrx, err = wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	if err != nil {
 		panic(err)
@@ -236,7 +236,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
@@ -276,7 +276,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 	txn, err := erc1155Mintable.SetApprovalForAll(opts, ganacheAddresses.ERC1155Proxy, false)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
@@ -345,7 +345,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
@@ -803,13 +803,13 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethClient, constants.TestNetworkID, ethereumRPCMaxContentLength, 0)
+	orderValidator, err := ordervalidator.New(ethClient, constants.TestChainID, ethereumRPCMaxContentLength, 0)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		NetworkID:         constants.TestNetworkID,
+		ChainID:         constants.TestChainID,
 		ExpirationBuffer:  0,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 		MaxOrders:         1000,

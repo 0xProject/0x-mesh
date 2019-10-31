@@ -14,8 +14,8 @@ import (
  * General
  */
 
-// TestNetworkID is the test (Ganache) networkId used for testing
-const TestNetworkID = 50
+// TestChainID is the test (Ganache) chainId used for testing
+const TestChainID = 1337
 
 // GanacheEndpoint specifies the Ganache test Ethereum node JSON RPC endpoint used in tests
 const GanacheEndpoint = "http://localhost:8545"
