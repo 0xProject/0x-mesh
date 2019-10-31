@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
-	"github.com/0xProject/0x-mesh/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

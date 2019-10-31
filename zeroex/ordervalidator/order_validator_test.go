@@ -17,7 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/signer"
-	"github.com/0xProject/0x-mesh/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
