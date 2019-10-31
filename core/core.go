@@ -103,8 +103,8 @@ type Config struct {
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
-	// per 24hr UTC time window. It defaults to the 100k limit on Infura's free-tier but can be increased
-	// well beyond this limit for those using alternative infra/plans.
+	// per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
+	// Infura's free-tier but can be increased well beyond this limit for those using alternative infra/plans.
 	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
