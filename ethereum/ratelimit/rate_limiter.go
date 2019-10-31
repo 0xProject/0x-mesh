@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	maxRequestsPer24HrsBuffer = 1000
+	maxRequestsPer24HrsBuffer         = 1000
 	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
@@ -125,7 +125,10 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 	r.startMutex.Unlock()
 
 	// Start 24hr UTC accrued grants resetter
+	wg := &sync.WaitGroup{}
 	go func() {
+		wg.Add(1)
+		defer wg.Done()
 		for {
 			now := r.aClock.Now()
 			currentUTCCheckpoint := getUTCMidnightOfDate(now)
@@ -162,6 +165,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
+			wg.Wait()
 			return nil
 		case <-ticker.C:
 			// Store grants issued and current UTC checkpoint to DB
@@ -177,6 +181,7 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 					// We can't continue if the database is closed. Stop the rateLimiter and
 					// return an error.
 					ticker.Stop()
+					wg.Wait()
 					return err
 				}
 				log.WithError(err).Error("rateLimiter.Start() error encountered while updating metadata in DB")
