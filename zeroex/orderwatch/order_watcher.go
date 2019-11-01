@@ -95,7 +95,7 @@ type Config struct {
 	MeshDB            *meshdb.MeshDB
 	BlockWatcher      *blockwatch.Watcher
 	OrderValidator    *ordervalidator.OrderValidator
-	ChainID         int
+	ChainID           int
 	ExpirationBuffer  time.Duration
 	MaxOrders         int
 	MaxExpirationTime *big.Int
@@ -671,7 +671,10 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 			}
 		}
 	}
-	return w.generateOrderEventsIfChanged(ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
+	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, done := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer done()
+	return w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
 }
 
 func (w *Watcher) cleanup(ctx context.Context) error {
@@ -699,7 +702,10 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 		orderHashToDBOrder[order.Hash] = order
 		orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{}
 	}
-	return w.generateOrderEventsIfChanged(ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
+	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, done = context.WithTimeout(ctx, 30*time.Minute)
+	defer done()
+	return w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
 }
 
 func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
@@ -920,7 +926,7 @@ func (w *Watcher) findOrders(makerAddress, tokenAddress common.Address, tokenID 
 	return orders, nil
 }
 
-func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, orderHashToDBOrder map[common.Hash]*meshdb.Order, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent, validationBlockNumber rpc.BlockNumber) error {
+func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn *db.Transaction, orderHashToDBOrder map[common.Hash]*meshdb.Order, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent, validationBlockNumber rpc.BlockNumber) error {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orderHashToDBOrder {
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
@@ -935,7 +941,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ordersColTxn *db.Transaction, ord
 		return nil
 	}
 	areNewOrders := false
-	validationResults := w.orderValidator.BatchValidate(signedOrders, areNewOrders, validationBlockNumber)
+	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlockNumber)
 
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {

@@ -194,7 +194,8 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	ctx := context.Background()
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -221,7 +222,8 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	ctx := context.Background()
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
@@ -248,7 +250,8 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	ctx := context.Background()
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
@@ -309,7 +312,8 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
 	require.NoError(t, err)
 
-	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	ctx = context.Background()
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
