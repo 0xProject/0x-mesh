@@ -703,8 +703,8 @@ func (w *Watcher) cleanup(ctx context.Context) error {
 		orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{}
 	}
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
-	ctx, done = context.WithTimeout(ctx, 30*time.Minute)
-	defer done()
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
 	return w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, rpc.LatestBlockNumber)
 }
 
