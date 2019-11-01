@@ -64,23 +64,17 @@ func TestScenario1(t *testing.T) {
 
 		// First request goes through immediately
 		if i == 0 {
-			assert.Condition(t, func() bool {
-				return elapsed < 1*time.Millisecond
-			})
+			assert.True(t, elapsed < 1*time.Millisecond, "First request did not get granted immediately")
 		} else if i > 0 && i <= 3 {
 			// Subsequent requests take 1sec / maxRequestsPerSecond
 			// Note: Despite initially waiting for 3 grants to accrue, by
 			// the time we request the 4th, another has accrued.
 			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.Condition(t, func() bool {
-				return time.Duration(delta) < 10*time.Millisecond
-			})
+			assert.True(t, time.Duration(delta) < 10*time.Millisecond, "Delta between minExpectedDelay and rate limit delay too large")
 		} else {
 			// Subsequent requests take 24hrs / maxRequestsPer24hrs
 			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.Condition(t, func() bool {
-				return time.Duration(delta) < 15*time.Millisecond
-			})
+			assert.True(t, time.Duration(delta) < 15*time.Millisecond, "Delta between maxExpectedDelay and rate limit delay too large")
 		}
 	}
 
@@ -126,17 +120,13 @@ func TestScenario2(t *testing.T) {
 
 		// First request goes through immediately
 		if i == 0 {
-			assert.Condition(t, func() bool {
-				return elapsed < 1*time.Millisecond
-			})
+			assert.True(t, elapsed < 1*time.Millisecond, "First request did not get granted immediately")
 		} else {
 			// Subsequent requests take 1sec / maxRequestsPerSecond
 			// Note: Despite initially waiting for 3 grants to accrue, by
 			// the time we request the 4th, another has accrued.
 			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.Condition(t, func() bool {
-				return time.Duration(delta) < 10*time.Millisecond
-			})
+			assert.True(t, time.Duration(delta) < 10*time.Millisecond, "Delta between minExpectedDelay and rate limit delay too large")
 		}
 	}
 
@@ -162,17 +152,13 @@ func TestScenario2(t *testing.T) {
 		// The remaining time is close to what we'd expect from an empty bucket the needs
 		// refilling.
 		if i == 0 {
-			assert.Condition(t, func() bool {
-				expectedDuration := (500 * time.Millisecond) + maxExpectedDelay
-				delta := elapsed - expectedDuration
-				return delta < 55*time.Millisecond
-			})
+			expectedDuration := (500 * time.Millisecond) + maxExpectedDelay
+			delta := elapsed - expectedDuration
+			assert.True(t, delta < 55*time.Millisecond, "Delta between expected and elapsed duration too large")
 		} else {
 			// Subsequent requests take 24hrs / maxRequestsPer24hrs
 			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.Condition(t, func() bool {
-				return time.Duration(delta) < 15*time.Millisecond
-			})
+			assert.True(t, time.Duration(delta) < 15*time.Millisecond, "Delta between maxExpectedDelay and rate limit delay too large")
 		}
 	}
 
