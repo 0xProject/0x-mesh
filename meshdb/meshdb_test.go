@@ -20,7 +20,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 	require.NoError(t, err)
 	defer meshDB.Close()
 
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
 	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
@@ -143,7 +143,7 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 	defer meshDB.Close()
 
 	// TODO(albrow): Move these to top of file.
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(constants.TestNetworkID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
 	require.NoError(t, err)
 	makerAddress := constants.GanacheAccount0
 

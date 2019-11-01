@@ -39,8 +39,8 @@ type ETHWatcher struct {
 }
 
 // NewETHWatcher creates a new instance of ETHWatcher
-func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, networkID int) (*ETHWatcher, error) {
-	contractAddresses, err := GetContractAddressesForNetworkID(networkID)
+func NewETHWatcher(minPollingInterval time.Duration, ethClient *ethclient.Client, chainID int) (*ETHWatcher, error) {
+	contractAddresses, err := GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
 	}

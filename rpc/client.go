@@ -94,7 +94,7 @@ type GetStatsResponse struct {
 	PubSubTopic               string      `json:"pubSubTopic"`
 	Rendezvous                string      `json:"rendervous"`
 	PeerID                    string      `json:"peerID"`
-	EthereumNetworkID         int         `json:"ethereumNetworkID"`
+	EthereumChainID         int         `json:"ethereumChainID"`
 	LatestBlock               LatestBlock `json:"latestBlock"`
 	NumPeers                  int         `json:"numPeers"`
 	NumOrders                 int         `json:"numOrders"`

@@ -270,6 +270,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		Version:           "2",
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
+	fmt.Println("domain", domain)
 
 	var message = map[string]interface{}{
 		"makerAddress":          o.MakerAddress.Hex(),

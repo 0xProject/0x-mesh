@@ -34,7 +34,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      zrxAmount,
 		TakerAssetAmount:      wethAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
 	// Sign Order
@@ -49,7 +49,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		t.Errorf("makerAddress cannot be set to the ZRX coinbase address (e.g., the address with the 1 billion ZRX at Genesis)")
 	}
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func CreateSignedTestOrderWithExpirationTime(t *testing.T, ethClient *ethclient.
 		MakerAssetAmount:      big.NewInt(0),
 		TakerAssetAmount:      big.NewInt(0),
 		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
 	// Sign Order
@@ -139,7 +139,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      wethAmount,
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
 	// Sign Order
@@ -154,7 +154,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		t.Errorf("takerAddress cannot be set to the ZRX coinbase address (e.g., the address with the 1 billion ZRX at Genesis)")
 	}
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -234,7 +234,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
 	// Sign Order
@@ -243,7 +243,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 
 	// Set up balances/allowances
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 
 	// SET NFT allowance
 	txn, err = dummyERC721Token.SetApprovalForAll(makerOpts, ganacheAddresses.ERC721Proxy, true)
@@ -303,7 +303,7 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	ganacheAddresses := ethereum.NetworkIDToContractAddresses[constants.TestNetworkID]
+	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
 
 	devUtils, err := wrappers.NewDevUtils(ganacheAddresses.DevUtils, ethClient)
 	require.NoError(t, err)
@@ -334,7 +334,7 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
 	// Sign Order

@@ -41,7 +41,7 @@ func (o Order) ID() []byte {
 
 // Metadata is the database representation of MeshDB instance metadata
 type Metadata struct {
-	EthereumNetworkID int
+	EthereumChainID int
 	MaxExpirationTime *big.Int
 }
 

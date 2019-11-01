@@ -22,8 +22,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/rpc"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +64,7 @@ var testSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	},
 }
 
@@ -145,7 +145,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+		orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 		require.NoError(t, err)
 
 		offchainValidOrders, rejectedOrderInfos := orderValidator.BatchOffchainValidation(signedOrders)
@@ -172,7 +172,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 		signedOrder,
 	}
 
-	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
@@ -197,7 +197,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 
 	ethClient := ethclient.NewClient(rpcClient)
 
-	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
@@ -209,7 +209,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 
 func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	signedOrder := &testSignedOrder
-	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	signedOrder.SenderAddress = ethereum.ChainIDToContractAddresses[constants.TestChainID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
 	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
 
@@ -222,7 +222,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient := ethclient.NewClient(rpcClient)
 
-	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	validationResults := orderValidator.BatchValidate(signedOrders, areNewOrders, rpc.LatestBlockNumber)
@@ -241,7 +241,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	defer teardownSubTest(t)
 
 	signedOrder := &testSignedOrder
-	signedOrder.SenderAddress = ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Coordinator
+	signedOrder.SenderAddress = ethereum.ChainIDToContractAddresses[constants.TestChainID].Coordinator
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	signedOrders := []*zeroex.SignedOrder{
@@ -249,7 +249,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	}
 
 	ethClient := ethclient.NewClient(rpcClient)
-	orderValidator, err := New(ethClient, constants.TestNetworkID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -293,7 +293,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize - 10
-	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder}
@@ -309,7 +309,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
@@ -332,7 +332,7 @@ var testMultiAssetSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	},
 }
 
@@ -345,7 +345,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	ethClient := ethclient.NewClient(rpcClient)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethClient, constants.TestNetworkID, maxContentLength, 0)
+	orderValidator, err := New(ethClient, constants.TestChainID, maxContentLength, 0)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}
