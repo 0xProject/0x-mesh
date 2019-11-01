@@ -16,13 +16,16 @@ import (
 )
 
 var (
-	maxRequestsPer24HrsWithoutBuffer = 301000
-	maxRequestsPer24hrs              = maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
-	maxRequestsPerSecond             = 10.0
-	twentyFourHrs                    = (24 * 60 * 60 * 1000 * time.Millisecond)
-	maxExpectedDelay                 = twentyFourHrs / time.Duration(maxRequestsPer24hrs)
-	minExpectedDelay                 = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
-	defaultCheckpointInterval        = 1 * time.Minute
+	maxRequestsPer24HrsWithoutBuffer      = 301000
+	maxRequestsPer24hrs                   = maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
+	maxRequestsPerSecond                  = 10.0
+	twentyFourHrs                         = (24 * 60 * 60 * 1000 * time.Millisecond)
+	maxExpectedDelay                      = twentyFourHrs / time.Duration(maxRequestsPer24hrs)
+	minExpectedDelay                      = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
+	defaultCheckpointInterval             = 1 * time.Minute
+	expectedMaxElapsedTimeForFirstRequest = 1 * time.Millisecond
+	expectedDeltaMinExpectedDelay         = 10 * time.Millisecond
+	expectedDeltaMaxExpectedDelay         = 15 * time.Millisecond
 )
 
 // Scenario1: Mesh starts X seconds after UTC midnight (start of next UTC day) and
@@ -64,17 +67,17 @@ func TestScenario1(t *testing.T) {
 
 		// First request goes through immediately
 		if i == 0 {
-			assert.True(t, elapsed < 1*time.Millisecond, "First request did not get granted immediately")
+			assert.True(t, elapsed < expectedMaxElapsedTimeForFirstRequest, "First request did not get granted immediately")
 		} else if i > 0 && i <= 3 {
 			// Subsequent requests take 1sec / maxRequestsPerSecond
 			// Note: Despite initially waiting for 3 grants to accrue, by
 			// the time we request the 4th, another has accrued.
 			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < 10*time.Millisecond, "Delta between minExpectedDelay and rate limit delay too large")
+			assert.True(t, time.Duration(delta) < expectedDeltaMinExpectedDelay, "Delta between minExpectedDelay and rate limit delay too large")
 		} else {
 			// Subsequent requests take 24hrs / maxRequestsPer24hrs
 			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < 15*time.Millisecond, "Delta between maxExpectedDelay and rate limit delay too large")
+			assert.True(t, time.Duration(delta) < expectedDeltaMaxExpectedDelay, "Delta between maxExpectedDelay and rate limit delay too large")
 		}
 	}
 
@@ -120,13 +123,13 @@ func TestScenario2(t *testing.T) {
 
 		// First request goes through immediately
 		if i == 0 {
-			assert.True(t, elapsed < 1*time.Millisecond, "First request did not get granted immediately")
+			assert.True(t, elapsed < expectedMaxElapsedTimeForFirstRequest, "First request did not get granted immediately")
 		} else {
 			// Subsequent requests take 1sec / maxRequestsPerSecond
 			// Note: Despite initially waiting for 3 grants to accrue, by
 			// the time we request the 4th, another has accrued.
 			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < 10*time.Millisecond, "Delta between minExpectedDelay and rate limit delay too large")
+			assert.True(t, time.Duration(delta) < expectedDeltaMinExpectedDelay, "Delta between minExpectedDelay and rate limit delay too large")
 		}
 	}
 
@@ -154,11 +157,11 @@ func TestScenario2(t *testing.T) {
 		if i == 0 {
 			expectedDuration := (500 * time.Millisecond) + maxExpectedDelay
 			delta := elapsed - expectedDuration
-			assert.True(t, delta < 55*time.Millisecond, "Delta between expected and elapsed duration too large")
+			assert.True(t, delta < expectedDuration/10, "Delta between expected and elapsed duration too large")
 		} else {
 			// Subsequent requests take 24hrs / maxRequestsPer24hrs
 			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < 15*time.Millisecond, "Delta between maxExpectedDelay and rate limit delay too large")
+			assert.True(t, time.Duration(delta) < expectedDeltaMaxExpectedDelay, "Delta between maxExpectedDelay and rate limit delay too large")
 		}
 	}
 
