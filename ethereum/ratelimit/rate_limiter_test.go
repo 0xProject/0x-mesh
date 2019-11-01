@@ -181,7 +181,7 @@ func TestScenario3(t *testing.T) {
 	// Set metadata to include an outdated `StartOfCurrentUTCDay` and an associated
 	// non-zero `EthRPCRequestsSentInCurrentUTCDay`
 	metadata := &meshdb.Metadata{
-		EthereumNetworkID:                 50,
+		EthereumChainID:                   1337,
 		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              yesterdayMidnightUTC,
 		EthRPCRequestsSentInCurrentUTCDay: 5000,
@@ -228,7 +228,7 @@ func TestScenario3(t *testing.T) {
 
 func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
 	metadata := &meshdb.Metadata{
-		EthereumNetworkID: 50,
+		EthereumChainID:   1337,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 	}
 	err := meshDB.SaveMetadata(metadata)

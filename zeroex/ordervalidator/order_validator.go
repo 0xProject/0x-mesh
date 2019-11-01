@@ -242,7 +242,7 @@ type OrderValidator struct {
 
 // New instantiates a new order validator
 func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForNetworkID(chainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
 	}

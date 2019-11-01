@@ -303,7 +303,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	coordinatorRegistryAddress := ethereum.NetworkIDToContractAddresses[constants.TestChainID].CoordinatorRegistry
+	coordinatorRegistryAddress := ethereum.ChainIDToContractAddresses[constants.TestChainID].CoordinatorRegistry
 	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
 	require.NoError(t, err)
 	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
