@@ -29,11 +29,11 @@ type client struct {
 	rpcClient      *rpc.Client
 	client         *ethclient.Client
 	requestTimeout time.Duration
-	rateLimiter    ratelimit.IRateLimiter
+	rateLimiter    ratelimit.RateLimiter
 }
 
 // New returns a new instance of client
-func New(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.IRateLimiter) (Client, error) {
+func New(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.RateLimiter) (Client, error) {
 	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return nil, err

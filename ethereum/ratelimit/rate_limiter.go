@@ -19,14 +19,16 @@ const (
 	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
-// IRateLimiter is the interface one must satisfy to be considered a RateLimiter
-type IRateLimiter interface {
+// RateLimiter is the interface one must satisfy to be considered a RateLimiter
+type RateLimiter interface {
 	Wait(ctx context.Context) error
 	Start(ctx context.Context, checkpointInterval time.Duration) error
+	getCurrentUTCCheckpoint() time.Time
+	getGrantedInLast24hrsUTC() int
 }
 
-// RateLimiter is a rate-limiter for requests
-type RateLimiter struct {
+// rateLimiter is a rate-limiter for requests
+type rateLimiter struct {
 	maxRequestsPer24Hrs   int
 	twentyFourHourLimiter *rate.Limiter
 	perSecondLimiter      *rate.Limiter
@@ -40,7 +42,7 @@ type RateLimiter struct {
 }
 
 // New instantiates a new RateLimiter
-func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (*RateLimiter, error) {
+func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (RateLimiter, error) {
 	if maxRequestsPer24HrsWithoutBuffer < lowestPossibleMaxRequestsPer24Hrs {
 		return nil, fmt.Errorf("EthereumRPCMaxRequestsPer24HrUTC too low. Should be at least %d", lowestPossibleMaxRequestsPer24Hrs)
 	}
@@ -101,7 +103,7 @@ func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, mes
 	limit = rate.Limit(maxRequestsPerSecond)
 	perSecondLimiter := rate.NewLimiter(limit, 1)
 
-	return &RateLimiter{
+	return &rateLimiter{
 		aClock:                aClock,
 		maxRequestsPer24Hrs:   maxRequestsPer24Hrs,
 		twentyFourHourLimiter: twentyFourHourLimiter,
@@ -115,7 +117,7 @@ func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, mes
 // Start starts two background processes required for the RateLimiter to function. One that
 // stores it's state to the DB at a checkpoint interval, and another that clears accrued
 // grants when the UTC day time window elapses.
-func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duration) error {
+func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duration) error {
 	r.startMutex.Lock()
 	if r.wasStartedOnce {
 		r.startMutex.Unlock()
@@ -190,12 +192,8 @@ func (r *RateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 	}
 }
 
-func getUTCMidnightOfDate(date time.Time) time.Time {
-	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-}
-
 // Wait blocks until the rateLimiter allows for another request to be sent
-func (r *RateLimiter) Wait(ctx context.Context) error {
+func (r *rateLimiter) Wait(ctx context.Context) error {
 	if err := r.twentyFourHourLimiter.Wait(ctx); err != nil {
 		return err
 	}
@@ -206,4 +204,16 @@ func (r *RateLimiter) Wait(ctx context.Context) error {
 	r.grantedInLast24hrsUTC++
 	r.mu.Unlock()
 	return nil
+}
+
+func (r *rateLimiter) getCurrentUTCCheckpoint() time.Time {
+	return r.currentUTCCheckpoint
+}
+
+func (r *rateLimiter) getGrantedInLast24hrsUTC() int {
+	return r.grantedInLast24hrsUTC
+}
+
+func getUTCMidnightOfDate(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 }

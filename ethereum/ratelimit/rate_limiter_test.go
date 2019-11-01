@@ -197,10 +197,10 @@ func TestScenario3(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
-	assert.Equal(t, 0, rateLimiter.grantedInLast24hrsUTC)
+	assert.Equal(t, 0, rateLimiter.getGrantedInLast24hrsUTC())
 	now = aClock.Now()
 	expectedCurrentUTCCheckpoint := getUTCMidnightOfDate(now)
-	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.currentUTCCheckpoint)
+	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

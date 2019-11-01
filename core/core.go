@@ -154,7 +154,7 @@ type App struct {
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 	messageHandler            *MessageHandler
-	ethRPCRateLimiter         *ratelimit.RateLimiter
+	ethRPCRateLimiter         ratelimit.RateLimiter
 }
 
 func New(config Config) (*App, error) {
