@@ -30,7 +30,7 @@ provider.start();
         feeRecipientAddress: '0xa258b39954cef5cb142fd567a46cddb31a670124',
         expirationTimeSeconds: new BigNumber(expirationTime) as any,
         salt: new BigNumber('1548619145450') as any,
-        chainId: 50,
+        chainId: 1337,
     };
     const signedOrder = await signatureUtils.ecSignOrderAsync(provider, order, order.makerAddress);
     const orderHash = orderHashUtils.getOrderHashHex(order);
