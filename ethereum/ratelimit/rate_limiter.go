@@ -15,6 +15,9 @@ import (
 )
 
 const (
+	// maxRequestsPer24HrsBuffer is the buffer subtracted from the operator supplied
+	// maxRequestsPer24Hrs. This buffer helps ensure that we don't overstep the desired
+	// max number of requests.
 	maxRequestsPer24HrsBuffer         = 1000
 	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
