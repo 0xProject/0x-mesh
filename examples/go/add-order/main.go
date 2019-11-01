@@ -26,8 +26,7 @@ type clientEnvVars struct {
 }
 
 var testOrder = &zeroex.Order{
-	ChainID:               big.NewInt(constants.TestNetworkID),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ChainID:               big.NewInt(constants.TestChainID),
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -42,6 +41,7 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(1000),
 	TakerAssetAmount:      big.NewInt(2000),
 	ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
+	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 }
 
 func main() {

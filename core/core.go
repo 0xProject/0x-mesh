@@ -72,9 +72,9 @@ type Config struct {
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
-	// EthereumNetworkID is the network ID to use when communicating with
-	// Ethereum.
-	EthereumNetworkID int `envvar:"ETHEREUM_NETWORK_ID"`
+	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+	// run your Mesh node for
+	EthereumChainID int `envvar:"ETHEREUM_CHAIN_ID"`
 	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
 	// specific set of peers.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
@@ -88,8 +88,8 @@ type Config struct {
 	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
 	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
-	// networks have different block producing intervals: POW networks are typically slower (e.g., Mainnet)
-	// and POA networks faster (e.g., Kovan) so one should adjust the polling interval accordingly.
+	// chains have different block producing intervals: POW chains are typically slower (e.g., Mainnet)
+	// and POA chains faster (e.g., Kovan) so one should adjust the polling interval accordingly.
 	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
 	// EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
 	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
@@ -99,13 +99,13 @@ type Config struct {
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
-	// custom addresses to use for the configured network ID. The contract
-	// addresses for most common networks are already included by default, so this
-	// is typically only needed for testing on custom networks. The given
-	// addresses are added to the default list of addresses for known networks and
-	// overriding any contract addresses for known networks is not allowed. The
+	// custom addresses to use for the configured chain ID. The contract
+	// addresses for most common chains/networks are already included by default, so this
+	// is typically only needed for testing on custom chains/networks. The given
+	// addresses are added to the default list of addresses for known chains/networks and
+	// overriding any contract addresses for known chains/networks is not allowed. The
 	// addresses for exchange, devUtils, erc20Proxy, and erc721Proxy are required
-	// for each network. For example:
+	// for each chain/network. For example:
 	//
 	//    {
 	//        "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
@@ -133,7 +133,7 @@ type App struct {
 	privKey                   p2pcrypto.PrivKey
 	db                        *meshdb.MeshDB
 	node                      *p2p.Node
-	networkID                 int
+	chainID                   int
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	ethWatcher                *ethereum.ETHWatcher
@@ -155,7 +155,7 @@ func New(config Config) (*App, error) {
 
 	// Add custom contract addresses if needed.
 	if config.CustomContractAddresses != "" {
-		if err := parseAndAddCustomContractAddresses(config.EthereumNetworkID, config.CustomContractAddresses); err != nil {
+		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses); err != nil {
 			return nil, err
 		}
 	}
@@ -184,8 +184,8 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	// Initialize metadata and check stored network id (if any).
-	metadata, err := initMetadata(config.EthereumNetworkID, meshDB)
+	// Initialize metadata and check stored chain id (if any).
+	metadata, err := initMetadata(config.EthereumChainID, meshDB)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := ordervalidator.New(ethClient, config.EthereumNetworkID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidator.New(ethClient, config.EthereumChainID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func New(config Config) (*App, error) {
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		NetworkID:         config.EthereumNetworkID,
+		ChainID:           config.EthereumChainID,
 		ExpirationBuffer:  config.OrderExpirationBuffer,
 		MaxOrders:         config.MaxOrdersInStorage,
 		MaxExpirationTime: metadata.MaxExpirationTime,
@@ -234,7 +234,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumNetworkID)
+	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func New(config Config) (*App, error) {
 		privKey:                   privKey,
 		peerID:                    peerID,
 		db:                        meshDB,
-		networkID:                 config.EthereumNetworkID,
+		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
 		ethWatcher:                ethWatcher,
@@ -290,12 +290,12 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPubSubTopic(networkID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/2", networkID)
+func getPubSubTopic(chainID int) string {
+	return fmt.Sprintf("/0x-orders/network/%d/version/2", chainID)
 }
 
-func getRendezvous(networkID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/2", networkID)
+func getRendezvous(chainID int) string {
+	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
@@ -312,13 +312,13 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initMetadata(networkID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
+func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
 	metadata, err := meshDB.GetMetadata()
 	if err != nil {
 		if _, ok := err.(db.NotFoundError); ok {
 			// No stored metadata found (first startup)
 			metadata = &meshdb.Metadata{
-				EthereumNetworkID: networkID,
+				EthereumChainID:   chainID,
 				MaxExpirationTime: constants.UnlimitedExpirationTime,
 			}
 			if err := meshDB.SaveMetadata(metadata); err != nil {
@@ -329,10 +329,10 @@ func initMetadata(networkID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error
 		return nil, err
 	}
 
-	// on subsequent startups, verify we are on the same network
-	if metadata.EthereumNetworkID != networkID {
-		err := fmt.Errorf("expected networkID to be %d but got %d", metadata.EthereumNetworkID, networkID)
-		log.WithError(err).Error("Mesh previously started on different Ethereum network; switch networks or remove DB")
+	// on subsequent startups, verify we are on the same chain
+	if metadata.EthereumChainID != chainID {
+		err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
+		log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
 		return nil, err
 	}
 	return metadata, nil
@@ -417,13 +417,13 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(app.config.EthereumNetworkID),
+		Topic:            getPubSubTopic(app.config.EthereumChainID),
 		TCPPort:          app.config.P2PTCPPort,
 		WebSocketsPort:   app.config.P2PWebSocketsPort,
 		Insecure:         false,
 		PrivateKey:       app.privKey,
 		MessageHandler:   app,
-		RendezvousString: getRendezvous(app.config.EthereumNetworkID),
+		RendezvousString: getRendezvous(app.config.EthereumChainID),
 		UseBootstrapList: app.config.UseBootstrapList,
 		BootstrapList:    bootstrapList,
 		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
@@ -761,10 +761,10 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 
 	response := &rpc.GetStatsResponse{
 		Version:                   version,
-		PubSubTopic:               getPubSubTopic(app.config.EthereumNetworkID),
-		Rendezvous:                getRendezvous(app.config.EthereumNetworkID),
+		PubSubTopic:               getPubSubTopic(app.config.EthereumChainID),
+		Rendezvous:                getRendezvous(app.config.EthereumChainID),
 		PeerID:                    app.peerID.String(),
-		EthereumNetworkID:         app.config.EthereumNetworkID,
+		EthereumChainID:           app.config.EthereumChainID,
 		LatestBlock:               latestBlock,
 		NumOrders:                 numOrders,
 		NumPeers:                  app.node.GetNumPeers(),
@@ -794,7 +794,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"version":                   stats.Version,
 			"pubSubTopic":               stats.PubSubTopic,
 			"rendezvous":                stats.Rendezvous,
-			"ethereumNetworkID":         stats.EthereumNetworkID,
+			"ethereumChainID":           stats.EthereumChainID,
 			"latestBlock":               stats.LatestBlock,
 			"numOrders":                 stats.NumOrders,
 			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
@@ -811,12 +811,12 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 	return subscription
 }
 
-func parseAndAddCustomContractAddresses(networkID int, encodedContractAddresses string) error {
+func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {
 	customAddresses := ethereum.ContractAddresses{}
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	if err := ethereum.AddContractAddressesForNetworkID(networkID, customAddresses); err != nil {
+	if err := ethereum.AddContractAddressesForChainID(chainID, customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
 	return nil
