@@ -88,7 +88,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		BlockPollingInterval:        5 * time.Second,
 		EthereumRPCMaxContentLength: 524288,
 		EthereumRPCMaxRequestsPer24HrUTC: 100000,
-		EthereumRPCMaxRequestsPerSecond?: 30.0,	
+		EthereumRPCMaxRequestsPerSecond: 30.0,	
 		MaxOrdersInStorage:          100000,
 	}
 
