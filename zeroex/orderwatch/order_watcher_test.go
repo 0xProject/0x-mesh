@@ -35,7 +35,7 @@ const (
 	blockPollingInterval        = 1000 * time.Millisecond
 	ethereumRPCMaxContentLength = 524288
 	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = float64(1000.0)
+	maxEthRPCRequestsPerSeconds = 1000.0
 )
 
 var (
