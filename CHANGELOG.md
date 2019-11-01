@@ -10,6 +10,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Renamed env config from `ETHEREUM_NETWORK_ID` to `ETHEREUM_CHAIN_ID` since `network` is a misnomer here and what we actually care about is the `chainID`. Most chains have the same id for their p2p network and chain. From the ones we support, the only outlier is Ganache, for which you will now need to supply `1337` instead of `50` (Learn more: https://medium.com/@pedrouid/chainid-vs-networkid-how-do-they-differ-on-ethereum-eec2ed41635b) ([#485](https://github.com/0xProject/0x-mesh/pull/485))
 - Rejected order code `OrderForIncorrectNetwork` has been changed to `OrderForIncorrectChain` ([#485](https://github.com/0xProject/0x-mesh/pull/485))
+- Removed `RPC_PORT` environment variable. The new `RPC_ADDR` environment variable allows specifying both the interface and port ([487](https://github.com/0xProject/0x-mesh/pull/487)).
 
 ### Features ✅ 
 
