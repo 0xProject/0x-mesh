@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"math"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,8 +47,10 @@ func TestScenario1(t *testing.T) {
 	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := rateLimiter.Start(ctx, defaultCheckpointInterval)
 		require.NoError(t, err)
 	}()
@@ -80,6 +83,9 @@ func TestScenario1(t *testing.T) {
 			})
 		}
 	}
+
+	cancel()
+	wg.Wait()
 }
 
 // Scenario 2: Request grants have accrued but after 12am UTC, they get cleared
@@ -101,8 +107,10 @@ func TestScenario2(t *testing.T) {
 	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := rateLimiter.Start(ctx, defaultCheckpointInterval)
 		require.NoError(t, err)
 	}()
@@ -167,6 +175,9 @@ func TestScenario2(t *testing.T) {
 			})
 		}
 	}
+
+	cancel()
+	wg.Wait()
 }
 
 // Scenario 3: DB has outdated metadata values. These get overwritten when
@@ -203,9 +214,11 @@ func TestScenario3(t *testing.T) {
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	checkpointInterval := 200 * time.Millisecond
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := rateLimiter.Start(ctx, checkpointInterval)
 		require.NoError(t, err)
 	}()
@@ -222,6 +235,9 @@ func TestScenario3(t *testing.T) {
 
 	assert.Equal(t, expectedCurrentUTCCheckpoint, metadata.StartOfCurrentUTCDay)
 	assert.Equal(t, 1, metadata.EthRPCRequestsSentInCurrentUTCDay)
+
+	cancel()
+	wg.Wait()
 }
 
 func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
