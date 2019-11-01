@@ -230,12 +230,16 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	rateValidator := ratevalidator.New(ctx, ratevalidator.Config{
+	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
+		MyPeerID:     basicHost.ID(),
 		GlobalLimit:  config.GlobalPubSubMessageLimit,
 		GlobalBurst:  config.GlobalPubSubMessageBurst,
 		PerPeerLimit: config.PerPeerPubSubMessageLimit,
 		PerPeerBurst: config.PerPeerPubSubMessageBurst,
 	})
+	if err != nil {
+		return nil, err
+	}
 	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}

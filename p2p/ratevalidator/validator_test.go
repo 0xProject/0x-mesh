@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 )
 
@@ -32,13 +33,15 @@ func TestValidatorPerPeer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	validator := New(ctx, Config{
+	validator, err := New(ctx, Config{
+		MyPeerID:     peerIDs[0],
 		GlobalLimit:  rate.Inf,
 		PerPeerLimit: 1,
 		PerPeerBurst: 5,
 	})
+	require.NoError(t, err)
 
-	for _, peerID := range peerIDs {
+	for _, peerID := range peerIDs[1:] {
 		// All messages should be valid until we hit GlobalBurst.
 		for i := 0; i < validator.config.PerPeerBurst; i++ {
 			valid := validator.Validate(ctx, peerID, &pubsub.Message{})
@@ -53,7 +56,7 @@ func TestValidatorPerPeer(t *testing.T) {
 	// message.
 	time.Sleep(1 * time.Second)
 
-	for _, peerID := range peerIDs {
+	for _, peerID := range peerIDs[1:] {
 		// First message should be valid.
 		valid := validator.Validate(ctx, peerID, &pubsub.Message{})
 		assert.True(t, valid, "message should be valid")
@@ -61,5 +64,28 @@ func TestValidatorPerPeer(t *testing.T) {
 		// Next message should be invalid.
 		valid = validator.Validate(ctx, peerID, &pubsub.Message{})
 		assert.False(t, valid, "message should be invalid")
+	}
+}
+
+func TestValidatorWithOwnPeerID(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	validator, err := New(ctx, Config{
+		MyPeerID:     peerIDs[0],
+		GlobalLimit:  1,
+		GlobalBurst:  1,
+		PerPeerLimit: 1,
+		PerPeerBurst: 1,
+	})
+	require.NoError(t, err)
+
+	// All messages should sent by us should be valid.
+	messagesToSend := validator.config.PerPeerBurst + validator.config.GlobalBurst + 5
+	for i := 0; i < messagesToSend; i++ {
+		valid := validator.Validate(ctx, peerIDs[0], &pubsub.Message{})
+		assert.True(t, valid, "message should be valid")
 	}
 }

@@ -2,6 +2,7 @@ package ratevalidator
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/karlseguin/ccache"
@@ -35,6 +36,10 @@ type Validator struct {
 
 // Config is a set of configuration options for the validator.
 type Config struct {
+	// MyPeerID is the peer ID of the host. Messages where From == MyPeerID will
+	// not be rate-limited and will not be counted toward the global or per-peer
+	// limits.
+	MyPeerID peer.ID
 	// GlobalLimit is the maximum rate of messages per second across all peers.
 	GlobalLimit rate.Limit
 	// GlobalBurst is the maximum number of messages that can be received at once
@@ -50,7 +55,10 @@ type Config struct {
 // New creates and returns a new rate limiting validator.
 // BUG(albrow): New currently leaks goroutines due to a limitation of the
 // caching library used under the hood.
-func New(ctx context.Context, config Config) *Validator {
+func New(ctx context.Context, config Config) (*Validator, error) {
+	if config.MyPeerID.String() == "" {
+		return nil, errors.New("config.MyPeerID is required")
+	}
 	validator := &Validator{
 		ctx:           ctx,
 		config:        config,
@@ -69,7 +77,7 @@ func New(ctx context.Context, config Config) *Validator {
 	// 		// validator.peerLimiters.Stop()
 	// 	}
 	// }()
-	return validator
+	return validator, nil
 }
 
 // Validate validates a pubsub message based solely on the rate of messages
@@ -79,6 +87,12 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 	if v.isClosed() {
 		return false
 	}
+
+	if peerID == v.config.MyPeerID {
+		// Don't rate-limit our own messages.
+		return true
+	}
+
 	// Note: We check the per-peer rate limiter first so that peers who are
 	// exceeding the limit do not contribute toward the global rate limit.
 	peerLimiter, err := v.getOrCreateLimiterForPeer(peerID)
