@@ -61,11 +61,14 @@ const (
 	// real world bandwidth should be.
 	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
 	// defaultGlobalPubSubMessageLimit is the default value for
-	// GlobalPubSubMessageLimit.
-	defaultGlobalPubSubMessageLimit = maxShareBatch * peerCountHigh
+	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
+	// case where 1000 peers are sending maxShareBatch messages per second. It may
+	// need to be increased as the number of peers in the network grows.
+	defaultGlobalPubSubMessageLimit = 1000 * maxShareBatch
 	// defaultGlobalPubSubMessageBurst is the default value for
-	// GlobalPubSubMessageBurst.
-	defaultGlobalPubSubMessageBurst = maxShareBatch * peerCountHigh * 5
+	// GlobalPubSubMessageBurst. This is also an approximation and may need to be
+	// increased as the number of peers in the network grows.
+	defaultGlobalPubSubMessageBurst = defaultGlobalPubSubMessageLimit * 5
 	// defaultPerPeerPubSubMessageLimit is the default value for
 	// PerPeerPubSubMessageLimit.
 	defaultPerPeerPubSubMessageLimit = maxShareBatch
@@ -121,7 +124,13 @@ type Config struct {
 	// DataDir is the directory to use for storing data.
 	DataDir string
 	// GlobalPubSubMessageLimit is the maximum number of messages per second that
-	// will be forwarded through GossipSub on behalf of other peers.
+	// will be forwarded through GossipSub on behalf of other peers. It is an
+	// important mechanism for limiting our own upload bandwidth. Without a global
+	// limit, we could use an unbounded amount of upload bandwidth on propagating
+	// GossipSub messages sent by other peers. The global limit is required
+	// because we can receive GossipSub messages from peers that we are not
+	// connected to (so the per peer limit combined with a maximum number of peers
+	// is not, by itself, sufficient).
 	GlobalPubSubMessageLimit rate.Limit
 	// GlobalPubSubMessageBurst is the maximum number of messages that will be
 	// forwarded through GossipSub at once.
