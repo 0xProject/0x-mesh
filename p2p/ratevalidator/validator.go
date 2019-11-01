@@ -2,7 +2,6 @@ package ratevalidator
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/karlseguin/ccache"
@@ -29,7 +28,6 @@ var _ pubsub.Validator = (&Validator{}).Validate
 // sent at a certain rate.
 type Validator struct {
 	ctx           context.Context
-	mut           sync.RWMutex
 	config        Config
 	globalLimiter *rate.Limiter
 	peerLimiters  *ccache.Cache
@@ -50,6 +48,8 @@ type Config struct {
 }
 
 // New creates and returns a new rate limiting validator.
+// BUG(albrow): New currently leaks goroutines due to a limitation of the
+// caching library used under the hood.
 func New(ctx context.Context, config Config) *Validator {
 	validator := &Validator{
 		ctx:           ctx,
@@ -57,18 +57,18 @@ func New(ctx context.Context, config Config) *Validator {
 		globalLimiter: rate.NewLimiter(config.GlobalLimit, config.GlobalBurst),
 		peerLimiters:  ccache.New(ccache.Configure().MaxSize(peerLimiterSize)),
 	}
-	go func() {
-		// Stop and clear the cache when the context is canceled.
-		select {
-		case <-ctx.Done():
-			// Hack(albrow): ccache.Cache.Stop() is not threadsafe so we need to
-			// protect calls to stop by a mutex.
-			validator.mut.Lock()
-			defer validator.mut.Unlock()
-			validator.peerLimiters.Clear()
-			validator.peerLimiters.Stop()
-		}
-	}()
+	// TODO(albrow): We should be calling Stop to cleanup any goroutines
+	// started by ccache, but doing so now results in a race condition. Figure
+	// out a workaround or use a different library, possibly one we write
+	// ourselves.
+	// go func() {
+	// 	// Stop and clear the cache when the context is canceled.
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		// validator.peerLimiters.Clear()
+	// 		// validator.peerLimiters.Stop()
+	// 	}
+	// }()
 	return validator
 }
 
@@ -76,10 +76,6 @@ func New(ctx context.Context, config Config) *Validator {
 // received. If either the global or per-peer limits are exceeded, the message
 // is considered "invalid" and will be dropped.
 func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Message) bool {
-	// Hack(albrow): ccache.Cache.Stop() is not threadsafe so we need to
-	// protect Get/Set/Fetch with a mutex.
-	v.mut.RLock()
-	defer v.mut.RUnlock()
 	if v.isClosed() {
 		return false
 	}
