@@ -24,7 +24,7 @@ var (
 	minExpectedDelay                      = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
 	defaultCheckpointInterval             = 1 * time.Minute
 	expectedMaxElapsedTimeForFirstRequest = 1 * time.Millisecond
-	expectedDeltaMinExpectedDelay         = 10 * time.Millisecond
+	expectedDeltaMinExpectedDelay         = 15 * time.Millisecond
 	expectedDeltaMaxExpectedDelay         = 15 * time.Millisecond
 )
 
