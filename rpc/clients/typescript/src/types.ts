@@ -423,4 +423,5 @@ export interface GetStatsResponse {
     maxExpirationTime: string;
     startOfCurrentUTCDay: string;
     ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
 }

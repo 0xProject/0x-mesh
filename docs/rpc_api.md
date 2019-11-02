@@ -207,6 +207,7 @@ Gets certain configurations and stats about a Mesh node.
         "numOrdersIncludingRemoved": 1134,
         "startOfCurrentUTCDay": "1257811200",
         "ethRPCRequestsSentInCurrentUTCDay": 5039,
+        "ethRPCRateLimitExpiredRequests": 0,
         "maxExpirationTime": "717784680"
     },
     "id": 1

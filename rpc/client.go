@@ -104,6 +104,7 @@ type GetStatsResponse struct {
 	MaxExpirationTime                 string      `json:"maxExpirationTime"`
 	StartOfCurrentUTCDay              time.Time   `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int         `json:"ethRPCRequestsSentInCurrentUTCDay"`
+	EthRPCRateLimitExpiredRequests    int64       `json:"ethRPCRateLimitExpiredRequests"`
 }
 
 // GetStats retrieves stats about the Mesh node

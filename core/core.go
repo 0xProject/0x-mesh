@@ -155,6 +155,7 @@ type App struct {
 	idToSnapshotInfo          map[string]snapshotInfo
 	messageHandler            *MessageHandler
 	ethRPCRateLimiter         ratelimit.RateLimiter
+	ethRPCClient              ethrpcclient.Client
 }
 
 func New(config Config) (*App, error) {
@@ -285,6 +286,7 @@ func New(config Config) (*App, error) {
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		messageHandler:            messageHandler,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
+		ethRPCClient:              ethClient,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -790,6 +792,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
 	}
 	return response, nil
 }
@@ -822,6 +825,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"maxExpirationTime":                 stats.MaxExpirationTime,
 			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,
 			"ethRPCRequestsSentInCurrentUTCDay": stats.EthRPCRequestsSentInCurrentUTCDay,
+			"ethRPCRateLimitExpiredRequests":    stats.EthRPCRateLimitExpiredRequests,
 		}).Info("current stats")
 	}
 }

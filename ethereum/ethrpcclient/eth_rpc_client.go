@@ -3,6 +3,7 @@ package ethrpcclient
 import (
 	"context"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
@@ -21,6 +22,7 @@ type Client interface {
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	GetRateLimitDroppedRequests() int64
 }
 
 // client is a Client through which _all_ Ethereum JSON-RPC requests should be routed through. It
@@ -30,6 +32,9 @@ type client struct {
 	client         *ethclient.Client
 	requestTimeout time.Duration
 	rateLimiter    ratelimit.RateLimiter
+	// rateLimitDroppedRequests counts the number of requests that had their context cancelled or expire
+	// and were therefore never granted
+	rateLimitDroppedRequests int64
 }
 
 // New returns a new instance of client
@@ -58,6 +63,7 @@ func New(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.Rate
 func (ec *client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
 		// Context cancelled or deadline exceeded
 		return err
 	}
@@ -72,6 +78,7 @@ func (ec *client) CallContext(ctx context.Context, result interface{}, method st
 func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
 		// Context cancelled or deadline exceeded
 		return nil, err
 	}
@@ -90,6 +97,7 @@ func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.He
 func (ec *client) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
 		// Context cancelled or deadline exceeded
 		return []byte{}, err
 	}
@@ -103,6 +111,7 @@ func (ec *client) CodeAt(ctx context.Context, contract common.Address, blockNumb
 func (ec *client) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
 		// Context cancelled or deadline exceeded
 		return []byte{}, err
 	}
@@ -116,6 +125,7 @@ func (ec *client) CallContract(ctx context.Context, call ethereum.CallMsg, block
 func (ec *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
 		// Context cancelled or deadline exceeded
 		return nil, err
 	}
@@ -127,4 +137,8 @@ func (ec *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]typ
 		return nil, err
 	}
 	return logs, nil
+}
+
+func (ec *client) GetRateLimitDroppedRequests() int64 {
+	return ec.rateLimitDroppedRequests
 }
