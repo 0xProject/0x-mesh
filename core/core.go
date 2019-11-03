@@ -17,6 +17,8 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -27,8 +29,8 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
+	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
@@ -41,12 +43,12 @@ import (
 )
 
 const (
-	blockWatcherRetentionLimit = 20
-	ethereumRPCRequestTimeout  = 30 * time.Second
-	ethWatcherPollingInterval  = 1 * time.Minute
-	peerConnectTimeout         = 60 * time.Second
-	checkNewAddrInterval       = 20 * time.Second
-	expirationPollingInterval  = 50 * time.Millisecond
+	blockWatcherRetentionLimit    = 20
+	ethereumRPCRequestTimeout     = 30 * time.Second
+	peerConnectTimeout            = 60 * time.Second
+	checkNewAddrInterval          = 20 * time.Second
+	expirationPollingInterval     = 50 * time.Millisecond
+	rateLimiterCheckpointInterval = 1 * time.Minute
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
 	version          = "development"
@@ -98,6 +100,15 @@ type Config struct {
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
+	// per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
+	// Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
+	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
+	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
+	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
+	// and potentially higher on alternative infrastructure.
+	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
 	// custom addresses to use for the configured chain ID. The contract
 	// addresses for most common chains/networks are already included by default, so this
@@ -133,10 +144,9 @@ type App struct {
 	privKey                   p2pcrypto.PrivKey
 	db                        *meshdb.MeshDB
 	node                      *p2p.Node
-	chainID                 int
+	chainID                   int
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
-	ethWatcher                *ethereum.ETHWatcher
 	orderValidator            *ordervalidator.OrderValidator
 	orderJSONSchema           *gojsonschema.Schema
 	meshMessageJSONSchema     *gojsonschema.Schema
@@ -144,6 +154,8 @@ type App struct {
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
 	messageHandler            *MessageHandler
+	ethRPCRateLimiter         ratelimit.RateLimiter
+	ethRPCClient              ethrpcclient.Client
 }
 
 func New(config Config) (*App, error) {
@@ -190,14 +202,21 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize ETH JSON-RPC RateLimiter
+	clock := clock.New()
+	ethRPCRateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+	if err != nil {
+		return nil, err
+	}
+
 	// Initialize the ETH client, which will be used by various watchers.
-	ethClient, err := ethclient.Dial(config.EthereumRPCURL)
+	ethClient, err := ethrpcclient.New(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(config.EthereumRPCURL, ethereumRPCRequestTimeout)
+	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +233,12 @@ func New(config Config) (*App, error) {
 	blockWatcher := blockwatch.New(blockWatcherConfig)
 
 	// Initialize the order validator
-	orderValidator, err := ordervalidator.New(ethClient, config.EthereumChainID, config.EthereumRPCMaxContentLength, config.OrderExpirationBuffer)
+	orderValidator, err := ordervalidator.New(
+		ethClient,
+		config.EthereumChainID,
+		config.EthereumRPCMaxContentLength,
+		config.OrderExpirationBuffer,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +248,7 @@ func New(config Config) (*App, error) {
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		ChainID:         config.EthereumChainID,
+		ChainID:           config.EthereumChainID,
 		ExpirationBuffer:  config.OrderExpirationBuffer,
 		MaxOrders:         config.MaxOrdersInStorage,
 		MaxExpirationTime: metadata.MaxExpirationTime,
@@ -232,13 +256,6 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Initialize the ETH balance watcher (but don't start it yet).
-	ethWatcher, err := ethereum.NewETHWatcher(ethWatcherPollingInterval, ethClient, config.EthereumChainID)
-	if err != nil {
-		return nil, err
-	}
-	// TODO(albrow): Call Add for all existing makers/signers in the database.
 
 	snapshotExpirationWatcher := expirationwatch.New(0 * time.Second)
 
@@ -259,16 +276,17 @@ func New(config Config) (*App, error) {
 		privKey:                   privKey,
 		peerID:                    peerID,
 		db:                        meshDB,
-		chainID:                 config.EthereumChainID,
+		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
-		ethWatcher:                ethWatcher,
 		orderValidator:            orderValidator,
 		orderJSONSchema:           orderJSONSchema,
 		meshMessageJSONSchema:     meshMessageJSONSchema,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		messageHandler:            messageHandler,
+		ethRPCRateLimiter:         ethRPCRateLimiter,
+		ethRPCClient:              ethClient,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -318,7 +336,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 		if _, ok := err.(db.NotFoundError); ok {
 			// No stored metadata found (first startup)
 			metadata = &meshdb.Metadata{
-				EthereumChainID: chainID,
+				EthereumChainID:   chainID,
 				MaxExpirationTime: constants.UnlimitedExpirationTime,
 			}
 			if err := meshDB.SaveMetadata(metadata); err != nil {
@@ -357,6 +375,14 @@ func (app *App) Start(ctx context.Context) error {
 		app.db.Close()
 	}()
 
+	// Start rateLimiter
+	ethRPCRateLimiterErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
+	}()
+
 	// Set up and start the snapshot expiration watcher.
 	wg.Add(1)
 	go func() {
@@ -383,17 +409,6 @@ func (app *App) Start(ctx context.Context) error {
 		defer wg.Done()
 		log.Info("starting order watcher")
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
-	}()
-
-	// Start the ETH balance watcher.
-	// TODO(fabio): Subscribe to the ETH balance updates and update them in the DB
-	// for future use by the order storing algorithm.
-	ethWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.Info("starting ETH balance watcher")
-		ethWatcherErrChan <- app.ethWatcher.Watch(innerCtx)
 	}()
 
 	// Backfill block events if needed. This is a blocking call so we won't
@@ -482,14 +497,14 @@ func (app *App) Start(ctx context.Context) error {
 			cancel()
 			return err
 		}
-	case err := <-ethWatcherErrChan:
-		log.WithError(err).Error("eth watcher exited with error")
+	case err := <-snapshotExpirationWatcherErrChan:
+		log.WithError(err).Error("snapshot expiration watcher exited with error")
 		if err != nil {
 			cancel()
 			return err
 		}
-	case err := <-snapshotExpirationWatcherErrChan:
-		log.WithError(err).Error("snapshot expiration watcher exited with error")
+	case err := <-ethRPCRateLimiterErrChan:
+		log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
 		if err != nil {
 			cancel()
 			return err
@@ -758,19 +773,26 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	metadata, err := app.db.GetMetadata()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &rpc.GetStatsResponse{
-		Version:                   version,
-		PubSubTopic:               getPubSubTopic(app.config.EthereumChainID),
-		Rendezvous:                getRendezvous(app.config.EthereumChainID),
-		PeerID:                    app.peerID.String(),
-		EthereumChainID:         app.config.EthereumChainID,
-		LatestBlock:               latestBlock,
-		NumOrders:                 numOrders,
-		NumPeers:                  app.node.GetNumPeers(),
-		NumOrdersIncludingRemoved: numOrdersIncludingRemoved,
-		NumPinnedOrders:           numPinnedOrders,
-		MaxExpirationTime:         app.orderWatcher.MaxExpirationTime().String(),
+		Version:                           version,
+		PubSubTopic:                       getPubSubTopic(app.config.EthereumChainID),
+		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
+		PeerID:                            app.peerID.String(),
+		EthereumChainID:                   app.config.EthereumChainID,
+		LatestBlock:                       latestBlock,
+		NumOrders:                         numOrders,
+		NumPeers:                          app.node.GetNumPeers(),
+		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+		NumPinnedOrders:                   numPinnedOrders,
+		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
 	}
 	return response, nil
 }
@@ -791,16 +813,19 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			continue
 		}
 		log.WithFields(log.Fields{
-			"version":                   stats.Version,
-			"pubSubTopic":               stats.PubSubTopic,
-			"rendezvous":                stats.Rendezvous,
-			"ethereumChainID":         stats.EthereumChainID,
-			"latestBlock":               stats.LatestBlock,
-			"numOrders":                 stats.NumOrders,
-			"numOrdersIncludingRemoved": stats.NumOrdersIncludingRemoved,
-			"numPinnedOrders":           stats.NumPinnedOrders,
-			"numPeers":                  stats.NumPeers,
-			"maxExpirationTime":         stats.MaxExpirationTime,
+			"version":                           stats.Version,
+			"pubSubTopic":                       stats.PubSubTopic,
+			"rendezvous":                        stats.Rendezvous,
+			"ethereumChainID":                   stats.EthereumChainID,
+			"latestBlock":                       stats.LatestBlock,
+			"numOrders":                         stats.NumOrders,
+			"numOrdersIncludingRemoved":         stats.NumOrdersIncludingRemoved,
+			"numPinnedOrders":                   stats.NumPinnedOrders,
+			"numPeers":                          stats.NumPeers,
+			"maxExpirationTime":                 stats.MaxExpirationTime,
+			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,
+			"ethRPCRequestsSentInCurrentUTCDay": stats.EthRPCRequestsSentInCurrentUTCDay,
+			"ethRPCRateLimitExpiredRequests":    stats.EthRPCRateLimitExpiredRequests,
 		}).Info("current stats")
 	}
 }

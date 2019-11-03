@@ -30,6 +30,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:0ad5484a25fbd88409bae8b8b19134135fe73d3cb00e45d3255280b2ab975fcc"
+  name = "github.com/benbjohnson/clock"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19"
+
+[[projects]]
+  branch = "master"
   digest = "1:9e7c5138114ff9c51a60731b3a425c319305013c6ea8b3f60fd2435baba1a0db"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
@@ -1314,6 +1322,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a2f668c709f9078828e99cb1768cb02e876cb81030545046a32b54b2ac2a9ea8"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "UT"
+  revision = "555d28b269f0569763d25dbe1a237ae74c6bcc82"
+
+[[projects]]
+  branch = "master"
   digest = "1:7b5ce208ea2ca1f96322e6a5b616839fe49ea798648a013039f300475a1aadfc"
   name = "golang.org/x/xerrors"
   packages = [
@@ -1336,6 +1352,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/albrow/stringset",
+    "github.com/benbjohnson/clock",
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
     "github.com/ethereum/go-ethereum",
@@ -1393,6 +1410,7 @@
     "github.com/syndtr/goleveldb/leveldb/util",
     "github.com/xeipuuv/gojsonschema",
     "golang.org/x/crypto/sha3",
+    "golang.org/x/time/rate",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

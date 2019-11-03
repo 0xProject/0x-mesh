@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"time"
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -90,17 +91,20 @@ type LatestBlock struct {
 
 // GetStatsResponse is the response returned for an RPC request to mesh_getStats
 type GetStatsResponse struct {
-	Version                   string      `json:"version"`
-	PubSubTopic               string      `json:"pubSubTopic"`
-	Rendezvous                string      `json:"rendervous"`
-	PeerID                    string      `json:"peerID"`
-	EthereumChainID         int         `json:"ethereumChainID"`
-	LatestBlock               LatestBlock `json:"latestBlock"`
-	NumPeers                  int         `json:"numPeers"`
-	NumOrders                 int         `json:"numOrders"`
-	NumOrdersIncludingRemoved int         `json:"numOrdersIncludingRemoved"`
-	NumPinnedOrders           int         `json:"numPinnedOrders"`
-	MaxExpirationTime         string      `json:"maxExpirationTime"`
+	Version                           string      `json:"version"`
+	PubSubTopic                       string      `json:"pubSubTopic"`
+	Rendezvous                        string      `json:"rendervous"`
+	PeerID                            string      `json:"peerID"`
+	EthereumChainID                   int         `json:"ethereumChainID"`
+	LatestBlock                       LatestBlock `json:"latestBlock"`
+	NumPeers                          int         `json:"numPeers"`
+	NumOrders                         int         `json:"numOrders"`
+	NumOrdersIncludingRemoved         int         `json:"numOrdersIncludingRemoved"`
+	NumPinnedOrders                   int         `json:"numPinnedOrders"`
+	MaxExpirationTime                 string      `json:"maxExpirationTime"`
+	StartOfCurrentUTCDay              time.Time   `json:"startOfCurrentUTCDay"`
+	EthRPCRequestsSentInCurrentUTCDay int         `json:"ethRPCRequestsSentInCurrentUTCDay"`
+	EthRPCRateLimitExpiredRequests    int64       `json:"ethRPCRateLimitExpiredRequests"`
 }
 
 // GetStats retrieves stats about the Mesh node

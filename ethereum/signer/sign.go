@@ -1,4 +1,4 @@
-package ethereum
+package signer
 
 import (
 	"crypto/ecdsa"
