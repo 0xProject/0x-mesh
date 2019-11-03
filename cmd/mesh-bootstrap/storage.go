@@ -10,13 +10,12 @@ import (
 
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/p2p"
+	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-
-	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	sqlds "github.com/opaolini/go-ds-sql"
 	log "github.com/sirupsen/logrus"
