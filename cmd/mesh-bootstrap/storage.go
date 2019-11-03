@@ -63,7 +63,7 @@ func getNewDHT(ctx context.Context, config Config, kadDHT *dht.IpfsDHT) func(h h
 				log.WithField("error", err).Fatal("could not create postgres datastore")
 			}
 
-			kadDHT, err = p2p.NewDHTWithDatastore(ctx, store, h)
+			kadDHT, err = NewDHTWithDatastore(ctx, store, h)
 			if err != nil {
 				log.WithField("error", err).Fatal("could not create DHT")
 			}

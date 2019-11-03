@@ -13,6 +13,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/ipfs/go-datastore"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -22,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	ma "github.com/multiformats/go-multiaddr"
 	sqlds "github.com/opaolini/go-ds-sql"
@@ -155,7 +157,7 @@ func main() {
 				log.WithField("error", err).Fatal("could not create postgres datastore")
 			}
 
-			kadDHT, err = p2p.NewDHTWithDatastore(ctx, store, h)
+			kadDHT, err = NewDHTWithDatastore(ctx, store, h)
 			if err != nil {
 				log.WithField("error", err).Fatal("could not create DHT")
 			}
@@ -289,4 +291,10 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
+}
+
+// NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
+// as the persistant storage interface.
+func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
+	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 }
