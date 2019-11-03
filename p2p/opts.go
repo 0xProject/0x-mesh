@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -113,11 +112,5 @@ func NewDHT(ctx context.Context, storageDir string, host host.Host) (*dht.IpfsDH
 	if err != nil {
 		return nil, err
 	}
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(dhtProtocolID))
-}
-
-// NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
-// as the persistant storage interface.
-func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(dhtProtocolID))
+	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(DHTProtocolID))
 }
