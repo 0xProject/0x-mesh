@@ -49,6 +49,10 @@
 [[prune.project]]
   name = "github.com/karalabe/hid"
   unused-packages = false
+
+[[prune.project]]
+  name = "github.com/karalabe/usb"
+  unused-packages = false
   non-go = true
 
 [[constraint]]

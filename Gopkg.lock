@@ -444,10 +444,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:82222440009561384b936034bd1893f2fb2ce51f1288236c449d59a9e6c5dbcd"
+  digest = "1:07344d622b6b60cd844956753e51e6029ce340ac763709b433a2b717fef7d817"
   name = "github.com/karalabe/usb"
   packages = ["."]
-  pruneopts = "UT"
+  pruneopts = "NT"
   revision = "911d15fe12a9c411cf5d0dd5635231c759399bed"
 
 [[projects]]
