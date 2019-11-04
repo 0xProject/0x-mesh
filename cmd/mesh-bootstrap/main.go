@@ -188,7 +188,6 @@ func main() {
 
 			return kadDHT, err
 		}
-
 	default:
 		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, postgresDataStore)
 
