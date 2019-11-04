@@ -187,6 +187,8 @@ func (t *TestSigner) SignTx(message []byte, signerAddress common.Address) ([]byt
 func textAndHash(data []byte) ([]byte, string) {
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
 	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write([]byte(msg))
+	// Note: Write will never return an error here. We added placeholders in order
+	// to satisfy the linter.
+	_, _ = hasher.Write([]byte(msg))
 	return hasher.Sum(nil), msg
 }
