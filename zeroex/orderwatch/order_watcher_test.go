@@ -770,14 +770,13 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, 0)
+	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		ChainID:         constants.TestChainID,
-		ExpirationBuffer:  0,
+		ChainID:           constants.TestChainID,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 		MaxOrders:         1000,
 	})

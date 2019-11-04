@@ -78,7 +78,6 @@ type Watcher struct {
 	assetDataDecoder           *zeroex.AssetDataDecoder
 	blockSubscription          event.Subscription
 	contractAddresses          ethereum.ContractAddresses
-	expirationBuffer           time.Duration
 	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -96,7 +95,6 @@ type Config struct {
 	BlockWatcher      *blockwatch.Watcher
 	OrderValidator    *ordervalidator.OrderValidator
 	ChainID           int
-	ExpirationBuffer  time.Duration
 	MaxOrders         int
 	MaxExpirationTime *big.Int
 }
@@ -139,8 +137,7 @@ func New(config Config) (*Watcher, error) {
 	w := &Watcher{
 		meshDB:                     config.MeshDB,
 		blockWatcher:               config.BlockWatcher,
-		expirationBuffer:           config.ExpirationBuffer,
-		expirationWatcher:          expirationwatch.New(config.ExpirationBuffer),
+		expirationWatcher:          expirationwatch.New(),
 		contractAddressToSeenCount: map[common.Address]uint{},
 		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
@@ -951,7 +948,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		expirationTime := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
-		isExpired := ordervalidator.IsExpired(expirationTime, w.expirationBuffer)
+		isExpired := time.Now().After(expirationTime)
 		if !isExpired && oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org

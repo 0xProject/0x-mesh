@@ -231,11 +231,10 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
-	expirationBuffer             time.Duration
 }
 
 // New instantiates a new order validator
-func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
@@ -634,7 +633,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 		expirationTime := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
-		if IsExpired(expirationTime, o.expirationBuffer) {
+		if time.Now().After(expirationTime) {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
@@ -847,9 +846,4 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	}
 
 	return true
-}
-
-func IsExpired(expirationTime time.Time, expirationBuffer time.Duration) bool {
-	currentTimePlusBuffer := time.Now().Add(expirationBuffer)
-	return currentTimePlusBuffer.After(expirationTime)
 }

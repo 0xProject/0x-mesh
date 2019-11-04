@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/albrow/stringset"
 	"github.com/ocdogan/rbt"
 	log "github.com/sirupsen/logrus"
@@ -20,26 +19,20 @@ type ExpiredItem struct {
 
 // Watcher watches the expiration of items
 type Watcher struct {
-	expiredItems     chan []ExpiredItem
-	rbTreeMu         sync.RWMutex
-	rbTree           *rbt.RbTree
-	expirationBuffer time.Duration
-	ticker           *time.Ticker
-	wasStartedOnce   bool
-	mu               sync.Mutex
+	expiredItems   chan []ExpiredItem
+	rbTreeMu       sync.RWMutex
+	rbTree         *rbt.RbTree
+	ticker         *time.Ticker
+	wasStartedOnce bool
+	mu             sync.Mutex
 }
 
-// New instantiates a new expiration watcher. An expiration buffer (positive or
-// negative) can be specified, causing items to be deemed expired some time
-// before or after their expiration reaches current UTC time. A positive
-// expirationBuffer will make the item expire sooner then UTC, and a negative
-// buffer after.
-func New(expirationBuffer time.Duration) *Watcher {
+// New instantiates a new expiration watcher
+func New() *Watcher {
 	rbTree := rbt.NewRbTree()
 	return &Watcher{
-		expiredItems:     make(chan []ExpiredItem, 10),
-		rbTree:           rbTree,
-		expirationBuffer: expirationBuffer,
+		expiredItems: make(chan []ExpiredItem, 10),
+		rbTree:       rbTree,
 	}
 }
 
@@ -137,7 +130,7 @@ func (w *Watcher) prune() []ExpiredItem {
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
 		expirationTime := time.Unix(expirationTimeSeconds, 0)
-		if !ordervalidator.IsExpired(expirationTime, w.expirationBuffer) {
+		if !time.Now().After(expirationTime) {
 			break
 		}
 		ids := value.(stringset.Set)

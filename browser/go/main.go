@@ -114,9 +114,6 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
 		config.BootstrapList = bootstrapList.String()
 	}
-	if orderExpirationBufferSeconds := jsConfig.Get("orderExpirationBufferSeconds"); !isNullOrUndefined(orderExpirationBufferSeconds) {
-		config.OrderExpirationBuffer = time.Duration(orderExpirationBufferSeconds.Int()) * time.Second
-	}
 	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !isNullOrUndefined(blockPollingIntervalSeconds) {
 		config.BlockPollingInterval = time.Duration(blockPollingIntervalSeconds.Int()) * time.Second
 	}

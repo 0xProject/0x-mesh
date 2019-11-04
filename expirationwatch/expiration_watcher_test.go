@@ -12,7 +12,7 @@ import (
 )
 
 func TestPrunesExpiredItems(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	current := time.Now().Truncate(time.Second)
 	expiryEntryOne := ExpiredItem{
@@ -34,7 +34,7 @@ func TestPrunesExpiredItems(t *testing.T) {
 }
 
 func TestPrunesTwoExpiredItemsWithSameExpiration(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	current := time.Now().Truncate(time.Second)
 	expiration := current.Add(-3 * time.Second)
@@ -62,7 +62,7 @@ func TestPrunesTwoExpiredItemsWithSameExpiration(t *testing.T) {
 }
 
 func TestKeepsUnexpiredItem(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	id := "0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e"
 	current := time.Now().Truncate(time.Second)
@@ -73,14 +73,14 @@ func TestKeepsUnexpiredItem(t *testing.T) {
 }
 
 func TestReturnsEmptyIfNoItems(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	pruned := watcher.prune()
 	assert.Len(t, pruned, 0, "Returns empty array when no items tracked")
 }
 
 func TestRemoveOnlyItemWithSpecificExpirationTime(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	current := time.Now().Truncate(time.Second)
 	expiryEntryOne := ExpiredItem{
@@ -102,7 +102,7 @@ func TestRemoveOnlyItemWithSpecificExpirationTime(t *testing.T) {
 	assert.Equal(t, expiryEntryOne, pruned[0])
 }
 func TestRemoveItemWhichSharesExpirationTimeWithOtherItems(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	current := time.Now().Truncate(time.Second)
 	singleExpirationTimestamp := current.Add(-3 * time.Second)
@@ -126,7 +126,7 @@ func TestRemoveItemWhichSharesExpirationTimeWithOtherItems(t *testing.T) {
 }
 
 func TestStartAndStopPoller(t *testing.T) {
-	watcher := New(0)
+	watcher := New()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
