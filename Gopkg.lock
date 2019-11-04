@@ -154,8 +154,8 @@
   version = "v0.10.5"
 
 [[projects]]
-  branch = "wasm_signer_core"
-  digest = "1:ffa9709a1cf37df376727a40795af767c60b827f4dd74f2733ab6c03a849079e"
+  branch = "wasm_signer_core_2"
+  digest = "1:71638774e80326e69c64e46041111fa22d0e2c2305ea28903945c4315163429a"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -214,7 +214,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "687b181b1a9a6bfa602a1f9c08197574c134d8f3"
+  revision = "8a7349baa413333dad8525256c92c75a7dbe530b"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
