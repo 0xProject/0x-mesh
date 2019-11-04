@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sort"
-	"sync"
 	"testing"
 	"time"
 
@@ -30,7 +29,7 @@ const (
 	testTopic             = "0x-mesh-testing"
 	testRendezvousString  = "0x-mesh-testing-rendezvous"
 	testConnectionTimeout = 1 * time.Second
-	testStreamTimeout     = 15 * time.Second
+	testStreamTimeout     = 10 * time.Second
 )
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
@@ -561,26 +560,6 @@ func TestRateValidatorGlobal(t *testing.T) {
 	connectTestNodes(t, node0, node1)
 	connectTestNodes(t, node1, node2)
 
-	// Start the rate limiting validator for each node in a goroutine. Use a wait
-	// group to wait for all goroutines to finish.
-	wg := &sync.WaitGroup{}
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
-		err := node0.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-	go func() {
-		defer wg.Done()
-		err := node1.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-	go func() {
-		defer wg.Done()
-		err := node2.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-
 	// Wait for a total of 2 x 3 = 6 GossipSub streams to open (2 streams per
 	// connection; 3 connections).
 	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
@@ -610,10 +589,6 @@ func TestRateValidatorGlobal(t *testing.T) {
 	assert.Equal(t, expectedMessageCount, node1MessageCount, "node1 received and stored the wrong number of messages")
 	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
 	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
-
-	// Cancel context and wait for goroutines to finish.
-	cancel()
-	wg.Wait()
 }
 
 func TestRateValidatorPerPeer(t *testing.T) {
@@ -668,34 +643,9 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	connectTestNodes(t, node0, node2)
 	connectTestNodes(t, node1, node2)
 
-	fmt.Println("nodes connected")
-
-	// Start the rate limiting validator for each node in a goroutine. Use a wait
-	// group to wait for all goroutines to finish.
-	wg := &sync.WaitGroup{}
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
-		err := node0.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-	go func() {
-		defer wg.Done()
-		err := node1.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-	go func() {
-		defer wg.Done()
-		err := node2.registerAndStartRateValidator(ctx)
-		require.NoError(t, err)
-	}()
-	fmt.Println("all validators have started")
-
 	// Wait for a total of 2 x 3 = 6 GossipSub streams to open (2 streams per
 	// connection; 3 connections).
 	waitForGossipSubStreams(t, ctx, notifee, 6, testStreamTimeout)
-
-	fmt.Println("done waiting for gossip sub streams")
 
 	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
@@ -703,8 +653,6 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	require.NoError(t, node0.receiveAndHandleMessages())
 	require.NoError(t, node1.receiveAndHandleMessages())
 	require.NoError(t, node2.receiveAndHandleMessages())
-
-	fmt.Println("each node ran once")
 
 	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node1.
 	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
@@ -717,8 +665,6 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		require.NoError(t, node1.Send(msg))
 	}
 
-	fmt.Println("first round of messages were sent")
-
 	// HACK(albrow): Wait for GossipSub messages to fully propagate.
 	time.Sleep(1 * time.Second)
 
@@ -726,20 +672,11 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	require.NoError(t, node1.receiveAndHandleMessages())
 	require.NoError(t, node2.receiveAndHandleMessages())
 
-	fmt.Println("each node ran twice")
-
 	// node2 should only have config.PerPeerPubSubMessageBurst*2 messages.
 	// The others are expected to have been dropped.
 	expectedMessageCount := node0.config.PerPeerPubSubMessageBurst * 2
 	node2MessageCount := node2.messageHandler.(*inMemoryMessageHandler).count()
 	assert.Equal(t, expectedMessageCount, node2MessageCount, "node2 received and stored the wrong number of messages")
-
-	fmt.Println("done checking for received messages")
-
-	// Cancel context and wait for goroutines to finish.
-	cancel()
-	fmt.Println("canceling context. waiting for goroutines to exit...")
-	wg.Wait()
 }
 
 func waitForGossipSubStreams(t *testing.T, ctx context.Context, notifee *testNotifee, count int, timeout time.Duration) {
@@ -750,7 +687,6 @@ loop:
 	for {
 		select {
 		case <-streamCtx.Done():
-			fmt.Println("Failed here timeout")
 			t.Fatal("timed out waiting for pubsub stream to open")
 		case stream := <-notifee.streams:
 			if stream.Protocol() == pubsubProtocolID {

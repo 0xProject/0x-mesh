@@ -52,11 +52,11 @@ test-go: test-go-parallel test-go-serial
 
 .PHONY: test-go-parallel
 test-go-parallel:
-	go test ./... -race -timeout 45s -v
+	go test ./... -race -timeout 30s
 
 .PHONY: test-go-serial
 test-go-serial:
-	go test ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial -v
+	go test ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
 
 
 .PHONY: test-integration

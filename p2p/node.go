@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	mathrand "math/rand"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p/banner"
@@ -83,7 +82,6 @@ const (
 // messages.
 type Node struct {
 	ctx              context.Context
-	cancel           context.CancelFunc
 	config           Config
 	messageHandler   MessageHandler
 	host             host.Host
@@ -176,10 +174,6 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
 	}
 
-	// Create a child context so that we can preemptively cancel if there is an
-	// error.
-	ctx, cancel := context.WithCancel(ctx)
-
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
@@ -196,7 +190,6 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	// Get environment specific host options.
 	opts, err := getHostOptions(ctx, config)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 
@@ -222,7 +215,6 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	// Initialize the host.
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 
@@ -245,7 +237,19 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	pubsubOpts := getPubSubOptions()
 	ps, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
-		cancel()
+		return nil, err
+	}
+	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
+		MyPeerID:     basicHost.ID(),
+		GlobalLimit:  config.GlobalPubSubMessageLimit,
+		GlobalBurst:  config.GlobalPubSubMessageBurst,
+		PerPeerLimit: config.PerPeerPubSubMessageLimit,
+		PerPeerBurst: config.PerPeerPubSubMessageBurst,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}
 
@@ -261,7 +265,6 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	// Create the Node.
 	node := &Node{
 		ctx:              ctx,
-		cancel:           cancel,
 		config:           config,
 		messageHandler:   config.MessageHandler,
 		host:             basicHost,
@@ -318,7 +321,6 @@ func (n *Node) Start() error {
 	// connect to the bootstrap peers. It just starts the background process of
 	// searching for new peers.
 	if err := n.dht.Bootstrap(n.ctx); err != nil {
-		n.cancel()
 		return err
 	}
 
@@ -330,13 +332,11 @@ func (n *Node) Start() error {
 	// If needed, connect to all peers in the bootstrap list.
 	if n.config.UseBootstrapList {
 		if err := ConnectToBootstrapList(n.ctx, n.host, n.config.BootstrapList); err != nil {
-			n.cancel()
 			return err
 		}
 		// Protect the IP addresses for each bootstrap node.
 		bootstrapAddrInfos, err := BootstrapListToAddrInfos(n.config.BootstrapList)
 		if err != nil {
-			n.cancel()
 			return err
 		}
 		for _, addrInfo := range bootstrapAddrInfos {
@@ -349,63 +349,7 @@ func (n *Node) Start() error {
 	// Advertise ourselves for the purposes of peer discovery.
 	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
 
-	// Below, we will start several independent goroutines. We use separate
-	// channels to communicate errors and a waitgroup to wait for all goroutines
-	// to exit.
-	wg := &sync.WaitGroup{}
-	validatorErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		validatorErrChan <- n.registerAndStartRateValidator(n.ctx)
-	}()
-	mainLoopErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mainLoopErrChan <- n.mainLoop()
-	}()
-
-	// If any error channel returns a non-nil error, we cancel the inner context
-	// and return the error. Note that this means we only return the first error
-	// that occurs.
-	select {
-	case err := <-mainLoopErrChan:
-		if err != nil {
-			log.WithError(err).Error("p2p main loop exited with error")
-			n.cancel()
-			return err
-		}
-	case err := <-validatorErrChan:
-		if err != nil {
-			log.WithError(err).Error("PubSub validator loop exited with error")
-			n.cancel()
-			return err
-		}
-	}
-
-	// Wait for all goroutines to exit. If we reached here it means we are done
-	// and there are no errors.
-	wg.Wait()
-	return nil
-}
-
-func (n *Node) registerAndStartRateValidator(ctx context.Context) error {
-	rateValidator, err := ratevalidator.New(ratevalidator.Config{
-		MyPeerID:     n.host.ID(),
-		GlobalLimit:  n.config.GlobalPubSubMessageLimit,
-		GlobalBurst:  n.config.GlobalPubSubMessageBurst,
-		PerPeerLimit: n.config.PerPeerPubSubMessageLimit,
-		PerPeerBurst: n.config.PerPeerPubSubMessageBurst,
-	})
-	if err != nil {
-		return err
-	}
-	if err := n.pubsub.RegisterTopicValidator(n.config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
-		return err
-	}
-
-	return rateValidator.Start(ctx)
+	return n.mainLoop()
 }
 
 // AddPeerScore adds diff to the current score for a given peer. Tag is a unique
