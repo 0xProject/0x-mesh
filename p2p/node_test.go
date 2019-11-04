@@ -654,7 +654,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	require.NoError(t, node1.receiveAndHandleMessages())
 	require.NoError(t, node2.receiveAndHandleMessages())
 
-	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node1.
+	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
 	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
 		msg := []byte(fmt.Sprintf("node0_message_%d", i))
 		require.NoError(t, node0.Send(msg))
