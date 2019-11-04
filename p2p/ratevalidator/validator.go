@@ -13,13 +13,16 @@ import (
 )
 
 const (
-	// peerLimiterSize is the maximum number of peers to keep track of at once. It
-	// controls the size of a cache that holds a rate limiter for each peer.
-	peerLimiterSize = 500
-	// peerLimiterTTL is the TTL for rate limiters for each peer. If a peer does
-	// not send any messages for this duration, they will be removed from the
+	// peerLimiterCacheSize is the maximum number of peers to keep track of at
+	// once. It controls the size of a cache that holds a rate limiter for each
+	// peer.
+	peerLimiterCacheSize = 500
+	// peerLimiterCacheTTL is the TTL for rate limiters for each peer. If a peer
+	// does not send any messages for this duration, they will be removed from the
 	// cache and their rate limiter will be reset.
-	peerLimiterTTL = 5 * time.Minute
+	peerLimiterCacheTTL = 5 * time.Minute
+	// logStatsInterval is how often to log stats about rate limiting.
+	logStatsInterval = 1 * time.Hour
 )
 
 // Dummy declaration to ensure that Validate can be used as a pubsub.Validator
@@ -30,14 +33,14 @@ var _ pubsub.Validator = (&Validator{}).Validate
 type Validator struct {
 	ctx           context.Context
 	config        Config
-	globalLimiter *rate.Limiter
+	globalLimiter *trackingRateLimiter
 	peerLimiters  *ccache.Cache
 }
 
 // Config is a set of configuration options for the validator.
 type Config struct {
 	// MyPeerID is the peer ID of the host. Messages where From == MyPeerID will
-	// not be rate-limited and will not be counted toward the global or per-peer
+	// not be rate limited and will not be counted toward the global or per-peer
 	// limits.
 	MyPeerID peer.ID
 	// GlobalLimit is the maximum rate of messages per second across all peers.
@@ -62,8 +65,8 @@ func New(ctx context.Context, config Config) (*Validator, error) {
 	validator := &Validator{
 		ctx:           ctx,
 		config:        config,
-		globalLimiter: rate.NewLimiter(config.GlobalLimit, config.GlobalBurst),
-		peerLimiters:  ccache.New(ccache.Configure().MaxSize(peerLimiterSize)),
+		globalLimiter: newTrackingRateLimiter(config.GlobalLimit, config.GlobalBurst),
+		peerLimiters:  ccache.New(ccache.Configure().MaxSize(peerLimiterCacheSize)),
 	}
 	// TODO(albrow): We should be calling Stop to cleanup any goroutines
 	// started by ccache, but doing so now results in a race condition. Figure
@@ -77,6 +80,7 @@ func New(ctx context.Context, config Config) (*Validator, error) {
 	// 		// validator.peerLimiters.Stop()
 	// 	}
 	// }()
+	go validator.periodicallyLogStats(ctx)
 	return validator, nil
 }
 
@@ -89,7 +93,7 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 	}
 
 	if peerID == v.config.MyPeerID {
-		// Don't rate-limit our own messages.
+		// Don't rate limit our own messages.
 		return true
 	}
 
@@ -104,11 +108,11 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 		return false
 	}
 
-	return v.globalLimiter.Allow()
+	return v.globalLimiter.allow()
 }
 
 func (v *Validator) getOrCreateLimiterForPeer(peerID peer.ID) (*rate.Limiter, error) {
-	item, err := v.peerLimiters.Fetch(peerID.String(), peerLimiterTTL, func() (interface{}, error) {
+	item, err := v.peerLimiters.Fetch(peerID.String(), peerLimiterCacheTTL, func() (interface{}, error) {
 		limiter := rate.NewLimiter(v.config.PerPeerLimit, v.config.PerPeerBurst)
 		return limiter, nil
 	})
@@ -125,5 +129,20 @@ func (v *Validator) isClosed() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (v *Validator) periodicallyLogStats(ctx context.Context) {
+	ticker := time.NewTicker(logStatsInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			log.WithFields(log.Fields{
+				"violationsCount": v.globalLimiter.violations,
+			}).Debug("global PubSub rate limit violations (since last log)")
+			v.globalLimiter.resetViolations()
+		}
 	}
 }
