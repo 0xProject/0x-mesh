@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p/banner"
+	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -28,6 +29,7 @@ import (
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -58,6 +60,21 @@ const (
 	// TODO(albrow): Reduce this limit once we have a better picture of what
 	// real world bandwidth should be.
 	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
+	// defaultGlobalPubSubMessageLimit is the default value for
+	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
+	// case where 1000 peers are sending maxShareBatch messages per second. It may
+	// need to be increased as the number of peers in the network grows.
+	defaultGlobalPubSubMessageLimit = 1000 * maxShareBatch
+	// defaultGlobalPubSubMessageBurst is the default value for
+	// GlobalPubSubMessageBurst. This is also an approximation and may need to be
+	// increased as the number of peers in the network grows.
+	defaultGlobalPubSubMessageBurst = defaultGlobalPubSubMessageLimit * 5
+	// defaultPerPeerPubSubMessageLimit is the default value for
+	// PerPeerPubSubMessageLimit.
+	defaultPerPeerPubSubMessageLimit = maxShareBatch
+	// defaultPerPeerPubSubMessageBurst is the default value for
+	// PerPeerPubSubMessageBurst.
+	defaultPerPeerPubSubMessageBurst = maxShareBatch * 5
 )
 
 // Node is the main type for the p2p package. It represents a particpant in the
@@ -106,6 +123,26 @@ type Config struct {
 	BootstrapList []string
 	// DataDir is the directory to use for storing data.
 	DataDir string
+	// GlobalPubSubMessageLimit is the maximum number of messages per second that
+	// will be forwarded through GossipSub on behalf of other peers. It is an
+	// important mechanism for limiting our own upload bandwidth. Without a global
+	// limit, we could use an unbounded amount of upload bandwidth on propagating
+	// GossipSub messages sent by other peers. The global limit is required
+	// because we can receive GossipSub messages from peers that we are not
+	// connected to (so the per peer limit combined with a maximum number of peers
+	// is not, by itself, sufficient).
+	GlobalPubSubMessageLimit rate.Limit
+	// GlobalPubSubMessageBurst is the maximum number of messages that will be
+	// forwarded through GossipSub at once.
+	GlobalPubSubMessageBurst int
+	// PerPeerPubSubMessageLimit is the maximum number of messages per second that
+	// each peer is allowed to send through the GossipSub network. Any additional
+	// messages will be dropped.
+	PerPeerPubSubMessageLimit rate.Limit
+	// PerPeerPubSubMessageBurst is the maximum number of messages that each peer
+	// is allowed to send at once through the GossipSub network. Any additional
+	// messages will be dropped.
+	PerPeerPubSubMessageBurst int
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -123,6 +160,18 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, errors.New("config.MessageHandler is required")
 	} else if config.RendezvousString == "" {
 		return nil, errors.New("config.RendezvousString is required")
+	}
+	if config.GlobalPubSubMessageLimit == 0 {
+		config.GlobalPubSubMessageLimit = defaultGlobalPubSubMessageLimit
+	}
+	if config.GlobalPubSubMessageBurst == 0 {
+		config.GlobalPubSubMessageBurst = defaultGlobalPubSubMessageBurst
+	}
+	if config.PerPeerPubSubMessageLimit == 0 {
+		config.PerPeerPubSubMessageLimit = defaultPerPeerPubSubMessageLimit
+	}
+	if config.PerPeerPubSubMessageBurst == 0 {
+		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -184,10 +233,23 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	// Set up DHT for peer discovery.
 	routingDiscovery := discovery.NewRoutingDiscovery(kadDHT)
 
-	// Set up pubsub
+	// Set up pubsub and custom validators.
 	pubsubOpts := getPubSubOptions()
-	pubsub, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
+	ps, err := pubsub.NewGossipSub(ctx, basicHost, pubsubOpts...)
 	if err != nil {
+		return nil, err
+	}
+	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
+		MyPeerID:     basicHost.ID(),
+		GlobalLimit:  config.GlobalPubSubMessageLimit,
+		GlobalBurst:  config.GlobalPubSubMessageBurst,
+		PerPeerLimit: config.PerPeerPubSubMessageLimit,
+		PerPeerBurst: config.PerPeerPubSubMessageBurst,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}
 
@@ -209,7 +271,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		connManager:      connManager,
 		dht:              kadDHT,
 		routingDiscovery: routingDiscovery,
-		pubsub:           pubsub,
+		pubsub:           ps,
 		banner:           banner,
 	}
 
@@ -355,13 +417,8 @@ func (n *Node) runOnce() error {
 		}
 	}
 
-	// Receive up to maxReceiveBatch messages.
-	incoming, err := n.receiveBatch()
-	if err != nil {
+	if err := n.receiveAndHandleMessages(); err != nil {
 		return err
-	}
-	if err := n.messageHandler.HandleMessages(incoming); err != nil {
-		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
 	// Check bandwidth usage non-deterministically
@@ -372,6 +429,18 @@ func (n *Node) runOnce() error {
 	// Send up to maxSendBatch messages.
 	if err := n.shareBatch(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (n *Node) receiveAndHandleMessages() error {
+	// Receive up to maxReceiveBatch messages.
+	incoming, err := n.receiveBatch()
+	if err != nil {
+		return err
+	}
+	if err := n.messageHandler.HandleMessages(incoming); err != nil {
+		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 	return nil
 }

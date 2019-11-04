@@ -16,16 +16,21 @@ type violationsTracker struct {
 	cache *ccache.Cache
 }
 
+// BUG(albrow): newViolationsTracker currently leaks goroutines due to a
+// limitation of the caching library used under the hood.
 func newViolationsTracker(ctx context.Context) *violationsTracker {
 	cache := ccache.New(ccache.Configure().MaxSize(violationsCacheSize).ItemsToPrune(violationsCacheSize / 10))
-	go func() {
-		// Stop the cache when the context is done. This prevents goroutine leaks
-		// since ccache spawns a new goroutine as part of its implementation.
-		select {
-		case <-ctx.Done():
-			cache.Stop()
-		}
-	}()
+	// TODO(albrow): We should be calling Stop to cleanup any goroutines
+	// started by ccache, but doing so now results in a race condition. Figure
+	// out a workaround or use a different library, possibly one we write
+	// ourselves.
+	// go func() {
+	// 	// Stop the cache when the context is done.
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		cache.Stop()
+	// 	}
+	// }()
 	return &violationsTracker{
 		cache: cache,
 	}
