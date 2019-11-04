@@ -661,12 +661,11 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		PerPeerPubSubMessageBurst: 5,
 	}
 
-	// Create three test nodes. node0 is connected to node1. node1 is connected to
-	// node2.
+	// Create three test nodes. Both node0 and node1 are connected to node2.
 	node0 := newTestNodeWithConfig(t, ctx, notifee, node0Config)
 	node1 := newTestNodeWithConfig(t, ctx, notifee, node1Config)
 	node2 := newTestNodeWithConfig(t, ctx, notifee, node2Config)
-	connectTestNodes(t, node0, node1)
+	connectTestNodes(t, node0, node2)
 	connectTestNodes(t, node1, node2)
 
 	fmt.Println("nodes connected")
@@ -701,9 +700,9 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
 
-	require.NoError(t, node0.runOnce())
-	require.NoError(t, node1.runOnce())
-	require.NoError(t, node2.runOnce())
+	require.NoError(t, node0.receiveAndHandleMessages())
+	require.NoError(t, node1.receiveAndHandleMessages())
+	require.NoError(t, node2.receiveAndHandleMessages())
 
 	fmt.Println("each node ran once")
 
@@ -713,7 +712,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		require.NoError(t, node0.Send(msg))
 	}
 	// node1 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
-	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
+	for i := 0; i < node1.config.PerPeerPubSubMessageBurst*2; i++ {
 		msg := []byte(fmt.Sprintf("node1_message_%d", i))
 		require.NoError(t, node1.Send(msg))
 	}
@@ -723,11 +722,11 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub messages to fully propagate.
 	time.Sleep(1 * time.Second)
 
-	require.NoError(t, node0.runOnce())
-	require.NoError(t, node1.runOnce())
-	require.NoError(t, node2.runOnce())
+	require.NoError(t, node0.receiveAndHandleMessages())
+	require.NoError(t, node1.receiveAndHandleMessages())
+	require.NoError(t, node2.receiveAndHandleMessages())
 
-	fmt.Println("each node rane twice")
+	fmt.Println("each node ran twice")
 
 	// node2 should only have config.PerPeerPubSubMessageBurst*2 messages.
 	// The others are expected to have been dropped.

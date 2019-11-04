@@ -473,13 +473,8 @@ func (n *Node) runOnce() error {
 		}
 	}
 
-	// Receive up to maxReceiveBatch messages.
-	incoming, err := n.receiveBatch()
-	if err != nil {
+	if err := n.receiveAndHandleMessages(); err != nil {
 		return err
-	}
-	if err := n.messageHandler.HandleMessages(incoming); err != nil {
-		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 
 	// Check bandwidth usage non-deterministically
@@ -490,6 +485,18 @@ func (n *Node) runOnce() error {
 	// Send up to maxSendBatch messages.
 	if err := n.shareBatch(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (n *Node) receiveAndHandleMessages() error {
+	// Receive up to maxReceiveBatch messages.
+	incoming, err := n.receiveBatch()
+	if err != nil {
+		return err
+	}
+	if err := n.messageHandler.HandleMessages(incoming); err != nil {
+		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 	return nil
 }
