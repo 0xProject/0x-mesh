@@ -153,7 +153,7 @@ You can DM `fabio#1058`, `Alex Browne | 0x#2975` or `ovrmrrw#0454` and we'll
 whitelist your node :)
 
 I hope that was easy enough! If you ran into any issues, please ping us in the
-#mesh channel on [Discord](https://discord.gg/HF7fHwk). To learn more about
+`#mesh` channel on [Discord](https://discord.gg/HF7fHwk). To learn more about
 connecting to your Mesh node's JSON RPC interface, check out the
 [JSON-RPC API Documentation](rpc_api.md). Your node's JSON RPC endpoint
 should be available at `ws://<your-ip-address>:60557` and you can discover your
