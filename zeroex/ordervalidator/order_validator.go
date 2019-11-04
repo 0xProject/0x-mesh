@@ -122,9 +122,9 @@ var (
 		Code:    "OrderHasInvalidTakerAssetAmount",
 		Message: "order takerAssetAmount cannot be 0",
 	}
-	ROExpired = RejectedOrderStatus{
-		Code:    "OrderExpired",
-		Message: "order already expired",
+	ROUTCExpired = RejectedOrderStatus{
+		Code:    "OrderUTCExpired",
+		Message: "order expired according to current UTC time",
 	}
 	ROFullyFilled = RejectedOrderStatus{
 		Code:    "OrderFullyFilled",
@@ -186,7 +186,7 @@ const ROInvalidSchemaCode = "InvalidSchema"
 // ConvertRejectOrderCodeToOrderEventEndState converts an RejectOrderCode to an OrderEventEndState type
 func ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderStatus RejectedOrderStatus) (zeroex.OrderEventEndState, bool) {
 	switch rejectedOrderStatus {
-	case ROExpired:
+	case ROUTCExpired:
 		return zeroex.ESOrderExpired, true
 	case ROFullyFilled:
 		return zeroex.ESOrderFullyFilled, true
@@ -382,8 +382,13 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					case zeroex.OSExpired, zeroex.OSFullyFilled, zeroex.OSCancelled, zeroex.OSSignatureInvalid:
 						var status RejectedOrderStatus
 						switch orderStatus {
+						// HACK(fabio): This conditional should only hit _iff_ the order was not expired according to
+						// UTC time when the off-chain order validation check were performed, but once the ETH RPC call
+						// was made to validate the order, it had become expired acccording to the block timestamp. Since
+						// the block timestamp can be before or after the current UTC time, we cannot assume that it is 
+						// UTC expired. We must check for this here. 
 						case zeroex.OSExpired:
-							status = ROExpired
+							status = ROUTCExpired
 						case zeroex.OSFullyFilled:
 							status = ROFullyFilled
 						case zeroex.OSCancelled:
@@ -638,7 +643,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
 				Kind:        ZeroExValidation,
-				Status:      ROExpired,
+				Status:      ROUTCExpired,
 			})
 			continue
 		}

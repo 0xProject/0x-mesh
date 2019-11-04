@@ -141,7 +141,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 		testCase{
 			SignedOrder:                 signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
 			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROExpired,
+			ExpectedRejectedOrderStatus: ROUTCExpired,
 		},
 		testCase{
 			SignedOrder:                 signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
