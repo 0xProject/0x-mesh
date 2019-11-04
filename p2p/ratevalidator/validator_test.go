@@ -2,6 +2,7 @@ package ratevalidator
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,13 +34,22 @@ func TestValidatorPerPeer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	validator, err := New(ctx, Config{
+	validator, err := New(Config{
 		MyPeerID:     peerIDs[0],
 		GlobalLimit:  rate.Inf,
 		PerPeerLimit: 1,
 		PerPeerBurst: 5,
 	})
 	require.NoError(t, err)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, validator.Start(ctx))
+	}()
+
+	// Wait for validator to start.
+	require.NoError(t, validator.waitForStart(ctx))
 
 	for _, peerID := range peerIDs[1:] {
 		// All messages should be valid until we hit GlobalBurst.
@@ -65,6 +75,9 @@ func TestValidatorPerPeer(t *testing.T) {
 		valid = validator.Validate(ctx, peerID, &pubsub.Message{})
 		assert.False(t, valid, "message should be invalid")
 	}
+
+	cancel()
+	wg.Wait()
 }
 
 func TestValidatorWithOwnPeerID(t *testing.T) {
@@ -73,7 +86,7 @@ func TestValidatorWithOwnPeerID(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	validator, err := New(ctx, Config{
+	validator, err := New(Config{
 		MyPeerID:     peerIDs[0],
 		GlobalLimit:  1,
 		GlobalBurst:  1,
@@ -81,6 +94,15 @@ func TestValidatorWithOwnPeerID(t *testing.T) {
 		PerPeerBurst: 1,
 	})
 	require.NoError(t, err)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, validator.Start(ctx))
+	}()
+
+	// Wait for validator to start.
+	require.NoError(t, validator.waitForStart(ctx))
 
 	// All messages should sent by us should be valid.
 	messagesToSend := validator.config.PerPeerBurst + validator.config.GlobalBurst + 5
@@ -88,4 +110,7 @@ func TestValidatorWithOwnPeerID(t *testing.T) {
 		valid := validator.Validate(ctx, peerIDs[0], &pubsub.Message{})
 		assert.True(t, valid, "message should be valid")
 	}
+
+	cancel()
+	wg.Wait()
 }
