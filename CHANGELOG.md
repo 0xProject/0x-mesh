@@ -11,12 +11,15 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Renamed env config from `ETHEREUM_NETWORK_ID` to `ETHEREUM_CHAIN_ID` since `network` is a misnomer here and what we actually care about is the `chainID`. Most chains have the same id for their p2p network and chain. From the ones we support, the only outlier is Ganache, for which you will now need to supply `1337` instead of `50` (Learn more: https://medium.com/@pedrouid/chainid-vs-networkid-how-do-they-differ-on-ethereum-eec2ed41635b) ([#485](https://github.com/0xProject/0x-mesh/pull/485))
 - Rejected order code `OrderForIncorrectNetwork` has been changed to `OrderForIncorrectChain` ([#485](https://github.com/0xProject/0x-mesh/pull/485))
 - Removed `RPC_PORT` environment variable. The new `RPC_ADDR` environment variable allows specifying both the interface and port ([487](https://github.com/0xProject/0x-mesh/pull/487)).
+- Changed the `EXPIRED` event such that it is emitted when an order is expired according to the latest block timestamp, not anymore based on UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
+- Removed the `EXPIRATION_BUFFER_SECONDS` env config since we no longer compute order expiration using UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 
 ### Features ✅ 
 
 - Implemented a new strategy for limiting the amount of database storage used by Mesh and removing orders when the database is full. This strategy involves a dynamically adjusting maximum expiration time. When the database is full, Mesh will enforce a maximum expiration time for all incoming orders and remove any existing orders with an expiration time too far in the future. If conditions change and there is enough space in the database again, the max expiration time will slowly increase. This is a short term solution which solves the immediate issue of finite storage capacities and does a decent job of protecting against spam. We expect to improve and possibly replace it in the future. See [#450](https://github.com/0xProject/0x-mesh/pull/450) for more details.
 - Added support for a new feature called "order pinning" ([#474](https://github.com/0xProject/0x-mesh/pull/474)). Pinned orders will not be affected by any DDoS prevention or incentive mechanisms (including the new dynamic max expiration time feature) and will always stay in storage until they are no longer fillable. By default, all orders which are submitted via either the JSON-RPC API or the `addOrdersAsync` function in the TypeScript bindings will be pinned.
 - Re-enabled bandwidth-based peer banning with a workaround to deal with erroneous spikes [#478](https://github.com/0xProject/0x-mesh/pull/478).
+- Added an `UNEXPIRED` order event kind which is emitted for orders that were previously considered expired but due to a block-reorg causing the latest block timestamp to be earlier than the previous latest block timestamp, are no longer expired. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 
 ### Bug fixes 🐞 
 

@@ -47,10 +47,6 @@ export interface Config {
     // "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
     // Defaults to the hard-coded default bootstrap list.
     bootstrapList?: string[];
-    // The amount of time (in seconds) before the order's stipulated expiration
-    // time that it will be considered expired. Higher values will cause orders
-    // to be considered invalid sooner. Defaluts to 10.
-    orderExpirationBufferSeconds?: number;
     // The polling interval (in seconds) to wait before checking for a new
     // Ethereum block that might contain transactions that impact the
     // fillability of orders stored by Mesh. Different chains have different
@@ -143,7 +139,6 @@ interface WrapperConfig {
     ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.
-    orderExpirationBufferSeconds?: number;
     blockPollingIntervalSeconds?: number;
     ethereumRPCMaxContentLength?: number;
     EthereumRPCMaxRequestsPer24HrUTC?: number;

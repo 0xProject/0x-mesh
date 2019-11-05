@@ -124,7 +124,7 @@ var (
 	}
 	ROExpired = RejectedOrderStatus{
 		Code:    "OrderExpired",
-		Message: "order already expired",
+		Message: "order expired according to latest block timestamp",
 	}
 	ROFullyFilled = RejectedOrderStatus{
 		Code:    "OrderFullyFilled",
@@ -231,11 +231,10 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
-	expirationBuffer             time.Duration
 }
 
 // New instantiates a new order validator
-func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, expirationBuffer time.Duration) (*OrderValidator, error) {
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int) (*OrderValidator, error) {
 	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
 		return nil, err
@@ -633,16 +632,6 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			})
 			continue
 		}
-		expirationTime := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
-		if IsExpired(expirationTime, o.expirationBuffer) {
-			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROExpired,
-			})
-			continue
-		}
 
 		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
@@ -847,9 +836,4 @@ func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
 	}
 
 	return true
-}
-
-func IsExpired(expirationTime time.Time, expirationBuffer time.Duration) bool {
-	currentTimePlusBuffer := time.Now().Add(expirationBuffer)
-	return currentTimePlusBuffer.After(expirationTime)
 }

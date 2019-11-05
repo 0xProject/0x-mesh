@@ -139,11 +139,6 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROExpired,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
@@ -160,7 +155,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, 0)
+		orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength)
 		require.NoError(t, err)
 
 		offchainValidOrders, rejectedOrderInfos := orderValidator.BatchOffchainValidation(signedOrders)
@@ -191,7 +186,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -219,7 +214,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -247,7 +242,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -278,7 +273,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -331,7 +326,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder}
@@ -349,7 +344,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
@@ -387,7 +382,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, 0)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}

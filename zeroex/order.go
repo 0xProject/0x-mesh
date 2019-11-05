@@ -173,6 +173,7 @@ const (
 	ESOrderFullyFilled = OrderEventEndState("FULLY_FILLED")
 	ESOrderCancelled   = OrderEventEndState("CANCELLED")
 	ESOrderExpired     = OrderEventEndState("EXPIRED")
+	ESOrderUnexpired   = OrderEventEndState("UNEXPIRED")
 	// An order becomes unfunded if the maker transfers the balance / changes their
 	// allowance backing an order
 	ESOrderBecameUnfunded = OrderEventEndState("UNFUNDED")
