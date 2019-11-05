@@ -9,6 +9,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
@@ -74,11 +75,6 @@ const (
 	OSInvalidTakerAssetData
 )
 
-// ContractEventParameters is the parameters of a ContractEvent
-type ContractEventParameters interface {
-	json.Marshaler
-}
-
 // ContractEvent is an event emitted by a smart contract
 type ContractEvent struct {
 	BlockHash  common.Hash
@@ -88,7 +84,18 @@ type ContractEvent struct {
 	IsRemoved  bool
 	Address    common.Address
 	Kind       string
-	Parameters ContractEventParameters
+	Parameters interface{}
+}
+
+type contractEventJSON struct {
+	BlockHash  common.Hash
+	TxHash     common.Hash
+	TxIndex    uint
+	LogIndex   uint
+	IsRemoved  bool
+	Address    common.Address
+	Kind       string
+	Parameters json.RawMessage
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ContractEvent type
@@ -120,11 +127,11 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	OrderHash                string           `json:"orderHash"`
-	SignedOrder              *SignedOrder     `json:"signedOrder"`
-	EndState                 string           `json:"endState"`
-	FillableTakerAssetAmount string           `json:"fillableTakerAssetAmount"`
-	ContractEvents           []*ContractEvent `json:"contractEvents"`
+	OrderHash                string               `json:"orderHash"`
+	SignedOrder              *SignedOrder         `json:"signedOrder"`
+	EndState                 string               `json:"endState"`
+	FillableTakerAssetAmount string               `json:"fillableTakerAssetAmount"`
+	ContractEvents           []*contractEventJSON `json:"contractEvents"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
@@ -157,8 +164,125 @@ func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	if !ok {
 		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
 	}
-	o.ContractEvents = orderEventJSON.ContractEvents
+	o.ContractEvents = make([]*ContractEvent, len(orderEventJSON.ContractEvents))
+	for i, eventJSON := range orderEventJSON.ContractEvents {
+		contractEvent, err := unmarshalContractEvent(eventJSON)
+		if err != nil {
+			return err
+		}
+		o.ContractEvents[i] = contractEvent
+	}
 	return nil
+}
+
+func unmarshalContractEvent(eventJSON *contractEventJSON) (*ContractEvent, error) {
+	event := &ContractEvent{
+		BlockHash: eventJSON.BlockHash,
+		TxHash:    eventJSON.TxHash,
+		TxIndex:   eventJSON.TxIndex,
+		LogIndex:  eventJSON.LogIndex,
+		IsRemoved: eventJSON.IsRemoved,
+		Address:   eventJSON.Address,
+		Kind:      eventJSON.Kind,
+	}
+
+	switch eventJSON.Kind {
+	case "ERC20TransferEvent":
+		var parameters decoder.ERC20TransferEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC20ApprovalEvent":
+		var parameters decoder.ERC20ApprovalEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC721TransferEvent":
+		var parameters decoder.ERC721TransferEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC721ApprovalEvent":
+		var parameters decoder.ERC721ApprovalEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC721ApprovalForAllEvent":
+		var parameters decoder.ERC721ApprovalForAllEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC1155TransferSingleEvent":
+		var parameters decoder.ERC1155TransferSingleEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC1155TransferBatchEvent":
+		var parameters decoder.ERC1155TransferBatchEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ERC1155ApprovalForAllEvent":
+		var parameters decoder.ERC1155ApprovalForAllEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "WethWithdrawalEvent":
+		var parameters decoder.WethWithdrawalEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "WethDepositEvent":
+		var parameters decoder.WethDepositEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ExchangeFillEvent":
+		var parameters decoder.ExchangeFillEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ExchangeCancelEvent":
+		var parameters decoder.ExchangeCancelEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	case "ExchangeCancelUpToEvent":
+		var parameters decoder.ExchangeCancelUpToEvent
+		if err := json.Unmarshal(eventJSON.Parameters, &parameters); err != nil {
+			return nil, err
+		}
+		event.Parameters = parameters
+
+	default:
+		return nil, fmt.Errorf("unknown event kind: %s", eventJSON.Kind)
+	}
+
+	return event, nil
 }
 
 // OrderEventEndState enumerates all the possible order event types. An OrderEventEndState describes the

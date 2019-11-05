@@ -396,7 +396,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 		latestBlockNumber = rpc.BlockNumber(event.BlockHeader.Number.Int64())
 		latestBlockTimestamp = event.BlockHeader.Timestamp
 		for _, log := range event.BlockHeader.Logs {
-			var parameters zeroex.ContractEventParameters
+			var parameters interface{}
 			eventType, err := w.eventDecoder.FindEventType(log)
 			if err != nil {
 				switch err.(type) {

@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -8,9 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var erc20TokenAddress common.Address = common.HexToAddress("0x02b3c88b805f1c6982e38ea1d40a1d83f159c3d4")
@@ -452,4 +453,198 @@ func unmarshalLogStr(logStr string, out interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func TestJSONMarshalUnmarshalERC20Transfer(t *testing.T) {
+	expectedEvent := ERC20TransferEvent{
+		From:  common.HexToAddress("0x90CF64CbB199523C893A1D519243E214b8e0b472"),
+		To:    common.HexToAddress("0xFE5854255eb1Eb921525fa856a3947Ed2412A1D7"),
+		Value: big.NewInt(63874940000),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC20TransferEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC20Approval(t *testing.T) {
+	expectedEvent := ERC20ApprovalEvent{
+		Owner:   common.HexToAddress("0xcf67fdd3c580f148d20a26844b2169d52e2326db"),
+		Spender: common.HexToAddress("0x448a5065aebb8e423f0896e6c5d525c040f59af3"),
+		Value:   big.NewInt(1000000000000000000),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC20ApprovalEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC721Transfer(t *testing.T) {
+	expectedEvent := ERC721TransferEvent{
+		From:    common.HexToAddress("0xD8c67d024Db85B271b6F6EeaC5234E29C4D6bbB5"),
+		To:      common.HexToAddress("0xF13685a175B95FAa79DB765631483ac79fB3D8E8"),
+		TokenId: big.NewInt(50609),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC721TransferEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC721Approval(t *testing.T) {
+	expectedEvent := ERC721ApprovalEvent{
+		Owner:    common.HexToAddress("0xF4985070Ce32b6B1994329DF787D1aCc9a2dd9e2"),
+		Approved: common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		TokenId:  big.NewInt(43398),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC721ApprovalEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC721ApprovalForAll(t *testing.T) {
+	expectedEvent := ERC721ApprovalForAllEvent{
+		Owner:    common.HexToAddress("0x6aA0FC9fc46Acb60E98439f9F89782ca78fB0990"),
+		Operator: common.HexToAddress("0x185b257AA51Fdc45176cF1FfaC6a0bFB5cF28afD"),
+		Approved: true,
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC721ApprovalForAllEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC1155TransferSingle(t *testing.T) {
+	expectedEvent := ERC1155TransferSingleEvent{
+		Operator: common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		From:     common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		To:       common.HexToAddress("0x1D7022f5B17d2F8B695918FB48fa1089C9f85401"),
+		Id:       big.NewInt(3402823669209384),
+		Value:    big.NewInt(250),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC1155TransferSingleEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC1155TransferBatch(t *testing.T) {
+	expectedEvent := ERC1155TransferBatchEvent{
+		Operator: common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		From:     common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		To:       common.HexToAddress("0x1D7022f5B17d2F8B695918FB48fa1089C9f85401"),
+		Ids:      []*big.Int{big.NewInt(3402823669209384)},
+		Values:   []*big.Int{big.NewInt(1)},
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC1155TransferBatchEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalERC1155ApprovalForAll(t *testing.T) {
+	expectedEvent := ERC1155ApprovalForAllEvent{
+		Owner:    common.HexToAddress("0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb"),
+		Operator: common.HexToAddress("0xE36Ea790bc9d7AB70C55260C66D52b1eca985f84"),
+		Approved: true,
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ERC1155ApprovalForAllEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalExchangeFill(t *testing.T) {
+	expectedEvent := ExchangeFillEvent{
+		MakerAddress:           common.HexToAddress("0x90079aABC47b5BeA2dFC358d7114Ade57Ee39209"),
+		TakerAddress:           common.HexToAddress("0x61b9898C9b60A159fC91ae8026563cd226B7a0C1"),
+		SenderAddress:          common.HexToAddress("0x00000000000000000000000000563cd226b7a0c1"),
+		FeeRecipientAddress:    common.HexToAddress("0x61b9898C9b60A159fC91ae8026563cd226B7a0C1"),
+		MakerAssetFilledAmount: big.NewInt(36832327913963520),
+		TakerAssetFilledAmount: big.NewInt(142668604964864),
+		MakerFeePaid:           big.NewInt(142668604964864),
+		TakerFeePaid:           big.NewInt(142668604964864),
+		OrderHash:              common.HexToHash("0xe5cd991e034cd4517cbf180307031074f3d560949fe9ddae9a06a829052dc759"),
+		MakerAssetData:         common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32"),
+		TakerAssetData:         common.Hex2Bytes("f47261b0000000000000000000000000aa7427d8f17d87a28f5e1ba3adbb270badbe1011"),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ExchangeFillEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalExchangeCancel(t *testing.T) {
+	expectedEvent := ExchangeCancelEvent{
+		MakerAddress:        common.HexToAddress("0x504a2ee3558612dB56c90186A73e690eCd57FE9E"),
+		SenderAddress:       common.HexToAddress("0x504a2ee3558612dB56c90186A73e690eCd57FE9E"),
+		FeeRecipientAddress: common.HexToAddress("0xA258b39954ceF5cB142fd567A46cDdB31a670124"),
+		OrderHash:           common.HexToHash("0xdd50b0eec7425c3a365037a1bdeae9e12b59e06075b2bf2bdbfff8976f7419aa"),
+		MakerAssetData:      common.Hex2Bytes("f47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+		TakerAssetData:      common.Hex2Bytes("f47261b000000000000000000000000089d24a6b4ccb1b6faa2625fe562bdd9a23260359"),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ExchangeCancelEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalExchangeCancelUpTo(t *testing.T) {
+	expectedEvent := ExchangeCancelUpToEvent{
+		MakerAddress:  common.HexToAddress("0x638C1eF824ACD48E63E6ACC84948f8eAD46f08De"),
+		SenderAddress: common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		OrderEpoch:    big.NewInt(1554341123041),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent ExchangeCancelUpToEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+
+func TestJSONMarshalUnmarshalWethDeposit(t *testing.T) {
+	expectedEvent := WethDepositEvent{
+		Owner: common.HexToAddress("0x81228eA33D680B0F51271aBAb1105886eCd01C2c"),
+		Value: big.NewInt(200000000000000000),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent WethDepositEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
+}
+func TestJSONMarshalUnmarshalWethWithdrawal(t *testing.T) {
+	expectedEvent := WethWithdrawalEvent{
+		Owner: common.HexToAddress("0xb3fa5bA98fdB56E493C4C362920289A42948294e"),
+		Value: big.NewInt(353732490000000000),
+	}
+
+	buf := bytes.Buffer{}
+	require.NoError(t, json.NewEncoder(&buf).Encode(expectedEvent))
+	var unmarshaledEvent WethWithdrawalEvent
+	require.NoError(t, json.NewDecoder(&buf).Decode(&unmarshaledEvent))
+	assert.Equal(t, expectedEvent, unmarshaledEvent)
 }
