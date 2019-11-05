@@ -667,7 +667,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	assert.Equal(t, false, orders[0].IsRemoved)
 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
-func TestOrderWatcherOrderExpiredAndUnexpires(t *testing.T) {
+func TestOrderWatcherOrderExpiredThenUnexpires(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
