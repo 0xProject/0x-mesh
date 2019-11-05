@@ -278,12 +278,12 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		"feeRecipientAddress":   o.FeeRecipientAddress.Hex(),
 		"makerAssetData":        o.MakerAssetData,
 		"takerAssetData":        o.TakerAssetData,
-		"salt":                  o.Salt,
-		"makerFee":              o.MakerFee,
-		"takerFee":              o.TakerFee,
-		"makerAssetAmount":      o.MakerAssetAmount,
-		"takerAssetAmount":      o.TakerAssetAmount,
-		"expirationTimeSeconds": o.ExpirationTimeSeconds,
+		"salt":                  o.Salt.String(),
+		"makerFee":              o.MakerFee.String(),
+		"takerFee":              o.TakerFee.String(),
+		"makerAssetAmount":      o.MakerAssetAmount.String(),
+		"takerAssetAmount":      o.TakerAssetAmount.String(),
+		"expirationTimeSeconds": o.ExpirationTimeSeconds.String(),
 	}
 
 	var typedData = gethsigner.TypedData{

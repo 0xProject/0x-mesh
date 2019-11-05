@@ -143,14 +143,26 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "wasm_signer_core_1"
-  digest = "1:0cbe3816c19b5e8def421e948377963a877b444e2fdd62126791998c2e27749a"
+  digest = "1:2b2daa41f40acd66f4aa0ae213bfd286096663c999a26deb773127b7864c6bd0"
+  name = "github.com/elastic/gosigar"
+  packages = [
+    ".",
+    "sys/windows",
+  ]
+  pruneopts = "UT"
+  revision = "7aef3366157f2bfdf3e068f73ce7193573e88e0c"
+  version = "v0.10.5"
+
+[[projects]]
+  branch = "wasm_signer_core_2"
+  digest = "1:bbc4486af33869a4e70dc531efe493b62705df27f89251c8917b92b32ca8cb1e"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
     "accounts",
     "accounts/abi",
     "accounts/abi/bind",
+    "accounts/external",
     "accounts/keystore",
     "accounts/scwallet",
     "accounts/usbwallet",
@@ -166,11 +178,13 @@
     "consensus/ethash",
     "consensus/misc",
     "core",
+    "core/bloombits",
     "core/rawdb",
     "core/state",
     "core/types",
     "core/vm",
     "crypto",
+    "crypto/blake2b",
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
@@ -200,7 +214,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "f0a71cf559354873939c1a5ea980288bac9a40f4"
+  revision = "9d5c202240bebe50324e4bbe8d6fc0759e0a9cdd"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
@@ -429,12 +443,12 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:cbe624335f5e9f4d1f536a524921df0277e938eab097ac562f06b2d310c073b9"
-  name = "github.com/karalabe/hid"
+  branch = "master"
+  digest = "1:07344d622b6b60cd844956753e51e6029ce340ac763709b433a2b717fef7d817"
+  name = "github.com/karalabe/usb"
   packages = ["."]
-  pruneopts = "T"
-  revision = "6bbb8df5a4e3ebed3398a30bdbeb80682ffb76f8"
-  version = "v1.0.0"
+  pruneopts = "NT"
+  revision = "911d15fe12a9c411cf5d0dd5635231c759399bed"
 
 [[projects]]
   digest = "1:9642c35dd8d4b8981d58327a917f178898baf9b331373748dd50439aec5c2628"
@@ -1262,7 +1276,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8457060d23ff2b2d008d5610494af06fe72fe15cd67c8a9f13df877cc12431b4"
+  digest = "1:25cf7c515ad2f67103b324618cb60f08245904283a6bfd35fee09ea864c412ba"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -1272,7 +1286,6 @@
     "internal/iana",
     "internal/socket",
     "ipv4",
-    "websocket",
   ]
   pruneopts = "UT"
   revision = "ca1201d0de80cfde86cb01aea620983605dfe99b"
@@ -1356,7 +1369,6 @@
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
     "github.com/ethereum/go-ethereum",
-    "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
