@@ -43,7 +43,7 @@ provider.start();
     const mesh = new Mesh({
         verbosity: Verbosity.Debug,
         ethereumRPCURL,
-        ethereumNetworkID: 50,
+        ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
     });
 

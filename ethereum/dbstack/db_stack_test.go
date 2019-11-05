@@ -3,6 +3,7 @@ package dbstack
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -16,9 +17,10 @@ const limit = 10
 
 var (
 	miniHeaderOne = &miniheader.MiniHeader{
-		Number: big.NewInt(1),
-		Hash:   common.Hash{},
-		Parent: common.Hash{},
+		Number:    big.NewInt(1),
+		Hash:      common.Hash{},
+		Parent:    common.Hash{},
+		Timestamp: time.Now(),
 	}
 )
 

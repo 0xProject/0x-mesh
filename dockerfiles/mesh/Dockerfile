@@ -26,7 +26,7 @@ WORKDIR /usr/mesh
 
 COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh /usr/mesh/mesh
 
-ENV RPC_PORT=60557
+ENV RPC_ADDR=localhost:60557
 EXPOSE 60557
 
 ENV P2P_TCP_PORT=60558

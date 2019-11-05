@@ -50,7 +50,7 @@ https://0x-org.gitbook.io/mesh.
 
 We love receiving contributions from the community :smile: If you are interested
 in helping develop 0x Mesh, please read the
-[Development Guide](docs/development.md).
+[Development Guide](CONTRIBUTING.md).
 If you are looking for a place to start, take a look at the
 [issues page](https://github.com/0xProject/0x-mesh/issues) and don't hesitate to
 [reach out to us on Discord](https://discord.gg/HF7fHwk).

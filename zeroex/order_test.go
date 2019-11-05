@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,9 +57,24 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	orderEvent := OrderEvent{
 		OrderHash:                orderHash,
 		SignedOrder:              signedOrder,
-		EndState:                     ESOrderAdded,
+		EndState:                 ESOrderAdded,
 		FillableTakerAssetAmount: big.NewInt(2000),
-		ContractEvents:           []*ContractEvent{},
+		ContractEvents: []*ContractEvent{
+			{
+				BlockHash: common.HexToHash("0x3fcd58a6613265e2b0deba902d7ff693f330a0af6e5b04805b44bbffd8a415d4"),
+				TxHash:    common.HexToHash("0x3fcd58a6613265e2b0deba902d7ff693f330a0af6e5b04805b44bbffd8a415d5"),
+				TxIndex:   42,
+				LogIndex:  1337,
+				IsRemoved: true,
+				Address:   common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c49"),
+				Kind:      "ERC20TransferEvent",
+				Parameters: decoder.ERC20TransferEvent{
+					From:  common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c50"),
+					To:    common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c51"),
+					Value: big.NewInt(120),
+				},
+			},
+		},
 	}
 
 	buf := &bytes.Buffer{}

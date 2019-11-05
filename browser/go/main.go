@@ -87,6 +87,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		UseBootstrapList:            true,
 		BlockPollingInterval:        5 * time.Second,
 		EthereumRPCMaxContentLength: 524288,
+		EthereumRPCMaxRequestsPer24HrUTC: 100000,
+		EthereumRPCMaxRequestsPerSecond: 30.0,	
+		MaxOrdersInStorage:          100000,
 	}
 
 	// Required config options
@@ -95,10 +98,10 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	} else {
 		config.EthereumRPCURL = ethereumRPCURL.String()
 	}
-	if ethereumNetworkID := jsConfig.Get("ethereumNetworkID"); isNullOrUndefined(ethereumNetworkID) {
-		return core.Config{}, errors.New("ethereumNetworkID is required")
+	if ethereumChainID := jsConfig.Get("ethereumChainID"); isNullOrUndefined(ethereumChainID) {
+		return core.Config{}, errors.New("ethereumChainID is required")
 	} else {
-		config.EthereumNetworkID = ethereumNetworkID.Int()
+		config.EthereumChainID = ethereumChainID.Int()
 	}
 
 	// Optional config options
@@ -111,17 +114,23 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
 		config.BootstrapList = bootstrapList.String()
 	}
-	if orderExpirationBufferSeconds := jsConfig.Get("orderExpirationBufferSeconds"); !isNullOrUndefined(orderExpirationBufferSeconds) {
-		config.OrderExpirationBuffer = time.Duration(orderExpirationBufferSeconds.Int()) * time.Second
-	}
 	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !isNullOrUndefined(blockPollingIntervalSeconds) {
 		config.BlockPollingInterval = time.Duration(blockPollingIntervalSeconds.Int()) * time.Second
 	}
 	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
 		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
 	}
+	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !isNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
+		config.EthereumRPCMaxRequestsPer24HrUTC = ethereumRPCMaxRequestsPer24HrUTC.Int()
+	}
+	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
+		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
+	}
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()
+	}
+	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
+		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
 	}
 
 	return config, nil
@@ -195,7 +204,7 @@ func (cw *MeshWrapper) Start() error {
 // AddOrders converts raw JavaScript orders into the appropriate type, calls
 // core.App.AddOrders, converts the result into basic JavaScript types (string,
 // int, etc.) and returns it.
-func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
+func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
 	// HACK(albrow): There is a more effecient way to do this, but for now,
 	// just use JSON to convert to the Go type.
 	encodedOrders := js.Global().Get("JSON").Call("stringify", rawOrders).String()
@@ -203,7 +212,7 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value) (js.Value, error) {
 	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.app.AddOrders(rawMessages)
+	results, err := cw.app.AddOrders(rawMessages, pinned)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -238,7 +247,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return wrapInPromise(func() (interface{}, error) {
-				return cw.AddOrders(args[0])
+				return cw.AddOrders(args[0], args[1].Bool())
 			})
 		}),
 	})

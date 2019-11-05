@@ -7,39 +7,39 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// GetContractAddressesForNetworkID returns the contract name mapping for the
-// given network. It returns an error if the network doesn't exist.
-func GetContractAddressesForNetworkID(networkID int) (ContractAddresses, error) {
-	if contractAddresses, ok := NetworkIDToContractAddresses[networkID]; ok {
+// GetContractAddressesForChainID returns the contract name mapping for the
+// given chain. It returns an error if the chain doesn't exist.
+func GetContractAddressesForChainID(chainID int) (ContractAddresses, error) {
+	if contractAddresses, ok := ChainIDToContractAddresses[chainID]; ok {
 		return contractAddresses, nil
 	}
-	return ContractAddresses{}, fmt.Errorf("invalid network: %d", networkID)
+	return ContractAddresses{}, fmt.Errorf("invalid chain: %d", chainID)
 }
 
-func AddContractAddressesForNetworkID(networkID int, addresses ContractAddresses) error {
-	if _, alreadExists := NetworkIDToContractAddresses[networkID]; alreadExists {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: addresses for this network id are already defined", networkID)
+func AddContractAddressesForChainID(chainID int, addresses ContractAddresses) error {
+	if _, alreadExists := ChainIDToContractAddresses[chainID]; alreadExists {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: addresses for this chain id are already defined", chainID)
 	}
 	if addresses.Exchange == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: Exchange address is required", networkID)
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
 	}
 	if addresses.DevUtils == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: DevUtils address is required", networkID)
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtils address is required", chainID)
 	}
 	if addresses.ERC20Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: ERC20Proxy address is required", networkID)
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC20Proxy address is required", chainID)
 	}
 	if addresses.ERC721Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: ERC721Proxy address is required", networkID)
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC721Proxy address is required", chainID)
 	}
 	if addresses.ERC1155Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for network ID %d: ERC1155Proxy address is required", networkID)
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC1155Proxy address is required", chainID)
 	}
 	// TODO(albrow): Uncomment this if we re-add coordinator support.
 	// if addresses.CoordinatorRegistry == constants.NullAddress {
-	// 	return fmt.Errorf("cannot add contract addresses for network ID %d: CoordinatorRegistry address is required", networkID)
+	// 	return fmt.Errorf("cannot add contract addresses for chain ID %d: CoordinatorRegistry address is required", chainID)
 	// }
-	NetworkIDToContractAddresses[networkID] = addresses
+	ChainIDToContractAddresses[chainID] = addresses
 	return nil
 }
 
@@ -56,9 +56,9 @@ type ContractAddresses struct {
 	ZRXToken            common.Address `json:"zrxToken"`
 }
 
-// NetworkIDToContractAddresses maps networkId to a mapping of contract name to Ethereum address
-// on that given network
-var NetworkIDToContractAddresses = map[int]ContractAddresses{
+// ChainIDToContractAddresses maps chainId to a mapping of contract name to Ethereum address
+// on that given chain
+var ChainIDToContractAddresses = map[int]ContractAddresses{
 	// Mainnet
 	1: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
@@ -108,7 +108,7 @@ var NetworkIDToContractAddresses = map[int]ContractAddresses{
 		ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 	},
 	// Ganache snapshot
-	50: ContractAddresses{
+	1337: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 		ERC721Proxy:         common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
 		ERC1155Proxy:        common.HexToAddress("0x6a4a62e5a7ed13c361b176a5f62c2ee620ac0df8"),

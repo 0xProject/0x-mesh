@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-go deps-js wasmbrowsertest
+deps: deps-go deps-ts wasmbrowsertest
 
 
 .PHONY: deps-go
@@ -7,9 +7,11 @@ deps-go:
 	dep ensure
 
 
-.PHONY: deps-js
-deps-js:
+.PHONY: deps-ts
+deps-ts:
 	yarn install
+	cd rpc/clients/typescript && yarn install
+	cd browser/ && yarn install
 
 
 # gobin allows us to install specific versions of binary tools written in Go.
@@ -26,7 +28,7 @@ wasmbrowsertest: gobin
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile: deps-go-no-lockfile deps-js-no-lockfile wasmbrowsertest
+deps-no-lockfile: deps-go-no-lockfile deps-ts-no-lockfile wasmbrowsertest
 
 
 .PHONY: deps-go-no-lockfile
@@ -34,9 +36,11 @@ deps-go-no-lockfile:
 	dep ensure --vendor-only
 
 
-.PHONY: deps-js-no-lockfile
-deps-js-no-lockfile:
+.PHONY: deps-ts-no-lockfile
+deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
+	cd rpc/clients/typescript && yarn install --frozen-lockfile
+	cd browser/ && yarn install --frozen-lockfile
 
 
 .PHONY: test-all
@@ -52,7 +56,7 @@ test-go-parallel:
 
 .PHONY: test-go-serial
 test-go-serial:
-	go test ./ethereum ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
+	go test ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
 
 
 .PHONY: test-integration
@@ -71,8 +75,18 @@ test-wasm-browser:
 
 
 .PHONY: lint
-lint:
+lint: lint-go lint-ts
+
+
+.PHONY: lint-go
+lint-go:
 	golangci-lint run
+
+
+.PHONY: lint-ts
+lint-ts:
+	cd rpc/clients/typescript && yarn lint
+	cd browser/ && yarn lint
 
 
 .PHONY: mesh
