@@ -308,7 +308,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"LEVELDB_DATA_DIR="+standaloneDataDir,
+		"DATA_DIR="+standaloneDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
