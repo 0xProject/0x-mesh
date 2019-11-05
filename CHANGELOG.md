@@ -20,6 +20,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added support for a new feature called "order pinning" ([#474](https://github.com/0xProject/0x-mesh/pull/474)). Pinned orders will not be affected by any DDoS prevention or incentive mechanisms (including the new dynamic max expiration time feature) and will always stay in storage until they are no longer fillable. By default, all orders which are submitted via either the JSON-RPC API or the `addOrdersAsync` function in the TypeScript bindings will be pinned.
 - Re-enabled bandwidth-based peer banning with a workaround to deal with erroneous spikes [#478](https://github.com/0xProject/0x-mesh/pull/478).
 - Added an `UNEXPIRED` order event kind which is emitted for orders that were previously considered expired but due to a block-reorg causing the latest block timestamp to be earlier than the previous latest block timestamp, are no longer expired. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
+- Added support for decoding Axie Infinity `Transfer` and `Approve` ERC721 events which differ from the ERC721 standard. ([#494](https://github.com/0xProject/0x-mesh/pull/494))
 
 ### Bug fixes 🐞 
 
