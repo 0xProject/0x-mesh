@@ -582,13 +582,14 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 
-	err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
-	if err != nil {
-		if _, ok := err.(UnsupportedEventError); ok {
+	erc721Err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
+	if erc721Err != nil {
+		if _, ok := erc721Err.(UnsupportedEventError); ok {
 			// Try unpacking using the incorrect ERC721 event ABIs
-			err := unpackLog(decodedLog, eventName, log, d.erc721EventsAbiWithoutTokenIDIndex)
-			if err != nil {
-				return err
+			fallbackErr := unpackLog(decodedLog, eventName, log, d.erc721EventsAbiWithoutTokenIDIndex)
+			if fallbackErr != nil {
+				// We return the original attempt's error if the fallback fails
+				return erc721Err
 			}
 		}
 	}
