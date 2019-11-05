@@ -709,7 +709,7 @@ func TestOrderWatcherOrderExpiredThenUnexpires(t *testing.T) {
 	earlierBlockTimestamp := latestBlockTimestamp.Add(-10 * time.Minute)
 	blockchainLifecycle.Mine(t, earlierBlockTimestamp)
 
-	// Await expired event
+	// Await unexpired event
 	orderEvents = waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	require.Len(t, orderEvents, 1)
 	orderEvent = orderEvents[0]
