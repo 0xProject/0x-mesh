@@ -22,15 +22,15 @@ const (
 )
 
 func getPrivateKeyPath(config Config) string {
-	return filepath.Join(config.DataDir, "keys", "privkey")
+	return filepath.Join(config.LevelDBDataDir, "keys", "privkey")
 }
 
 func getDHTDir(config Config) string {
-	return filepath.Join(config.DataDir, "p2p", "dht")
+	return filepath.Join(config.LevelDBDataDir, "p2p", "dht")
 }
 
 func getPeerstoreDir(config Config) string {
-	return filepath.Join(config.DataDir, "p2p", "peerstore")
+	return filepath.Join(config.LevelDBDataDir, "p2p", "peerstore")
 }
 
 func getSQLDatabase(config Config) (*sql.DB, error) {

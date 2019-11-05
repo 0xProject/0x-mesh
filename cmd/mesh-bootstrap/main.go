@@ -75,8 +75,8 @@ type Config struct {
 	// for the bootstrap node.
 	// DataStoreType can be either: leveldb or sqldb
 	DataStoreType string `envvar:"DATA_STORE_TYPE" default:"leveldb"`
-	// DataDir is the directory used for storing data when using leveldb as data store type.
-	DataDir string `envvar:"LEVELDB_DATA_DIR" default:"0x_mesh"`
+	// LevelDBDataDir is the directory used for storing data when using leveldb as data store type.
+	LevelDBDataDir string `envvar:"LEVELDB_DATA_DIR" default:"0x_mesh"`
 	// SQLDBConnectionString is the connection URL used to connect to the
 	// database.
 	// NOTE: When set it has precedence over SQL_DB_HOST, SQL_DB_PORT etc.
