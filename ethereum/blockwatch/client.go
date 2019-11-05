@@ -45,6 +45,7 @@ type GetBlockByNumberResponse struct {
 	Hash       common.Hash `json:"hash"`
 	ParentHash common.Hash `json:"parentHash"`
 	Number     string      `json:"number"`
+	Timestamp  string      `json:"timestamp"`
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
@@ -79,10 +80,15 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	if !ok {
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block number returned from eth_getBlockByNumber")
 	}
+	unixTimestamp, ok := math.ParseBig256(header.Timestamp)
+	if !ok {
+		return nil, errors.New("Failed to parse big.Int value from hex-encoded block timestamp returned from eth_getBlockByNumber")
+	}
 	miniHeader := &miniheader.MiniHeader{
-		Hash:   header.Hash,
-		Parent: header.ParentHash,
-		Number: blockNum,
+		Hash:      header.Hash,
+		Parent:    header.ParentHash,
+		Number:    blockNum,
+		Timestamp: time.Unix(unixTimestamp.Int64(), 0),
 	}
 	return miniHeader, nil
 }

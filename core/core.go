@@ -239,14 +239,24 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	latestHeader, err := meshDB.FindLatestMiniHeader()
+	if err != nil {
+		return nil, err
+	}
+	var latestBlockTimestamp *time.Time
+	if latestHeader != nil {
+		latestBlockTimestamp = &latestHeader.Timestamp
+	}
+
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:            meshDB,
-		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
-		ChainID:           config.EthereumChainID,
-		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
+		MeshDB:               meshDB,
+		BlockWatcher:         blockWatcher,
+		OrderValidator:       orderValidator,
+		ChainID:              config.EthereumChainID,
+		MaxOrders:            config.MaxOrdersInStorage,
+		MaxExpirationTime:    metadata.MaxExpirationTime,
+		LatestBlockTimestamp: latestBlockTimestamp,
 	})
 	if err != nil {
 		return nil, err
@@ -378,23 +388,24 @@ func (app *App) Start(ctx context.Context) error {
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
 
-	// Set up and start the snapshot expiration watcher.
+	// Set up the snapshot expiration watcher pruning logic
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for expiredSnapshots := range app.snapshotExpirationWatcher.ExpiredItems() {
-			for _, expiredSnapshot := range expiredSnapshots {
-				app.muIdToSnapshotInfo.Lock()
-				delete(app.idToSnapshotInfo, expiredSnapshot.ID)
-				app.muIdToSnapshotInfo.Unlock()
+		ticker := time.NewTicker(expirationPollingInterval)
+		for {
+			select {
+			case <-innerCtx.Done():
+				return
+			case <-ticker.C:
+				expiredSnapshots := app.snapshotExpirationWatcher.Prune(time.Now())
+				for _, expiredSnapshot := range expiredSnapshots {
+					app.muIdToSnapshotInfo.Lock()
+					delete(app.idToSnapshotInfo, expiredSnapshot.ID)
+					app.muIdToSnapshotInfo.Unlock()
+				}
 			}
 		}
-	}()
-	snapshotExpirationWatcherErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		snapshotExpirationWatcherErrChan <- app.snapshotExpirationWatcher.Watch(innerCtx, expirationPollingInterval)
 	}()
 
 	// Start the order watcher.
@@ -488,12 +499,6 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	case err := <-blockWatcherErrChan:
 		log.WithError(err).Error("block watcher exited with error")
-		if err != nil {
-			cancel()
-			return err
-		}
-	case err := <-snapshotExpirationWatcherErrChan:
-		log.WithError(err).Error("snapshot expiration watcher exited with error")
 		if err != nil {
 			cancel()
 			return err

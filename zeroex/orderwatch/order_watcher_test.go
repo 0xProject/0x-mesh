@@ -667,6 +667,62 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	assert.Equal(t, false, orders[0].IsRemoved)
 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
+func TestOrderWatcherOrderExpiredAndUnexpires(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	latestHeader, err := ethClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	latestBlockTimestamp := time.Unix(int64(latestHeader.Time), 0).UTC()
+
+	// Create and add an expired order to OrderWatcher
+	expirationTime := latestBlockTimestamp.Add(-2 * time.Minute)
+	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Await expired event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+
+	// Simulate a block-reorg
+	earlierBlockTimestamp := latestBlockTimestamp.Add(-10 * time.Minute)
+	blockchainLifecycle.Mine(t, earlierBlockTimestamp)
+
+	// Await expired event
+	orderEvents = waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent = orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState)
+
+	var newOrders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&newOrders)
+	require.NoError(t, err)
+	require.Len(t, newOrders, 1)
+	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
+	assert.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+}
 
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	if !serialTestsEnabled {

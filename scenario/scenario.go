@@ -111,8 +111,8 @@ func CreateSignedTestOrderWithExpirationTime(t *testing.T, ethClient *ethclient.
 		Salt:                  big.NewInt(1548619145450),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(0),
-		TakerAssetAmount:      big.NewInt(0),
+		MakerAssetAmount:      big.NewInt(1000),
+		TakerAssetAmount:      big.NewInt(1000),
 		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
 		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}

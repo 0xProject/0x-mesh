@@ -139,11 +139,6 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 signedOrderWithCustomExpirationTimeSeconds(t, testSignedOrder, big.NewInt(time.Now().Add(-5*time.Minute).Unix())),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROUTCExpired,
-		},
-		testCase{
 			SignedOrder:                 signedOrderWithCustomSignature(t, testSignedOrder, malformedSignature),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
