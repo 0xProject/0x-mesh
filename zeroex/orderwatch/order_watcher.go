@@ -88,7 +88,7 @@ type Watcher struct {
 	maxExpirationTime          *big.Int
 	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
-	latestBlockTimestamp       *time.Time
+	latestBlockTimestamp       time.Time
 }
 
 type Config struct {
@@ -98,7 +98,7 @@ type Config struct {
 	ChainID              int
 	MaxOrders            int
 	MaxExpirationTime    *big.Int
-	LatestBlockTimestamp *time.Time
+	LatestBlockTimestamp time.Time
 }
 
 // New instantiates a new order watcher
@@ -332,7 +332,8 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 func (w *Watcher) generateExpirationOrderEventsIfAny(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 
-	if w.latestBlockTimestamp == nil || w.latestBlockTimestamp.Before(latestBlockTimestamp) {
+	var defaultTime time.Time
+	if w.latestBlockTimestamp == defaultTime || w.latestBlockTimestamp.Before(latestBlockTimestamp) {
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			order := &meshdb.Order{}
@@ -695,7 +696,7 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 	if err != nil {
 		return err
 	}
-	w.latestBlockTimestamp = &latestBlockTimestamp
+	w.latestBlockTimestamp = latestBlockTimestamp
 
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, done := context.WithTimeout(context.Background(), 1*time.Minute)

@@ -243,9 +243,9 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	var latestBlockTimestamp *time.Time
+	var latestBlockTimestamp time.Time
 	if latestHeader != nil {
-		latestBlockTimestamp = &latestHeader.Timestamp
+		latestBlockTimestamp = latestHeader.Timestamp
 	}
 
 	// Initialize order watcher (but don't start it yet).
