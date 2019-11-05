@@ -80,22 +80,22 @@ type Config struct {
 	// DataDBConnectionString is the connection URL used to connect to the
 	// database.
 	// NOTE: When set it has precedence over DATA_DB_HOST, DATA_DB_PORT etc.
-	DataDBConnectionString string `envvar:"DATA_DB_CONNECTION_STRING" default:""`
+	DataDBConnectionString string `envvar:"DATA_DB_CONNECTION_STRING" default:"" json:"-"`
 	// DataDBHost is the database host used to connect to the database when
 	// using postgres as data store type.
-	DataDBHost string `envvar:"DATA_DB_HOST" default:"localhost"`
+	DataDBHost string `envvar:"DATA_DB_HOST" default:"localhost" json:"-"`
 	// DataDBPort is the database port used to connect to the database when
 	// using postgres as data store type.
-	DataDBPort string `envvar:"DATA_DB_PORT" default:"5432"`
+	DataDBPort string `envvar:"DATA_DB_PORT" default:"5432" json:"-"`
 	// DataDBUser is the database user used to connect to the database when
 	// using postgres as data store type.
-	DataDBUser string `envvar:"DATA_DB_USER" default:"postgres"`
+	DataDBUser string `envvar:"DATA_DB_USER" default:"postgres" json:"-"`
 	// DataDBPassword is the database password used to connect to the database when
 	// using postgres as data store type.
-	DataDBPassword string `envvar:"DATA_DB_PASSWORD" default:""`
+	DataDBPassword string `envvar:"DATA_DB_PASSWORD" default:"" json:"-"`
 	// DataDBDatabaseName is the database name to connect to when using
 	// postgres as data store type.
-	DataDBDatabaseName string `envvar:"DATA_DB_NAME" default:"datastore"`
+	DataDBDatabaseName string `envvar:"DATA_DB_NAME" default:"datastore" json:"-"`
 	// DataDBDatabaseEngine is the underyling database engine to use as the
 	// database driver.
 	// NOTE: Currently only `postgres` driver is supported.
