@@ -35,18 +35,18 @@ func getPeerstoreDir(config Config) string {
 
 func getSQLDatabase(config Config) (*sql.DB, error) {
 	// Currently we only support the postgres driver.
-	if config.DataDBDatabaseEngine != "postgres" {
+	if config.SQLDBEngine != "postgres" {
 		return nil, errors.New("sqld currently only supports postgres driver")
 	}
 
-	if config.DataDBConnectionString != "" {
-		return sql.Open(config.DataDBDatabaseEngine, config.DataDBConnectionString)
+	if config.SQLDBConnectionString != "" {
+		return sql.Open(config.SQLDBEngine, config.SQLDBConnectionString)
 	}
 
 	fmtStr := "postgresql:///%s?host=%s&port=%s&user=%s&password=%s&sslmode=disable"
-	connstr := fmt.Sprintf(fmtStr, config.DataDBDatabaseName, config.DataDBHost, config.DataDBPort, config.DataDBUser, config.DataDBPassword)
+	connstr := fmt.Sprintf(fmtStr, config.SQLDBName, config.SQLDBHost, config.SQLDBPort, config.SQLDBUser, config.SQLDBPassword)
 
-	return sql.Open(config.DataDBDatabaseEngine, connstr)
+	return sql.Open(config.SQLDBEngine, connstr)
 }
 
 func prepareSQLDatabase(db *sql.DB) error {

@@ -76,30 +76,30 @@ type Config struct {
 	// DataStoreType can be either: leveldb or sqldb
 	DataStoreType string `envvar:"DATA_STORE_TYPE" default:"leveldb"`
 	// DataDir is the directory used for storing data when using leveldb as data store type.
-	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
-	// DataDBConnectionString is the connection URL used to connect to the
+	DataDir string `envvar:"LEVELDB_DATA_DIR" default:"0x_mesh"`
+	// SQLDBConnectionString is the connection URL used to connect to the
 	// database.
-	// NOTE: When set it has precedence over DATA_DB_HOST, DATA_DB_PORT etc.
-	DataDBConnectionString string `envvar:"DATA_DB_CONNECTION_STRING" default:"" json:"-"`
-	// DataDBHost is the database host used to connect to the database when
+	// NOTE: When set it has precedence over SQL_DB_HOST, SQL_DB_PORT etc.
+	SQLDBConnectionString string `envvar:"SQL_DB_CONNECTION_STRING" default:"" json:"-"`
+	// SQLDBHost is the database host used to connect to the database when
 	// using postgres as data store type.
-	DataDBHost string `envvar:"DATA_DB_HOST" default:"localhost" json:"-"`
-	// DataDBPort is the database port used to connect to the database when
+	SQLDBHost string `envvar:"SQL_DB_HOST" default:"localhost" json:"-"`
+	// SQLDBPort is the database port used to connect to the database when
 	// using postgres as data store type.
-	DataDBPort string `envvar:"DATA_DB_PORT" default:"5432" json:"-"`
-	// DataDBUser is the database user used to connect to the database when
+	SQLDBPort string `envvar:"SQL_DB_PORT" default:"5432" json:"-"`
+	// SQLDBUser is the database user used to connect to the database when
 	// using postgres as data store type.
-	DataDBUser string `envvar:"DATA_DB_USER" default:"postgres" json:"-"`
-	// DataDBPassword is the database password used to connect to the database when
+	SQLDBUser string `envvar:"SQL_DB_USER" default:"postgres" json:"-"`
+	// SQLDBPassword is the database password used to connect to the database when
 	// using postgres as data store type.
-	DataDBPassword string `envvar:"DATA_DB_PASSWORD" default:"" json:"-"`
-	// DataDBDatabaseName is the database name to connect to when using
+	SQLDBPassword string `envvar:"SQL_DB_PASSWORD" default:"" json:"-"`
+	// SQLDBName is the database name to connect to when using
 	// postgres as data store type.
-	DataDBDatabaseName string `envvar:"DATA_DB_NAME" default:"datastore" json:"-"`
-	// DataDBDatabaseEngine is the underyling database engine to use as the
+	SQLDBName string `envvar:"SQL_DB_NAME" default:"datastore" json:"-"`
+	// SQLDBEngine is the underyling database engine to use as the
 	// database driver.
 	// NOTE: Currently only `postgres` driver is supported.
-	DataDBDatabaseEngine string `envvar:"DATA_DB_ENGINE" default:"postgres"`
+	SQLDBEngine string `envvar:"SQL_DB_ENGINE" default:"postgres"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
