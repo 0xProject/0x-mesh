@@ -31,6 +31,7 @@ func (h *KeySuffixHook) Levels() []log.Level {
 }
 
 func (h *KeySuffixHook) Fire(entry *log.Entry) error {
+	newFields := log.Fields{}
 	for key, value := range entry.Data {
 		typ, err := getTypeForValue(value)
 		if err != nil {
@@ -38,21 +39,20 @@ func (h *KeySuffixHook) Fire(entry *log.Entry) error {
 				// We can't safely log nested map types, so replace the value with a
 				// string.
 				newKey := fmt.Sprintf("%s_json_string", key)
-				delete(entry.Data, key)
 				mapString, err := json.Marshal(value)
 				if err != nil {
 					return err
 				}
-				entry.Data[newKey] = string(mapString)
+				newFields[newKey] = string(mapString)
 				continue
 			} else {
 				return err
 			}
 		}
 		newKey := fmt.Sprintf("%s_%s", key, typ)
-		delete(entry.Data, key)
-		entry.Data[newKey] = value
+		newFields[newKey] = value
 	}
+	entry.Data = newFields
 	return nil
 }
 
