@@ -397,8 +397,8 @@ func (app *App) Start(ctx context.Context) error {
 			select {
 			case <-innerCtx.Done():
 				return
-			case <-ticker.C:
-				expiredSnapshots := app.snapshotExpirationWatcher.Prune(time.Now())
+			case now := <-ticker.C:
+				expiredSnapshots := app.snapshotExpirationWatcher.Prune(now)
 				for _, expiredSnapshot := range expiredSnapshots {
 					app.muIdToSnapshotInfo.Lock()
 					delete(app.idToSnapshotInfo, expiredSnapshot.ID)
