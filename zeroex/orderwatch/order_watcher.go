@@ -92,13 +92,12 @@ type Watcher struct {
 }
 
 type Config struct {
-	MeshDB               *meshdb.MeshDB
-	BlockWatcher         *blockwatch.Watcher
-	OrderValidator       *ordervalidator.OrderValidator
-	ChainID              int
-	MaxOrders            int
-	MaxExpirationTime    *big.Int
-	LatestBlockTimestamp time.Time
+	MeshDB            *meshdb.MeshDB
+	BlockWatcher      *blockwatch.Watcher
+	OrderValidator    *ordervalidator.OrderValidator
+	ChainID           int
+	MaxOrders         int
+	MaxExpirationTime *big.Int
 }
 
 // New instantiates a new order watcher
@@ -148,7 +147,6 @@ func New(config Config) (*Watcher, error) {
 		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
 		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
-		latestBlockTimestamp:       config.LatestBlockTimestamp,
 	}
 
 	// Check if any orders need to be removed right away due to high expiration

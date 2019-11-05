@@ -239,24 +239,14 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	latestHeader, err := meshDB.FindLatestMiniHeader()
-	if err != nil {
-		return nil, err
-	}
-	var latestBlockTimestamp time.Time
-	if latestHeader != nil {
-		latestBlockTimestamp = latestHeader.Timestamp
-	}
-
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:               meshDB,
-		BlockWatcher:         blockWatcher,
-		OrderValidator:       orderValidator,
-		ChainID:              config.EthereumChainID,
-		MaxOrders:            config.MaxOrdersInStorage,
-		MaxExpirationTime:    metadata.MaxExpirationTime,
-		LatestBlockTimestamp: latestBlockTimestamp,
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		ChainID:           config.EthereumChainID,
+		MaxOrders:         config.MaxOrdersInStorage,
+		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
