@@ -72,9 +72,9 @@ func (w *Watcher) Remove(expirationTimestamp time.Time, id string) {
 	}
 }
 
-// Prune checks for any expired items given the latest blockTimestamp,
-// removes them from the expiration watcher and returns them to the caller
-func (w *Watcher) Prune(blockTimestamp time.Time) []ExpiredItem {
+// Prune checks for any expired items given a timestamp and removes any expired 
+// items from the expiration watcher and returns them to the caller
+func (w *Watcher) Prune(timestamp time.Time) []ExpiredItem {
 	pruned := []ExpiredItem{}
 	for {
 		w.rbTreeMu.RLock()
@@ -85,7 +85,7 @@ func (w *Watcher) Prune(blockTimestamp time.Time) []ExpiredItem {
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
 		expirationTime := time.Unix(expirationTimeSeconds, 0)
-		if !blockTimestamp.After(expirationTime) {
+		if !timestamp.After(expirationTime) {
 			break
 		}
 		ids := value.(stringset.Set)
