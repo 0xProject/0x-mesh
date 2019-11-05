@@ -97,9 +97,10 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 		return nil, err
 	}
 	miniHeader := &miniheader.MiniHeader{
-		Hash:   header.Hash(),
-		Parent: header.ParentHash,
-		Number: header.Number,
+		Hash:      header.Hash(),
+		Parent:    header.ParentHash,
+		Number:    header.Number,
+		Timestamp: time.Unix(int64(header.Time), 0),
 	}
 	return miniHeader, nil
 }

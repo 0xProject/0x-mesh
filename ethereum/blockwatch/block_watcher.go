@@ -357,13 +357,19 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, erro
 		for _, log := range logs {
 			blockHeader, ok := hashToBlockHeader[log.BlockHash]
 			if !ok {
+				blockNumber := big.NewInt(0).SetUint64(log.BlockNumber)
+				header, err := w.client.HeaderByNumber(blockNumber)
+				if err != nil {
+					return events, err
+				}
 				// TODO(fabio): Find a way to include the parent hash for the block as well.
 				// It's currently not an issue to omit it since we don't use the parent hash
 				// when processing block events in OrderWatcher.
 				blockHeader = &miniheader.MiniHeader{
-					Hash:   log.BlockHash,
-					Number: big.NewInt(0).SetUint64(log.BlockNumber),
-					Logs:   []types.Log{},
+					Hash:      log.BlockHash,
+					Number:    blockNumber,
+					Logs:      []types.Log{},
+					Timestamp: header.Timestamp,
 				}
 				hashToBlockHeader[log.BlockHash] = blockHeader
 			}
