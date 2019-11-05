@@ -1008,7 +1008,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		expirationTime := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
-		isExpired := time.Now().After(expirationTime)
+		isExpired := w.latestBlockTimestamp.After(expirationTime)
 		if !isExpired && oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
