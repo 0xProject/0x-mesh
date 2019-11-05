@@ -36,8 +36,9 @@ export interface Config {
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
     ethereumRPCURL: string;
-    // The network ID to use when communicating with Ethereum.
-    ethereumNetworkID: number;
+    // EthereumChainID is the chain ID specifying which Ethereum chain you wish to
+    // run your Mesh node for
+    ethereumChainID: number;
     // UseBootstrapList is whether to bootstrap the DHT by connecting to a
     // specific set of peers.
     useBootstrapList?: boolean;
@@ -46,15 +47,11 @@ export interface Config {
     // "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
     // Defaults to the hard-coded default bootstrap list.
     bootstrapList?: string[];
-    // The amount of time (in seconds) before the order's stipulated expiration
-    // time that it will be considered expired. Higher values will cause orders
-    // to be considered invalid sooner. Defaluts to 10.
-    orderExpirationBufferSeconds?: number;
     // The polling interval (in seconds) to wait before checking for a new
     // Ethereum block that might contain transactions that impact the
-    // fillability of orders stored by Mesh. Different networks have different
-    // block producing intervals: POW networks are typically slower (e.g.,
-    // Mainnet) and POA networks faster (e.g., Kovan) so one should adjust the
+    // fillability of orders stored by Mesh. Different chains have different
+    // block producing intervals: POW chains are typically slower (e.g.,
+    // Mainnet) and POA chains faster (e.g., Kovan) so one should adjust the
     // polling interval accordingly. Defaults to 5.
     blockPollingIntervalSeconds?: number;
     // The maximum request Content-Length accepted by the backing Ethereum RPC
@@ -66,14 +63,22 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // customContractAddresses is set of custom addresses to use for the
-    // configured network ID. The contract addresses for most common networks
-    // are already included by default, so this is typically only needed for
-    // testing on custom networks. The given addresses are added to the default
-    // list of addresses for known networks and overriding any contract
-    // addresses for known networks is not allowed. The addresses for exchange,
-    // devUtils, erc20Proxy, and erc721Proxy are required for each network. For
-    // example:
+    // EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
+    // per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
+    // Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
+    EthereumRPCMaxRequestsPer24HrUTC?: number;
+    // EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
+    // second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
+    // It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
+    // and potentially higher on alternative infrastructure.
+    EthereumRPCMaxRequestsPerSecond?: number;
+    // A set of custom addresses to use for the configured network ID. The
+    // contract addresses for most common networks are already included by
+    // default, so this is typically only needed for testing on custom networks.
+    // The given addresses are added to the default list of addresses for known
+    // chains and overriding any contract addresses for known chains is not
+    // allowed. The addresses for exchange, devUtils, erc20Proxy, and
+    // erc721Proxy are required for each chain. For example:
     //
     //    {
     //        exchange: "0x48bacb9266a570d521063ef5dd96e61686dbe788",
@@ -83,6 +88,11 @@ export interface Config {
     //    }
     //
     customContractAddresses?: ContractAddresses;
+    // The maximum number of orders that Mesh will keep in storage. As the
+    // number of orders in storage grows, Mesh will begin enforcing a limit on
+    // maximum expiration time for incoming orders and remove any orders with an
+    // expiration time too far in the future. Defaults to 100,000.
+    maxOrdersInStorage ?: number;
 }
 
 export interface ContractAddresses {
@@ -119,20 +129,22 @@ interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
-    addOrdersAsync(orders: WrapperSignedOrder[]): Promise<WrapperValidationResults>;
+    addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
 // The type for configuration exposed by MeshWrapper.
 interface WrapperConfig {
     verbosity?: number;
     ethereumRPCURL: string;
-    ethereumNetworkID: number;
+    ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.
-    orderExpirationBufferSeconds?: number;
     blockPollingIntervalSeconds?: number;
     ethereumRPCMaxContentLength?: number;
+    EthereumRPCMaxRequestsPer24HrUTC?: number;
+    EthereumRPCMaxRequestsPerSecond?: number;
     customContractAddresses?: string; // json-encoded instead of Object.
+    maxOrdersInStorage?: number;
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -208,7 +220,6 @@ export interface ERC721ApprovalForAllEvent {
     operator: string;
     approved: boolean;
 }
-
 
 export interface ERC1155TransferSingleEvent {
     operator: string;
@@ -395,6 +406,7 @@ export enum OrderEventEndState {
     Expired = 'EXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
+    StoppedWatching = 'STOPPED_WATCHING',
 }
 
 interface WrapperOrderEvent {
@@ -587,11 +599,15 @@ export class Mesh {
      * the order; it will not be rejected for any invalid orders (check
      * results.rejected instead).
      *
-     * @param   orders                An array of orders to add.
+     * @param   orders      An array of orders to add.
+     * @param   pinned      Whether or not the orders should be pinned. Pinned
+     * orders will not be affected by any DDoS prevention or incentive
+     * mechanisms and will always stay in storage until they are no longer
+     * fillable.
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
-    public async addOrdersAsync(orders: SignedOrder[]): Promise<ValidationResults> {
+    public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
@@ -600,7 +616,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
         const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
-        const meshResults = await this._wrapper.addOrdersAsync(meshOrders);
+        const meshResults = await this._wrapper.addOrdersAsync(meshOrders, pinned);
         return wrapperValidationResultsToValidationResults(meshResults);
     }
 }
@@ -701,14 +717,14 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                 break;
             case ContractEventKind.ERC1155TransferBatchEvent:
                 const erc1155TransferBatchEvent = rawParameters as WrapperERC1155TransferBatchEvent;
-                const ids: BigNumber[] = []
+                const ids: BigNumber[] = [];
                 erc1155TransferBatchEvent.ids.forEach(id => {
-                    ids.push(new BigNumber(id))
-                })
-                const values: BigNumber[] = []
+                    ids.push(new BigNumber(id));
+                });
+                const values: BigNumber[] = [];
                 erc1155TransferBatchEvent.values.forEach(value => {
-                    values.push(new BigNumber(value))
-                })
+                    values.push(new BigNumber(value));
+                });
                 parameters = {
                     operator: erc1155TransferBatchEvent.operator,
                     from: erc1155TransferBatchEvent.from,

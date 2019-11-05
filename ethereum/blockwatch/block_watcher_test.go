@@ -198,9 +198,10 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 	require.NoError(t, err)
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &miniheader.MiniHeader{
-		Number: big.NewInt(5),
-		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
-		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Number:    big.NewInt(5),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now(),
 	}
 
 	config.Stack = NewSimpleStack(blockRetentionLimit)
@@ -232,9 +233,10 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 	require.NoError(t, err)
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &miniheader.MiniHeader{
-		Number: big.NewInt(5),
-		Hash:   common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
-		Parent: common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Number:    big.NewInt(5),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now(),
 	}
 
 	config.Stack = NewSimpleStack(blockRetentionLimit)

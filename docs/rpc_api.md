@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-5.1.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-6.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh JSON-RPC API Documentation
 
@@ -197,14 +197,18 @@ Gets certain configurations and stats about a Mesh node.
         "pubSubTopic": "/0x-orders/network/1/version/1",
         "rendervous": "/0x-mesh/network/1/version/1",
         "peerID": "16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
-        "ethereumNetworkID": 1,
+        "ethereumChainID": 1,
         "latestBlock": {
             "number": 8253150,
             "hash": "0x84aaae84147fc42fc77b33e2d3e05d86272663792d9cacaa8dc89f207b4d0642"
         },
         "numPeers": 18,
         "numOrders": 1095,
-        "numOrdersIncludingRemoved": 1134
+        "numOrdersIncludingRemoved": 1134,
+        "startOfCurrentUTCDay": "1257811200",
+        "ethRPCRequestsSentInCurrentUTCDay": 5039,
+        "ethRPCRateLimitExpiredRequests": 0,
+        "maxExpirationTime": "717784680"
     },
     "id": 1
 }

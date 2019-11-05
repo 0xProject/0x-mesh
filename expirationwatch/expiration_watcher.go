@@ -1,12 +1,9 @@
 package expirationwatch
 
 import (
-	"context"
-	"errors"
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/albrow/stringset"
 	"github.com/ocdogan/rbt"
 	log "github.com/sirupsen/logrus"
@@ -20,26 +17,17 @@ type ExpiredItem struct {
 
 // Watcher watches the expiration of items
 type Watcher struct {
-	expiredItems     chan []ExpiredItem
-	rbTreeMu         sync.RWMutex
-	rbTree           *rbt.RbTree
-	expirationBuffer time.Duration
-	ticker           *time.Ticker
-	wasStartedOnce   bool
-	mu               sync.Mutex
+	expiredItems chan []ExpiredItem
+	rbTreeMu     sync.RWMutex
+	rbTree       *rbt.RbTree
 }
 
-// New instantiates a new expiration watcher. An expiration buffer (positive or
-// negative) can be specified, causing items to be deemed expired some time
-// before or after their expiration reaches current UTC time. A positive
-// expirationBuffer will make the item expire sooner then UTC, and a negative
-// buffer after.
-func New(expirationBuffer time.Duration) *Watcher {
+// New instantiates a new expiration watcher
+func New() *Watcher {
 	rbTree := rbt.NewRbTree()
 	return &Watcher{
-		expiredItems:     make(chan []ExpiredItem, 10),
-		rbTree:           rbTree,
-		expirationBuffer: expirationBuffer,
+		expiredItems: make(chan []ExpiredItem, 10),
+		rbTree:       rbTree,
 	}
 }
 
@@ -84,49 +72,9 @@ func (w *Watcher) Remove(expirationTimestamp time.Time, id string) {
 	}
 }
 
-// Watch starts the expiration watchers poller. It continuously checks all items
-// for expiration until there is an error or the given context is canceled. You
-// usually want to call Watch inside a goroutine.
-func (w *Watcher) Watch(ctx context.Context, pollingInterval time.Duration) error {
-	w.mu.Lock()
-	if w.wasStartedOnce {
-		w.mu.Unlock()
-		return errors.New("Can only start Watcher once per instance")
-	}
-	w.wasStartedOnce = true
-	w.mu.Unlock()
-
-	// TODO(fabio): Optimize this poller. We could keep track of soonestExpirationTime as a property of
-	// Watcher. Whenever a new item is added via Add, we check if the expiration time is sooner
-	// than soonestExpirationTime and if so, we update soonestExpirationTime. Then instead of running the
-	// inner for loop at a constant frequency, we adjust the frequency based on the value of
-	// soonestExpirationTime (probably by using time.After or time.Sleep).
-	ticker := time.NewTicker(pollingInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			ticker.Stop()
-			close(w.expiredItems)
-			return nil
-		case <-ticker.C:
-			expiredItems := w.prune()
-			if len(expiredItems) > 0 {
-				w.expiredItems <- expiredItems
-			}
-		}
-	}
-}
-
-// ExpiredItems returns a read-only channel that can be used to listen for
-// expired items. The channel will be closed if/when the watcher is done
-// watching.
-func (w *Watcher) ExpiredItems() <-chan []ExpiredItem {
-	return w.expiredItems
-}
-
-// prune checks for any expired items, removes them from the expiration watcher and returns them
-// to the caller
-func (w *Watcher) prune() []ExpiredItem {
+// Prune checks for any expired items given a timestamp and removes any expired 
+// items from the expiration watcher and returns them to the caller
+func (w *Watcher) Prune(timestamp time.Time) []ExpiredItem {
 	pruned := []ExpiredItem{}
 	for {
 		w.rbTreeMu.RLock()
@@ -137,7 +85,7 @@ func (w *Watcher) prune() []ExpiredItem {
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
 		expirationTime := time.Unix(expirationTimeSeconds, 0)
-		if !ordervalidator.IsExpired(expirationTime, w.expirationBuffer) {
+		if !timestamp.After(expirationTime) {
 			break
 		}
 		ids := value.(stringset.Set)

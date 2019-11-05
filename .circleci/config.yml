@@ -8,6 +8,7 @@ jobs:
       - image: 0xorg/ganache-cli:latest
         environment:
             VERSION: 4.3.3
+    resource_class: large
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout
@@ -34,8 +35,8 @@ jobs:
           name: Install Go linter
           command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
       - run:
-          name: Run Go linter
-          command: golangci-lint run
+          name: Run linters
+          command: make lint
       - run:
           name: Run Go tests
           command: make test-go
@@ -52,12 +53,6 @@ jobs:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
       - run:
-          name: Install TS RPC client dependencies
-          command: cd rpc/clients/typescript && yarn install
-      - run:
-          name: Run TS RPC client linter
-          command: cd rpc/clients/typescript && yarn lint
-      - run:
           name: Build TS RPC client
           command: cd rpc/clients/typescript && yarn build
       - run:
@@ -66,4 +61,3 @@ jobs:
       - run:
           name: Run cut-release script to test it still works
           command: VERSION=100.0.0 make cut-release
-

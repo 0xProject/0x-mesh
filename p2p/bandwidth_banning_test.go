@@ -14,9 +14,6 @@ import (
 )
 
 func TestBandwidthChecker(t *testing.T) {
-	// TODO(albrow): Unskip this test.
-	t.Skip("Skipping due to apparent bug in libp2p's BandwidthCounter")
-
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -38,11 +35,22 @@ func TestBandwidthChecker(t *testing.T) {
 	require.NoError(t, node0.Connect(node1AddrInfo, testConnectionTimeout))
 	require.NoError(t, node1.Connect(node0AddrInfo, testConnectionTimeout))
 
-	// Manually send a message from node0 to node1 that would exceed the bandwidth
-	// limit.
+	// Repeatedly send messages from node0 to node1 that would exceed the
+	// bandwidth limit.
 	newMaxBytesPerSecond := float64(1)
 	message := make([]byte, int(newMaxBytesPerSecond*100))
-	require.NoError(t, node0.send(message))
+	ticker := time.NewTicker(500 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// Break the loop and exit goroutine when context is canceled.
+				return
+			case <-ticker.C:
+				require.NoError(t, node0.Send(message))
+			}
+		}
+	}()
 
 	// Wait for node1 to receive the message.
 	expectedMessage := &Message{
@@ -52,7 +60,7 @@ func TestBandwidthChecker(t *testing.T) {
 	expectMessage(t, node1, expectedMessage, 15*time.Second)
 
 	// Manually change the bandwidth limit for node1.
-	node1.bandwidthChecker.maxBytesPerSecond = newMaxBytesPerSecond
+	node1.banner.SetMaxBytesPerSecond(newMaxBytesPerSecond)
 
 	// Wait for node1 to block node0 and for the connection to close.
 	waitForNodeToBlockAddr(t, node1, node0AddrInfo.Addrs[0], 5*time.Second)
@@ -71,8 +79,8 @@ func waitForNodeToBlockAddr(t *testing.T, blocker *Node, addressToBlock ma.Multi
 		default:
 		}
 
-		blocker.bandwidthChecker.checkUsage()
-		isBlocked := blocker.filters.AddrBlocked(addressToBlock)
+		blocker.banner.CheckBandwidthUsage()
+		isBlocked := blocker.banner.IsAddrBanned(addressToBlock)
 		if isBlocked {
 			// This is what we want. Return and continue the test.
 			return

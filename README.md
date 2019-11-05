@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-5.1.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-6.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 [![Docs](https://img.shields.io/badge/docs-website-yellow.svg)](https://0x-org.gitbook.io/mesh)
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
@@ -50,7 +50,7 @@ https://0x-org.gitbook.io/mesh.
 
 We love receiving contributions from the community :smile: If you are interested
 in helping develop 0x Mesh, please read the
-[Development Guide](docs/development.md).
+[Development Guide](CONTRIBUTING.md).
 If you are looking for a place to start, take a look at the
 [issues page](https://github.com/0xProject/0x-mesh/issues) and don't hesitate to
 [reach out to us on Discord](https://discord.gg/HF7fHwk).

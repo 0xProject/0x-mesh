@@ -27,18 +27,18 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error)
+	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
 	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
 	getStatsHandler          func() (*GetStatsResponse, error)
 	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
 }
 
-func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if d.addOrdersHandler == nil {
 		return nil, errors.New("dummyRPCHandler: no handler set for AddOrder")
 	}
-	return d.addOrdersHandler(signedOrdersRaw)
+	return d.addOrdersHandler(signedOrdersRaw, opts)
 }
 
 func (d *dummyRPCHandler) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
@@ -112,7 +112,7 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(3551808554499581700),
 	TakerAssetAmount:      big.NewInt(300000000000000),
 	ExpirationTimeSeconds: big.NewInt(1548619325),
-	ExchangeAddress:       ethereum.NetworkIDToContractAddresses[constants.TestNetworkID].Exchange,
+	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 }
 
 func TestAddOrdersSuccess(t *testing.T) {
@@ -125,7 +125,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	rpcHandler := &dummyRPCHandler{
-		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage) (*ordervalidator.ValidationResults, error) {
+		addOrdersHandler: func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 			require.Len(t, signedOrdersRaw, 1)
 			validationResponse := &ordervalidator.ValidationResults{}
 			for _, signedOrderRaw := range signedOrdersRaw {
@@ -272,7 +272,7 @@ func TestGetStats(t *testing.T) {
 		PubSubTopic:       "/0x-orders/network/development/version/1",
 		Rendezvous:        "/0x-mesh/network/development/version/1",
 		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
-		EthereumNetworkID: 42,
+		EthereumChainID: 42,
 		LatestBlock: LatestBlock{
 			Number: 1,
 			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
