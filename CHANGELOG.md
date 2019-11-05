@@ -25,6 +25,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞 
 
 - Improved the aggressiveness at which we permanently delete orders that have been flagged for removal. Previously we would wait for the cleanup job to handle this (once an hour), but that meant many removed orders would accumulate. We now prune them every 5 minutes. ([#471](https://github.com/0xProject/0x-mesh/pull/471))
+- Fixed a bug in the Go RPC client which resulted in errors when receving order events with at least one contract event ([#496](https://github.com/0xProject/0x-mesh/pull/496)).
 
 ## v5.1.0-beta
 
