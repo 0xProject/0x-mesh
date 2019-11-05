@@ -289,7 +289,7 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 		os.Environ(),
 		"P2P_BIND_ADDRS="+bootstrapAddr,
 		"P2P_ADVERTISE_ADDRS="+bootstrapAddr,
-		"DATA_DIR="+bootstrapDataDir,
+		"LEVELDB_DATA_DIR="+bootstrapDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 	)
 	output, err := cmd.CombinedOutput()
@@ -308,7 +308,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"DATA_DIR="+standaloneDataDir,
+		"LEVELDB_DATA_DIR="+standaloneDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
