@@ -941,7 +941,7 @@ func (w *Watcher) setupInMemoryOrderState(signedOrder *zeroex.SignedOrder) error
 		return err
 	}
 
-	expirationTimestamp := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0).UTC()
+	expirationTimestamp := time.Unix(signedOrder.ExpirationTimeSeconds.Int64(), 0)
 	w.expirationWatcher.Add(expirationTimestamp, orderHash.Hex())
 
 	return nil
