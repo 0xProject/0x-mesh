@@ -51,7 +51,7 @@ const (
 	rateLimiterCheckpointInterval = 1 * time.Minute
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "5.1.0-beta"
+	version          = "6.0.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
