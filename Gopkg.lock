@@ -483,6 +483,18 @@
   version = "v0.1"
 
 [[projects]]
+  digest = "1:12cb143f2148bf54bcd9fe622abac17325e85eeb1d84b8ec6caf1c80232108fd"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+    "scram",
+  ]
+  pruneopts = "UT"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:483fcb9b21a758b47501f8880628b85aa3c4e99e33166867d06fa278965c66b2"
   name = "github.com/libp2p/go-addr-util"
   packages = ["."]
@@ -992,6 +1004,14 @@
   version = "v0.0.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:64b1a16a92daaf21057c2d60e423687f06ca1d85b1b3115fa55d9d78c1f51ef3"
+  name = "github.com/opaolini/go-ds-sql"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "15a4c8e2fea5eb23d3faa139a46a945861616aad"
+
+[[projects]]
   digest = "1:11e62d6050198055e6cd87ed57e5d8c669e84f839c16e16f192374d913d1a70d"
   name = "github.com/opentracing/opentracing-go"
   packages = [
@@ -1382,9 +1402,11 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
+    "github.com/ipfs/go-datastore",
     "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
     "github.com/karlseguin/ccache",
+    "github.com/lib/pq",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-circuit",
@@ -1411,6 +1433,7 @@
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
     "github.com/ocdogan/rbt",
+    "github.com/opaolini/go-ds-sql",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",

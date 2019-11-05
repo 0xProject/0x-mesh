@@ -112,5 +112,6 @@ func NewDHT(ctx context.Context, storageDir string, host host.Host) (*dht.IpfsDH
 	if err != nil {
 		return nil, err
 	}
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(dhtProtocolID))
+
+	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(DHTProtocolID))
 }

@@ -289,7 +289,7 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 		os.Environ(),
 		"P2P_BIND_ADDRS="+bootstrapAddr,
 		"P2P_ADVERTISE_ADDRS="+bootstrapAddr,
-		"DATA_DIR="+bootstrapDataDir,
+		"LEVELDB_DATA_DIR="+bootstrapDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 	)
 	output, err := cmd.CombinedOutput()
