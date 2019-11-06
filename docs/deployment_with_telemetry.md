@@ -53,7 +53,7 @@ services:
         environment:
             - VERBOSITY=5
             - ETHEREUM_CHAIN_ID=1
-            - RPC_ADDR=0.0.0.0:60557
+            - RPC_ADDR=localhost:60557
             # Set your backing Ethereum JSON RPC endpoint below
             - ETHEREUM_RPC_URL=
             - BLOCK_POLLING_INTERVAL=5s
@@ -82,7 +82,10 @@ services:
 ```
 
 In most cases, the only change you need to make to the __docker-compose.yml__
-file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint.
+file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint. If you 
+wish to connect to your Mesh node over a subnet or over the public internet, you
+ must set the `RPC_ADDR` to something other than `localhost` (e.g., `0.0.0.0` for 
+ the public internet).
 
 ### Deploying with Docker Machine
 
