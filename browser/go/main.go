@@ -87,6 +87,8 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		UseBootstrapList:            true,
 		BlockPollingInterval:        5 * time.Second,
 		EthereumRPCMaxContentLength: 524288,
+		EthereumRPCMaxRequestsPer24HrUTC: 100000,
+		EthereumRPCMaxRequestsPerSecond: 30.0,	
 		MaxOrdersInStorage:          100000,
 	}
 
@@ -112,14 +114,17 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
 		config.BootstrapList = bootstrapList.String()
 	}
-	if orderExpirationBufferSeconds := jsConfig.Get("orderExpirationBufferSeconds"); !isNullOrUndefined(orderExpirationBufferSeconds) {
-		config.OrderExpirationBuffer = time.Duration(orderExpirationBufferSeconds.Int()) * time.Second
-	}
 	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !isNullOrUndefined(blockPollingIntervalSeconds) {
 		config.BlockPollingInterval = time.Duration(blockPollingIntervalSeconds.Int()) * time.Second
 	}
 	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
 		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
+	}
+	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !isNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
+		config.EthereumRPCMaxRequestsPer24HrUTC = ethereumRPCMaxRequestsPer24HrUTC.Int()
+	}
+	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
+		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
 	}
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()

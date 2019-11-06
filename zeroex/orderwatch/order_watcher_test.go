@@ -13,6 +13,8 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
@@ -32,6 +34,8 @@ const (
 	blockWatcherRetentionLimit  = 20
 	blockPollingInterval        = 1000 * time.Millisecond
 	ethereumRPCMaxContentLength = 524288
+	maxEthRPCRequestsPer24HrUTC = 1000000
+	maxEthRPCRequestsPerSeconds = 1000.0
 )
 
 var (
@@ -702,6 +706,62 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	assert.Equal(t, false, orders[0].IsRemoved)
 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
+func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	latestHeader, err := ethClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	latestBlockTimestamp := time.Unix(int64(latestHeader.Time), 0).UTC()
+
+	// Create and add an expired order to OrderWatcher
+	expirationTime := latestBlockTimestamp.Add(-2 * time.Minute)
+	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+
+	// Await expired event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+
+	// Simulate a block-reorg
+	earlierBlockTimestamp := latestBlockTimestamp.Add(-10 * time.Minute)
+	blockchainLifecycle.Mine(t, earlierBlockTimestamp)
+
+	// Await unexpired event
+	orderEvents = waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent = orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState)
+
+	var newOrders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&newOrders)
+	require.NoError(t, err)
+	require.Len(t, newOrders, 1)
+	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
+	assert.Equal(t, false, newOrders[0].IsRemoved)
+	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+}
 
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	if !serialTestsEnabled {
@@ -789,8 +849,10 @@ func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedO
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
-	// Init OrderWatcher
-	blockWatcherClient, err := blockwatch.NewRpcClient(constants.GanacheEndpoint, ethereumRPCRequestTimeout)
+	rateLimiter := ratelimit.NewFakeLimiter()
+	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
+	require.NoError(t, err)
+	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
 	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
@@ -803,14 +865,13 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethClient, constants.TestChainID, ethereumRPCMaxContentLength, 0)
+	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		MeshDB:            meshDB,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
-		ChainID:         constants.TestChainID,
-		ExpirationBuffer:  0,
+		ChainID:           constants.TestChainID,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 		MaxOrders:         1000,
 	})

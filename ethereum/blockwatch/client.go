@@ -6,14 +6,18 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
+)
+
+var (
+	// We give up on ETH RPC requests sent for the purpose of block watching after 10 seconds
+	requestTimeout = 10 * time.Second
 )
 
 // Client defines the methods needed to satisfy the client expected when
@@ -26,37 +30,27 @@ type Client interface {
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
-	rpcClient      *rpc.Client
-	client         *ethclient.Client
-	requestTimeout time.Duration
+	ethRPCClient ethrpcclient.Client
 }
 
 // NewRpcClient returns a new Client for fetching Ethereum blocks using the given
 // ethclient.Client.
-func NewRpcClient(rpcURL string, requestTimeout time.Duration) (*RpcClient, error) {
-	ethClient, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	rpcClient, err := rpc.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	return &RpcClient{rpcClient: rpcClient, client: ethClient, requestTimeout: requestTimeout}, nil
+func NewRpcClient(ethRPCClient ethrpcclient.Client) (*RpcClient, error) {
+	return &RpcClient{
+		ethRPCClient: ethRPCClient,
+	}, nil
 }
 
 type GetBlockByNumberResponse struct {
 	Hash       common.Hash `json:"hash"`
 	ParentHash common.Hash `json:"parentHash"`
 	Number     string      `json:"number"`
+	Timestamp  string      `json:"timestamp"`
 }
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
-	defer cancel()
-
 	var blockParam string
 	if number == nil {
 		blockParam = "latest"
@@ -71,7 +65,9 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	// RPC response rather than re-compute it from the block header.
 	// Source: https://github.com/ethereum/go-ethereum/pull/18166
 	var header GetBlockByNumberResponse
-	err := rc.rpcClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err := rc.ethRPCClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
 	}
@@ -84,10 +80,15 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	if !ok {
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block number returned from eth_getBlockByNumber")
 	}
+	unixTimestamp, ok := math.ParseBig256(header.Timestamp)
+	if !ok {
+		return nil, errors.New("Failed to parse big.Int value from hex-encoded block timestamp returned from eth_getBlockByNumber")
+	}
 	miniHeader := &miniheader.MiniHeader{
-		Hash:   header.Hash,
-		Parent: header.ParentHash,
-		Number: blockNum,
+		Hash:      header.Hash,
+		Parent:    header.ParentHash,
+		Number:    blockNum,
+		Timestamp: time.Unix(unixTimestamp.Int64(), 0),
 	}
 	return miniHeader, nil
 }
@@ -95,25 +96,26 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
-	header, err := rc.client.HeaderByHash(ctx, hash)
+	header, err := rc.ethRPCClient.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
 	miniHeader := &miniheader.MiniHeader{
-		Hash:   header.Hash(),
-		Parent: header.ParentHash,
-		Number: header.Number,
+		Hash:      header.Hash(),
+		Parent:    header.ParentHash,
+		Number:    header.Number,
+		Timestamp: time.Unix(int64(header.Time), 0),
 	}
 	return miniHeader, nil
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), rc.requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
-	logs, err := rc.client.FilterLogs(ctx, q)
+	logs, err := rc.ethRPCClient.FilterLogs(ctx, q)
 	if err != nil {
 		return nil, err
 	}

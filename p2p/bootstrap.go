@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const dhtProtocolID = protocol.ID("/0x-mesh-dht/version/1")
+const DHTProtocolID = protocol.ID("/0x-mesh-dht/version/1")
 
 // DefaultBootstrapList is a list of addresses to use by default for
 // bootstrapping the DHT.

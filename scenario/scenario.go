@@ -9,6 +9,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -116,8 +117,8 @@ func CreateSignedTestOrderWithExpirationTime(t *testing.T, ethClient *ethclient.
 		Salt:                  big.NewInt(1548619145450),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(0),
-		TakerAssetAmount:      big.NewInt(0),
+		MakerAssetAmount:      big.NewInt(1000),
+		TakerAssetAmount:      big.NewInt(1000),
 		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
 		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
@@ -499,13 +500,13 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 
 // GetTestSignerFn returns a test signer function that can be used to sign Ethereum transactions
 func GetTestSignerFn(signerAddress common.Address) func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	return func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-		testSigner := ethereum.NewTestSigner()
-		signature, err := testSigner.(*ethereum.TestSigner).SignTx(signer.Hash(tx).Bytes(), signerAddress)
+	return func(s types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+		testSigner := signer.NewTestSigner()
+		signature, err := testSigner.(*signer.TestSigner).SignTx(s.Hash(tx).Bytes(), signerAddress)
 		if err != nil {
 			return nil, err
 		}
-		return tx.WithSignature(signer, signature)
+		return tx.WithSignature(s, signature)
 	}
 }
 

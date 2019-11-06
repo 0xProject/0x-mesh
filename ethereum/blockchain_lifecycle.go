@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
@@ -41,5 +42,15 @@ func (b *BlockchainLifecycle) Revert(t *testing.T) {
 	require.NoError(t, err)
 	if !didRevert {
 		t.Errorf("Failed to revert snapshot with ID: %s", latestSnapshot)
+	}
+}
+
+// Mine force-mines a block with the specified block timestamp
+func (b *BlockchainLifecycle) Mine(t *testing.T, blockTimestamp time.Time) {
+	var didForceMine string
+	err := b.rpcClient.Call(&didForceMine, "evm_mine", blockTimestamp.Unix())
+	require.NoError(t, err)
+	if didForceMine != "0x0" {
+		t.Error("Failed to force mine a block")
 	}
 }

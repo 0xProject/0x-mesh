@@ -45,5 +45,5 @@ func getPubSubOptions() []pubsub.Option {
 // NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh
 // in browser environments.
 func NewDHT(ctx context.Context, storageDir string, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Client(true), dhtopts.Protocols(dhtProtocolID))
+	return dht.New(ctx, host, dhtopts.Client(true), dhtopts.Protocols(DHTProtocolID))
 }

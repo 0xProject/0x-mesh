@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  branch = "wasm_signer_core_1"
+  branch = "wasm_signer_core_2"
   source = "github.com/0xProject/go-ethereum"
   
 [[constraint]]
@@ -49,6 +49,11 @@
 [[prune.project]]
   name = "github.com/karalabe/hid"
   unused-packages = false
+
+[[prune.project]]
+  name = "github.com/karalabe/usb"
+  unused-packages = false
+  non-go = true
 
 [[constraint]]
   name = "github.com/syndtr/goleveldb"
@@ -129,3 +134,11 @@
 [[constraint]]
   name = "github.com/karlseguin/ccache"
   version = "2.0.3"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/time"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/benbjohnson/clock"

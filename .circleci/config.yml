@@ -9,6 +9,7 @@ jobs:
         environment:
             VERSION: 4.4.0-beta.1
             SNAPSHOT_NAME: 0x_ganache_snapshot
+    resource_class: large
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout

@@ -50,7 +50,7 @@ const (
 	standalonePeerID      = "16Uiu2HAmM9j68mgGGSFkXsuzbGJA8ezVHtQ2H9y6mRJAPhx6xtj9"
 	standaloneDataDir     = "./data/standalone-0"
 	standaloneRPCEndpoint = "ws://localhost:60501"
-	standaloneRPCPort     = 60501
+	standaloneRPCAddr     = "localhost:60501"
 )
 
 var makerAddress = constants.GanacheAccount1
@@ -289,7 +289,7 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 		os.Environ(),
 		"P2P_BIND_ADDRS="+bootstrapAddr,
 		"P2P_ADVERTISE_ADDRS="+bootstrapAddr,
-		"DATA_DIR="+bootstrapDataDir,
+		"LEVELDB_DATA_DIR="+bootstrapDataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 	)
 	output, err := cmd.CombinedOutput()
@@ -312,7 +312,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"RPC_PORT="+strconv.Itoa(standaloneRPCPort),
+		"RPC_ADDR="+standaloneRPCAddr,
 	)
 
 	// Pipe messages from stderr through the logMessages channel.

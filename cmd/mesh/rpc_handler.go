@@ -24,11 +24,11 @@ type rpcHandler struct {
 	app *core.App
 }
 
-// listenRPC starts the RPC server and listens on config.RPCPort. It blocks
+// listenRPC starts the RPC server and listens on config.RPCAddr. It blocks
 // until there is an error or the RPC server is closed.
 func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
-	rpcAddr := fmt.Sprintf(":%d", config.RPCPort)
+	rpcAddr := fmt.Sprintf("%s", config.RPCAddr)
 	rpcHandler := &rpcHandler{
 		app: app,
 	}

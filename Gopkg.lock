@@ -30,6 +30,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:0ad5484a25fbd88409bae8b8b19134135fe73d3cb00e45d3255280b2ab975fcc"
+  name = "github.com/benbjohnson/clock"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19"
+
+[[projects]]
+  branch = "master"
   digest = "1:9e7c5138114ff9c51a60731b3a425c319305013c6ea8b3f60fd2435baba1a0db"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
@@ -135,14 +143,26 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "wasm_signer_core_1"
-  digest = "1:0cbe3816c19b5e8def421e948377963a877b444e2fdd62126791998c2e27749a"
+  digest = "1:2b2daa41f40acd66f4aa0ae213bfd286096663c999a26deb773127b7864c6bd0"
+  name = "github.com/elastic/gosigar"
+  packages = [
+    ".",
+    "sys/windows",
+  ]
+  pruneopts = "UT"
+  revision = "7aef3366157f2bfdf3e068f73ce7193573e88e0c"
+  version = "v0.10.5"
+
+[[projects]]
+  branch = "wasm_signer_core_2"
+  digest = "1:bbc4486af33869a4e70dc531efe493b62705df27f89251c8917b92b32ca8cb1e"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
     "accounts",
     "accounts/abi",
     "accounts/abi/bind",
+    "accounts/external",
     "accounts/keystore",
     "accounts/scwallet",
     "accounts/usbwallet",
@@ -158,11 +178,13 @@
     "consensus/ethash",
     "consensus/misc",
     "core",
+    "core/bloombits",
     "core/rawdb",
     "core/state",
     "core/types",
     "core/vm",
     "crypto",
+    "crypto/blake2b",
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
@@ -192,7 +214,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "f0a71cf559354873939c1a5ea980288bac9a40f4"
+  revision = "9d5c202240bebe50324e4bbe8d6fc0759e0a9cdd"
   source = "github.com/0xProject/go-ethereum"
 
 [[projects]]
@@ -421,12 +443,12 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:cbe624335f5e9f4d1f536a524921df0277e938eab097ac562f06b2d310c073b9"
-  name = "github.com/karalabe/hid"
+  branch = "master"
+  digest = "1:07344d622b6b60cd844956753e51e6029ce340ac763709b433a2b717fef7d817"
+  name = "github.com/karalabe/usb"
   packages = ["."]
-  pruneopts = "T"
-  revision = "6bbb8df5a4e3ebed3398a30bdbeb80682ffb76f8"
-  version = "v1.0.0"
+  pruneopts = "NT"
+  revision = "911d15fe12a9c411cf5d0dd5635231c759399bed"
 
 [[projects]]
   digest = "1:9642c35dd8d4b8981d58327a917f178898baf9b331373748dd50439aec5c2628"
@@ -459,6 +481,18 @@
   pruneopts = "UT"
   revision = "6d1709049dead37ead37808479f88c9bffa2c4d6"
   version = "v0.1"
+
+[[projects]]
+  digest = "1:12cb143f2148bf54bcd9fe622abac17325e85eeb1d84b8ec6caf1c80232108fd"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+    "scram",
+  ]
+  pruneopts = "UT"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:483fcb9b21a758b47501f8880628b85aa3c4e99e33166867d06fa278965c66b2"
@@ -970,6 +1004,14 @@
   version = "v0.0.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:64b1a16a92daaf21057c2d60e423687f06ca1d85b1b3115fa55d9d78c1f51ef3"
+  name = "github.com/opaolini/go-ds-sql"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "15a4c8e2fea5eb23d3faa139a46a945861616aad"
+
+[[projects]]
   digest = "1:11e62d6050198055e6cd87ed57e5d8c669e84f839c16e16f192374d913d1a70d"
   name = "github.com/opentracing/opentracing-go"
   packages = [
@@ -1254,7 +1296,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8457060d23ff2b2d008d5610494af06fe72fe15cd67c8a9f13df877cc12431b4"
+  digest = "1:25cf7c515ad2f67103b324618cb60f08245904283a6bfd35fee09ea864c412ba"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -1264,7 +1306,6 @@
     "internal/iana",
     "internal/socket",
     "ipv4",
-    "websocket",
   ]
   pruneopts = "UT"
   revision = "ca1201d0de80cfde86cb01aea620983605dfe99b"
@@ -1314,6 +1355,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a2f668c709f9078828e99cb1768cb02e876cb81030545046a32b54b2ac2a9ea8"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "UT"
+  revision = "555d28b269f0569763d25dbe1a237ae74c6bcc82"
+
+[[projects]]
+  branch = "master"
   digest = "1:7b5ce208ea2ca1f96322e6a5b616839fe49ea798648a013039f300475a1aadfc"
   name = "golang.org/x/xerrors"
   packages = [
@@ -1336,10 +1385,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/albrow/stringset",
+    "github.com/benbjohnson/clock",
     "github.com/chromedp/cdproto/runtime",
     "github.com/chromedp/chromedp",
     "github.com/ethereum/go-ethereum",
-    "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
@@ -1353,9 +1402,11 @@
     "github.com/ethereum/go-ethereum/signer/core",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
+    "github.com/ipfs/go-datastore",
     "github.com/ipfs/go-ds-leveldb",
     "github.com/jpillora/backoff",
     "github.com/karlseguin/ccache",
+    "github.com/lib/pq",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-autonat-svc",
     "github.com/libp2p/go-libp2p-circuit",
@@ -1382,6 +1433,7 @@
     "github.com/multiformats/go-multiaddr",
     "github.com/multiformats/go-multiaddr-dns",
     "github.com/ocdogan/rbt",
+    "github.com/opaolini/go-ds-sql",
     "github.com/plaid/go-envvar/envvar",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
@@ -1393,6 +1445,7 @@
     "github.com/syndtr/goleveldb/leveldb/util",
     "github.com/xeipuuv/gojsonschema",
     "golang.org/x/crypto/sha3",
+    "golang.org/x/time/rate",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -84,9 +84,6 @@ type Config struct {
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
 	// If empty, the default bootstrap list will be used.
 	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
-	// OrderExpirationBuffer is the amount of time before the order's stipulated expiration time
-	// that you'd want it pruned from the Mesh node.
-	OrderExpirationBuffer time.Duration `envvar:"ORDER_EXPIRATION_BUFFER" default:"10s"`
 	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
 	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
 	// chains have different block producing intervals: POW chains are typically slower (e.g., Mainnet)
@@ -107,8 +104,9 @@ Mesh executable](../cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
-	// RPCPort is the port to use for the JSON RPC API over WebSockets. By
-	// default, 0x Mesh will let the OS select a randomly available port.
-	RPCPort int `envvar:"RPC_PORT" default:"0"`
+	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WebSockets. By default, 0x Mesh will listen on localhost and will let the
+	// OS select a randomly available port.
+	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:0"`
 }
 ```

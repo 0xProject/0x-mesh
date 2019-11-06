@@ -1,8 +1,10 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
@@ -215,7 +217,10 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 		validMeshOrders = append(validMeshOrders, order)
 	}
 	areNewOrders := true
-	zeroexResults := app.orderValidator.BatchValidate(validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
+	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	zeroexResults := app.orderValidator.BatchValidate(ctx, validMeshOrders, areNewOrders, rpc.LatestBlockNumber)
 	zeroexResults.Accepted = append(zeroexResults.Accepted, results.Accepted...)
 	zeroexResults.Rejected = append(zeroexResults.Rejected, results.Rejected...)
 	return zeroexResults, nil
