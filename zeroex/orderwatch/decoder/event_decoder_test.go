@@ -637,9 +637,9 @@ func TestJSONMarshalUnmarshalExchangeCancel(t *testing.T) {
 
 func TestJSONMarshalUnmarshalExchangeCancelUpTo(t *testing.T) {
 	expectedEvent := ExchangeCancelUpToEvent{
-		MakerAddress:  common.HexToAddress("0x638C1eF824ACD48E63E6ACC84948f8eAD46f08De"),
-		SenderAddress: common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		OrderEpoch:    big.NewInt(1554341123041),
+		MakerAddress:       common.HexToAddress("0x638C1eF824ACD48E63E6ACC84948f8eAD46f08De"),
+		OrderSenderAddress: common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		OrderEpoch:         big.NewInt(1554341123041),
 	}
 
 	buf := bytes.Buffer{}

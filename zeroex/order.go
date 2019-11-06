@@ -406,14 +406,13 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		return *o.hash, nil
 	}
 
+	chainID := math.NewHexOrDecimal256(o.ChainID.Int64())
 	var domain = gethsigner.TypedDataDomain{
 		Name:              "0x Protocol",
 		Version:           "3.0.0",
-		ChainId:           o.ChainID,
+		ChainId:           chainID,
 		VerifyingContract: o.ExchangeAddress.Hex(),
 	}
-
-	fmt.Println("domain", domain)
 
 	var message = map[string]interface{}{
 		"makerAddress":          o.MakerAddress.Hex(),
@@ -423,6 +422,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 		"makerAssetData":        o.MakerAssetData,
 		"makerFeeAssetData":     o.MakerFeeAssetData,
 		"takerAssetData":        o.TakerAssetData,
+		"takerFeeAssetData":     o.TakerFeeAssetData,
 		"salt":                  o.Salt.String(),
 		"makerFee":              o.MakerFee.String(),
 		"takerFee":              o.TakerFee.String(),

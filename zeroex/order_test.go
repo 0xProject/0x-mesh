@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"

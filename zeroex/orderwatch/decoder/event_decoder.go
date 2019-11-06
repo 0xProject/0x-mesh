@@ -482,17 +482,17 @@ type ExchangeCancelUpToEvent struct {
 }
 
 type exchangeCancelUpToEventJSON struct {
-	MakerAddress  string `json:"makerAddress"`
-	SenderAddress string `json:"senderAddress"`
-	OrderEpoch    string `json:"orderEpoch"`
+	MakerAddress       string `json:"makerAddress"`
+	OrderSenderAddress string `json:"senderAddress"`
+	OrderEpoch         string `json:"orderEpoch"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ExchangeCancelUpToEvent type
 func (e ExchangeCancelUpToEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(exchangeCancelUpToEventJSON{
-		MakerAddress:  e.MakerAddress.Hex(),
-		SenderAddress: e.SenderAddress.Hex(),
-		OrderEpoch:    e.OrderEpoch.String(),
+		MakerAddress:       e.MakerAddress.Hex(),
+		OrderSenderAddress: e.OrderSenderAddress.Hex(),
+		OrderEpoch:         e.OrderEpoch.String(),
 	})
 }
 
@@ -502,7 +502,7 @@ func (e *ExchangeCancelUpToEvent) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	e.MakerAddress = common.HexToAddress(eventJSON.MakerAddress)
-	e.SenderAddress = common.HexToAddress(eventJSON.SenderAddress)
+	e.OrderSenderAddress = common.HexToAddress(eventJSON.OrderSenderAddress)
 	var ok bool
 	e.OrderEpoch, ok = math.ParseBig256(eventJSON.OrderEpoch)
 	if !ok {
