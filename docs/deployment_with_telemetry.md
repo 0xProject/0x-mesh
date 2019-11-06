@@ -53,6 +53,7 @@ services:
         environment:
             - VERBOSITY=5
             - ETHEREUM_CHAIN_ID=1
+            - RPC_ADDR=0.0.0.0:60557
             # Set your backing Ethereum JSON RPC endpoint below
             - ETHEREUM_RPC_URL=
             - BLOCK_POLLING_INTERVAL=5s
