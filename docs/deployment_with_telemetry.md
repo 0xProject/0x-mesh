@@ -82,7 +82,24 @@ services:
 ```
 
 In most cases, the only change you need to make to the __docker-compose.yml__
-file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint.
+file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint. The 
+`RPC_ADDR` above will allow any Docker containers running in the same Docker 
+Compose file to access the Mesh RPC API via 
+[links](https://docs.docker.com/compose/networking/#links). To use this feature, 
+be sure to add the following line to any containers you wish to access the Mesh 
+RPC API from:
+
+```
+links:
+    - mesh
+```
+
+You can then use the URL `ws://mesh:60557` to access the RPC API.
+
+Alternatively, if you want to open up your Mesh RPC API to the public internet, 
+you can set `RPC_ADDR=0.0.0.0:60557`. If you choose to go this route, we strongly 
+recommend using an external firewall to restrict who can access your RPC API.
+
 
 ### Deploying with Docker Machine
 
