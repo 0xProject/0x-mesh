@@ -80,16 +80,16 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 
 	// Default config options. Some might be overridden.
 	config := core.Config{
-		Verbosity:                   2,
-		DataDir:                     "0x-mesh",
-		P2PTCPPort:                  0,
-		P2PWebSocketsPort:           0,
-		UseBootstrapList:            true,
-		BlockPollingInterval:        5 * time.Second,
-		EthereumRPCMaxContentLength: 524288,
+		Verbosity:                        2,
+		DataDir:                          "0x-mesh",
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		UseBootstrapList:                 true,
+		BlockPollingInterval:             5 * time.Second,
+		EthereumRPCMaxContentLength:      524288,
 		EthereumRPCMaxRequestsPer24HrUTC: 100000,
-		EthereumRPCMaxRequestsPerSecond: 30.0,	
-		MaxOrdersInStorage:          100000,
+		EthereumRPCMaxRequestsPerSecond:  30,
+		MaxOrdersInStorage:               100000,
 	}
 
 	// Required config options
