@@ -199,12 +199,12 @@ func New(config Config) (*App, error) {
 		perSecond := 1000 / float64(config.BlockPollingInterval/1000000)
 		per24HrPollingRequests = int(perSecond * 60 * 60 * 24)
 	}
-	requiredNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
-	if requiredNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
+	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
+	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
 		return nil, fmt.Errorf(
 			"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
 			config.BlockPollingInterval,
-			requiredNumOfEthRPCRequestsIn24HrPeriod,
+			minNumOfEthRPCRequestsIn24HrPeriod,
 			config.EthereumRPCMaxRequestsPer24HrUTC,
 		)
 	}
