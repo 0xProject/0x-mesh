@@ -59,18 +59,18 @@ type ContractAddresses struct {
 // ChainIDToContractAddresses maps chainId to a mapping of contract name to Ethereum address
 // on that given chain
 var ChainIDToContractAddresses = map[int]ContractAddresses{
-	// TODO(albrow): Uncomment these after we have deployed V3 to each network.
 	// // Mainnet
-	// 1: ContractAddresses{
-	// 	ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
-	// 	ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
-	// 	Exchange:            common.HexToAddress("0x080bf510fcbf18b91105470639e9561022937712"),
-	// 	Coordinator:         common.HexToAddress("0xa14857e8930acd9a882d33ec20559beb5479c8a6"),
-	// 	CoordinatorRegistry: common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
-	// 	DevUtils:            common.HexToAddress("0x92d9a4d50190ae04e03914db2ee650124af844e6"),
-	// 	WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
-	// 	ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-	// },
+	1: ContractAddresses{
+		ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
+		ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
+		Exchange:            common.HexToAddress("0xb27f1db0a7e473304a5a06e54bdf035f671400c0"),
+		ERC1155Proxy:        common.HexToAddress("0x7eefbd48fd63d441ec7435d024ec7c5131019add"),
+		Coordinator:         common.HexToAddress("0x9401f3915c387da331b9b6af5e2a57e580f6a201"),
+		CoordinatorRegistry: common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
+		DevUtils:            common.HexToAddress("0xdaed44b9c185ac30ecf0d81c492180ce74e87046"),
+		WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+		ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+	},
 	// Ropsten
 	3: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
@@ -79,7 +79,7 @@ var ChainIDToContractAddresses = map[int]ContractAddresses{
 		ERC1155Proxy:        common.HexToAddress("0x19bb6caa3bc34d39e5a23cedfa3e6c7e7f3c931d"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x403cc23e88c17c4652fb904784d1af640a6722d9"),
-		DevUtils:            common.HexToAddress("0x3dfd5157eec10eb1a357c1074de30787ce92cb43"),
+		DevUtils:            common.HexToAddress("0x1f7a9c2e2c25ab1a894af1fd816599860ee2276c"),
 		WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
 		ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
 	},
@@ -91,7 +91,7 @@ var ChainIDToContractAddresses = map[int]ContractAddresses{
 		Exchange:            common.HexToAddress("0x8e1dfaf747b804d041adaed79d68dcef85b8de85"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x1084b6a398e47907bae43fec3ff4b677db6e4fee"),
-		DevUtils:            common.HexToAddress("0xcfc66b8e75e8f075c3e1d61e6487d73dfe35d808"),
+		DevUtils:            common.HexToAddress("0xfd21088fb008349839c2209ecbde97a7a4d2e397"),
 		WETH9:               common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
 		ZRXToken:            common.HexToAddress("0x8080c7e4b81ecf23aa6f877cfbfd9b0c228c6ffa"),
 	},
@@ -103,7 +103,7 @@ var ChainIDToContractAddresses = map[int]ContractAddresses{
 		ERC1155Proxy:        common.HexToAddress("0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
-		DevUtils:            common.HexToAddress("0x6387a62a340de79f2f0353bd05d9567fe0aca955"),
+		DevUtils:            common.HexToAddress("0xa3858baf73430c2fa2339c731e3ffb04ea5e359c"),
 		WETH9:               common.HexToAddress("0xd0a1e359811322d97991e03f863a0c30c2cf029c"),
 		ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 	},
