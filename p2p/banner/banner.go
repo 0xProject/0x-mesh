@@ -24,10 +24,10 @@ const (
 	violationsCacheSize = 1000
 	// violationsBeforeBan is the number of times a peer is allowed to violate the
 	// bandwidth limits before being banned.
-	violationsBeforeBan = 4
+	violationsBeforeBan = 10
 	// violationsTTL is the TTL for bandwidth violations. If a peer does not have
 	// any violations during this timespan, their violation count will be reset.
-	violationsTTL = 6 * time.Hour
+	violationsTTL = 1 * time.Hour
 )
 
 var ErrProtectedIP = errors.New("cannot ban protected IP address")
