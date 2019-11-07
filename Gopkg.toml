@@ -114,9 +114,9 @@
   name = "github.com/libp2p/go-libp2p-discovery"
   version = "0.1.0"
 
-[[override]]
+[[constraint]]
   name = "github.com/libp2p/go-ws-transport"
-  version = "0.1.2"
+  revision = "3098bba549e89efc42055199c2dca3d95ac70744"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-circuit"
