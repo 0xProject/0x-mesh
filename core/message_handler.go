@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -105,7 +106,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			log.WithFields(map[string]interface{}{
 				"error":               err,
 				"from":                msg.From,
-				"maxOrderSizeInBytes": ordervalidator.MaxOrderSizeInBytes,
+				"maxOrderSizeInBytes": constants.MaxOrderSizeInBytes,
 				"actualSizeInBytes":   len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
