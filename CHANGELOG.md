@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞 
 
 - Fixed an oversight which granted immunity from bandwidth banning for any peer using a relayed connection ([#509](https://github.com/0xProject/0x-mesh/pull/509)).
+- Fixed a typo in the `@0x/mesh-browser` package that resulted in some config options not being passed through correctly ([#502](https://github.com/0xProject/0x-mesh/pull/502)).
 
 
 ## v6.0.0-beta
