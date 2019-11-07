@@ -252,7 +252,7 @@ export class WSClient {
         assert.isArray('signedOrders', signedOrders);
         const rawValidationResults: RawValidationResults = await (this._wsProvider as any).send('mesh_addOrders', [
             signedOrders,
-            pinned,
+            { pinned },
         ]);
         const validationResults: ValidationResults = {
             accepted: WSClient._convertRawAcceptedOrderInfos(rawValidationResults.accepted),
