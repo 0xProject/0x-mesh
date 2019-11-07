@@ -59,18 +59,18 @@ type ContractAddresses struct {
 // ChainIDToContractAddresses maps chainId to a mapping of contract name to Ethereum address
 // on that given chain
 var ChainIDToContractAddresses = map[int]ContractAddresses{
-	// TODO(albrow): Uncomment these after we have deployed V3 to each network.
 	// // Mainnet
-	// 1: ContractAddresses{
-	// 	ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
-	// 	ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
-	// 	Exchange:            common.HexToAddress("0x080bf510fcbf18b91105470639e9561022937712"),
-	// 	Coordinator:         common.HexToAddress("0xa14857e8930acd9a882d33ec20559beb5479c8a6"),
-	// 	CoordinatorRegistry: common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
-	// 	DevUtils:            common.HexToAddress("0x92d9a4d50190ae04e03914db2ee650124af844e6"),
-	// 	WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
-	// 	ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-	// },
+	1: ContractAddresses{
+		ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
+		ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
+		Exchange:            common.HexToAddress("0xb27f1db0a7e473304a5a06e54bdf035f671400c0"),
+		ERC1155Proxy:        common.HexToAddress("0x7eefbd48fd63d441ec7435d024ec7c5131019add"),
+		Coordinator:         common.HexToAddress("0x9401f3915c387da331b9b6af5e2a57e580f6a201"),
+		CoordinatorRegistry: common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
+		DevUtils:            common.HexToAddress("0xdaed44b9c185ac30ecf0d81c492180ce74e87046"),
+		WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+		ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+	},
 	// Ropsten
 	3: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
