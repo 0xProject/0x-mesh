@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -84,15 +83,10 @@ func (banner *Banner) ProtectIP(maddr ma.Multiaddr) error {
 func (banner *Banner) BanIP(maddr ma.Multiaddr) error {
 	ipNet, err := ipNetFromMaddr(maddr)
 	if err != nil {
-		// HACK(albrow) relay addresses don't include the full transport address
-		// (IP, port, etc) for older versions of libp2p-circuit. (See
-		// https://github.com/libp2p/go-libp2p/issues/723). As a temporary
-		// workaround, we no-op for relayed connections. We can remove this after
-		// updating our bootstrap nodes to the latest version. We detect relay
-		// addresses by looking for the /ipfs prefix.
-		if strings.HasPrefix(maddr.String(), "/ipfs") {
-			return nil
-		}
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+			"maddr": maddr.String(),
+		}).Error("could not get IP address from multiaddress")
 		return err
 	}
 	banner.protectedIPsMut.RLock()
@@ -203,7 +197,7 @@ func (banner *Banner) CheckBandwidthUsage() {
 						"remoteMultiaddr":   conn.RemoteMultiaddr().String(),
 						"rateIn":            stats.RateIn,
 						"maxBytesPerSecond": banner.config.MaxBytesPerSecond,
-					}).Trace("would ban IP/multiaddress due to high bandwidth usage")
+					}).Error("banning IP/multiaddress due to high bandwidth usage")
 				}
 				// Banning the IP doesn't close the connection, so we do that
 				// separately. ClosePeer closes all connections to the given peer.

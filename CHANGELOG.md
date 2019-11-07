@@ -2,6 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v6.0.1-beta
+
+### Bug fixes 🐞 
+
+- Fixed an oversight which granted immunity from bandwidth banning for any peer using a relayed connection ([#509](https://github.com/0xProject/0x-mesh/pull/509)).
+
+
 ## v6.0.0-beta
 
 ### Breaking changes 🛠 
