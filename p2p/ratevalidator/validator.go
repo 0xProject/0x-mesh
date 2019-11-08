@@ -53,6 +53,9 @@ type Config struct {
 	// PerPeerBurst is the maximum number of messages that can be received at once
 	// from each peer.
 	PerPeerBurst int
+	// MaxMessageSize is the maximum size (in bytes) for a message. Any messages
+	// that exceed this size will be considered invalid.
+	MaxMessageSize int
 }
 
 // New creates and returns a new rate limiting validator.
@@ -61,6 +64,8 @@ type Config struct {
 func New(ctx context.Context, config Config) (*Validator, error) {
 	if config.MyPeerID.String() == "" {
 		return nil, errors.New("config.MyPeerID is required")
+	} else if config.MaxMessageSize == 0 {
+		return nil, errors.New("config.MaxMessageSize is required")
 	}
 	validator := &Validator{
 		ctx:           ctx,
@@ -95,6 +100,10 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 	if peerID == v.config.MyPeerID {
 		// Don't rate limit our own messages.
 		return true
+	}
+
+	if msg.Size() > v.config.MaxMessageSize {
+		return false
 	}
 
 	// Note: We check the per-peer rate limiter first so that peers who are

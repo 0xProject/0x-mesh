@@ -7,6 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
@@ -34,10 +35,11 @@ func TestValidatorPerPeer(t *testing.T) {
 	defer cancel()
 
 	validator, err := New(ctx, Config{
-		MyPeerID:     peerIDs[0],
-		GlobalLimit:  rate.Inf,
-		PerPeerLimit: 1,
-		PerPeerBurst: 5,
+		MyPeerID:       peerIDs[0],
+		GlobalLimit:    rate.Inf,
+		PerPeerLimit:   1,
+		PerPeerBurst:   5,
+		MaxMessageSize: 1024,
 	})
 	require.NoError(t, err)
 
@@ -74,11 +76,12 @@ func TestValidatorWithOwnPeerID(t *testing.T) {
 	defer cancel()
 
 	validator, err := New(ctx, Config{
-		MyPeerID:     peerIDs[0],
-		GlobalLimit:  1,
-		GlobalBurst:  1,
-		PerPeerLimit: 1,
-		PerPeerBurst: 1,
+		MyPeerID:       peerIDs[0],
+		GlobalLimit:    1,
+		GlobalBurst:    1,
+		PerPeerLimit:   1,
+		PerPeerBurst:   1,
+		MaxMessageSize: 1024,
 	})
 	require.NoError(t, err)
 
@@ -88,4 +91,27 @@ func TestValidatorWithOwnPeerID(t *testing.T) {
 		valid := validator.Validate(ctx, peerIDs[0], &pubsub.Message{})
 		assert.True(t, valid, "message should be valid")
 	}
+}
+
+func TestValidatorMaxMessageSize(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	maxSize := 48
+	validator, err := New(ctx, Config{
+		MyPeerID:       peerIDs[0],
+		GlobalLimit:    rate.Inf,
+		PerPeerLimit:   rate.Inf,
+		MaxMessageSize: maxSize,
+	})
+	require.NoError(t, err)
+
+	valid := validator.Validate(ctx, peerIDs[1], &pubsub.Message{
+		Message: &pb.Message{
+			Data: make([]byte, maxSize+1),
+		},
+	})
+	assert.False(t, valid, "message should be valid")
 }

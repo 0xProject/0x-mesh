@@ -63,15 +63,17 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
-    // EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
-    // per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
-    // Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
-    EthereumRPCMaxRequestsPer24HrUTC?: number;
-    // EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
-    // second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
-    // It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
-    // and potentially higher on alternative infrastructure.
-    EthereumRPCMaxRequestsPerSecond?: number;
+    // A cap on the number of Ethereum JSON-RPC requests a Mesh node will make
+    // per 24hr UTC time window (time window starts and ends at 12am UTC). It
+    // defaults to the 100k limit on Infura's free tier but can be increased
+    // well beyond this limit for those using alternative infra/plans.
+    ethereumRPCMaxRequestsPer24HrUTC?: number;
+    // A cap on the number of Ethereum JSON-RPC requests a Mesh node will make
+    // per second. This limits the concurrency of these requests and prevents
+    // the Mesh node from getting rate-limited. It defaults to the recommended
+    // 30 rps for Infura's free tier, and can be increased to 100 rpc for pro
+    // users, and potentially higher on alternative infrastructure.
+    ethereumRPCMaxRequestsPerSecond?: number;
     // A set of custom addresses to use for the configured network ID. The
     // contract addresses for most common networks are already included by
     // default, so this is typically only needed for testing on custom networks.
@@ -92,7 +94,7 @@ export interface Config {
     // number of orders in storage grows, Mesh will begin enforcing a limit on
     // maximum expiration time for incoming orders and remove any orders with an
     // expiration time too far in the future. Defaults to 100,000.
-    maxOrdersInStorage ?: number;
+    maxOrdersInStorage?: number;
 }
 
 export interface ContractAddresses {
@@ -141,8 +143,8 @@ interface WrapperConfig {
     bootstrapList?: string; // comma-separated string instead of an array of strings.
     blockPollingIntervalSeconds?: number;
     ethereumRPCMaxContentLength?: number;
-    EthereumRPCMaxRequestsPer24HrUTC?: number;
-    EthereumRPCMaxRequestsPerSecond?: number;
+    ethereumRPCMaxRequestsPer24HrUTC?: number;
+    ethereumRPCMaxRequestsPerSecond?: number;
     customContractAddresses?: string; // json-encoded instead of Object.
     maxOrdersInStorage?: number;
 }

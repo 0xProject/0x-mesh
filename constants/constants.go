@@ -73,3 +73,7 @@ var UnlimitedExpirationTime *big.Int
 func init() {
 	UnlimitedExpirationTime, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 }
+
+// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
+// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
+const MaxOrderSizeInBytes = 8192

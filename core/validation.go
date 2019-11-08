@@ -18,7 +18,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", ordervalidator.MaxOrderSizeInBytes)
+var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", constants.MaxOrderSizeInBytes)
 
 // JSON-schema schemas
 var (
@@ -227,7 +227,7 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 }
 
 func validateMessageSize(message *p2p.Message) error {
-	if len(message.Data) > ordervalidator.MaxOrderSizeInBytes {
+	if len(message.Data) > constants.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil
@@ -238,7 +238,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	if err != nil {
 		return err
 	}
-	if len(encoded) > ordervalidator.MaxOrderSizeInBytes {
+	if len(encoded) > constants.MaxOrderSizeInBytes {
 		return errMaxSize
 	}
 	return nil

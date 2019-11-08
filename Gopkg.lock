@@ -265,7 +265,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:d0e00c8ccabdfe678667d6be78c9d08a6a4efc36d9fb596f098706728b00ba6b"
+  digest = "1:9964b22a5a8ffdb200ecc7c4abedb338f16408eb2ccc46e8e5a68a25e52037dd"
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
@@ -274,8 +274,8 @@
     "protoc-gen-gogo/descriptor",
   ]
   pruneopts = "UT"
-  revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
-  version = "v1.2.1"
+  revision = "5628607bb4c51c3157aacc3a50f0ab707582b805"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:500eb6e1e42991b51d2cc0c5bc9e47043f7eec8fe4a9b100b85abf49cfb910db"
@@ -571,15 +571,15 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:7ad7340f9b43cabf2ad2461d99d3bab2a19e61f92f314c67eecc73b5c79a3f7d"
+  digest = "1:b46e5cfd6d2637c24ec445b7d915e99a29be97ebcf9b08ea0bf05380f0e45c98"
   name = "github.com/libp2p/go-libp2p-circuit"
   packages = [
     ".",
     "pb",
   ]
   pruneopts = "UT"
-  revision = "03491354d59e3025f1807236d55fe0ec7b82cd15"
-  version = "v0.1.1"
+  revision = "61af9db0dd78e01e53b9fb044be44dcc7255667e"
+  version = "v0.1.4"
 
 [[projects]]
   digest = "1:791094f50065b4fb4cfd27ef423594e31d11c8205267355191a06becaefccb67"
@@ -847,12 +847,11 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:9d32384c7a3a540d1211207cad7880b98a0450168b138648d92a9203c1865a18"
+  digest = "1:6ea9a67637e5c396fcd4a1fbfd66d35cd30d1f8dbc68766151e1fd476059078b"
   name = "github.com/libp2p/go-ws-transport"
   packages = ["."]
   pruneopts = "UT"
-  revision = "163cee1e07594cd148a9086cd3cce5f901e4dae9"
-  source = "github.com/0xProject/go-ws-transport"
+  revision = "3098bba549e89efc42055199c2dca3d95ac70744"
 
 [[projects]]
   digest = "1:64fdef1e970d17504d960d18412125e85ca620703e495105b3fbffee27acf568"
@@ -932,20 +931,20 @@
   version = "v0.0.3"
 
 [[projects]]
-  digest = "1:c95537699dfc9ecc62c2bb273fd2fdf5810ce23ed50f25529c17f755a052a7c3"
+  digest = "1:9c0e900fd1efc02fd7feeadb7d7db7744ee57f9e3eecb7e158b6ff1f09a63907"
   name = "github.com/multiformats/go-multiaddr"
   packages = ["."]
   pruneopts = "UT"
-  revision = "5b1de2f51ff2368d5ce94a659f15ef26be273cd0"
-  version = "v0.0.4"
+  revision = "64e34154803fd9bd07ef4c6480be117ec72e35fc"
+  version = "v0.1.2"
 
 [[projects]]
-  digest = "1:65af5b69e5762a2d6994976987442a0830c98d2a8ffbdd1c899443b4b0c0942e"
+  digest = "1:a2987033573b5613126cdc063851692f086c2fec096e003caa93ee79eb8be54e"
   name = "github.com/multiformats/go-multiaddr-dns"
   packages = ["."]
   pruneopts = "UT"
-  revision = "3974bf3f84c52825588fdcc0fd0e0aa7953ab5ff"
-  version = "v0.0.3"
+  revision = "aeb5743691b968cfa3365c9da59ef872a3133c87"
+  version = "v0.2.0"
 
 [[projects]]
   digest = "1:1275cf8587ba416c439453ee4b194b803270b836831c487b3da3cf9d82f58bb7"
@@ -986,6 +985,14 @@
   pruneopts = "UT"
   revision = "039807e4901c4b2041f40a0e4aa32d72939608aa"
   version = "v0.1.0"
+
+[[projects]]
+  digest = "1:dd9dd64e4d3b2ba805ff282bac63a705b1f99d330b00885a303191460dc66a60"
+  name = "github.com/multiformats/go-varint"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5fad25c55a589bef37064e53f268a5bf952ae779"
+  version = "v0.0.1"
 
 [[projects]]
   branch = "master"
