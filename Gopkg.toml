@@ -141,3 +141,8 @@
 [[constraint]]
   branch = "master"
   name = "github.com/benbjohnson/clock"
+
+[[override]]
+  name = "github.com/libp2p/go-flow-metrics"
+  branch = "verbose-logging"
+  source = "github.com/0xProject/go-flow-metrics"

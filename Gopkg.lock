@@ -527,12 +527,13 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:83d3d59c84ff3da342ab63011d79750ccb987bda399eb64db3abd3e2fd32c18f"
+  branch = "verbose-logging"
+  digest = "1:d5457a8e6240b038b3e7fae16c81685efe8b22d6a3f3a2f7c04e89845f1429a0"
   name = "github.com/libp2p/go-flow-metrics"
   packages = ["."]
   pruneopts = "UT"
-  revision = "1f5b3acc846b2c8ce4c4e713296af74f5c24df55"
-  version = "v0.0.1"
+  revision = "d12fc267fd574abfe69a728acb0be6f4a11b8311"
+  source = "github.com/0xProject/go-flow-metrics"
 
 [[projects]]
   digest = "1:03c4382bfd9f7af55959d5cb0199aead9a6200cffbb0f6e64217c64d552d45c6"
