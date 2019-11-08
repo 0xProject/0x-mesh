@@ -190,15 +190,10 @@ func New(config Config) (*App, error) {
 
 	// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
 	var per24HrPollingRequests int
-	if config.BlockPollingInterval > 1*time.Second {
-		perMinute := 60 / float64(config.BlockPollingInterval.Seconds())
-		per24HrPollingRequests = int(perMinute * 60 * 24)
-	} else {
-		// HACK(fabio): Since we haven't upgraded to Golang 1.13 yet, we don't have access to
-		// duration.milliseconds(), so we do `duration / 1000000` for now
-		perSecond := 1000 / float64(config.BlockPollingInterval/1000000)
-		per24HrPollingRequests = int(perSecond * 60 * 60 * 24)
-	}
+	// HACK(fabio): Since we haven't upgraded to Golang 1.13 yet, we don't have access to
+	// duration.milliseconds(), so we do `duration / 1000000` for now
+	perSecond := 1000 / float64(config.BlockPollingInterval/1000000)
+	per24HrPollingRequests = int(perSecond * 60 * 60 * 24)
 	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
 	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
 		return nil, fmt.Errorf(
