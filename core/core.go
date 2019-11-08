@@ -43,12 +43,12 @@ import (
 )
 
 const (
-	blockWatcherRetentionLimit           = 20
-	ethereumRPCRequestTimeout            = 30 * time.Second
-	peerConnectTimeout                   = 60 * time.Second
-	checkNewAddrInterval                 = 20 * time.Second
-	expirationPollingInterval            = 50 * time.Millisecond
-	rateLimiterCheckpointInterval        = 1 * time.Minute
+	blockWatcherRetentionLimit    = 20
+	ethereumRPCRequestTimeout     = 30 * time.Second
+	peerConnectTimeout            = 60 * time.Second
+	checkNewAddrInterval          = 20 * time.Second
+	expirationPollingInterval     = 50 * time.Millisecond
+	rateLimiterCheckpointInterval = 1 * time.Minute
 	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
 	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
