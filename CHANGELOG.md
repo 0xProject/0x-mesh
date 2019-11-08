@@ -8,6 +8,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Fixed an oversight which granted immunity from bandwidth banning for any peer using a relayed connection ([#509](https://github.com/0xProject/0x-mesh/pull/509)).
 - Fixed a typo in the `@0x/mesh-browser` package that resulted in some config options not being passed through correctly ([#502](https://github.com/0xProject/0x-mesh/pull/502)).
+- Fixed a bug in ETH JSON-RPC rate limiter where not all dates were being properly converted to UTC, causing Mesh to malfunction if the local time was a day earlier or later than UTC. ([#505](https://github.com/0xProject/0x-mesh/pull/505))
 
 
 ## v6.0.0-beta
