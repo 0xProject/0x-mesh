@@ -22,15 +22,14 @@ Make sure you have Docker installed. Then run:
 
 ```bash
 docker run \
--it \
---rm \
+--restart unless-stopped \
 -p 60557:60557 \
 -p 60558:60558 \
 -p 60559:60559 \
 -e ETHEREUM_CHAIN_ID="1" \
 -e ETHEREUM_RPC_URL="{your_ethereum_rpc_url}" \
 -e VERBOSITY=5 \
--v {local_path_on_host_machine}/0x_mesh:/usr/mesh/0x_mesh
+-v {local_path_on_host_machine}/0x_mesh:/usr/mesh/0x_mesh \
 0xorg/mesh:latest
 ```
 
