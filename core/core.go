@@ -181,8 +181,8 @@ func New(config Config) (*App, error) {
 	}
 	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < ordervalidator.MaxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", ordervalidator.MaxOrderSizeInBytes)
+	if config.EthereumRPCMaxContentLength < constants.MaxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", constants.MaxOrderSizeInBytes)
 	}
 	config = unquoteConfig(config)
 
