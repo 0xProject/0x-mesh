@@ -218,5 +218,6 @@ func (r *rateLimiter) getGrantedInLast24hrsUTC() int {
 }
 
 func getUTCMidnightOfDate(date time.Time) time.Time {
-	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	utcDate := date.UTC()
+	return time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC)
 }

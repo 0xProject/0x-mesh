@@ -2,6 +2,16 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v6.0.1-beta
+
+### Bug fixes 🐞 
+
+- Fixed an oversight which granted immunity from bandwidth banning for any peer using a relayed connection ([#509](https://github.com/0xProject/0x-mesh/pull/509)).
+- Fixed a typo in the `@0x/mesh-browser` package that resulted in some config options not being passed through correctly ([#502](https://github.com/0xProject/0x-mesh/pull/502)).
+- Fixed a bug in ETH JSON-RPC rate limiter where not all dates were being properly converted to UTC, causing Mesh to malfunction if the local time was a day earlier or later than UTC. ([#505](https://github.com/0xProject/0x-mesh/pull/505))
+- Fixed a bug in the TypeScript RPC client that prevented orders from being added ([#514](https://github.com/0xProject/0x-mesh/pull/514)).
+
+
 ## v6.0.0-beta
 
 ### Breaking changes 🛠 
@@ -34,7 +44,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - The `getStats` RPC endpoint now includes a new field which accounts for the number of orders that have been marked as "removed" but not yet permanently deleted ([#461](https://github.com/0xProject/0x-mesh/pull/461)).
 - Improved historical order sharing using round-robin algorithm instead of random selection ([#454](https://github.com/0xProject/0x-mesh/pull/454)). This will reduce the warm-up time for receiving existing orders when first joining the network.
 - Added ERC1155 assetData support ([#453](https://github.com/0xProject/0x-mesh/pull/453)). This includes order watching and order events for orders involving ERC1155 tokens.
-- Added Ability to specify custom contract addresses via the `CUSTOM_ADDRESSES` environment variable or the `customAddresses` field in the TypeScript bindings ([#451](https://github.com/0xProject/0x-mesh/pull/451)).
+- Added Ability to specify custom contract addresses via the `CUSTOM_ADDRESSES` environment variable or the `customAddresses` field in the TypeScript bindings ([#445](https://github.com/0xProject/0x-mesh/pull/445)).
 
 ### Bug fixes 🐞 
 

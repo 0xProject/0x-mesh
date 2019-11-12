@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	lru "github.com/hashicorp/golang-lru"
@@ -240,11 +241,12 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		return nil, err
 	}
 	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
-		MyPeerID:     basicHost.ID(),
-		GlobalLimit:  config.GlobalPubSubMessageLimit,
-		GlobalBurst:  config.GlobalPubSubMessageBurst,
-		PerPeerLimit: config.PerPeerPubSubMessageLimit,
-		PerPeerBurst: config.PerPeerPubSubMessageBurst,
+		MyPeerID:       basicHost.ID(),
+		GlobalLimit:    config.GlobalPubSubMessageLimit,
+		GlobalBurst:    config.GlobalPubSubMessageBurst,
+		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
+		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
+		MaxMessageSize: constants.MaxOrderSizeInBytes,
 	})
 	if err != nil {
 		return nil, err

@@ -229,6 +229,28 @@ func TestScenario3(t *testing.T) {
 	wg.Wait()
 }
 
+// Scenario 4: Regression to test make sure that if local time is one day behind UTC time, the
+// rate limiter still functions as expected.
+func TestScenario4(t *testing.T) {
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	defer meshDB.Close()
+
+	initMetadata(t, meshDB)
+
+	aClock := clock.NewMock()
+	// Set timezone of Mock clock to `Pacific/Majuro` so that it's on the day before UTC
+	now := aClock.Now()
+	loc := time.FixedZone("UTC+12", 12*60*60)
+	aTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	aClock.Set(aTime)
+
+	// If we are not properly converting times to UTC, instantiation will fail with err
+	// `Wait(n=450000) exceeds limiter's burst 300000`
+	_, err = New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
+	require.NoError(t, err)
+}
+
 func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
 	metadata := &meshdb.Metadata{
 		EthereumChainID:   1337,
