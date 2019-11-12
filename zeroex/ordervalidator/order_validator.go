@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -92,10 +93,6 @@ type RejectedOrderStatus struct {
 	Message string `json:"message"`
 }
 
-// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
-// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
-const MaxOrderSizeInBytes = 8192
-
 // RejectedOrderStatus values
 var (
 	ROEthRPCRequestFailed = RejectedOrderStatus{
@@ -160,7 +157,7 @@ var (
 	}
 	ROMaxOrderSizeExceeded = RejectedOrderStatus{
 		Code:    "MaxOrderSizeExceeded",
-		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", MaxOrderSizeInBytes),
+		Message: fmt.Sprintf("order exceeds the maximum encoded size of %d bytes", constants.MaxOrderSizeInBytes),
 	}
 	ROOrderAlreadyStoredAndUnfillable = RejectedOrderStatus{
 		Code:    "OrderAlreadyStoredAndUnfillable",

@@ -4,7 +4,7 @@ jobs:
     environment:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.12.9-browsers
+      - image: circleci/golang:1.12.13-browsers
       - image: 0xorg/ganache-cli:latest
         environment:
             VERSION: 4.3.3

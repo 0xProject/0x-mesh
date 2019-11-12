@@ -14,7 +14,7 @@ sending orders through the 0x Mesh network.
 
 \+ **new Mesh**(`config`: [Config](#interface-config)): *[Mesh](#class-mesh)*
 
-*Defined in [index.ts:536](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L536)*
+*Defined in [index.ts:538](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L538)*
 
 Instantiates a new Mesh instance.
 
@@ -34,7 +34,7 @@ An instance of Mesh
 
 ▸ **addOrdersAsync**(`orders`: SignedOrder[], `pinned`: boolean): *Promise‹[ValidationResults](#interface-validationresults)›*
 
-*Defined in [index.ts:610](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L610)*
+*Defined in [index.ts:612](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L612)*
 
 Validates and adds the given orders to Mesh. If an order is successfully
 added, Mesh will share it with any peers in the network and start
@@ -61,7 +61,7 @@ ___
 
 ▸ **onError**(`handler`: function): *void*
 
-*Defined in [index.ts:556](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L556)*
+*Defined in [index.ts:558](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L558)*
 
 Registers a handler which will be called in the event of a critical
 error. Note that the handler will not be called for non-critical errors.
@@ -90,7 +90,7 @@ ___
 
 ▸ **onOrderEvents**(`handler`: function): *void*
 
-*Defined in [index.ts:571](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L571)*
+*Defined in [index.ts:573](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L573)*
 
 Registers a handler which will be called for any incoming order events.
 Order events are fired whenver an order is added, canceled, expired, or
@@ -119,7 +119,7 @@ ___
 
 ▸ **startAsync**(): *Promise‹void›*
 
-*Defined in [index.ts:582](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L582)*
+*Defined in [index.ts:584](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L584)*
 
 Starts the Mesh node in the background. Mesh will automatically find
 peers in the network and begin receiving orders from them.
@@ -137,7 +137,7 @@ peers in the network and begin receiving orders from them.
 
 • **Added**: = "ADDED"
 
-*Defined in [index.ts:402](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L402)*
+*Defined in [index.ts:404](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L404)*
 
 ___
 
@@ -145,7 +145,7 @@ ___
 
 • **Cancelled**: = "CANCELLED"
 
-*Defined in [index.ts:405](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L405)*
+*Defined in [index.ts:407](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L407)*
 
 ___
 
@@ -153,7 +153,7 @@ ___
 
 • **Expired**: = "EXPIRED"
 
-*Defined in [index.ts:406](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L406)*
+*Defined in [index.ts:408](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L408)*
 
 ___
 
@@ -161,7 +161,7 @@ ___
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-*Defined in [index.ts:408](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L408)*
+*Defined in [index.ts:410](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L410)*
 
 ___
 
@@ -169,7 +169,7 @@ ___
 
 • **Filled**: = "FILLED"
 
-*Defined in [index.ts:403](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L403)*
+*Defined in [index.ts:405](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L405)*
 
 ___
 
@@ -177,7 +177,7 @@ ___
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-*Defined in [index.ts:404](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L404)*
+*Defined in [index.ts:406](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L406)*
 
 ___
 
@@ -185,7 +185,7 @@ ___
 
 • **Invalid**: = "INVALID"
 
-*Defined in [index.ts:401](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L401)*
+*Defined in [index.ts:403](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L403)*
 
 ___
 
@@ -193,7 +193,7 @@ ___
 
 • **StoppedWatching**: = "STOPPED_WATCHING"
 
-*Defined in [index.ts:409](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L409)*
+*Defined in [index.ts:411](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L411)*
 
 ___
 
@@ -201,7 +201,7 @@ ___
 
 • **Unfunded**: = "UNFUNDED"
 
-*Defined in [index.ts:407](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L407)*
+*Defined in [index.ts:409](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L409)*
 
 <hr />
 
@@ -216,7 +216,7 @@ A set of categories for rejected orders.
 
 • **CoordinatorError**: = "COORDINATOR_ERROR"
 
-*Defined in [index.ts:490](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L490)*
+*Defined in [index.ts:492](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L492)*
 
 ___
 
@@ -224,7 +224,7 @@ ___
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [index.ts:488](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L488)*
+*Defined in [index.ts:490](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L490)*
 
 ___
 
@@ -232,7 +232,7 @@ ___
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [index.ts:489](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L489)*
+*Defined in [index.ts:491](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L491)*
 
 ___
 
@@ -240,7 +240,7 @@ ___
 
 • **ZeroExValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [index.ts:487](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L487)*
+*Defined in [index.ts:489](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L489)*
 
 <hr />
 
@@ -253,7 +253,7 @@ ___
 
 • **Debug**: = 5
 
-*Defined in [index.ts:116](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L116)*
+*Defined in [index.ts:118](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L118)*
 
 ___
 
@@ -261,7 +261,7 @@ ___
 
 • **Error**: = 2
 
-*Defined in [index.ts:113](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L113)*
+*Defined in [index.ts:115](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L115)*
 
 ___
 
@@ -269,7 +269,7 @@ ___
 
 • **Fatal**: = 1
 
-*Defined in [index.ts:112](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L112)*
+*Defined in [index.ts:114](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L114)*
 
 ___
 
@@ -277,7 +277,7 @@ ___
 
 • **Info**: = 4
 
-*Defined in [index.ts:115](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L115)*
+*Defined in [index.ts:117](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L117)*
 
 ___
 
@@ -285,7 +285,7 @@ ___
 
 • **Panic**: = 0
 
-*Defined in [index.ts:111](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L111)*
+*Defined in [index.ts:113](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L113)*
 
 ___
 
@@ -293,7 +293,7 @@ ___
 
 • **Trace**: = 6
 
-*Defined in [index.ts:117](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L117)*
+*Defined in [index.ts:119](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L119)*
 
 ___
 
@@ -301,7 +301,7 @@ ___
 
 • **Warn**: = 3
 
-*Defined in [index.ts:114](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L114)*
+*Defined in [index.ts:116](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L116)*
 
 <hr />
 
@@ -320,7 +320,7 @@ Info for any orders that were accepted.
 
 • **fillableTakerAssetAmount**: *BigNumber*
 
-*Defined in [index.ts:468](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L468)*
+*Defined in [index.ts:470](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L470)*
 
 ___
 
@@ -328,7 +328,7 @@ ___
 
 • **isNew**: *boolean*
 
-*Defined in [index.ts:469](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L469)*
+*Defined in [index.ts:471](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L471)*
 
 ___
 
@@ -336,7 +336,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:466](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L466)*
+*Defined in [index.ts:468](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L468)*
 
 ___
 
@@ -344,7 +344,7 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:467](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L467)*
+*Defined in [index.ts:469](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L469)*
 
 <hr />
 
@@ -359,27 +359,11 @@ A set of configuration options for Mesh.
 
 ### Properties
 
-## `Optional` EthereumRPCMaxRequestsPer24HrUTC
-
-• **EthereumRPCMaxRequestsPer24HrUTC**? : *undefined | number*
-
-*Defined in [index.ts:69](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L69)*
-
-___
-
-## `Optional` EthereumRPCMaxRequestsPerSecond
-
-• **EthereumRPCMaxRequestsPerSecond**? : *undefined | number*
-
-*Defined in [index.ts:74](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L74)*
-
-___
-
 ## `Optional` blockPollingIntervalSeconds
 
 • **blockPollingIntervalSeconds**? : *undefined | number*
 
-*Defined in [index.ts:56](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L56)*
+*Defined in [index.ts:56](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L56)*
 
 ___
 
@@ -387,7 +371,7 @@ ___
 
 • **bootstrapList**? : *string[]*
 
-*Defined in [index.ts:49](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L49)*
+*Defined in [index.ts:49](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L49)*
 
 ___
 
@@ -395,7 +379,7 @@ ___
 
 • **customContractAddresses**? : *[ContractAddresses](#class-contractaddresses)*
 
-*Defined in [index.ts:90](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L90)*
+*Defined in [index.ts:92](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L92)*
 
 ___
 
@@ -403,7 +387,7 @@ ___
 
 • **ethereumChainID**: *number*
 
-*Defined in [index.ts:41](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L41)*
+*Defined in [index.ts:41](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L41)*
 
 ___
 
@@ -411,7 +395,23 @@ ___
 
 • **ethereumRPCMaxContentLength**? : *undefined | number*
 
-*Defined in [index.ts:65](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L65)*
+*Defined in [index.ts:65](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L65)*
+
+___
+
+## `Optional` ethereumRPCMaxRequestsPer24HrUTC
+
+• **ethereumRPCMaxRequestsPer24HrUTC**? : *undefined | number*
+
+*Defined in [index.ts:70](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L70)*
+
+___
+
+## `Optional` ethereumRPCMaxRequestsPerSecond
+
+• **ethereumRPCMaxRequestsPerSecond**? : *undefined | number*
+
+*Defined in [index.ts:76](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L76)*
 
 ___
 
@@ -419,7 +419,7 @@ ___
 
 • **ethereumRPCURL**: *string*
 
-*Defined in [index.ts:38](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L38)*
+*Defined in [index.ts:38](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L38)*
 
 ___
 
@@ -427,7 +427,7 @@ ___
 
 • **maxOrdersInStorage**? : *undefined | number*
 
-*Defined in [index.ts:95](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L95)*
+*Defined in [index.ts:97](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L97)*
 
 ___
 
@@ -435,7 +435,7 @@ ___
 
 • **useBootstrapList**? : *undefined | false | true*
 
-*Defined in [index.ts:44](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L44)*
+*Defined in [index.ts:44](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L44)*
 
 ___
 
@@ -443,7 +443,7 @@ ___
 
 • **verbosity**? : *[Verbosity](#enumeration-verbosity)*
 
-*Defined in [index.ts:35](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L35)*
+*Defined in [index.ts:35](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L35)*
 
 <hr />
 
@@ -460,7 +460,7 @@ ___
 
 • **coordinator**? : *undefined | string*
 
-*Defined in [index.ts:104](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L104)*
+*Defined in [index.ts:106](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L106)*
 
 ___
 
@@ -468,7 +468,7 @@ ___
 
 • **coordinatorRegistry**? : *undefined | string*
 
-*Defined in [index.ts:105](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L105)*
+*Defined in [index.ts:107](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L107)*
 
 ___
 
@@ -476,7 +476,7 @@ ___
 
 • **devUtils**: *string*
 
-*Defined in [index.ts:100](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L100)*
+*Defined in [index.ts:102](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L102)*
 
 ___
 
@@ -484,7 +484,7 @@ ___
 
 • **erc1155Proxy**: *string*
 
-*Defined in [index.ts:103](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L103)*
+*Defined in [index.ts:105](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L105)*
 
 ___
 
@@ -492,7 +492,7 @@ ___
 
 • **erc20Proxy**: *string*
 
-*Defined in [index.ts:101](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L101)*
+*Defined in [index.ts:103](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L103)*
 
 ___
 
@@ -500,7 +500,7 @@ ___
 
 • **erc721Proxy**: *string*
 
-*Defined in [index.ts:102](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L102)*
+*Defined in [index.ts:104](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L104)*
 
 ___
 
@@ -508,7 +508,7 @@ ___
 
 • **exchange**: *string*
 
-*Defined in [index.ts:99](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L99)*
+*Defined in [index.ts:101](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L101)*
 
 ___
 
@@ -516,7 +516,7 @@ ___
 
 • **weth9**? : *undefined | string*
 
-*Defined in [index.ts:106](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L106)*
+*Defined in [index.ts:108](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L108)*
 
 ___
 
@@ -524,7 +524,7 @@ ___
 
 • **zrxToken**? : *undefined | string*
 
-*Defined in [index.ts:107](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L107)*
+*Defined in [index.ts:109](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L109)*
 
 <hr />
 
@@ -541,7 +541,7 @@ ___
 
 • **address**: *string*
 
-*Defined in [index.ts:383](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L383)*
+*Defined in [index.ts:385](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L385)*
 
 ___
 
@@ -549,7 +549,7 @@ ___
 
 • **blockHash**: *string*
 
-*Defined in [index.ts:378](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L378)*
+*Defined in [index.ts:380](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L380)*
 
 ___
 
@@ -557,7 +557,7 @@ ___
 
 • **isRemoved**: *string*
 
-*Defined in [index.ts:382](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L382)*
+*Defined in [index.ts:384](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L384)*
 
 ___
 
@@ -565,7 +565,7 @@ ___
 
 • **kind**: *ContractEventKind*
 
-*Defined in [index.ts:384](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L384)*
+*Defined in [index.ts:386](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L386)*
 
 ___
 
@@ -573,7 +573,7 @@ ___
 
 • **logIndex**: *number*
 
-*Defined in [index.ts:381](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L381)*
+*Defined in [index.ts:383](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L383)*
 
 ___
 
@@ -581,7 +581,7 @@ ___
 
 • **parameters**: *ContractEventParameters*
 
-*Defined in [index.ts:385](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L385)*
+*Defined in [index.ts:387](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L387)*
 
 ___
 
@@ -589,7 +589,7 @@ ___
 
 • **txHash**: *string*
 
-*Defined in [index.ts:379](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L379)*
+*Defined in [index.ts:381](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L381)*
 
 ___
 
@@ -597,7 +597,7 @@ ___
 
 • **txIndex**: *number*
 
-*Defined in [index.ts:380](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L380)*
+*Defined in [index.ts:382](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L382)*
 
 <hr />
 
@@ -614,7 +614,7 @@ ___
 
 • **approved**: *boolean*
 
-*Defined in [index.ts:259](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L259)*
+*Defined in [index.ts:261](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L261)*
 
 ___
 
@@ -622,7 +622,7 @@ ___
 
 • **operator**: *string*
 
-*Defined in [index.ts:258](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L258)*
+*Defined in [index.ts:260](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L260)*
 
 ___
 
@@ -630,7 +630,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:257](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L257)*
+*Defined in [index.ts:259](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L259)*
 
 <hr />
 
@@ -647,7 +647,7 @@ ___
 
 • **from**: *string*
 
-*Defined in [index.ts:242](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L242)*
+*Defined in [index.ts:244](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L244)*
 
 ___
 
@@ -655,7 +655,7 @@ ___
 
 • **ids**: *BigNumber[]*
 
-*Defined in [index.ts:244](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L244)*
+*Defined in [index.ts:246](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L246)*
 
 ___
 
@@ -663,7 +663,7 @@ ___
 
 • **operator**: *string*
 
-*Defined in [index.ts:241](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L241)*
+*Defined in [index.ts:243](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L243)*
 
 ___
 
@@ -671,7 +671,7 @@ ___
 
 • **to**: *string*
 
-*Defined in [index.ts:243](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L243)*
+*Defined in [index.ts:245](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L245)*
 
 ___
 
@@ -679,7 +679,7 @@ ___
 
 • **values**: *BigNumber[]*
 
-*Defined in [index.ts:245](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L245)*
+*Defined in [index.ts:247](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L247)*
 
 <hr />
 
@@ -696,7 +696,7 @@ ___
 
 • **from**: *string*
 
-*Defined in [index.ts:226](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L226)*
+*Defined in [index.ts:228](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L228)*
 
 ___
 
@@ -704,7 +704,7 @@ ___
 
 • **id**: *BigNumber*
 
-*Defined in [index.ts:228](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L228)*
+*Defined in [index.ts:230](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L230)*
 
 ___
 
@@ -712,7 +712,7 @@ ___
 
 • **operator**: *string*
 
-*Defined in [index.ts:225](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L225)*
+*Defined in [index.ts:227](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L227)*
 
 ___
 
@@ -720,7 +720,7 @@ ___
 
 • **to**: *string*
 
-*Defined in [index.ts:227](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L227)*
+*Defined in [index.ts:229](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L229)*
 
 ___
 
@@ -728,7 +728,7 @@ ___
 
 • **value**: *BigNumber*
 
-*Defined in [index.ts:229](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L229)*
+*Defined in [index.ts:231](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L231)*
 
 <hr />
 
@@ -745,7 +745,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:183](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L183)*
+*Defined in [index.ts:185](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L185)*
 
 ___
 
@@ -753,7 +753,7 @@ ___
 
 • **spender**: *string*
 
-*Defined in [index.ts:184](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L184)*
+*Defined in [index.ts:186](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L186)*
 
 ___
 
@@ -761,7 +761,7 @@ ___
 
 • **value**: *BigNumber*
 
-*Defined in [index.ts:185](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L185)*
+*Defined in [index.ts:187](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L187)*
 
 <hr />
 
@@ -778,7 +778,7 @@ ___
 
 • **from**: *string*
 
-*Defined in [index.ts:171](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L171)*
+*Defined in [index.ts:173](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L173)*
 
 ___
 
@@ -786,7 +786,7 @@ ___
 
 • **to**: *string*
 
-*Defined in [index.ts:172](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L172)*
+*Defined in [index.ts:174](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L174)*
 
 ___
 
@@ -794,7 +794,7 @@ ___
 
 • **value**: *BigNumber*
 
-*Defined in [index.ts:173](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L173)*
+*Defined in [index.ts:175](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L175)*
 
 <hr />
 
@@ -811,7 +811,7 @@ ___
 
 • **approved**: *string*
 
-*Defined in [index.ts:208](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L208)*
+*Defined in [index.ts:210](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L210)*
 
 ___
 
@@ -819,7 +819,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:207](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L207)*
+*Defined in [index.ts:209](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L209)*
 
 ___
 
@@ -827,7 +827,7 @@ ___
 
 • **tokenId**: *BigNumber*
 
-*Defined in [index.ts:209](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L209)*
+*Defined in [index.ts:211](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L211)*
 
 <hr />
 
@@ -844,7 +844,7 @@ ___
 
 • **approved**: *boolean*
 
-*Defined in [index.ts:221](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L221)*
+*Defined in [index.ts:223](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L223)*
 
 ___
 
@@ -852,7 +852,7 @@ ___
 
 • **operator**: *string*
 
-*Defined in [index.ts:220](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L220)*
+*Defined in [index.ts:222](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L222)*
 
 ___
 
@@ -860,7 +860,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:219](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L219)*
+*Defined in [index.ts:221](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L221)*
 
 <hr />
 
@@ -877,7 +877,7 @@ ___
 
 • **from**: *string*
 
-*Defined in [index.ts:195](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L195)*
+*Defined in [index.ts:197](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L197)*
 
 ___
 
@@ -885,7 +885,7 @@ ___
 
 • **to**: *string*
 
-*Defined in [index.ts:196](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L196)*
+*Defined in [index.ts:198](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L198)*
 
 ___
 
@@ -893,7 +893,7 @@ ___
 
 • **tokenId**: *BigNumber*
 
-*Defined in [index.ts:197](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L197)*
+*Defined in [index.ts:199](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L199)*
 
 <hr />
 
@@ -910,7 +910,7 @@ ___
 
 • **feeRecipientAddress**: *string*
 
-*Defined in [index.ts:293](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L293)*
+*Defined in [index.ts:295](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L295)*
 
 ___
 
@@ -918,7 +918,7 @@ ___
 
 • **makerAddress**: *string*
 
-*Defined in [index.ts:291](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L291)*
+*Defined in [index.ts:293](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L293)*
 
 ___
 
@@ -926,7 +926,7 @@ ___
 
 • **makerAssetData**: *string*
 
-*Defined in [index.ts:295](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L295)*
+*Defined in [index.ts:297](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L297)*
 
 ___
 
@@ -934,7 +934,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:294](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L294)*
+*Defined in [index.ts:296](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L296)*
 
 ___
 
@@ -942,7 +942,7 @@ ___
 
 • **senderAddress**: *string*
 
-*Defined in [index.ts:292](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L292)*
+*Defined in [index.ts:294](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L294)*
 
 ___
 
@@ -950,7 +950,7 @@ ___
 
 • **takerAssetData**: *string*
 
-*Defined in [index.ts:296](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L296)*
+*Defined in [index.ts:298](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L298)*
 
 <hr />
 
@@ -967,7 +967,7 @@ ___
 
 • **makerAddress**: *string*
 
-*Defined in [index.ts:300](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L300)*
+*Defined in [index.ts:302](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L302)*
 
 ___
 
@@ -975,7 +975,7 @@ ___
 
 • **orderEpoch**: *BigNumber*
 
-*Defined in [index.ts:302](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L302)*
+*Defined in [index.ts:304](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L304)*
 
 ___
 
@@ -983,7 +983,7 @@ ___
 
 • **senderAddress**: *string*
 
-*Defined in [index.ts:301](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L301)*
+*Defined in [index.ts:303](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L303)*
 
 <hr />
 
@@ -1000,7 +1000,7 @@ ___
 
 • **feeRecipientAddress**: *string*
 
-*Defined in [index.ts:266](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L266)*
+*Defined in [index.ts:268](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L268)*
 
 ___
 
@@ -1008,7 +1008,7 @@ ___
 
 • **makerAddress**: *string*
 
-*Defined in [index.ts:263](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L263)*
+*Defined in [index.ts:265](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L265)*
 
 ___
 
@@ -1016,7 +1016,7 @@ ___
 
 • **makerAssetData**: *string*
 
-*Defined in [index.ts:272](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L272)*
+*Defined in [index.ts:274](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L274)*
 
 ___
 
@@ -1024,7 +1024,7 @@ ___
 
 • **makerAssetFilledAmount**: *BigNumber*
 
-*Defined in [index.ts:267](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L267)*
+*Defined in [index.ts:269](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L269)*
 
 ___
 
@@ -1032,7 +1032,7 @@ ___
 
 • **makerFeePaid**: *BigNumber*
 
-*Defined in [index.ts:269](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L269)*
+*Defined in [index.ts:271](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L271)*
 
 ___
 
@@ -1040,7 +1040,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:271](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L271)*
+*Defined in [index.ts:273](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L273)*
 
 ___
 
@@ -1048,7 +1048,7 @@ ___
 
 • **senderAddress**: *string*
 
-*Defined in [index.ts:265](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L265)*
+*Defined in [index.ts:267](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L267)*
 
 ___
 
@@ -1056,7 +1056,7 @@ ___
 
 • **takerAddress**: *string*
 
-*Defined in [index.ts:264](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L264)*
+*Defined in [index.ts:266](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L266)*
 
 ___
 
@@ -1064,7 +1064,7 @@ ___
 
 • **takerAssetData**: *string*
 
-*Defined in [index.ts:273](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L273)*
+*Defined in [index.ts:275](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L275)*
 
 ___
 
@@ -1072,7 +1072,7 @@ ___
 
 • **takerAssetFilledAmount**: *BigNumber*
 
-*Defined in [index.ts:268](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L268)*
+*Defined in [index.ts:270](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L270)*
 
 ___
 
@@ -1080,7 +1080,7 @@ ___
 
 • **takerFeePaid**: *BigNumber*
 
-*Defined in [index.ts:270](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L270)*
+*Defined in [index.ts:272](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L272)*
 
 <hr />
 
@@ -1100,7 +1100,7 @@ or filled.
 
 • **contractEvents**: *[ContractEvent](#class-contractevent)[]*
 
-*Defined in [index.ts:429](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L429)*
+*Defined in [index.ts:431](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L431)*
 
 ___
 
@@ -1108,7 +1108,7 @@ ___
 
 • **endState**: *[OrderEventEndState](#enumeration-ordereventendstate)*
 
-*Defined in [index.ts:427](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L427)*
+*Defined in [index.ts:429](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L429)*
 
 ___
 
@@ -1116,7 +1116,7 @@ ___
 
 • **fillableTakerAssetAmount**: *BigNumber*
 
-*Defined in [index.ts:428](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L428)*
+*Defined in [index.ts:430](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L430)*
 
 ___
 
@@ -1124,7 +1124,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:425](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L425)*
+*Defined in [index.ts:427](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L427)*
 
 ___
 
@@ -1132,7 +1132,7 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:426](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L426)*
+*Defined in [index.ts:428](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L428)*
 
 <hr />
 
@@ -1152,7 +1152,7 @@ rejected.
 
 • **kind**: *[RejectedOrderKind](#enumeration-rejectedorderkind)*
 
-*Defined in [index.ts:479](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L479)*
+*Defined in [index.ts:481](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L481)*
 
 ___
 
@@ -1160,7 +1160,7 @@ ___
 
 • **orderHash**: *string*
 
-*Defined in [index.ts:477](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L477)*
+*Defined in [index.ts:479](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L479)*
 
 ___
 
@@ -1168,7 +1168,7 @@ ___
 
 • **signedOrder**: *SignedOrder*
 
-*Defined in [index.ts:478](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L478)*
+*Defined in [index.ts:480](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L480)*
 
 ___
 
@@ -1176,7 +1176,7 @@ ___
 
 • **status**: *[RejectedOrderStatus](#class-rejectedorderstatus)*
 
-*Defined in [index.ts:480](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L480)*
+*Defined in [index.ts:482](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L482)*
 
 <hr />
 
@@ -1195,7 +1195,7 @@ Provides more information about why an order was rejected.
 
 • **code**: *string*
 
-*Defined in [index.ts:497](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L497)*
+*Defined in [index.ts:499](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L499)*
 
 ___
 
@@ -1203,7 +1203,7 @@ ___
 
 • **message**: *string*
 
-*Defined in [index.ts:498](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L498)*
+*Defined in [index.ts:500](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L500)*
 
 <hr />
 
@@ -1222,7 +1222,7 @@ Indicates which orders where accepted, which were rejected, and why.
 
 • **accepted**: *[AcceptedOrderInfo](#class-acceptedorderinfo)[]*
 
-*Defined in [index.ts:458](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L458)*
+*Defined in [index.ts:460](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L460)*
 
 ___
 
@@ -1230,7 +1230,7 @@ ___
 
 • **rejected**: *[RejectedOrderInfo](#class-rejectedorderinfo)[]*
 
-*Defined in [index.ts:459](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L459)*
+*Defined in [index.ts:461](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L461)*
 
 <hr />
 
@@ -1247,7 +1247,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:322](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L322)*
+*Defined in [index.ts:324](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L324)*
 
 ___
 
@@ -1255,7 +1255,7 @@ ___
 
 • **value**: *BigNumber*
 
-*Defined in [index.ts:323](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L323)*
+*Defined in [index.ts:325](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L325)*
 
 <hr />
 
@@ -1272,7 +1272,7 @@ ___
 
 • **owner**: *string*
 
-*Defined in [index.ts:312](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L312)*
+*Defined in [index.ts:314](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L314)*
 
 ___
 
@@ -1280,7 +1280,7 @@ ___
 
 • **value**: *BigNumber*
 
-*Defined in [index.ts:313](https://github.com/0xProject/0x-mesh/blob/7d5a102/browser/ts/index.ts#L313)*
+*Defined in [index.ts:315](https://github.com/0xProject/0x-mesh/blob/0240f5d/browser/ts/index.ts#L315)*
 
 <hr />
 

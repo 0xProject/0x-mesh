@@ -18,6 +18,8 @@ type clientEnvVars struct {
 }
 
 func main() {
+	log.SetFormatter(&log.JSONFormatter{})
+
 	env := clientEnvVars{}
 	if err := envvar.Parse(&env); err != nil {
 		panic(err)
@@ -40,7 +42,9 @@ func main() {
 		select {
 		case orderEvents := <-orderEventsChan:
 			for _, orderEvent := range orderEvents {
-				log.Printf("Received order event: %+v\n", orderEvent)
+				log.WithFields(log.Fields{
+					"event": orderEvent,
+				}).Printf("received order event")
 			}
 		case err := <-clientSubscription.Err():
 			log.Fatal(err)

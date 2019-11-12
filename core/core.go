@@ -49,9 +49,11 @@ const (
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
+	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
+	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "6.0.0-beta"
+	version          = "6.0.1-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -181,10 +183,22 @@ func New(config Config) (*App, error) {
 	}
 	log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < ordervalidator.MaxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", ordervalidator.MaxOrderSizeInBytes)
+	if config.EthereumRPCMaxContentLength < constants.MaxOrderSizeInBytes {
+		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", constants.MaxOrderSizeInBytes)
 	}
 	config = unquoteConfig(config)
+
+	// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
+	per24HrPollingRequests := int((24 * time.Hour) / config.BlockPollingInterval)
+	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
+	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
+		return nil, fmt.Errorf(
+			"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
+			config.BlockPollingInterval,
+			minNumOfEthRPCRequestsIn24HrPeriod,
+			config.EthereumRPCMaxRequestsPer24HrUTC,
+		)
+	}
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
