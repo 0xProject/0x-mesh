@@ -1,3 +1,6 @@
-go/
-wasm/
-scripts/
+# Blacklist all files
+.*
+*
+# Whitelist lib
+!lib/**/*
+# Package specific ignore
