@@ -87,7 +87,7 @@
 [[override]]
   name = "github.com/gballet/go-libpcsclite"
   revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
-  [metadata]
+  [override.metadata]
     note = "go-ethereum depends on this package and they made a breaking API change"
 
 [[constraint]]
@@ -141,3 +141,9 @@
 [[constraint]]
   branch = "master"
   name = "github.com/benbjohnson/clock"
+
+[[override]]
+  name = "github.com/libp2p/go-flow-metrics"
+  revision = "45424fab0a7cfaae9c5bdda0e590ee844c12b904"
+  [override.metadata]
+    note = "Fixes an issue with libp2p BandwidthCounter. See https://github.com/libp2p/go-libp2p-core/issues/65"
