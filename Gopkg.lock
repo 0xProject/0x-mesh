@@ -527,12 +527,11 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:83d3d59c84ff3da342ab63011d79750ccb987bda399eb64db3abd3e2fd32c18f"
+  digest = "1:1ffb29b986b15f06b10cab31b35ed95833425231da824467c4798763b56ffdfd"
   name = "github.com/libp2p/go-flow-metrics"
   packages = ["."]
   pruneopts = "UT"
-  revision = "1f5b3acc846b2c8ce4c4e713296af74f5c24df55"
-  version = "v0.0.1"
+  revision = "45424fab0a7cfaae9c5bdda0e590ee844c12b904"
 
 [[projects]]
   digest = "1:03c4382bfd9f7af55959d5cb0199aead9a6200cffbb0f6e64217c64d552d45c6"
