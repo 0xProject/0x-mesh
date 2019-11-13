@@ -1,0 +1,77 @@
+kind: pipeline
+type: docker
+name: mesh
+
+steps:
+- name: mesh-autotag  
+  image: plugins/docker
+  settings:
+    repo: 0xorg/mesh
+    auto_tag: true
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    dockerfile: dockerfiles/mesh/Dockerfile
+---
+kind: pipeline
+type: docker
+name: mesh-bootstrap-autotag
+
+steps:
+- name: mesh-bootstrap-autotag  
+  image: plugins/docker
+  settings:
+    repo: 0xorg/mesh-bootstrap
+    auto_tag: true
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    dockerfile: dockerfiles/mesh/Dockerfile
+---
+kind: pipeline
+type: docker
+name: mesh-development
+
+steps:
+- name: mesh-dev  
+  image: plugins/docker
+  settings:
+    repo: 0xorg/mesh
+    tags:
+      - development
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    dockerfile: dockerfiles/mesh/Dockerfile
+trigger:
+  branch:
+  - development
+  event:
+    include:
+      - push
+---
+kind: pipeline
+type: docker
+name: mesh-bootstrap-development
+
+steps:
+- name: mesh-bootstrap-dev  
+  image: plugins/docker
+  settings:
+    repo: 0xorg/mesh-bootstrap
+    tags:
+      - development
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    dockerfile: dockerfiles/mesh/Dockerfile
+trigger:
+  branch:
+  - development
+  event:
+    include:
+      - push
