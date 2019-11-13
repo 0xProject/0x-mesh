@@ -2,6 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.0.2-beta-0xv3
+
+### Bug fixes 🐞 
+
+- Upgrade Mesh's `libp2p/go-flow-metrics` dep in an attempt to fix a bug in the flow metrics module. ([#521](https://github.com/0xProject/0x-mesh/pull/521))
+- Updates `DevUtils.sol` addresses on all networks to the latest version which fixed a deploy issue. ([#520](https://github.com/0xProject/0x-mesh/pull/520))
+
 ## v7.0.1-beta-0xv3
 
 ### Bug fixes 🐞 
@@ -19,6 +26,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 *Note:* This release will require wiping your Mesh's DB before upgrading. The DB location defaults to `./0x_mesh/db`.
 
 - Removed `RPC_PORT` environment variable. The new `RPC_ADDR` environment variable allows specifying both the interface and port ([487](https://github.com/0xProject/0x-mesh/pull/487)).
+- Due to security concerns and new rate limiting mechanisms, the default bind address for the RPC API has changed from 0.0.0.0 to localhost. Users who previously did not set RPC_PORT may need to now manually set RPC_ADDR to enable other applications to access the RPC API. If you are using Docker Compose, we recommend using links. If you do need to set RPC_ADDR to bind on 0.0.0.0, please be aware of the security implications and consider protecting access to Mesh via a third-party firewall. (See #444 and #487 for more details).
 - Changed the `EXPIRED` event such that it is emitted when an order is expired according to the latest block timestamp, not anymore based on UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 - Removed the `EXPIRATION_BUFFER_SECONDS` env config since we no longer compute order expiration using UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 
