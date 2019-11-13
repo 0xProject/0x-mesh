@@ -13,6 +13,8 @@ steps:
     password:
       from_secret: docker_password
     dockerfile: dockerfiles/mesh/Dockerfile
+node_selector:
+  drone-builds: true
 ---
 kind: pipeline
 type: docker
@@ -29,6 +31,8 @@ steps:
     password:
       from_secret: docker_password
     dockerfile: dockerfiles/mesh/Dockerfile
+node_selector:
+  drone-builds: true
 ---
 kind: pipeline
 type: docker
@@ -52,6 +56,8 @@ trigger:
   event:
     include:
       - push
+node_selector:
+  drone-builds: true
 ---
 kind: pipeline
 type: docker
@@ -75,3 +81,5 @@ trigger:
   event:
     include:
       - push
+node_selector:
+  drone-builds: true
