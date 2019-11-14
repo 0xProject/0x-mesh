@@ -9,6 +9,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞 
 
 - Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
+- Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
 
 ## v7.0.2-beta-0xv3
 
