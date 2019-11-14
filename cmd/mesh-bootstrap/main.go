@@ -100,6 +100,22 @@ type Config struct {
 	// database driver.
 	// NOTE: Currently only `postgres` driver is supported.
 	SQLDBEngine string `envvar:"SQL_DB_ENGINE" default:"postgres"`
+	// PeerStoreCacheSize is the size of the in-memory cache. A value of 0
+	// or lower disables the cache.
+	PeerStoreCacheSize uint `envvar:"PEER_STORE_CACHE_SIZE" default:"1024"`
+	// PeerStoreGCPurgeInterval is the sweep interval to purge expired
+	// addresses from the datastore. If this is a zero value, GC will not
+	// run automatically, but it'll be available on demand via explicit
+	// calls.
+	PeerStoreGCPurgeInterval time.Duration `envvar:"PEER_STORE_GC_PURGE_INTERVAL" default:"2h"`
+	// PeerStoreGCLookaheadInterval is the interval to renew the GC
+	// lookahead window. If this is a zero value, lookahead will be disabled
+	// and we'll traverse the entire datastore for every purge cycle.
+	PeerStoreGCLookaheadInterval time.Duration `envvar:"PEER_STORE_GC_LOOKAHEAD_INTERVAL" default:"0"`
+	// PeerStoreGCInitialDelay is the initial delay before GC processes
+	// start. Intended to give the system breathing room to fully boot
+	// before starting GC.
+	PeerStoreGCInitialDelay time.Duration `envvar:"PEER_STORE_GC_INITIAL_DELAY" default:"60s"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
@@ -162,6 +178,12 @@ func main() {
 	var newDHT func(h host.Host) (routing.PeerRouting, error)
 
 	var peerStore peerstore.Peerstore
+	pstoreOptions := pstoreds.Options{
+		CacheSize:           config.PeerStoreCacheSize,
+		GCPurgeInterval:     config.PeerStoreGCPurgeInterval,
+		GCLookaheadInterval: config.PeerStoreGCLookaheadInterval,
+		GCInitialDelay:      config.PeerStoreGCInitialDelay,
+	}
 
 	// TODO(oskar) - Figure out why returning an anonymous function from
 	// getNewDHT() is making kadDHT.runBootstrap panicing.
@@ -184,7 +206,8 @@ func main() {
 			log.Fatal(err)
 		}
 
-		peerStore, err = pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+		peerStore, err = pstoreds.NewPeerstore(ctx, store, pstoreOptions)
+
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -213,7 +236,7 @@ func main() {
 		}
 
 		pstore := sqlds.NewDatastore(db, sqlds.NewQueriesForTable(peerStoreTableName))
-		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreds.DefaultOpts())
+		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreOptions)
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create peerStore")
 		}
