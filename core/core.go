@@ -709,6 +709,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 	}
 
 	for i, acceptedOrderInfo := range allValidationResults.Accepted {
+		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
+		// or share the order with peers.
+		if !acceptedOrderInfo.IsNew {
+			continue
+		}
 		// Add the order to the OrderWatcher. This also saves the order in the
 		// database.
 		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
