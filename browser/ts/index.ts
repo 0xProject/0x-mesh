@@ -409,6 +409,7 @@ export enum OrderEventEndState {
     FullyFilled = 'FULLY_FILLED',
     Cancelled = 'CANCELLED',
     Expired = 'EXPIRED',
+    Unexpired = 'UNEXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
     StoppedWatching = 'STOPPED_WATCHING',
