@@ -2,6 +2,10 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.0.3-beta
+
+- Upgrade BigNumber dep used by `@0x/mesh-rpc-client` to `~9.0.0` ([#527](https://github.com/0xProject/0x-mesh/pull/527))
+
 ## v7.0.2-beta-0xv3
 
 ### Bug fixes 🐞 
