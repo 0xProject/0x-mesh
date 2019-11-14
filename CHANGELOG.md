@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v6.0.2-beta
+
+### Bug fixes 🐞 
+
+- Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
+
 ## v6.0.1-beta
 
 ### Bug fixes 🐞 
