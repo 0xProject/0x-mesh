@@ -1,7 +1,7 @@
 import { assert } from '@0x/assert';
 import { orderParsingUtils } from '@0x/order-utils';
 import { ObjectMap, SignedOrder } from '@0x/types';
-import { BigNumber } from '@0x/utils';
+import { BigNumber } from 'bignumber.js';
 import * as Web3Providers from '@0x/web3-providers-fork';
 import { v4 as uuid } from 'uuid';
 import * as WebSocket from 'websocket';
