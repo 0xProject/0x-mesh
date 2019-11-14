@@ -1,5 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 
+// HACK(fabio): This is copied from `@0x/utils`. Once we've updated it to BigNumber.js ~9.0.0,
+// we should remove this and go back to using the library
 BigNumber.config({
     // By default BigNumber's `toString` method converts to exponential notation if the value has
     // more then 20 digits. We want to avoid this behavior, so we set EXPONENTIAL_AT to a high number
