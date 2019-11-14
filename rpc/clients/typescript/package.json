@@ -36,6 +36,7 @@
         "@0x/typescript-typings": "4.4.0-beta.1",
         "@0x/web3-providers-fork": "0.0.7",
         "bignumber.js": "~9.0.0",
+        "detect-node": "2.0.3",
         "uuid": "^3.3.2",
         "websocket": "^1.0.29"
     },
@@ -46,6 +47,7 @@
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
         "@types/websocket": "^0.0.40",
+        "@types/detect-node": "2.0.0",
         "chai": "^4.0.1",
         "chai-as-promised": "^7.1.0",
         "chai-bignumber": "^3.0.0",

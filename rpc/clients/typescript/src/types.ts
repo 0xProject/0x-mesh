@@ -1,5 +1,6 @@
 import { SignedOrder } from '@0x/types';
-import { BigNumber } from 'bignumber.js';
+
+import { BigNumber } from './configured_bignumber';
 
 /**
  * WebSocketClient configs

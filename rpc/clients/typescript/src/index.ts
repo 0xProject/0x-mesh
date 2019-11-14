@@ -16,4 +16,4 @@ export {
     GetStatsResponse,
 } from './types';
 export { SignedOrder } from '@0x/types';
-export { BigNumber } from 'bignumber.js';
+export { BigNumber } from './configured_bignumber';
