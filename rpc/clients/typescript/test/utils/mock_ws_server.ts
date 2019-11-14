@@ -1,4 +1,3 @@
-import { logUtils } from '@0x/utils';
 import * as http from 'http';
 import * as WebSocket from 'websocket';
 
@@ -45,6 +44,7 @@ export function stopServer(): void {
         wsServer.shutDown();
         server.close();
     } catch (e) {
-        logUtils.log('stopServer threw', e);
+        // tslint:disable-next-line:no-console
+        console.log('stopServer threw', e);
     }
 }
