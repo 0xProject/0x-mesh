@@ -1146,7 +1146,7 @@
 
 [[projects]]
   branch = "full-wasm-support-0x-1"
-  digest = "1:a3d460bd7ba67f8a2559a492087f3f9adc13babf60170785233e90a16e4b68cc"
+  digest = "1:d7a75c1fa8610ec1e49a6a19b776494b605ba5ea64de90d896d61c024710c2e9"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -1163,7 +1163,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "8c286ddc44399947d78d97220ecdbd29d4e040a9"
+  revision = "6a187a47701c736768b0cff429ccb5ba5fb73767"
   source = "github.com/0xProject/goleveldb"
 
 [[projects]]
