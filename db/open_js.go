@@ -61,6 +61,7 @@ func openBrowserFSDB(path string) (*DB, error) {
 			return nil, errors.New("timed out waiting for BrowserFS to load")
 		}
 		if js.Global().Get("browserFS") != js.Undefined() && js.Global().Get("browserFS") != js.Null() {
+			log.Info("BrowserFS finished loading")
 			break
 		}
 		time.Sleep(browserFSLoadCheckInterval)
