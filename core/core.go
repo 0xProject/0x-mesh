@@ -151,9 +151,9 @@ type App struct {
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
-	orderSelector             *OrderSelector
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
+	orderSelector             *orderSelector
 	db                        *meshdb.MeshDB
 }
 
@@ -276,7 +276,7 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	orderSelector := &OrderSelector{
+	orderSelector := &orderSelector{
 		nextOffset: 0,
 		db:         meshDB,
 	}

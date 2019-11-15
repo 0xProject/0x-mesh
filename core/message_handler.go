@@ -13,7 +13,7 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
-type OrderSelector struct {
+type orderSelector struct {
 	nextOffset int
 	db         *meshdb.MeshDB
 }
@@ -29,7 +29,7 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 	return app.orderSelector.GetMessagesToShare(max)
 }
 
-func (orderSelector *OrderSelector) GetMessagesToShare(max int) ([][]byte, error) {
+func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we use a round robin strategy to select a set of orders to share.
 	// We might return less than max even if there are max or greater orders
 	// currently stored.

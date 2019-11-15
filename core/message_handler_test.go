@@ -1,10 +1,7 @@
 package core
 
 import (
-	cryptoRand "crypto/rand"
-	"encoding/hex"
 	"math/big"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -12,16 +9,23 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
-	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var rpcClient *ethrpc.Client
-var blockchainLifecycle *ethereum.BlockchainLifecycle
+var (
+	rpcClient              *ethrpc.Client
+	ethClient              *ethclient.Client
+	blockchainLifecycle    *ethereum.BlockchainLifecycle
+	makerAddress           = constants.GanacheAccount1
+	takerAddress           = constants.GanacheAccount2
+	tenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	wethAmount             = new(big.Int).Mul(big.NewInt(2), tenDecimalsInBaseUnits)
+	zrxAmount              = new(big.Int).Mul(big.NewInt(1), tenDecimalsInBaseUnits)
+)
 
 func init() {
 	var err error
@@ -29,6 +33,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	ethClient = ethclient.NewClient(rpcClient)
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
 	if err != nil {
 		panic(err)
@@ -88,9 +93,11 @@ func TestMessageSharingIsolated(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		orders := randomOrders(t, testCase.orderCount)
+		orders, err := signedTestOrders(t, testCase.orderCount)
 
-		selector := &OrderSelector{
+		require.NoError(t, err)
+
+		selector := &orderSelector{
 			nextOffset: testCase.nextOffset,
 			db:         meshDB,
 		}
@@ -112,19 +119,21 @@ func TestMessagesSharedSerial(t *testing.T) {
 	defer meshDB.Close()
 	require.NoError(t, err)
 
-	selector := &OrderSelector{
+	selector := &orderSelector{
 		nextOffset: 0,
 		db:         meshDB,
 	}
 
 	// Add five orders to the database
-	orders := randomOrders(t, 5)
+	orders, err := signedTestOrders(t, 5)
+	require.NoError(t, err)
 	allOrders = orders
 	insertOrders(t, selector, orders)
 	verifyRoundRobinSharing(t, selector, 0, 3)
 
 	// Add seven more orders to the database
-	orders = randomOrders(t, 7)
+	orders, err = signedTestOrders(t, 7)
+	require.NoError(t, err)
 	allOrders = append(allOrders, orders...)
 	insertOrders(t, selector, orders)
 	verifyRoundRobinSharing(t, selector, 3, 10)
@@ -134,19 +143,19 @@ func TestMessagesSharedSerial(t *testing.T) {
 	verifyRoundRobinSharing(t, selector, selector.nextOffset, 5)
 
 	// Add 12 more orders to the database
-	orders = randomOrders(t, 12)
+	orders, err = signedTestOrders(t, 12)
+	require.NoError(t, err)
 	allOrders = append(allOrders, orders...)
 	insertOrders(t, selector, orders)
 	verifyRoundRobinSharing(t, selector, selector.nextOffset, 7)
 }
 
 // Verify that the correct messages are shared by `GetMessagesToShare` given `orders`, a `nextOffset`, and `max`
-func verifyRoundRobinSharing(t *testing.T, selector *OrderSelector, nextOffset int, max int) {
+func verifyRoundRobinSharing(t *testing.T, selector *orderSelector, nextOffset int, max int) {
 	notRemovedFilter := selector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	ordersSnapshot, err := selector.db.Orders.GetSnapshot()
 
 	// Get the number of orders in the database
-	count, err := ordersSnapshot.NewQuery(notRemovedFilter).Count()
+	count, err := selector.db.Orders.NewQuery(notRemovedFilter).Count()
 	require.NoError(t, err)
 
 	expectedOrdersLength := min(max, count)
@@ -154,7 +163,8 @@ func verifyRoundRobinSharing(t *testing.T, selector *OrderSelector, nextOffset i
 
 	// Get all of the orders in the database.
 	var orderList []*meshdb.Order
-	err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(0).Max(count).Run(&orderList)
+	err = selector.db.Orders.NewQuery(notRemovedFilter).Run(&orderList)
+	require.NoError(t, err)
 
 	// Update `nextOffset` to zero if it is larger than the number of orders that are stored
 	if nextOffset > count {
@@ -163,10 +173,10 @@ func verifyRoundRobinSharing(t *testing.T, selector *OrderSelector, nextOffset i
 
 	// Calculate the orders that we expect to be shared
 	for i := 0; i < expectedOrdersLength; i++ {
-		encoding, err := encodeOrder(orderList[(nextOffset+i)%count].SignedOrder)
+		encodedOrder, err := encodeOrder(orderList[(nextOffset+i)%count].SignedOrder)
 		require.NoError(t, err)
 
-		expectedOrders[i] = encoding
+		expectedOrders[i] = encodedOrder
 	}
 
 	// Get the actual list of orders that are shared
@@ -177,72 +187,47 @@ func verifyRoundRobinSharing(t *testing.T, selector *OrderSelector, nextOffset i
 	assert.Equal(t, expectedOrders, actualOrders)
 }
 
-func deleteOrders(t *testing.T, selector *OrderSelector, orders []*meshdb.Order) {
+func deleteOrders(t *testing.T, selector *orderSelector, orders []*meshdb.Order) {
 	for _, order := range orders {
 		err := selector.db.Orders.Delete(order.ID())
 		require.NoError(t, err)
 	}
 }
 
-func insertOrders(t *testing.T, selector *OrderSelector, orders []*meshdb.Order) {
+func insertOrders(t *testing.T, selector *orderSelector, orders []*meshdb.Order) {
 	for _, order := range orders {
 		err := selector.db.Orders.Insert(order)
 		require.NoError(t, err)
 	}
 }
 
-func createTestOrders(t *testing.T, orderCount int) []*meshdb.Order {
+func signedTestOrders(t *testing.T, orderCount int) ([]*meshdb.Order, error) {
 	orders := make([]*meshdb.Order, orderCount)
 
-	for i := 0; i < orderCount; i++ {
-		orders[i] = randomOrder(t)
+	for i := range orders {
+		order := scenario.CreateZRXForWETHSignedTestOrder(
+			t,
+			ethClient,
+			makerAddress,
+			takerAddress,
+			new(big.Int).Add(wethAmount, big.NewInt(int64(i))),
+			zrxAmount,
+		)
+
+		hash, err := order.ComputeOrderHash()
+
+		if err != nil {
+			return nil, err
+		}
+
+		orders[i] = &meshdb.Order{
+			Hash:                     hash,
+			SignedOrder:              order,
+			LastUpdated:              time.Now(),
+			FillableTakerAssetAmount: order.TakerAssetAmount,
+			IsRemoved:                false,
+		}
 	}
 
-	return orders
-}
-
-func createTestOrder(t *testing.T) *meshdb.Order {
-	signedOrder := &zeroex.SignedOrder{
-		Order: zeroex.Order{
-			MakerAddress:          constants.GanacheAccount0,
-			TakerAddress:          constants.GanacheAccount1,
-			SenderAddress:         common.HexToAddress(randomAddress(t)),
-			FeeRecipientAddress:   common.HexToAddress(randomAddress(t)),
-			MakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
-			TakerAssetData:        common.Hex2Bytes(randomAssetData(t)),
-			Salt:                  big.NewInt(rand.Int63()),
-			MakerFee:              big.NewInt(rand.Int63()),
-			TakerFee:              big.NewInt(rand.Int63()),
-			MakerAssetAmount:      big.NewInt(rand.Int63()),
-			TakerAssetAmount:      big.NewInt(rand.Int63()),
-			ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-			ExchangeAddress:       common.HexToAddress(randomAddress(t)),
-		},
-		Signature: []byte(randomHex(t, 65)),
-	}
-	orderHash, err := signedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	return &meshdb.Order{
-		Hash:                     orderHash,
-		SignedOrder:              signedOrder,
-		LastUpdated:              time.Now().UTC(),
-		FillableTakerAssetAmount: signedOrder.Order.TakerAssetAmount,
-		IsRemoved:                false,
-	}
-}
-
-func randomAddress(t *testing.T) string {
-	return "0x" + randomHex(t, 20)
-}
-
-func randomAssetData(t *testing.T) string {
-	// Note: Asset data must begin with a valid asset proxy id or parsing will fail
-	return "f47261b0000000000000000000000000" + randomHex(t, 20)
-}
-
-func randomHex(t *testing.T, n int) string {
-	bytes := make([]byte, n)
-	_, err := cryptoRand.Read(bytes)
-	require.NoError(t, err)
-	return hex.EncodeToString(bytes)
+	return orders, nil
 }
