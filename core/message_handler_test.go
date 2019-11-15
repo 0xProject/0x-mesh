@@ -9,13 +9,31 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var rpcClient *ethrpc.Client
+var blockchainLifecycle *ethereum.BlockchainLifecycle
+
+func init() {
+	var err error
+	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestMessageSharingIsolated(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
@@ -173,7 +191,7 @@ func insertOrders(t *testing.T, selector *OrderSelector, orders []*meshdb.Order)
 	}
 }
 
-func randomOrders(t *testing.T, orderCount int) []*meshdb.Order {
+func createTestOrders(t *testing.T, orderCount int) []*meshdb.Order {
 	orders := make([]*meshdb.Order, orderCount)
 
 	for i := 0; i < orderCount; i++ {
@@ -183,11 +201,11 @@ func randomOrders(t *testing.T, orderCount int) []*meshdb.Order {
 	return orders
 }
 
-func randomOrder(t *testing.T) *meshdb.Order {
+func createTestOrder(t *testing.T) *meshdb.Order {
 	signedOrder := &zeroex.SignedOrder{
 		Order: zeroex.Order{
 			MakerAddress:          constants.GanacheAccount0,
-			TakerAddress:          common.HexToAddress(randomAddress(t)),
+			TakerAddress:          constants.GanacheAccount1,
 			SenderAddress:         common.HexToAddress(randomAddress(t)),
 			FeeRecipientAddress:   common.HexToAddress(randomAddress(t)),
 			MakerAssetData:        common.Hex2Bytes(randomAssetData(t)),

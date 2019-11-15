@@ -154,6 +154,7 @@ type App struct {
 	orderSelector             *OrderSelector
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
+	db                        *meshdb.MeshDB
 }
 
 func New(config Config) (*App, error) {
@@ -284,7 +285,6 @@ func New(config Config) (*App, error) {
 		config:                    config,
 		privKey:                   privKey,
 		peerID:                    peerID,
-		db:                        meshDB,
 		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
@@ -296,6 +296,7 @@ func New(config Config) (*App, error) {
 		orderSelector:             orderSelector,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
+		db:                        meshDB,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -381,7 +382,7 @@ func (app *App) Start(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		<-innerCtx.Done()
-		app.orderSelector.db.Close()
+		app.db.Close()
 	}()
 
 	// Start rateLimiter
@@ -582,7 +583,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
 		var err error
-		snapshot, err = app.orderSelector.db.Orders.GetSnapshot()
+		snapshot, err = app.db.Orders.GetSnapshot()
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +615,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		app.muIdToSnapshotInfo.Unlock()
 	}
 
-	notRemovedFilter := app.orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var selectedOrders []*meshdb.Order
 	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
 	if err != nil {
@@ -776,12 +777,12 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 			Hash:   latestBlockHeader.Hash,
 		}
 	}
-	notRemovedFilter := app.orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	numOrders, err := app.orderSelector.db.Orders.NewQuery(notRemovedFilter).Count()
+	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
 	if err != nil {
 		return nil, err
 	}
-	numOrdersIncludingRemoved, err := app.orderSelector.db.Orders.Count()
+	numOrdersIncludingRemoved, err := app.db.Orders.Count()
 	if err != nil {
 		return nil, err
 	}
