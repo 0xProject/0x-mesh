@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,6 +39,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -130,6 +132,12 @@ type Config struct {
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
 	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
+	// EnablePrometheusMonitoring is whether to turn on Prometheus
+	// monitoring to start gathering Go runtime and custom metrics.
+	EnablePrometheusMonitoring bool `envvar:"ENABLE_PROMETHEUS_METRICS" default:"false"`
+	// PrometheusListenAddr is the listen address that prometheus client
+	// will expose information to, by default it's localhost:9607
+	PrometheusListenAddr string `envvar:"PROMETHEUS_LISTEN_ADDR" default:":9607"`
 }
 
 type snapshotInfo struct {
@@ -370,6 +378,14 @@ func (app *App) Start(ctx context.Context) error {
 	// error.
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// Start Prometheus monitoring.
+	if app.config.EnablePrometheusMonitoring {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			log.Error(http.ListenAndServe(app.config.PrometheusListenAddr, nil))
+		}()
+	}
 
 	// Below, we will start several independent goroutines. We use separate
 	// channels to communicate errors and a waitgroup to wait for all goroutines
