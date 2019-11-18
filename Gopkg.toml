@@ -78,7 +78,7 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-kad-dht"
-  version = "0.2.0"
+  version = "0.3.0"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-connmgr"

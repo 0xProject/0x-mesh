@@ -634,7 +634,7 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:f5aaf57e0484fb766257137c03b35662acf928fa201b0515ed7940220097e9e8"
+  digest = "1:76120e78893593ad83f0c202f699da54b1eafb967cdb1bfe318279087086c1cc"
   name = "github.com/libp2p/go-libp2p-kad-dht"
   packages = [
     ".",
@@ -644,19 +644,19 @@
     "providers",
   ]
   pruneopts = "UT"
-  revision = "a12e621d84028a4e0f165da8e2ca6be4f5af0502"
-  version = "v0.2.0"
+  revision = "8ecf9380a4f75200f628339883acdf56c2b85a5a"
+  version = "v0.3.0"
 
 [[projects]]
-  digest = "1:d750c3b6c1c69bab8ed996ca6c053e0a13db53d2c51937a0debc40174c77bfc1"
+  digest = "1:a8e19025329b4b8c5d406856dcaee8e4a503c7d33a2d61dfa2e7921303eddc8b"
   name = "github.com/libp2p/go-libp2p-kbucket"
   packages = [
     ".",
     "keyspace",
   ]
   pruneopts = "UT"
-  revision = "3752ea0128fd84b4fef0a66739b8ca95c8a471b6"
-  version = "v0.2.0"
+  revision = "8b77351e0f784a5f71749d23000897c8aee71a76"
+  version = "v0.2.1"
 
 [[projects]]
   digest = "1:645c5ab1429b06141e0d22852df9561e04b3759380f6657f0b510a30eef83665"
