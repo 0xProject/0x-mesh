@@ -53,7 +53,7 @@ func openBrowserFSDB(path string) (*DB, error) {
 	// variable. This is definitely a bit of a hack and wastes some CPU resources,
 	// but it is also extremely reliable. Given that we have a chicken and egg
 	// problem with both Wasm and JavaScript code loading and executing at the
-	// same time, it is difficult to match this level reliability with something
+	// same time, it is difficult to match this level of reliability with something
 	// like callback functions or events.
 	start := time.Now()
 	for {
