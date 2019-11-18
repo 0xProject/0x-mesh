@@ -1145,8 +1145,8 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "full-wasm-support"
-  digest = "1:5471d57ba7550f873e109f28f58bcebc9a9a2a8b33e1496076da6d6cf2bc627a"
+  branch = "full-wasm-support-0x-1"
+  digest = "1:d7a75c1fa8610ec1e49a6a19b776494b605ba5ea64de90d896d61c024710c2e9"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -1163,7 +1163,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "3ff7350ed31b229a705c7466d4260ca52f5cc552"
+  revision = "6a187a47701c736768b0cff429ccb5ba5fb73767"
   source = "github.com/0xProject/goleveldb"
 
 [[projects]]
@@ -1432,6 +1432,7 @@
     "github.com/libp2p/go-libp2p-peerstore",
     "github.com/libp2p/go-libp2p-peerstore/pstoreds",
     "github.com/libp2p/go-libp2p-pubsub",
+    "github.com/libp2p/go-libp2p-pubsub/pb",
     "github.com/libp2p/go-libp2p-swarm",
     "github.com/libp2p/go-libp2p/p2p/host/relay",
     "github.com/libp2p/go-maddr-filter",

@@ -57,7 +57,7 @@
 
 [[constraint]]
   name = "github.com/syndtr/goleveldb"
-  branch = "full-wasm-support"
+  branch = "full-wasm-support-0x-1"
   source = "github.com/0xProject/goleveldb"
 
 [[constraint]]
