@@ -1,5 +1,4 @@
 import { assert } from '@0x/assert';
-import { orderParsingUtils } from '@0x/order-utils';
 import { ObjectMap, SignedOrder } from '@0x/types';
 import * as Web3Providers from '@0x/web3-providers-fork';
 import { v4 as uuid } from 'uuid';
@@ -66,7 +65,7 @@ export class WSClient {
         rawAcceptedOrderInfos.forEach(rawAcceptedOrderInfo => {
             const acceptedOrderInfo: AcceptedOrderInfo = {
                 orderHash: rawAcceptedOrderInfo.orderHash,
-                signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawAcceptedOrderInfo.signedOrder),
+                signedOrder: WSClient._convertOrderStringFieldsToBigNumber(rawAcceptedOrderInfo.signedOrder),
                 fillableTakerAssetAmount: new BigNumber(rawAcceptedOrderInfo.fillableTakerAssetAmount),
                 isNew: rawAcceptedOrderInfo.isNew,
             };
@@ -79,12 +78,32 @@ export class WSClient {
         rawOrderInfos.forEach(rawOrderInfo => {
             const orderInfo: OrderInfo = {
                 orderHash: rawOrderInfo.orderHash,
-                signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderInfo.signedOrder),
+                signedOrder: WSClient._convertOrderStringFieldsToBigNumber(rawOrderInfo.signedOrder),
                 fillableTakerAssetAmount: new BigNumber(rawOrderInfo.fillableTakerAssetAmount),
             };
             orderInfos.push(orderInfo);
         });
         return orderInfos;
+    }
+    private static _convertStringsFieldsToBigNumbers(obj: any, fields: string[]): any {
+        const result = { ...obj };
+        fields.forEach(field => {
+            if (result[field] === undefined) {
+                throw new Error(`Could not find field '${field}' while converting string fields to BigNumber.`);
+            }
+            result[field] = new BigNumber(result[field]);
+        });
+        return result;
+    }
+    private static _convertOrderStringFieldsToBigNumber(order: any): any {
+        return WSClient._convertStringsFieldsToBigNumbers(order, [
+            'makerAssetAmount',
+            'takerAssetAmount',
+            'makerFee',
+            'takerFee',
+            'expirationTimeSeconds',
+            'salt',
+        ]);
     }
     private static _convertStringifiedContractEvents(rawContractEvents: StringifiedContractEvent[]): ContractEvent[] {
         const contractEvents: ContractEvent[] = [];
@@ -261,7 +280,7 @@ export class WSClient {
         rawValidationResults.rejected.forEach(rawRejectedOrderInfo => {
             const rejectedOrderInfo: RejectedOrderInfo = {
                 orderHash: rawRejectedOrderInfo.orderHash,
-                signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawRejectedOrderInfo.signedOrder),
+                signedOrder: WSClient._convertOrderStringFieldsToBigNumber(rawRejectedOrderInfo.signedOrder),
                 kind: rawRejectedOrderInfo.kind,
                 status: rawRejectedOrderInfo.status,
             };
@@ -319,7 +338,7 @@ export class WSClient {
             rawOrderEvents.forEach(rawOrderEvent => {
                 const orderEvent = {
                     orderHash: rawOrderEvent.orderHash,
-                    signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderEvent.signedOrder),
+                    signedOrder: WSClient._convertOrderStringFieldsToBigNumber(rawOrderEvent.signedOrder),
                     endState: rawOrderEvent.endState,
                     fillableTakerAssetAmount: new BigNumber(rawOrderEvent.fillableTakerAssetAmount),
                     contractEvents: WSClient._convertStringifiedContractEvents(rawOrderEvent.contractEvents),

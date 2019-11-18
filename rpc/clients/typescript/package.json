@@ -5,7 +5,14 @@
         "node": ">=6.12"
     },
     "description": "A Javascript library for interacting with the Mesh JSON RPC API over WebSockets",
-    "keywords": ["p2p", "mesh", "0xproject", "ethereum", "tokens", "exchange"],
+    "keywords": [
+        "p2p",
+        "mesh",
+        "0xproject",
+        "ethereum",
+        "tokens",
+        "exchange"
+    ],
     "main": "lib/src/index.js",
     "types": "lib/src/index.d.ts",
     "scripts": {
@@ -30,10 +37,9 @@
     },
     "homepage": "https://github.com/0xProject/0x-mesh/rpc/clients/typescript/README.md",
     "dependencies": {
-        "@0x/assert": "2.2.0-beta.1",
-        "@0x/order-utils": "8.5.0-beta.1",
-        "@0x/types": "2.5.0-beta.1",
-        "@0x/typescript-typings": "4.4.0-beta.1",
+        "@0x/assert": "2.2.0-beta.2",
+        "@0x/types": "2.5.0-beta.2",
+        "@0x/typescript-typings": "4.4.0-beta.2",
         "@0x/web3-providers-fork": "0.0.7",
         "bignumber.js": "~9.0.0",
         "detect-node": "2.0.3",
@@ -41,9 +47,9 @@
         "websocket": "^1.0.29"
     },
     "devDependencies": {
-        "@0x/dev-utils": "^2.4.0-beta.1",
+        "@0x/dev-utils": "^2.4.0-beta.2",
         "@0x/ts-doc-gen": "^0.0.13",
-        "@0x/tslint-config": "^3.1.0-beta.1",
+        "@0x/tslint-config": "^3.1.0-beta.2",
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
         "@types/websocket": "^0.0.40",
