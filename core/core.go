@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
@@ -49,6 +51,10 @@ const (
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
+	// maxBlocksStoredInNonArchiveNode is the max number of historical blocks for which a regular Ethereum
+	// node stores archive-level state. One cannot make `eth_call` requests specifying blocks earlier than
+	// 128 blocks ago on non-archive nodes.
+	maxBlocksStoredInNonArchiveNode = 128
 	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
 	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
@@ -421,10 +427,34 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Backfill block events if needed. This is a blocking call so we won't
-	// continue set up until its finished.
-	if err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx); err != nil {
+	latestBlockProcessed, err := app.blockWatcher.GetLatestBlockProcessed()
+	if err != nil {
 		return err
+	}
+	latestBlockProcessedNumber := latestBlockProcessed.Number
+	latestBlock, err := app.blockWatcher.GetLatestBlock()
+	if err != nil {
+		return err
+	}
+	latestBlockNumber := latestBlock.Number
+	blocksElapsed := big.NewInt(0).Sub(latestBlockNumber, latestBlockProcessedNumber)
+	if blocksElapsed.Int64() < maxBlocksStoredInNonArchiveNode {
+		// This is a blocking call so we won't continue set up until its finished.
+		err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Clear all blocks from DB so BlockWatcher starts again from latest block
+		var storedHeaders []*miniheader.MiniHeader
+		if err := app.db.MiniHeaders.FindAll(&storedHeaders); err != nil {
+			return err
+		}
+		for _, header := range storedHeaders {
+			if err := app.db.MiniHeaders.Delete(header.ID()); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Start the block watcher.
@@ -435,6 +465,12 @@ func (app *App) Start(ctx context.Context) error {
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
+
+	if blocksElapsed.Int64() >= maxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
+		// Re-validate all orders since too many blocks have elapsed to fast-sync events
+		app.orderWatcher.Cleanup(innerCtx, 0*time.Minute)
+	}
 
 	// Initialize the p2p node.
 	bootstrapList := p2p.DefaultBootstrapList
@@ -453,7 +489,6 @@ func (app *App) Start(ctx context.Context) error {
 		BootstrapList:    bootstrapList,
 		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
 	}
-	var err error
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
 		return err

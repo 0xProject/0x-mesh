@@ -34,9 +34,9 @@ const (
 	// on whether to remove orders flaggged for removal from the DB
 	minRemovedCheckInterval = 5 * time.Minute
 
-	// lastUpdatedBuffer specifies how long it must have been since an order was last updated in order to
-	// be re-validated by the cleanup worker
-	lastUpdatedBuffer = 30 * time.Minute
+	// defaultLastUpdatedBuffer specifies how long it must have been since an order was
+	// last updated in order to be re-validated by the cleanup worker
+	defaultLastUpdatedBuffer = 30 * time.Minute
 
 	// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
 	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 5 minutes
@@ -287,7 +287,7 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 		// have multiple calls to cleanup running in parallel
 		time.Sleep(minCleanupInterval - time.Since(start))
 		start = time.Now()
-		if err := w.cleanup(ctx); err != nil {
+		if err := w.Cleanup(ctx, defaultLastUpdatedBuffer); err != nil {
 			return err
 		}
 	}
@@ -718,7 +718,9 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 	return nil
 }
 
-func (w *Watcher) cleanup(ctx context.Context) error {
+// Cleanup re-validates all orders in DB which haven't been re-validated in
+// `lastUpdatedBuffer` time to make sure all orders are still up-to-date
+func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) error {
 	ordersColTxn := w.meshDB.Orders.OpenTransaction()
 	defer func() {
 		_ = ordersColTxn.Discard()
