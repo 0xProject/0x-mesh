@@ -431,29 +431,33 @@ func (app *App) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	latestBlockProcessedNumber := latestBlockProcessed.Number
-	latestBlock, err := app.blockWatcher.GetLatestBlock()
-	if err != nil {
-		return err
-	}
-	latestBlockNumber := latestBlock.Number
-	blocksElapsed := big.NewInt(0).Sub(latestBlockNumber, latestBlockProcessedNumber)
-	if blocksElapsed.Int64() < maxBlocksStoredInNonArchiveNode {
-		log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
-		// Note: this is a blocking call so we won't continue set up until its finished.
-		err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
+	blocksElapsed := big.NewInt(0)
+	// If has processed blocks before
+	if latestBlockProcessed != nil {
+		latestBlockProcessedNumber := latestBlockProcessed.Number
+		latestBlock, err := app.blockWatcher.GetLatestBlock()
 		if err != nil {
 			return err
 		}
-	} else {
-		// Clear all blocks from DB so BlockWatcher starts again from latest block
-		var storedHeaders []*miniheader.MiniHeader
-		if err := app.db.MiniHeaders.FindAll(&storedHeaders); err != nil {
-			return err
-		}
-		for _, header := range storedHeaders {
-			if err := app.db.MiniHeaders.Delete(header.ID()); err != nil {
+		latestBlockNumber := latestBlock.Number
+		blocksElapsed = big.NewInt(0).Sub(latestBlockNumber, latestBlockProcessedNumber)
+		if blocksElapsed.Int64() < maxBlocksStoredInNonArchiveNode {
+			log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
+			// Note: this is a blocking call so we won't continue set up until its finished.
+			err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
+			if err != nil {
 				return err
+			}
+		} else {
+			// Clear all blocks from DB so BlockWatcher starts again from latest block
+			var storedHeaders []*miniheader.MiniHeader
+			if err := app.db.MiniHeaders.FindAll(&storedHeaders); err != nil {
+				return err
+			}
+			for _, header := range storedHeaders {
+				if err := app.db.MiniHeaders.Delete(header.ID()); err != nil {
+					return err
+				}
 			}
 		}
 	}
