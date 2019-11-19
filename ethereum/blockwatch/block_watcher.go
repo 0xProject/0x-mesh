@@ -149,8 +149,9 @@ func (w *Watcher) GetLatestBlockProcessed() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
 }
 
+// GetLatestBlock returns the latest block retrieved via ETH JSON-RPC
 func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
-	return w.stack.Peek()
+	return w.client.HeaderByNumber(nil)
 }
 
 // GetAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
