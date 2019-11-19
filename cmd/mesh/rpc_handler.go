@@ -165,8 +165,12 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 					}
 				}
 			case err := <-rpcSub.Err():
-				log.WithField("err", err).Error("rpcSub returned an error")
-				orderWatcherSub.Unsubscribe()
+				if err != nil {
+					log.WithField("err", err).Error("rpcSub returned an error")
+					orderWatcherSub.Unsubscribe()
+				} else {
+					log.Debug("rpcSub was closed without error")
+				}
 				return
 			case <-notifier.Closed():
 				orderWatcherSub.Unsubscribe()
