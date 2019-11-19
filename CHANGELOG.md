@@ -2,6 +2,10 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.1.0-beta-0xV3
+
+- Update V3 contract addresses for mainnet/testnets. ([#547](https://github.com/0xProject/0x-mesh/pull/547))
+
 ## v7.0.4-beta-0xv3
 
 - Upgraded `@0x` deps in `@0x/mesh-rpc-client`
