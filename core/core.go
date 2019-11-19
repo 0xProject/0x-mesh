@@ -758,7 +758,7 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
-	latestBlockHeader, err := app.blockWatcher.GetLatestBlock()
+	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
 	if err != nil {
 		return nil, err
 	}

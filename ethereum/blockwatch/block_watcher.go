@@ -144,7 +144,11 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
-// GetLatestBlock returns the latest block processed
+// GetLatestBlockProcessed returns the latest block processed
+func (w *Watcher) GetLatestBlockProcessed() (*miniheader.MiniHeader, error) {
+	return w.stack.Peek()
+}
+
 func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
 }
