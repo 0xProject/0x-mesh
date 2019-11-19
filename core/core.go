@@ -19,7 +19,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
@@ -450,15 +449,7 @@ func (app *App) Start(ctx context.Context) error {
 			}
 		} else {
 			// Clear all blocks from DB so BlockWatcher starts again from latest block
-			var storedHeaders []*miniheader.MiniHeader
-			if err := app.db.MiniHeaders.FindAll(&storedHeaders); err != nil {
-				return err
-			}
-			for _, header := range storedHeaders {
-				if err := app.db.MiniHeaders.Delete(header.ID()); err != nil {
-					return err
-				}
-			}
+			app.db.ClearAllMiniHeaders()
 		}
 	}
 

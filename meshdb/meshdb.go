@@ -41,7 +41,7 @@ func (o Order) ID() []byte {
 
 // Metadata is the database representation of MeshDB instance metadata
 type Metadata struct {
-	EthereumChainID int
+	EthereumChainID                   int
 	MaxExpirationTime                 *big.Int
 	EthRPCRequestsSentInCurrentUTCDay int
 	StartOfCurrentUTCDay              time.Time
@@ -238,6 +238,20 @@ func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 		return nil, nil
 	}
 	return miniHeaders[0], nil
+}
+
+// ClearAllMiniHeaders removes all stored MiniHeaders from the database.
+func (m *MeshDB) ClearAllMiniHeaders() error {
+	var storedHeaders []*miniheader.MiniHeader
+	if err := m.MiniHeaders.FindAll(&storedHeaders); err != nil {
+		return err
+	}
+	for _, header := range storedHeaders {
+		if err := m.MiniHeaders.Delete(header.ID()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address
