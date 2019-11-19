@@ -2,9 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v6.0.2-beta
+## v6.1.0-beta
 
-### Bug fixes 🐞 
+### Features ✅
+
+- Added support for persistence in the browser. Users of the `@0x/mesh-browser` package will now be able to retain orders and other relevant parts of the state when refreshing the page or closing and re-opening the browser. ([#533](https://github.com/0xProject/0x-mesh/pull/533)).
+
+### Bug fixes 🐞
 
 - Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
 - Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
