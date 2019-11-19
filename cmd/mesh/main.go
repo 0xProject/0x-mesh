@@ -19,9 +19,8 @@ import (
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
 	// RPCAddr is the interface and port to use for the JSON-RPC API over
-	// WebSockets. By default, 0x Mesh will listen on localhost and will let the
-	// OS select a randomly available port.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:0"`
+	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
+	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
 }
 
 func main() {
