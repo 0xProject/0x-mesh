@@ -470,7 +470,9 @@ func (app *App) Start(ctx context.Context) error {
 	if blocksElapsed.Int64() >= maxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
 		// Re-validate all orders since too many blocks have elapsed to fast-sync events
-		app.orderWatcher.Cleanup(innerCtx, 0*time.Minute)
+		if err := app.orderWatcher.Cleanup(innerCtx, 0*time.Minute); err != nil {
+			return err
+		}
 	}
 
 	// Initialize the p2p node.
