@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -430,7 +429,7 @@ func (app *App) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	blocksElapsed := big.NewInt(0)
+	var blocksElapsed int64
 	// If has processed blocks before
 	if latestBlockProcessed != nil {
 		latestBlockProcessedNumber := latestBlockProcessed.Number
@@ -439,9 +438,10 @@ func (app *App) Start(ctx context.Context) error {
 			return err
 		}
 		latestBlockNumber := latestBlock.Number
-		blocksElapsed = big.NewInt(0).Sub(latestBlockNumber, latestBlockProcessedNumber)
-		if blocksElapsed.Int64() < maxBlocksStoredInNonArchiveNode {
-			log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
+
+		blocksElapsed = latestBlockNumber.Int64() - latestBlockProcessedNumber.Int64()
+		if blocksElapsed < maxBlocksStoredInNonArchiveNode {
+			log.WithField("blocksElapsed", blocksElapsed).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
 			// Note: this is a blocking call so we won't continue set up until its finished.
 			err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
 			if err != nil {
@@ -462,8 +462,8 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	if blocksElapsed.Int64() >= maxBlocksStoredInNonArchiveNode {
-		log.WithField("blocksElapsed", blocksElapsed.Int64()).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
+	if blocksElapsed >= maxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
 		// Re-validate all orders since too many blocks have elapsed to fast-sync events
 		if err := app.orderWatcher.Cleanup(innerCtx, 0*time.Minute); err != nil {
 			return err
