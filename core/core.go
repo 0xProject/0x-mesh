@@ -449,7 +449,9 @@ func (app *App) Start(ctx context.Context) error {
 			}
 		} else {
 			// Clear all blocks from DB so BlockWatcher starts again from latest block
-			app.db.ClearAllMiniHeaders()
+			if err := app.db.ClearAllMiniHeaders(); err != nil {
+				return err
+			}
 		}
 	}
 
