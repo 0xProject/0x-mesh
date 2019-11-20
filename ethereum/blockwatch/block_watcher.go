@@ -340,16 +340,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
 		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.
-		headers, err := w.GetAllRetainedBlocks()
-		if err != nil {
-			return events, err
-		}
-		for i := 0; i < len(headers); i++ {
-			_, err := w.stack.Pop()
-			if err != nil {
-				return events, err
-			}
-		}
+		w.stack.Clear()
 		// Add furthest block processed into the DB
 		latestHeader, err := w.client.HeaderByNumber(big.NewInt(int64(furthestBlockProcessed)))
 		if err != nil {
