@@ -191,7 +191,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 }
 
 func TestSyncToLatestBlockLessThan128Missed(t *testing.T) {
-	// Fixture will return block 132 as the tip of the chain
+	// Fixture will return block 132 as the tip of the chain (127 blocks from block 5)
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
 	require.NoError(t, err)
 
@@ -226,7 +226,7 @@ func TestSyncToLatestBlockLessThan128Missed(t *testing.T) {
 }
 
 func TestSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
-	// Fixture will return block 135 as the tip of the chain (> 128 blocks from block 5)
+	// Fixture will return block 133 as the tip of the chain (128 blocks from block 5)
 	fakeClient, err := newFakeClient("testdata/fake_client_reset_fixture.json")
 	require.NoError(t, err)
 
