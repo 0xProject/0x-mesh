@@ -17,6 +17,8 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fixed a potential nil pointer exception in log hooks ([#543](https://github.com/0xProject/0x-mesh/pull/543)).
 - Fixed a bug where successful closes of an rpc subscription were being reported as errors ([#544](https://github.com/0xProject/0x-mesh/pull/544)).
 - We now log the error and stack trace if an RPC method panics. Before, these errors were swallowed by the panic recovery logic in `go-ethereum`'s `rpc` package. ([#545](https://github.com/0xProject/0x-mesh/pull/545))
+- Previously, we used to fast-sync block events missed since a Mesh node was last online. If this was more than 128 blocks ago, the fast-sync would fail if Mesh was not connected to an Ethereum node with the `--archive` flag enabled. We now fast-sync only if less than 128 blocks have elapsed. Otherwise, we simply re-validate all orders and continue processing block events from the latest block. ([#407](https://github.com/0xProject/0x-mesh/issues/407))
+
 
 ## v6.0.1-beta
 
