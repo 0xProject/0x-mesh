@@ -242,14 +242,22 @@ func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 
 // ClearAllMiniHeaders removes all stored MiniHeaders from the database.
 func (m *MeshDB) ClearAllMiniHeaders() error {
+	txn := m.MiniHeaders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
 	var storedHeaders []*miniheader.MiniHeader
 	if err := m.MiniHeaders.FindAll(&storedHeaders); err != nil {
 		return err
 	}
 	for _, header := range storedHeaders {
-		if err := m.MiniHeaders.Delete(header.ID()); err != nil {
+		if err := txn.Delete(header.ID()); err != nil {
 			return err
 		}
+	}
+
+	if err := txn.Commit(); err != nil {
+		return err
 	}
 	return nil
 }
