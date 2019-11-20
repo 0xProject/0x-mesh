@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -47,6 +48,7 @@ type Stack interface {
 	Push(*miniheader.MiniHeader) error
 	Peek() (*miniheader.MiniHeader, error)
 	PeekAll() ([]*miniheader.MiniHeader, error)
+	Clear() error
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
@@ -89,18 +91,48 @@ func New(config Config) *Watcher {
 	return bs
 }
 
-// BackfillEventsIfNeeded finds missed events that might have occured while the
-// Mesh node was offline and sends them to event subscribers. It blocks until
-// it is done backfilling or the given context is canceled.
-func (w *Watcher) BackfillEventsIfNeeded(ctx context.Context) error {
-	events, err := w.getMissedEventsToBackfill(ctx)
+// SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
+// catches it back up. If less than 128 blocks passed, we are able to fetch all missing
+// block events and process them. If more than 128 blocks passed, we cannot catch up
+// without an archive Ethereum node (see: http://bit.ly/2D11Hr6) so we instead clear
+// previously tracked blocks so BlockWatcher starts again from the latest block. This
+// function blocks until complete or the context is  cancelled.
+func (w *Watcher) SyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
+	latestBlockProcessed, err := w.GetLatestBlockProcessed()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if len(events) > 0 {
-		w.blockFeed.Send(events)
+	// No previously stored block so no blocks have elapsed
+	if latestBlockProcessed == nil {
+		return 0, nil
 	}
-	return nil
+
+	latestBlock, err := w.client.HeaderByNumber(nil)
+	if err != nil {
+		return 0, err
+	}
+
+	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
+	blocksElapsed = int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
+	if blocksElapsed == 0 {
+		return blocksElapsed, nil
+	} else if blocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", blocksElapsed).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
+		events, err := w.getMissedEventsToBackfill(ctx, blocksElapsed, latestBlockProcessedNumber)
+		if err != nil {
+			return blocksElapsed, err
+		}
+		if len(events) > 0 {
+			w.blockFeed.Send(events)
+		}
+	} else {
+		// Clear all block headers from stack so BlockWatcher starts again from latest block
+		if err := w.stack.Clear(); err != nil {
+			return blocksElapsed, err
+		}
+	}
+
+	return blocksElapsed, nil
 }
 
 // Watch starts the Watcher. It will continuously look for new blocks and blocks
@@ -147,11 +179,6 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 // GetLatestBlockProcessed returns the latest block processed
 func (w *Watcher) GetLatestBlockProcessed() (*miniheader.MiniHeader, error) {
 	return w.stack.Peek()
-}
-
-// GetLatestBlock returns the latest block retrieved via ETH JSON-RPC
-func (w *Watcher) GetLatestBlock() (*miniheader.MiniHeader, error) {
-	return w.client.HeaderByNumber(nil)
 }
 
 // GetAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
@@ -303,30 +330,13 @@ func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
-func (w *Watcher) getMissedEventsToBackfill(ctx context.Context) ([]*Event, error) {
+func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed int, latestRetainedBlockNumber int) ([]*Event, error) {
 	events := []*Event{}
 
-	latestRetainedBlock, err := w.stack.Peek()
-	if err != nil {
-		return events, err
-	}
-	// No blocks stored, nowhere to backfill to
-	if latestRetainedBlock == nil {
-		return events, nil
-	}
-	latestBlock, err := w.client.HeaderByNumber(nil)
-	if err != nil {
-		return events, err
-	}
-	blocksElapsed := big.NewInt(0).Sub(latestBlock.Number, latestRetainedBlock.Number)
-	if blocksElapsed.Int64() == 0 {
-		return events, nil
-	}
-
-	startBlockNum := int(latestRetainedBlock.Number.Int64() + 1)
-	endBlockNum := int(latestRetainedBlock.Number.Int64() + blocksElapsed.Int64())
+	startBlockNum := latestRetainedBlockNumber + 1
+	endBlockNum := latestRetainedBlockNumber + blocksElapsed
 	logs, furthestBlockProcessed := w.getLogsInBlockRange(ctx, startBlockNum, endBlockNum)
-	if int64(furthestBlockProcessed) > latestRetainedBlock.Number.Int64() {
+	if furthestBlockProcessed > latestRetainedBlockNumber {
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
 		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.

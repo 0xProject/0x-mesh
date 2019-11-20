@@ -190,8 +190,8 @@ func TestGetSubBlockRanges(t *testing.T) {
 	}
 }
 
-func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
-	// Fixture will return block 30 as the tip of the chain
+func TestSyncToLatestBlockLessThan128Missed(t *testing.T) {
+	// Fixture will return block 132 as the tip of the chain
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
 	require.NoError(t, err)
 
@@ -214,18 +214,52 @@ func TestGetMissedEventsToBackfillSomeMissed(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	events, err := watcher.getMissedEventsToBackfill(ctx)
+	blocksElapsed, err := watcher.SyncToLatestBlock(ctx)
 	require.NoError(t, err)
-	assert.Len(t, events, 1)
+	assert.Equal(t, 127, blocksElapsed)
 
-	// Check that block 30 is now in the DB, and block 5 was removed.
+	// Check that block 132 is now in the DB, and block 5 was removed.
 	headers, err := config.Stack.PeekAll()
 	require.NoError(t, err)
 	require.Len(t, headers, 1)
-	assert.Equal(t, big.NewInt(30), headers[0].Number)
+	assert.Equal(t, big.NewInt(132), headers[0].Number)
 }
 
-func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
+func TestSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
+	// Fixture will return block 135 as the tip of the chain (> 128 blocks from block 5)
+	fakeClient, err := newFakeClient("testdata/fake_client_reset_fixture.json")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	// Add block number 5 as the last block seen by BlockWatcher
+	lastBlockSeen := &miniheader.MiniHeader{
+		Number:    big.NewInt(5),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now(),
+	}
+
+	config.Stack = NewSimpleStack(blockRetentionLimit)
+
+	err = config.Stack.Push(lastBlockSeen)
+	require.NoError(t, err)
+
+	config.Client = fakeClient
+	watcher := New(config)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	blocksElapsed, err := watcher.SyncToLatestBlock(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 128, blocksElapsed)
+
+	// Check that all blocks have been removed from BlockWatcher
+	headers, err := config.Stack.PeekAll()
+	require.NoError(t, err)
+	require.Len(t, headers, 0)
+}
+
+func TestSyncToLatestBlockNoneMissed(t *testing.T) {
 	// Fixture will return block 5 as the tip of the chain
 	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
 	require.NoError(t, err)
@@ -249,9 +283,9 @@ func TestGetMissedEventsToBackfillNoneMissed(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	events, err := watcher.getMissedEventsToBackfill(ctx)
+	blocksElapsed, err := watcher.SyncToLatestBlock(ctx)
 	require.NoError(t, err)
-	assert.Len(t, events, 0)
+	assert.Equal(t, blocksElapsed, 0)
 
 	// Check that block 5 is still in the DB
 	headers, err := config.Stack.PeekAll()

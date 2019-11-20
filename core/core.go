@@ -49,10 +49,6 @@ const (
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
-	// maxBlocksStoredInNonArchiveNode is the max number of historical blocks for which a regular Ethereum
-	// node stores archive-level state. One cannot make `eth_call` requests specifying blocks earlier than
-	// 128 blocks ago on non-archive nodes.
-	maxBlocksStoredInNonArchiveNode = 128
 	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
 	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
@@ -425,34 +421,10 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	latestBlockProcessed, err := app.blockWatcher.GetLatestBlockProcessed()
+	// Note: this is a blocking call so we won't continue set up until its finished.
+	blocksElapsed, err := app.blockWatcher.SyncToLatestBlock(innerCtx)
 	if err != nil {
 		return err
-	}
-	var blocksElapsed int64
-	// If has processed blocks before
-	if latestBlockProcessed != nil {
-		latestBlockProcessedNumber := latestBlockProcessed.Number
-		latestBlock, err := app.blockWatcher.GetLatestBlock()
-		if err != nil {
-			return err
-		}
-		latestBlockNumber := latestBlock.Number
-
-		blocksElapsed = latestBlockNumber.Int64() - latestBlockProcessedNumber.Int64()
-		if blocksElapsed > 0 && blocksElapsed < maxBlocksStoredInNonArchiveNode {
-			log.WithField("blocksElapsed", blocksElapsed).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
-			// Note: this is a blocking call so we won't continue set up until its finished.
-			err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
-			if err != nil {
-				return err
-			}
-		} else {
-			// Clear all blocks from DB so BlockWatcher starts again from latest block
-			if err := app.db.ClearAllMiniHeaders(); err != nil {
-				return err
-			}
-		}
 	}
 
 	// Start the block watcher.
@@ -464,7 +436,7 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	if blocksElapsed >= maxBlocksStoredInNonArchiveNode {
+	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
 		// Re-validate all orders since too many blocks have elapsed to fast-sync events
 		if err := app.orderWatcher.Cleanup(innerCtx, 0*time.Minute); err != nil {
