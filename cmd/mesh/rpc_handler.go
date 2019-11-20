@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -54,7 +54,7 @@ func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) erro
 }
 
 // GetOrders is called when an RPC client calls GetOrders.
-func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (result *rpc.GetOrdersResponse, errRes error) {
+func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (result *rpc.GetOrdersResponse, err error) {
 	log.WithFields(map[string]interface{}{
 		"page":       page,
 		"perPage":    perPage,
@@ -62,13 +62,18 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 	}).Debug("received GetOrders request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
 			log.WithFields(log.Fields{
-				"error":      err,
+				"error":      internalErr,
 				"method":     "GetOrders",
-				"stackTrace": getStackTrace(),
+				"stackTrace": string(debug.Stack()),
 			}).Printf("RPC method handler crashed")
-			errRes = errors.New("method handler crashed in GetOrders RPC call (check logs for stack trace)")
+			err = errors.New("method handler crashed in GetOrders RPC call (check logs for stack trace)")
 		}
 	}()
 	getOrdersResponse, err := handler.app.GetOrders(page, perPage, snapshotID)
@@ -84,20 +89,25 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rpc.AddOrdersOpts) (results *ordervalidator.ValidationResults, errRes error) {
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rpc.AddOrdersOpts) (results *ordervalidator.ValidationResults, err error) {
 	log.WithFields(log.Fields{
 		"count":  len(signedOrdersRaw),
 		"pinned": opts.Pinned,
 	}).Info("received AddOrders request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
 			log.WithFields(log.Fields{
-				"error":      err,
+				"error":      internalErr,
 				"method":     "AddOrders",
-				"stackTrace": getStackTrace(),
+				"stackTrace": string(debug.Stack()),
 			}).Printf("RPC method handler crashed")
-			errRes = errors.New("method handler crashed in AddOrders RPC call (check logs for stack trace)")
+			err = errors.New("method handler crashed in AddOrders RPC call (check logs for stack trace)")
 		}
 	}()
 	validationResults, err := handler.app.AddOrders(signedOrdersRaw, opts.Pinned)
@@ -110,17 +120,22 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rp
 }
 
 // AddPeer is called when an RPC client calls AddPeer,
-func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) (errRes error) {
+func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) (err error) {
 	log.Debug("received AddPeer request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
 			log.WithFields(log.Fields{
-				"error":      err,
+				"error":      internalErr,
 				"method":     "AddPeer",
-				"stackTrace": getStackTrace(),
+				"stackTrace": string(debug.Stack()),
 			}).Printf("RPC method handler crashed")
-			errRes = errors.New("method handler crashed in AddPeer RPC call (check logs for stack trace)")
+			err = errors.New("method handler crashed in AddPeer RPC call (check logs for stack trace)")
 		}
 	}()
 	if err := handler.app.AddPeer(peerInfo); err != nil {
@@ -131,17 +146,22 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) (errRes error) {
 }
 
 // GetStats is called when an RPC client calls GetStats,
-func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, errRes error) {
+func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, err error) {
 	log.Debug("received GetStats request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
 			log.WithFields(log.Fields{
-				"error":      err,
+				"error":      internalErr,
 				"method":     "GetStats",
-				"stackTrace": getStackTrace(),
+				"stackTrace": string(debug.Stack()),
 			}).Printf("RPC method handler crashed")
-			errRes = errors.New("method handler crashed in GetStats RPC call (check logs for stack trace)")
+			err = errors.New("method handler crashed in GetStats RPC call (check logs for stack trace)")
 		}
 	}()
 	getStatsResponse, err := handler.app.GetStats()
@@ -153,17 +173,22 @@ func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, errRes erro
 }
 
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
-func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (result *ethrpc.Subscription, errRes error) {
+func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (result *ethrpc.Subscription, err error) {
 	log.Debug("received order event subscription request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
-		if err := recover(); err != nil {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
 			log.WithFields(log.Fields{
-				"error":      err,
+				"error":      internalErr,
 				"method":     "SubscribeToOrders",
-				"stackTrace": getStackTrace(),
+				"stackTrace": string(debug.Stack()),
 			}).Printf("RPC method handler crashed")
-			errRes = errors.New("method handler crashed in SubscribeToOrders RPC call (check logs for stack trace)")
+			err = errors.New("method handler crashed in SubscribeToOrders RPC call (check logs for stack trace)")
 		}
 	}()
 	subscription, err := SetupOrderStream(ctx, handler.app)
@@ -237,11 +262,4 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 	}()
 
 	return rpcSub, nil
-}
-
-func getStackTrace() string {
-	const size = 64 << 10
-	buf := make([]byte, size)
-	buf = buf[:runtime.Stack(buf, false)]
-	return string(buf)
 }
