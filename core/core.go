@@ -53,7 +53,7 @@ const (
 	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "7.0.4-beta-0xv3"
+	version          = "7.1.0-beta-0xv3"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
