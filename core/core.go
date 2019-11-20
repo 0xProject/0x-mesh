@@ -421,9 +421,9 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Backfill block events if needed. This is a blocking call so we won't
-	// continue set up until its finished.
-	if err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx); err != nil {
+	// Note: this is a blocking call so we won't continue set up until its finished.
+	blocksElapsed, err := app.blockWatcher.SyncToLatestBlock(innerCtx)
+	if err != nil {
 		return err
 	}
 
@@ -435,6 +435,14 @@ func (app *App) Start(ctx context.Context) error {
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
+
+	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
+		// Re-validate all orders since too many blocks have elapsed to fast-sync events
+		if err := app.orderWatcher.Cleanup(innerCtx, 0*time.Minute); err != nil {
+			return err
+		}
+	}
 
 	// Initialize the p2p node.
 	bootstrapList := p2p.DefaultBootstrapList
@@ -453,7 +461,6 @@ func (app *App) Start(ctx context.Context) error {
 		BootstrapList:    bootstrapList,
 		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
 	}
-	var err error
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
 		return err
@@ -709,6 +716,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 	}
 
 	for i, acceptedOrderInfo := range allValidationResults.Accepted {
+		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
+		// or share the order with peers.
+		if !acceptedOrderInfo.IsNew {
+			continue
+		}
 		// Add the order to the OrderWatcher. This also saves the order in the
 		// database.
 		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
@@ -753,7 +765,7 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
-	latestBlockHeader, err := app.blockWatcher.GetLatestBlock()
+	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
 	if err != nil {
 		return nil, err
 	}
