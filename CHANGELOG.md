@@ -12,7 +12,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
 - Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
-- Fixed a potential memory leak by using the latest version of `github.com/libp2p/go-libp2p-kad-dht` ([#539](https://github.com/0xProject/0x-mesh/pull/539)). 
+- Fixed a potential memory leak by using the latest version of `github.com/libp2p/go-libp2p-kad-dht` ([#539](https://github.com/0xProject/0x-mesh/pull/539)).
 - Changed the default port for `RPC_ADDR` from a random available port to `60557`. _Some_ documentation already assumed `60557` was the default port. Now all documentation has been updated for consistency with this change. ([#542](https://github.com/0xProject/0x-mesh/pull/542)). 
 - Fixed a potential nil pointer exception in log hooks ([#543](https://github.com/0xProject/0x-mesh/pull/543)).
 - Fixed a bug where successful closes of an rpc subscription were being reported as errors ([#544](https://github.com/0xProject/0x-mesh/pull/544)).
