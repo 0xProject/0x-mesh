@@ -440,7 +440,7 @@ func (app *App) Start(ctx context.Context) error {
 		latestBlockNumber := latestBlock.Number
 
 		blocksElapsed = latestBlockNumber.Int64() - latestBlockProcessedNumber.Int64()
-		if blocksElapsed < maxBlocksStoredInNonArchiveNode {
+		if blocksElapsed > 0 && blocksElapsed < maxBlocksStoredInNonArchiveNode {
 			log.WithField("blocksElapsed", blocksElapsed).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
 			// Note: this is a blocking call so we won't continue set up until its finished.
 			err := app.blockWatcher.BackfillEventsIfNeeded(innerCtx)
