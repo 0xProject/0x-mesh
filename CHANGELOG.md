@@ -6,6 +6,21 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Update V3 contract addresses for mainnet/testnets. ([#547](https://github.com/0xProject/0x-mesh/pull/547))
 
+### Features ✅
+
+- Added support for persistence in the browser. Users of the `@0x/mesh-browser` package will now be able to retain orders and other relevant parts of the state when refreshing the page or closing and re-opening the browser. ([#533](https://github.com/0xProject/0x-mesh/pull/533)).
+
+### Bug fixes 🐞
+
+- Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
+- Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
+- Fixed a potential memory leak by using the latest version of `github.com/libp2p/go-libp2p-kad-dht` ([#539](https://github.com/0xProject/0x-mesh/pull/539)).
+- Changed the default port for `RPC_ADDR` from a random available port to `60557`. _Some_ documentation already assumed `60557` was the default port. Now all documentation has been updated for consistency with this change. ([#542](https://github.com/0xProject/0x-mesh/pull/542)). 
+- Fixed a potential nil pointer exception in log hooks ([#543](https://github.com/0xProject/0x-mesh/pull/543)).
+- Fixed a bug where successful closes of an rpc subscription were being reported as errors ([#544](https://github.com/0xProject/0x-mesh/pull/544)).
+- We now log the error and stack trace if an RPC method panics. Before, these errors were swallowed by the panic recovery logic in `go-ethereum`'s `rpc` package. ([#545](https://github.com/0xProject/0x-mesh/pull/545))
+- Previously, we used to fast-sync block events missed since a Mesh node was last online. If this was more than 128 blocks ago, the fast-sync would fail if Mesh was not connected to an Ethereum node with the `--archive` flag enabled. We now fast-sync only if less than 128 blocks have elapsed. Otherwise, we simply re-validate all orders and continue processing block events from the latest block. ([#407](https://github.com/0xProject/0x-mesh/issues/407))
+
 ## v7.0.4-beta-0xv3
 
 - Upgraded `@0x` deps in `@0x/mesh-rpc-client`
@@ -14,10 +29,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Upgrade BigNumber dep used by `@0x/mesh-rpc-client` to `~9.0.0` ([#527](https://github.com/0xProject/0x-mesh/pull/527))
 
-### Bug fixes 🐞 
-
-- Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
-- Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
 
 ## v7.0.2-beta-0xv3
 

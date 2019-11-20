@@ -49,3 +49,9 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	return s.miniHeaders, nil
 }
+
+// Clear removes all items from the stack
+func (s *SimpleStack) Clear() error {
+	s.miniHeaders = []*miniheader.MiniHeader{}
+	return nil
+}

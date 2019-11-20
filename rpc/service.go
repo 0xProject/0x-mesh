@@ -68,7 +68,11 @@ func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
 		for {
 			select {
 			case err := <-rpcSub.Err():
-				log.WithField("err", err).Error("rpcSub returned an error")
+				if err != nil {
+					log.WithField("err", err).Error("rpcSub returned an error")
+				} else {
+					log.Debug("rpcSub was closed without error")
+				}
 				return
 			case <-notifier.Closed():
 				return

@@ -77,3 +77,8 @@ func init() {
 // MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
 // is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
 const MaxOrderSizeInBytes = 8192
+
+// MaxBlocksStoredInNonArchiveNode is the max number of historical blocks for which a regular Ethereum
+// node stores archive-level state. One cannot make `eth_call` requests specifying blocks earlier than
+// 128 blocks ago on non-archive nodes.
+const MaxBlocksStoredInNonArchiveNode = 128
