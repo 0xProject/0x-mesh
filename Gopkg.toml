@@ -74,7 +74,7 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-pubsub"
-  version = "0.1.0"
+  version = "0.2.3"
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-kad-dht"
@@ -112,7 +112,7 @@
 
 [[constraint]]
   name = "github.com/libp2p/go-libp2p-discovery"
-  version = "0.1.0"
+  version = "0.2.0"
 
 [[constraint]]
   name = "github.com/libp2p/go-ws-transport"

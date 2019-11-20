@@ -626,12 +626,12 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:0333065da4682126d7c1aa07dd11d94accc3b93b48945ebb7f6a921e2f6b0db2"
+  digest = "1:06382130c7015346c7d4e7660b379270384d0d2f60efa899132da904ce79c434"
   name = "github.com/libp2p/go-libp2p-discovery"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d248d63b0af8c023307da18ad7000a12020e06f0"
-  version = "v0.1.0"
+  revision = "be2ad5297c88bc8db2f98334dfd4f0ae392e47a0"
+  version = "v0.2.0"
 
 [[projects]]
   digest = "1:76120e78893593ad83f0c202f699da54b1eafb967cdb1bfe318279087086c1cc"
@@ -706,15 +706,15 @@
   version = "v0.1.3"
 
 [[projects]]
-  digest = "1:639e2ee83cffd5445eeffd1cb8ba50b690028dc98464abac24e93a15abca8c8b"
+  digest = "1:7b0bfbaac9ef9d5da7500c3bf27eb7766e370b3691577ffe7e9a0bcfd2602fd0"
   name = "github.com/libp2p/go-libp2p-pubsub"
   packages = [
     ".",
     "pb",
   ]
   pruneopts = "UT"
-  revision = "49274b0e8aecdf6cad59d768e5702ff00aa48488"
-  version = "v0.1.0"
+  revision = "01b9825fbee1848751d90a8469e3f5f43bac8466"
+  version = "v0.2.3"
 
 [[projects]]
   digest = "1:43383ef25cdadc348025cef99b26d9880ad06058fdc64b1eb8ec281fa5cabfcb"
