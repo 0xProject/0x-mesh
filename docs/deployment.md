@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-6.0.1--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-6.1.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh Deployment Guide
 
@@ -140,8 +140,7 @@ Mesh executable](../cmd/mesh/main.go):
 ```go
 type standaloneConfig struct {
 	// RPCAddr is the interface and port to use for the JSON-RPC API over
-	// WebSockets. By default, 0x Mesh will listen on localhost and will let the
-	// OS select a randomly available port.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:0"`
+	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
+	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
 }
 ```

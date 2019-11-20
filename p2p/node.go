@@ -319,13 +319,6 @@ func (n *Node) ID() peer.ID {
 // Start causes the Node to continuously send messages to and receive messages
 // from its peers. It blocks until an error is encountered or `Stop` is called.
 func (n *Node) Start() error {
-	// Note: dht.Bootstrap has a somewhat confusing name. It doesn't automatically
-	// connect to the bootstrap peers. It just starts the background process of
-	// searching for new peers.
-	if err := n.dht.Bootstrap(n.ctx); err != nil {
-		return err
-	}
-
 	// Use the default bootstrap list if none was provided.
 	if len(n.config.BootstrapList) == 0 {
 		n.config.BootstrapList = DefaultBootstrapList

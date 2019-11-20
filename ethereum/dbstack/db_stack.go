@@ -84,3 +84,8 @@ func (b *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	}
 	return miniHeaders, nil
 }
+
+// Clear removes all items from the stack
+func (b *DBStack) Clear() error {
+	return b.meshDB.ClearAllMiniHeaders()
+}

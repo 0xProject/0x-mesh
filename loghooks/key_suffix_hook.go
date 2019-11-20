@@ -58,6 +58,9 @@ func (h *KeySuffixHook) Fire(entry *log.Entry) error {
 
 // getTypeForValue returns a string representation of the type of the given val.
 func getTypeForValue(val interface{}) (string, error) {
+	if val == nil {
+		return "null", nil
+	}
 	if _, ok := val.(json.Marshaler); ok {
 		// If val implements json.Marshaler, return the type of json.Marshal(val)
 		// instead of the type of val.

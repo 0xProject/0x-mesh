@@ -1,14 +1,12 @@
 import { SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
+import * as BrowserFS from 'browserfs';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
-
-// The interval (in milliseconds) to check whether Wasm is done loading.
-const wasmLoadCheckIntervalMs = 100;
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
@@ -22,6 +20,31 @@ declare global {
     // Defined in ../go/main.go
     const zeroExMesh: ZeroExMesh;
 }
+
+// We use the global willLoadBrowserFS variable to signal that we are going to
+// initialize BrowserFS.
+(window as any).willLoadBrowserFS = true;
+
+BrowserFS.configure(
+    {
+        fs: 'IndexedDB',
+        options: {
+            storeName: '0x-mesh-db',
+        },
+    },
+    e => {
+        if (e) {
+            throw e;
+        }
+        // We use the global browserFS variable as a handle for Go/Wasm code to
+        // call into the BrowserFS API. Setting this variable also indicates
+        // that BrowserFS has finished loading.
+        (window as any).browserFS = BrowserFS.BFSRequire('fs');
+    },
+);
+
+// The interval (in milliseconds) to check whether Wasm is done loading.
+const wasmLoadCheckIntervalMs = 100;
 
 // Note(albrow): This is currently copied over from core/core.go. We need to keep
 // both definitions in sync, so if you change one you must also change the
@@ -406,6 +429,7 @@ export enum OrderEventEndState {
     FullyFilled = 'FULLY_FILLED',
     Cancelled = 'CANCELLED',
     Expired = 'EXPIRED',
+    Unexpired = 'UNEXPIRED',
     Unfunded = 'UNFUNDED',
     FillabilityIncreased = 'FILLABILITY_INCREASED',
     StoppedWatching = 'STOPPED_WATCHING',
