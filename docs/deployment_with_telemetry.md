@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-6.1.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-6.1.1--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 ## Deploying a Telemetry-Enabled Mesh Node
 
@@ -35,7 +35,7 @@ version: '3'
 
 services:
     mesh:
-        image: 0xorg/mesh:6.1.0-beta
+        image: 0xorg/mesh:6.1.1-beta
         restart: always
         logging:
             driver: fluentd
