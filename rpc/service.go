@@ -114,6 +114,7 @@ func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
 
 			// Wait MinCleanupInterval before emitting the next heartbeat.
 			time.Sleep(minHeartbeatInterval - time.Since(start))
+
 		}
 	}()
 
