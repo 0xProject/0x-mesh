@@ -51,7 +51,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞
 
-- Fixed a bug where the internal order event feed could be come blocked, rendering Mesh unable to receive any new orders or update existing ones ([#552](https://github.com/0xProject/0x-mesh/pull/552)).
+- Fixed a bug where the internal order event feed could become blocked, rendering Mesh unable to receive any new orders or update existing ones ([#552](https://github.com/0xProject/0x-mesh/pull/552)).
 
 
 ## v6.1.0-beta
