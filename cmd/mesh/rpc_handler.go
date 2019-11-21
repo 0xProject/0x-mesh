@@ -22,6 +22,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// orderEventsBufferSize is the buffer size for the orderEvents channel. If
+// the buffer is full, any additional events won't be processed.
+const orderEventsBufferSize = 8000
+
 type rpcHandler struct {
 	app *core.App
 }
@@ -209,8 +213,9 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		orderEventsChan := make(chan []*zeroex.OrderEvent)
+		orderEventsChan := make(chan []*zeroex.OrderEvent, orderEventsBufferSize)
 		orderWatcherSub := app.SubscribeToOrderEvents(orderEventsChan)
+		defer orderWatcherSub.Unsubscribe()
 
 		for {
 			select {
@@ -237,7 +242,6 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 					// error.
 					if _, ok := err.(*net.OpError); ok {
 						logEntry.Trace(message)
-						orderWatcherSub.Unsubscribe()
 						return
 					}
 					if strings.Contains(err.Error(), "write: broken pipe") {
@@ -249,13 +253,11 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 			case err := <-rpcSub.Err():
 				if err != nil {
 					log.WithField("err", err).Error("rpcSub returned an error")
-					orderWatcherSub.Unsubscribe()
 				} else {
 					log.Debug("rpcSub was closed without error")
 				}
 				return
 			case <-notifier.Closed():
-				orderWatcherSub.Unsubscribe()
 				return
 			}
 		}
