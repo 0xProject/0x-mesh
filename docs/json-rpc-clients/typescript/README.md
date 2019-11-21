@@ -1,3 +1,5 @@
+# TypeScript client
+
 ## @0x/mesh-rpc-client
 
 A Javascript library for interacting with the Mesh JSON RPC API over WebSockets.
@@ -10,7 +12,7 @@ yarn add @0x/mesh-rpc-client
 
 If your project is in [TypeScript](https://www.typescriptlang.org/), add the following to your `tsconfig.json`:
 
-```json
+```javascript
 "compilerOptions": {
     "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
 }
@@ -49,3 +51,4 @@ yarn lint
 ```bash
 yarn test
 ```
+
