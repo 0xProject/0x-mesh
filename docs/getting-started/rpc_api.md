@@ -1,47 +1,40 @@
+# JSON-RPC API documentation
+
 [![Version](https://img.shields.io/badge/version-6.1.1--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
-# 0x Mesh JSON-RPC API Documentation
+## 0x Mesh JSON-RPC API Documentation
 
-The JSON-RPC API is intended to be a *private* API. The API should only be
-accessible to the developers running the Mesh node and should not be exposed to
-the public. The API runs on a separate port from the peer-to-peer protocols and
-access to it can be controlled via a firewall.
+The JSON-RPC API is intended to be a _private_ API. The API should only be accessible to the developers running the Mesh node and should not be exposed to the public. The API runs on a separate port from the peer-to-peer protocols and access to it can be controlled via a firewall.
 
-Peers in the network do not use the JSON-RPC API and instead use a peer-to-peer
-PubSub mechanism (usually this is not something you need to worry about).
+Peers in the network do not use the JSON-RPC API and instead use a peer-to-peer PubSub mechanism \(usually this is not something you need to worry about\).
 
-## Similarities to the Ethereum JSON-RPC API
+### Similarities to the Ethereum JSON-RPC API
 
-Our JSON-RPC API is very similar to the
-[Ethereum JSON-RPC API](https://github.com/ethereum/wiki/wiki/JSON-RPC); we even
-use a lot of the same code from `go-ethereum`.
+Our JSON-RPC API is very similar to the [Ethereum JSON-RPC API](https://github.com/ethereum/wiki/wiki/JSON-RPC); we even use a lot of the same code from `go-ethereum`.
 
 Some key differences:
 
--   It is **only accessible via a WebSocket connection**
--   uint256 amounts should not be hex encoded, but rather sent as numerical strings
+* It is **only accessible via a WebSocket connection**
+* uint256 amounts should not be hex encoded, but rather sent as numerical strings
 
-Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification),
-you can use any JSON-RPC 2.0 compliant client in the language of your choice.
-The clients made for Ethereum work even better since they extend the standard to
-include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB).
+Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification), you can use any JSON-RPC 2.0 compliant client in the language of your choice. The clients made for Ethereum work even better since they extend the standard to include [subscriptions](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB).
 
-### Recommended Clients:
+#### Recommended Clients:
 
--   Javascript/Typescript: We've published a [Typescript RPC client](json_rpc_clients/typescript/README.md).
--   Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use.
--   Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
-    -   see the [examples](../examples/go/) directory for example usage.
+* Javascript/Typescript: We've published a [Typescript RPC client](../json-rpc-clients/typescript/).
+* Python: [Web3.py](https://github.com/ethereum/web3.py) has a [WebSocketProvider](https://web3py.readthedocs.io/en/stable/providers.html#web3.providers.websocket.WebsocketProvider) you can use.
+* Go: Mesh ships with a [Golang RPC client](https://godoc.org/github.com/0xProject/0x-mesh/rpc#Client)
+  * see the [examples](https://github.com/0xProject/0x-mesh/tree/752ed0f23af991bfde02e82835295626ced9fe1e/examples/go/README.md) directory for example usage.
 
-## API
+### API
 
-### `mesh_addOrders`
+#### `mesh_addOrders`
 
 Adds an array of 0x signed orders to the Mesh node.
 
 **Example payload:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_addOrders",
@@ -71,7 +64,7 @@ Adds an array of 0x signed orders to the Mesh node.
 
 **Example response:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "id": 2,
@@ -105,11 +98,11 @@ Adds an array of 0x signed orders to the Mesh node.
 
 Within the context of this endpoint:
 
--   _accepted_: means the order was found to be fillable for a non-zero amount and was therefore added to 0x Mesh (unless it already added of course)
--   _rejected_: means the order was not added to Mesh, however there could be many reasons for this. For example:
-    -   The order could have been unfillable
-    -   It could have failed some Mesh-specific validation (e.g., max order acceptable size in bytes)
-    -   The network request to the Ethereum RPC endpoint used to validate the order failed
+* _accepted_: means the order was found to be fillable for a non-zero amount and was therefore added to 0x Mesh \(unless it already added of course\)
+* _rejected_: means the order was not added to Mesh, however there could be many reasons for this. For example:
+  * The order could have been unfillable
+  * It could have failed some Mesh-specific validation \(e.g., max order acceptable size in bytes\)
+  * The network request to the Ethereum RPC endpoint used to validate the order failed
 
 Some _rejected_ reasons warrant attempting to add the order again. Currently, the only reason we recommend re-trying adding the order is for the `NetworkRequestFailed` status code. Make sure to leave some time between attempts.
 
@@ -117,13 +110,13 @@ See the [AcceptedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroe
 
 **Note:** The `fillableTakerAssetAmount` takes into account the amount of the order that has already been filled AND the maker's balance/allowance. Thus, it represents the amount this order could _actually_ be filled for at this moment in time.
 
-### `mesh_getOrders`
+#### `mesh_getOrders`
 
-Gets orders already stored in a Mesh node at a particular snapshot of the DB state. This is a paginated endpoint with parameters (page, perPage and snapshotID).
+Gets orders already stored in a Mesh node at a particular snapshot of the DB state. This is a paginated endpoint with parameters \(page, perPage and snapshotID\).
 
 **Example payload:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_getOrders",
@@ -136,11 +129,11 @@ Gets orders already stored in a Mesh node at a particular snapshot of the DB sta
 }
 ```
 
-This payload is requesting 100 orders from the 1st page (think: offset). The third parameter is the `snapshotID` which should be left empty for the first request. The response will include the snapshotID that can then be supplied in subsequent requests.
+This payload is requesting 100 orders from the 1st page \(think: offset\). The third parameter is the `snapshotID` which should be left empty for the first request. The response will include the snapshotID that can then be supplied in subsequent requests.
 
 **Example response:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "result": {
@@ -172,13 +165,13 @@ This payload is requesting 100 orders from the 1st page (think: offset). The thi
 }
 ```
 
-### `mesh_getStats`
+#### `mesh_getStats`
 
 Gets certain configurations and stats about a Mesh node.
 
 **Example payload:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_getStats",
@@ -189,7 +182,7 @@ Gets certain configurations and stats about a Mesh node.
 
 **Example response:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "result": {
@@ -214,18 +207,15 @@ Gets certain configurations and stats about a Mesh node.
 }
 ```
 
-### `mesh_subscribe` to `orders` topic
+#### `mesh_subscribe` to `orders` topic
 
-Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order (e.g., if an order gets filled, cancelled, expired, etc...). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined/reverted blocks.
+Allows the caller to subscribe to a stream of `OrderEvents`. An `OrderEvent` contains either newly discovered orders found by Mesh via the P2P network, or updates to the fillability of a previously discovered order \(e.g., if an order gets filled, cancelled, expired, etc...\). `OrderEvent`s _do not_ correspond 1-to-1 to smart contract events. Rather, an `OrderEvent` about an orders fillability change represents the aggregate change to it's fillability given _all_ the transactions included within the most recently mined/reverted blocks.
 
-**Example:** If an order is both `filled` and `cancelled` within a single block, the `EndState`
-of the `OrderEvent` will be `CANCELLED` (since this is the final state of the order after this block is
-mined). The `OrderEvent` _will_ however list the contract events intercepted that could have impacted
-this orders fillability. This list will include both the fill event and cancellation event.
+**Example:** If an order is both `filled` and `cancelled` within a single block, the `EndState` of the `OrderEvent` will be `CANCELLED` \(since this is the final state of the order after this block is mined\). The `OrderEvent` _will_ however list the contract events intercepted that could have impacted this orders fillability. This list will include both the fill event and cancellation event.
 
 Mesh has implemented subscriptions in the [same manner as Geth](https://github.com/ethereum/go-ethereum/wiki/RPC-PUB-SUB). In order to start a subscription, you must send the following payload:
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_subscribe",
@@ -236,7 +226,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
 
 **Example response:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "result": "0xcd0c3e8af590364c09d0fa6a1210faf5",
@@ -248,7 +238,7 @@ Mesh has implemented subscriptions in the [same manner as Geth](https://github.c
 
 **Example event:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_subscription",
@@ -306,7 +296,7 @@ To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId
 
 **Example unsubscription payload:**
 
-```json
+```javascript
 {
     "id": 1,
     "method": "mesh_unsubscribe",
@@ -314,11 +304,11 @@ To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId
 }
 ```
 
-### `mesh_subscribe` to `heartbeat` topic
+#### `mesh_subscribe` to `heartbeat` topic
 
 After a sustained network disruption, it is possible that a WebSocket connection between client and server fails to reconnect. Both sides of the connection are unable to distinguish between network latency and a dropped connection and might continue to wait for new messages on the dropped connection. In order to avoid this, and promptly establish a new connection, clients can subscribe to a heartbeat from the server. The server will emit a heartbeat every 5 seconds. If the client hasn't received the expected heartbeat in a while, it can proactively close the connection and establish a new one. There are affordances for checking this edge-case in the [WebSocket specification](https://tools.ietf.org/html/rfc6455#section-5.5.2) however our research has found that [many WebSocket clients](https://github.com/0xProject/0x-mesh/issues/170#issuecomment-503391627) fail to provide this functionality. We therefore decided to support it at the application-level.
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_subscribe",
@@ -329,7 +319,7 @@ After a sustained network disruption, it is possible that a WebSocket connection
 
 **Example response:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "result": "0xab1a3e8af590364c09d0fa6a12103ada",
@@ -341,7 +331,7 @@ After a sustained network disruption, it is possible that a WebSocket connection
 
 **Example event:**
 
-```json
+```javascript
 {
     "jsonrpc": "2.0",
     "method": "mesh_subscription",
@@ -356,10 +346,11 @@ To unsubscribe, send a `mesh_unsubscribe` request specifying the `subscriptionId
 
 **Example unsubscription payload:**
 
-```json
+```javascript
 {
     "id": 1,
     "method": "mesh_unsubscribe",
     "params": ["0xab1a3e8af590364c09d0fa6a12103ada"]
 }
 ```
+
