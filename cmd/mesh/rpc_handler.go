@@ -211,6 +211,7 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 	go func() {
 		orderEventsChan := make(chan []*zeroex.OrderEvent)
 		orderWatcherSub := app.SubscribeToOrderEvents(orderEventsChan)
+		defer orderWatcherSub.Unsubscribe()
 
 		for {
 			select {
@@ -237,7 +238,6 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 					// error.
 					if _, ok := err.(*net.OpError); ok {
 						logEntry.Trace(message)
-						orderWatcherSub.Unsubscribe()
 						return
 					}
 					if strings.Contains(err.Error(), "write: broken pipe") {
@@ -249,13 +249,11 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 			case err := <-rpcSub.Err():
 				if err != nil {
 					log.WithField("err", err).Error("rpcSub returned an error")
-					orderWatcherSub.Unsubscribe()
 				} else {
 					log.Debug("rpcSub was closed without error")
 				}
 				return
 			case <-notifier.Closed():
-				orderWatcherSub.Unsubscribe()
 				return
 			}
 		}
