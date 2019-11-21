@@ -22,6 +22,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// orderEventsBufferSize is the buffer size for the orderEvents channel. If
+// the buffer is full, any additional events won't be processed.
+const orderEventsBufferSize = 8000
+
 type rpcHandler struct {
 	app *core.App
 }
@@ -209,7 +213,7 @@ func SetupOrderStream(ctx context.Context, app *core.App) (*ethrpc.Subscription,
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		orderEventsChan := make(chan []*zeroex.OrderEvent)
+		orderEventsChan := make(chan []*zeroex.OrderEvent, orderEventsBufferSize)
 		orderWatcherSub := app.SubscribeToOrderEvents(orderEventsChan)
 		defer orderWatcherSub.Unsubscribe()
 
