@@ -23,6 +23,7 @@ import (
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -39,7 +40,6 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -146,8 +146,7 @@ type App struct {
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	orderValidator            *ordervalidator.OrderValidator
-	orderJSONSchema           *gojsonschema.Schema
-	meshMessageJSONSchema     *gojsonschema.Schema
+	orderFilter               *orderfilter.Filter
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
@@ -270,13 +269,10 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize remaining fields.
 	snapshotExpirationWatcher := expirationwatch.New()
-
-	orderJSONSchema, err := setupOrderSchemaValidator()
-	if err != nil {
-		return nil, err
-	}
-	meshMessageJSONSchema, err := setupMeshMessageSchemaValidator()
+	// TODO(albrow): Allow custom order filters via env var.
+	orderFilter, err := orderfilter.New(config.EthereumChainID, orderfilter.DefaultCustomOrderSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -294,8 +290,7 @@ func New(config Config) (*App, error) {
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
 		orderValidator:            orderValidator,
-		orderJSONSchema:           orderJSONSchema,
-		meshMessageJSONSchema:     meshMessageJSONSchema,
+		orderFilter:               orderFilter,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		orderSelector:             orderSelector,
@@ -672,7 +667,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
-		result, err := app.schemaValidateOrder(signedOrderBytes)
+		result, err := app.orderFilter.ValidateOrderJSON(signedOrderBytes)
 		if err != nil {
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {

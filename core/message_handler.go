@@ -118,28 +118,6 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		result, err := app.schemaValidateMeshMessage(msg.Data)
-		if err != nil {
-			log.WithFields(map[string]interface{}{
-				"error": err,
-				"from":  msg.From,
-			}).Trace("could not schema validate message")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-		if !result.Valid() {
-			formattedErrors := make([]string, len(result.Errors()))
-			for i, resultError := range result.Errors() {
-				formattedErrors[i] = resultError.String()
-			}
-			log.WithFields(map[string]interface{}{
-				"errors": formattedErrors,
-				"from":   msg.From,
-			}).Trace("order schema validation failed for message")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-
 		order, err := decodeOrder(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
