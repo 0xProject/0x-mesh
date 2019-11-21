@@ -1,0 +1,2 @@
+# Mesh Beta participation guide
+
