@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -24,7 +25,7 @@ func TestFilterValidateOrder(t *testing.T) {
 	}{
 		{
 			note:              "happy path",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			order: &zeroex.Order{
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
@@ -44,7 +45,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		},
 		{
 			note:              "wrong exchangeAddress",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			expectedErrors: []string{
 				"exchangeAddress: Does not match pattern",
@@ -67,7 +68,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		},
 		{
 			note:              "happy path w/ custom sender address",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			order: &zeroex.Order{
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
@@ -87,7 +88,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		},
 		{
 			note:              "wrong custom sender address",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			expectedErrors: []string{
 				"senderAddress: Does not match pattern",
@@ -146,13 +147,13 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 	}{
 		{
 			note:              "happy path",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 		},
 		{
 			note:              "order with mispelled makerAddress",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"makerAdress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
@@ -161,7 +162,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 		},
 		{
 			note:              "order with missing makerAddress",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
@@ -170,7 +171,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 		},
 		{
 			note:              "order with invalid taker address",
-			chainID:           1337,
+			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"hi","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
