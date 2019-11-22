@@ -88,7 +88,6 @@ type Watcher struct {
 	maxExpirationTime          *big.Int
 	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
-	latestBlockTimestamp       time.Time
 }
 
 type Config struct {
@@ -327,11 +326,10 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 	}
 }
 
-func (w *Watcher) generateExpirationOrderEventsIfAny(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, didBlockTimestampIncrease bool) error {
 	orderEvents := []*zeroex.OrderEvent{}
 
-	var defaultTime time.Time
-	if w.latestBlockTimestamp == defaultTime || w.latestBlockTimestamp.Before(latestBlockTimestamp) {
+	if didBlockTimestampIncrease {
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			order := &meshdb.Order{}
@@ -359,7 +357,7 @@ func (w *Watcher) generateExpirationOrderEventsIfAny(ordersColTxn *db.Transactio
 		// that have now become valid again as a result.
 		removedOrders, err := w.meshDB.FindRemovedOrders()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, order := range removedOrders {
 			// Orders removed due to expiration have non-zero FillableTakerAssetAmounts
@@ -379,8 +377,10 @@ func (w *Watcher) generateExpirationOrderEventsIfAny(ordersColTxn *db.Transactio
 			}
 		}
 	}
-
-	return orderEvents, nil
+	if len(orderEvents) > 0 {
+		w.orderFeed.Send(orderEvents)
+	}
+	return nil
 }
 
 func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
@@ -388,13 +388,17 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 	defer func() {
 		_ = ordersColTxn.Discard()
 	}()
+
+	latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease := w.getBlockchainState(events)
+
+	err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, didBlockTimestampIncrease)
+	if err != nil {
+		return err
+	}
+
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
-	var latestBlockNumber rpc.BlockNumber
-	var latestBlockTimestamp time.Time
 	for _, event := range events {
-		latestBlockNumber = rpc.BlockNumber(event.BlockHeader.Number.Int64())
-		latestBlockTimestamp = event.BlockHeader.Timestamp
 		for _, log := range event.BlockHeader.Logs {
 			var parameters interface{}
 			eventType, err := w.eventDecoder.FindEventType(log)
@@ -690,16 +694,10 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 		}
 	}
 
-	orderEvents, err := w.generateExpirationOrderEventsIfAny(ordersColTxn, latestBlockTimestamp)
-	if err != nil {
-		return err
-	}
-	w.latestBlockTimestamp = latestBlockTimestamp
-
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, done := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer done()
-	moreOrderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
 	if err != nil {
 		return err
 	}
@@ -710,7 +708,6 @@ func (w *Watcher) handleBlockEvents(events []*blockwatch.Event) error {
 		}).Error("Failed to commit orders collection transaction")
 	}
 
-	orderEvents = append(orderEvents, moreOrderEvents...)
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
 	}
@@ -1008,9 +1005,7 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
-		expirationTime := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
-		isExpired := w.latestBlockTimestamp.After(expirationTime)
-		if !isExpired && oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
+		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
@@ -1337,4 +1332,31 @@ func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
 	}); err != nil {
 		logger.WithError(err).Error("could not update max expiration time in database")
 	}
+}
+
+func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (rpc.BlockNumber, time.Time, bool) {
+	var defaultTime time.Time
+
+	// Whether or not the block timestamp of the latest block is greater than the previous latest
+	// block timestamp. Sometimes a re-org can result in a new latest block with a lower timestamp
+	// and this would require us to check for unexpired orders.
+	didBlockTimestampIncrease := true
+
+	var latestBlockNumber rpc.BlockNumber
+	var latestBlockTimestamp time.Time
+	var previousLatestBlockTimestamp time.Time
+	for i, event := range events {
+		latestBlockNumber = rpc.BlockNumber(event.BlockHeader.Number.Int64())
+		latestBlockTimestamp = event.BlockHeader.Timestamp
+		// The first removed block is the previous latest block
+		if previousLatestBlockTimestamp == defaultTime && event.Type == blockwatch.Removed {
+			previousLatestBlockTimestamp = event.BlockHeader.Timestamp
+		}
+		isLastBlockEvent := i == len(events)-1
+		if isLastBlockEvent && previousLatestBlockTimestamp != defaultTime && event.BlockHeader.Timestamp.Before(previousLatestBlockTimestamp) {
+			didBlockTimestampIncrease = false
+		}
+	}
+
+	return latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease
 }
