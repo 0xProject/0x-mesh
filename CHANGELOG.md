@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.1.1-beta-0xV3
+
+### Bug fixes 🐞
+
+- Fixed a bug where the internal order event feed could be come blocked, rendering Mesh unable to receive any new orders or update existing ones ([#552](https://github.com/0xProject/0x-mesh/pull/552)).
+
 ## v7.1.0-beta-0xV3
 
 - Update V3 contract addresses for mainnet/testnets. ([#547](https://github.com/0xProject/0x-mesh/pull/547))
