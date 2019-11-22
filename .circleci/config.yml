@@ -5,10 +5,10 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/golang:1.12.13-browsers
-      - image: 0xorg/ganache-cli:4.4.0-beta.0
+      - image: 0xorg/ganache-cli:4.4.0-beta.1
         environment:
-            VERSION: 4.4.0-beta.1
-            SNAPSHOT_NAME: 0x_ganache_snapshot
+            VERSION: 4.4.0-beta.3
+            SNAPSHOT_NAME: 0x_ganache_snapshot-v3-beta
     resource_class: large
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:

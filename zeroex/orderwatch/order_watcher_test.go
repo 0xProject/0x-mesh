@@ -646,6 +646,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	opts := &bind.TransactOpts{
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
+		Value:  big.NewInt(100000000000000000),
 	}
 	trimmedOrder := signedOrder.Trim()
 	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
@@ -686,6 +687,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	opts := &bind.TransactOpts{
 		From:   takerAddress,
 		Signer: scenario.GetTestSignerFn(takerAddress),
+		Value:  big.NewInt(100000000000000000),
 	}
 	trimmedOrder := signedOrder.Trim()
 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
