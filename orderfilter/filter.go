@@ -2,19 +2,30 @@ package orderfilter
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/xeipuuv/gojsonschema"
+	canonicaljson "github.com/gibson042/canonicaljson-go"
 	jsonschema "github.com/xeipuuv/gojsonschema"
 )
 
 const (
-	pubsubTopicVersion = 3
+	pubsubTopicVersion          = 3
+	topicVersionFormat          = "/0x-orders/version/%d%s"
+	topicChainIDAndSchemaFormat = "/chain/%d/schema/%s"
+	fullTopicFormat             = "/0x-orders/version/%d/chain/%d/schema/%s"
 )
+
+type WrongTopicVersionError struct {
+	expectedVersion int
+	actualVersion   int
+}
+
+func (e WrongTopicVersionError) Error() string {
+	return fmt.Sprintf("wrong topic version: expected %d but got %d", e.expectedVersion, e.actualVersion)
+}
 
 var (
 	// Built-in schemas
@@ -42,6 +53,7 @@ var builtInSchemas = []jsonschema.JSONLoader{
 }
 
 type Filter struct {
+	topic                string
 	version              int
 	chainID              int
 	rawCustomOrderSchema string
@@ -98,28 +110,57 @@ func newLoader(chainID int, customOrderSchema string) (*jsonschema.SchemaLoader,
 }
 
 func NewFromTopic(topic string) (*Filter, error) {
-	// TODO(albrow): Create a new Filter based on the topic.
 	// TODO(albrow): Use a cache for topic -> filter
-	return nil, errors.New("not yet implemented")
+	var version int
+	var chainIDAndSchema string
+	if _, err := fmt.Sscanf(topic, topicVersionFormat, &version, &chainIDAndSchema); err != nil {
+		return nil, fmt.Errorf("could not parse topic version for topic: %q", topic)
+	}
+	if version != pubsubTopicVersion {
+		return nil, WrongTopicVersionError{
+			expectedVersion: pubsubTopicVersion,
+			actualVersion:   version,
+		}
+	}
+	var chainID int
+	var base64EncodedSchema string
+	if _, err := fmt.Sscanf(chainIDAndSchema, topicChainIDAndSchemaFormat, &chainID, &base64EncodedSchema); err != nil {
+		return nil, fmt.Errorf("could not parse chainID and schema from topic: %q", topic)
+	}
+	customOrderSchema, err := base64.URLEncoding.DecodeString(base64EncodedSchema)
+	if err != nil {
+		return nil, fmt.Errorf("could not base64-decode order schema: %q", base64EncodedSchema)
+	}
+	return New(chainID, string(customOrderSchema))
 }
 
-func (v *Filter) Topic() string {
-	base64OrderSchema := base64.URLEncoding.EncodeToString([]byte(v.rawCustomOrderSchema))
-	return fmt.Sprintf("/0x-orders/version/%d/chain/%d/schema/%s", pubsubTopicVersion, v.chainID, base64OrderSchema)
+func (f *Filter) Topic() string {
+	if f.topic == "" {
+		f.topic = f.generateTopic()
+	}
+	return f.topic
 }
 
-func (v *Filter) MatchMessageJSON(messageJSON []byte) (bool, error) {
-	result, err := v.messageSchema.Validate(jsonschema.NewBytesLoader(messageJSON))
+func (v *Filter) generateTopic() string {
+	var holder interface{} = struct{}{}
+	_ = canonicaljson.Unmarshal([]byte(v.rawCustomOrderSchema), &holder)
+	canonicalOrderSchemaJSON, _ := canonicaljson.Marshal(holder)
+	base64EncodedSchema := base64.URLEncoding.EncodeToString(canonicalOrderSchemaJSON)
+	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, v.chainID, base64EncodedSchema)
+}
+
+func (f *Filter) MatchMessageJSON(messageJSON []byte) (bool, error) {
+	result, err := f.messageSchema.Validate(jsonschema.NewBytesLoader(messageJSON))
 	if err != nil {
 		return false, err
 	}
 	return result.Valid(), nil
 }
 
-func (v *Filter) ValidateOrderJSON(orderJSON []byte) (*jsonschema.Result, error) {
-	return v.orderSchema.Validate(gojsonschema.NewBytesLoader(orderJSON))
+func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*jsonschema.Result, error) {
+	return f.orderSchema.Validate(jsonschema.NewBytesLoader(orderJSON))
 }
 
-func (v *Filter) ValidateOrder(order *zeroex.SignedOrder) (*jsonschema.Result, error) {
-	return v.orderSchema.Validate(gojsonschema.NewGoLoader(order))
+func (f *Filter) ValidateOrder(order *zeroex.SignedOrder) (*jsonschema.Result, error) {
+	return f.orderSchema.Validate(jsonschema.NewGoLoader(order))
 }

@@ -225,6 +225,14 @@
   revision = "2fd9b619dd3c5d74acbd975f997a6441984d74a7"
 
 [[projects]]
+  digest = "1:2ca108df5c3887354f4666161b0c6c8be1ce52dc19a11c508e02915aa01e569f"
+  name = "github.com/gibson042/canonicaljson-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "81f5327eb8367be6f106cd62f136b6f25b4c1678"
+  version = "v1.0.3"
+
+[[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
   name = "github.com/go-stack/stack"
   packages = ["."]
@@ -1406,6 +1414,7 @@
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/ethereum/go-ethereum/signer/core",
+    "github.com/gibson042/canonicaljson-go",
     "github.com/google/uuid",
     "github.com/hashicorp/golang-lru",
     "github.com/ipfs/go-datastore",
