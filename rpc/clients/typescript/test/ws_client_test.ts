@@ -17,93 +17,6 @@ describe('WSClient', () => {
     afterEach(() => {
         stopServer();
     });
-    describe('#getOrdersAsync', async () => {
-        it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
-            const wsServer = await setupServerAsync();
-            wsServer.on('connect', ((connection: WebSocket.connection) => {
-                let requestNum = 0;
-                connection.on('message', ((message: WSMessage) => {
-                    const jsonRpcRequest = JSON.parse(message.utf8Data);
-                    const snapshotID = '123';
-                    const snapshotTimestamp = '2009-11-10T23:00:00Z';
-                    const responses = [
-                        // Heartbeat subscription (under-the-hood)
-                        `
-                            {
-                                "id": "${jsonRpcRequest.id}",
-                                "jsonrpc": "2.0",
-                                "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                            }
-                        `,
-                        // First paginated request
-                        `
-                            {
-                                "id": "${jsonRpcRequest.id}",
-                                "jsonrpc": "2.0",
-                                "result": {
-                                    "snapshotID": "${snapshotID}",
-                                    "snapshotTimestamp": "${snapshotTimestamp}",
-                                    "ordersInfos": [
-                                        {
-                                            "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
-                                            "signedOrder": {
-                                                "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
-                                                "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
-                                                "makerAssetAmount": "1000000000000000000",
-                                                "makerFee": "0",
-                                                "takerAddress": "0x0000000000000000000000000000000000000000",
-                                                "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                                                "takerAssetAmount": "10000000000000000000000",
-                                                "takerFee": "0",
-                                                "senderAddress": "0x0000000000000000000000000000000000000000",
-                                                "exchangeAddress": "0x080bf510FCbF18b91105470639e9561022937712",
-                                                "feeRecipientAddress": "0x0000000000000000000000000000000000000000",
-                                                "expirationTimeSeconds": "1586340602",
-                                                "salt": "41253767178111694375645046549067933145709740457131351457334397888365956743955",
-                                                "signature": "0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02"
-                                            },
-                                            "fillableTakerAssetAmount": "10000000000000000000000"
-                                        }
-                                    ]
-                                }
-                            }
-                            `,
-                        // Second paginated request
-                        `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc": "2.0",
-                                    "result": {
-                                        "snapshotID": "${snapshotID}",
-                                        "snapshotTimestamp": "${snapshotTimestamp}",
-                                        "ordersInfos": []
-                                    }
-                                }
-                            `,
-                    ];
-                    connection.sendUTF(responses[requestNum]);
-                    requestNum++;
-                }) as any);
-            }) as any);
-
-            const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-            const perPage = 1;
-            const getOrdersResponse = await client.getOrdersAsync(perPage);
-            const orderInfos = getOrdersResponse.ordersInfos;
-            expect(orderInfos).to.have.length(1);
-            expect(getOrdersResponse.snapshotID).to.equal('123');
-            // tslint:disable-next-line:custom-no-magic-numbers
-            expect(getOrdersResponse.snapshotTimestamp).to.equal(1257894000);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.salt)).to.equal(true);
-            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.expirationTimeSeconds)).to.equal(true);
-
-            client.destroy();
-        });
-    });
     describe('#addOrdersAsync', async () => {
         it('sends a mesh_addOrders request and converts all numerical fields to BigNumbers in returned signedOrders', async () => {
             const wsServer = await setupServerAsync();
@@ -111,6 +24,8 @@ describe('WSClient', () => {
                 let requestNum = 0;
                 connection.on('message', ((message: WSMessage) => {
                     const jsonRpcRequest = JSON.parse(message.utf8Data);
+                    const snapshotID = '123';
+                    const snapshotTimestamp = '2009-11-10T23:00:00Z';
                     const responses = [
                         // Heartbeat subscription (under-the-hood)
                         `
@@ -197,72 +112,87 @@ describe('WSClient', () => {
             client.destroy();
         });
     });
-    describe('#_subscribeToHeartbeatAsync', async () => {
-        it('should receive subscription updates', (done: DoneCallback) => {
-            (async () => {
-                const wsServer = await setupServerAsync();
-                wsServer.on('connect', ((connection: WebSocket.connection) => {
-                    let requestNum = 0;
-                    connection.on('message', (async (message: WSMessage) => {
-                        const jsonRpcRequest = JSON.parse(message.utf8Data);
-                        const responses = [
-                            // Heartbeat subscription (under-the-hood)
-                            `
+    describe('#getStatsAsync', async () => {
+        /* FIXME */
+    });
+    describe('#getOrdersAsync', async () => {
+        it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
+            const wsServer = await setupServerAsync();
+            wsServer.on('connect', ((connection: WebSocket.connection) => {
+                let requestNum = 0;
+                connection.on('message', ((message: WSMessage) => {
+                    const jsonRpcRequest = JSON.parse(message.utf8Data);
+                    const responses = [
+                        // Heartbeat subscription (under-the-hood)
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc": "2.0",
+                                "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+                            }
+                        `,
+                        // First paginated request
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc": "2.0",
+                                "result": {
+                                    "snapshotID": "123",
+                                    "ordersInfos": [
+                                        {
+                                            "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
+                                            "signedOrder": {
+                                                "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
+                                                "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
+                                                "makerAssetAmount": "1000000000000000000",
+                                                "makerFee": "0",
+                                                "takerAddress": "0x0000000000000000000000000000000000000000",
+                                                "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                                                "takerAssetAmount": "10000000000000000000000",
+                                                "takerFee": "0",
+                                                "senderAddress": "0x0000000000000000000000000000000000000000",
+                                                "exchangeAddress": "0x080bf510FCbF18b91105470639e9561022937712",
+                                                "feeRecipientAddress": "0x0000000000000000000000000000000000000000",
+                                                "expirationTimeSeconds": "1586340602",
+                                                "salt": "41253767178111694375645046549067933145709740457131351457334397888365956743955",
+                                                "signature": "0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02"
+                                            },
+                                            "fillableTakerAssetAmount": "10000000000000000000000"
+                                        }
+                                    ]
+                                }
+                            }
+                            `,
+                        // Second paginated request
+                        `
                                 {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc": "2.0",
-                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                                }
-                            `,
-                            // Requested heartbeat subscription
-                            `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc": "2.0",
-                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                                }
-                            `,
-                            // Response to unsubscribe
-                            `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc":"2.0",
-                                    "result":true,
-                                }
-                            `,
-                        ];
-                        connection.sendUTF(responses[requestNum]);
-                        requestNum++;
-
-                        if (requestNum === 2) {
-                            // tslint:disable-next-line:custom-no-magic-numbers
-                            await sleepAsync(100);
-
-                            const eventResponse = `
-                                {
-                                    "jsonrpc":"2.0",
-                                    "method":"mesh_subscription",
-                                    "params": {
-                                        "subscription":"0xab1a3e8af590364c09d0fa6a12103ada",
-                                        "result":"tick"
+                                    "result": {
+                                        "snapshotID": "123",
+                                        "ordersInfos": []
                                     }
                                 }
-                            `;
-                            connection.sendUTF(eventResponse);
-                        }
-                    }) as any);
+                            `,
+                    ];
+                    connection.sendUTF(responses[requestNum]);
+                    requestNum++;
                 }) as any);
+            }) as any);
 
-                const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-                const expectToBeCalledOnce = true;
-                const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
-                    async (ack: string) => {
-                        expect(ack).to.be.equal('tick');
-                        client.destroy();
-                    },
-                );
-                await (client as any)._subscribeToHeartbeatAsync(callback);
-            })().catch(done);
+            const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+            const perPage = 1;
+            const { ordersInfos } = await client.getOrdersAsync(perPage);
+
+            expect(ordersInfos).to.have.length(1);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.takerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.makerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.takerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.salt)).to.equal(true);
+            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.expirationTimeSeconds)).to.equal(true);
+
+            client.destroy();
         });
     });
     describe('#subscribeToOrdersAsync', async () => {
@@ -377,6 +307,74 @@ describe('WSClient', () => {
                     },
                 );
                 await client.subscribeToOrdersAsync(callback);
+            })().catch(done);
+        });
+    });
+    describe('#_subscribeToHeartbeatAsync', async () => {
+        it('should receive subscription updates', (done: DoneCallback) => {
+            (async () => {
+                const wsServer = await setupServerAsync();
+                wsServer.on('connect', ((connection: WebSocket.connection) => {
+                    let requestNum = 0;
+                    connection.on('message', (async (message: WSMessage) => {
+                        const jsonRpcRequest = JSON.parse(message.utf8Data);
+                        const responses = [
+                            // Heartbeat subscription (under-the-hood)
+                            `
+                                {
+                                    "id": "${jsonRpcRequest.id}",
+                                    "jsonrpc": "2.0",
+                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+                                }
+                            `,
+                            // Requested heartbeat subscription
+                            `
+                                {
+                                    "id": "${jsonRpcRequest.id}",
+                                    "jsonrpc": "2.0",
+                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+                                }
+                            `,
+                            // Response to unsubscribe
+                            `
+                                {
+                                    "id": "${jsonRpcRequest.id}",
+                                    "jsonrpc":"2.0",
+                                    "result":true,
+                                }
+                            `,
+                        ];
+                        connection.sendUTF(responses[requestNum]);
+                        requestNum++;
+
+                        if (requestNum === 2) {
+                            // tslint:disable-next-line:custom-no-magic-numbers
+                            await sleepAsync(100);
+
+                            const eventResponse = `
+                                {
+                                    "jsonrpc":"2.0",
+                                    "method":"mesh_subscription",
+                                    "params": {
+                                        "subscription":"0xab1a3e8af590364c09d0fa6a12103ada",
+                                        "result":"tick"
+                                    }
+                                }
+                            `;
+                            connection.sendUTF(eventResponse);
+                        }
+                    }) as any);
+                }) as any);
+
+                const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+                const expectToBeCalledOnce = true;
+                const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
+                    async (ack: string) => {
+                        expect(ack).to.be.equal('tick');
+                        client.destroy();
+                    },
+                );
+                await (client as any)._subscribeToHeartbeatAsync(callback);
             })().catch(done);
         });
     });
