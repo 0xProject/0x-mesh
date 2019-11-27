@@ -3,6 +3,7 @@
 package core
 
 import (
+	"flag"
 	"math/big"
 	"testing"
 	"time"
@@ -29,7 +30,14 @@ var (
 	zrxAmount              = new(big.Int).Mul(big.NewInt(1), tenDecimalsInBaseUnits)
 )
 
+// Since these tests must be run sequentially, we don't want them to run as part of
+// the normal testing process. They will only be run if the "--serial" flag is used.
+var serialTestsEnabled bool
+
 func init() {
+	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	flag.Parse()
+
 	var err error
 	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
 	if err != nil {
@@ -43,6 +51,10 @@ func init() {
 }
 
 func TestMessageSharingIsolated(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	defer meshDB.Close()
 	require.NoError(t, err)
@@ -116,6 +128,10 @@ func TestMessageSharingIsolated(t *testing.T) {
 }
 
 func TestMessagesSharedSerial(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	var allOrders []*meshdb.Order
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	defer meshDB.Close()
