@@ -451,6 +451,12 @@ func (app *App) Start(ctx context.Context) error {
 	}
 
 	// Initialize the p2p node.
+	// Note(albrow): The main reason that we need to use a `started` channel in
+	// some methods is that we cannot call p2p.New without passing in a context
+	// (due to how libp2p works). This means that before app.Start is called,
+	// app.node will be nil and attempting to call any methods on app.node will
+	// panic with a nil pointer exception. All the other fields of core.App that
+	// we need to use will have already been initialized and are ready to use.
 	bootstrapList := p2p.DefaultBootstrapList
 	if app.config.BootstrapList != "" {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
