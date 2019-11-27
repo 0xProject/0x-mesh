@@ -155,6 +155,10 @@ type App struct {
 	ethRPCClient              ethrpcclient.Client
 	orderSelector             *orderSelector
 	db                        *meshdb.MeshDB
+
+	// started is closed to signal that the App has been started. Some methods
+	// will block until after the App is started.
+	started chan struct{}
 }
 
 func New(config Config) (*App, error) {
@@ -282,6 +286,7 @@ func New(config Config) (*App, error) {
 	}
 
 	app := &App{
+		started:                   make(chan struct{}),
 		config:                    config,
 		privKey:                   privKey,
 		peerID:                    peerID,
@@ -493,6 +498,10 @@ func (app *App) Start(ctx context.Context) error {
 		app.periodicallyLogStats(innerCtx)
 	}()
 
+	// Signal that the app has been started.
+	log.Info("core.App was started")
+	close(app.started)
+
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
 	// that occurs.
@@ -530,6 +539,8 @@ func (app *App) Start(ctx context.Context) error {
 }
 
 func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs []ma.Multiaddr) {
+	<-app.started
+
 	// TODO(albrow): There might be a more efficient way to do this if we have access to
 	// an event bus. See: https://github.com/libp2p/go-libp2p/issues/467
 	seenAddrs := stringset.New()
@@ -570,6 +581,8 @@ func (e ErrSnapshotNotFound) Error() string {
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
+	<-app.started
+
 	ordersInfos := []*rpc.OrderInfo{}
 	if perPage <= 0 {
 		return &rpc.GetOrdersResponse{
@@ -643,6 +656,8 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 // they will only be removed if they become unfillable and will not be removed
 // due to having a high expiration time or any incentive mechanisms.
 func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+	<-app.started
+
 	allValidationResults := &ordervalidator.ValidationResults{
 		Accepted: []*ordervalidator.AcceptedOrderInfo{},
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
@@ -752,6 +767,8 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+	<-app.started
+
 	encoded, err := encodeOrder(order)
 	if err != nil {
 		return err
@@ -761,11 +778,15 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 
 // AddPeer can be used to manually connect to a new peer.
 func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
+	<-app.started
+
 	return app.node.Connect(peerInfo, peerConnectTimeout)
 }
 
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
+	<-app.started
+
 	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
 	if err != nil {
 		return nil, err
@@ -815,6 +836,8 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 }
 
 func (app *App) periodicallyLogStats(ctx context.Context) {
+	<-app.started
+
 	ticker := time.NewTicker(logStatsInterval)
 	for {
 		select {
@@ -849,6 +872,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 
 // SubscribeToOrderEvents let's one subscribe to order events emitted by the OrderWatcher
 func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.Subscription {
+	// app.orderWatcher is guaranteed to be initialized. No need to wait.
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
 }
