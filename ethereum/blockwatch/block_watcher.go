@@ -76,6 +76,11 @@ type Watcher struct {
 	withLogs        bool
 	topics          []common.Hash
 	mu              sync.RWMutex
+
+	didProcessABlock bool
+	// AtLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
+	// block. Validation of orders should block until this has completed
+	AtLeastOneBlockProcessed chan struct{}
 }
 
 // New creates a new Watcher instance.
@@ -87,6 +92,9 @@ func New(config Config) *Watcher {
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
+
+		didProcessABlock:         false,
+		AtLeastOneBlockProcessed: make(chan struct{}),
 	}
 	return bs
 }
@@ -98,6 +106,13 @@ func New(config Config) *Watcher {
 // previously tracked blocks so BlockWatcher starts again from the latest block. This
 // function blocks until complete or the context is  cancelled.
 func (w *Watcher) SyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
+	w.mu.Lock()
+	if w.wasStartedOnce {
+		w.mu.Unlock()
+		return 0, errors.New("Can only sync to latest block before starting BlockWatcher")
+	}
+	w.mu.Unlock()
+
 	latestBlockProcessed, err := w.GetLatestBlockProcessed()
 	if err != nil {
 		return 0, err
@@ -123,6 +138,12 @@ func (w *Watcher) SyncToLatestBlock(ctx context.Context) (blocksElapsed int, err
 			return blocksElapsed, err
 		}
 		if len(events) > 0 {
+			w.mu.Lock()
+			if !w.didProcessABlock {
+				w.didProcessABlock = true
+				close(w.AtLeastOneBlockProcessed)
+			}
+			w.mu.Unlock()
 			w.blockFeed.Send(events)
 		}
 	} else {
@@ -148,6 +169,15 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
+	if err := w.PollNextBlock(); err != nil {
+		if err == leveldb.ErrClosed {
+			// We can't continue if the database is closed. Stop the watcher and
+			// return an error.
+			return err
+		}
+		log.WithError(err).Error("blockwatch.Watcher error encountered")
+	}
+
 	ticker := time.NewTicker(w.pollingInterval)
 	for {
 		select {
@@ -155,7 +185,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
-			if err := w.pollNextBlock(); err != nil {
+			if err := w.PollNextBlock(); err != nil {
 				if err == leveldb.ErrClosed {
 					// We can't continue if the database is closed. Stop the watcher and
 					// return an error.
@@ -186,10 +216,10 @@ func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
 	return w.stack.PeekAll()
 }
 
-// pollNextBlock polls for the next block header to be added to the block stack.
+// PollNextBlock polls for the next block header to be added to the block stack.
 // If there are no blocks on the stack, it fetches the first block at the specified
 // `startBlockDepth` supplied at instantiation.
-func (w *Watcher) pollNextBlock() error {
+func (w *Watcher) PollNextBlock() error {
 	var nextBlockNumber *big.Int
 	latestHeader, err := w.stack.Peek()
 	if err != nil {
@@ -217,13 +247,43 @@ func (w *Watcher) pollNextBlock() error {
 
 	events := []*Event{}
 	events, err = w.buildCanonicalChain(nextHeader, events)
-	// Even if an error occurred, we still want to emit the events gathered since we might have
-	// popped blocks off the Stack and they won't be re-added
-	if len(events) != 0 {
-		w.blockFeed.Send(events)
-	}
 	if err != nil {
+		// If error encountered after some block events generated
+		if len(events) != 0 {
+			newLatestHeader := events[len(events)-1].BlockHeader
+			// If we haven't progressed in terms of block number before an error was encountered,
+			// revert back to previous "latest" block. This ensures block events always leave the
+			// node further ahead, preventing unnecessary thrash during block-reorgs (which tend to cluster)
+			if newLatestHeader.Number.Int64() <= latestHeader.Number.Int64() {
+				for i := len(events) - 1; i >= 0; i-- {
+					event := events[i]
+					switch event.Type {
+					case Added:
+						_, err := w.stack.Pop()
+						if err != nil {
+							return err // Could only be unexpected DB errors
+						}
+					case Removed:
+						if err := w.stack.Push(event.BlockHeader); err != nil {
+							return err // Could only be unexpected DB errors
+						}
+					default:
+						log.WithField("Type", event.Type).Panic("Unrecognized event.Type encountered")
+					}
+				}
+			}
+		}
 		return err
+	}
+	if len(events) > 0 {
+		// Upon processing the first block event, consider the BlockWatcher started
+		w.mu.Lock()
+		if !w.didProcessABlock {
+			w.didProcessABlock = true
+			close(w.AtLeastOneBlockProcessed)
+		}
+		w.mu.Unlock()
+		w.blockFeed.Send(events)
 	}
 	return nil
 }
@@ -275,8 +335,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 			log.WithFields(log.Fields{
 				"blockNumber": nextHeader.Parent.Hex(),
 			}).Info("block header not found")
-			// Noop and wait next polling interval. We remove the popped blocks
-			// and refetch them on the next polling interval.
+			// Noop and wait next polling interval
 			return events, nil
 		}
 		return events, err

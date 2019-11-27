@@ -14,6 +14,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
@@ -155,6 +156,7 @@ type App struct {
 	messageHandler            *MessageHandler
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
+	blockWatcherClient        blockwatch.Client
 }
 
 func New(config Config) (*App, error) {
@@ -296,6 +298,7 @@ func New(config Config) (*App, error) {
 		messageHandler:            messageHandler,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
+		blockWatcherClient:        blockWatcherClient,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -435,6 +438,11 @@ func (app *App) Start(ctx context.Context) error {
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
+
+	// Ensure blockWatcher has processed at least one recent block before
+	// starting the P2P node and completing app start, so that Mesh does
+	// not validate any orders at outdated block heights
+	<-app.blockWatcher.AtLeastOneBlockProcessed
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
@@ -704,10 +712,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.validateOrders(schemaValidOrders)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(schemaValidOrders, pinned, app.chainID)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, orderInfo := range validationResults.Accepted {
 		allValidationResults.Accepted = append(allValidationResults.Accepted, orderInfo)
 	}
@@ -715,28 +724,13 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
 	}
 
-	for i, acceptedOrderInfo := range allValidationResults.Accepted {
+	for _, acceptedOrderInfo := range allValidationResults.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
 		// or share the order with peers.
 		if !acceptedOrderInfo.IsNew {
 			continue
 		}
-		// Add the order to the OrderWatcher. This also saves the order in the
-		// database.
-		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
-		if err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				allValidationResults.Accepted = append(allValidationResults.Accepted[:i], allValidationResults.Accepted[i+1:]...)
-				allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   acceptedOrderInfo.OrderHash,
-					SignedOrder: acceptedOrderInfo.SignedOrder,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.RODatabaseFullOfOrders,
-				})
-			} else {
-				return nil, err
-			}
-		}
+
 		log.WithFields(log.Fields{
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
 		}).Debug("added new valid order via RPC or browser callback")
@@ -746,12 +740,13 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 			return nil, err
 		}
 	}
+
 	return allValidationResults, nil
 }
 
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
-	encoded, err := encodeOrder(order)
+	encoded, err := encoding.EncodeOrder(order)
 	if err != nil {
 		return err
 	}
