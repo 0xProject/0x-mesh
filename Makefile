@@ -56,7 +56,7 @@ test-go-parallel:
 
 .PHONY: test-go-serial
 test-go-serial:
-	go test ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 30s -p=1 --serial
+	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 30s -p=1 --serial
 
 
 .PHONY: test-integration

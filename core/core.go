@@ -141,7 +141,6 @@ type App struct {
 	config                    Config
 	peerID                    peer.ID
 	privKey                   p2pcrypto.PrivKey
-	db                        *meshdb.MeshDB
 	node                      *p2p.Node
 	chainID                   int
 	blockWatcher              *blockwatch.Watcher
@@ -152,9 +151,10 @@ type App struct {
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
-	messageHandler            *MessageHandler
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
+	orderSelector             *orderSelector
+	db                        *meshdb.MeshDB
 }
 
 func New(config Config) (*App, error) {
@@ -276,15 +276,15 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	messageHandler := &MessageHandler{
+	orderSelector := &orderSelector{
 		nextOffset: 0,
+		db:         meshDB,
 	}
 
 	app := &App{
 		config:                    config,
 		privKey:                   privKey,
 		peerID:                    peerID,
-		db:                        meshDB,
 		chainID:                   config.EthereumChainID,
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
@@ -293,9 +293,10 @@ func New(config Config) (*App, error) {
 		meshMessageJSONSchema:     meshMessageJSONSchema,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
-		messageHandler:            messageHandler,
+		orderSelector:             orderSelector,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
+		db:                        meshDB,
 	}
 
 	log.WithFields(map[string]interface{}{
