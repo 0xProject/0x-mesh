@@ -330,10 +330,6 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPubSubTopic(chainID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/2", chainID)
-}
-
 func getRendezvous(chainID int) string {
 	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
 }
@@ -469,7 +465,7 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:                  getPubSubTopic(app.config.EthereumChainID),
+		Topic:                  app.orderFilter.Topic(),
 		TCPPort:                app.config.P2PTCPPort,
 		WebSocketsPort:         app.config.P2PWebSocketsPort,
 		Insecure:               false,
@@ -494,6 +490,7 @@ func (app *App) Start(ctx context.Context) error {
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
+			"topic":     app.orderFilter.Topic(),
 		}).Info("starting p2p node")
 
 		wg.Add(1)
@@ -832,7 +829,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 
 	response := &rpc.GetStatsResponse{
 		Version:                           version,
-		PubSubTopic:                       getPubSubTopic(app.config.EthereumChainID),
+		PubSubTopic:                       app.orderFilter.Topic(),
 		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,
