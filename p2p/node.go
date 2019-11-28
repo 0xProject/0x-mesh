@@ -15,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
+	"github.com/0xProject/0x-mesh/p2p/validatorset"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -245,28 +246,9 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
-		MyPeerID:       basicHost.ID(),
-		GlobalLimit:    config.GlobalPubSubMessageLimit,
-		GlobalBurst:    config.GlobalPubSubMessageBurst,
-		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
-		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
-		MaxMessageSize: constants.MaxOrderSizeInBytes,
-	})
-	if err != nil {
+	if err := registerValidators(ctx, basicHost, config, ps); err != nil {
 		return nil, err
 	}
-	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
-		return nil, err
-	}
-	// TODO(albrow): This code results in an error because there can't be two
-	// validators for the same topic. We need to write our own code for combining
-	// validators.
-	// if config.CustomMessageValidator != nil {
-	// 	if err := ps.RegisterTopicValidator(config.Topic, config.CustomMessageValidator, pubsub.WithValidatorInline(true)); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
 
 	// Configure banner.
 	banner := banner.New(ctx, banner.Config{
@@ -291,6 +273,37 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 
 	return node, nil
+}
+
+// registerValidators registers all the validators we use for incoming and
+// outgoing GossipSub messages.
+func registerValidators(ctx context.Context, basicHost host.Host, config Config, ps *pubsub.PubSub) error {
+	validators := validatorset.New()
+
+	// Add the rate limiting validator.
+	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
+		MyPeerID:       basicHost.ID(),
+		GlobalLimit:    config.GlobalPubSubMessageLimit,
+		GlobalBurst:    config.GlobalPubSubMessageBurst,
+		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
+		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
+		MaxMessageSize: constants.MaxOrderSizeInBytes,
+	})
+	if err != nil {
+		return err
+	}
+	validators.Add("message rate limiting", rateValidator.Validate)
+
+	// Add the custom validator if there is one.
+	if config.CustomMessageValidator != nil {
+		validators.Add("custom", config.CustomMessageValidator)
+	}
+
+	// Register the set of validators.
+	if err := ps.RegisterTopicValidator(config.Topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getPrivateKey(path string) (p2pcrypto.PrivKey, error) {
