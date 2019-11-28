@@ -8,6 +8,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Instead of progressing Mesh forward by a single block on every invocation of the `BLOCK_POLLING_INTERVAL`, we now attempt to sync as many blocks as necessary to reach the latest block available. This will reduce the chances of Mesh becoming out-of-sync with Ethereum ([#564](https://github.com/0xProject/0x-mesh/pull/564))
 
+### Bug fixes 🐞
+
+- Fixed a bug which could cause Mesh to crash with a nil pointer exception if RPC requests are sent too quickly during/immediately after start up ([#560](https://github.com/0xProject/0x-mesh/pull/560)).
+
+
 ## v6.1.1-beta
 
 ### Bug fixes 🐞
