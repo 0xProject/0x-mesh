@@ -22,8 +22,6 @@ var errMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", constant
 // validateOrders applies general 0x validation and Mesh-specific validation to
 // the given orders.
 func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.ValidationResults, error) {
-	// TODO(albrow): Do we need to use app.orderFilter here?
-
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 	for _, order := range orders {
