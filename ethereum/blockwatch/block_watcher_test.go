@@ -13,14 +13,12 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var config = Config{
 	PollingInterval: 1 * time.Second,
-	StartBlockDepth: rpc.LatestBlockNumber,
 	WithLogs:        false,
 	Topics:          []common.Hash{},
 }
@@ -47,8 +45,9 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err := watcher.pollNextBlock()
-		require.NoError(t, err)
+		// An error might occur, but the expected events and retained blocks should still
+		// be as expected
+		_ = watcher.syncChain()
 
 		retainedBlocks, err := watcher.GetAllRetainedBlocks()
 		require.NoError(t, err)

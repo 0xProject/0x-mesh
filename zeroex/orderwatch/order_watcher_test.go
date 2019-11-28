@@ -820,7 +820,6 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: blockPollingInterval,
-		StartBlockDepth: ethrpc.LatestBlockNumber,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,
