@@ -144,6 +144,11 @@ type Config struct {
 	// is allowed to send at once through the GossipSub network. Any additional
 	// messages will be dropped.
 	PerPeerPubSubMessageBurst int
+	// CustomMessageValidator is a custom validator for GossipSub messages. All
+	// incoming and outgoing messages will be dropped unless they are valid
+	// according to this custom validator, which will be run in addition to the
+	// default validators.
+	CustomMessageValidator pubsub.Validator
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -254,6 +259,14 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
 		return nil, err
 	}
+	// TODO(albrow): This code results in an error because there can't be two
+	// validators for the same topic. We need to write our own code for combining
+	// validators.
+	// if config.CustomMessageValidator != nil {
+	// 	if err := ps.RegisterTopicValidator(config.Topic, config.CustomMessageValidator, pubsub.WithValidatorInline(true)); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	// Configure banner.
 	banner := banner.New(ctx, banner.Config{

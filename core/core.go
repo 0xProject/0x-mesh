@@ -130,6 +130,13 @@ type Config struct {
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
 	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
+	// CustomOrderFilter is a JSON-schema which will be used for validating
+	// incoming orders. If provided, Mesh will only receive orders from other
+	// peers in the network with the same filter.
+	//
+	// TODO(albrow): Link to more documentation about JSON-schemas and how this
+	// filter works.
+	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:""`
 }
 
 type snapshotInfo struct {
@@ -269,13 +276,18 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize the order filter
+	orderFilterSchema := config.CustomOrderFilter
+	if config.CustomOrderFilter == "" {
+		orderFilterSchema = orderfilter.DefaultCustomOrderSchema
+	}
+	orderFilter, err := orderfilter.New(config.EthereumChainID, orderFilterSchema)
+	if err != nil {
+		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
+	}
+
 	// Initialize remaining fields.
 	snapshotExpirationWatcher := expirationwatch.New()
-	// TODO(albrow): Allow custom order filters via env var.
-	orderFilter, err := orderfilter.New(config.EthereumChainID, orderfilter.DefaultCustomOrderSchema)
-	if err != nil {
-		return nil, err
-	}
 	orderSelector := &orderSelector{
 		nextOffset: 0,
 		db:         meshDB,
@@ -457,16 +469,17 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(app.config.EthereumChainID),
-		TCPPort:          app.config.P2PTCPPort,
-		WebSocketsPort:   app.config.P2PWebSocketsPort,
-		Insecure:         false,
-		PrivateKey:       app.privKey,
-		MessageHandler:   app,
-		RendezvousString: getRendezvous(app.config.EthereumChainID),
-		UseBootstrapList: app.config.UseBootstrapList,
-		BootstrapList:    bootstrapList,
-		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
+		Topic:                  getPubSubTopic(app.config.EthereumChainID),
+		TCPPort:                app.config.P2PTCPPort,
+		WebSocketsPort:         app.config.P2PWebSocketsPort,
+		Insecure:               false,
+		PrivateKey:             app.privKey,
+		MessageHandler:         app,
+		RendezvousString:       getRendezvous(app.config.EthereumChainID),
+		UseBootstrapList:       app.config.UseBootstrapList,
+		BootstrapList:          bootstrapList,
+		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
+		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {

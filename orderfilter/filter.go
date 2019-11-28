@@ -1,6 +1,7 @@
 package orderfilter
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -8,6 +9,9 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	canonicaljson "github.com/gibson042/canonicaljson-go"
+	peer "github.com/libp2p/go-libp2p-peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	log "github.com/sirupsen/logrus"
 	jsonschema "github.com/xeipuuv/gojsonschema"
 )
 
@@ -63,6 +67,9 @@ type Filter struct {
 
 func New(chainID int, customOrderSchema string) (*Filter, error) {
 	orderLoader, err := newLoader(chainID, customOrderSchema)
+	if err != nil {
+		return nil, err
+	}
 	rootOrderSchema, err := orderLoader.Compile(rootOrderSchemaLoader)
 	if err != nil {
 		return nil, err
@@ -163,4 +170,19 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*jsonschema.Result, error)
 
 func (f *Filter) ValidateOrder(order *zeroex.SignedOrder) (*jsonschema.Result, error) {
 	return f.orderSchema.Validate(jsonschema.NewGoLoader(order))
+}
+
+// Dummy declaration to ensure that ValidatePubSubMessage matches the expected
+// signature for pubsub.Validator.
+var _ pubsub.Validator = (&Filter{}).ValidatePubSubMessage
+
+// ValidatePubSubMessage is an implementation of pubsub.Validator and will
+// return true if the contents of the message pass the message JSON Schema.
+func (f *Filter) ValidatePubSubMessage(ctx context.Context, sender peer.ID, msg *pubsub.Message) bool {
+	isValid, err := f.MatchMessageJSON(msg.Data)
+	if err != nil {
+		log.WithError(err).Error("MatchMessageJSON returned an error")
+		return false
+	}
+	return isValid
 }
