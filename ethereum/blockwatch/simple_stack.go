@@ -1,13 +1,28 @@
 package blockwatch
 
 import (
+	"fmt"
+
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 )
+
+type updateType int
+
+const (
+	pop updateType = iota
+	push
+)
+
+type update struct {
+	Type        updateType
+	BlockHeader *miniheader.MiniHeader
+}
 
 // SimpleStack is a simple in-memory stack used in tests
 type SimpleStack struct {
 	limit       int
 	miniHeaders []*miniheader.MiniHeader
+	updates     []*update
 }
 
 // NewSimpleStack instantiates a new SimpleStack
@@ -15,6 +30,7 @@ func NewSimpleStack(retentionLimit int) *SimpleStack {
 	return &SimpleStack{
 		limit:       retentionLimit,
 		miniHeaders: []*miniheader.MiniHeader{},
+		updates:     []*update{},
 	}
 }
 
@@ -33,6 +49,10 @@ func (s *SimpleStack) Pop() (*miniheader.MiniHeader, error) {
 	}
 	top := s.miniHeaders[len(s.miniHeaders)-1]
 	s.miniHeaders = s.miniHeaders[:len(s.miniHeaders)-1]
+	s.updates = append(s.updates, &update{
+		Type:        pop,
+		BlockHeader: top,
+	})
 	return top, nil
 }
 
@@ -42,6 +62,13 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 		s.miniHeaders = s.miniHeaders[1:]
 	}
 	s.miniHeaders = append(s.miniHeaders, miniHeader)
+	s.updates = append(s.updates, &update{
+		Type: push,
+		// Optimization: We don't need to store the blockHeader for
+		// pushes since reverting a push involves a `Pop()` and the
+		// value to pop is already in the `miniHeaders` data structure
+		BlockHeader: nil,
+	})
 	return nil
 }
 
@@ -53,5 +80,29 @@ func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 // Clear removes all items from the stack
 func (s *SimpleStack) Clear() error {
 	s.miniHeaders = []*miniheader.MiniHeader{}
+	return nil
+}
+
+// Checkpoint checkpoints the changes to the stack such that a subsequent
+// call to `Reset()` will reset any subsequent changes back to the state
+// of the stack at the time of the latest checkpoint.
+func (s *SimpleStack) Checkpoint() error {
+	s.updates = []*update{}
+	return nil
+}
+
+// Reset resets the stack with the contents from the latest checkpoint
+func (s *SimpleStack) Reset() error {
+	for i := len(s.updates) - 1; i >= 0; i-- {
+		u := s.updates[i]
+		switch u.Type {
+		case pop:
+			s.Push(u.BlockHeader)
+		case push:
+			s.Pop()
+		default:
+			return fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
+		}
+	}
 	return nil
 }

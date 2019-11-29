@@ -48,6 +48,8 @@ type Stack interface {
 	Peek() (*miniheader.MiniHeader, error)
 	PeekAll() ([]*miniheader.MiniHeader, error)
 	Clear() error
+	Checkpoint() error
+	Reset() error
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
@@ -247,23 +249,13 @@ func (w *Watcher) syncChain() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		for i := len(allEvents) - 1; i >= 0; i-- {
-			event := allEvents[i]
-			switch event.Type {
-			case Added:
-				_, err := w.stack.Pop()
-				if err != nil {
-					return err // Could only be unexpected DB errors
-				}
-			case Removed:
-				if err := w.stack.Push(event.BlockHeader); err != nil {
-					return err // Could only be unexpected DB errors
-				}
-			default:
-				log.WithField("Type", event.Type).Panic("Unrecognized event.Type encountered")
-			}
+		if err := w.stack.Reset(); err != nil {
+			return err
 		}
 	} else {
+		if err := w.stack.Checkpoint(); err != nil {
+			return err
+		}
 		w.blockFeed.Send(allEvents)
 	}
 
