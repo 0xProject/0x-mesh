@@ -706,7 +706,14 @@ func (w *Watcher) handleBlockEvents(
 				order.FillableTakerAssetAmount = big.NewInt(0).Sub(order.FillableTakerAssetAmount, exchangeFillEvent.TakerAssetFilledAmount)
 				endState := zeroex.ESOrderFilled
 				if order.FillableTakerAssetAmount.Int64() != 0 {
-					ordersColTxn.Update(order)
+					if err := ordersColTxn.Update(order); err != nil {
+						if _, ok := err.(db.NotFoundError); !ok {
+							return err
+						}
+						// Continue with emitting this event and processing others
+						// if this order was removed from the DB since the `w.findOrder()`
+						// query above.
+					}
 				} else {
 					endState = zeroex.ESOrderFullyFilled
 					w.unwatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
@@ -1501,7 +1508,9 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 		for _, acceptedOrderInfo := range results.Accepted {
 			orderWhitelist[acceptedOrderInfo.OrderHash] = struct{}{}
 		}
-		w.handleBlockEvents(ctx, missedBlockEvents, orderWhitelist)
+		if err := w.handleBlockEvents(ctx, missedBlockEvents, orderWhitelist); err != nil {
+			return nil, err
+		}
 	}
 
 	return results, nil
