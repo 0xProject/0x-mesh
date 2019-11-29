@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:4c8e380cf2184c7a22af18d0628c5a2564e09e805aa2406410c10e8ee50dd1e7"
+  name = "github.com/0xProject/go-ethereum"
+  packages = ["core/types"]
+  pruneopts = "UT"
+  revision = "7a22da98b9f81d206eb65d1fa4f5e773d888bac3"
+
+[[projects]]
   digest = "1:a8a7b3ab27d90a3c63b5d2fe6e23c80a79d2b68708490b90bb160ccc7836c831"
   name = "github.com/albrow/stringset"
   packages = ["."]
@@ -1390,6 +1398,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/0xProject/go-ethereum/core/types",
     "github.com/albrow/stringset",
     "github.com/benbjohnson/clock",
     "github.com/chromedp/cdproto/runtime",
