@@ -216,7 +216,7 @@ func (m *MeshDB) Close() {
 	m.database.Close()
 }
 
-// FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
+// FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order
 func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, error) {
 	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All())
