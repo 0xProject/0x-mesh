@@ -97,9 +97,13 @@ func (s *SimpleStack) Reset() error {
 		u := s.updates[i]
 		switch u.Type {
 		case pop:
-			s.Push(u.MiniHeader)
+			if err := s.Push(u.MiniHeader); err != nil {
+				return err
+			}
 		case push:
-			s.Pop()
+			if _, err := s.Pop(); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
 		}
