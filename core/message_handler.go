@@ -165,20 +165,21 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.validateOrders(orders)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(orders, false, app.chainID)
 	if err != nil {
 		return err
 	}
 
 	// Store any valid orders and update the peer scores.
 	for _, acceptedOrderInfo := range validationResults.Accepted {
+		// If the order isn't new, we don't log it's receipt or adjust peer scores
 		if !acceptedOrderInfo.IsNew {
 			continue
 		}
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
-		// If we've reached this point, the message is valid and we were able to
-		// decode it into an order. Append it to the list of orders to validate and
-		// update peer scores accordingly.
+		// If we've reached this point, the message is valid, we were able to
+		// decode it into an order and check that this order is valid. Update
+		// peer scores accordingly.
 		log.WithFields(map[string]interface{}{
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
@@ -188,20 +189,6 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
 		}).Trace("all fields for new valid order received from peer")
-		// Add stores the message in the database.
-		if err := app.orderWatcher.Add(acceptedOrderInfo, false); err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				// If the database is full of pinned orders, log and then continue.
-				log.WithFields(map[string]interface{}{
-					"error":     err.Error(),
-					"orderHash": acceptedOrderInfo.OrderHash.Hex(),
-					"from":      msg.From.String(),
-				}).Error("could not store valid order because database is full")
-				continue
-			}
-			// For any other type of error, return it.
-			return err
-		}
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
 
@@ -214,7 +201,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"from":              msg.From.String(),
 		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
-		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed:
+		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed, ordervalidator.RODatabaseFullOfOrders:
 			// Don't incur a negative score for these status types (it might not be
 			// their fault).
 		default:

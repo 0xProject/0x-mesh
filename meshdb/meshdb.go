@@ -24,6 +24,8 @@ type Order struct {
 	LastUpdated time.Time
 	// How much of this order can still be filled
 	FillableTakerAssetAmount *big.Int
+	// At which block height this order was last re-validated
+	LastRevalidatedBlockNumber *big.Int
 	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
 	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
 	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
@@ -231,6 +233,21 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, e
 func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All()).Reverse().Max(1)
+	if err := query.Run(&miniHeaders); err != nil {
+		return nil, err
+	}
+	if len(miniHeaders) == 0 {
+		return nil, nil
+	}
+	return miniHeaders[0], nil
+}
+
+// FindMiniHeaderByBlockNumber returns the MiniHeader with the specified block number,
+// or nil if not found
+func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.MiniHeader, error) {
+	miniHeaders := []*miniheader.MiniHeader{}
+	blockNumberFilter := m.MiniHeaders.numberIndex.ValueFilter(uint256ToConstantLengthBytes(blockNumber))
+	query := m.MiniHeaders.NewQuery(blockNumberFilter)
 	if err := query.Run(&miniHeaders); err != nil {
 		return nil, err
 	}

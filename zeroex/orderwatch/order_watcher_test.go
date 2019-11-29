@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -21,6 +22,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -682,14 +684,31 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		cancel()
 	}()
 
-	latestHeader, err := ethClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	latestBlockTimestamp := time.Unix(int64(latestHeader.Time), 0).UTC()
-
 	// Create and add an expired order to OrderWatcher
-	expirationTime := latestBlockTimestamp.Add(-2 * time.Minute)
+	expirationTime := time.Now().Add(24 * time.Hour)
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
-	orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Simulate a block found with a timestamp past expirationTime
+	latestBlock, err := meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &miniheader.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: expirationTime.Add(1 * time.Minute),
+	}
+	expiringBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- expiringBlockEvents
 
 	// Await expired event
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
@@ -705,9 +724,35 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	assert.Equal(t, true, orders[0].IsRemoved)
 	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
 
-	// Simulate a block-reorg
-	earlierBlockTimestamp := latestBlockTimestamp.Add(-10 * time.Minute)
-	blockchainLifecycle.Mine(t, earlierBlockTimestamp)
+	// Simulate a block re-org
+	replacementBlockHash := common.HexToHash("0x2")
+	reorgBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Removed,
+			BlockHeader: nextBlock,
+		},
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    nextBlock.Parent,
+				Hash:      replacementBlockHash,
+				Number:    nextBlock.Number,
+				Logs:      []types.Log{},
+				Timestamp: expirationTime.Add(-2 * time.Hour),
+			},
+		},
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    replacementBlockHash,
+				Hash:      common.HexToHash("0x3"),
+				Number:    big.NewInt(0).Add(nextBlock.Number, big.NewInt(1)),
+				Logs:      []types.Log{},
+				Timestamp: expirationTime.Add(-1 * time.Hour),
+			},
+		},
+	}
+	orderWatcher.blockEventsChan <- reorgBlockEvents
 
 	// Await unexpired event
 	orderEvents = waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
@@ -738,13 +783,13 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer func() {
 		cancel()
 	}()
-	orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
 	orderWatcher.maxOrders = 20
 
 	// create and watch maxOrders orders
 	for i := 0; i < orderWatcher.maxOrders; i++ {
 		signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+time.Duration(i)*time.Minute))
-		watchOrder(t, orderWatcher, signedOrder)
+		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	}
 
 	// We don't care about the order events above for the purposes of this test,
@@ -755,7 +800,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	// The next order should cause some orders to be removed and the appropriate
 	// events to fire.
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+1*time.Second))
-	watchOrder(t, orderWatcher, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
@@ -784,10 +829,10 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) chan []*zeroex.OrderEvent {
-	orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
 
 	// Start watching an order
-	watchOrder(t, orderWatcher, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -796,20 +841,16 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 	return orderEventsChan
 }
 
-func watchOrder(t *testing.T, orderWatcher *Watcher, signedOrder *zeroex.SignedOrder) {
-	orderHash, err := signedOrder.ComputeOrderHash()
+func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, signedOrder *zeroex.SignedOrder) {
+	err := blockWatcher.SyncChain()
 	require.NoError(t, err)
-	orderInfo := &ordervalidator.AcceptedOrderInfo{
-		SignedOrder:              signedOrder,
-		OrderHash:                orderHash,
-		FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
-		IsNew:                    true,
-	}
-	err = orderWatcher.Add(orderInfo, false)
+
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders([]*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
 	require.NoError(t, err)
+	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 
-func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) *Watcher {
+func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) (*blockwatch.Watcher, *Watcher) {
 	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	require.NoError(t, err)
@@ -838,6 +879,15 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	})
 	require.NoError(t, err)
 
+	// Ensure at least one block has been processed and is stored in the DB
+	// before tests run
+	latestBlock, err := meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	if latestBlock == nil {
+		err := blockWatcher.SyncChain()
+		require.NoError(t, err)
+	}
+
 	// Start the block watcher.
 	go func() {
 		err := blockWatcher.Watch(ctx)
@@ -850,7 +900,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		require.NoError(t, err)
 	}()
 
-	return orderWatcher
+	return blockWatcher, orderWatcher
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {

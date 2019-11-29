@@ -2,6 +2,7 @@ package constants
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -79,3 +80,6 @@ const MaxOrderSizeInBytes = 8192
 // node stores archive-level state. One cannot make `eth_call` requests specifying blocks earlier than
 // 128 blocks ago on non-archive nodes.
 const MaxBlocksStoredInNonArchiveNode = 128
+
+// ErrMaxSize is the error emitted when a message exceeds it's max size
+var ErrMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
