@@ -14,8 +14,8 @@ const (
 )
 
 type update struct {
-	Type        updateType
-	BlockHeader *miniheader.MiniHeader
+	Type       updateType
+	MiniHeader *miniheader.MiniHeader
 }
 
 // SimpleStack is a simple in-memory stack used in tests
@@ -50,8 +50,8 @@ func (s *SimpleStack) Pop() (*miniheader.MiniHeader, error) {
 	top := s.miniHeaders[len(s.miniHeaders)-1]
 	s.miniHeaders = s.miniHeaders[:len(s.miniHeaders)-1]
 	s.updates = append(s.updates, &update{
-		Type:        pop,
-		BlockHeader: top,
+		Type:       pop,
+		MiniHeader: top,
 	})
 	return top, nil
 }
@@ -64,10 +64,10 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 	s.miniHeaders = append(s.miniHeaders, miniHeader)
 	s.updates = append(s.updates, &update{
 		Type: push,
-		// Optimization: We don't need to store the blockHeader for
+		// Optimization: We don't need to store the MiniHeader for
 		// pushes since reverting a push involves a `Pop()` and the
 		// value to pop is already in the `miniHeaders` data structure
-		BlockHeader: nil,
+		MiniHeader: nil,
 	})
 	return nil
 }
@@ -97,7 +97,7 @@ func (s *SimpleStack) Reset() error {
 		u := s.updates[i]
 		switch u.Type {
 		case pop:
-			s.Push(u.BlockHeader)
+			s.Push(u.MiniHeader)
 		case push:
 			s.Pop()
 		default:
