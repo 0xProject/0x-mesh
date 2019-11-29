@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -92,7 +93,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 		log.WithFields(map[string]interface{}{
 			"order": order,
 		}).Trace("selected order to share")
-		encoded, err := encodeOrder(order.SignedOrder)
+		encoded, err := encoding.EncodeOrder(order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +141,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		order, err := decodeOrder(msg.Data)
+		order, err := encoding.DecodeOrder(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,

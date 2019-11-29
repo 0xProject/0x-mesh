@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
@@ -191,7 +192,7 @@ func verifyRoundRobinSharing(t *testing.T, selector *orderSelector, nextOffset i
 
 	// Calculate the orders that we expect to be shared
 	for i := 0; i < expectedOrdersLength; i++ {
-		encodedOrder, err := encodeOrder(orderList[(nextOffset+i)%count].SignedOrder)
+		encodedOrder, err := encoding.EncodeOrder(orderList[(nextOffset+i)%count].SignedOrder)
 		require.NoError(t, err)
 
 		expectedOrders[i] = encodedOrder
