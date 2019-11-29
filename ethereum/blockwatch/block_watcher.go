@@ -71,7 +71,6 @@ type Watcher struct {
 	blockScope      event.SubscriptionScope // Subscription scope tracking current live listeners
 	wasStartedOnce  bool                    // Whether the block watcher has previously been started
 	pollingInterval time.Duration
-	ticker          *time.Ticker
 	withLogs        bool
 	topics          []common.Hash
 	mu              sync.RWMutex
