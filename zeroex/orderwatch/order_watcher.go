@@ -348,7 +348,7 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, didBloc
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			orderHash := common.HexToHash(expiredOrder.ID)
-			if !w.whitelistExistsAndWhitelisted(orderWhitelist, orderHash) {
+			if !w.whitelistedIfWhitelistExists(orderWhitelist, orderHash) {
 				// Not on whitelist, re-add to expiration watcher and don't process
 				w.expirationWatcher.Add(expiredOrder.ExpirationTimestamp, expiredOrder.ID)
 				continue
@@ -385,7 +385,7 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, didBloc
 			if order.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 				continue
 			}
-			if !w.whitelistExistsAndWhitelisted(orderWhitelist, order.Hash) {
+			if !w.whitelistedIfWhitelistExists(orderWhitelist, order.Hash) {
 				continue // Not on whitelist, don't process
 			}
 			expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
@@ -692,7 +692,7 @@ func (w *Watcher) handleBlockEvents(
 				if order == nil {
 					continue // Order not stored in DB
 				}
-				if !w.whitelistExistsAndWhitelisted(orderWhitelist, order.Hash) {
+				if !w.whitelistedIfWhitelistExists(orderWhitelist, order.Hash) {
 					continue // Not on whitelist, don't process
 				}
 
@@ -741,7 +741,7 @@ func (w *Watcher) handleBlockEvents(
 				if order == nil {
 					continue // Order not stored in DB
 				}
-				if !w.whitelistExistsAndWhitelisted(orderWhitelist, order.Hash) {
+				if !w.whitelistedIfWhitelistExists(orderWhitelist, order.Hash) {
 					continue // Not on whitelist, don't process
 				}
 
@@ -784,7 +784,7 @@ func (w *Watcher) handleBlockEvents(
 				}
 				whitelistedCanceledOrders := []*meshdb.Order{}
 				for _, canceledOrder := range canceledOrders {
-					if w.whitelistExistsAndWhitelisted(orderWhitelist, canceledOrder.Hash) {
+					if w.whitelistedIfWhitelistExists(orderWhitelist, canceledOrder.Hash) {
 						whitelistedCanceledOrders = append(whitelistedCanceledOrders, canceledOrder)
 					}
 				}
@@ -816,7 +816,7 @@ func (w *Watcher) handleBlockEvents(
 				return err
 			}
 			for _, order := range orders {
-				if !w.whitelistExistsAndWhitelisted(orderWhitelist, order.Hash) {
+				if !w.whitelistedIfWhitelistExists(orderWhitelist, order.Hash) {
 					continue
 				}
 				orderHashToDBOrder[order.Hash] = order
@@ -1803,13 +1803,12 @@ func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time
 	return latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease
 }
 
-func (w *Watcher) whitelistExistsAndWhitelisted(whitelist map[common.Hash]interface{}, ID common.Hash) bool {
-	if whitelist != nil {
-		if _, ok := whitelist[ID]; !ok {
-			return false
-		}
+func (w *Watcher) whitelistedIfWhitelistExists(whitelist map[common.Hash]interface{}, ID common.Hash) bool {
+	if whitelist == nil {
+		return true
 	}
-	return true
+	_, ok := whitelist[ID]
+	return ok
 }
 
 type logWithType struct {
