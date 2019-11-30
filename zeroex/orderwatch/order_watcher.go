@@ -423,9 +423,9 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, didBloc
 // withdrawals, block re-orged fills & cancels). Immediate events are processed in a blocking way, while
 // re-validations are kicked off and processed in a non-blocking go-routine. Since every order DB entry has
 // a block number associated with when it was last re-validated, re-validations will only apply if they were
-// performed at the most recent block height. Otherwise they noop. Since block re-orgs always result in a higher
-// latest block number, we don't need to worry about two re-validations occuring at the same block height, but
-// with different block hashes and content.
+// performed at a higher block height than the last re-validation. Otherwise they noop. Since block re-orgs
+// always result in a higher latest block number, we don't need to worry about two re-validations occuring
+// at the same block height, but with different block hashes and content.
 func (w *Watcher) handleBlockEvents(
 	ctx context.Context,
 	events []*blockwatch.Event,
