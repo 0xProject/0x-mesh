@@ -445,7 +445,7 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 
 	// Note: this is a blocking call so we won't continue set up until its finished.
-	blocksElapsed, err := app.blockWatcher.SyncToLatestBlock(innerCtx)
+	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
 		return err
 	}
@@ -812,7 +812,7 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	<-app.started
 
-	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
+	latestBlockHeader, err := app.db.FindLatestMiniHeader()
 	if err != nil {
 		return nil, err
 	}

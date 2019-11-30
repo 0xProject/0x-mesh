@@ -842,7 +842,7 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 }
 
 func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, signedOrder *zeroex.SignedOrder) {
-	err := blockWatcher.SyncChain()
+	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
 	validationResults, err := orderWatcher.ValidateAndStoreValidOrders([]*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
@@ -884,7 +884,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	latestBlock, err := meshDB.FindLatestMiniHeader()
 	require.NoError(t, err)
 	if latestBlock == nil {
-		err := blockWatcher.SyncChain()
+		err := blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 	}
 
