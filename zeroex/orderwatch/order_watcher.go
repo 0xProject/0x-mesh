@@ -92,6 +92,7 @@ type Watcher struct {
 	maxOrders                           int
 	handleBlockEventsMu                 sync.Mutex
 	handleBlockEventsNonBlockingErrChan chan error
+	latestBlockProcessed                *big.Int
 }
 
 type Config struct {
@@ -436,6 +437,7 @@ func (w *Watcher) handleBlockEvents(
 	}
 
 	latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease := w.getBlockchainState(events)
+	w.latestBlockProcessed = latestBlockNumber
 
 	if err := w.handleOrderExpirations(latestBlockTimestamp, didBlockTimestampIncrease, orderWhitelist); err != nil {
 		return err
@@ -1409,10 +1411,10 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 		// This should never happen since we ensure at least one block has been processed before Mesh finishes starting up
 		return nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
 	}
-	areNewOrders := true
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
+	areNewOrders := true
 	zeroexResults := w.orderValidator.BatchValidate(ctx, validMeshOrders, areNewOrders, validationBlock.Number)
 
 	// Now that the validation results have arrived, we block the processing of block events into order events until
@@ -1490,18 +1492,18 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 
 	// It is possible that Mesh processed subsequent block events while the validation RPC was ongoing.
 	// We therefore need to emit events and kick off re-validations for these orders, if they were affected
-	// by the blocks processed since their validationBlock. This also catches them up with the latest block
-	// processed by Mesh and ensures no block events were missed.
-	blocksProcessed, err := w.meshDB.FindAllMiniHeadersSortedByNumber()
+	// by the blocks processed since their validationBlock AND before we acquired a lock on `handleBlockEvents`.
+	// This ensures no block events are missed for newly added orders.
+	blocksStored, err := w.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
 	}
 	missedBlockEvents := []*blockwatch.Event{}
-	for _, blockProcessed := range blocksProcessed {
-		if blockProcessed.Number.Int64() > validationBlock.Number.Int64() {
+	for _, block := range blocksStored {
+		if block.Number.Int64() > validationBlock.Number.Int64() && block.Number.Int64() <= w.latestBlockProcessed.Int64() {
 			missedBlockEvents = append(missedBlockEvents, &blockwatch.Event{
 				Type:        blockwatch.Added,
-				BlockHeader: blockProcessed,
+				BlockHeader: block,
 			})
 		}
 	}
