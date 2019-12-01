@@ -732,7 +732,8 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	// Create and add an expired order to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	startOrderWatcher := true
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
@@ -828,7 +829,8 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer func() {
 		cancel()
 	}()
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	startOrderWatcher := true
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
 	orderWatcher.maxOrders = 20
 
 	// create and watch maxOrders orders
@@ -887,7 +889,8 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	startOrderWatcher := true
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -918,8 +921,389 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	require.Len(t, orders, 2)
 }
 
+func TestOrderWatcherHandleBlockEventsWithWhitelistFill(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	setup := setupWhitelistScenario(t)
+
+	// Fill second order (the one whitelisted). This will generate two events:
+	// 1. A fill event for the second order
+	// 2. A transfer event of makerAsset from maker to taker
+	// If no whitelist specified, we would expect two order events:
+	// 1. Fill event for second order
+	// 2. Unfunded event for first order
+	// With only second order whitelisted however, only the first event is expected
+
+	opts := &bind.TransactOpts{
+		From:   takerAddress,
+		Signer: scenario.GetTestSignerFn(takerAddress),
+	}
+	orderWithoutExchangeAddress := setup.SecondSignedOrder.ConvertToOrderWithoutExchangeAddress()
+	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, big.NewInt(500), setup.SecondSignedOrder.Signature)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = setup.BlockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	blockEvents := <-setup.OrderWatcher.blockEventsChan
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	err = setup.OrderWatcher.handleBlockEvents(ctx, blockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect fill event for second order to be emitted
+	orderEvents := waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
+	secondOrderHash, err := setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(1 * time.Second):
+		// noop
+	}
+}
+
+func TestOrderWatcherHandleBlockEventsWithWhitelistCancel(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	setup := setupWhitelistScenario(t)
+
+	// Cancel boths orders. This will generate two cancel events.
+	// With only second order whitelisted, only the second cancel event is expected
+
+	allBlockEvents := []*blockwatch.Event{}
+
+	// Cancel first order
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	orderWithoutExchangeAddress := setup.FirstSignedOrder.ConvertToOrderWithoutExchangeAddress()
+	txn, err := exchange.CancelOrder(opts, orderWithoutExchangeAddress)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = setup.BlockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	blockEvents := <-setup.OrderWatcher.blockEventsChan
+	allBlockEvents = append(allBlockEvents, blockEvents...)
+
+	// Cancel second order
+	orderWithoutExchangeAddress = setup.SecondSignedOrder.ConvertToOrderWithoutExchangeAddress()
+	txn, err = exchange.CancelOrder(opts, orderWithoutExchangeAddress)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = setup.BlockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	blockEvents = <-setup.OrderWatcher.blockEventsChan
+	allBlockEvents = append(allBlockEvents, blockEvents...)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	err = setup.OrderWatcher.handleBlockEvents(ctx, allBlockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect cancel event for second order to be emitted
+	orderEvents := waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
+	secondOrderHash, err := setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(300 * time.Millisecond):
+		// noop
+	}
+}
+
+func TestOrderWatcherHandleBlockEventsWithWhitelistCancelUpTo(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	setup := setupWhitelistScenario(t)
+
+	// Cancel boths orders using cancelOrdersUpTo. This will generate two cancel events.
+	// With only second order whitelisted however, only the second cancel event is expected
+
+	// CancelUpTo both order
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	// Set target epoch to higher of both order salt values so both get cancelled
+	targetOrderEpoch := setup.FirstSignedOrder.Salt
+	if setup.SecondSignedOrder.Salt.Int64() > targetOrderEpoch.Int64() {
+		targetOrderEpoch = setup.SecondSignedOrder.Salt
+	}
+	txn, err := exchange.CancelOrdersUpTo(opts, targetOrderEpoch)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = setup.BlockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	blockEvents := <-setup.OrderWatcher.blockEventsChan
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	err = setup.OrderWatcher.handleBlockEvents(ctx, blockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect cancel event for second order to be emitted
+	orderEvents := waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
+	secondOrderHash, err := setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(300 * time.Millisecond):
+		// noop
+	}
+}
+
+func TestOrderWatcherHandleBlockEventsWithWhitelistRevalidation(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	setup := setupWhitelistScenario(t)
+
+	// Transfer maker balance causing both orders to be re-validated and found as unfunded
+	// With only the second order whitelisted however, only the second unfunded event is expected
+
+	callOpts := &bind.CallOpts{
+		From: makerAddress,
+	}
+	balance, err := zrx.BalanceOf(callOpts, makerAddress)
+
+	// Transfer makerAsset out of maker address
+	opts := &bind.TransactOpts{
+		From:   makerAddress,
+		Signer: scenario.GetTestSignerFn(makerAddress),
+	}
+	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, balance)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = setup.BlockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	blockEvents := <-setup.OrderWatcher.blockEventsChan
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	err = setup.OrderWatcher.handleBlockEvents(ctx, blockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect unfunded event for second order to be emitted
+	orderEvents := waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
+	secondOrderHash, err := setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(300 * time.Millisecond):
+		// noop
+	}
+}
+
+func TestOrderWatcherHandleBlockEventsWithWhitelistExpiredThenUnexpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	setup := setupWhitelistScenario(t)
+
+	// Move block timestamp forward so that both orders become expired. Since only the second order
+	// is whitelisted, only the second expired event is expected
+
+	latestExpiry := setup.FirstSignedOrder.ExpirationTimeSeconds
+	if setup.SecondSignedOrder.ExpirationTimeSeconds.Int64() > latestExpiry.Int64() {
+		latestExpiry = setup.SecondSignedOrder.ExpirationTimeSeconds
+	}
+	expirationTime := time.Unix(latestExpiry.Int64(), 0)
+
+	// Simulate a block found with a timestamp past expirationTime
+	latestBlock, err := setup.OrderWatcher.meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &miniheader.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: expirationTime.Add(1 * time.Minute),
+	}
+	expiringBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	err = setup.OrderWatcher.handleBlockEvents(ctx, expiringBlockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect expiry event for second order to be emitted
+	orderEvents := waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
+	secondOrderHash, err := setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(300 * time.Millisecond):
+		// noop
+	}
+
+	// Simulate a block re-org causing both orders to become unexpired. Check that only
+	// whitelisted order has `UNEXPIRED` event emitted
+	replacementBlockHash := common.HexToHash("0x2")
+	reorgBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Removed,
+			BlockHeader: nextBlock,
+		},
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    nextBlock.Parent,
+				Hash:      replacementBlockHash,
+				Number:    nextBlock.Number,
+				Logs:      []types.Log{},
+				Timestamp: expirationTime.Add(-2 * time.Hour),
+			},
+		},
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    replacementBlockHash,
+				Hash:      common.HexToHash("0x3"),
+				Number:    big.NewInt(0).Add(nextBlock.Number, big.NewInt(1)),
+				Logs:      []types.Log{},
+				Timestamp: expirationTime.Add(-1 * time.Hour),
+			},
+		},
+	}
+
+	err = setup.OrderWatcher.handleBlockEvents(ctx, reorgBlockEvents, setup.OrderWhitelist)
+	require.NoError(t, err)
+
+	// Expect expiry event for second order to be emitted
+	orderEvents = waitForOrderEvents(t, setup.OrderEventsChan, 1, 4*time.Second)
+	orderEvent = orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState)
+	secondOrderHash, err = setup.SecondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, orderEvent.OrderHash)
+
+	// Ensure no other order events come through
+	select {
+	case orderEvents = <-setup.OrderEventsChan:
+		t.Fatalf("Expected a single orderEvent to be fired when only one of two orders was whitelisted")
+	case <-time.After(300 * time.Millisecond):
+		// noop
+	}
+}
+
+type whitelistScenario struct {
+	OrderWatcher      *Watcher
+	BlockWatcher      *blockwatch.Watcher
+	FirstSignedOrder  *zeroex.SignedOrder
+	SecondSignedOrder *zeroex.SignedOrder
+	OrderWhitelist    map[common.Hash]interface{}
+	OrderEventsChan   chan []*zeroex.OrderEvent
+	Ctx               context.Context
+}
+
+// Whitelist scenario: Two orders with the same maker and makerAsset are watched by
+// OrderWatcher but only the second is whitelisted in call to `handleBlockEvents`
+func setupWhitelistScenario(t *testing.T) whitelistScenario {
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	startOrderWatcher := false
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	_ = blockWatcher.Subscribe(orderWatcher.blockEventsChan)
+
+	// Create and watch first order
+	firstSignedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, big.NewInt(1000), big.NewInt(1000))
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, firstSignedOrder)
+	<-orderWatcher.blockEventsChan
+
+	// Create and watch a second order with the same maker and makerAsset as the first
+	secondSignedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, big.NewInt(1000), big.NewInt(1000))
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, secondSignedOrder)
+	<-orderWatcher.blockEventsChan
+	secondOrderHash, err := secondSignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Create whitelist with one of the two orders whitelisted
+	orderWhitelist := map[common.Hash]interface{}{
+		secondOrderHash: struct{}{},
+	}
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	return whitelistScenario{
+		OrderWatcher:      orderWatcher,
+		BlockWatcher:      blockWatcher,
+		FirstSignedOrder:  firstSignedOrder,
+		SecondSignedOrder: secondSignedOrder,
+		OrderWhitelist:    orderWhitelist,
+		OrderEventsChan:   orderEventsChan,
+	}
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+	startOrderWatcher := true
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
 
 	// Start watching an order
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
@@ -940,7 +1324,7 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 
-func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB) (*blockwatch.Watcher, *Watcher) {
+func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, startOrderWatcher bool) (*blockwatch.Watcher, *Watcher) {
 	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	require.NoError(t, err)
@@ -978,11 +1362,13 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		require.NoError(t, err)
 	}
 
-	// Start OrderWatcher
-	go func() {
-		err := orderWatcher.Watch(ctx)
-		require.NoError(t, err)
-	}()
+	if startOrderWatcher {
+		// Start OrderWatcher
+		go func() {
+			err := orderWatcher.Watch(ctx)
+			require.NoError(t, err)
+		}()
+	}
 
 	return blockWatcher, orderWatcher
 }
