@@ -873,7 +873,50 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	}
 }
 
-func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) chan []*zeroex.OrderEvent {
+func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
+
+	// Subscribe to OrderWatcher
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	signedOrders := []*zeroex.SignedOrder{}
+	for i := 0; i < 2; i++ {
+		signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, big.NewInt(1000), big.NewInt(1000))
+		signedOrders = append(signedOrders, signedOrder)
+	}
+
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(signedOrders, false, constants.TestChainID)
+	require.Len(t, validationResults.Rejected, 0)
+	require.NoError(t, err)
+
+	orderEvents := <-orderEventsChan
+	require.Len(t, orderEvents, 2)
+	for _, orderEvent := range orderEvents {
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
+	}
+
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 2)
+}
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB)
