@@ -5,7 +5,7 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/golang:1.12.13-browsers
-      - image: 0xorg/ganache-cli:latest
+      - image: fabioberger123/ganache-cli:timeout
         environment:
             VERSION: 4.3.3
     resource_class: large
