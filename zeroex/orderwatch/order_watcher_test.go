@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,6 +54,7 @@ var (
 var (
 	rpcClient           *ethrpc.Client
 	ethClient           *ethclient.Client
+	ethRPCClient        ethrpcclient.Client
 	zrx                 *wrappers.ZRXToken
 	dummyERC721Token    *wrappers.DummyERC721Token
 	erc1155Mintable     *wrappers.ERC1155Mintable
@@ -73,6 +75,11 @@ func init() {
 func init() {
 	var err error
 	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	rateLimiter := ratelimit.NewFakeLimiter()
+	ethRPCClient, err = ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	if err != nil {
 		panic(err)
 	}
@@ -733,7 +740,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
 	startOrderWatcher := true
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
@@ -830,7 +837,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		cancel()
 	}()
 	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
 	orderWatcher.maxOrders = 20
 
 	// create and watch maxOrders orders
@@ -890,7 +897,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	defer cancelFn()
 
 	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -919,6 +926,91 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
 	require.Len(t, orders, 2)
+}
+
+// Scenario: An order is sent to OrderWatcher for validation and storage. The order validation `eth_call`
+// takes a long time, during which a fill for this order was made. Once the order validation completes,
+// we expect to process blocks missed during validation and for the fill to get emitted.
+func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyEventsCatchup(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+	startOrderWatcher := true
+	blockingChan := make(chan struct{})
+	blockingCallEthRPCClient, err := NewBlockingCallEthRPCClient(ethRPCClient, blockingChan)
+	require.NoError(t, err)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB, startOrderWatcher)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+
+	// Kick off adding order to OrderWatcher within a separate go-routine so that we can block on the validation
+	// `eth_call`, simulating network latency, and while it's blocked, fill the order and process the block containing
+	// the fill
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
+	}()
+
+	// Partially fill order
+	opts := &bind.TransactOpts{
+		From:   takerAddress,
+		Signer: scenario.GetTestSignerFn(takerAddress),
+	}
+	orderWithoutExchangeAddress := signedOrder.ConvertToOrderWithoutExchangeAddress()
+	partialFillAmount := big.NewInt(0).Div(wethAmount, big.NewInt(2))
+	txn, err := exchange.FillOrder(opts, orderWithoutExchangeAddress, partialFillAmount, signedOrder.Signature)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	// Make sure no order events were emitted
+	select {
+	case _ = <-orderEventsChan:
+		t.Fatalf("No order events expected since this order isn't being watched yet")
+	case <-time.After(250 * time.Millisecond):
+		// noop
+	}
+
+	// Unblock validation `eth_call`
+	blockingChan <- struct{}{}
+
+	// Wait for adding order to OrderWatcher to complete
+	wg.Wait()
+
+	// Expect added AND fill event for order to be emitted, due to the OrderWatcher
+	// backfilling missed block events past while it was validating the order
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 4*time.Second)
+	firstOrderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderAdded, firstOrderEvent.EndState)
+	secondOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, firstOrderEvent.OrderHash)
+
+	secondOrderEvent := orderEvents[1]
+	assert.Equal(t, zeroex.ESOrderFilled, secondOrderEvent.EndState)
+	secondOrderHash, err = signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, secondOrderHash, secondOrderEvent.OrderHash)
 }
 
 func TestOrderWatcherHandleBlockEventsWithWhitelistFill(t *testing.T) {
@@ -1268,7 +1360,7 @@ func setupWhitelistScenario(t *testing.T) whitelistScenario {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	startOrderWatcher := false
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
 	_ = blockWatcher.Subscribe(orderWatcher.blockEventsChan)
 
 	// Create and watch first order
@@ -1303,7 +1395,7 @@ func setupWhitelistScenario(t *testing.T) whitelistScenario {
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
 
 	// Start watching an order
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
@@ -1324,10 +1416,7 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 
-func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, startOrderWatcher bool) (*blockwatch.Watcher, *Watcher) {
-	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
-	require.NoError(t, err)
+func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, meshDB *meshdb.MeshDB, startOrderWatcher bool) (*blockwatch.Watcher, *Watcher) {
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
