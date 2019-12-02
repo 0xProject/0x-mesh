@@ -27,7 +27,8 @@ var (
 func TestDBStackPushPeekPop(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	stack := New(meshDB, 10)
+	stack, err := New(meshDB, 10)
+	require.NoError(t, err)
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
@@ -58,7 +59,8 @@ func TestDBStackPushPeekPop(t *testing.T) {
 func TestDBStackReset(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	stack := New(meshDB, 10)
+	stack, err := New(meshDB, 10)
+	require.NoError(t, err)
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
@@ -77,7 +79,8 @@ func TestDBStackReset(t *testing.T) {
 func TestDBStackCheckpoint(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	stack := New(meshDB, 10)
+	stack, err := New(meshDB, 10)
+	require.NoError(t, err)
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
