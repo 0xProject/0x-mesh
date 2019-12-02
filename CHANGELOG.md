@@ -66,7 +66,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Features ✅ 
 
-- Re-enabled bandwidth-based peer banning with a workaround to deal with erroneous spikes [#478](https://github.com/0xProject/0x-mesh/pull/478).
 - Added an `UNEXPIRED` order event kind which is emitted for orders that were previously considered expired but due to a block-reorg causing the latest block timestamp to be earlier than the previous latest block timestamp, are no longer expired. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 - Added support for decoding Axie Infinity `Transfer` and `Approve` ERC721 events which differ from the ERC721 standard. ([#494](https://github.com/0xProject/0x-mesh/pull/494))
 
