@@ -30,13 +30,18 @@ type DBStack struct {
 }
 
 // New instantiates a new DBStack
-func New(meshDB *meshdb.MeshDB, retentionLimit int) *DBStack {
-	return &DBStack{
+func New(meshDB *meshdb.MeshDB, retentionLimit int) (*DBStack, error) {
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return nil, err
+	}
+	d := &DBStack{
 		meshDB:      meshDB,
 		limit:       retentionLimit,
-		miniHeaders: []*miniheader.MiniHeader{},
+		miniHeaders: miniHeaders,
 		updates:     []*update{},
 	}
+	return d, nil
 }
 
 // Peek returns the top of the stack

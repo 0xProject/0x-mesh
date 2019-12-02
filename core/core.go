@@ -235,7 +235,10 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
-	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	if err != nil {
+		return nil, err
+	}
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
