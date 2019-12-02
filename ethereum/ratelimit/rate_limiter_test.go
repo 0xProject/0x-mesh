@@ -25,7 +25,7 @@ var (
 	defaultCheckpointInterval             = 1 * time.Minute
 	expectedMaxElapsedTimeForFirstRequest = 1 * time.Millisecond
 	expectedDeltaMinExpectedDelay         = 20 * time.Millisecond
-	expectedDeltaMaxExpectedDelay         = 15 * time.Millisecond
+	expectedDeltaMaxExpectedDelay         = 20 * time.Millisecond
 )
 
 // Scenario1: Mesh starts X seconds after UTC midnight (start of next UTC day) and
