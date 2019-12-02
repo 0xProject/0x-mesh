@@ -291,13 +291,21 @@ type OrderEventEndState string
 
 // OrderEventEndState values
 const (
-	ESInvalid          = OrderEventEndState("INVALID")
-	ESOrderAdded       = OrderEventEndState("ADDED")
-	ESOrderFilled      = OrderEventEndState("FILLED")
+	// INVALID event is never emitted. It is here to discern between a declared but uninitialized OrderEventEndState
+	ESInvalid = OrderEventEndState("INVALID")
+	// An order was successfully added to the Mesh node
+	ESOrderAdded = OrderEventEndState("ADDED")
+	// An order was filled for a partial amount
+	ESOrderFilled = OrderEventEndState("FILLED")
+	// An order was fully filled such that it's remaining fillableTakerAssetAmount is 0
 	ESOrderFullyFilled = OrderEventEndState("FULLY_FILLED")
-	ESOrderCancelled   = OrderEventEndState("CANCELLED")
-	ESOrderExpired     = OrderEventEndState("EXPIRED")
-	ESOrderUnexpired   = OrderEventEndState("UNEXPIRED")
+	// An order was cancelled on-chain
+	ESOrderCancelled = OrderEventEndState("CANCELLED")
+	// An order expires according to the latest block timestamp
+	ESOrderExpired = OrderEventEndState("EXPIRED")
+	// An order is no longer expired. This can happen if a block re-org causes the latest
+	// block timestamp to decline below the order's expirationTimestamp (rare and usually short-lived)
+	ESOrderUnexpired = OrderEventEndState("UNEXPIRED")
 	// An order becomes unfunded if the maker transfers the balance / changes their
 	// allowance backing an order
 	ESOrderBecameUnfunded = OrderEventEndState("UNFUNDED")
