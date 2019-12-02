@@ -49,11 +49,15 @@ make deps
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli):
+[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli). In these commands,
+`$GANACHE_VERSION` should be set to the version of ganache-cli that is used in the mesh project's
+CI found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10):
 
 ```
 docker pull 0xorg/ganache-cli
-docker run -ti -p 8545:8545 -e VERSION=4.3.0 0xorg/ganache-cli
+
+# Run the $GANACHE_VERSION image of ganache-cli.
+docker run -ti -p 8545:8545 -e VERSION=$GANACHE_VERSION 0xorg/ganache-cli
 ```
 
 There are various Make targets for running tests:
@@ -71,6 +75,19 @@ make test-wasm-browser
 # Run tests in all available environments
 make test-all
 ```
+
+### Test Issues
+Some of the tests will open a fairly large number of open files. The default allowance
+for open files on most operating systems is 64, which will cause these tests to fail. The
+allowance of open files can be configured using the following command:
+
+```bash
+# Increase number of open files that are tolerated to 2048 (a big number)
+ulimit -S -n 2048
+```
+
+It may be convenient to add this line to the `.bashrc` (or `.bash_profile` for MacOs users)
+file so that the change will go into effect whenever a new shell is created.
 
 ## Running the Linters
 
