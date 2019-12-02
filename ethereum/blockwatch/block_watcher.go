@@ -313,6 +313,12 @@ func (w *Watcher) SyncToLatestBlock() error {
 		if err != nil {
 			return err
 		}
+		w.mu.Lock()
+		if !w.didProcessABlock {
+			w.didProcessABlock = true
+			close(w.AtLeastOneBlockProcessed)
+		}
+		w.mu.Unlock()
 		w.blockFeed.Send(allEvents)
 	}
 
