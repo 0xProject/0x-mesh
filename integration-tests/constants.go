@@ -11,9 +11,11 @@ const (
 	ethereumChainID = 1337
 	rpcPort         = 60501
 
-	standaloneDataDirPrefix     = "./data/standalone-"
-	standaloneRPCEndpointPrefix = "ws://localhost:"
-	standaloneRPCAddrPrefix     = "localhost:"
+	standaloneDataDirPrefix                    = "./data/standalone-"
+	standaloneRPCEndpointPrefix                = "ws://localhost:"
+	standaloneRPCAddrPrefix                    = "localhost:"
+	standaloneBlockPollingInterval             = "200ms"
+	standaloneEthereumRPCMaxRequestsPer24HrUtc = "550000"
 
 	// Various config options/information for the bootstrap node. The private key
 	// for the bootstrap node is checked in to version control so we know it's
