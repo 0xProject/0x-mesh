@@ -201,9 +201,14 @@ func (w *Watcher) syncChain() error {
 	if err != nil {
 		return err
 	}
+	latestBlockNumber := latestHeader.Number.Int64()
 	lastStoredHeader, err := w.stack.Peek()
 	if err != nil {
 		return err
+	}
+	var lastStoredBlockNumber int64
+	if lastStoredHeader != nil {
+		lastStoredBlockNumber = lastStoredHeader.Number.Int64()
 	}
 
 	var numBlocksToFetch int
@@ -212,10 +217,10 @@ func (w *Watcher) syncChain() error {
 		numBlocksToFetch = 1
 	} else {
 		// Noop if already caught up or ahead of latest block returned from Ethereum node
-		if latestHeader.Number.Int64() <= lastStoredHeader.Number.Int64() {
+		if latestBlockNumber <= lastStoredBlockNumber {
 			return nil
 		}
-		numBlocksToFetch = int(latestHeader.Number.Int64() - lastStoredHeader.Number.Int64())
+		numBlocksToFetch = int(latestBlockNumber - lastStoredBlockNumber)
 	}
 
 	allEvents := []*Event{}
