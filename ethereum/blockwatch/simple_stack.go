@@ -2,6 +2,7 @@ package blockwatch
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 )
@@ -23,6 +24,7 @@ type SimpleStack struct {
 	limit       int
 	miniHeaders []*miniheader.MiniHeader
 	updates     []*update
+	mu          sync.Mutex
 }
 
 // NewSimpleStack instantiates a new SimpleStack
@@ -36,6 +38,9 @@ func NewSimpleStack(retentionLimit int) *SimpleStack {
 
 // Peek returns the top of the stack
 func (s *SimpleStack) Peek() (*miniheader.MiniHeader, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if len(s.miniHeaders) == 0 {
 		return nil, nil
 	}
@@ -44,6 +49,13 @@ func (s *SimpleStack) Peek() (*miniheader.MiniHeader, error) {
 
 // Pop returns the top of the stack and removes it from the stack
 func (s *SimpleStack) Pop() (*miniheader.MiniHeader, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.pop()
+}
+
+func (s *SimpleStack) pop() (*miniheader.MiniHeader, error) {
 	if len(s.miniHeaders) == 0 {
 		return nil, nil
 	}
@@ -58,6 +70,13 @@ func (s *SimpleStack) Pop() (*miniheader.MiniHeader, error) {
 
 // Push adds a miniheader.MiniHeader to the stack
 func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.push(miniHeader)
+}
+
+func (s *SimpleStack) push(miniHeader *miniheader.MiniHeader) error {
 	if len(s.miniHeaders) == s.limit {
 		s.miniHeaders = s.miniHeaders[1:]
 	}
@@ -74,11 +93,17 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 
 // PeekAll returns all the miniHeaders currently in the stack
 func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	return s.miniHeaders, nil
 }
 
 // Clear removes all items from the stack
 func (s *SimpleStack) Clear() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.miniHeaders = []*miniheader.MiniHeader{}
 	return nil
 }
@@ -87,21 +112,27 @@ func (s *SimpleStack) Clear() error {
 // call to `Reset()` will reset any subsequent changes back to the state
 // of the stack at the time of the latest checkpoint.
 func (s *SimpleStack) Checkpoint() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.updates = []*update{}
 	return nil
 }
 
 // Reset resets the stack with the contents from the latest checkpoint
 func (s *SimpleStack) Reset() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for i := len(s.updates) - 1; i >= 0; i-- {
 		u := s.updates[i]
 		switch u.Type {
 		case pop:
-			if err := s.Push(u.MiniHeader); err != nil {
+			if err := s.push(u.MiniHeader); err != nil {
 				return err
 			}
 		case push:
-			if _, err := s.Pop(); err != nil {
+			if _, err := s.pop(); err != nil {
 				return err
 			}
 		default:
