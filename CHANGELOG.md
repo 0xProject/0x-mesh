@@ -2,6 +2,10 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.2.0-beta-0xv3
+
+- Update V3 contract addresses for Ganache snapshot. ([#569](https://github.com/0xProject/0x-mesh/pull/569))
+
 ## v7.1.1-beta-0xv3
 
 ### Bug fixes 🐞
