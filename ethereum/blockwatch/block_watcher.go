@@ -285,7 +285,7 @@ func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, e
 	// This ensures block events always leave the node further ahead, preventing unnecessary thrash
 	// during block-reorgs (which tend to cluster)
 	newLatestHeader := events[len(events)-1].BlockHeader
-	return newLatestHeader.Number.Int64() <= lastStoredHeader.Number.Int64()
+	return newLatestHeader.Number.Cmp(lastStoredHeader.Number) <= 0
 }
 
 func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
