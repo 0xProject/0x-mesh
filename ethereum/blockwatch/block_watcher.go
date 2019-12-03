@@ -239,21 +239,24 @@ func (w *Watcher) syncChain() error {
 		// stored and fetch it
 		nextHeader := latestHeader
 		if numBlocksToFetch != 1 {
-			lastStoredHeader, syncErr := w.stack.Peek()
-			if syncErr != nil {
+			lastStoredHeader, err := w.stack.Peek()
+			if err != nil {
+				syncErr = err
 				break
 			}
 			nextBlockNumber := big.NewInt(0).Add(lastStoredHeader.Number, big.NewInt(1))
-			nextHeader, syncErr = w.client.HeaderByNumber(nextBlockNumber)
-			if syncErr != nil {
+			nextHeader, err = w.client.HeaderByNumber(nextBlockNumber)
+			if err != nil {
+				syncErr = err
 				break
 			}
 		}
 
 		var events []*Event
-		events, syncErr = w.buildCanonicalChain(nextHeader, events)
+		events, err = w.buildCanonicalChain(nextHeader, events)
 		allEvents = append(allEvents, events...)
-		if syncErr != nil {
+		if err != nil {
+			syncErr = err
 			break
 		}
 	}
