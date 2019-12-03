@@ -14,6 +14,7 @@ import (
 var _ p2p.MessageHandler = &App{}
 
 type orderSelector struct {
+	topic      string
 	nextOffset int
 	db         *meshdb.MeshDB
 }
@@ -92,7 +93,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 		log.WithFields(map[string]interface{}{
 			"order": order,
 		}).Trace("selected order to share")
-		encoded, err := encodeOrder(order.SignedOrder)
+		encoded, err := encodeOrderMessage(orderSelector.topic, order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +119,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		order, err := decodeOrder(msg.Data)
+		order, err := decodeOrderMessage(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,

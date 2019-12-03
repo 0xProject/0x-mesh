@@ -40,11 +40,13 @@ var (
 	signedOrderSchemaLoader = jsonschema.NewStringLoader(`{"id":"/signedOrder","allOf":[{"$ref":"/order"},{"properties":{"signature":{"$ref":"/hex"}},"required":["signature"]}]}`)
 
 	// Root schemas
-	rootOrderSchemaLoader = jsonschema.NewStringLoader(`{"id":"/rootOrder","allOf":[{"$ref":"/customOrder"},{"$ref":"/signedOrder"}]}`)
-	// TODO(albrow): Add Topics as a required field for messages.
-	rootMessageSchemaLoader = jsonschema.NewStringLoader(`{"id":"/rootMessage","properties":{"MessageType":{"type":"string"},"Order":{"$ref":"/rootOrder"}},"required":["MessageType","Order"]}`)
+	rootOrderSchemaLoader        = jsonschema.NewStringLoader(`{"id":"/rootOrder","allOf":[{"$ref":"/customOrder"},{"$ref":"/signedOrder"}]}`)
+	rootOrderMessageSchemaLoader = jsonschema.NewStringLoader(`{"id":"/rootOrderMessage","properties":{"messageType":{"type":"string","pattern":"order"},"order":{"$ref":"/rootOrder"},"topics":{"type":"array","minItems":1,"items":{"type":"string"}}},"required":["messageType","order","topics"]}`)
+)
 
-	// Default schema for /customOrder
+const (
+	// DefaultCustomOrderSchema is the default schema for /customOrder. It
+	// includes all 0x orders and doesn't add any additional requirements.
 	DefaultCustomOrderSchema = `{}`
 )
 
@@ -54,6 +56,18 @@ var builtInSchemas = []jsonschema.JSONLoader{
 	hexSchemaLoader,
 	orderSchemaLoader,
 	signedOrderSchemaLoader,
+}
+
+func GetDefaultFilter(chainID int) (*Filter, error) {
+	return New(chainID, DefaultCustomOrderSchema)
+}
+
+func GetDefaultTopic(chainID int) (string, error) {
+	defaultFilter, err := GetDefaultFilter(chainID)
+	if err != nil {
+		return "", err
+	}
+	return defaultFilter.Topic(), nil
 }
 
 type Filter struct {
@@ -79,7 +93,7 @@ func New(chainID int, customOrderSchema string) (*Filter, error) {
 	if err := messageLoader.AddSchemas(rootOrderSchemaLoader); err != nil {
 		return nil, err
 	}
-	rootMessageSchema, err := messageLoader.Compile(rootMessageSchemaLoader)
+	rootOrderMessageSchema, err := messageLoader.Compile(rootOrderMessageSchemaLoader)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +101,7 @@ func New(chainID int, customOrderSchema string) (*Filter, error) {
 		chainID:              chainID,
 		rawCustomOrderSchema: customOrderSchema,
 		orderSchema:          rootOrderSchema,
-		messageSchema:        rootMessageSchema,
+		messageSchema:        rootOrderMessageSchema,
 	}, nil
 }
 
@@ -156,7 +170,7 @@ func (v *Filter) generateTopic() string {
 	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, v.chainID, base64EncodedSchema)
 }
 
-func (f *Filter) MatchMessageJSON(messageJSON []byte) (bool, error) {
+func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	result, err := f.messageSchema.Validate(jsonschema.NewBytesLoader(messageJSON))
 	if err != nil {
 		return false, err
@@ -179,9 +193,9 @@ var _ pubsub.Validator = (&Filter{}).ValidatePubSubMessage
 // ValidatePubSubMessage is an implementation of pubsub.Validator and will
 // return true if the contents of the message pass the message JSON Schema.
 func (f *Filter) ValidatePubSubMessage(ctx context.Context, sender peer.ID, msg *pubsub.Message) bool {
-	isValid, err := f.MatchMessageJSON(msg.Data)
+	isValid, err := f.MatchOrderMessageJSON(msg.Data)
 	if err != nil {
-		log.WithError(err).Error("MatchMessageJSON returned an error")
+		log.WithError(err).Error("MatchOrderMessageJSON returned an error")
 		return false
 	}
 	return isValid

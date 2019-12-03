@@ -8,18 +8,20 @@ import (
 )
 
 type orderMessage struct {
-	MessageType string
-	Order       *zeroex.SignedOrder
+	MessageType string              `json:"messageType"`
+	Order       *zeroex.SignedOrder `json:"order"`
+	Topics      []string            `json:"topics"`
 }
 
-func encodeOrder(order *zeroex.SignedOrder) ([]byte, error) {
+func encodeOrderMessage(topic string, order *zeroex.SignedOrder) ([]byte, error) {
 	return json.Marshal(orderMessage{
 		MessageType: "order",
 		Order:       order,
+		Topics:      []string{topic},
 	})
 }
 
-func decodeOrder(data []byte) (*zeroex.SignedOrder, error) {
+func decodeOrderMessage(data []byte) (*zeroex.SignedOrder, error) {
 	var orderMessage orderMessage
 	if err := json.Unmarshal(data, &orderMessage); err != nil {
 		return nil, err

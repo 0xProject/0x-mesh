@@ -149,19 +149,21 @@ func (app *App) validateOrders(orders []*zeroex.SignedOrder) (*ordervalidator.Va
 }
 
 func validateMessageSize(message *p2p.Message) error {
-	if len(message.Data) > constants.MaxOrderSizeInBytes {
-		return errMaxSize
-	}
+	// TODO(albrow): split up max order size and max message size.
+	// if len(message.Data) > constants.MaxOrderSizeInBytes {
+	// 	return errMaxSize
+	// }
 	return nil
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
-	encoded, err := encodeOrder(order)
-	if err != nil {
-		return err
-	}
-	if len(encoded) > constants.MaxOrderSizeInBytes {
-		return errMaxSize
-	}
+	// TODO(albrow): split up max order size and max message size.
+	// encoded, err := encodeOrder(order)
+	// if err != nil {
+	// 	return err
+	// }
+	// if len(encoded) > constants.MaxOrderSizeInBytes {
+	// 	return errMaxSize
+	// }
 	return nil
 }

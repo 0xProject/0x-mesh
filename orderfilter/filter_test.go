@@ -186,7 +186,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
+		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
 		filter, err := New(tc.chainID, tc.customOrderSchema)
 		require.NoError(t, err)
 		actualResult, err := filter.ValidateOrderJSON(tc.orderJSON)
@@ -204,6 +204,77 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 				assert.Fail(t, fmt.Sprintf("missing expected error: %q", expectedErr), tcInfo)
 			}
 		}
+	}
+}
+
+func TestFilterMatchOrderMessageJSON(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		note              string
+		chainID           int
+		customOrderSchema string
+		orderMessageJSON  []byte
+		expectedResult    bool
+	}{
+		{
+			note:              "happy path",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    true,
+		},
+		{
+			note:              "missing topics",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"}}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "empty topics",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":[]}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "missing message type",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "wrong message type",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"wrong","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "missing order",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "order with wrong exchange address",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x0000000000000000000000000000000000000000","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    false,
+		},
+	}
+
+	for i, tc := range testCases {
+		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
+		filter, err := New(tc.chainID, tc.customOrderSchema)
+		require.NoError(t, err)
+		actualResult, err := filter.MatchOrderMessageJSON(tc.orderMessageJSON)
+		require.NoError(t, err, tc.customOrderSchema)
+		assert.Equal(t, tc.expectedResult, actualResult, tcInfo)
 	}
 }
 
@@ -255,8 +326,8 @@ func TestFilterTopic(t *testing.T) {
 }
 
 func TestDefaultOrderSchemaTopic(t *testing.T) {
-	defaultFilter, err := New(1337, DefaultCustomOrderSchema)
+	defaultTopic, err := GetDefaultTopic(1337)
 	require.NoError(t, err)
 	expectedTopic := "/0x-orders/version/3/chain/1337/schema/e30="
-	assert.Equal(t, expectedTopic, defaultFilter.Topic(), "the topic for the default filter should not change")
+	assert.Equal(t, expectedTopic, defaultTopic, "the topic for the default filter should not change")
 }

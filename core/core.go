@@ -289,6 +289,7 @@ func New(config Config) (*App, error) {
 	// Initialize remaining fields.
 	snapshotExpirationWatcher := expirationwatch.New()
 	orderSelector := &orderSelector{
+		topic:      orderFilter.Topic(),
 		nextOffset: 0,
 		db:         meshDB,
 	}
@@ -780,7 +781,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encodeOrder(order)
+	encoded, err := encodeOrderMessage(app.orderFilter.Topic(), order)
 	if err != nil {
 		return err
 	}
