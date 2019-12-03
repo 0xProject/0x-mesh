@@ -274,11 +274,10 @@ func (w *Watcher) syncChain() error {
 			return err
 		}
 	} else {
-		checkpointID, err := w.stack.Checkpoint()
+		w.stackCheckpointID, err = w.stack.Checkpoint()
 		if err != nil {
 			return err
 		}
-		w.stackCheckpointID = checkpointID
 		w.blockFeed.Send(allEvents)
 	}
 

@@ -58,7 +58,8 @@ func (d *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	return d.simpleStack.PeekAll()
 }
 
-// Clear removes all items from the stack and the backing DB
+// Clear removes all items from the stack and the backing DB as well
+// as the checkpoint if one exists
 func (d *DBStack) Clear() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -78,9 +79,10 @@ func (d *DBStack) Reset(checkpointID int) error {
 }
 
 // Checkpoint checkpoints the changes to the stack such that a subsequent
-// call to `Reset()` will reset any subsequent changes back to the state
-// of the stack at the time of the latest checkpoint. The checkpointed state
-// is also persisted to the DB.
+// call to `Reset(checkpointID)` with the checkpointID returned from this
+// call will reset any subsequent changes back to the state of the stack
+// at the time of this checkpoint. The checkpointed state is also persisted
+// to the DB.
 func (d *DBStack) Checkpoint() (int, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()

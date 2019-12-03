@@ -48,8 +48,6 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		// An error might occur, but the expected events and retained blocks should still
-		// be as expected
 		err = watcher.syncChain()
 		if strings.HasPrefix(scenarioLabel, "ERROR") {
 			require.Error(t, err)
