@@ -81,5 +81,5 @@ const MaxOrderSizeInBytes = 8192
 // 128 blocks ago on non-archive nodes.
 const MaxBlocksStoredInNonArchiveNode = 128
 
-// ErrMaxSize is the error emitted when a message exceeds it's max size
-var ErrMaxSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
+// ErrMaxMessageSize is the error emitted when a message exceeds it's max size
+var ErrMaxMessageSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxOrderSizeInBytes)

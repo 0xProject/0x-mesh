@@ -1343,7 +1343,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 			continue
 		}
 		if err := validateOrderSize(order); err != nil {
-			if err == constants.ErrMaxSize {
+			if err == constants.ErrMaxMessageSize {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
@@ -1526,7 +1526,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 		return err
 	}
 	if len(encoded) > constants.MaxOrderSizeInBytes {
-		return constants.ErrMaxSize
+		return constants.ErrMaxMessageSize
 	}
 	return nil
 }
