@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,7 +50,12 @@ func TestWatcher(t *testing.T) {
 
 		// An error might occur, but the expected events and retained blocks should still
 		// be as expected
-		_ = watcher.syncChain()
+		err = watcher.syncChain()
+		if strings.HasPrefix(scenarioLabel, "ERROR") {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
 
 		retainedBlocks, err := watcher.GetAllRetainedBlocks()
 		require.NoError(t, err)
