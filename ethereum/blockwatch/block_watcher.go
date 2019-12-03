@@ -223,6 +223,14 @@ func (w *Watcher) syncChain() error {
 		numBlocksToFetch = int(latestBlockNumber - lastStoredBlockNumber)
 	}
 
+	if numBlocksToFetch >= constants.MaxBlocksStoredInNonArchiveNode {
+		return fmt.Errorf(
+			"cannot sync blocks more than or equal to %d blocks behind latest (%d). Your `BLOCK_POLLING_INTERVAL` is probably set too high",
+			constants.MaxBlocksStoredInNonArchiveNode,
+			numBlocksToFetch,
+		)
+	}
+
 	allEvents := []*Event{}
 	var syncErr error
 	for i := 0; i < numBlocksToFetch; i++ {
