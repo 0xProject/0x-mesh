@@ -253,3 +253,10 @@ func TestFilterTopic(t *testing.T) {
 		assert.Empty(t, result.Errors(), "filter generated from topic should validate the same order\n"+tcInfo)
 	}
 }
+
+func TestDefaultOrderSchemaTopic(t *testing.T) {
+	defaultFilter, err := New(1337, DefaultCustomOrderSchema)
+	require.NoError(t, err)
+	expectedTopic := "/0x-orders/version/3/chain/1337/schema/e30="
+	assert.Equal(t, expectedTopic, defaultFilter.Topic(), "the topic for the default filter should not change")
+}
