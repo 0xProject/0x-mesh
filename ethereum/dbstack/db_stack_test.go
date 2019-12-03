@@ -62,73 +62,72 @@ func TestDBStackPushPeekPop(t *testing.T) {
 	assert.Len(t, miniHeaders, expectedLen)
 }
 
-func TestDBStackReset(t *testing.T) {
+func TestDBStackErrorIfPushTwoHeadersWithSameNumber(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	stack, err := New(meshDB, 10)
 	require.NoError(t, err)
+	// Push miniHeaderOne
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
-	err = stack.Push(miniHeaderTwo)
+	// Push miniHeaderOne again
+	err = stack.Push(miniHeaderOne)
+	assert.Error(t, err)
+}
+
+func TestDBStackErrorIfResetWithoutCheckpointFirst(t *testing.T) {
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	stack, err := New(meshDB, 10)
 	require.NoError(t, err)
 
-	err = stack.Reset()
+	checkpointID := 123
+	err = stack.Reset(checkpointID)
+	require.Error(t, err)
+}
+
+func TestDBStackClear(t *testing.T) {
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	stack, err := New(meshDB, 10)
 	require.NoError(t, err)
 
-	miniHeader, err := stack.Pop()
+	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
-	assert.Nil(t, miniHeader)
+
+	miniHeader, err := stack.Peek()
+	require.NoError(t, err)
+	assert.Equal(t, miniHeaderOne, miniHeader)
+
+	err = stack.Clear()
+	require.NoError(t, err)
+
+	miniHeader, err = stack.Peek()
+	require.NoError(t, err)
+	require.Nil(t, miniHeader)
 
 	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	require.NoError(t, err)
 	assert.Len(t, miniHeaders, 0)
 }
 
-func TestDBStackCheckpointThenReset(t *testing.T) {
+func TestDBStackErrorIfResetWithOldCheckpoint(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	stack, err := New(meshDB, 10)
 	require.NoError(t, err)
-	err = stack.Push(miniHeaderOne)
+
+	checkpointIDOne, err := stack.Checkpoint()
 	require.NoError(t, err)
 
-	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
-	require.NoError(t, err)
-	assert.Len(t, miniHeaders, 0)
-
-	err = stack.Reset()
+	checkpointIDTwo, err := stack.Checkpoint()
 	require.NoError(t, err)
 
-	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
-	require.NoError(t, err)
-	assert.Len(t, miniHeaders, 0)
+	err = stack.Reset(checkpointIDOne)
+	require.Error(t, err)
 
-	err = stack.Push(miniHeaderTwo)
+	err = stack.Reset(checkpointIDTwo)
 	require.NoError(t, err)
-
-	err = stack.Checkpoint()
-	require.NoError(t, err)
-
-	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
-	require.NoError(t, err)
-	assert.Len(t, miniHeaders, 1)
-	assert.Equal(t, miniHeaderTwo, miniHeaders[0])
-
-	miniHeader, err := stack.Pop()
-	require.NoError(t, err)
-	assert.Equal(t, miniHeader, miniHeaderTwo)
-
-	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
-	require.NoError(t, err)
-	assert.Len(t, miniHeaders, 1)
-	assert.Equal(t, miniHeaderTwo, miniHeaders[0])
-
-	err = stack.Checkpoint()
-	require.NoError(t, err)
-
-	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
-	require.NoError(t, err)
-	assert.Len(t, miniHeaders, 0)
 }
 
 func TestDBStackCheckpoint(t *testing.T) {
@@ -145,7 +144,7 @@ func TestDBStackCheckpoint(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, miniHeaders, 0)
 
-	err = stack.Checkpoint()
+	_, err = stack.Checkpoint()
 	require.NoError(t, err)
 
 	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
@@ -168,7 +167,7 @@ func TestDBStackCheckpoint(t *testing.T) {
 	assert.Equal(t, miniHeaderOne, miniHeaders[0])
 	assert.Equal(t, miniHeaderTwo, miniHeaders[1])
 
-	err = stack.Checkpoint()
+	_, err = stack.Checkpoint()
 	require.NoError(t, err)
 
 	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
@@ -189,7 +188,7 @@ func TestDBStackCheckpointAfterSameHeaderPushedAndPopped(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, miniHeaderOne, miniHeader)
 
-	err = stack.Checkpoint()
+	_, err = stack.Checkpoint()
 	require.NoError(t, err)
 
 	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
@@ -213,7 +212,7 @@ func TestDBStackCheckpointAfterSameHeaderPushedThenPoppedThenPushed(t *testing.T
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
-	err = stack.Checkpoint()
+	_, err = stack.Checkpoint()
 	require.NoError(t, err)
 
 	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
@@ -222,15 +221,53 @@ func TestDBStackCheckpointAfterSameHeaderPushedThenPoppedThenPushed(t *testing.T
 	assert.Equal(t, miniHeaderOne, miniHeaders[0])
 }
 
-func TestDBStackErrorIfPushTwoHeadersWithSameNumber(t *testing.T) {
+func TestDBStackCheckpointThenReset(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	stack, err := New(meshDB, 10)
 	require.NoError(t, err)
-	// Push miniHeaderOne
+
+	checkpointID, err := stack.Checkpoint()
+	require.NoError(t, err)
+
 	err = stack.Push(miniHeaderOne)
 	require.NoError(t, err)
-	// Push miniHeaderOne again
-	err = stack.Push(miniHeaderOne)
-	assert.Error(t, err)
+
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	assert.Len(t, miniHeaders, 0)
+
+	err = stack.Reset(checkpointID)
+	require.NoError(t, err)
+
+	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	assert.Len(t, miniHeaders, 0)
+
+	err = stack.Push(miniHeaderTwo)
+	require.NoError(t, err)
+
+	checkpointID, err = stack.Checkpoint()
+	require.NoError(t, err)
+
+	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	assert.Len(t, miniHeaders, 1)
+	assert.Equal(t, miniHeaderTwo, miniHeaders[0])
+
+	miniHeader, err := stack.Pop()
+	require.NoError(t, err)
+	assert.Equal(t, miniHeader, miniHeaderTwo)
+
+	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	assert.Len(t, miniHeaders, 1)
+	assert.Equal(t, miniHeaderTwo, miniHeaders[0])
+
+	checkpointID, err = stack.Checkpoint()
+	require.NoError(t, err)
+
+	miniHeaders, err = meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	assert.Len(t, miniHeaders, 0)
 }

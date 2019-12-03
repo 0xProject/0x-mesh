@@ -68,18 +68,18 @@ func (d *DBStack) Clear() error {
 }
 
 // Reset resets the in-memory stack with the contents from the latest checkpoint
-func (d *DBStack) Reset() error {
+func (d *DBStack) Reset(checkpointID int) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	return d.simpleStack.Reset()
+	return d.simpleStack.Reset(checkpointID)
 }
 
 // Checkpoint checkpoints the changes to the stack such that a subsequent
 // call to `Reset()` will reset any subsequent changes back to the state
 // of the stack at the time of the latest checkpoint. The checkpointed state
 // is also persisted to the DB.
-func (d *DBStack) Checkpoint() error {
+func (d *DBStack) Checkpoint() (int, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -101,20 +101,19 @@ func (d *DBStack) Checkpoint() error {
 		switch u.Type {
 		case simplestack.Pop:
 			if err := txn.Delete(u.MiniHeader.ID()); err != nil {
-				return err
+				return 0, err
 			}
 		case simplestack.Push:
 			if err := txn.Insert(u.MiniHeader); err != nil {
-				return err
+				return 0, err
 			}
 		default:
-			return fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
+			return 0, fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
 		}
 	}
 
 	if err := txn.Commit(); err != nil {
-		return err
+		return 0, err
 	}
-	d.simpleStack.Checkpoint()
-	return nil
+	return d.simpleStack.Checkpoint()
 }

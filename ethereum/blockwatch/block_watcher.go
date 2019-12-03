@@ -48,8 +48,8 @@ type Stack interface {
 	Peek() (*miniheader.MiniHeader, error)
 	PeekAll() ([]*miniheader.MiniHeader, error)
 	Clear() error
-	Checkpoint() error
-	Reset() error
+	Checkpoint() (int, error)
+	Reset(int) error
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
@@ -65,27 +65,33 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	stack           Stack
-	client          Client
-	blockFeed       event.Feed
-	blockScope      event.SubscriptionScope // Subscription scope tracking current live listeners
-	wasStartedOnce  bool                    // Whether the block watcher has previously been started
-	pollingInterval time.Duration
-	withLogs        bool
-	topics          []common.Hash
-	mu              sync.RWMutex
+	stack             Stack
+	stackCheckpointID int
+	client            Client
+	blockFeed         event.Feed
+	blockScope        event.SubscriptionScope // Subscription scope tracking current live listeners
+	wasStartedOnce    bool                    // Whether the block watcher has previously been started
+	pollingInterval   time.Duration
+	withLogs          bool
+	topics            []common.Hash
+	mu                sync.RWMutex
 }
 
 // New creates a new Watcher instance.
-func New(config Config) *Watcher {
-	bs := &Watcher{
-		pollingInterval: config.PollingInterval,
-		stack:           config.Stack,
-		client:          config.Client,
-		withLogs:        config.WithLogs,
-		topics:          config.Topics,
+func New(config Config) (*Watcher, error) {
+	checkpointID, err := config.Stack.Checkpoint()
+	if err != nil {
+		return nil, err
 	}
-	return bs
+	bs := &Watcher{
+		pollingInterval:   config.PollingInterval,
+		stack:             config.Stack,
+		stackCheckpointID: checkpointID,
+		client:            config.Client,
+		withLogs:          config.WithLogs,
+		topics:            config.Topics,
+	}
+	return bs, nil
 }
 
 // SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
@@ -264,13 +270,15 @@ func (w *Watcher) syncChain() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		if err := w.stack.Reset(); err != nil {
+		if err := w.stack.Reset(w.stackCheckpointID); err != nil {
 			return err
 		}
 	} else {
-		if err := w.stack.Checkpoint(); err != nil {
+		checkpointID, err := w.stack.Checkpoint()
+		if err != nil {
 			return err
 		}
+		w.stackCheckpointID = checkpointID
 		w.blockFeed.Send(allEvents)
 	}
 

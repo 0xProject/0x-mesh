@@ -22,10 +22,11 @@ type Update struct {
 
 // SimpleStack is a simple in-memory stack used in tests
 type SimpleStack struct {
-	limit       int
-	miniHeaders []*miniheader.MiniHeader
-	updates     []*Update
-	mu          sync.Mutex
+	limit              int
+	miniHeaders        []*miniheader.MiniHeader
+	updates            []*Update
+	mu                 sync.Mutex
+	latestCheckpointID int
 }
 
 // NewSimpleStack instantiates a new SimpleStack
@@ -103,29 +104,39 @@ func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	return s.miniHeaders, nil
 }
 
-// Clear removes all items from the stack
+// Clear removes all items from the stack and clears any set checkpoint
 func (s *SimpleStack) Clear() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.miniHeaders = []*miniheader.MiniHeader{}
+	s.updates = []*Update{}
+	s.latestCheckpointID = 0
 	return nil
 }
 
 // Checkpoint checkpoints the changes to the stack such that a subsequent
-// call to `Reset()` will reset any subsequent changes back to the state
-// of the stack at the time of the latest checkpoint.
-func (s *SimpleStack) Checkpoint() error {
+// call to `Reset(checkpointID)` with the checkpointID returned from this
+// call will reset any subsequent changes back to the state of the stack
+// at the time of this checkpoint
+func (s *SimpleStack) Checkpoint() (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.updates = []*Update{}
-	return nil
+	s.latestCheckpointID++
+	return s.latestCheckpointID, nil
 }
 
 // Reset resets the in-memory stack with the contents from the latest checkpoint
-func (s *SimpleStack) Reset() error {
+func (s *SimpleStack) Reset(checkpointID int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.latestCheckpointID == 0 {
+		return fmt.Errorf("Checkpoint() must be called before Reset() since without it the checkpointID is unspecified")
+	} else if checkpointID != s.latestCheckpointID {
+		return fmt.Errorf("Attempted to reset the stack to checkpoint %d but the latest checkpoint has ID %d", checkpointID, s.latestCheckpointID)
+	}
 
 	return s.reset()
 }

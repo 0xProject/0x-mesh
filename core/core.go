@@ -246,7 +246,10 @@ func New(config Config) (*App, error) {
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(blockWatcherConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// Initialize the order validator
 	orderValidator, err := ordervalidator.New(

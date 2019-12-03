@@ -825,7 +825,8 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(blockWatcherConfig)
+	require.NoError(t, err)
 	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
