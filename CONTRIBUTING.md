@@ -76,10 +76,11 @@ make test-wasm-browser
 make test-all
 ```
 
-### Test Issues
-Some of the tests will open a fairly large number of open files. The default allowance
-for open files on most operating systems is 64, which will cause these tests to fail. The
-allowance of open files can be configured using the following command:
+### Potential Issues
+The default maximum number of open files is too low in some operating systems
+for the tests to be run successfully. If an error that reads like "Too many open files,"
+it may be necessary to increase this limit. On Unix-like operating systems, the `ulimit`
+command can be used as follows to accomplish this change:
 
 ```bash
 # Increase number of open files that are tolerated to 2048 (a big number)
