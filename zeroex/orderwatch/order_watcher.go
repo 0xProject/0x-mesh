@@ -1521,7 +1521,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
-	encoded, err := encoding.EncodeOrder(order)
+	encoded, err := encoding.OrderToRawMessage(order)
 	if err != nil {
 		return err
 	}

@@ -192,7 +192,7 @@ func verifyRoundRobinSharing(t *testing.T, selector *orderSelector, nextOffset i
 
 	// Calculate the orders that we expect to be shared
 	for i := 0; i < expectedOrdersLength; i++ {
-		encodedOrder, err := encoding.EncodeOrder(orderList[(nextOffset+i)%count].SignedOrder)
+		encodedOrder, err := encoding.OrderToRawMessage(orderList[(nextOffset+i)%count].SignedOrder)
 		require.NoError(t, err)
 
 		expectedOrders[i] = encodedOrder

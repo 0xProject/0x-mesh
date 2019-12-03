@@ -794,7 +794,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encoding.EncodeOrder(order)
+	encoded, err := encoding.OrderToRawMessage(order)
 	if err != nil {
 		return err
 	}

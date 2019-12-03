@@ -93,7 +93,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 		log.WithFields(map[string]interface{}{
 			"order": order,
 		}).Trace("selected order to share")
-		encoded, err := encoding.EncodeOrder(order.SignedOrder)
+		encoded, err := encoding.OrderToRawMessage(order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +141,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		order, err := encoding.DecodeOrder(msg.Data)
+		order, err := encoding.RawMessageToOrder(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,
