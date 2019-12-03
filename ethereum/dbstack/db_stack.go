@@ -63,7 +63,9 @@ func (d *DBStack) Clear() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.simpleStack.Clear()
+	if err := d.simpleStack.Clear(); err != nil {
+		return err
+	}
 	return d.meshDB.ClearAllMiniHeaders()
 }
 
