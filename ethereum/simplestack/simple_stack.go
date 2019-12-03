@@ -1,4 +1,4 @@
-package blockwatch
+package simplestack
 
 import (
 	"fmt"
@@ -10,11 +10,12 @@ import (
 type updateType int
 
 const (
-	pop updateType = iota
-	push
+	Pop updateType = iota
+	Push
 )
 
-type update struct {
+// Update represents one update to the stack, either a pop or push of a miniHeader.
+type Update struct {
 	Type       updateType
 	MiniHeader *miniheader.MiniHeader
 }
@@ -23,16 +24,16 @@ type update struct {
 type SimpleStack struct {
 	limit       int
 	miniHeaders []*miniheader.MiniHeader
-	updates     []*update
+	updates     []*Update
 	mu          sync.Mutex
 }
 
 // NewSimpleStack instantiates a new SimpleStack
-func NewSimpleStack(retentionLimit int) *SimpleStack {
+func NewSimpleStack(retentionLimit int, miniHeaders []*miniheader.MiniHeader) *SimpleStack {
 	return &SimpleStack{
 		limit:       retentionLimit,
-		miniHeaders: []*miniheader.MiniHeader{},
-		updates:     []*update{},
+		miniHeaders: miniHeaders,
+		updates:     []*Update{},
 	}
 }
 
@@ -61,8 +62,8 @@ func (s *SimpleStack) pop() (*miniheader.MiniHeader, error) {
 	}
 	top := s.miniHeaders[len(s.miniHeaders)-1]
 	s.miniHeaders = s.miniHeaders[:len(s.miniHeaders)-1]
-	s.updates = append(s.updates, &update{
-		Type:       pop,
+	s.updates = append(s.updates, &Update{
+		Type:       Pop,
 		MiniHeader: top,
 	})
 	return top, nil
@@ -77,16 +78,19 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 }
 
 func (s *SimpleStack) push(miniHeader *miniheader.MiniHeader) error {
+	for _, h := range s.miniHeaders {
+		if h.Number.Int64() == miniHeader.Number.Int64() {
+			return fmt.Errorf("attempted to push multiple blocks with block number %d to the stack", miniHeader.Number.Int64())
+		}
+	}
+
 	if len(s.miniHeaders) == s.limit {
 		s.miniHeaders = s.miniHeaders[1:]
 	}
 	s.miniHeaders = append(s.miniHeaders, miniHeader)
-	s.updates = append(s.updates, &update{
-		Type: push,
-		// Optimization: We don't need to store the MiniHeader for
-		// pushes since reverting a push involves a `Pop()` and the
-		// value to pop is already in the `miniHeaders` data structure
-		MiniHeader: nil,
+	s.updates = append(s.updates, &Update{
+		Type:       Push,
+		MiniHeader: miniHeader,
 	})
 	return nil
 }
@@ -103,7 +107,6 @@ func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 func (s *SimpleStack) Clear() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	s.miniHeaders = []*miniheader.MiniHeader{}
 	return nil
 }
@@ -115,23 +118,27 @@ func (s *SimpleStack) Checkpoint() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.updates = []*update{}
+	s.updates = []*Update{}
 	return nil
 }
 
-// Reset resets the stack with the contents from the latest checkpoint
+// Reset resets the in-memory stack with the contents from the latest checkpoint
 func (s *SimpleStack) Reset() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	return s.reset()
+}
+
+func (s *SimpleStack) reset() error {
 	for i := len(s.updates) - 1; i >= 0; i-- {
 		u := s.updates[i]
 		switch u.Type {
-		case pop:
+		case Pop:
 			if err := s.push(u.MiniHeader); err != nil {
 				return err
 			}
-		case push:
+		case Push:
 			if _, err := s.pop(); err != nil {
 				return err
 			}
@@ -139,5 +146,11 @@ func (s *SimpleStack) Reset() error {
 			return fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
 		}
 	}
+	s.updates = []*Update{}
 	return nil
+}
+
+// GetUpdates returns the updates applied since the last checkpoint
+func (s *SimpleStack) GetUpdates() []*Update {
+	return s.updates
 }
