@@ -644,15 +644,3 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
 }
-
-func isUnknownBlockErr(err error) bool {
-	// Geth error
-	if err.Error() == "unknown block" {
-		return true
-	}
-	// Parity error
-	if err.Error() == "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found" {
-		return true
-	}
-	return false
-}
