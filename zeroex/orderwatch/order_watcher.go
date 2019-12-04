@@ -905,7 +905,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 		return err
 	}
 	if latestBlock == nil {
-		// This should never happen since we ensure at least one block has been processed before Mesh finishes starting up
+		// This should never happen since we ensure at least one block has been processed before Mesh starts up
 		return errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
 	}
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
@@ -1410,7 +1410,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		return nil, err
 	}
 	if validationBlock == nil {
-		// This should never happen since we ensure at least one block has been processed before Mesh finishes starting up
+		// This should never happen since we ensure at least one block has been processed before Mesh starts up
 		return nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
 	}
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
