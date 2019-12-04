@@ -1013,6 +1013,86 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyEventsCatchup(t *test
 	assert.Equal(t, secondOrderHash, secondOrderEvent.OrderHash)
 }
 
+// Scenario: While we validate orders at a specific block height, the block at that height gets re-orged out.
+// We are no longer certain if we validated the orders against the right block so we reject the orders.
+func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorgedOut(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+	startOrderWatcher := true
+	blockingChan := make(chan struct{})
+	blockingCallEthRPCClient, err := NewBlockingCallEthRPCClient(ethRPCClient, blockingChan)
+	require.NoError(t, err)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB, startOrderWatcher)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	// Kick off adding order to OrderWatcher within a separate go-routine so that we can block on the validation
+	// `eth_call`, simulating network latency, and while it's blocked, fill the order and process the block containing
+	// the fill
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		require.NoError(t, err)
+		require.Len(t, validationResults.Rejected, 1)
+		require.Len(t, validationResults.Accepted, 0)
+		assert.Equal(t, ordervalidator.ROEthRPCRequestFailed, validationResults.Rejected[0].Status)
+	}()
+
+	// Simulate a block re-org by replacing the latest block with a new one, and adding one other order
+	// ontop of it
+	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	require.NoError(t, err)
+	latestBlock := storedBlocks[len(storedBlocks)-1]
+	replacementBlockHash := common.HexToHash("0x123456789")
+	replacementBlock := &miniheader.MiniHeader{
+		Parent:    storedBlocks[len(storedBlocks)-2].Hash,
+		Hash:      replacementBlockHash,
+		Number:    latestBlock.Number,
+		Logs:      []types.Log{},
+		Timestamp: time.Now().Add(-12 * time.Second),
+	}
+	newLatestBlock := &miniheader.MiniHeader{
+		Parent:    replacementBlockHash,
+		Hash:      common.HexToHash("0x987654321"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Logs:      []types.Log{},
+		Timestamp: time.Now().Add(-1 * time.Second),
+	}
+	err = meshDB.MiniHeaders.Delete(latestBlock.ID())
+	require.NoError(t, err)
+	err = meshDB.MiniHeaders.Insert(replacementBlock)
+	require.NoError(t, err)
+	err = meshDB.MiniHeaders.Insert(newLatestBlock)
+	require.NoError(t, err)
+
+	// Unblock validation `eth_call`
+	blockingChan <- struct{}{}
+
+	// Wait for adding order to OrderWatcher to complete
+	wg.Wait()
+}
+
 func TestOrderWatcherHandleBlockEventsWithWhitelistFill(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
