@@ -166,5 +166,8 @@ func (s *SimpleStack) GetUpdates() []*Update {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return s.updates
+	// Return copy of updates array
+	u := make([]*Update, len(s.updates))
+	copy(u, s.updates)
+	return u
 }
