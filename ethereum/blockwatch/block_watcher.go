@@ -85,7 +85,7 @@ type Watcher struct {
 	withLogs            bool
 	topics              []common.Hash
 	mu                  sync.RWMutex
-	SyncToLatestBlockMu sync.Mutex
+	syncToLatestBlockMu sync.Mutex
 
 	didProcessABlock bool
 	// AtLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
@@ -229,8 +229,8 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 // SyncToLatestBlock syncs our local state of the chain to the latest block found via
 // Ethereum RPC
 func (w *Watcher) SyncToLatestBlock() error {
-	w.SyncToLatestBlockMu.Lock()
-	defer w.SyncToLatestBlockMu.Unlock()
+	w.syncToLatestBlockMu.Lock()
+	defer w.syncToLatestBlockMu.Unlock()
 
 	checkpointID, err := w.stack.Checkpoint()
 	if err != nil {
