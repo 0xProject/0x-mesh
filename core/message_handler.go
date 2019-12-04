@@ -13,8 +13,9 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
-type MessageHandler struct {
+type orderSelector struct {
 	nextOffset int
+	db         *meshdb.MeshDB
 }
 
 func min(a int, b int) int {
@@ -25,16 +26,20 @@ func min(a int, b int) int {
 }
 
 func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
+	return app.orderSelector.GetMessagesToShare(max)
+}
+
+func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error) {
 	// For now, we use a round robin strategy to select a set of orders to share.
 	// We might return less than max even if there are max or greater orders
 	// currently stored.
 	// Use a snapshot to make sure state doesn't change between our two queries.
-	ordersSnapshot, err := app.db.Orders.GetSnapshot()
+	ordersSnapshot, err := orderSelector.db.Orders.GetSnapshot()
 	if err != nil {
 		return nil, err
 	}
 	defer ordersSnapshot.Release()
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	notRemovedFilter := orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	count, err := ordersSnapshot.NewQuery(notRemovedFilter).Count()
 	if err != nil {
 		return nil, err
@@ -45,9 +50,9 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 
 	// Select up to the maximum number of orders starting at the offset that was
 	// calculated the last time this was called with `app`.
-	offset := min(app.messageHandler.nextOffset, count)
+	offset := min(orderSelector.nextOffset, count)
 	var selectedOrders []*meshdb.Order
-	if offset != count {
+	if offset < count {
 		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
 		if err != nil {
 			return nil, err
@@ -65,13 +70,13 @@ func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
 			return nil, err
 		}
 		selectedOrders = append(selectedOrders, overflowSelectedOrders...)
-		app.messageHandler.nextOffset = overflow
+		orderSelector.nextOffset = overflow
 	} else {
 		// Calculate the next offset and wrap back to 0 if the next offset is larger
 		// than or equal to count.
-		app.messageHandler.nextOffset += max
-		if app.messageHandler.nextOffset >= count {
-			app.messageHandler.nextOffset = 0
+		orderSelector.nextOffset += max
+		if orderSelector.nextOffset >= count {
+			orderSelector.nextOffset = 0
 		}
 	}
 

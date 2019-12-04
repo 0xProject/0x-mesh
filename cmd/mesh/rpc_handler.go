@@ -76,7 +76,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 				"error":      internalErr,
 				"method":     "GetOrders",
 				"stackTrace": string(debug.Stack()),
-			}).Printf("RPC method handler crashed")
+			}).Error("RPC method handler crashed")
 			err = errors.New("method handler crashed in GetOrders RPC call (check logs for stack trace)")
 		}
 	}()
@@ -110,7 +110,7 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rp
 				"error":      internalErr,
 				"method":     "AddOrders",
 				"stackTrace": string(debug.Stack()),
-			}).Printf("RPC method handler crashed")
+			}).Error("RPC method handler crashed")
 			err = errors.New("method handler crashed in AddOrders RPC call (check logs for stack trace)")
 		}
 	}()
@@ -138,7 +138,7 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) (err error) {
 				"error":      internalErr,
 				"method":     "AddPeer",
 				"stackTrace": string(debug.Stack()),
-			}).Printf("RPC method handler crashed")
+			}).Error("RPC method handler crashed")
 			err = errors.New("method handler crashed in AddPeer RPC call (check logs for stack trace)")
 		}
 	}()
@@ -164,7 +164,7 @@ func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, err error) 
 				"error":      internalErr,
 				"method":     "GetStats",
 				"stackTrace": string(debug.Stack()),
-			}).Printf("RPC method handler crashed")
+			}).Error("RPC method handler crashed")
 			err = errors.New("method handler crashed in GetStats RPC call (check logs for stack trace)")
 		}
 	}()
@@ -191,7 +191,7 @@ func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (result *ethrp
 				"error":      internalErr,
 				"method":     "SubscribeToOrders",
 				"stackTrace": string(debug.Stack()),
-			}).Printf("RPC method handler crashed")
+			}).Error("RPC method handler crashed")
 			err = errors.New("method handler crashed in SubscribeToOrders RPC call (check logs for stack trace)")
 		}
 	}()
