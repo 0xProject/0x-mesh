@@ -89,7 +89,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 			return nil, err
 		}
 		// We don't want to leak internal error details to the RPC client.
-		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
+		log.WithField("error", err.Error()).Error("internal error in GetOrders RPC call")
 		return nil, constants.ErrInternal
 	}
 	return getOrdersResponse, nil
@@ -123,6 +123,11 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rp
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
 		return nil, constants.ErrInternal
 	}
+
+	log.WithFields(log.Fields{
+		"validation results": validationResults,
+	}).Info("Validation Results Found")
+
 	return validationResults, nil
 }
 
