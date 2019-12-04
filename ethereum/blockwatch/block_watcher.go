@@ -256,6 +256,9 @@ func (w *Watcher) syncChain() error {
 	}
 
 	allEvents := []*Event{}
+	// Syncing to the latest block involves multiple Ethereum RPC requests. If any of them fail, we
+	// stop syncing and set the encountered error to `syncErr` to be returned to the caller after we've
+	// either reset or persisted the changes gathered up until the point where the error occurred.
 	var syncErr error
 	for i := 0; i < numBlocksToFetch; i++ {
 		// Optimization: If numBlocksToFetch is 1, we already know what the nextHeader is, so avoid
