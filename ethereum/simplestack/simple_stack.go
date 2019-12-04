@@ -138,10 +138,6 @@ func (s *SimpleStack) Reset(checkpointID int) error {
 		return fmt.Errorf("Attempted to reset the stack to checkpoint %d but the latest checkpoint has ID %d", checkpointID, s.latestCheckpointID)
 	}
 
-	return s.reset()
-}
-
-func (s *SimpleStack) reset() error {
 	for i := len(s.updates) - 1; i >= 0; i-- {
 		u := s.updates[i]
 		switch u.Type {
