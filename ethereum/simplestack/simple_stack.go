@@ -103,7 +103,11 @@ func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return s.miniHeaders, nil
+	// Return copy of miniHeaders array
+	m := make([]*miniheader.MiniHeader, len(s.miniHeaders))
+	copy(m, s.miniHeaders)
+
+	return m, nil
 }
 
 // Clear removes all items from the stack and clears any set checkpoint
