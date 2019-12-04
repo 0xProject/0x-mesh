@@ -25,7 +25,7 @@ func New(meshDB *meshdb.MeshDB, retentionLimit int) (*DBStack, error) {
 	}
 	d := &DBStack{
 		meshDB:      meshDB,
-		simpleStack: simplestack.NewSimpleStack(retentionLimit, miniHeaders),
+		simpleStack: simplestack.New(retentionLimit, miniHeaders),
 	}
 	return d, nil
 }

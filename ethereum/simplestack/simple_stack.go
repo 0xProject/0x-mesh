@@ -29,8 +29,8 @@ type SimpleStack struct {
 	latestCheckpointID int
 }
 
-// NewSimpleStack instantiates a new SimpleStack
-func NewSimpleStack(retentionLimit int, miniHeaders []*miniheader.MiniHeader) *SimpleStack {
+// New instantiates a new SimpleStack
+func New(retentionLimit int, miniHeaders []*miniheader.MiniHeader) *SimpleStack {
 	return &SimpleStack{
 		limit:       retentionLimit,
 		miniHeaders: miniHeaders,
