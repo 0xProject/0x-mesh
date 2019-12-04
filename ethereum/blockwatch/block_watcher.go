@@ -52,6 +52,17 @@ type Stack interface {
 	Reset(int) error
 }
 
+// TooMayBlocksBehindError is an error returned if the BlockWatcher has fallen too many blocks behind
+// the latest block (>128 blocks), and cannot catch back up when connect to a non-archive Ethereum
+// node.
+type TooMayBlocksBehindError struct {
+	blocksMissing int
+}
+
+func (e TooMayBlocksBehindError) Error() string {
+	return fmt.Sprintf("too many blocks (%d) behind the latest block", e.blocksMissing)
+}
+
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
 	Stack           Stack
@@ -176,6 +187,16 @@ func (w *Watcher) Watch(ctx context.Context) error {
 					ticker.Stop()
 					return err
 				}
+				if _, ok := err.(TooMayBlocksBehindError); ok {
+					// We've fallen too many blocks behind to sync to the latest block.
+					// We'd need to start again from the latest block but also require 
+					// the OrderWatcher to re-validate all orders at the latest block.
+					// By returning an error here, we cause Mesh to gracefully shut down.
+					// Upon re-booting, it will reset the blocks stored in the DB and
+					// re-validate all orders stored.
+					ticker.Stop()
+					return err
+				}
 				log.WithError(err).Error("blockwatch.Watcher error encountered")
 			}
 		}
@@ -230,11 +251,9 @@ func (w *Watcher) syncChain() error {
 	}
 
 	if numBlocksToFetch >= constants.MaxBlocksStoredInNonArchiveNode {
-		return fmt.Errorf(
-			"cannot sync blocks more than or equal to %d blocks behind latest (%d). Your `BLOCK_POLLING_INTERVAL` is probably set too high",
-			constants.MaxBlocksStoredInNonArchiveNode,
-			numBlocksToFetch,
-		)
+		return TooMayBlocksBehindError{
+			blocksMissing: numBlocksToFetch,
+		}
 	}
 
 	allEvents := []*Event{}
