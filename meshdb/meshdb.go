@@ -228,6 +228,14 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, e
 	return miniHeaders, nil
 }
 
+// MiniHeaderCollectionEmptyError is returned when no miniHeaders have been stored in
+// the DB yet
+type MiniHeaderCollectionEmptyError struct{}
+
+func (e MiniHeaderCollectionEmptyError) Error() string {
+	return "Latest MiniHeader not found"
+}
+
 // FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
 // largest block number), or nil if there are none in the database.
 func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
@@ -237,13 +245,22 @@ func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 		return nil, err
 	}
 	if len(miniHeaders) == 0 {
-		return nil, nil
+		return nil, MiniHeaderCollectionEmptyError{}
 	}
 	return miniHeaders[0], nil
 }
 
-// FindMiniHeaderByBlockNumber returns the MiniHeader with the specified block number,
-// or nil if not found
+// MiniHeaderNotFoundError is returned when a miniHeaders is not found for a specific
+// block number
+type MiniHeaderNotFoundError struct {
+	blockNumber int64
+}
+
+func (e MiniHeaderNotFoundError) Error() string {
+	return fmt.Sprintf("MiniHeader not found for block number: %d", e.blockNumber)
+}
+
+// FindMiniHeaderByBlockNumber returns the MiniHeader with the specified block number
 func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.MiniHeader, error) {
 	miniHeaders := []*miniheader.MiniHeader{}
 	blockNumberFilter := m.MiniHeaders.numberIndex.ValueFilter(uint256ToConstantLengthBytes(blockNumber))
@@ -252,7 +269,7 @@ func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.
 		return nil, err
 	}
 	if len(miniHeaders) == 0 {
-		return nil, nil
+		return nil, MiniHeaderNotFoundError{blockNumber: blockNumber.Int64()}
 	}
 	return miniHeaders[0], nil
 }

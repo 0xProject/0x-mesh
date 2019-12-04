@@ -1444,9 +1444,10 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 
 	// Ensure at least one block has been processed and is stored in the DB
 	// before tests run
-	latestBlock, err := meshDB.FindLatestMiniHeader()
+
+	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	require.NoError(t, err)
-	if latestBlock == nil {
+	if len(storedBlocks) == 0 {
 		err := blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 	}

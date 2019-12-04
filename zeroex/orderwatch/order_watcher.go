@@ -905,10 +905,6 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	if err != nil {
 		return err
 	}
-	if latestBlock == nil {
-		// This should never happen since we ensure at least one block has been processed before Mesh starts up
-		return errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
-	}
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
@@ -1317,11 +1313,6 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	if err != nil {
 		return nil, err
 	}
-	if dbStoredBlockAtNumber == nil {
-		// We don't expect this to ever happen given that we store the latest 20 blocks in the DB, and there is
-		// a 15sec timeout on ETH RPC requests
-		return nil, fmt.Errorf("Unable to find block header in DB for validationBlock number %d", validationBlock.Number.Int64())
-	}
 	if dbStoredBlockAtNumber.Hash == validationBlock.Hash {
 		results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
 		results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
@@ -1427,10 +1418,6 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	validationBlock, err := w.meshDB.FindLatestMiniHeader()
 	if err != nil {
 		return nil, nil, err
-	}
-	if validationBlock == nil {
-		// This should never happen since we ensure at least one block has been processed before Mesh starts up
-		return nil, nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
 	}
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)

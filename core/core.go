@@ -818,12 +818,9 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var latestBlock rpc.LatestBlock
-	if latestBlockHeader != nil {
-		latestBlock = rpc.LatestBlock{
-			Number: int(latestBlockHeader.Number.Int64()),
-			Hash:   latestBlockHeader.Hash,
-		}
+	latestBlock := rpc.LatestBlock{
+		Number: int(latestBlockHeader.Number.Int64()),
+		Hash:   latestBlockHeader.Hash,
 	}
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
