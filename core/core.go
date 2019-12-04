@@ -462,7 +462,9 @@ func (app *App) Start(ctx context.Context) error {
 	// Ensure blockWatcher has processed at least one recent block before
 	// starting the P2P node and completing app start, so that Mesh does
 	// not validate any orders at outdated block heights
-	<-app.blockWatcher.AtLeastOneBlockProcessed
+	if err := app.blockWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+		return err
+	}
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
