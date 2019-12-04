@@ -7,16 +7,18 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 )
 
-type updateType int
+// UpdateType is the type of update applied to the in-memory stack
+type UpdateType int
 
+// UpdateType values
 const (
-	Pop updateType = iota
+	Pop UpdateType = iota
 	Push
 )
 
 // Update represents one update to the stack, either a pop or push of a miniHeader.
 type Update struct {
-	Type       updateType
+	Type       UpdateType
 	MiniHeader *miniheader.MiniHeader
 }
 
