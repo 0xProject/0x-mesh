@@ -1475,6 +1475,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		orderEvents, err := w.add(acceptedOrderInfo, validationBlock.Number, pinned)
 		if err != nil {
 			if err == meshdb.ErrDBFilledWithPinnedOrders {
+				// The order is valid but we don't have enough space in the database to store it. In this case,
+				// we need to remove the order from `results.Accepted` and add it to `results.Rejected`.
 				results.Accepted = append(results.Accepted[:i], results.Accepted[i+1:]...)
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   acceptedOrderInfo.OrderHash,
