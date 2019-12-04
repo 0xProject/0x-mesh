@@ -39,7 +39,7 @@ func TestWatcher(t *testing.T) {
 	require.NoError(t, err)
 	config.Stack = simplestack.NewSimpleStack(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
 	events := make(chan []*Event, 1)
@@ -86,7 +86,7 @@ func TestWatcherStartStop(t *testing.T) {
 	require.NoError(t, err)
 	config.Stack = simplestack.NewSimpleStack(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	// Start the watcher in a goroutine. We use the done channel to signal when
 	// watcher.Watch returns.
@@ -187,7 +187,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 	require.NoError(t, err)
 	config.Stack = simplestack.NewSimpleStack(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	for _, testCase := range testCases {
 		blockRanges := watcher.getSubBlockRanges(testCase.from, testCase.to, rangeSize)
@@ -215,7 +215,7 @@ func TestSyncToLatestBlockLessThan128Missed(t *testing.T) {
 	require.NoError(t, err)
 
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -250,7 +250,7 @@ func TestSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 	require.NoError(t, err)
 
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -284,7 +284,7 @@ func TestSyncToLatestBlockNoneMissed(t *testing.T) {
 	require.NoError(t, err)
 
 	config.Client = fakeClient
-	watcher, err := New(config)
+	watcher := New(config)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -419,7 +419,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
 		require.NoError(t, err)
 		config.Client = fakeLogClient
-		watcher, err := New(config)
+		watcher := New(config)
 
 		logs, err := watcher.filterLogsRecurisively(from, to, []types.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
@@ -525,7 +525,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		require.NoError(t, err)
 		config.Client = fakeLogClient
-		watcher, err := New(config)
+		watcher := New(config)
 
 		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(ctx, testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)

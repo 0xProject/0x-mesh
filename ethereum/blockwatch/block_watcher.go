@@ -77,7 +77,6 @@ type Config struct {
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
 	stack             Stack
-	stackCheckpointID int
 	client            Client
 	blockFeed         event.Feed
 	blockScope        event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -89,20 +88,15 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(config Config) (*Watcher, error) {
-	checkpointID, err := config.Stack.Checkpoint()
-	if err != nil {
-		return nil, err
-	}
+func New(config Config) *Watcher {
 	bs := &Watcher{
 		pollingInterval:   config.PollingInterval,
 		stack:             config.Stack,
-		stackCheckpointID: checkpointID,
 		client:            config.Client,
 		withLogs:          config.WithLogs,
 		topics:            config.Topics,
 	}
-	return bs, nil
+	return bs
 }
 
 // SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
@@ -224,6 +218,11 @@ func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
 // syncChain syncs our local state of the chain to the latest block found via
 // Ethereum RPC
 func (w *Watcher) syncChain() error {
+	checkpointID, err := w.stack.Checkpoint()
+	if err != nil {
+		return err
+	}
+
 	latestHeader, err := w.client.HeaderByNumber(nil)
 	if err != nil {
 		return err
@@ -289,11 +288,11 @@ func (w *Watcher) syncChain() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		if err := w.stack.Reset(w.stackCheckpointID); err != nil {
+		if err := w.stack.Reset(checkpointID); err != nil {
 			return err
 		}
 	} else {
-		w.stackCheckpointID, err = w.stack.Checkpoint()
+		_, err = w.stack.Checkpoint()
 		if err != nil {
 			return err
 		}
