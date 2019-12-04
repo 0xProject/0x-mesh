@@ -13,6 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -1291,11 +1292,160 @@ func (w *Watcher) generateOrderEventsIfChanged(
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
+	if err != nil {
+		return nil, err
+	}
+
+	// Now that the validation results have arrived, we block the processing of block events into order events until
+	// the new orders have been stored in the DB. This ensures that once newer block events are processed, they also
+	// re-validate these newly added orders. Without this, we might miss events for these new orders.
+	w.handleBlockEventsMu.Lock()
+	defer w.handleBlockEventsMu.Unlock()
+
+	// Since Batch validation can take quite some time (e.g., 10-15sec worst-case on Alchemy), after receiving the results
+	// we attempt to verify that a block re-org hasn't happened. We do this by checking if the hashes of the block whose
+	// number we validated at, matches the hash of the block with that number stored in the DB. If they aren't the same,
+	// we reject all orders and force the operator to re-submit them.
+	// This technique is still imperfect -- see `HACK` comment in onchainOrderValidation.
+	dbStoredBlockAtNumber, err := w.meshDB.FindMiniHeaderByBlockNumber(validationBlock.Number)
+	if err != nil {
+		return nil, err
+	}
+	if dbStoredBlockAtNumber == nil {
+		// We don't expect this to ever happen given that we store the latest 20 blocks in the DB, and there is
+		// a 15sec timeout on ETH RPC requests
+		return nil, fmt.Errorf("Unable to find block header in DB for validationBlock number %d", validationBlock.Number.Int64())
+	}
+	if dbStoredBlockAtNumber.Hash == validationBlock.Hash {
+		results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
+		results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
+	} else {
+		// Reject all orders due to `ROEthRPCRequestFailed` since we did not validate them at the correct block
+		// hash and they must be re-submitted.
+		for _, acceptedInfo := range zeroexResults.Accepted {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   acceptedInfo.OrderHash,
+				SignedOrder: acceptedInfo.SignedOrder,
+				Kind:        ordervalidator.MeshError,
+				Status:      ordervalidator.ROEthRPCRequestFailed,
+			})
+		}
+		for _, rejectedInfo := range zeroexResults.Rejected {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   rejectedInfo.OrderHash,
+				SignedOrder: rejectedInfo.SignedOrder,
+				Kind:        ordervalidator.MeshError,
+				Status:      ordervalidator.ROEthRPCRequestFailed,
+			})
+		}
+	}
+
+	// Store valid orders
+	ordersAdded := []common.Hash{}
+	allOrderEvents := []*zeroex.OrderEvent{}
+	for i, acceptedOrderInfo := range results.Accepted {
+		// If the order isn't new, we don't add to OrderWatcher.
+		if !acceptedOrderInfo.IsNew {
+			continue
+		}
+		// Add the order to the OrderWatcher. This also saves the order in the
+		// database.
+		orderEvents, err := w.add(acceptedOrderInfo, validationBlock.Number, pinned)
+		if err != nil {
+			if err == meshdb.ErrDBFilledWithPinnedOrders {
+				// The order is valid but we don't have enough space in the database to store it. In this case,
+				// we need to remove the order from `results.Accepted` and add it to `results.Rejected`.
+				results.Accepted = append(results.Accepted[:i], results.Accepted[i+1:]...)
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   acceptedOrderInfo.OrderHash,
+					SignedOrder: acceptedOrderInfo.SignedOrder,
+					Kind:        ordervalidator.MeshError,
+					Status:      ordervalidator.RODatabaseFullOfOrders,
+				})
+				continue
+			} else {
+				return nil, err
+			}
+		}
+		ordersAdded = append(ordersAdded, acceptedOrderInfo.OrderHash)
+		allOrderEvents = append(allOrderEvents, orderEvents...)
+	}
+
+	w.orderFeed.Send(allOrderEvents)
+
+	// It is possible that Mesh processed subsequent block events while the validation RPC was ongoing.
+	// We therefore need to emit events and kick off re-validations for these orders, if they were affected
+	// by the blocks processed since their validationBlock AND before we acquired a lock on `handleBlockEvents`.
+	// This ensures no block events are missed for newly added orders.
+	if err = w.fireEventsFromMissedBlocksForNewOrders(ctx, validationBlock, ordersAdded); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (w *Watcher) fireEventsFromMissedBlocksForNewOrders(ctx context.Context, validationBlock *miniheader.MiniHeader, ordersAdded []common.Hash) error {
+	blocksStored, err := w.meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return err
+	}
+	missedBlockEvents := []*blockwatch.Event{}
+	for _, block := range blocksStored {
+		if block.Number.Int64() > validationBlock.Number.Int64() && block.Number.Int64() <= w.latestBlockProcessed.Int64() {
+			missedBlockEvents = append(missedBlockEvents, &blockwatch.Event{
+				Type:        blockwatch.Added,
+				BlockHeader: block,
+			})
+		}
+	}
+	if len(missedBlockEvents) > 0 {
+		orderWhitelist := map[common.Hash]interface{}{}
+		for _, orderHash := range ordersAdded {
+			orderWhitelist[orderHash] = struct{}{}
+		}
+		if err := w.handleBlockEvents(ctx, missedBlockEvents, orderWhitelist); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrder) (*miniheader.MiniHeader, *ordervalidator.ValidationResults, error) {
+	// HACK(fabio): While we wait for EIP-1898 support in Parity, we have no choice but to do the `eth_call`
+	// at the latest known block number, and then verify that the block hash at that block height is still
+	// what we think it is. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
+	// for the block being re-org'd out before the `eth_call` and then back in before the `eth_getBlockByNumber`
+	// call (an unlikely but possible situation leading to an incorrect view of the world for these orders).
+	// Unfortunately, this is the best we can do until EIP-1898 support in Parity.
+	// Source: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md#rationale
+	validationBlock, err := w.meshDB.FindLatestMiniHeader()
+	if err != nil {
+		return nil, nil, err
+	}
+	if validationBlock == nil {
+		// This should never happen since we ensure at least one block has been processed before Mesh starts up
+		return nil, nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
+	}
+	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+	areNewOrders := true
+	zeroexResults := w.orderValidator.BatchValidate(ctx, orders, areNewOrders, validationBlock.Number)
+	return validationBlock, zeroexResults, nil
+}
+
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
@@ -1369,7 +1519,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		if err != nil {
 			if _, ok := err.(db.NotFoundError); !ok {
 				logger.WithField("error", err).Error("could not check if order was already stored")
-				return nil, err
+				return nil, nil, err
 			}
 			// If the error is a db.NotFoundError, it just means the order is not currently stored in
 			// the database. There's nothing else in the database to check, so we can continue.
@@ -1398,130 +1548,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		validMeshOrders = append(validMeshOrders, order)
 	}
 
-	// HACK(fabio): While we wait for EIP-1898 support in Parity, we have no choice but to do the `eth_call`
-	// at the latest known block number, and then verify that the block hash at that block height is still
-	// what we think it is. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
-	// for the block being re-org'd out before the `eth_call` and then back in before the `eth_getBlockByNumber`
-	// call (an unlikely but possible situation leading to an incorrect view of the world for these orders).
-	// Unfortunately, this is the best we can do until EIP-1898 support in Parity.
-	// Source: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md#rationale
-	validationBlock, err := w.meshDB.FindLatestMiniHeader()
-	if err != nil {
-		return nil, err
-	}
-	if validationBlock == nil {
-		// This should never happen since we ensure at least one block has been processed before Mesh starts up
-		return nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
-	}
-	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-	areNewOrders := true
-	zeroexResults := w.orderValidator.BatchValidate(ctx, validMeshOrders, areNewOrders, validationBlock.Number)
-
-	// Now that the validation results have arrived, we block the processing of block events into order events until
-	// the new orders have been stored in the DB. This ensures that once newer block events are processed, they also
-	// re-validate these newly added orders. Without this, we might miss events for these new orders.
-	w.handleBlockEventsMu.Lock()
-	defer w.handleBlockEventsMu.Unlock()
-
-	// Since Batch validation can take quite some time (e.g., 10-15sec worst-case on Alchemy), after receiving the results
-	// we attempt to verify that a block re-org hasn't happened. We do this by checking if the hashes of the block whose
-	// number we validated at, matches the hash of the block with that number stored in the DB. If they aren't the same,
-	// we reject all orders and force the operator to re-submit them.
-	// This technique is still imperfect -- see `HACK` comment above.
-	dbStoredBlockAtNumber, err := w.meshDB.FindMiniHeaderByBlockNumber(validationBlock.Number)
-	if err != nil {
-		return nil, err
-	}
-	if dbStoredBlockAtNumber == nil {
-		// We don't expect this to ever happen given that we store the latest 20 blocks in the DB, and there is
-		// a 15sec timeout on ETH RPC requests
-		return nil, fmt.Errorf("Unable to find block header in DB for validationBlock number %d", validationBlock.Number.Int64())
-	}
-	if dbStoredBlockAtNumber.Hash == validationBlock.Hash {
-		results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
-		results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
-	} else {
-		// Reject all orders due to `ROEthRPCRequestFailed` since we did not validate them at the correct block
-		// hash and they must be re-submitted.
-		for _, acceptedInfo := range zeroexResults.Accepted {
-			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   acceptedInfo.OrderHash,
-				SignedOrder: acceptedInfo.SignedOrder,
-				Kind:        ordervalidator.MeshError,
-				Status:      ordervalidator.ROEthRPCRequestFailed,
-			})
-		}
-		for _, rejectedInfo := range zeroexResults.Rejected {
-			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   rejectedInfo.OrderHash,
-				SignedOrder: rejectedInfo.SignedOrder,
-				Kind:        ordervalidator.MeshError,
-				Status:      ordervalidator.ROEthRPCRequestFailed,
-			})
-		}
-	}
-
-	// Store valid orders
-	allOrderEvents := []*zeroex.OrderEvent{}
-	for i, acceptedOrderInfo := range results.Accepted {
-		// If the order isn't new, we don't add to OrderWatcher.
-		if !acceptedOrderInfo.IsNew {
-			continue
-		}
-		// Add the order to the OrderWatcher. This also saves the order in the
-		// database.
-		orderEvents, err := w.add(acceptedOrderInfo, validationBlock.Number, pinned)
-		if err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				// The order is valid but we don't have enough space in the database to store it. In this case,
-				// we need to remove the order from `results.Accepted` and add it to `results.Rejected`.
-				results.Accepted = append(results.Accepted[:i], results.Accepted[i+1:]...)
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   acceptedOrderInfo.OrderHash,
-					SignedOrder: acceptedOrderInfo.SignedOrder,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.RODatabaseFullOfOrders,
-				})
-				continue
-			} else {
-				return nil, err
-			}
-		}
-		allOrderEvents = append(allOrderEvents, orderEvents...)
-	}
-
-	w.orderFeed.Send(allOrderEvents)
-
-	// It is possible that Mesh processed subsequent block events while the validation RPC was ongoing.
-	// We therefore need to emit events and kick off re-validations for these orders, if they were affected
-	// by the blocks processed since their validationBlock AND before we acquired a lock on `handleBlockEvents`.
-	// This ensures no block events are missed for newly added orders.
-	blocksStored, err := w.meshDB.FindAllMiniHeadersSortedByNumber()
-	if err != nil {
-		return nil, err
-	}
-	missedBlockEvents := []*blockwatch.Event{}
-	for _, block := range blocksStored {
-		if block.Number.Int64() > validationBlock.Number.Int64() && block.Number.Int64() <= w.latestBlockProcessed.Int64() {
-			missedBlockEvents = append(missedBlockEvents, &blockwatch.Event{
-				Type:        blockwatch.Added,
-				BlockHeader: block,
-			})
-		}
-	}
-	if len(missedBlockEvents) > 0 {
-		orderWhitelist := map[common.Hash]interface{}{}
-		for _, acceptedOrderInfo := range results.Accepted {
-			orderWhitelist[acceptedOrderInfo.OrderHash] = struct{}{}
-		}
-		if err := w.handleBlockEvents(ctx, missedBlockEvents, orderWhitelist); err != nil {
-			return nil, err
-		}
-	}
-
-	return results, nil
+	return results, validMeshOrders, nil
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
