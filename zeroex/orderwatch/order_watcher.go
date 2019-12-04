@@ -1371,6 +1371,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 				logger.WithField("error", err).Error("could not check if order was already stored")
 				return nil, err
 			}
+			// If the error is a db.NotFoundError, it just means the order is not currently stored in
+			// the database. There's nothing else in the database to check, so we can continue.
 		} else {
 			// If stored but flagged for removal, reject it
 			if dbOrder.IsRemoved {
