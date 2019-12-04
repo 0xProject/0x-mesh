@@ -736,7 +736,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		cancel()
 	}()
 
-	// Create and add an expired order to OrderWatcher
+	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
 	startOrderWatcher := true
