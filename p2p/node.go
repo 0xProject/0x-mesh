@@ -434,7 +434,7 @@ func (n *Node) receiveAndHandleMessages() error {
 	if err != nil {
 		return err
 	}
-	if err := n.messageHandler.HandleMessages(incoming); err != nil {
+	if err := n.messageHandler.HandleMessages(n.ctx, incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 	return nil

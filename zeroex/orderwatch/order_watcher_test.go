@@ -912,7 +912,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(signedOrders, false, constants.TestChainID)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, false, constants.TestChainID)
 	require.Len(t, validationResults.Rejected, 0)
 	require.NoError(t, err)
 
@@ -1411,7 +1411,7 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders([]*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
 	require.NoError(t, err)
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }

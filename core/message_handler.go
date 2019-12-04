@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/meshdb"
@@ -102,7 +104,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 	return messageData, nil
 }
 
-func (app *App) HandleMessages(messages []*p2p.Message) error {
+func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
 	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
@@ -165,7 +167,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(orders, false, app.chainID)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, app.chainID)
 	if err != nil {
 		return err
 	}

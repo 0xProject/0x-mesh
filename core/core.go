@@ -693,7 +693,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 // peers. If pinned is true, the orders will be marked as pinned, which means
 // they will only be removed if they become unfillable and will not be removed
 // due to having a high expiration time or any incentive mechanisms.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -758,7 +758,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(schemaValidOrders, pinned, app.chainID)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, pinned, app.chainID)
 	if err != nil {
 		return nil, err
 	}

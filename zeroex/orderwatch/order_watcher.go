@@ -1289,8 +1289,8 @@ func (w *Watcher) generateOrderEventsIfChanged(
 }
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
-// the given orders.
-func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+// the given orders and if they are valid, adds them to the OrderWatcher
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
@@ -1414,7 +1414,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(orders []*zeroex.SignedOrder, pinn
 		return nil, errors.New("Cannot re-validate orders until Mesh knows a recent Ethereum block at which to perform the validation")
 	}
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 	areNewOrders := true
 	zeroexResults := w.orderValidator.BatchValidate(ctx, validMeshOrders, areNewOrders, validationBlock.Number)
