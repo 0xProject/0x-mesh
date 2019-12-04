@@ -999,7 +999,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		SignedOrder:                orderInfo.SignedOrder,
 		LastUpdated:                time.Now().UTC(),
 		FillableTakerAssetAmount:   orderInfo.FillableTakerAssetAmount,
-		LastRevalidatedBlockNumber: validationBlockNumber,
+		LastRevalidatedBlockNumber: validationBlockNumber.Int64(),
 		IsRemoved:                  false,
 		IsPinned:                   pinned,
 	}
@@ -1160,7 +1160,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 		}
 		// If we've already re-validated this order at this block height or higher, don't
 		// re-validate it again.
-		if order.LastRevalidatedBlockNumber.Int64() >= validationBlockNumber.Int64() {
+		if order.LastRevalidatedBlockNumber >= validationBlockNumber.Int64() {
 			continue
 		}
 		signedOrders = append(signedOrders, order.SignedOrder)
@@ -1195,7 +1195,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
-			order.LastRevalidatedBlockNumber = validationBlockNumber
+			order.LastRevalidatedBlockNumber = validationBlockNumber.Int64()
 			w.rewatchOrder(ordersColTxn, order, acceptedOrderInfo.FillableTakerAssetAmount)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1210,7 +1210,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 			// Order was filled, emit event and update order in DB
 			order.FillableTakerAssetAmount = newFillableAmount
-			order.LastRevalidatedBlockNumber = validationBlockNumber
+			order.LastRevalidatedBlockNumber = validationBlockNumber.Int64()
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1224,7 +1224,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 			// Update order in DB and emit event
 			order.FillableTakerAssetAmount = newFillableAmount
-			order.LastRevalidatedBlockNumber = validationBlockNumber
+			order.LastRevalidatedBlockNumber = validationBlockNumber.Int64()
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1255,7 +1255,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded
-				order.LastRevalidatedBlockNumber = validationBlockNumber
+				order.LastRevalidatedBlockNumber = validationBlockNumber.Int64()
 				w.unwatchOrder(ordersColTxn, order, big.NewInt(0))
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
