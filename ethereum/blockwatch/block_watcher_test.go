@@ -48,7 +48,7 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err = watcher.SyncChain()
+		err = watcher.SyncToLatestBlock()
 		if strings.HasPrefix(scenarioLabel, "ERROR") {
 			require.Error(t, err)
 		} else {
