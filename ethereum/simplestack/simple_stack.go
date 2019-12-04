@@ -25,7 +25,7 @@ type SimpleStack struct {
 	limit              int
 	miniHeaders        []*miniheader.MiniHeader
 	updates            []*Update
-	mu                 sync.Mutex
+	mu                 sync.RWMutex
 	latestCheckpointID int
 }
 
@@ -40,8 +40,8 @@ func NewSimpleStack(retentionLimit int, miniHeaders []*miniheader.MiniHeader) *S
 
 // Peek returns the top of the stack
 func (s *SimpleStack) Peek() (*miniheader.MiniHeader, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	if len(s.miniHeaders) == 0 {
 		return nil, nil
@@ -98,8 +98,8 @@ func (s *SimpleStack) push(miniHeader *miniheader.MiniHeader) error {
 
 // PeekAll returns all the miniHeaders currently in the stack
 func (s *SimpleStack) PeekAll() ([]*miniheader.MiniHeader, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	return s.miniHeaders, nil
 }
@@ -163,5 +163,8 @@ func (s *SimpleStack) reset() error {
 
 // GetUpdates returns the updates applied since the last checkpoint
 func (s *SimpleStack) GetUpdates() []*Update {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	return s.updates
 }
