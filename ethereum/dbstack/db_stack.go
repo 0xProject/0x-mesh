@@ -13,7 +13,7 @@ import (
 // DBStack is an in-memory stack that can be sync'd with the DB
 type DBStack struct {
 	meshDB      *meshdb.MeshDB
-	mu          sync.Mutex
+	mu          sync.RWMutex
 	simpleStack *simplestack.SimpleStack
 }
 
@@ -32,8 +32,8 @@ func New(meshDB *meshdb.MeshDB, retentionLimit int) (*DBStack, error) {
 
 // Peek returns the top of the stack
 func (d *DBStack) Peek() (*miniheader.MiniHeader, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	return d.simpleStack.Peek()
 }
 
@@ -53,8 +53,8 @@ func (d *DBStack) Push(miniHeader *miniheader.MiniHeader) error {
 
 // PeekAll returns all the miniHeaders currently in the stack
 func (d *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	return d.simpleStack.PeekAll()
 }
 
