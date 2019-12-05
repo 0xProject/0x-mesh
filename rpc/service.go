@@ -33,6 +33,10 @@ type RPCHandler interface {
 	GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
+	// AdvertiseAsQuoteProvider is called when the client sends an AdvertiseAsQuoteProvider request.
+	AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) error
+	// GetQuoteProviders is called when the client sends an GetQuoteProviders request.
+	GetQuoteProviders(standard, assetPair string) ([]string, error)
 	// GetStats is called when the client sends an GetStats request.
 	GetStats() (*GetStatsResponse, error)
 	// SubscribeToOrders is called when a client sends a Subscribe to `orders` request
@@ -166,4 +170,14 @@ func (s *rpcService) AddPeer(peerID string, multiaddrs []string) error {
 // GetStats calls rpcHandler.GetStats. If there is an error, it returns it.
 func (s *rpcService) GetStats() (*GetStatsResponse, error) {
 	return s.rpcHandler.GetStats()
+}
+
+// AdvertiseAsQuoteProvider calls rpcHandler.AdvertiseAsQuoteProvider. If there is an error, it returns it.
+func (s *rpcService) AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) error {
+	return s.rpcHandler.AdvertiseAsQuoteProvider(standard, assetPair, ttl)
+}
+
+// GetQuoteProviders calls rpcHandler.GetQuoteProviders. If there is an error, it returns it.
+func (s *rpcService) GetQuoteProviders(standard, assetPair string) ([]string, error) {
+	return s.rpcHandler.GetQuoteProviders(standard, assetPair)
 }

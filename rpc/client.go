@@ -116,6 +116,28 @@ func (c *Client) GetStats() (*GetStatsResponse, error) {
 	return getStatsResponse, nil
 }
 
+// AdvertiseAsQuoteProvider instructs the Mesh node to advertise it's IP address
+// as the host of an RFQ quote provider server that adheres to an RFQ specification and provides
+// quotes for a specific asset pair. The advertisement will be added to the Mesh DHT for the
+// specified `ttl` duration (max 3hrs). In order to continue advertising the service, this method
+// must be called again after `ttl` has elapsed.
+func (c *Client) AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) error {
+	if err := c.rpcClient.Call(nil, "mesh_advertiseAsQuoteProvider", standard, assetPair, ttl); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetQuoteProviders instructs the Mesh node to find all advertised RFQ quote provider endpoints
+// for a specific asset pair, adhering to a specific RFQ specification
+func (c *Client) GetQuoteProviders(standard, assetPair string) ([]string, error) {
+	quoteProviders := []string{}
+	if err := c.rpcClient.Call(&quoteProviders, "mesh_getQuoteProviders", standard, assetPair); err != nil {
+		return nil, err
+	}
+	return quoteProviders, nil
+}
+
 // SubscribeToOrders subscribes a stream of order events
 // Note copied from `go-ethereum` codebase: Slow subscribers will be dropped eventually. Client
 // buffers up to 8000 notifications before considering the subscriber dead. The subscription Err

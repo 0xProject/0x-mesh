@@ -27,11 +27,13 @@ import (
 // dummyRPCHandler is used for testing purposes. It allows declaring handlers
 // for some requests or all of them, depending on testing needs.
 type dummyRPCHandler struct {
-	addOrdersHandler         func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
-	getOrdersHandler         func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
-	addPeerHandler           func(peerInfo peerstore.PeerInfo) error
-	getStatsHandler          func() (*GetStatsResponse, error)
-	subscribeToOrdersHandler func(ctx context.Context) (*rpc.Subscription, error)
+	addOrdersHandler                func(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
+	getOrdersHandler                func(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
+	addPeerHandler                  func(peerInfo peerstore.PeerInfo) error
+	getStatsHandler                 func() (*GetStatsResponse, error)
+	advertiseAsQuoteProviderHandler func(standard, assetPair string, ttl time.Duration) error
+	getQuoteProvidersHandler        func(standard, assetPair string) ([]string, error)
+	subscribeToOrdersHandler        func(ctx context.Context) (*rpc.Subscription, error)
 }
 
 func (d *dummyRPCHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
@@ -60,6 +62,20 @@ func (d *dummyRPCHandler) GetStats() (*GetStatsResponse, error) {
 		return nil, errors.New("dummyRPCHandler: no handler set for GetStats")
 	}
 	return d.getStatsHandler()
+}
+
+func (d *dummyRPCHandler) AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) error {
+	if d.advertiseAsQuoteProviderHandler == nil {
+		return errors.New("dummyRPCHandler: no handler set for AdvertiseAsQuoteProvider")
+	}
+	return d.advertiseAsQuoteProviderHandler(standard, assetPair, ttl)
+}
+
+func (d *dummyRPCHandler) GetQuoteProviders(standard, assetPair string) ([]string, error) {
+	if d.getQuoteProvidersHandler == nil {
+		return nil, errors.New("dummyRPCHandler: no handler set for getQuoteProvidersHandler")
+	}
+	return d.getQuoteProvidersHandler(standard, assetPair)
 }
 
 func (d *dummyRPCHandler) SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error) {
@@ -269,12 +285,63 @@ func TestAddPeer(t *testing.T) {
 	wg.Wait()
 }
 
+func TestAdvertiseAsQuoteProvider(t *testing.T) {
+	expectedStandard := "zaidan-v1.0"
+	expectedAssetPair := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2/0x6b175474e89094c44da98b954eedeac495271d0f"
+	expectedTTL := 5 * time.Minute
+
+	// Set up the dummy handler with an advertiseAsQuoteProviderHandler
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	rpcHandler := &dummyRPCHandler{
+		advertiseAsQuoteProviderHandler: func(standard, assetPair string, ttl time.Duration) error {
+			assert.Equal(t, expectedStandard, standard)
+			assert.Equal(t, expectedAssetPair, assetPair)
+			assert.Equal(t, expectedTTL, ttl)
+			wg.Done()
+			return nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
+
+	require.NoError(t, client.AdvertiseAsQuoteProvider(expectedStandard, expectedAssetPair, expectedTTL))
+
+	// The WaitGroup signals that AdvertiseAsQuoteProvider was called on the server-side.
+	wg.Wait()
+}
+
+func TestGetQuoteProviders(t *testing.T) {
+	expectedStandard := "zaidan-v1.0"
+	expectedAssetPair := "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2/0x6b175474e89094c44da98b954eedeac495271d0f"
+	expectedQuoteProviders := []string{"https://dealer-api.zaidan.io"}
+
+	// Set up the dummy handler with an getQuoteProvidersHandler
+	rpcHandler := &dummyRPCHandler{
+		getQuoteProvidersHandler: func(standard, assetPair string) ([]string, error) {
+			assert.Equal(t, expectedStandard, standard)
+			assert.Equal(t, expectedAssetPair, assetPair)
+			return expectedQuoteProviders, nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, client := newTestServerAndClient(t, rpcHandler, ctx)
+
+	quoteProviders, err := client.GetQuoteProviders(expectedStandard, expectedAssetPair)
+	require.NoError(t, err)
+	assert.Equal(t, expectedQuoteProviders, quoteProviders)
+}
+
 func TestGetStats(t *testing.T) {
 	expectedGetStatsResponse := &GetStatsResponse{
-		Version:           "development",
-		PubSubTopic:       "/0x-orders/network/development/version/1",
-		Rendezvous:        "/0x-mesh/network/development/version/1",
-		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
+		Version:         "development",
+		PubSubTopic:     "/0x-orders/network/development/version/1",
+		Rendezvous:      "/0x-mesh/network/development/version/1",
+		PeerID:          "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
 		EthereumChainID: 42,
 		LatestBlock: LatestBlock{
 			Number: 1,

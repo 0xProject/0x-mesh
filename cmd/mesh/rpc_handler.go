@@ -176,6 +176,61 @@ func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, err error) 
 	return getStatsResponse, nil
 }
 
+// AdvertiseAsQuoteProvider is called when an RPC client requests to advertise themselves as a quote provider
+func (handler *rpcHandler) AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) (err error) {
+	log.Debug("received AdvertiseAsQuoteProvider request via RPC")
+	// Catch panics, log stack trace and return RPC error message
+	defer func() {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
+			log.WithFields(log.Fields{
+				"error":      internalErr,
+				"method":     "AdvertiseAsQuoteProvider",
+				"stackTrace": string(debug.Stack()),
+			}).Error("RPC method handler crashed")
+			err = errors.New("method handler crashed in AdvertiseAsQuoteProvider RPC call (check logs for stack trace)")
+		}
+	}()
+	err = handler.app.AdvertiseAsQuoteProvider(standard, assetPair, ttl)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in AdvertiseAsQuoteProvider RPC call")
+		return constants.ErrInternal
+	}
+	return nil
+}
+
+// GetQuoteProviders is called when an RPC client requests to retrieve all the RFQ quote providers advertised
+// on the DHT for a specific asset pair and adhering to a specific RFQ specification
+func (handler *rpcHandler) GetQuoteProviders(standard, assetPair string) (quoteProviders []string, err error) {
+	log.Debug("received GetQuoteProviders request via RPC")
+	// Catch panics, log stack trace and return RPC error message
+	defer func() {
+		if r := recover(); r != nil {
+			internalErr, ok := r.(error)
+			if !ok {
+				// If r is not of type error, convert it.
+				internalErr = fmt.Errorf("Recovered from non-error: (%T) %v", r, r)
+			}
+			log.WithFields(log.Fields{
+				"error":      internalErr,
+				"method":     "GetQuoteProviders",
+				"stackTrace": string(debug.Stack()),
+			}).Error("RPC method handler crashed")
+			err = errors.New("method handler crashed in GetQuoteProviders RPC call (check logs for stack trace)")
+		}
+	}()
+	quoteProviders, err = handler.app.GetQuoteProviders(standard, assetPair)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("internal error in GetQuoteProviders RPC call")
+		return nil, constants.ErrInternal
+	}
+	return quoteProviders, nil
+}
+
 // SubscribeToOrders is called when an RPC client sends a `mesh_subscribe` request with the `orders` topic parameter
 func (handler *rpcHandler) SubscribeToOrders(ctx context.Context) (result *ethrpc.Subscription, err error) {
 	log.Debug("received order event subscription request via RPC")

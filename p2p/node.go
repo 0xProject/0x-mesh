@@ -374,6 +374,16 @@ func (n *Node) GetNumPeers() int {
 	return n.connManager.GetInfo().ConnCount
 }
 
+// AdvertiseOnce advertises this peer once under the specified rendezvous topic for the specified
+// ttl (time to live)
+func (n *Node) AdvertiseOnce(rendezvous string, ttl time.Duration) error {
+	ttl, err := n.routingDiscovery.Advertise(n.ctx, rendezvous, discovery.TTL(ttl))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, timeout is exceeded, or an error
@@ -407,7 +417,7 @@ func (n *Node) mainLoop() error {
 func (n *Node) runOnce() error {
 	peerCount := n.connManager.GetInfo().ConnCount
 	if peerCount < peerCountLow {
-		if err := n.findNewPeers(peerCountLow - peerCount); err != nil {
+		if err := n.findAndConnectToNewPeers(peerCountLow - peerCount); err != nil {
 			return err
 		}
 	}
@@ -440,23 +450,37 @@ func (n *Node) receiveAndHandleMessages() error {
 	return nil
 }
 
-func (n *Node) findNewPeers(max int) error {
+// FindNewPeers finds new peers advertising at a specific topic. The peerChan returned is
+// closed after `max` peers are sent through it or `defaultNetworkTimeout` time passes
+func (n *Node) FindNewPeers(rendezvousString string, max int) ([]peer.AddrInfo, error) {
+	findPeersCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
+	defer cancel()
+	peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousString, discovery.Limit(max))
+	if err != nil {
+		return nil, err
+	}
+	peers := []peer.AddrInfo{}
+	for peer := range peerChan {
+		if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
+			continue
+		}
+		peers = append(peers, peer)
+	}
+	return peers, nil
+}
+
+func (n *Node) findAndConnectToNewPeers(max int) error {
 	log.WithFields(map[string]interface{}{
 		"max": max,
 	}).Trace("looking for new peers")
-	findPeersCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
-	defer cancel()
-	peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, n.config.RendezvousString, discovery.Limit(max))
+	peers, err := n.FindNewPeers(n.config.RendezvousString, max)
 	if err != nil {
 		return err
 	}
 
 	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
 	defer cancel()
-	for peer := range peerChan {
-		if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
-			continue
-		}
+	for _, peer := range peers {
 		log.WithFields(map[string]interface{}{
 			"peerInfo": peer,
 		}).Trace("found peer via rendezvous")

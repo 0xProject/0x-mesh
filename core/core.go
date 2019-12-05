@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,8 +53,10 @@ const (
 	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
 	defaultNonPollingEthRPCRequestBuffer = 82720
 	// logStatsInterval is how often to log stats for this node.
-	logStatsInterval = 5 * time.Minute
-	version          = "7.2.1-beta-0xv3"
+	logStatsInterval    = 5 * time.Minute
+	version             = "7.2.1-beta-0xv3"
+	rfqTopicVersion     = 1
+	rfqRendezvousString = `/0x-rfq/version/%d/chain/%d/standard/%s/assetPair/%s`
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -789,6 +792,52 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return app.node.Connect(peerInfo, peerConnectTimeout)
 }
 
+// AdvertiseAsQuoteProvider instructs to start advertising the host as an
+// RFQ quote provider for a specific asset pair
+func (app *App) AdvertiseAsQuoteProvider(standard, assetPair string, ttl time.Duration) error {
+	// TODO(fabio): Validate the standard has form `${name}-v${semver}`
+	// TODO(fabio): Validate the assetpair has form `${symbol/address}/${symbol/address}`
+
+	rendezvousString := fmt.Sprintf(rfqRendezvousString, rfqTopicVersion, app.chainID, standard, assetPair)
+	if err := app.node.AdvertiseOnce(rendezvousString, ttl); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetQuoteProviders queries the DHT for all RFQ quote providers advertising for the specified asset pair
+// and adhering to the desired specification
+func (app *App) GetQuoteProviders(standard, assetPair string) ([]string, error) {
+	// TODO(fabio): Validate the standard has form `${name}-v${semver}`
+	// TODO(fabio): Validate the assetpair has form `${symbol/address}/${symbol/address}`
+
+	rendezvousString := fmt.Sprintf(rfqRendezvousString, rfqTopicVersion, app.chainID, standard, assetPair)
+	peers, err := app.node.FindNewPeers(rendezvousString, 30) // TODO(fabio): Make max returned configurable?
+	if err != nil {
+		return nil, err
+	}
+	ipMap := map[string]interface{}{}
+	for _, peer := range peers {
+		for _, maddr := range peer.Addrs {
+			ip, err := ipFromMaddr(maddr)
+			if err != nil {
+				// If doesn't include an IP address, skip
+				continue
+			}
+			ipMap[ip.String()] = struct{}{}
+		}
+	}
+	quoteProviders := []string{}
+	for ip := range ipMap {
+		if ip == "127.0.0.1" {
+			continue // Skip localhost IPs
+		}
+		quoteProviders = append(quoteProviders, ip)
+	}
+
+	return quoteProviders, nil
+}
+
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	<-app.started
@@ -892,4 +941,30 @@ func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses st
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
 	return nil
+}
+
+// TODO(fabio): Dedup with identical function in banner
+func ipFromMaddr(maddr ma.Multiaddr) (net.IP, error) {
+	var (
+		ip    net.IP
+		found bool
+	)
+
+	ma.ForEach(maddr, func(c ma.Component) bool {
+		switch c.Protocol().Code {
+		case ma.P_IP6ZONE:
+			return true
+		case ma.P_IP6, ma.P_IP4:
+			found = true
+			ip = net.IP(c.RawValue())
+			return false
+		default:
+			return false
+		}
+	})
+
+	if !found {
+		return net.IP{}, fmt.Errorf("could not parse IP address from multiaddress: %s", maddr)
+	}
+	return ip, nil
 }
