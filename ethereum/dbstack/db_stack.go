@@ -1,91 +1,123 @@
 package dbstack
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/ethereum/go-ethereum/common"
 )
 
-// DBStack allows performing basic stack operations on a stack of meshdb.MiniHeaders stored
-// in the DB backing our meshdb package.
+// DBStack is an in-memory stack that can be sync'd with the DB
 type DBStack struct {
-	// TODO(albrow): Use Transactions when db supports them instead of a mutex
-	// here. There are cases where we need to make sure no modifications are made
-	// to the database in between a read/write or read/delete.
-	mut    sync.Mutex
-	meshDB *meshdb.MeshDB
-	limit  int
+	meshDB      *meshdb.MeshDB
+	mu          sync.RWMutex
+	simpleStack *simplestack.SimpleStack
 }
 
-// New instantiates a new stack with the specified size limit. Once the size limit
-// is reached, adding additional blocks will evict the deepest block.
-func New(meshDB *meshdb.MeshDB, limit int) *DBStack {
-	return &DBStack{
-		meshDB: meshDB,
-		limit:  limit,
-	}
-}
-
-// Pop removes and returns the latest block header on the block stack. It
-// returns nil if the stack is empty.
-func (b *DBStack) Pop() (*miniheader.MiniHeader, error) {
-	b.mut.Lock()
-	defer b.mut.Unlock()
-	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
+// New instantiates a new DBStack. DBStack is go-routine safe.
+func New(meshDB *meshdb.MeshDB, retentionLimit int) (*DBStack, error) {
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
 	}
-	if latestMiniHeader == nil {
-		return nil, nil
+	d := &DBStack{
+		meshDB:      meshDB,
+		simpleStack: simplestack.New(retentionLimit, miniHeaders),
 	}
-	if err := b.meshDB.MiniHeaders.Delete(latestMiniHeader.ID()); err != nil {
-		return nil, err
-	}
-	return latestMiniHeader, nil
+	return d, nil
 }
 
-// Push pushes a block header onto the block stack. If the stack limit is
-// reached, it will remove the oldest block header.
-func (b *DBStack) Push(block *miniheader.MiniHeader) error {
-	b.mut.Lock()
-	defer b.mut.Unlock()
-	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
-	if err != nil {
+// Peek returns the top of the stack
+func (d *DBStack) Peek() (*miniheader.MiniHeader, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.simpleStack.Peek()
+}
+
+// Pop returns the top of the stack and removes it from the stack and backing DB
+func (d *DBStack) Pop() (*miniheader.MiniHeader, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.simpleStack.Pop()
+}
+
+// Push adds a miniheader.MiniHeader to the stack
+func (d *DBStack) Push(miniHeader *miniheader.MiniHeader) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.simpleStack.Push(miniHeader)
+}
+
+// PeekAll returns all the miniHeaders currently in the stack
+func (d *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.simpleStack.PeekAll()
+}
+
+// Clear removes all items from the stack and the backing DB as well
+// as the checkpoint if one exists
+func (d *DBStack) Clear() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if err := d.simpleStack.Clear(); err != nil {
 		return err
 	}
-	if len(miniHeaders) == b.limit {
-		oldestMiniHeader := miniHeaders[0]
-		if err := b.meshDB.MiniHeaders.Delete(oldestMiniHeader.ID()); err != nil {
-			return err
+	return d.meshDB.ClearAllMiniHeaders()
+}
+
+// Reset resets the in-memory stack with the contents from the latest checkpoint
+func (d *DBStack) Reset(checkpointID int) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	return d.simpleStack.Reset(checkpointID)
+}
+
+// Checkpoint checkpoints the changes to the stack such that a subsequent
+// call to `Reset(checkpointID)` with the checkpointID returned from this
+// call will reset any subsequent changes back to the state of the stack
+// at the time of this checkpoint. The checkpointed state is also persisted
+// to the DB.
+func (d *DBStack) Checkpoint() (int, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	txn := d.meshDB.MiniHeaders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	finalUpdates := map[common.Hash]*simplestack.Update{}
+	for _, u := range d.simpleStack.GetUpdates() {
+		if _, ok := finalUpdates[u.MiniHeader.Hash]; ok {
+			delete(finalUpdates, u.MiniHeader.Hash)
+		} else {
+			finalUpdates[u.MiniHeader.Hash] = u
 		}
 	}
-	if err := b.meshDB.MiniHeaders.Insert(block); err != nil {
-		return err
-	}
-	return nil
-}
 
-// Peek returns the latest block header from the block stack without removing
-// it. It returns nil if the stack is empty.
-func (b *DBStack) Peek() (*miniheader.MiniHeader, error) {
-	latestMiniHeader, err := b.meshDB.FindLatestMiniHeader()
-	if err != nil {
-		return nil, nil
+	for _, u := range finalUpdates {
+		switch u.Type {
+		case simplestack.Pop:
+			if err := txn.Delete(u.MiniHeader.ID()); err != nil {
+				return 0, err
+			}
+		case simplestack.Push:
+			if err := txn.Insert(u.MiniHeader); err != nil {
+				return 0, err
+			}
+		default:
+			return 0, fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
+		}
 	}
-	return latestMiniHeader, nil
-}
 
-// PeekAll returns all the block headers currently on the stack
-func (b *DBStack) PeekAll() ([]*miniheader.MiniHeader, error) {
-	miniHeaders, err := b.meshDB.FindAllMiniHeadersSortedByNumber()
-	if err != nil {
-		return nil, err
+	if err := txn.Commit(); err != nil {
+		return 0, err
 	}
-	return miniHeaders, nil
-}
-
-// Clear removes all items from the stack
-func (b *DBStack) Clear() error {
-	return b.meshDB.ClearAllMiniHeaders()
+	return d.simpleStack.Checkpoint()
 }

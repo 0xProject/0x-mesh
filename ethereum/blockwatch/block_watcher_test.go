@@ -7,20 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var config = Config{
 	PollingInterval: 1 * time.Second,
-	StartBlockDepth: rpc.LatestBlockNumber,
 	WithLogs:        false,
 	Topics:          []common.Hash{},
 }
@@ -28,6 +28,7 @@ var config = Config{
 var (
 	basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
 	blockRetentionLimit    = 10
+	startMiniHeaders       = []*miniheader.MiniHeader{}
 )
 
 func TestWatcher(t *testing.T) {
@@ -36,7 +37,7 @@ func TestWatcher(t *testing.T) {
 
 	// Polling interval unused because we hijack the ticker for this test
 	require.NoError(t, err)
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -47,8 +48,12 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err := watcher.pollNextBlock()
-		require.NoError(t, err)
+		err = watcher.syncChain()
+		if strings.HasPrefix(scenarioLabel, "ERROR") {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
 
 		retainedBlocks, err := watcher.GetAllRetainedBlocks()
 		require.NoError(t, err)
@@ -79,7 +84,7 @@ func TestWatcherStartStop(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, err)
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -180,7 +185,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
 	require.NoError(t, err)
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 	config.Client = fakeClient
 	watcher := New(config)
 
@@ -204,7 +209,7 @@ func TestSyncToLatestBlockLessThan128Missed(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 
 	err = config.Stack.Push(lastBlockSeen)
 	require.NoError(t, err)
@@ -239,7 +244,7 @@ func TestSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 
 	err = config.Stack.Push(lastBlockSeen)
 	require.NoError(t, err)
@@ -273,7 +278,7 @@ func TestSyncToLatestBlockNoneMissed(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 
 	err = config.Stack.Push(lastBlockSeen)
 	require.NoError(t, err)
@@ -408,7 +413,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		},
 	}
 
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 
 	for _, testCase := range testCases {
 		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
@@ -511,7 +516,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		},
 	}
 
-	config.Stack = NewSimpleStack(blockRetentionLimit)
+	config.Stack = simplestack.New(blockRetentionLimit, startMiniHeaders)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

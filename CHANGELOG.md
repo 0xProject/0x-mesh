@@ -2,7 +2,11 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v6.1.2-beta
+## v6.2.0-beta
+
+### Features ✅
+
+- Instead of progressing Mesh forward by a single block on every invocation of the `BLOCK_POLLING_INTERVAL`, we now attempt to sync as many blocks as necessary to reach the latest block available. This will reduce the chances of Mesh becoming out-of-sync with it's backing Ethereum node ([#564](https://github.com/0xProject/0x-mesh/pull/564))
 
 ### Bug fixes 🐞
 

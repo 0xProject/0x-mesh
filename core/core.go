@@ -32,7 +32,6 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -236,11 +235,13 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
-	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	if err != nil {
+		return nil, err
+	}
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
-		StartBlockDepth: ethrpc.LatestBlockNumber,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,

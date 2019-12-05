@@ -816,11 +816,11 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethClient *ethclient.C
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
-	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	require.NoError(t, err)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: blockPollingInterval,
-		StartBlockDepth: ethrpc.LatestBlockNumber,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,

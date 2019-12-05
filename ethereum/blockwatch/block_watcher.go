@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -49,13 +48,25 @@ type Stack interface {
 	Peek() (*miniheader.MiniHeader, error)
 	PeekAll() ([]*miniheader.MiniHeader, error)
 	Clear() error
+	Checkpoint() (int, error)
+	Reset(int) error
+}
+
+// TooMayBlocksBehindError is an error returned if the BlockWatcher has fallen too many blocks behind
+// the latest block (>128 blocks), and cannot catch back up when connect to a non-archive Ethereum
+// node.
+type TooMayBlocksBehindError struct {
+	blocksMissing int
+}
+
+func (e TooMayBlocksBehindError) Error() string {
+	return fmt.Sprintf("too many blocks (%d) behind the latest block", e.blocksMissing)
 }
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
 	Stack           Stack
 	PollingInterval time.Duration
-	StartBlockDepth rpc.BlockNumber
 	WithLogs        bool
 	Topics          []common.Hash
 	Client          Client
@@ -65,29 +76,26 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	startBlockDepth rpc.BlockNumber
-	stack           Stack
-	client          Client
-	blockFeed       event.Feed
-	blockScope      event.SubscriptionScope // Subscription scope tracking current live listeners
-	wasStartedOnce  bool                    // Whether the block watcher has previously been started
-	pollingInterval time.Duration
-	withLogs        bool
-	topics          []common.Hash
-	mu              sync.RWMutex
+	stack             Stack
+	client            Client
+	blockFeed         event.Feed
+	blockScope        event.SubscriptionScope // Subscription scope tracking current live listeners
+	wasStartedOnce    bool                    // Whether the block watcher has previously been started
+	pollingInterval   time.Duration
+	withLogs          bool
+	topics            []common.Hash
+	mu                sync.RWMutex
 }
 
 // New creates a new Watcher instance.
 func New(config Config) *Watcher {
-	bs := &Watcher{
-		pollingInterval: config.PollingInterval,
-		startBlockDepth: config.StartBlockDepth,
-		stack:           config.Stack,
-		client:          config.Client,
-		withLogs:        config.WithLogs,
-		topics:          config.Topics,
+	return &Watcher{
+		pollingInterval:   config.PollingInterval,
+		stack:             config.Stack,
+		client:            config.Client,
+		withLogs:          config.WithLogs,
+		topics:            config.Topics,
 	}
-	return bs
 }
 
 // SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
@@ -147,6 +155,17 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
+	// Sync immediately when `Watch()` is called instead of waiting for the
+	// first Ticker tick
+	if err := w.syncChain(); err != nil {
+		if err == leveldb.ErrClosed {
+			// We can't continue if the database is closed. Stop the watcher and
+			// return an error.
+			return err
+		}
+		log.WithError(err).Error("blockwatch.Watcher error encountered")
+	}
+
 	ticker := time.NewTicker(w.pollingInterval)
 	for {
 		select {
@@ -154,10 +173,20 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
-			if err := w.pollNextBlock(); err != nil {
+			if err := w.syncChain(); err != nil {
 				if err == leveldb.ErrClosed {
 					// We can't continue if the database is closed. Stop the watcher and
 					// return an error.
+					ticker.Stop()
+					return err
+				}
+				if _, ok := err.(TooMayBlocksBehindError); ok {
+					// We've fallen too many blocks behind to sync to the latest block.
+					// We'd need to start again from the latest block but also require 
+					// the OrderWatcher to re-validate all orders at the latest block.
+					// By returning an error here, we cause Mesh to gracefully shut down.
+					// Upon re-booting, it will reset the blocks stored in the DB and
+					// re-validate all orders stored.
 					ticker.Stop()
 					return err
 				}
@@ -185,46 +214,105 @@ func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
 	return w.stack.PeekAll()
 }
 
-// pollNextBlock polls for the next block header to be added to the block stack.
-// If there are no blocks on the stack, it fetches the first block at the specified
-// `startBlockDepth` supplied at instantiation.
-func (w *Watcher) pollNextBlock() error {
-	var nextBlockNumber *big.Int
-	latestHeader, err := w.stack.Peek()
+// syncChain syncs our local state of the chain to the latest block found via
+// Ethereum RPC
+func (w *Watcher) syncChain() error {
+	checkpointID, err := w.stack.Checkpoint()
 	if err != nil {
-		return err
-	}
-	if latestHeader == nil {
-		if w.startBlockDepth == rpc.LatestBlockNumber {
-			nextBlockNumber = nil // Fetch latest block
-		} else {
-			nextBlockNumber = big.NewInt(int64(w.startBlockDepth))
-		}
-	} else {
-		nextBlockNumber = big.NewInt(0).Add(latestHeader.Number, big.NewInt(1))
-	}
-	nextHeader, err := w.client.HeaderByNumber(nextBlockNumber)
-	if err != nil {
-		if err == ethereum.NotFound {
-			log.WithFields(log.Fields{
-				"blockNumber": nextBlockNumber,
-			}).Trace("block header not found")
-			return nil // Noop and wait next polling interval
-		}
 		return err
 	}
 
-	events := []*Event{}
-	events, err = w.buildCanonicalChain(nextHeader, events)
-	// Even if an error occurred, we still want to emit the events gathered since we might have
-	// popped blocks off the Stack and they won't be re-added
-	if len(events) != 0 {
-		w.blockFeed.Send(events)
-	}
+	latestHeader, err := w.client.HeaderByNumber(nil)
 	if err != nil {
 		return err
 	}
-	return nil
+	latestBlockNumber := latestHeader.Number.Int64()
+	lastStoredHeader, err := w.stack.Peek()
+	if err != nil {
+		return err
+	}
+	var lastStoredBlockNumber int64
+	if lastStoredHeader != nil {
+		lastStoredBlockNumber = lastStoredHeader.Number.Int64()
+	}
+
+	var numBlocksToFetch int
+	// No blocks stored yet, fetch the first
+	if lastStoredHeader == nil {
+		numBlocksToFetch = 1
+	} else {
+		// Noop if already caught up or ahead of latest block returned from Ethereum node
+		if latestBlockNumber <= lastStoredBlockNumber {
+			return nil
+		}
+		numBlocksToFetch = int(latestBlockNumber - lastStoredBlockNumber)
+	}
+
+	if numBlocksToFetch >= constants.MaxBlocksStoredInNonArchiveNode {
+		return TooMayBlocksBehindError{
+			blocksMissing: numBlocksToFetch,
+		}
+	}
+
+	allEvents := []*Event{}
+	// Syncing to the latest block involves multiple Ethereum RPC requests. If any of them fail, we
+	// stop syncing and set the encountered error to `syncErr` to be returned to the caller after we've
+	// either reset or persisted the changes gathered up until the point where the error occurred.
+	var syncErr error
+	for i := 0; i < numBlocksToFetch; i++ {
+		// Optimization: If numBlocksToFetch is 1, we already know what the nextHeader is, so avoid
+		// fetching it again. If there is more then 1 block to fetch, compute each from the last
+		// stored and fetch it
+		nextHeader := latestHeader
+		if numBlocksToFetch != 1 {
+			lastStoredHeader, err := w.stack.Peek()
+			if err != nil {
+				syncErr = err
+				break
+			}
+			nextBlockNumber := big.NewInt(0).Add(lastStoredHeader.Number, big.NewInt(1))
+			nextHeader, err = w.client.HeaderByNumber(nextBlockNumber)
+			if err != nil {
+				syncErr = err
+				break
+			}
+		}
+
+		var events []*Event
+		events, err = w.buildCanonicalChain(nextHeader, events)
+		allEvents = append(allEvents, events...)
+		if err != nil {
+			syncErr = err
+			break
+		}
+	}
+	if len(allEvents) == 0 {
+		return syncErr
+	}
+	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
+		if err := w.stack.Reset(checkpointID); err != nil {
+			return err
+		}
+	} else {
+		_, err = w.stack.Checkpoint()
+		if err != nil {
+			return err
+		}
+		w.blockFeed.Send(allEvents)
+	}
+
+	return syncErr
+}
+
+func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, events []*Event) bool {
+	if len(events) == 0 || lastStoredHeader == nil {
+		return false
+	}
+	// If we haven't progressed in terms of block number, revert back to previous "latest" block.
+	// This ensures block events always leave the node further ahead, preventing unnecessary thrash
+	// during block-reorgs (which tend to cluster)
+	newLatestHeader := events[len(events)-1].BlockHeader
+	return newLatestHeader.Number.Cmp(lastStoredHeader.Number) <= 0
 }
 
 func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
@@ -236,16 +324,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		nextHeader, err := w.addLogs(nextHeader)
 		if err != nil {
-			// Due to block re-orgs & Ethereum node services load-balancing requests across multiple nodes
-			// a block header might be returned, but when fetching it's logs, an "unknown block" error is
-			// returned. This is expected to happen sometimes, and we simply return the events gathered so
-			// far and pick back up where we left off on the next polling interval.
-			if isUnknownBlockErr(err) {
-				log.WithFields(log.Fields{
-					"nextHeader": nextHeader,
-				}).Trace("failed to get logs for block")
-				return events, nil
-			}
 			return events, err
 		}
 		err = w.stack.Push(nextHeader)
@@ -270,14 +348,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 
 	nextParentHeader, err := w.client.HeaderByHash(nextHeader.Parent)
 	if err != nil {
-		if err == ethereum.NotFound {
-			log.WithFields(log.Fields{
-				"blockNumber": nextHeader.Parent.Hex(),
-			}).Info("block header not found")
-			// Noop and wait next polling interval. We remove the popped blocks
-			// and refetch them on the next polling interval.
-			return events, nil
-		}
 		return events, err
 	}
 	events, err = w.buildCanonicalChain(nextParentHeader, events)
@@ -286,16 +356,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	}
 	nextHeader, err = w.addLogs(nextHeader)
 	if err != nil {
-		// Due to block re-orgs & Ethereum node services load-balancing requests across multiple nodes
-		// a block header might be returned, but when fetching it's logs, an "unknown block" error is
-		// returned. This is expected to happen sometimes, and we simply return the events gathered so
-		// far and pick back up where we left off on the next polling interval.
-		if isUnknownBlockErr(err) {
-			log.WithFields(log.Fields{
-				"nextHeader": nextHeader,
-			}).Trace("failed to get logs for block")
-			return events, nil
-		}
 		return events, err
 	}
 	err = w.stack.Push(nextHeader)
@@ -602,16 +662,4 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
-}
-
-func isUnknownBlockErr(err error) bool {
-	// Geth error
-	if err.Error() == "unknown block" {
-		return true
-	}
-	// Parity error
-	if err.Error() == "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found" {
-		return true
-	}
-	return false
 }
