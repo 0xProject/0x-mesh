@@ -59,6 +59,7 @@ func (s *SimpleStack) Pop() (*miniheader.MiniHeader, error) {
 	return s.pop()
 }
 
+// you MUST acquire a lock on the mutex `mu` before calling `pop()`
 func (s *SimpleStack) pop() (*miniheader.MiniHeader, error) {
 	if len(s.miniHeaders) == 0 {
 		return nil, nil
@@ -80,6 +81,7 @@ func (s *SimpleStack) Push(miniHeader *miniheader.MiniHeader) error {
 	return s.push(miniHeader)
 }
 
+// you MUST acquire a lock on the mutex `mu` before calling `push()`
 func (s *SimpleStack) push(miniHeader *miniheader.MiniHeader) error {
 	for _, h := range s.miniHeaders {
 		if h.Number.Int64() == miniHeader.Number.Int64() {
