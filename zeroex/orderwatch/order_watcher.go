@@ -1374,17 +1374,9 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// We therefore need to emit events and kick off re-validations for these orders, if they were affected
 	// by the blocks processed since their validationBlock AND before we acquired a lock on `handleBlockEvents`.
 	// This ensures no block events are missed for newly added orders.
-	if err = w.fireEventsFromMissedBlocksForNewOrders(ctx, validationBlock, ordersAdded); err != nil {
-		return nil, err
-	}
-
-	return results, nil
-}
-
-func (w *Watcher) fireEventsFromMissedBlocksForNewOrders(ctx context.Context, validationBlock *miniheader.MiniHeader, ordersAdded []common.Hash) error {
 	blocksStored, err := w.meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	missedBlockEvents := []*blockwatch.Event{}
 	for _, block := range blocksStored {
@@ -1401,10 +1393,11 @@ func (w *Watcher) fireEventsFromMissedBlocksForNewOrders(ctx context.Context, va
 			orderWhitelist[orderHash] = struct{}{}
 		}
 		if err := w.handleBlockEvents(ctx, missedBlockEvents, orderWhitelist); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+
+	return results, nil
 }
 
 func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrder) (*miniheader.MiniHeader, *ordervalidator.ValidationResults, error) {
