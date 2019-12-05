@@ -89,14 +89,13 @@ type Watcher struct {
 
 // New creates a new Watcher instance.
 func New(config Config) *Watcher {
-	bs := &Watcher{
+	return &Watcher{
 		pollingInterval:   config.PollingInterval,
 		stack:             config.Stack,
 		client:            config.Client,
 		withLogs:          config.WithLogs,
 		topics:            config.Topics,
 	}
-	return bs
 }
 
 // SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
