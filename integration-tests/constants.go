@@ -2,6 +2,7 @@ package integrationtests
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/0xProject/0x-mesh/constants"
 )
@@ -21,9 +22,9 @@ const (
 	// Various config options/information for the standalone node. Like the
 	// bootstrap node, we know the private key/peer ID ahead of time.
 	standalonePeerID      = "16Uiu2HAmM9j68mgGGSFkXsuzbGJA8ezVHtQ2H9y6mRJAPhx6xtj9"
-	standaloneDataDir     = "./data/standalone-0"
-	standaloneRPCEndpoint = "ws://localhost:60501"
-	standaloneRPCAddr     = "localhost:60501"
+	standaloneDataDir     = "./data/standalone-"
+	standaloneRPCEndpoint = "ws://localhost:"
+	standaloneRPCAddr     = "localhost:"
 )
 
 var makerAddress = constants.GanacheAccount1
@@ -31,3 +32,15 @@ var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 var wethAmount = new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
 var zrxAmount = new(big.Int).Mul(big.NewInt(10), eighteenDecimalsInBaseUnits)
+
+// FIXME - These variables are actually affected by functions in this package. It might
+//         not make sense to call this file "constants.go"
+var safeNodeCount = struct {
+	sync.Mutex
+	nodeCount int
+}{
+	sync.Mutex{},
+	0,
+}
+
+var rpcPort = 60501

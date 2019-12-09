@@ -2,36 +2,52 @@ package integrationtests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAddOrdersSuccess(t *testing.T) {
-	setupSubTest(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
+
+	buildMeshForTests(t, ctx)
 
 	// logMessages is a channel through which log messages from the
 	// node will be sent. We use a large buffer so it doesn't cause
 	// goroutines to block.
 	logMessages := make(chan string, 1024)
 
+	// count is a channel through which the node count that is being used by
+	// a particular standalone node process will be communicated.
+	count := make(chan int)
+
 	// Start the node in a goroutine.
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, logMessages)
+		startStandaloneNode(t, ctx, count, logMessages)
 	}()
+
+	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
+	require.NoError(t, err, "RPC server didn't start")
 
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -40,9 +56,11 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 
-	_, err = waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint)
+	// Block for the count value and then close the channel
+	nodeCount := <-count
+	close(count)
+
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
@@ -65,16 +83,26 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
-/*
 func TestGetOrdersSuccess(t *testing.T) {
-	setupSubTest(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// FIXME(jalextowle): Cancel in case execution stops before the other
+	//                    cancel is called
+	defer cancel()
+
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
+
+	buildMeshForTests(t, ctx)
 
 	// logMessages is a channel through which log messages from the
 	// node will be sent. We use a large buffer so it doesn't cause
 	// goroutines to block.
 	logMessages := make(chan string, 1024)
+
+	count := make(chan int)
 
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -94,12 +122,16 @@ func TestGetOrdersSuccess(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, logMessages)
+		startStandaloneNode(t, ctx, count, logMessages)
 	}()
 
 	_, err = waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint)
+
+	nodeCount := <-count
+
+	fmt.Printf("=======================%s%s========================\n", standaloneRPCEndpoint, strconv.Itoa(nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(nodeCount))
 	require.NoError(t, err)
 
 	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
@@ -107,9 +139,6 @@ func TestGetOrdersSuccess(t *testing.T) {
 	expectedOrderHash, err = signedTestOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
-
-	fmt.Printf("%+v\n", signedTestOrder)
-	fmt.Printf("%+v\n", getOrdersResponse.OrdersInfos[0].SignedOrder)
 
 	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
 
@@ -122,11 +151,16 @@ func TestGetOrdersSuccess(t *testing.T) {
 	assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
 	assert.Equal(t, expectedFillableTakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
-	// The WaitGroup signals that AddOrders was called on the server-side.
+	// Cancel the context and wait for all outstanding goroutines to finish.
 	cancel()
 	wg.Wait()
 }
 
+// FIXME - A good strategy here might involve spinning up two standalone nodes,
+//         listen to the logs of each, and get peer information from there. Then
+//         have one node add the other node as a peer. It would also be good to
+//         test the case in which the other node doesn't actually exist.
+/*
 func TestAddPeer(t *testing.T) {
 	// Create the expected PeerInfo
 	addr0, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
@@ -140,49 +174,15 @@ func TestAddPeer(t *testing.T) {
 		Addrs: []ma.Multiaddr{addr0, addr1},
 	}
 
-	// Set up the dummy handler with an addPeerHandler
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	rpcHandler := &dummyRPCHandler{
-		addPeerHandler: func(peerInfo peerstore.PeerInfo) error {
-			assert.Equal(t, expectedPeerInfo, peerInfo, "AddPeer was called with an unexpected peerInfo argument")
-			wg.Done()
-			return nil
-		},
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, client := newTestServerAndClient(t, rpcHandler, ctx)
 
-	require.NoError(t, client.AddPeer(expectedPeerInfo))
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
 
-	// The WaitGroup signals that AddPeer was called on the server-side.
-	wg.Wait()
-}
-*/
-
-func TestGetStats(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	buildMeshForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
 
-	expectedGetStatsResponse := &rpc.GetStatsResponse{
-		Version:         "development",
-		PubSubTopic:     "/0x-orders/network/development/version/1",
-		Rendezvous:      "/0x-mesh/network/development/version/1",
-		PeerID:          "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
-		EthereumChainID: 1337,
-		LatestBlock: rpc.LatestBlock{
-			Number: 1,
-			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-		},
-		NumOrders: 0,
-		NumPeers:  0,
-	}
-
-	// Set up the dummy handler with a getStatsHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
@@ -191,22 +191,94 @@ func TestGetStats(t *testing.T) {
 		startStandaloneNode(t, ctx, logMessages)
 	}()
 
-	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
+	_, err = waitForLogSubstring(ctx, logMessages, "started RPC server")
+	require.NoError(t, err)
+
 	require.NoError(t, err, "RPC server didn't start")
 	client, err := rpc.NewClient(standaloneRPCEndpoint)
 	require.NoError(t, err)
 
+	require.NoError(t, client.AddPeer(expectedPeerInfo))
+
+	// Cancel the context and wait for all outstanding goroutines to finish.
+	cancel()
+	wg.Wait()
+}
+*/
+
+func TestGetStats(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
+
+	buildMeshForTests(t, ctx)
+
+	logMessages := make(chan string, 1024)
+	count := make(chan int)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, logMessages)
+	}()
+
+	log, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
+	require.NoError(t, err, "RPC server didn't start")
+	var jsonLog map[string]interface{}
+	err = json.Unmarshal([]byte(log), &jsonLog)
+	require.NoError(t, err)
+
+	expectedGetStatsResponse := &rpc.GetStatsResponse{
+		Version:              "development",
+		PubSubTopic:          "/0x-orders/network/1337/version/1",
+		Rendezvous:           "/0x-mesh/network/1337/version/1",
+		PeerID:               jsonLog["myPeerID"].(string),
+		EthereumChainID:      1337,
+		LatestBlock:          rpc.LatestBlock{},
+		NumOrders:            0,
+		NumPeers:             0,
+		MaxExpirationTime:    "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+		StartOfCurrentUTCDay: getUTCMidnightOfDate(time.Now()),
+	}
+
+	nodeCount := <-count
+	close(count)
+
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	require.NoError(t, err)
+
 	getStatsResponse, err := client.GetStats()
+
+	// HACK(jalextowle): Zeroing the Number and Hash fields of LatestBlock
+	//                   allows us to test more of the "GetStats" response
+	//                   without being too restrictive about the blockchain
+	//                   that is being used.
+	getStatsResponse.LatestBlock = rpc.LatestBlock{}
+
 	require.NoError(t, err)
 	require.Equal(t, expectedGetStatsResponse, getStatsResponse)
 
-	// The WaitGroup signals that GetStats was called on the server-side.
+	// Cancel the context and wait for all outstanding goroutines to finish.
+	cancel()
 	wg.Wait()
 }
 
+// FIXME - This needs some work and I'll need to use the new count trick
+/*
 func TestOrdersSubscription(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
+
+	buildMeshForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
 
@@ -244,12 +316,22 @@ func TestOrdersSubscription(t *testing.T) {
 	assert.Equal(t, len(orderEvent), 1)
 	fmt.Printf("%+v\n", orderEvent[0].SignedOrder)
 }
+*/
 
 func TestHeartbeatSubscription(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Remove the old database and p2p files.
+	removeOldFiles(t, ctx)
+
+	buildMeshForTests(t, ctx)
+
 	logMessages := make(chan string, 1024)
+	count := make(chan int)
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -257,12 +339,16 @@ func TestHeartbeatSubscription(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, logMessages)
+		startStandaloneNode(t, ctx, count, logMessages)
 	}()
 
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint)
+
+	nodeCount := <-count
+	close(count)
+
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
 
 	heartbeatChan := make(chan string)

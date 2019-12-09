@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -47,61 +48,93 @@ func init() {
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
+	// FIXME
+	fmt.Println("---------------------")
 	fmt.Println("Removing old files...")
-	require.NoError(t, os.RemoveAll(filepath.Join(standaloneDataDir, "db")))
-	require.NoError(t, os.RemoveAll(filepath.Join(standaloneDataDir, "p2p")))
+	fmt.Println("---------------------")
+
+	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDir + "*"))
+	require.NoError(t, err)
+
+	// FIXME
+	fmt.Println(oldFiles)
+
+	for _, oldFile := range oldFiles {
+		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "db")))
+		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "p2p")))
+	}
+
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
 }
 
+var hasRunBuildMesh bool
+
+func buildMeshForTests(t *testing.T, ctx context.Context) {
+	if !hasRunBuildMesh {
+		// Signal that mesh should not be built again in this test execution.
+		hasRunBuildMesh = true
+
+		// Build the mesh executable
+		fmt.Println("Building mesh executable...")
+		cmd := exec.CommandContext(ctx, "go", "install", ".")
+		cmd.Dir = "../cmd/mesh"
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, "could not build mesh: %s", string(output))
+	}
+}
+
+var hasRunBuildAll bool
+
 func buildForTests(t *testing.T, ctx context.Context) {
-	fmt.Println("Building mesh executable...")
-	cmd := exec.CommandContext(ctx, "go", "install", ".")
-	cmd.Dir = "../cmd/mesh"
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "could not build mesh: %s", string(output))
+	if !hasRunBuildAll {
+		// Signal that the executables should not be built again in this test execution.
+		hasRunBuildAll = true
 
-	fmt.Println("Building mesh-bootstrap executable...")
-	cmd = exec.CommandContext(ctx, "go", "install", ".")
-	cmd.Dir = "../cmd/mesh-bootstrap"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
+		buildMeshForTests(t, ctx)
 
-	fmt.Println("Clear yarn cache...")
-	cmd = exec.CommandContext(ctx, "yarn", "cache", "clean")
-	cmd.Dir = "../browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
+		fmt.Println("Building mesh-bootstrap executable...")
+		cmd := exec.CommandContext(ctx, "go", "install", ".")
+		cmd.Dir = "../cmd/mesh-bootstrap"
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
 
-	fmt.Println("Installing dependencies for TypeScript bindings...")
-	cmd = exec.CommandContext(ctx, "yarn", "install")
-	cmd.Dir = "../browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
+		fmt.Println("Clear yarn cache...")
+		cmd = exec.CommandContext(ctx, "yarn", "cache", "clean")
+		cmd.Dir = "../browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not clean yarn cache: %s", string(output))
 
-	fmt.Println("Building TypeScript bindings...")
-	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
+		fmt.Println("Installing dependencies for TypeScript bindings...")
+		cmd = exec.CommandContext(ctx, "yarn", "install")
+		cmd.Dir = "../browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
 
-	fmt.Println("Installing dependencies for browser node...")
-	cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
-	cmd.Dir = "./browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not install yarn depedencies: %s", string(output))
+		fmt.Println("Building TypeScript bindings...")
+		cmd = exec.CommandContext(ctx, "yarn", "build")
+		cmd.Dir = "../browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
 
-	fmt.Println("Running postinstall for browser node...")
-	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
-	cmd.Dir = "./browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
+		fmt.Println("Installing dependencies for browser node...")
+		cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
+		cmd.Dir = "./browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not install yarn depedencies: %s", string(output))
 
-	fmt.Println("Building browser node...")
-	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "./browser"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not build browser node: %s", string(output))
-	fmt.Println("Done building everything")
+		fmt.Println("Running postinstall for browser node...")
+		cmd = exec.CommandContext(ctx, "yarn", "postinstall")
+		cmd.Dir = "./browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
+
+		fmt.Println("Building browser node...")
+		cmd = exec.CommandContext(ctx, "yarn", "build")
+		cmd.Dir = "./browser"
+		output, err = cmd.CombinedOutput()
+		require.NoError(t, err, "could not build browser node: %s", string(output))
+		fmt.Println("Done building everything")
+	}
 }
 
 func startBootstrapNode(t *testing.T, ctx context.Context) {
@@ -124,16 +157,27 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, logMessages chan<- string) {
+	safeNodeCount.Lock()
+	nodeCount := safeNodeCount.nodeCount
+	safeNodeCount.nodeCount++
+	safeNodeCount.Unlock()
+
+	go func() {
+		// Send the nodeCount through the channel so the consumer knows the correct
+		// rpc port to use.
+		count <- nodeCount
+	}()
+
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"DATA_DIR="+standaloneDataDir,
+		"DATA_DIR="+standaloneDataDir+strconv.Itoa(nodeCount),
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"RPC_ADDR="+standaloneRPCAddr,
+		"RPC_ADDR="+standaloneRPCAddr+strconv.Itoa(rpcPort+nodeCount),
 	)
 
 	// Pipe messages from stderr through the logMessages channel.
@@ -144,8 +188,9 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
 		for scanner.Scan() {
-			fmt.Println("[standalone]: " + scanner.Text())
+			fmt.Printf("[standalone %d]: %s\n", nodeCount, scanner.Text())
 			logMessages <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
@@ -329,4 +374,10 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
+}
+
+// FIXME(jalextowle): This was taken from "ethereum/ratelimit." Should it be put elsewhere?
+func getUTCMidnightOfDate(date time.Time) time.Time {
+	utcDate := date.UTC()
+	return time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC)
 }

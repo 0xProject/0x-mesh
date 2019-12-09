@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ func TestBrowserIntegration(t *testing.T) {
 	defer cancel()
 
 	removeOldFiles(t, ctx)
+
 	buildForTests(t, ctx)
 
 	// wg is a WaitGroup for the entire tests. We won't exit until wg is done.
@@ -50,11 +52,13 @@ func TestBrowserIntegration(t *testing.T) {
 	// goroutines to block.
 	standaloneLogMessages := make(chan string, 1024)
 
+	count := make(chan int)
+
 	// Start the standalone node in a goroutine.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, standaloneLogMessages)
+		startStandaloneNode(t, ctx, count, standaloneLogMessages)
 	}()
 
 	// standaloneOrder is an order that will be sent to the network by the
@@ -72,7 +76,10 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the RPC server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
 		require.NoError(t, err, "RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint)
+
+		nodeCount := <-count
+
+		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(nodeCount))
 		require.NoError(t, err)
 		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)
