@@ -136,7 +136,7 @@ type Config struct {
 	//
 	// TODO(albrow): Link to more documentation about JSON-schemas and how this
 	// filter works.
-	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:""`
+	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
 }
 
 type snapshotInfo struct {
@@ -277,11 +277,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the order filter
-	orderFilterSchema := config.CustomOrderFilter
-	if config.CustomOrderFilter == "" {
-		orderFilterSchema = orderfilter.DefaultCustomOrderSchema
-	}
-	orderFilter, err := orderfilter.New(config.EthereumChainID, orderFilterSchema)
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
