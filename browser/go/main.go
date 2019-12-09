@@ -9,6 +9,8 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/orderfilter"
+
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/event"
@@ -132,6 +134,8 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
 		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
 	}
+	// TODO(albrow): Add proper support for custom order filters here.
+	config.CustomOrderFilter = orderfilter.DefaultCustomOrderSchema
 
 	return config, nil
 }
