@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,15 +160,21 @@ func TestAddPeer(t *testing.T) {
 	// The WaitGroup signals that AddPeer was called on the server-side.
 	wg.Wait()
 }
+*/
 
 func TestGetStats(t *testing.T) {
-	expectedGetStatsResponse := &GetStatsResponse{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logMessages := make(chan string, 1024)
+
+	expectedGetStatsResponse := &rpc.GetStatsResponse{
 		Version:         "development",
 		PubSubTopic:     "/0x-orders/network/development/version/1",
 		Rendezvous:      "/0x-mesh/network/development/version/1",
 		PeerID:          "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
-		EthereumChainID: 42,
-		LatestBlock: LatestBlock{
+		EthereumChainID: 1337,
+		LatestBlock: rpc.LatestBlock{
 			Number: 1,
 			Hash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
 		},
@@ -178,16 +185,16 @@ func TestGetStats(t *testing.T) {
 	// Set up the dummy handler with a getStatsHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	rpcHandler := &dummyRPCHandler{
-		getStatsHandler: func() (*GetStatsResponse, error) {
-			wg.Done()
-			return expectedGetStatsResponse, nil
-		},
-	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, client := newTestServerAndClient(t, rpcHandler, ctx)
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, logMessages)
+	}()
+
+	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
+	require.NoError(t, err, "RPC server didn't start")
+	client, err := rpc.NewClient(standaloneRPCEndpoint)
+	require.NoError(t, err)
 
 	getStatsResponse, err := client.GetStats()
 	require.NoError(t, err)
@@ -196,7 +203,6 @@ func TestGetStats(t *testing.T) {
 	// The WaitGroup signals that GetStats was called on the server-side.
 	wg.Wait()
 }
-*/
 
 func TestOrdersSubscription(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

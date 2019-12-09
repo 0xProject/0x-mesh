@@ -33,7 +33,7 @@ type Order struct {
 	Salt                  *big.Int       `json:"salt"`
 
 	// Cache hash for performance
-	Hash *common.Hash
+	hash *common.Hash
 }
 
 // SignedOrder represents a signed 0x order
@@ -381,13 +381,13 @@ var eip712OrderTypes = gethsigner.Types{
 
 // Resets the cached order hash. Usually only required for testing.
 func (o *Order) ResetHash() {
-	o.Hash = nil
+	o.hash = nil
 }
 
 // ComputeOrderHash computes a 0x order hash
 func (o *Order) ComputeOrderHash() (common.Hash, error) {
-	if o.Hash != nil {
-		return *o.Hash, nil
+	if o.hash != nil {
+		return *o.hash, nil
 	}
 
 	var domain = gethsigner.TypedDataDomain{
@@ -429,7 +429,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 	rawData := []byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash)))
 	hashBytes := keccak256(rawData)
 	hash := common.BytesToHash(hashBytes)
-	o.Hash = &hash
+	o.hash = &hash
 	return hash, nil
 }
 
