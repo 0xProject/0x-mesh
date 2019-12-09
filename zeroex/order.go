@@ -539,6 +539,9 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
+	// Note(albrow): Because of how our smart contracts work, most fields of an
+	// order cannot be null. However, makerAssetFeeData and takerAssetFeeData are
+	// the exception. For these fields, "0x" is used to indicate a null value.
 	makerFeeAssetData := "0x"
 	if len(s.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))

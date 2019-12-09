@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"syscall/js"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -17,7 +18,7 @@ func (o OrderEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
-		"endState":                     string(o.EndState),
+		"endState":                 string(o.EndState),
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           contractEventsJS,
 	})
@@ -28,7 +29,10 @@ func (s SignedOrder) JSValue() js.Value {
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
-	makerFeeAssetData := ""
+	// Note(albrow): Because of how our smart contracts work, most fields of an
+	// order cannot be null. However, makerAssetFeeData and takerAssetFeeData are
+	// the exception. For these fields, "0x" is used to indicate a null value.
+	makerFeeAssetData := "0x"
 	if len(s.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
 	}
@@ -36,7 +40,7 @@ func (s SignedOrder) JSValue() js.Value {
 	if len(s.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
 	}
-	takerFeeAssetData := ""
+	takerFeeAssetData := "0x"
 	if len(s.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
 	}
@@ -68,12 +72,12 @@ func (s SignedOrder) JSValue() js.Value {
 
 func (c ContractEvent) JSValue() js.Value {
 	m := map[string]interface{}{
-		"blockHash": c.BlockHash.Hex(),
-		"txHash":    c.TxHash.Hex(),
-		"txIndex":   c.TxIndex,
-		"logIndex":  c.LogIndex,
-		"isRemoved": c.IsRemoved,
-		"kind":      c.Kind,
+		"blockHash":  c.BlockHash.Hex(),
+		"txHash":     c.TxHash.Hex(),
+		"txIndex":    c.TxIndex,
+		"logIndex":   c.LogIndex,
+		"isRemoved":  c.IsRemoved,
+		"kind":       c.Kind,
 		"parameters": c.Parameters.(js.Wrapper).JSValue(),
 	}
 	return js.ValueOf(m)
