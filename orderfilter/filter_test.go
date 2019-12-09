@@ -2,6 +2,7 @@ package orderfilter
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -14,8 +15,8 @@ import (
 )
 
 var (
-	standardValidOrderJSON             = []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`)
-	orderWithSpecificSenderAddressJSON = []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x00000000000000000000000000000000ba5eba11","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`)
+	standardValidOrderJSON             = []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`)
+	orderWithSpecificSenderAddressJSON = []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x00000000000000000000000000000000ba5eba11","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`)
 )
 
 func TestFilterValidateOrder(t *testing.T) {
@@ -33,6 +34,7 @@ func TestFilterValidateOrder(t *testing.T) {
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			order: &zeroex.Order{
+				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 				MakerAssetAmount:      math.MustParseBig256("1000"),
@@ -53,9 +55,10 @@ func TestFilterValidateOrder(t *testing.T) {
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			expectedErrors: []string{
-				"exchangeAddress: Does not match pattern",
+				"exchangeAddress must be one of the following",
 			},
 			order: &zeroex.Order{
+				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 				MakerAssetAmount:      math.MustParseBig256("1000"),
@@ -72,10 +75,35 @@ func TestFilterValidateOrder(t *testing.T) {
 			},
 		},
 		{
+			note:              "wrong chainID",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			expectedErrors: []string{
+				"chainId does not match",
+			},
+			order: &zeroex.Order{
+				ChainID:               big.NewInt(42),
+				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
+				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+				MakerAssetAmount:      math.MustParseBig256("1000"),
+				MakerFee:              math.MustParseBig256("0"),
+				TakerAddress:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
+				TakerAssetData:        common.FromHex("0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
+				TakerAssetAmount:      math.MustParseBig256("2000"),
+				TakerFee:              math.MustParseBig256("0"),
+				SenderAddress:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
+				ExchangeAddress:       common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
+				FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
+				ExpirationTimeSeconds: math.MustParseBig256("1574532801"),
+				Salt:                  math.MustParseBig256("1548619145450"),
+			},
+		},
+		{
 			note:              "happy path w/ custom sender address",
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			order: &zeroex.Order{
+				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 				MakerAssetAmount:      math.MustParseBig256("1000"),
@@ -99,6 +127,7 @@ func TestFilterValidateOrder(t *testing.T) {
 				"senderAddress: Does not match pattern",
 			},
 			order: &zeroex.Order{
+				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 				MakerAssetAmount:      math.MustParseBig256("1000"),
@@ -134,7 +163,7 @@ func TestFilterValidateOrder(t *testing.T) {
 						continue loop
 					}
 				}
-				assert.Fail(t, fmt.Sprintf("missing expected error: %q", expectedErr), tcInfo)
+				assert.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %v", expectedErr, actualResult.Errors()), tcInfo)
 			}
 		}
 	}
@@ -160,7 +189,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 			note:              "order with mispelled makerAddress",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderJSON:         []byte(`{"makerAdress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
+			orderJSON:         []byte(`{"makerAdddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
 				"makerAddress is required",
 			},
@@ -169,7 +198,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 			note:              "order with missing makerAddress",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderJSON:         []byte(`{"takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
+			orderJSON:         []byte(`{"takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
 				"makerAddress is required",
 			},
@@ -178,9 +207,27 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 			note:              "order with invalid taker address",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"hi","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
+			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"hi","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
 				"takerAddress: Does not match pattern '^0x[0-9a-fA-F]{40}$'",
+			},
+		},
+		{
+			note:              "order with wrong exchange address",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e6168deadbeef","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
+			expectedErrors: []string{
+				"exchangeAddress must be one of the following",
+			},
+		},
+		{
+			note:              "order with wrong chain ID",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":42,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
+			expectedErrors: []string{
+				"chainId does not match",
 			},
 		},
 	}
@@ -201,7 +248,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 						continue loop
 					}
 				}
-				assert.Fail(t, fmt.Sprintf("missing expected error: %q", expectedErr), tcInfo)
+				assert.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %s", expectedErr, actualResult.Errors()), tcInfo)
 			}
 		}
 	}
@@ -221,35 +268,35 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 			note:              "happy path",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
 			expectedResult:    true,
 		},
 		{
 			note:              "missing topics",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"}}`),
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"}}`),
 			expectedResult:    false,
 		},
 		{
 			note:              "empty topics",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":[]}`),
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":[]}`),
 			expectedResult:    false,
 		},
 		{
 			note:              "missing message type",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			orderMessageJSON:  []byte(`{"order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
 			expectedResult:    false,
 		},
 		{
 			note:              "wrong message type",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"messageType":"wrong","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			orderMessageJSON:  []byte(`{"messageType":"wrong","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
 			expectedResult:    false,
 		},
 		{
@@ -263,7 +310,14 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 			note:              "order with wrong exchange address",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x0000000000000000000000000000000000000000","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x0000000000000000000000000000000000000000","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainId":1337,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
+			expectedResult:    false,
+		},
+		{
+			note:              "order with wrong chain ID",
+			chainID:           constants.TestChainID,
+			customOrderSchema: DefaultCustomOrderSchema,
+			orderMessageJSON:  []byte(`{"messageType":"order","order":{"makerAddress":"0x6ecbe1db9ef729cbe972c83fb886247691fb6beb","makerAssetData":"0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c","makerAssetAmount":"100000000000000000000","makerFee":"0","takerAddress":"0x0000000000000000000000000000000000000000","takerAssetData":"0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082","takerAssetAmount":"50000000000000000000","takerFee":"0","senderAddress":"0x0000000000000000000000000000000000000000","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","feeRecipientAddress":"0xa258b39954cef5cb142fd567a46cddb31a670124","expirationTimeSeconds":"1575499721","salt":"1548619145450","makerFeeAssetData":"0x","takerFeeAssetData":"0x","chainID":42,"signature":"0x1b0d147219c5c92262f0902727a8d72b09ea5165ac2ede14bccbfbf6559343d8305978e22516dc1ea75e10af2c8954cd45da562ec907ce5723a62728272c566a3f02"},"topics":["/0x-orders/version/3/chain/1337/schema/e30="]}`),
 			expectedResult:    false,
 		},
 	}

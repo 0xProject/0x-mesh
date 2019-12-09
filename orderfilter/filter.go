@@ -31,12 +31,13 @@ func (e WrongTopicVersionError) Error() string {
 	return fmt.Sprintf("wrong topic version: expected %d but got %d", e.expectedVersion, e.actualVersion)
 }
 
+// TODO(albrow): Update these schemas for v3.
 var (
 	// Built-in schemas
 	addressSchemaLoader     = jsonschema.NewStringLoader(`{"id":"/address","type":"string","pattern":"^0x[0-9a-fA-F]{40}$"}`)
 	wholeNumberSchemaLoader = jsonschema.NewStringLoader(`{"id":"/wholeNumber","anyOf":[{"type":"string","pattern":"^\\d+$"},{"type":"integer"}]}`)
 	hexSchemaLoader         = jsonschema.NewStringLoader(`{"id":"/hex","type":"string","pattern":"^0x(([0-9a-fA-F][0-9a-fA-F])+)?$"}`)
-	orderSchemaLoader       = jsonschema.NewStringLoader(`{"id":"/order","properties":{"makerAddress":{"$ref":"/address"},"takerAddress":{"$ref":"/address"},"makerFee":{"$ref":"/wholeNumber"},"takerFee":{"$ref":"/wholeNumber"},"senderAddress":{"$ref":"/address"},"makerAssetAmount":{"$ref":"/wholeNumber"},"takerAssetAmount":{"$ref":"/wholeNumber"},"makerAssetData":{"$ref":"/hex"},"takerAssetData":{"$ref":"/hex"},"salt":{"$ref":"/wholeNumber"},"exchangeAddress":{"$ref":"/exchangeAddress"},"feeRecipientAddress":{"$ref":"/address"},"expirationTimeSeconds":{"$ref":"/wholeNumber"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","salt","exchangeAddress","feeRecipientAddress","expirationTimeSeconds"],"type":"object"}`)
+	orderSchemaLoader       = jsonschema.NewStringLoader(`{"id":"/order","properties":{"makerAddress":{"$ref":"/address"},"takerAddress":{"$ref":"/address"},"makerFee":{"$ref":"/wholeNumber"},"takerFee":{"$ref":"/wholeNumber"},"senderAddress":{"$ref":"/address"},"makerAssetAmount":{"$ref":"/wholeNumber"},"takerAssetAmount":{"$ref":"/wholeNumber"},"makerAssetData":{"$ref":"/hex"},"takerAssetData":{"$ref":"/hex"},"makerFeeAssetData":{"$ref":"/hex"},"takerFeeAssetData":{"$ref":"/hex"},"salt":{"$ref":"/wholeNumber"},"feeRecipientAddress":{"$ref":"/address"},"expirationTimeSeconds":{"$ref":"/wholeNumber"},"exchangeAddress":{"$ref":"/exchangeAddress"},"chainId":{"$ref":"/chainId"}},"required":["makerAddress","takerAddress","makerFee","takerFee","senderAddress","makerAssetAmount","takerAssetAmount","makerAssetData","takerAssetData","makerFeeAssetData","takerFeeAssetData","salt","feeRecipientAddress","expirationTimeSeconds","exchangeAddress","chainId"],"type":"object"}`)
 	signedOrderSchemaLoader = jsonschema.NewStringLoader(`{"id":"/signedOrder","allOf":[{"$ref":"/order"},{"properties":{"signature":{"$ref":"/hex"}},"required":["signature"]}]}`)
 
 	// Root schemas
@@ -112,12 +113,21 @@ func loadExchangeAddress(loader *jsonschema.SchemaLoader, chainID int) error {
 	}
 	// Note that exchangeAddressSchema accepts both checksummed and
 	// non-checksummed (i.e. all lowercase) addresses.
-	exchangeAddressSchema := fmt.Sprintf(`{"oneOf":[{"type":"string","pattern":%q},{"type":"string","pattern":%q}]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
+	// TODO(albrow): Can we set this to constant?
+	exchangeAddressSchema := fmt.Sprintf(`{"enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
 	return loader.AddSchema("/exchangeAddress", jsonschema.NewStringLoader(exchangeAddressSchema))
+}
+
+func loadChainID(loader *jsonschema.SchemaLoader, chainID int) error {
+	chainIDSchema := fmt.Sprintf(`{"const":%d}`, chainID)
+	return loader.AddSchema("/chainId", jsonschema.NewStringLoader(chainIDSchema))
 }
 
 func newLoader(chainID int, customOrderSchema string) (*jsonschema.SchemaLoader, error) {
 	loader := jsonschema.NewSchemaLoader()
+	if err := loadChainID(loader, chainID); err != nil {
+		return nil, err
+	}
 	if err := loadExchangeAddress(loader, chainID); err != nil {
 		return nil, err
 	}
