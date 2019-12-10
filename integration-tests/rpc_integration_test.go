@@ -12,6 +12,9 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/libp2p/go-libp2p-core/peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,12 +24,13 @@ func TestAddOrdersSuccess(t *testing.T) {
 	defer teardownSubTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// NOTE(jalextowle): Cancel in case execution stops before other cancel is called below.
 	defer cancel()
 
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
 	// logMessages is a channel through which log messages from the
 	// node will be sent. We use a large buffer so it doesn't cause
@@ -91,14 +95,13 @@ func TestGetOrdersSuccess(t *testing.T) {
 	defer teardownSubTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	// FIXME(jalextowle): Cancel in case execution stops before the other
-	//                    cancel is called
+	// NOTE(jalextowle): Cancel in case execution stops before other cancel is called below.
 	defer cancel()
 
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
 	// logMessages is a channel through which log messages from the
 	// node will be sent. We use a large buffer so it doesn't cause
@@ -131,6 +134,7 @@ func TestGetOrdersSuccess(t *testing.T) {
 	require.NoError(t, err, "RPC server didn't start")
 
 	nodeCount := <-count
+	close(count)
 
 	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
@@ -165,42 +169,73 @@ func TestGetOrdersSuccess(t *testing.T) {
 //         listen to the logs of each, and get peer information from there. Then
 //         have one node add the other node as a peer. It would also be good to
 //         test the case in which the other node doesn't actually exist.
-/*
 func TestAddPeer(t *testing.T) {
-	// Create the expected PeerInfo
-	addr0, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
-	require.NoError(t, err)
-	addr1, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/5678")
-	require.NoError(t, err)
-	peerID, err := peer.IDB58Decode("QmagLpXZHNrTraqWpY49xtFmZMTLBWctx2PF96s4aFrj9f")
-	require.NoError(t, err)
-	expectedPeerInfo := peerstore.PeerInfo{
-		ID:    peerID,
-		Addrs: []ma.Multiaddr{addr0, addr1},
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
+	buildBootstrapForTests(t, ctx)
 
-	logMessages := make(chan string, 1024)
-
+	// wg is a WaitGroup for the entire tests. We won't exit until wg is done.
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
+	logMessages1 := make(chan string, 1024)
+	logMessages2 := make(chan string, 1024)
+	count1 := make(chan int)
+	count2 := make(chan int)
+
+	// Start two standalone nodes so that one can add the other as a peer
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, logMessages)
+		startStandaloneNode(t, ctx, count1, logMessages1)
+	}()
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count2, logMessages2)
 	}()
 
-	_, err = waitForLogSubstring(ctx, logMessages, "started RPC server")
+	_, err := waitForLogSubstring(ctx, logMessages1, "starting p2p node")
+	require.NoError(t, err, "p2p node didn't start")
+
+	log2, err := waitForLogSubstring(ctx, logMessages2, "starting p2p node")
+	require.NoError(t, err, "p2p node didn't start")
+
+	var jsonLog2 struct {
+		PeerId    string   `json:"myPeerID"`
+		Addresses []string `json:"addresses_array"`
+	}
+	err = json.Unmarshal([]byte(log2), &jsonLog2)
 	require.NoError(t, err)
 
-	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint)
+	nodeCount := <-count1
+	close(count1)
+	<-count2
+	close(count2)
+
+	// Parse peer ID.
+	parsedPeerID, err := peer.IDB58Decode(jsonLog2.PeerId)
+	require.NoError(t, err)
+
+	multiaddrs := jsonLog2.Addresses
+
+	// Parse each given multiaddress.
+	parsedMultiaddrs := make([]ma.Multiaddr, len(multiaddrs))
+	for i, addr := range multiaddrs {
+		parsed, err := ma.NewMultiaddr(addr)
+		require.NoError(t, err)
+		parsedMultiaddrs[i] = parsed
+	}
+
+	expectedPeerInfo := peerstore.PeerInfo{
+		ID:    parsedPeerID,
+		Addrs: parsedMultiaddrs,
+	}
+
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
 
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
@@ -209,7 +244,6 @@ func TestAddPeer(t *testing.T) {
 	cancel()
 	wg.Wait()
 }
-*/
 
 func TestGetStats(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
@@ -220,7 +254,7 @@ func TestGetStats(t *testing.T) {
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
 	count := make(chan int)
@@ -281,7 +315,7 @@ func TestOrdersSubscription(t *testing.T) {
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
 
@@ -300,6 +334,7 @@ func TestOrdersSubscription(t *testing.T) {
 	require.NoError(t, err, "RPC server didn't start")
 
 	nodeCount := <-count
+	close(count)
 
 	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
@@ -349,7 +384,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	// Remove the old database and p2p files.
 	removeOldFiles(t, ctx)
 
-	buildMeshForTests(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
 	count := make(chan int)

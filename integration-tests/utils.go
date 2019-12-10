@@ -59,74 +59,91 @@ func removeOldFiles(t *testing.T, ctx context.Context) {
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
 }
 
-var hasRunBuildMesh bool
+var hasRunBuildStandalone bool
 
-func buildMeshForTests(t *testing.T, ctx context.Context) {
-	if !hasRunBuildMesh {
-		// Signal that mesh should not be built again in this test execution.
-		hasRunBuildMesh = true
-
-		// Build the mesh executable
-		fmt.Println("Building mesh executable...")
-		cmd := exec.CommandContext(ctx, "go", "install", ".")
-		cmd.Dir = "../cmd/mesh"
-		output, err := cmd.CombinedOutput()
-		require.NoError(t, err, "could not build mesh: %s", string(output))
+func buildStandaloneForTests(t *testing.T, ctx context.Context) {
+	if hasRunBuildStandalone {
+		return
 	}
+
+	// Signal that mesh should not be built again in this test execution.
+	hasRunBuildStandalone = true
+
+	// Build the mesh executable
+	fmt.Println("Building mesh executable...")
+	cmd := exec.CommandContext(ctx, "go", "install", ".")
+	cmd.Dir = "../cmd/mesh"
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "could not build mesh: %s", string(output))
+}
+
+var hasRunBuildBootstrap bool
+
+func buildBootstrapForTests(t *testing.T, ctx context.Context) {
+	if hasRunBuildBootstrap {
+		return
+	}
+	// Signal that mesh should not be built again in this test execution.
+	hasRunBuildBootstrap = true
+
+	// Build the bootstrap executable
+	fmt.Println("Building mesh-bootstrap executable...")
+	cmd := exec.CommandContext(ctx, "go", "install", ".")
+	cmd.Dir = "../cmd/mesh-bootstrap"
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
 }
 
 var hasRunBuildAll bool
 
 func buildForTests(t *testing.T, ctx context.Context) {
-	if !hasRunBuildAll {
-		// Signal that the executables should not be built again in this test execution.
-		hasRunBuildAll = true
-
-		buildMeshForTests(t, ctx)
-
-		fmt.Println("Building mesh-bootstrap executable...")
-		cmd := exec.CommandContext(ctx, "go", "install", ".")
-		cmd.Dir = "../cmd/mesh-bootstrap"
-		output, err := cmd.CombinedOutput()
-		require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
-
-		fmt.Println("Clear yarn cache...")
-		cmd = exec.CommandContext(ctx, "yarn", "cache", "clean")
-		cmd.Dir = "../browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not clean yarn cache: %s", string(output))
-
-		fmt.Println("Installing dependencies for TypeScript bindings...")
-		cmd = exec.CommandContext(ctx, "yarn", "install")
-		cmd.Dir = "../browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
-
-		fmt.Println("Building TypeScript bindings...")
-		cmd = exec.CommandContext(ctx, "yarn", "build")
-		cmd.Dir = "../browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
-
-		fmt.Println("Installing dependencies for browser node...")
-		cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
-		cmd.Dir = "./browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not install yarn depedencies: %s", string(output))
-
-		fmt.Println("Running postinstall for browser node...")
-		cmd = exec.CommandContext(ctx, "yarn", "postinstall")
-		cmd.Dir = "./browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
-
-		fmt.Println("Building browser node...")
-		cmd = exec.CommandContext(ctx, "yarn", "build")
-		cmd.Dir = "./browser"
-		output, err = cmd.CombinedOutput()
-		require.NoError(t, err, "could not build browser node: %s", string(output))
-		fmt.Println("Done building everything")
+	if hasRunBuildAll {
+		return
 	}
+
+	// Signal that the executables should not be built again in this test execution.
+	hasRunBuildAll = true
+
+	buildStandaloneForTests(t, ctx)
+
+	buildBootstrapForTests(t, ctx)
+
+	fmt.Println("Clear yarn cache...")
+	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
+	cmd.Dir = "../browser"
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
+
+	fmt.Println("Installing dependencies for TypeScript bindings...")
+	cmd = exec.CommandContext(ctx, "yarn", "install")
+	cmd.Dir = "../browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
+
+	fmt.Println("Building TypeScript bindings...")
+	cmd = exec.CommandContext(ctx, "yarn", "build")
+	cmd.Dir = "../browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
+
+	fmt.Println("Installing dependencies for browser node...")
+	cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
+	cmd.Dir = "./browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not install yarn depedencies: %s", string(output))
+
+	fmt.Println("Running postinstall for browser node...")
+	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
+	cmd.Dir = "./browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
+
+	fmt.Println("Building browser node...")
+	cmd = exec.CommandContext(ctx, "yarn", "build")
+	cmd.Dir = "./browser"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not build browser node: %s", string(output))
+	fmt.Println("Done building everything")
 }
 
 func startBootstrapNode(t *testing.T, ctx context.Context) {
