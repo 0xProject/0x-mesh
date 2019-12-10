@@ -48,16 +48,8 @@ func init() {
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
-	// FIXME
-	fmt.Println("---------------------")
-	fmt.Println("Removing old files...")
-	fmt.Println("---------------------")
-
 	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDir + "*"))
 	require.NoError(t, err)
-
-	// FIXME
-	fmt.Println(oldFiles)
 
 	for _, oldFile := range oldFiles {
 		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "db")))

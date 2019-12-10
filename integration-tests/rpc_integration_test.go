@@ -3,7 +3,6 @@ package integrationtests
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -83,6 +82,10 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
+// TODO(jalextowle): Since the uuid creation process is inherently random, we
+//                   can't meaningfully sanity check the returnedSnapshotID in
+//                   this test. Unit testing should be implemented to verify that
+//                   this logic is correct, if necessary.
 func TestGetOrdersSuccess(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
@@ -114,7 +117,6 @@ func TestGetOrdersSuccess(t *testing.T) {
 	expectedPage := 0
 	expectedPerPage := 5
 	expectedSnapshotID := ""
-	returnedSnapshotID := "0x123"
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -130,17 +132,20 @@ func TestGetOrdersSuccess(t *testing.T) {
 
 	nodeCount := <-count
 
-	fmt.Printf("=======================%s%s========================\n", standaloneRPCEndpoint, strconv.Itoa(nodeCount))
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
+
+	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
+	validationResponse, err := client.AddOrders(signedTestOrders)
+	require.NoError(t, err)
+	assert.Len(t, validationResponse.Accepted, 1)
+	assert.Len(t, validationResponse.Rejected, 0)
 
 	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
 	require.NoError(t, err)
 	expectedOrderHash, err = signedTestOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
-
-	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
 
 	// We need to call ResetHash so that unexported hash field is equal in later
 	// assertions.
