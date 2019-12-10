@@ -274,8 +274,6 @@ func TestGetStats(t *testing.T) {
 	wg.Wait()
 }
 
-// FIXME - This needs some work and I'll need to use the new count trick
-/*
 func TestOrdersSubscription(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -287,18 +285,23 @@ func TestOrdersSubscription(t *testing.T) {
 
 	logMessages := make(chan string, 1024)
 
+	count := make(chan int)
+
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, logMessages)
+		startStandaloneNode(t, ctx, count, logMessages)
 	}()
 
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint)
+
+	nodeCount := <-count
+
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
 	require.NoError(t, err)
 
 	orderEventChan := make(chan []*zeroex.OrderEvent)
@@ -308,20 +311,33 @@ func TestOrdersSubscription(t *testing.T) {
 
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	// expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
-	// expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
 	client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
 
+	// Reset the hash so that the order events can be compared without needing to hash
+	// the response order.
+	signedTestOrder.ResetHash()
+
 	orderEvent := <-orderEventChan
 
-	assert.Equal(t, len(orderEvent), 1)
-	fmt.Printf("%+v\n", orderEvent[0].SignedOrder)
+	assert.EqualValues(t,
+		[]*zeroex.OrderEvent{
+			&zeroex.OrderEvent{
+				OrderHash:                expectedOrderHash,
+				SignedOrder:              signedTestOrder,
+				EndState:                 zeroex.ESOrderAdded,
+				FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
+				ContractEvents:           []*zeroex.ContractEvent{},
+			},
+		},
+		orderEvent,
+	)
 }
-*/
 
 func TestHeartbeatSubscription(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
