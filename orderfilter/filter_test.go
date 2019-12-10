@@ -101,7 +101,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		{
 			note:              "happy path w/ custom sender address",
 			chainID:           constants.TestChainID,
-			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
+			customOrderSchema: `{"properties":{"senderAddress":{"const":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			order: &zeroex.Order{
 				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
@@ -122,9 +122,9 @@ func TestFilterValidateOrder(t *testing.T) {
 		{
 			note:              "wrong custom sender address",
 			chainID:           constants.TestChainID,
-			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
+			customOrderSchema: `{"properties":{"senderAddress":{"const":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			expectedErrors: []string{
-				"senderAddress: Does not match pattern",
+				"senderAddress does not match",
 			},
 			order: &zeroex.Order{
 				ChainID:               big.NewInt(constants.TestChainID),
