@@ -84,7 +84,8 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
 	require.NoError(t, err)
 	config := Config{
-		Topic:            testTopic,
+		SubscribeTopic:   testTopic,
+		PublishTopics:    []string{testTopic},
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousString: testRendezvousString,
@@ -519,7 +520,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	}
 
 	node0Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -530,7 +532,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 		GlobalPubSubMessageBurst: 5,
 	}
 	node1Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -541,7 +544,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 		GlobalPubSubMessageBurst: 5,
 	}
 	node2Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -603,7 +607,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	}
 
 	node0Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -614,7 +619,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		PerPeerPubSubMessageBurst: 5,
 	}
 	node1Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -625,7 +631,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		PerPeerPubSubMessageBurst: 5,
 	}
 	node2Config := Config{
-		Topic: testTopic,
+		SubscribeTopic: testTopic,
+		PublishTopics:  []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),

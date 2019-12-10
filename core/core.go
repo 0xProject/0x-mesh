@@ -327,6 +327,26 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
+func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopic(chainID)
+	if err != nil {
+		return nil, err
+	}
+	customTopic := customFilter.Topic()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to publish to
+		// multiple topics.
+		return []string{defaultTopic}, nil
+	} else {
+		// If we are using a custom order filter, publish to *both* the default
+		// topic and the custom topic. All orders that match the custom order filter
+		// must necessarily match the default filter. This also allows us to
+		// implement cross-topic forwarding in the future.
+		// See https://github.com/0xProject/0x-mesh/pull/563
+		return []string{defaultTopic, customTopic}, nil
+	}
+}
+
 func getRendezvous(chainID int) string {
 	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
 }
@@ -372,6 +392,12 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 }
 
 func (app *App) Start(ctx context.Context) error {
+	// Get the publish topics depending on our custom order filter.
+	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
+	if err != nil {
+		return err
+	}
+
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
 	innerCtx, cancel := context.WithCancel(ctx)
@@ -462,7 +488,8 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:                  app.orderFilter.Topic(),
+		SubscribeTopic:         app.orderFilter.Topic(),
+		PublishTopics:          publishTopics,
 		TCPPort:                app.config.P2PTCPPort,
 		WebSocketsPort:         app.config.P2PWebSocketsPort,
 		Insecure:               false,

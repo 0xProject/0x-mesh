@@ -16,6 +16,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	"github.com/0xProject/0x-mesh/p2p/validatorset"
+	"github.com/albrow/stringset"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -97,9 +98,13 @@ type Node struct {
 
 // Config contains configuration options for a Node.
 type Config struct {
-	// Topic is a unique string representing the pubsub topic. Only Nodes which
-	// have the same topic will share messages with one another.
-	Topic string
+	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
+	// that are published on this topic will be received and processed.
+	SubscribeTopic string
+	// PublishTopics are the topics to publish messages to. Messages may be
+	// published to more than one topic (e.g. a topic for all orders and a topic
+	// for orders with a specific asset).
+	PublishTopics []string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
@@ -301,9 +306,13 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 		validators.Add("custom", config.CustomMessageValidator)
 	}
 
-	// Register the set of validators.
-	if err := ps.RegisterTopicValidator(config.Topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
-		return err
+	// Register the set of validators for all topics that we publish and/or
+	// subscribe to.
+	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopic))
+	for topic := range allTopics {
+		if err := ps.RegisterTopicValidator(topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -576,7 +585,17 @@ func (n *Node) shareBatch() error {
 
 // Send sends a message continaing the given data to all connected peers.
 func (n *Node) Send(data []byte) error {
-	return n.pubsub.Publish(n.config.Topic, data)
+	// Note: If there is an error, we still try to publish to any remaining
+	// topics. We always return the first error that was encountered (if any),
+	// which is assigned to firstErr.
+	var firstErr error
+	for _, topic := range n.config.PublishTopics {
+		err := n.pubsub.Publish(topic, data)
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // receive returns the next pending message. It blocks if no messages are
@@ -584,7 +603,7 @@ func (n *Node) Send(data []byte) error {
 func (n *Node) receive(ctx context.Context) (*Message, error) {
 	if n.sub == nil {
 		var err error
-		n.sub, err = n.pubsub.Subscribe(n.config.Topic)
+		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic)
 		if err != nil {
 			return nil, err
 		}
