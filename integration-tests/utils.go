@@ -166,6 +166,16 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
+// This struct is used to safely maintain a counter of how many standalone nodes
+// have been started.
+var safeNodeCount = struct {
+	sync.Mutex
+	nodeCount int
+}{
+	sync.Mutex{},
+	0,
+}
+
 func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, logMessages chan<- string) {
 	safeNodeCount.Lock()
 	nodeCount := safeNodeCount.nodeCount

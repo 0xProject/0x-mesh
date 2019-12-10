@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"math/big"
-	"sync"
 
 	"github.com/0xProject/0x-mesh/constants"
 )
@@ -10,6 +9,9 @@ import (
 const (
 	ethereumRPCURL  = "http://localhost:8545"
 	ethereumChainID = 1337
+
+	rpcPort        = 60501
+	protocolString = "/meshsub/1.0.0"
 
 	// Various config options/information for the bootstrap node. The private key
 	// for the bootstrap node is checked in to version control so we know it's
@@ -30,17 +32,5 @@ const (
 var makerAddress = constants.GanacheAccount1
 var takerAddress = constants.GanacheAccount2
 var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-var wethAmount = new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(10), eighteenDecimalsInBaseUnits)
-
-// FIXME - These variables are actually affected by functions in this package. It might
-//         not make sense to call this file "constants.go"
-var safeNodeCount = struct {
-	sync.Mutex
-	nodeCount int
-}{
-	sync.Mutex{},
-	0,
-}
-
-var rpcPort = 60501
+var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
