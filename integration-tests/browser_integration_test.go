@@ -37,7 +37,6 @@ func TestBrowserIntegration(t *testing.T) {
 	defer cancel()
 
 	removeOldFiles(t, ctx)
-
 	buildForTests(t, ctx)
 
 	// wg is a WaitGroup for the entire tests. We won't exit until wg is done.
@@ -77,7 +76,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the RPC server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
 		require.NoError(t, err, "RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(count))
+		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 		require.NoError(t, err)
 		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)

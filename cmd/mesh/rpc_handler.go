@@ -123,11 +123,6 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rp
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
 		return nil, constants.ErrInternal
 	}
-
-	log.WithFields(log.Fields{
-		"validation results": validationResults,
-	}).Info("Validation Results Found")
-
 	return validationResults, nil
 }
 
