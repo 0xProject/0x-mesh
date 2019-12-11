@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestBrowserIntegration(t *testing.T) {
 	// goroutines to block.
 	standaloneLogMessages := make(chan string, 1024)
 
-	count := make(chan int)
+	count := int(atomic.AddInt32(nodeCount, 1))
 
 	// Start the standalone node in a goroutine.
 	wg.Add(1)
@@ -76,10 +77,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the RPC server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
 		require.NoError(t, err, "RPC server didn't start")
-
-		nodeCount := <-count
-
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(nodeCount))
+		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(count))
 		require.NoError(t, err)
 		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -39,9 +40,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	// goroutines to block.
 	logMessages := make(chan string, 1024)
 
-	// count is a channel through which the node count that is being used by
-	// a particular standalone node process will be communicated.
-	count := make(chan int)
+	count := int(atomic.AddInt32(nodeCount, 1))
 
 	// Start the node in a goroutine.
 	wg := &sync.WaitGroup{}
@@ -61,11 +60,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
 
-	// Block for the count value and then close the channel
-	nodeCount := <-count
-	close(count)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
@@ -110,8 +105,6 @@ func TestGetOrdersSuccess(t *testing.T) {
 	// goroutines to block.
 	logMessages := make(chan string, 1024)
 
-	count := make(chan int)
-
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
@@ -127,6 +120,8 @@ func TestGetOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
+	count := int(atomic.AddInt32(nodeCount, 1))
+
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -135,10 +130,7 @@ func TestGetOrdersSuccess(t *testing.T) {
 	_, err = waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
 
-	nodeCount := <-count
-	close(count)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
@@ -184,8 +176,9 @@ func TestAddPeer(t *testing.T) {
 
 	logMessages1 := make(chan string, 1024)
 	logMessages2 := make(chan string, 1024)
-	count1 := make(chan int)
-	count2 := make(chan int)
+
+	count2 := int(atomic.AddInt32(nodeCount, 2))
+	count1 := count2 - 1
 
 	// Start two standalone nodes so that one can add the other as a peer
 	wg.Add(2)
@@ -245,14 +238,7 @@ func TestAddPeer(t *testing.T) {
 	_, err = waitForLogSubstring(ctx, logMessages2, "failed to connect to bootstrap peer")
 	require.NoError(t, err)
 
-	// We will only be interacting with the first node, so the nodeCount
-	// of the second node can be disregarded.
-	nodeCount := <-count1
-	close(count1)
-	<-count2
-	close(count2)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count1))
 	require.NoError(t, err)
 
 	require.NoError(t, client.AddPeer(expectedPeerInfo))
@@ -323,7 +309,8 @@ func TestGetStats(t *testing.T) {
 	buildStandaloneForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
-	count := make(chan int)
+
+	count := int(atomic.AddInt32(nodeCount, 1))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -352,10 +339,7 @@ func TestGetStats(t *testing.T) {
 		StartOfCurrentUTCDay: getUTCMidnightOfDate(time.Now()),
 	}
 
-	nodeCount := <-count
-	close(count)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	getStatsResponse, err := client.GetStats()
@@ -388,7 +372,7 @@ func TestOrdersSubscription(t *testing.T) {
 
 	logMessages := make(chan string, 1024)
 
-	count := make(chan int)
+	count := int(atomic.AddInt32(nodeCount, 1))
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -402,10 +386,7 @@ func TestOrdersSubscription(t *testing.T) {
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
 
-	nodeCount := <-count
-	close(count)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	orderEventChan := make(chan []*zeroex.OrderEvent)
@@ -456,7 +437,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	buildStandaloneForTests(t, ctx)
 
 	logMessages := make(chan string, 1024)
-	count := make(chan int)
+	count := int(atomic.AddInt32(nodeCount, 1))
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -470,10 +451,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
 
-	nodeCount := <-count
-	close(count)
-
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+nodeCount))
+	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	heartbeatChan := make(chan string)

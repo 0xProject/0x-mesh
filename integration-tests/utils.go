@@ -29,6 +29,8 @@ import (
 var integrationTestsEnabled bool
 
 func init() {
+	var zero int32 = 0
+	nodeCount = &zero
 	flag.BoolVar(&integrationTestsEnabled, "integration", false, "enable integration tests")
 	flag.Parse()
 }
@@ -166,37 +168,18 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-// This struct is used to safely maintain a counter of how many standalone nodes
-// have been started.
-var safeNodeCount = struct {
-	sync.Mutex
-	nodeCount int
-}{
-	sync.Mutex{},
-	0,
-}
+var nodeCount *int32
 
-func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, logMessages chan<- string) {
-	safeNodeCount.Lock()
-	nodeCount := safeNodeCount.nodeCount
-	safeNodeCount.nodeCount++
-	safeNodeCount.Unlock()
-
-	go func() {
-		// Send the nodeCount through the channel so the consumer knows the correct
-		// rpc port to use.
-		count <- nodeCount
-	}()
-
+func startStandaloneNode(t *testing.T, ctx context.Context, count int, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"DATA_DIR="+standaloneDataDir+strconv.Itoa(nodeCount),
+		"DATA_DIR="+standaloneDataDir+strconv.Itoa(count),
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"RPC_ADDR="+standaloneRPCAddr+strconv.Itoa(rpcPort+nodeCount),
+		"RPC_ADDR="+standaloneRPCAddr+strconv.Itoa(rpcPort+count),
 	)
 
 	// Pipe messages from stderr through the logMessages channel.
@@ -208,15 +191,17 @@ func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, lo
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
+	errChan := make(chan error)
+
 	go func() {
 		defer wg.Done()
 
 		for scanner.Scan() {
-			fmt.Printf("[standalone %d]: %s\n", nodeCount, scanner.Text())
+			fmt.Printf("[standalone %d]: %s\n", count, scanner.Text())
 			logMessages <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
-			t.Fatal(err)
+			errChan <- err
 		}
 	}()
 
@@ -230,6 +215,9 @@ func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, lo
 			// and the test is over.
 			return
 		}
+	}
+	if err := <-errChan; err != nil {
+		t.Fatal(err)
 	}
 	assert.NoError(t, err, "could not run standalone node: %s", err)
 	wg.Wait()
