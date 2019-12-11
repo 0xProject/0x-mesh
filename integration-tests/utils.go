@@ -202,9 +202,12 @@ func startStandaloneNode(t *testing.T, ctx context.Context, count chan<- int, lo
 	// Pipe messages from stderr through the logMessages channel.
 	stderr, err := cmd.StderrPipe()
 	require.NoError(t, err)
+
 	scanner := bufio.NewScanner(stderr)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 
