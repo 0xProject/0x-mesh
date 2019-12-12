@@ -43,7 +43,7 @@ func TestScenario1(t *testing.T) {
 	// Set mock clock to three grants past UTC midnight
 	aClock := clock.NewMock()
 	now := time.Now()
-	midnightUTC := getUTCMidnightOfDate(now)
+	midnightUTC := GetUTCMidnightOfDate(now)
 	threeGrantsPastUTCMidnight := midnightUTC.Add(maxExpectedDelay * 3)
 	aClock.Set(threeGrantsPastUTCMidnight)
 
@@ -97,7 +97,7 @@ func TestScenario2(t *testing.T) {
 	// Set mock clock close to end of current UTC day
 	aClock := clock.NewMock()
 	now := time.Now()
-	midnightUTC := getUTCMidnightOfDate(now)
+	midnightUTC := GetUTCMidnightOfDate(now)
 	rightBeforeMidnight := midnightUTC.Add(twentyFourHrs - (500 * time.Millisecond))
 	aClock.Set(rightBeforeMidnight)
 
@@ -179,7 +179,7 @@ func TestScenario3(t *testing.T) {
 
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
-	yesterdayMidnightUTC := getUTCMidnightOfDate(yesterday)
+	yesterdayMidnightUTC := GetUTCMidnightOfDate(yesterday)
 
 	// Set metadata to include an outdated `StartOfCurrentUTCDay` and an associated
 	// non-zero `EthRPCRequestsSentInCurrentUTCDay`
@@ -199,7 +199,7 @@ func TestScenario3(t *testing.T) {
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
 	assert.Equal(t, 0, rateLimiter.getGrantedInLast24hrsUTC())
 	now = aClock.Now()
-	expectedCurrentUTCCheckpoint := getUTCMidnightOfDate(now)
+	expectedCurrentUTCCheckpoint := GetUTCMidnightOfDate(now)
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
 	ctx, cancel := context.WithCancel(context.Background())

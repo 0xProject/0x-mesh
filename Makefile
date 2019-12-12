@@ -61,7 +61,7 @@ test-go-serial:
 
 .PHONY: test-integration
 test-integration:
-	go test ./integration-tests -timeout 185s --integration
+	go test ./integration-tests -timeout 185s --enable-browser-integration-tests
 
 
 .PHONY: test-wasm-node

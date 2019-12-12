@@ -9,9 +9,7 @@ import (
 const (
 	ethereumRPCURL  = "http://localhost:8545"
 	ethereumChainID = 1337
-
-	rpcPort        = 60501
-	protocolString = "/meshsub/1.0.0"
+	rpcPort         = 60501
 
 	// Various config options/information for the bootstrap node. The private key
 	// for the bootstrap node is checked in to version control so we know it's
@@ -23,14 +21,17 @@ const (
 
 	// Various config options/information for the standalone node. Like the
 	// bootstrap node, we know the private key/peer ID ahead of time.
-	standalonePeerID      = "16Uiu2HAmM9j68mgGGSFkXsuzbGJA8ezVHtQ2H9y6mRJAPhx6xtj9"
-	standaloneDataDir     = "./data/standalone-"
-	standaloneRPCEndpoint = "ws://localhost:"
-	standaloneRPCAddr     = "localhost:"
+	standaloneDataDirPrefix     = "./data/standalone-"
+	standaloneRPCEndpointPrefix = "ws://localhost:"
+	standaloneRPCAddrPrefix     = "localhost:"
 )
 
-var makerAddress = constants.GanacheAccount1
-var takerAddress = constants.GanacheAccount2
-var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+var (
+	makerAddress = constants.GanacheAccount1
+	takerAddress = constants.GanacheAccount2
+	// NOTE(jalextowle): The number of tokens being used to create new orders has been reduced so that
+	//                   we can create larger amounts of valid orders without running out of tokens.
+	seventeenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(17), nil)
+	wethAmount                   = new(big.Int).Mul(big.NewInt(5), seventeenDecimalsInBaseUnits)
+	zrxAmount                    = new(big.Int).Mul(big.NewInt(10), seventeenDecimalsInBaseUnits)
+)

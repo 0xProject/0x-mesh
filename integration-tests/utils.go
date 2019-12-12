@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -26,12 +25,12 @@ import (
 
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
-var integrationTestsEnabled bool
+var browserIntegrationTestsEnabled bool
+
+var nodeCount int32
 
 func init() {
-	var zero int32 = 0
-	nodeCount = &zero
-	flag.BoolVar(&integrationTestsEnabled, "integration", false, "enable integration tests")
+	flag.BoolVar(&browserIntegrationTestsEnabled, "enable-browser-integration-tests", false, "enable browser integration tests")
 	flag.Parse()
 }
 
@@ -50,7 +49,7 @@ func init() {
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
-	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDir + "*"))
+	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
 	require.NoError(t, err)
 
 	for _, oldFile := range oldFiles {
@@ -168,18 +167,16 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-var nodeCount *int32
-
-func startStandaloneNode(t *testing.T, ctx context.Context, count int, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"DATA_DIR="+standaloneDataDir+strconv.Itoa(count),
+		"DATA_DIR="+standaloneDataDirPrefix+strconv.Itoa(nodeID),
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"RPC_ADDR="+standaloneRPCAddr+strconv.Itoa(rpcPort+count),
+		"RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(rpcPort+nodeID),
 	)
 
 	// Pipe messages from stderr through the logMessages channel.
@@ -197,7 +194,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, count int, logMessag
 		defer wg.Done()
 
 		for scanner.Scan() {
-			fmt.Printf("[standalone %d]: %s\n", count, scanner.Text())
+			fmt.Printf("[standalone %d]: %s\n", nodeID, scanner.Text())
 			logMessages <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
@@ -384,10 +381,4 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	return func(t *testing.T) {
 		blockchainLifecycle.Revert(t)
 	}
-}
-
-// FIXME(jalextowle): This was taken from "ethereum/ratelimit." Should it be put elsewhere?
-func getUTCMidnightOfDate(date time.Time) time.Time {
-	utcDate := date.UTC()
-	return time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC)
 }

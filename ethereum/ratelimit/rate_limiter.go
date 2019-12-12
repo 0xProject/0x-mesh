@@ -59,7 +59,7 @@ func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, mes
 
 	// Check if stored checkpoint in DB is still relevant
 	now := aClock.Now()
-	currentUTCCheckpoint := getUTCMidnightOfDate(now)
+	currentUTCCheckpoint := GetUTCMidnightOfDate(now)
 	storedUTCCheckpoint := metadata.StartOfCurrentUTCDay
 	storedGrantedInLast24HrsUTC := metadata.EthRPCRequestsSentInCurrentUTCDay
 	// Update DB if current values are from previous 24hr period and therefore no longer relevant
@@ -136,7 +136,7 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		defer wg.Done()
 		for {
 			now := r.aClock.Now()
-			currentUTCCheckpoint := getUTCMidnightOfDate(now)
+			currentUTCCheckpoint := GetUTCMidnightOfDate(now)
 			nextUTCCheckpoint := time.Date(currentUTCCheckpoint.Year(), currentUTCCheckpoint.Month(), currentUTCCheckpoint.Day()+1, 0, 0, 0, 0, time.UTC)
 			untilNextUTCCheckpoint := nextUTCCheckpoint.Sub(r.aClock.Now())
 			select {
@@ -217,7 +217,8 @@ func (r *rateLimiter) getGrantedInLast24hrsUTC() int {
 	return r.grantedInLast24hrsUTC
 }
 
-func getUTCMidnightOfDate(date time.Time) time.Time {
+// Rounds the current date and time to midnight of the current day.
+func GetUTCMidnightOfDate(date time.Time) time.Time {
 	utcDate := date.UTC()
 	return time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC)
 }

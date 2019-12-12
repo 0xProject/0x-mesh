@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -26,7 +28,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -36,7 +38,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(nodeCount, 1))
+	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -46,14 +48,12 @@ func TestAddOrdersSuccess(t *testing.T) {
 	// that connects to the rpc server.
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	// Create a new valid order.
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-	require.NoError(t, err, "could not compute order hash for standalone order")
 
 	// Send the "AddOrders" request to the rpc server.
 	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
@@ -61,14 +61,16 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	// Ensure that the validation validation results contain only the order that was
 	// sent to the rpc server and that the order was marked as valid.
-	assert.Len(t, validationResponse.Accepted, 1)
+	require.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
-	signedTestOrder.ResetHash()
 	acceptedOrderInfo := validationResponse.Accepted[0]
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
+	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	require.NoError(t, err, "could not compute order hash for standalone order")
+	signedTestOrder.ResetHash()
+	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
-	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 
 	cancel()
 	wg.Wait()
@@ -88,15 +90,11 @@ func TestGetOrdersSuccess(t *testing.T) {
 	removeOldFiles(t, ctx)
 	buildStandaloneForTests(t, ctx)
 
-	expectedPage := 0
-	expectedPerPage := 5
-	expectedSnapshotID := ""
-
 	// Start a standalone node with a wait group that is completed when the goroutine completes.
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(nodeCount, 1))
+	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -105,37 +103,64 @@ func TestGetOrdersSuccess(t *testing.T) {
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
 
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
-	// Create a new valid order.
+	// Create 10 new valid orders.
 	ethClient := ethclient.NewClient(ethRPCClient)
-	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-	require.NoError(t, err, "could not compute order hash for standalone order")
+	signedTestOrders := make([]*zeroex.SignedOrder, 10)
+	for i := 0; i < 10; i++ {
+		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	}
 
 	// Send the newly created order to "AddOrders." The order is valid, and this should
 	// be reflected in the validation results.
-	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
-	assert.Len(t, validationResponse.Accepted, 1)
+	assert.Len(t, validationResponse.Accepted, 10)
 	assert.Len(t, validationResponse.Rejected, 0)
 
-	// Send the "GetOrders" request through the rpc client.
+	// Send an initial "GetOrders" request through the rpc client. This request will
+	// get all of the orders in the database after the "AddOrders" request. We can
+	// test pagination by comparing to this list.
+	expectedPage := 0
+	expectedPerPage := 10
+	expectedSnapshotID := ""
+	initialGetOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
+	require.NoError(t, err)
+	assert.Len(t, initialGetOrdersResponse.OrdersInfos, expectedPerPage)
+
+	// Ensure that all of the orders that we added to the mesh node are represented in the
+	// get orders request.
+	for _, signedTestOrder := range signedTestOrders {
+		foundMatchingOrder := false
+		expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		signedTestOrder.ResetHash()
+
+		for _, orderInfo := range initialGetOrdersResponse.OrdersInfos {
+			if orderInfo.OrderHash.Hex() == expectedOrderHash.Hex() {
+				foundMatchingOrder = true
+				assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
+				assert.Equal(t, signedTestOrder.TakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+				break
+			}
+		}
+
+		assert.True(t, foundMatchingOrder, "found no matching entry in the getOrdersResponse")
+	}
+
+	// Make a new "GetOrders" request with different pagination parameters.
+	expectedPage = 1
+	expectedPerPage = 5
 	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
 	require.NoError(t, err)
-	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
+	assert.Len(t, getOrdersResponse.OrdersInfos, expectedPerPage)
 
-	// Ensure that the orders returned by the rpc server match the orders that were
-	// sent through the "AddOrders" endpoint.
-	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-	expectedOrderHash, err = signedTestOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	signedTestOrder.ResetHash()
-	orderInfo := getOrdersResponse.OrdersInfos[0]
-	assert.Equal(t, expectedOrderHash, orderInfo.OrderHash, "orderHashes did not match")
-	assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
-	assert.Equal(t, expectedFillableTakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+	// Ensure that the getOrdersResponse has the correct pagination
+	for i := range getOrdersResponse.OrdersInfos {
+		assert.Equal(t, initialGetOrdersResponse.OrdersInfos[i+5*expectedPage], getOrdersResponse.OrdersInfos[i], "Incorrect order of second getOrdersResponse")
+	}
 
 	cancel()
 	wg.Wait()
@@ -144,7 +169,7 @@ func TestGetOrdersSuccess(t *testing.T) {
 func TestAddPeer(t *testing.T) {
 	t.Skip("The AddPeer test is currently skipped because of nondeterministic behavior that causes it to intermittently fail")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -155,7 +180,7 @@ func TestAddPeer(t *testing.T) {
 	wg.Add(2)
 	logMessages1 := make(chan string, 1024)
 	logMessages2 := make(chan string, 1024)
-	count2 := int(atomic.AddInt32(nodeCount, 2))
+	count2 := int(atomic.AddInt32(&nodeCount, 2))
 	count1 := count2 - 1
 	go func() {
 		defer wg.Done()
@@ -193,7 +218,7 @@ func TestAddPeer(t *testing.T) {
 		parsedMultiaddrs[i] = parsed
 	}
 
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count1))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count1))
 	require.NoError(t, err)
 
 	// Send the "AddPeer" request
@@ -217,7 +242,6 @@ func TestAddPeer(t *testing.T) {
 	parsedFoundPeerID2, err := peer.IDB58Decode(foundPeerLog.PeerId)
 	require.NoError(t, err)
 	assert.Equal(t, parsedFoundPeerID2, parsedPeerID2)
-	assert.Equal(t, foundPeerLog.Protocol, protocolString)
 	log, err = waitForLogSubstring(ctx, logMessages2, "found peer who speaks our protocol")
 	require.NoError(t, err, "didn't find peer")
 	err = json.Unmarshal([]byte(log), &foundPeerLog)
@@ -225,7 +249,6 @@ func TestAddPeer(t *testing.T) {
 	parsedFoundPeerID1, err := peer.IDB58Decode(foundPeerLog.PeerId)
 	require.NoError(t, err)
 	assert.Equal(t, parsedFoundPeerID1, parsedPeerID1)
-	assert.Equal(t, foundPeerLog.Protocol, protocolString)
 
 	cancel()
 	wg.Wait()
@@ -235,7 +258,7 @@ func TestGetStats(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -245,7 +268,7 @@ func TestGetStats(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(nodeCount, 1))
+	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -260,16 +283,18 @@ func TestGetStats(t *testing.T) {
 	require.NoError(t, err, "RPC server didn't start")
 	err = json.Unmarshal([]byte(log), &jsonLog)
 	require.NoError(t, err)
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	getStatsResponse, err := client.GetStats()
 	require.NoError(t, err)
 
-	// HACK(jalextowle): Zeroing the Number and Hash fields of LatestBlock
-	//                   allows us to test more of the "GetStats" response
-	//                   without being too restrictive about the blockchain
-	//                   that is being used.
+	// Ensure that the "LatestBlock" in the stats response is non-nil and has a nonzero block number.
+	assert.NotNil(t, getStatsResponse.LatestBlock)
+	assert.True(t, getStatsResponse.LatestBlock.Number > 0)
+
+	// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
+	//                   should be the latest block.
 	getStatsResponse.LatestBlock = rpc.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
@@ -282,8 +307,8 @@ func TestGetStats(t *testing.T) {
 		LatestBlock:          rpc.LatestBlock{},
 		NumOrders:            0,
 		NumPeers:             0,
-		MaxExpirationTime:    "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-		StartOfCurrentUTCDay: getUTCMidnightOfDate(time.Now()),
+		MaxExpirationTime:    constants.UnlimitedExpirationTime.String(),
+		StartOfCurrentUTCDay: ratelimit.GetUTCMidnightOfDate(time.Now()),
 	}
 	require.Equal(t, expectedGetStatsResponse, getStatsResponse)
 
@@ -295,7 +320,7 @@ func TestOrdersSubscription(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -305,7 +330,7 @@ func TestOrdersSubscription(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(nodeCount, 1))
+	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -314,12 +339,12 @@ func TestOrdersSubscription(t *testing.T) {
 	// Wait for the rpc server to start and then start the rpc client.
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	// Subscribe to order events through the rpc client and ensure that the subscription
 	// is valid.
-	orderEventChan := make(chan []*zeroex.OrderEvent)
+	orderEventChan := make(chan []*zeroex.OrderEvent, 1)
 	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventChan)
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
@@ -334,9 +359,9 @@ func TestOrdersSubscription(t *testing.T) {
 
 	// Ensure that the "AddOrders" request triggered an order event that was
 	// passed through the subscription.
+	orderEvent := <-orderEventChan
 	signedTestOrder.ResetHash()
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-	orderEvent := <-orderEventChan
 	assert.EqualValues(t,
 		[]*zeroex.OrderEvent{
 			&zeroex.OrderEvent{
@@ -355,7 +380,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -365,7 +390,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(nodeCount, 1))
+	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
 		startStandaloneNode(t, ctx, count, logMessages)
@@ -374,7 +399,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	// Wait for the rpc server to start and then start the rpc client
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpoint + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	// Send the "SubscribeToHeartbeat" request through the rpc client and assert
@@ -385,6 +410,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
+	// Ensure that ta valid heartbeat was received
 	heartbeat := <-heartbeatChan
 	assert.Equal(t, "tick", heartbeat)
 }

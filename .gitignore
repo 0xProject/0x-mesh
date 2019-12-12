@@ -13,6 +13,6 @@ browser/lib
 browser/ts/generated
 examples/browser/dist/bundle.js
 integration-tests/browser/dist/bundle.js
-integration-tests/data/standalone-*/db/
-integration-tests/data/standalone-*/p2p/
+integration-tests/data/standalone-*/
+integration-tests/data/standalone-*/
 integration-tests/data/bootstrap-0/p2p/
