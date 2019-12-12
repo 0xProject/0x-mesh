@@ -78,7 +78,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err = ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
 	if err != nil {
 		panic(err)
