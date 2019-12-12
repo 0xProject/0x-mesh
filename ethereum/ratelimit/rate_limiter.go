@@ -39,9 +39,10 @@ type rateLimiter struct {
 	grantedInLast24hrsUTC int       // Number of granted requests issued in last 24hr UTC
 	meshDB                *meshdb.MeshDB
 	aClock                clock.Clock
-	wasStartedOnce        bool       // Whether the rate limiter has previously been started
-	startMutex            sync.Mutex // Mutex around the start check
-	mu                    sync.Mutex
+	wasStartedOnce        bool         // Whether the rate limiter has previously been started
+	startMut              sync.Mutex   // Mutex around the start check
+	countMut              sync.Mutex   // Mutex around grantedInLast24hrsUTC
+	waitMut               sync.RWMutex // Mutex for calls to Wait. Also held when swapping out rate limiters at midnight.
 }
 
 // New instantiates a new RateLimiter
@@ -121,13 +122,13 @@ func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, mes
 // stores it's state to the DB at a checkpoint interval, and another that clears accrued
 // grants when the UTC day time window elapses.
 func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duration) error {
-	r.startMutex.Lock()
+	r.startMut.Lock()
 	if r.wasStartedOnce {
-		r.startMutex.Unlock()
+		r.startMut.Unlock()
 		return errors.New("Can only start RateLimiter once per instance")
 	}
 	r.wasStartedOnce = true
-	r.startMutex.Unlock()
+	r.startMut.Unlock()
 
 	// Start 24hr UTC accrued grants resetter
 	wg := &sync.WaitGroup{}
@@ -143,11 +144,15 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			case <-ctx.Done():
 				return
 			case <-r.aClock.After(untilNextUTCCheckpoint):
-				// Compute how many grants have accrued and gone unused and remove that
-				// many from the bucket so that it starts empty for the next 24hr period
-				r.mu.Lock()
-				accruedGrants := r.maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
-				if err := r.twentyFourHourLimiter.WaitN(ctx, accruedGrants); err != nil {
+				// Create a fresh 24 hour rate limiter and drain it.
+				r.waitMut.Lock()
+				r.countMut.Lock()
+				limit := rate.Limit(float64(r.maxRequestsPer24Hrs) / (24 * 60 * 60))
+				r.twentyFourHourLimiter = rate.NewLimiter(limit, r.maxRequestsPer24Hrs)
+				// When draining tokens from the bucket, we leave up to "limit" tokens
+				// so that some requests will be allowed to go through immediately.
+				numberOfGrantsToDrain := r.maxRequestsPer24Hrs - int(limit)
+				if err := r.twentyFourHourLimiter.WaitN(ctx, numberOfGrantsToDrain); err != nil {
 					// Since we never set n to exceed the burst size, an error will only
 					// occur if the context is cancelled or it's deadline is exceeded. In
 					// these cases, we simply return so that this go-routine exits.
@@ -155,12 +160,15 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 					// size, the Context is canceled, or the expected wait time exceeds the
 					// Context's Deadline."
 					// Source: https://godoc.org/golang.org/x/time/rate#Limiter.WaitN
-					r.mu.Unlock()
+					r.waitMut.Unlock()
+					r.countMut.Unlock()
 					return
 				}
+				// Reset the checkpoint and current count.
 				r.currentUTCCheckpoint = nextUTCCheckpoint
 				r.grantedInLast24hrsUTC = 0
-				r.mu.Unlock()
+				r.waitMut.Unlock()
+				r.countMut.Unlock()
 			}
 		}
 	}()
@@ -174,13 +182,13 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			return nil
 		case <-ticker.C:
 			// Store grants issued and current UTC checkpoint to DB
-			r.mu.Lock()
+			r.countMut.Lock()
 			err := r.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
 				metadata.StartOfCurrentUTCDay = r.currentUTCCheckpoint
 				metadata.EthRPCRequestsSentInCurrentUTCDay = r.grantedInLast24hrsUTC
 				return metadata
 			})
-			r.mu.Unlock()
+			r.countMut.Unlock()
 			if err != nil {
 				if err == leveldb.ErrClosed {
 					// We can't continue if the database is closed. Stop the rateLimiter and
@@ -197,15 +205,17 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 
 // Wait blocks until the rateLimiter allows for another request to be sent
 func (r *rateLimiter) Wait(ctx context.Context) error {
+	r.waitMut.RLock()
+	defer r.waitMut.RUnlock()
 	if err := r.twentyFourHourLimiter.Wait(ctx); err != nil {
 		return err
 	}
 	if err := r.perSecondLimiter.Wait(ctx); err != nil {
 		return err
 	}
-	r.mu.Lock()
+	r.countMut.Lock()
 	r.grantedInLast24hrsUTC++
-	r.mu.Unlock()
+	r.countMut.Unlock()
 	return nil
 }
 
