@@ -147,7 +147,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 
 	for _, testCase := range testCases {
 
-		rateLimiter := ratelimit.NewFakeLimiter()
+		rateLimiter := ratelimit.NewUnlimited()
 		ethClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 		require.NoError(t, err)
 
@@ -182,7 +182,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -210,7 +210,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -238,7 +238,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -269,7 +269,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -321,7 +321,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -339,7 +339,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -377,7 +377,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	signedMultiAssetOrder, err := zeroex.SignTestOrder(&testMultiAssetSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 

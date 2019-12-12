@@ -7,6 +7,10 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Features ✅
 
 - Instead of progressing Mesh forward by a single block on every invocation of the `BLOCK_POLLING_INTERVAL`, we now attempt to sync as many blocks as necessary to reach the latest block available. This will reduce the chances of Mesh becoming out-of-sync with it's backing Ethereum node ([#564](https://github.com/0xProject/0x-mesh/pull/564))
+- Added a new environment variable `ENABLE_ETHEREUM_RPC_RATE_LIMITING` and config option `enableEthereumRPCRateLimiting` which can be used to completely disable Mesh's internal Ethereum RPC rate limiting features. By default it is enabled, and disabling can have some consequences depending on your RPC provider. ([#584](https://github.com/0xProject/0x-mesh/pull/584))
+
+
+## v6.1.2-beta
 
 ### Bug fixes 🐞
 

@@ -86,6 +86,14 @@ export interface Config {
     // Parity, feel free to double the default max in order to reduce the number
     // of RPC calls made by Mesh. Defaults to 524288 bytes.
     ethereumRPCMaxContentLength?: number;
+    // Determines whether or not Mesh should limit the number of Ethereum RPC
+    // requests it sends. It defaults to true. Disabling Ethereum RPC rate
+    // limiting can reduce latency for receiving order events in some network
+    // conditions, but can also potentially lead to higher costs or other rate
+    // limiting issues outside of Mesh, depending on your Ethereum RPC provider.
+    // If set to false, ethereumRPCMaxRequestsPer24HrUTC and
+    // ethereumRPCMaxRequestsPerSecond will have no effect.
+    enableEthereumRPCRateLimiting?: boolean;
     // A cap on the number of Ethereum JSON-RPC requests a Mesh node will make
     // per 24hr UTC time window (time window starts and ends at 12am UTC). It
     // defaults to the 100k limit on Infura's free tier but can be increased
@@ -168,6 +176,7 @@ interface WrapperConfig {
     ethereumRPCMaxContentLength?: number;
     ethereumRPCMaxRequestsPer24HrUTC?: number;
     ethereumRPCMaxRequestsPerSecond?: number;
+    enableEthereumRPCRateLimiting?: boolean;
     customContractAddresses?: string; // json-encoded instead of Object.
     maxOrdersInStorage?: number;
 }
