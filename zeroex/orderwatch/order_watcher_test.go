@@ -832,6 +832,15 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer teardownSubTest(t)
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+
+	// Store metadata entry in DB
+	metadata := &meshdb.Metadata{
+		EthereumChainID:   1337,
+		MaxExpirationTime: constants.UnlimitedExpirationTime,
+	}
+	err = meshDB.SaveMetadata(metadata)
+	require.NoError(t, err)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
 		cancel()
