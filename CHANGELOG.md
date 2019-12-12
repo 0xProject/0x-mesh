@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.2.2-beta-0xv3
+
+### Bug fixes 🐞
+
+- Fixed a bug where `makerAssetFeeData` or `takerAssetFeeData` were sometimes being set to an empty string instead of `0x` in the browser ([#579](https://github.com/0xProject/0x-mesh/pull/579)).
+
 ## v7.2.1-beta-0xv3
 
 ### Bug fixes 🐞
