@@ -144,15 +144,12 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			case <-ctx.Done():
 				return
 			case <-r.aClock.After(untilNextUTCCheckpoint):
-				// Create a fresh 24 hour rate limiter and drain it.
+				// Create a fresh 24 hour rate limiter and drain all tokens from it.
 				r.waitMut.Lock()
 				r.countMut.Lock()
 				limit := rate.Limit(float64(r.maxRequestsPer24Hrs) / (24 * 60 * 60))
 				r.twentyFourHourLimiter = rate.NewLimiter(limit, r.maxRequestsPer24Hrs)
-				// When draining tokens from the bucket, we leave up to "limit" tokens
-				// so that some requests will be allowed to go through immediately.
-				numberOfGrantsToDrain := r.maxRequestsPer24Hrs - int(limit)
-				if err := r.twentyFourHourLimiter.WaitN(ctx, numberOfGrantsToDrain); err != nil {
+				if err := r.twentyFourHourLimiter.WaitN(ctx, r.maxRequestsPer24Hrs); err != nil {
 					// Since we never set n to exceed the burst size, an error will only
 					// occur if the context is cancelled or it's deadline is exceeded. In
 					// these cases, we simply return so that this go-routine exits.
