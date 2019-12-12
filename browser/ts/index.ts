@@ -97,6 +97,14 @@ export interface Config {
     // 30 rps for Infura's free tier, and can be increased to 100 rpc for pro
     // users, and potentially higher on alternative infrastructure.
     ethereumRPCMaxRequestsPerSecond?: number;
+    // Determines whether or not Mesh should limit the number of Ethereum RPC
+    // requests it sends. It defaults to true. Disabling Ethereum RPC rate
+    // limiting can reduce latency for receiving order events in some network
+    // conditions, but can also potentially lead to higher costs or other rate
+    // limiting issues outside of Mesh, depending on your Ethereum RPC provider.
+    // If set to false, ethereumRPCMaxRequestsPer24HrUTC and
+    // ethereumRPCMaxRequestsPerSecond will have no effect.
+    enableEthereumRPCRateLimiting?: boolean;
     // A set of custom addresses to use for the configured network ID. The
     // contract addresses for most common networks are already included by
     // default, so this is typically only needed for testing on custom networks.
@@ -168,6 +176,7 @@ interface WrapperConfig {
     ethereumRPCMaxContentLength?: number;
     ethereumRPCMaxRequestsPer24HrUTC?: number;
     ethereumRPCMaxRequestsPerSecond?: number;
+    enableEthereumRPCRateLimiting?: boolean;
     customContractAddresses?: string; // json-encoded instead of Object.
     maxOrdersInStorage?: number;
 }

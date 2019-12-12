@@ -89,6 +89,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		EthereumRPCMaxContentLength:      524288,
 		EthereumRPCMaxRequestsPer24HrUTC: 100000,
 		EthereumRPCMaxRequestsPerSecond:  30,
+		EnableEthereumRPCRateLimiting:    true,
 		MaxOrdersInStorage:               100000,
 	}
 
@@ -125,6 +126,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
 		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
+	}
+	if enableEthereumRPCRateLimiting := jsConfig.Get("enableEthereumRPCRateLimiting"); !isNullOrUndefined(enableEthereumRPCRateLimiting) {
+		config.EnableEthereumRPCRateLimiting = enableEthereumRPCRateLimiting.Bool()
 	}
 	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()

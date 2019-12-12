@@ -107,6 +107,14 @@ type Config struct {
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
 	// and potentially higher on alternative infrastructure.
 	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30"`
+	// EnableEthereumRPCRateLimiting determines whether or not Mesh should limit
+	// the number of Ethereum RPC requests it sends. It defaults to true.
+	// Disabling Ethereum RPC rate limiting can reduce latency for receiving order
+	// events in some network conditions, but can also potentially lead to higher
+	// costs or other rate limiting issues outside of Mesh, depending on your
+	// Ethereum RPC provider. If set to false, ethereumRPCMaxRequestsPer24HrUTC
+	// and ethereumRPCMaxRequestsPerSecond will have no effect.
+	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
 	// custom addresses to use for the configured chain ID. The contract
 	// addresses for most common chains/networks are already included by default, so this
@@ -217,10 +225,16 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize ETH JSON-RPC RateLimiter
-	clock := clock.New()
-	ethRPCRateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
-	if err != nil {
-		return nil, err
+	var ethRPCRateLimiter ratelimit.RateLimiter
+	if config.EnableEthereumRPCRateLimiting == false {
+		ethRPCRateLimiter = ratelimit.NewUnlimited()
+	} else {
+		clock := clock.New()
+		var err error
+		ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
