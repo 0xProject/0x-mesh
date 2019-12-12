@@ -19,9 +19,9 @@ var (
 	maxRequestsPer24HrsWithoutBuffer      = 301000
 	maxRequestsPer24hrs                   = maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
 	maxRequestsPerSecond                  = 10.0
-	twentyFourHrs                         = (24 * 60 * 60 * 1000 * time.Millisecond)
+	twentyFourHrs                         = 24 * time.Hour
 	maxExpectedDelay                      = twentyFourHrs / time.Duration(maxRequestsPer24hrs)
-	minExpectedDelay                      = time.Duration(1000) / time.Duration(maxRequestsPerSecond) * time.Millisecond
+	minExpectedDelay                      = 1 * time.Second / time.Duration(maxRequestsPerSecond)
 	defaultCheckpointInterval             = 1 * time.Minute
 	expectedMaxElapsedTimeForFirstRequest = 1 * time.Millisecond
 	expectedDeltaMinExpectedDelay         = 20 * time.Millisecond
