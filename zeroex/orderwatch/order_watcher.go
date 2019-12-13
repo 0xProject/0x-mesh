@@ -1188,39 +1188,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	if err != nil {
 		return nil, err
 	}
-
-	// Since Batch validation can take quite some time (e.g., 10-15sec worst-case on Alchemy), after receiving the results
-	// we attempt to verify that a block re-org hasn't happened. We do this by checking if the hashes of the block whose
-	// number we validated at, matches the hash of the block with that number stored in the DB. If they aren't the same,
-	// we reject all orders and force the operator to re-submit them.
-	// This technique is still imperfect -- see `HACK` comment in onchainOrderValidation.
-	dbStoredBlockAtNumber, err := w.meshDB.FindMiniHeaderByBlockNumber(validationBlock.Number)
-	if err != nil {
-		return nil, err
-	}
-	if dbStoredBlockAtNumber.Hash == validationBlock.Hash {
-		results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
-		results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
-	} else {
-		// Reject all orders due to `ROEthRPCRequestFailed` since we did not validate them at the correct block
-		// hash and they must be re-submitted.
-		for _, acceptedInfo := range zeroexResults.Accepted {
-			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   acceptedInfo.OrderHash,
-				SignedOrder: acceptedInfo.SignedOrder,
-				Kind:        ordervalidator.MeshError,
-				Status:      ordervalidator.ROEthRPCRequestFailed,
-			})
-		}
-		for _, rejectedInfo := range zeroexResults.Rejected {
-			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   rejectedInfo.OrderHash,
-				SignedOrder: rejectedInfo.SignedOrder,
-				Kind:        ordervalidator.MeshError,
-				Status:      ordervalidator.ROEthRPCRequestFailed,
-			})
-		}
-	}
+	results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
+	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
 
 	// Store valid orders
 	ordersAdded := []common.Hash{}
@@ -1260,8 +1229,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 
 func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrder) (*miniheader.MiniHeader, *ordervalidator.ValidationResults, error) {
 	// HACK(fabio): While we wait for EIP-1898 support in Parity, we have no choice but to do the `eth_call`
-	// at the latest known block number, and then verify that the block hash at that block height is still
-	// what we think it is. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
+	// at the latest known block _number_. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
 	// for the block being re-org'd out before the `eth_call` and then back in before the `eth_getBlockByNumber`
 	// call (an unlikely but possible situation leading to an incorrect view of the world for these orders).
 	// Unfortunately, this is the best we can do until EIP-1898 support in Parity.
