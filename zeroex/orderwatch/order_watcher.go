@@ -1192,7 +1192,6 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
 
 	// Store valid orders
-	ordersAdded := []common.Hash{}
 	allOrderEvents := []*zeroex.OrderEvent{}
 	for i, acceptedOrderInfo := range results.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher.
@@ -1218,7 +1217,6 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 				return nil, err
 			}
 		}
-		ordersAdded = append(ordersAdded, acceptedOrderInfo.OrderHash)
 		allOrderEvents = append(allOrderEvents, orderEvents...)
 	}
 
