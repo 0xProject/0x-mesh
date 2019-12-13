@@ -5,6 +5,7 @@ package orderwatch
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -13,10 +14,10 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
@@ -739,8 +740,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
-	startOrderWatcher := true
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
@@ -845,8 +845,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer func() {
 		cancel()
 	}()
-	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	orderWatcher.maxOrders = 20
 
 	// create and watch maxOrders orders
@@ -905,8 +904,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 
-	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -956,11 +954,10 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyEventsCatchup(t *test
 	defer func() {
 		cancel()
 	}()
-	startOrderWatcher := true
 	blockingChan := make(chan struct{})
 	blockingCallEthRPCClient, err := NewBlockingCallEthRPCClient(ethRPCClient, blockingChan)
 	require.NoError(t, err)
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -1042,11 +1039,10 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 	defer func() {
 		cancel()
 	}()
-	startOrderWatcher := true
 	blockingChan := make(chan struct{})
 	blockingCallEthRPCClient, err := NewBlockingCallEthRPCClient(ethRPCClient, blockingChan)
 	require.NoError(t, err)
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, blockingCallEthRPCClient, meshDB)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -1054,6 +1050,7 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
+	time.Sleep(200 * time.Millisecond)
 
 	// Kick off adding order to OrderWatcher within a separate go-routine so that we can block on the validation
 	// `eth_call`, simulating network latency, and while it's blocked, fill the order and process the block containing
@@ -1073,6 +1070,7 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 	// Simulate a block re-org by replacing the latest block with a new one, and adding one other order
 	// ontop of it
 	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	fmt.Println("storedBlocks", storedBlocks)
 	require.NoError(t, err)
 	latestBlock := storedBlocks[len(storedBlocks)-1]
 	replacementBlockHash := common.HexToHash("0x123456789")
@@ -1105,8 +1103,7 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
-	startOrderWatcher := true
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB, startOrderWatcher)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
 	// Start watching an order
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
@@ -1127,12 +1124,11 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 
-func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, meshDB *meshdb.MeshDB, startOrderWatcher bool) (*blockwatch.Watcher, *Watcher) {
+func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, meshDB *meshdb.MeshDB) (*blockwatch.Watcher, *Watcher) {
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
-	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
-	require.NoError(t, err)
+	stack := simplestack.New(blockWatcherRetentionLimit, []*miniheader.MiniHeader{})
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: blockPollingInterval,
@@ -1153,6 +1149,12 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	})
 	require.NoError(t, err)
 
+	// Start OrderWatcher
+	go func() {
+		err := orderWatcher.Watch(ctx)
+		require.NoError(t, err)
+	}()
+
 	// Ensure at least one block has been processed and is stored in the DB
 	// before tests run
 	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
@@ -1162,13 +1164,8 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 		require.NoError(t, err)
 	}
 
-	if startOrderWatcher {
-		// Start OrderWatcher
-		go func() {
-			err := orderWatcher.Watch(ctx)
-			require.NoError(t, err)
-		}()
-	}
+	err = orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx)
+	require.NoError(t, err)
 
 	return blockWatcher, orderWatcher
 }

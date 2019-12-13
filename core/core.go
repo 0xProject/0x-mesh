@@ -17,9 +17,9 @@ import (
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -251,7 +251,11 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
-	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return nil, err
+	}
+	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -459,10 +463,10 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	// Ensure blockWatcher has processed at least one recent block before
+	// Ensure orderWatcher has processed at least one recent block before
 	// starting the P2P node and completing app start, so that Mesh does
 	// not validate any orders at outdated block heights
-	if err := app.blockWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+	if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
 		return err
 	}
 

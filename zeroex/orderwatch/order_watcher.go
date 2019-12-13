@@ -20,8 +20,8 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
 )
@@ -92,7 +92,11 @@ type Watcher struct {
 	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
 	handleBlockEventsMu        sync.Mutex
-	latestBlockProcessed       *big.Int
+	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
+	// block. Validation of orders should block until this has completed
+	atLeastOneBlockProcessed   chan struct{}
+	atLeastOneBlockProcessedMu sync.Mutex
+	didProcessABlock           bool
 }
 
 type Config struct {
@@ -152,6 +156,8 @@ func New(config Config) (*Watcher, error) {
 		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
 		blockEventsChan:            make(chan []*blockwatch.Event, 100),
+		atLeastOneBlockProcessed:   make(chan struct{}),
+		didProcessABlock:           false,
 	}
 
 	// Check if any orders need to be removed right away due to high expiration
@@ -400,13 +406,16 @@ func (w *Watcher) handleBlockEvents(
 		return nil
 	}
 
+	miniHeadersColTxn := w.meshDB.MiniHeaders.OpenTransaction()
+	defer func() {
+		_ = miniHeadersColTxn.Discard()
+	}()
 	ordersColTxn := w.meshDB.Orders.OpenTransaction()
 	defer func() {
 		_ = ordersColTxn.Discard()
 	}()
 
 	latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease := w.getBlockchainState(events)
-	w.latestBlockProcessed = latestBlockNumber
 
 	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, didBlockTimestampIncrease)
 	if err != nil {
@@ -416,6 +425,21 @@ func (w *Watcher) handleBlockEvents(
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 	for _, event := range events {
+		blockHeader := event.BlockHeader
+		switch event.Type {
+		case blockwatch.Added:
+			err = miniHeadersColTxn.Insert(blockHeader)
+			if err != nil {
+				return err
+			}
+		case blockwatch.Removed:
+			err = miniHeadersColTxn.Delete(blockHeader.ID())
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
+		}
 		for _, log := range event.BlockHeader.Logs {
 			eventType, err := w.eventDecoder.FindEventType(log)
 			if err != nil {
@@ -724,11 +748,23 @@ func (w *Watcher) handleBlockEvents(
 			"error": err.Error(),
 		}).Error("Failed to commit orders collection transaction")
 	}
+	if err := miniHeadersColTxn.Commit(); err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("Failed to commit miniheaders collection transaction")
+	}
 
 	orderEvents := append(expirationOrderEvents, postValidationOrderEvents...)
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
 	}
+
+	w.atLeastOneBlockProcessedMu.Lock()
+	if !w.didProcessABlock {
+		w.didProcessABlock = true
+		close(w.atLeastOneBlockProcessed)
+	}
+	w.atLeastOneBlockProcessedMu.Unlock()
 
 	return nil
 }
@@ -1638,6 +1674,19 @@ func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time
 		}
 	}
 	return latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease
+}
+
+// WaitForAtLeastOneBlockToBeProcessed waits until the BlockWatcher has processed it's
+// first block
+func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return errors.New("Context cancelled")
+	case <-w.atLeastOneBlockProcessed:
+		return nil
+	case <-time.After(60 * time.Second):
+		return errors.New("timed out waiting for first block to be processed by Mesh node. Check your backing Ethereum RPC endpoint")
+	}
 }
 
 type logWithType struct {

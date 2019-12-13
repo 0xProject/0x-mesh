@@ -86,11 +86,6 @@ type Watcher struct {
 	topics              []common.Hash
 	mu                  sync.RWMutex
 	syncToLatestBlockMu sync.Mutex
-
-	didProcessABlock bool
-	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
-	// block. Validation of orders should block until this has completed
-	atLeastOneBlockProcessed chan struct{}
 }
 
 // New creates a new Watcher instance.
@@ -101,9 +96,6 @@ func New(config Config) *Watcher {
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
-
-		didProcessABlock:         false,
-		atLeastOneBlockProcessed: make(chan struct{}),
 	}
 }
 
@@ -146,12 +138,6 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 			return blocksElapsed, err
 		}
 		if len(events) > 0 {
-			w.mu.Lock()
-			if !w.didProcessABlock {
-				w.didProcessABlock = true
-				close(w.atLeastOneBlockProcessed)
-			}
-			w.mu.Unlock()
 			w.blockFeed.Send(events)
 		}
 	} else {
@@ -313,12 +299,6 @@ func (w *Watcher) SyncToLatestBlock() error {
 		if err != nil {
 			return err
 		}
-		w.mu.Lock()
-		if !w.didProcessABlock {
-			w.didProcessABlock = true
-			close(w.atLeastOneBlockProcessed)
-		}
-		w.mu.Unlock()
 		w.blockFeed.Send(allEvents)
 	}
 
@@ -683,19 +663,6 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
-}
-
-// WaitForAtLeastOneBlockToBeProcessed waits until the BlockWatcher has processed it's
-// first block
-func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return errors.New("Context cancelled")
-	case <-w.atLeastOneBlockProcessed:
-		return nil
-	case <-time.After(60 * time.Second):
-		return errors.New("timed out waiting for first block to be processed by Mesh node. Check your backing Ethereum RPC endpoint")
-	}
 }
 
 // getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
