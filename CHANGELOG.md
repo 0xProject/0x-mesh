@@ -15,13 +15,17 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added a `SnapshotTimestamp` field to `GetOrdersResponse`, the return type of the `mesh_getOrders` RPC method. This way, the caller can know at what point in time the snapshot had been created. ([#591](https://github.com/0xProject/0x-mesh/pull/591))
 - Improved batching of events emitted from order events subscriptions ([#566](https://github.com/0xProject/0x-mesh/pull/560))
 
+### Bug fixes 🐞
+
+- Fixed an issue where order updates could have been missed if Mesh discovered blocks but didn't have time to process them before getting shut down. Now, blocks are only persisted to the DB once any order updates resulting from it have been processed. ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
+- Fixed a race-condition when adding new orders to Mesh which could result in order-relevant events being missed if they occured very soon after the order was submitted and the order validation RPC call took a long time ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
+
 
 ## v6.1.2-beta
 
 ### Bug fixes 🐞
 
 - Fixed a bug which could cause Mesh to crash with a nil pointer exception if RPC requests are sent too quickly during/immediately after start up ([#560](https://github.com/0xProject/0x-mesh/pull/560)).
-- Fix race-condition when adding new orders to Mesh which could result in order-relevant events being missed if they occured very soon after the order was submitted and the order validation RPC call took a long time ([#566](https://github.com/0xProject/0x-mesh/pull/560)).
 
 ## v6.1.1-beta
 
