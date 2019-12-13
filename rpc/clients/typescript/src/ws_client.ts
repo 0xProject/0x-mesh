@@ -21,6 +21,7 @@ import {
     OrderEventPayload,
     OrderInfo,
     RawAcceptedOrderInfo,
+    RawGetOrdersResponse,
     RawOrderEvent,
     RawOrderInfo,
     RawValidationResults,
@@ -85,6 +86,14 @@ export class WSClient {
             orderInfos.push(orderInfo);
         });
         return orderInfos;
+    }
+    private static _convertRawGetOrdersResponse(rawGetOrdersResponse: RawGetOrdersResponse): GetOrdersResponse {
+        return {
+            snapshotID: rawGetOrdersResponse.snapshotID,
+            // tslint:disable-next-line:custom-no-magic-numbers
+            snapshotTimestamp: Math.round(new Date(rawGetOrdersResponse.snapshotTimestamp).getTime() / 1000),
+            ordersInfos: WSClient._convertRawOrderInfos(rawGetOrdersResponse.ordersInfos),
+        };
     }
     private static _convertStringifiedContractEvents(rawContractEvents: StringifiedContractEvent[]): ContractEvent[] {
         const contractEvents: ContractEvent[] = [];
@@ -278,27 +287,33 @@ export class WSClient {
      * @param perPage number of signedOrders to fetch per paginated request
      * @returns all orders, their hash and their fillableTakerAssetAmount
      */
-    public async getOrdersAsync(perPage: number = 200): Promise<OrderInfo[]> {
+    public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+        const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
             page,
             perPage,
             snapshotID,
         ]);
-        snapshotID = getOrdersResponse.snapshotID;
-        let ordersInfos = getOrdersResponse.ordersInfos;
+        let getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
+        snapshotID = rawGetOrdersResponse.snapshotID;
+        let rawOrdersInfos = rawGetOrdersResponse.ordersInfos;
 
-        let rawOrderInfos: RawOrderInfo[] = [];
+        let allRawOrderInfos: RawOrderInfo[] = [];
         do {
-            rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
+            allRawOrderInfos = [...allRawOrderInfos, ...rawOrdersInfos];
             page++;
-            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
-        } while (Object.keys(ordersInfos).length > 0);
+            rawOrdersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
+        } while (rawOrdersInfos.length > 0);
 
-        const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);
-        return orderInfos;
+        const orderInfos = WSClient._convertRawOrderInfos(allRawOrderInfos);
+        getOrdersResponse = {
+            snapshotID,
+            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
+            ordersInfos: orderInfos,
+        };
+        return getOrdersResponse;
     }
     /**
      * Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a

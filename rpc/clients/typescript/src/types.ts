@@ -396,9 +396,19 @@ export interface ValidationResults {
     rejected: RejectedOrderInfo[];
 }
 
+export interface RawGetOrdersResponse {
+    snapshotID: string;
+    snapshotTimestamp: string;
+    ordersInfos: RawAcceptedOrderInfo[];
+}
+
+// GetOrdersResponse is the response returned when calling the mesh_getOrders
+// method. The `snapshotTimestamp` is the second UTC timestamp of when the Mesh
+// was queried for these orders
 export interface GetOrdersResponse {
     snapshotID: string;
-    ordersInfos: RawAcceptedOrderInfo[];
+    snapshotTimestamp: number;
+    ordersInfos: OrderInfo[];
 }
 
 export interface WSMessage {

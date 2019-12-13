@@ -141,6 +141,7 @@ type Config struct {
 
 type snapshotInfo struct {
 	Snapshot            *db.Snapshot
+	CreatedAt           time.Time
 	ExpirationTimestamp time.Time
 }
 
@@ -597,6 +598,13 @@ func (e ErrSnapshotNotFound) Error() string {
 	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
 }
 
+// ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
+type ErrPerPageZero struct{}
+
+func (e ErrPerPageZero) Error() string {
+	return "perPage cannot be zero"
+}
+
 // GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
 // string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
@@ -604,15 +612,13 @@ func (e ErrSnapshotNotFound) Error() string {
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
 	<-app.started
 
-	ordersInfos := []*rpc.OrderInfo{}
 	if perPage <= 0 {
-		return &rpc.GetOrdersResponse{
-			OrdersInfos: ordersInfos,
-			SnapshotID:  snapshotID,
-		}, nil
+		return nil, ErrPerPageZero{}
 	}
 
+	ordersInfos := []*rpc.OrderInfo{}
 	var snapshot *db.Snapshot
+	var createdAt time.Time
 	if snapshotID == "" {
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
@@ -621,11 +627,13 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		if err != nil {
 			return nil, err
 		}
+		createdAt = time.Now().UTC()
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.muIdToSnapshotInfo.Lock()
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
@@ -638,12 +646,14 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 			return nil, ErrSnapshotNotFound{id: snapshotID}
 		}
 		snapshot = info.Snapshot
+		createdAt = info.CreatedAt
 		// Reset the snapshot's expiry
 		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
@@ -664,8 +674,9 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 	}
 
 	getOrdersResponse := &rpc.GetOrdersResponse{
-		SnapshotID:  snapshotID,
-		OrdersInfos: ordersInfos,
+		SnapshotID:        snapshotID,
+		SnapshotTimestamp: createdAt,
+		OrdersInfos:       ordersInfos,
 	}
 
 	return getOrdersResponse, nil

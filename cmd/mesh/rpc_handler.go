@@ -85,6 +85,9 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 		if _, ok := err.(core.ErrSnapshotNotFound); ok {
 			return nil, err
 		}
+		if _, ok := err.(core.ErrPerPageZero); ok {
+			return nil, err
+		}
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
 		return nil, constants.ErrInternal

@@ -181,6 +181,7 @@ func TestGetOrdersSuccess(t *testing.T) {
 	expectedPerPage := 5
 	expectedSnapshotID := ""
 	returnedSnapshotID := "0x123"
+	expectedSnapshotTimestamp := time.Now().UTC()
 
 	// Set up the dummy handler with an addOrdersHandler
 	wg := &sync.WaitGroup{}
@@ -201,8 +202,9 @@ func TestGetOrdersSuccess(t *testing.T) {
 			}
 			wg.Done()
 			return &GetOrdersResponse{
-				SnapshotID:  returnedSnapshotID,
-				OrdersInfos: ordersInfos,
+				SnapshotID:        returnedSnapshotID,
+				SnapshotTimestamp: expectedSnapshotTimestamp,
+				OrdersInfos:       ordersInfos,
 			}, nil
 		},
 	}
@@ -218,6 +220,7 @@ func TestGetOrdersSuccess(t *testing.T) {
 	assert.Len(t, getOrdersResponse.OrdersInfos, 1)
 
 	assert.Equal(t, returnedSnapshotID, getOrdersResponse.SnapshotID, "SnapshotID did not match")
+	assert.WithinDuration(t, expectedSnapshotTimestamp, getOrdersResponse.SnapshotTimestamp, 1*time.Second, "SnapshotTimestamp did not match")
 
 	// We need to call ResetHash so that unexported hash field is equal in later
 	// assertions.
@@ -268,10 +271,10 @@ func TestAddPeer(t *testing.T) {
 
 func TestGetStats(t *testing.T) {
 	expectedGetStatsResponse := &GetStatsResponse{
-		Version:           "development",
-		PubSubTopic:       "/0x-orders/network/development/version/1",
-		Rendezvous:        "/0x-mesh/network/development/version/1",
-		PeerID:            "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
+		Version:         "development",
+		PubSubTopic:     "/0x-orders/network/development/version/1",
+		Rendezvous:      "/0x-mesh/network/development/version/1",
+		PeerID:          "16Uiu2HAmJ827EAibLvJxGMj6BvT1tr2e2ssW4cMtpP15qoQqZGSA",
 		EthereumChainID: 42,
 		LatestBlock: LatestBlock{
 			Number: 1,
