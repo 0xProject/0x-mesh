@@ -304,8 +304,8 @@ export class WSClient {
         do {
             allRawOrderInfos = [...allRawOrderInfos, ...rawOrdersInfos];
             page++;
-            rawOrdersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).rawOrdersInfos;
-        } while (Object.keys(rawOrdersInfos).length > 0);
+            rawOrdersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
+        } while (rawOrdersInfos.length > 0);
 
         const orderInfos = WSClient._convertRawOrderInfos(allRawOrderInfos);
         getOrdersResponse = {
