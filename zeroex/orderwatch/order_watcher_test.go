@@ -5,7 +5,6 @@ package orderwatch
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -1050,6 +1049,8 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
+	// We wait 200ms to allow time for the newly mined blocks to get processed by the OrderWatcher, so that when
+	// we try to validateAndStore the order below, the validation is performed at the latest block number
 	time.Sleep(200 * time.Millisecond)
 
 	// Kick off adding order to OrderWatcher within a separate go-routine so that we can block on the validation
@@ -1070,7 +1071,6 @@ func TestOrderWatcherValidateAndStoreValidOrdersHighLatencyValidationBlockReorge
 	// Simulate a block re-org by replacing the latest block with a new one, and adding one other order
 	// ontop of it
 	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
-	fmt.Println("storedBlocks", storedBlocks)
 	require.NoError(t, err)
 	latestBlock := storedBlocks[len(storedBlocks)-1]
 	replacementBlockHash := common.HexToHash("0x123456789")
