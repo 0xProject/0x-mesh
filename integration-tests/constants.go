@@ -27,11 +27,9 @@ const (
 )
 
 var (
-	makerAddress = constants.GanacheAccount1
-	takerAddress = constants.GanacheAccount2
-	// NOTE(jalextowle): The number of tokens being used to create new orders has been reduced so that
-	//                   we can create larger amounts of valid orders without running out of tokens.
-	seventeenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(17), nil)
-	wethAmount                   = new(big.Int).Mul(big.NewInt(5), seventeenDecimalsInBaseUnits)
-	zrxAmount                    = new(big.Int).Mul(big.NewInt(10), seventeenDecimalsInBaseUnits)
+	makerAddress                = constants.GanacheAccount1
+	takerAddress                = constants.GanacheAccount2
+	eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+	zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 )

@@ -1,4 +1,4 @@
-// Package integrationtests contains broad integration integrationtests that
+// Package integrationtests contains broad integration tests that
 // include a bootstrap node, a standalone node, and a browser node.
 package integrationtests
 
@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 
 func TestBrowserIntegration(t *testing.T) {
 	if !browserIntegrationTestsEnabled {
-		t.Skip("Integration tests are disabled. You can enable them with the --integration flag")
+		t.Skip("Integration tests are disabled. You can enable them with the --enable-browser-integration-tests flag")
 	}
 
 	teardownSubTest := setupSubTest(t)
@@ -50,8 +51,7 @@ func TestBrowserIntegration(t *testing.T) {
 	// standalone node will be sent. We use a large buffer so it doesn't cause
 	// goroutines to block.
 	standaloneLogMessages := make(chan string, 1024)
-	// count := int(atomic.AddInt32(&nodeCount, 1))
-	count := 0
+	count := int(atomic.AddInt32(&nodeCount, 1))
 
 	// Start the standalone node in a goroutine.
 	wg.Add(1)
@@ -83,7 +83,7 @@ func TestBrowserIntegration(t *testing.T) {
 		assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected over RPC")
 	}()
 
-	// Start a sinple HTTP server to serve the web page for the browser node.
+	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("./browser/dist")))
 	defer ts.Close()
 

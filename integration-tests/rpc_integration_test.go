@@ -5,6 +5,7 @@ package integrationtests
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -59,7 +60,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
 	require.NoError(t, err)
 
-	// Ensure that the validation validation results contain only the order that was
+	// Ensure that the validation results contain only the order that was
 	// sent to the rpc server and that the order was marked as valid.
 	require.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
@@ -108,9 +109,13 @@ func TestGetOrdersSuccess(t *testing.T) {
 
 	// Create 10 new valid orders.
 	ethClient := ethclient.NewClient(ethRPCClient)
+	// NOTE(jalextowle): The default balances are not sufficient to create 10 valid
+	//                   orders, so we modify the zrx and weth amounts for this test
+	newWethAmount := new(big.Int).Div(wethAmount, big.NewInt(10))
+	newZrxAmount := new(big.Int).Div(zrxAmount, big.NewInt(10))
 	signedTestOrders := make([]*zeroex.SignedOrder, 10)
 	for i := 0; i < 10; i++ {
-		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, newWethAmount, newZrxAmount)
 	}
 
 	// Send the newly created order to "AddOrders." The order is valid, and this should
@@ -258,7 +263,7 @@ func TestGetStats(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -410,7 +415,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
-	// Ensure that ta valid heartbeat was received
+	// Ensure that a valid heartbeat was received
 	heartbeat := <-heartbeatChan
 	assert.Equal(t, "tick", heartbeat)
 }

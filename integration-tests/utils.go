@@ -63,11 +63,10 @@ func removeOldFiles(t *testing.T, ctx context.Context) {
 var hasRunBuildStandalone bool
 
 func buildStandaloneForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
 	if hasRunBuildStandalone {
 		return
 	}
-
-	// Signal that mesh should not be built again in this test execution.
 	hasRunBuildStandalone = true
 
 	// Build the mesh executable
@@ -81,10 +80,10 @@ func buildStandaloneForTests(t *testing.T, ctx context.Context) {
 var hasRunBuildBootstrap bool
 
 func buildBootstrapForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
 	if hasRunBuildBootstrap {
 		return
 	}
-	// Signal that mesh should not be built again in this test execution.
 	hasRunBuildBootstrap = true
 
 	// Build the bootstrap executable
@@ -98,15 +97,13 @@ func buildBootstrapForTests(t *testing.T, ctx context.Context) {
 var hasRunBuildAll bool
 
 func buildForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
 	if hasRunBuildAll {
 		return
 	}
-
-	// Signal that the executables should not be built again in this test execution.
 	hasRunBuildAll = true
 
 	buildStandaloneForTests(t, ctx)
-
 	buildBootstrapForTests(t, ctx)
 
 	fmt.Println("Clear yarn cache...")
