@@ -18,9 +18,6 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,11 +78,11 @@ func TestAddOrdersSuccess(t *testing.T) {
 //                   can't meaningfully sanity check the returnedSnapshotID in
 //                   this test. Unit testing should be implemented to verify that
 //                   this logic is correct, if necessary.
-func TestGetOrdersSuccess(t *testing.T) {
+func TestGetOrders(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	removeOldFiles(t, ctx)
@@ -111,10 +108,11 @@ func TestGetOrdersSuccess(t *testing.T) {
 	ethClient := ethclient.NewClient(ethRPCClient)
 	// NOTE(jalextowle): The default balances are not sufficient to create 10 valid
 	//                   orders, so we modify the zrx and weth amounts for this test
-	newWethAmount := new(big.Int).Div(wethAmount, big.NewInt(10))
-	newZrxAmount := new(big.Int).Div(zrxAmount, big.NewInt(10))
-	signedTestOrders := make([]*zeroex.SignedOrder, 10)
-	for i := 0; i < 10; i++ {
+	numOrders := 10
+	newWethAmount := new(big.Int).Div(wethAmount, big.NewInt(int64(numOrders)))
+	newZrxAmount := new(big.Int).Div(zrxAmount, big.NewInt(int64(numOrders)))
+	signedTestOrders := make([]*zeroex.SignedOrder, numOrders)
+	for i := 0; i < numOrders; i++ {
 		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, newWethAmount, newZrxAmount)
 	}
 
@@ -122,138 +120,61 @@ func TestGetOrdersSuccess(t *testing.T) {
 	// be reflected in the validation results.
 	validationResponse, err := client.AddOrders(signedTestOrders)
 	require.NoError(t, err)
-	assert.Len(t, validationResponse.Accepted, 10)
+	assert.Len(t, validationResponse.Accepted, numOrders)
 	assert.Len(t, validationResponse.Rejected, 0)
 
-	// Send an initial "GetOrders" request through the rpc client. This request will
-	// get all of the orders in the database after the "AddOrders" request. We can
-	// test pagination by comparing to this list.
-	expectedPage := 0
-	expectedPerPage := 10
-	expectedSnapshotID := ""
-	initialGetOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
+	fixmeGetOrdersResponse, err := client.GetOrders(0, 10, "")
 	require.NoError(t, err)
-	assert.Len(t, initialGetOrdersResponse.OrdersInfos, expectedPerPage)
-
-	// Ensure that all of the orders that we added to the mesh node are represented in the
-	// get orders request.
-	for _, signedTestOrder := range signedTestOrders {
-		foundMatchingOrder := false
-		expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-		require.NoError(t, err)
-		signedTestOrder.ResetHash()
-
-		for _, orderInfo := range initialGetOrdersResponse.OrdersInfos {
-			if orderInfo.OrderHash.Hex() == expectedOrderHash.Hex() {
-				foundMatchingOrder = true
-				assert.Equal(t, signedTestOrder, orderInfo.SignedOrder, "signedOrder did not match")
-				assert.Equal(t, signedTestOrder.TakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
-				break
-			}
-		}
-
-		assert.True(t, foundMatchingOrder, "found no matching entry in the getOrdersResponse")
-	}
+	// NOTE(jalextowle) This statement holds true for many pagination algorithms, but it may be necessary
+	//                  to drop this requirement if the `GetOrders` endpoint changes dramatically.
+	require.Len(t, fixmeGetOrdersResponse.OrdersInfos, 10)
 
 	// Make a new "GetOrders" request with different pagination parameters.
-	expectedPage = 1
-	expectedPerPage = 5
-	getOrdersResponse, err := client.GetOrders(expectedPage, expectedPerPage, expectedSnapshotID)
-	require.NoError(t, err)
-	assert.Len(t, getOrdersResponse.OrdersInfos, expectedPerPage)
+	snapshotID := ""
+	for _, testCase := range []struct {
+		ordersPerPage int
+	}{
+		{
+			ordersPerPage: -1,
+		},
+		{
+			ordersPerPage: 0,
+		},
+		{
+			ordersPerPage: 3,
+		},
+		{
+			ordersPerPage: 5,
+		},
+	} {
+		if testCase.ordersPerPage <= 0 {
+			_, err := client.GetOrders(0, testCase.ordersPerPage, snapshotID)
+			require.EqualError(t, err, "perPage cannot be zero")
+		} else {
 
-	// Ensure that the getOrdersResponse has the correct pagination
-	for i := range getOrdersResponse.OrdersInfos {
-		assert.Equal(t, initialGetOrdersResponse.OrdersInfos[i+5*expectedPage], getOrdersResponse.OrdersInfos[i], "Incorrect order of second getOrdersResponse")
+			// If numOrders % testCase.ordersPerPage is nonzero, then we must increment the number of pages to
+			// iterate through because the numOrder / testCase.ordersPerPage calculation rounds down.
+			highestPageNumber := numOrders / testCase.ordersPerPage
+			if numOrders%testCase.ordersPerPage > 0 {
+				highestPageNumber++
+			}
+
+			// Iterate through enough pages to get all of the orders in the mesh nodes database. Compare the
+			// responses to the orders that we expect to be in the database.
+			var responseOrders []*rpc.OrderInfo
+			for pageNumber := 0; pageNumber < highestPageNumber; pageNumber++ {
+				expectedTimestamp := time.Now().UTC()
+				getOrdersResponse, err := client.GetOrders(pageNumber, testCase.ordersPerPage, snapshotID)
+				assert.WithinDuration(t, expectedTimestamp, getOrdersResponse.SnapshotTimestamp, time.Second)
+				require.NoError(t, err)
+				// NOTE(jalextowle) This statement holds true for many pagination algorithms, but it may be necessary
+				//                  to drop this requirement if the `GetOrders` endpoint changes dramatically.
+				require.Len(t, getOrdersResponse.OrdersInfos, min(testCase.ordersPerPage, numOrders-pageNumber*testCase.ordersPerPage))
+				responseOrders = append(responseOrders, getOrdersResponse.OrdersInfos...)
+			}
+			assertSignedOrdersMatch(t, signedTestOrders, responseOrders)
+		}
 	}
-
-	cancel()
-	wg.Wait()
-}
-
-func TestAddPeer(t *testing.T) {
-	t.Skip("The AddPeer test is currently skipped because of nondeterministic behavior that causes it to intermittently fail")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildStandaloneForTests(t, ctx)
-
-	// Start two standalone nodes so that one can add the other as a peer
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	logMessages1 := make(chan string, 1024)
-	logMessages2 := make(chan string, 1024)
-	count2 := int(atomic.AddInt32(&nodeCount, 2))
-	count1 := count2 - 1
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count1, logMessages1)
-	}()
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count2, logMessages2)
-	}()
-
-	// Wait for the "starting p2p node" log to be emitted by both nodes.
-	// Scrape the logs to get the peer Ids of both nodes and the multiaddresses
-	// of the second node.
-	var startingP2PLog struct {
-		PeerId    string   `json:"myPeerID"`
-		Addresses []string `json:"addresses_array"`
-	}
-	log, err := waitForLogSubstring(ctx, logMessages1, "starting p2p node")
-	require.NoError(t, err, "p2p node didn't start")
-	err = json.Unmarshal([]byte(log), &startingP2PLog)
-	require.NoError(t, err)
-	parsedPeerID1, err := peer.IDB58Decode(startingP2PLog.PeerId)
-	require.NoError(t, err)
-	log, err = waitForLogSubstring(ctx, logMessages2, "starting p2p node")
-	require.NoError(t, err, "p2p node didn't start")
-	err = json.Unmarshal([]byte(log), &startingP2PLog)
-	require.NoError(t, err)
-	parsedPeerID2, err := peer.IDB58Decode(startingP2PLog.PeerId)
-	require.NoError(t, err)
-	multiaddrs := startingP2PLog.Addresses
-	parsedMultiaddrs := make([]ma.Multiaddr, len(multiaddrs))
-	for i, addr := range multiaddrs {
-		parsed, err := ma.NewMultiaddr(addr)
-		require.NoError(t, err)
-		parsedMultiaddrs[i] = parsed
-	}
-
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count1))
-	require.NoError(t, err)
-
-	// Send the "AddPeer" request
-	expectedPeerInfo := peerstore.PeerInfo{
-		ID:    parsedPeerID2,
-		Addrs: parsedMultiaddrs,
-	}
-	require.NoError(t, client.AddPeer(expectedPeerInfo))
-
-	// Wait for the "found peer who speaks our protocol" log to be emitted by
-	// both nodes. Ensure that the peer IDs of the node that was found match
-	// the peer IDs of the nodes created in the test.
-	var foundPeerLog struct {
-		PeerId   string `json:"remotePeerID_string"`
-		Protocol string `json:"protocol_string"`
-	}
-	log, err = waitForLogSubstring(ctx, logMessages1, "found peer who speaks our protocol")
-	require.NoError(t, err, "didn't find peer")
-	err = json.Unmarshal([]byte(log), &foundPeerLog)
-	require.NoError(t, err)
-	parsedFoundPeerID2, err := peer.IDB58Decode(foundPeerLog.PeerId)
-	require.NoError(t, err)
-	assert.Equal(t, parsedFoundPeerID2, parsedPeerID2)
-	log, err = waitForLogSubstring(ctx, logMessages2, "found peer who speaks our protocol")
-	require.NoError(t, err, "didn't find peer")
-	err = json.Unmarshal([]byte(log), &foundPeerLog)
-	require.NoError(t, err)
-	parsedFoundPeerID1, err := peer.IDB58Decode(foundPeerLog.PeerId)
-	require.NoError(t, err)
-	assert.Equal(t, parsedFoundPeerID1, parsedPeerID1)
 
 	cancel()
 	wg.Wait()

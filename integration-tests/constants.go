@@ -11,6 +11,10 @@ const (
 	ethereumChainID = 1337
 	rpcPort         = 60501
 
+	standaloneDataDirPrefix     = "./data/standalone-"
+	standaloneRPCEndpointPrefix = "ws://localhost:"
+	standaloneRPCAddrPrefix     = "localhost:"
+
 	// Various config options/information for the bootstrap node. The private key
 	// for the bootstrap node is checked in to version control so we know it's
 	// peer ID ahead of time.
@@ -18,12 +22,6 @@ const (
 	bootstrapPeerID  = "16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7"
 	bootstrapList    = "/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7"
 	bootstrapDataDir = "./data/bootstrap-0"
-
-	// Various config options/information for the standalone node. Like the
-	// bootstrap node, we know the private key/peer ID ahead of time.
-	standaloneDataDirPrefix     = "./data/standalone-"
-	standaloneRPCEndpointPrefix = "ws://localhost:"
-	standaloneRPCAddrPrefix     = "localhost:"
 )
 
 var (

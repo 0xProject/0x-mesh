@@ -16,6 +16,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/rpc"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -46,6 +48,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
@@ -288,6 +297,27 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 		return foundLog.OrderHash == expectedLog.OrderHash &&
 			foundLog.From == expectedLog.From
 	})
+}
+
+// Ensure that the signed orders
+func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*rpc.OrderInfo) {
+	for _, expectedOrder := range expectedSignedOrders {
+		foundMatchingOrder := false
+
+		expectedOrderHash, err := expectedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		for _, orderInfo := range actualOrderInfo {
+			if orderInfo.OrderHash.Hex() == expectedOrderHash.Hex() {
+				foundMatchingOrder = true
+				expectedOrder.ResetHash()
+				assert.Equal(t, expectedOrder, orderInfo.SignedOrder, "signedOrder did not match")
+				assert.Equal(t, expectedOrder.TakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+				break
+			}
+		}
+
+		assert.True(t, foundMatchingOrder, "found no matching entry in the getOrdersResponse")
+	}
 }
 
 // A holder type for parsing logged OrderEvents. These are received by either
