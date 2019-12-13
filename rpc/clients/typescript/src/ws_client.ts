@@ -291,16 +291,16 @@ export class WSClient {
         snapshotID = rawGetOrdersResponse.snapshotID;
         const snapshotTimestampStr = rawGetOrdersResponse.snapshotTimestamp;
         const snapshotTimestamp = new Date(snapshotTimestampStr);
-        let ordersInfos = rawGetOrdersResponse.ordersInfos;
+        let rawOrdersInfos = rawGetOrdersResponse.ordersInfos;
 
-        let rawOrderInfos: RawOrderInfo[] = [];
+        let allRawOrderInfos: RawOrderInfo[] = [];
         do {
-            rawOrderInfos = [...rawOrderInfos, ...ordersInfos];
+            allRawOrderInfos = [...allRawOrderInfos, ...rawOrdersInfos];
             page++;
-            ordersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
-        } while (Object.keys(ordersInfos).length > 0);
+            rawOrdersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).rawOrdersInfos;
+        } while (Object.keys(rawOrdersInfos).length > 0);
 
-        const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);
+        const orderInfos = WSClient._convertRawOrderInfos(allRawOrderInfos);
         const getOrdersResponse: GetOrdersResponse = {
             snapshotID,
             // tslint:disable-next-line:custom-no-magic-numbers
