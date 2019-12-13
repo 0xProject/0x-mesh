@@ -1644,7 +1644,7 @@ func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time
 	return latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease
 }
 
-// WaitForAtLeastOneBlockToBeProcessed waits until the BlockWatcher has processed it's
+// WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed it's
 // first block
 func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error {
 	select {
