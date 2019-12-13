@@ -56,8 +56,9 @@ func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) 
 
 // GetOrdersResponse is the response returned for an RPC request to mesh_getOrders
 type GetOrdersResponse struct {
-	SnapshotID  string       `json:"snapshotID"`
-	OrdersInfos []*OrderInfo `json:"ordersInfos"`
+	SnapshotID        string       `json:"snapshotID"`
+	SnapshotTimestamp time.Time    `json:"snapshotTimestamp"`
+	OrdersInfos       []*OrderInfo `json:"ordersInfos"`
 }
 
 // GetOrders gets all orders stored on the Mesh node at a particular point in time in a paginated fashion

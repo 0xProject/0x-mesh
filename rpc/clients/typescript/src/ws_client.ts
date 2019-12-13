@@ -21,6 +21,7 @@ import {
     OrderEventPayload,
     OrderInfo,
     RawAcceptedOrderInfo,
+    RawGetOrdersResponse,
     RawOrderEvent,
     RawOrderInfo,
     RawValidationResults,
@@ -278,17 +279,19 @@ export class WSClient {
      * @param perPage number of signedOrders to fetch per paginated request
      * @returns all orders, their hash and their fillableTakerAssetAmount
      */
-    public async getOrdersAsync(perPage: number = 200): Promise<OrderInfo[]> {
+    public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const getOrdersResponse: GetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+        const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
             page,
             perPage,
             snapshotID,
         ]);
-        snapshotID = getOrdersResponse.snapshotID;
-        let ordersInfos = getOrdersResponse.ordersInfos;
+        snapshotID = rawGetOrdersResponse.snapshotID;
+        const snapshotTimestampStr = rawGetOrdersResponse.snapshotTimestamp;
+        const snapshotTimestamp = new Date(snapshotTimestampStr);
+        let ordersInfos = rawGetOrdersResponse.ordersInfos;
 
         let rawOrderInfos: RawOrderInfo[] = [];
         do {
@@ -298,7 +301,13 @@ export class WSClient {
         } while (Object.keys(ordersInfos).length > 0);
 
         const orderInfos = WSClient._convertRawOrderInfos(rawOrderInfos);
-        return orderInfos;
+        const getOrdersResponse: GetOrdersResponse = {
+            snapshotID,
+            // tslint:disable-next-line:custom-no-magic-numbers
+            snapshotTimestamp: Math.round(snapshotTimestamp.getTime() / 1000),
+            ordersInfos: orderInfos,
+        };
+        return getOrdersResponse;
     }
     /**
      * Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a

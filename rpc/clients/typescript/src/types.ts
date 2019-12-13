@@ -396,9 +396,16 @@ export interface ValidationResults {
     rejected: RejectedOrderInfo[];
 }
 
+export interface RawGetOrdersResponse {
+    snapshotID: string;
+    snapshotTimestamp: string;
+    ordersInfos: RawAcceptedOrderInfo[];
+}
+
 export interface GetOrdersResponse {
     snapshotID: string;
-    ordersInfos: RawAcceptedOrderInfo[];
+    snapshotTimestamp: number;
+    ordersInfos: OrderInfo[];
 }
 
 export interface WSMessage {

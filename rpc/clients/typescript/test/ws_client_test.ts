@@ -84,7 +84,8 @@ describe('WSClient', () => {
 
             const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
             const perPage = 1;
-            const orderInfos = await client.getOrdersAsync(perPage);
+            const getOrdersResponse = await client.getOrdersAsync(perPage);
+            const orderInfos = getOrdersResponse.ordersInfos;
             expect(orderInfos).to.have.length(1);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerAssetAmount)).to.equal(true);

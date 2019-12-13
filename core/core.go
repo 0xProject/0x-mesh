@@ -141,6 +141,7 @@ type Config struct {
 
 type snapshotInfo struct {
 	Snapshot            *db.Snapshot
+	CreatedAt           time.Time
 	ExpirationTimestamp time.Time
 }
 
@@ -605,14 +606,8 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 	<-app.started
 
 	ordersInfos := []*rpc.OrderInfo{}
-	if perPage <= 0 {
-		return &rpc.GetOrdersResponse{
-			OrdersInfos: ordersInfos,
-			SnapshotID:  snapshotID,
-		}, nil
-	}
-
 	var snapshot *db.Snapshot
+	var createdAt time.Time
 	if snapshotID == "" {
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
@@ -621,11 +616,13 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		if err != nil {
 			return nil, err
 		}
+		createdAt = time.Now().UTC()
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.muIdToSnapshotInfo.Lock()
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
@@ -638,15 +635,25 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 			return nil, ErrSnapshotNotFound{id: snapshotID}
 		}
 		snapshot = info.Snapshot
+		createdAt = info.CreatedAt
 		// Reset the snapshot's expiry
 		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
+	}
+
+	if perPage <= 0 {
+		return &rpc.GetOrdersResponse{
+			SnapshotID:        snapshotID,
+			SnapshotTimestamp: createdAt,
+			OrdersInfos:       ordersInfos,
+		}, nil
 	}
 
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
@@ -664,8 +671,9 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 	}
 
 	getOrdersResponse := &rpc.GetOrdersResponse{
-		SnapshotID:  snapshotID,
-		OrdersInfos: ordersInfos,
+		SnapshotID:        snapshotID,
+		SnapshotTimestamp: createdAt,
+		OrdersInfos:       ordersInfos,
 	}
 
 	return getOrdersResponse, nil
