@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -22,6 +23,8 @@ const (
 	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
+var ErrTooManyRequestsIn24Hours = errors.New("too many Ethereum RPC requests have been sent this 24 hour period")
+
 // RateLimiter is the interface one must satisfy to be considered a RateLimiter
 type RateLimiter interface {
 	Wait(ctx context.Context) error
@@ -33,7 +36,6 @@ type RateLimiter interface {
 // rateLimiter is a rate-limiter for requests
 type rateLimiter struct {
 	maxRequestsPer24Hrs   int
-	twentyFourHourLimiter *rate.Limiter
 	perSecondLimiter      *rate.Limiter
 	currentUTCCheckpoint  time.Time // Start of current UTC 24hr period
 	grantedInLast24hrsUTC int       // Number of granted requests issued in last 24hr UTC
@@ -75,41 +77,14 @@ func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, mes
 		}
 	}
 
-	// Compute the number of grants accrued since 12am UTC that have not been used. We will than
-	// instantiate the rate limiter to start with the accrued grants remaining available for
-	// immediate use
-
-	timePassedSinceCheckpoint := aClock.Since(currentUTCCheckpoint)
-	// Translate time passed into theoretical # grants accrued
-	// (timePassed / 24hrs) * maxRequestsPer24hrs
-	theoreticalGrantsAccrued := int((float64(timePassedSinceCheckpoint.Nanoseconds()) / float64((24 * time.Hour).Nanoseconds())) * float64(maxRequestsPer24Hrs))
-	// theoreticalGrants - storedGrantedInLast24HrsUTC = accruedGrants
-	accruedGrants := theoreticalGrantsAccrued - storedGrantedInLast24HrsUTC
-
-	// Instantiate limiter with `maxRequestsPer24Hrs` bucketsize and a limit
-	// that results in `maxRequestsPer24Hrs` requests being whitelisted in a 24hr period
-	limit := rate.Limit(float64(maxRequestsPer24Hrs) / (24 * 60 * 60))
-	twentyFourHourLimiter := rate.NewLimiter(limit, maxRequestsPer24Hrs)
-
-	// Since Limiter begins initially full, we drain it before use. i.e., We do not want 100k
-	// requests to already be queued up, instead we only want the number of accrued grants that
-	// have gone unused to be available at startup
-	amountToDrain := maxRequestsPer24Hrs - accruedGrants
-	ctx := context.Background()
-	err = twentyFourHourLimiter.WaitN(ctx, amountToDrain)
-	if err != nil {
-		return nil, err
-	}
-
 	// Instantiate limiter with a bucketsize of one and a limit that results
 	// in no more than `maxRequestsPerSecond` requests per second.
-	limit = rate.Limit(maxRequestsPerSecond)
-	perSecondLimiter := rate.NewLimiter(limit, 1)
+	limit := rate.Limit(maxRequestsPerSecond)
+	perSecondLimiter := rate.NewLimiter(limit, int(math.Max(1, maxRequestsPerSecond)))
 
 	return &rateLimiter{
 		aClock:                aClock,
 		maxRequestsPer24Hrs:   maxRequestsPer24Hrs,
-		twentyFourHourLimiter: twentyFourHourLimiter,
 		perSecondLimiter:      perSecondLimiter,
 		meshDB:                meshDB,
 		currentUTCCheckpoint:  storedUTCCheckpoint,
@@ -143,21 +118,9 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			case <-ctx.Done():
 				return
 			case <-r.aClock.After(untilNextUTCCheckpoint):
-				// Compute how many grants have accrued and gone unused and remove that
-				// many from the bucket so that it starts empty for the next 24hr period
+				// Reset the number of requests granted and the set the next UTC
+				// checkpoint.
 				r.mu.Lock()
-				accruedGrants := r.maxRequestsPer24Hrs - r.grantedInLast24hrsUTC
-				if err := r.twentyFourHourLimiter.WaitN(ctx, accruedGrants); err != nil {
-					// Since we never set n to exceed the burst size, an error will only
-					// occur if the context is cancelled or it's deadline is exceeded. In
-					// these cases, we simply return so that this go-routine exits.
-					// From docs: "It returns an error if n exceeds the Limiter's burst
-					// size, the Context is canceled, or the expected wait time exceeds the
-					// Context's Deadline."
-					// Source: https://godoc.org/golang.org/x/time/rate#Limiter.WaitN
-					r.mu.Unlock()
-					return
-				}
 				r.currentUTCCheckpoint = nextUTCCheckpoint
 				r.grantedInLast24hrsUTC = 0
 				r.mu.Unlock()
@@ -165,7 +128,7 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		}
 	}()
 
-	ticker := time.NewTicker(checkpointInterval)
+	ticker := r.aClock.Ticker(checkpointInterval)
 	for {
 		select {
 		case <-ctx.Done():
@@ -197,9 +160,12 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 
 // Wait blocks until the rateLimiter allows for another request to be sent
 func (r *rateLimiter) Wait(ctx context.Context) error {
-	if err := r.twentyFourHourLimiter.Wait(ctx); err != nil {
-		return err
+	r.mu.Lock()
+	if r.grantedInLast24hrsUTC >= r.maxRequestsPer24Hrs {
+		r.mu.Unlock()
+		return ErrTooManyRequestsIn24Hours
 	}
+	r.mu.Unlock()
 	if err := r.perSecondLimiter.Wait(ctx); err != nil {
 		return err
 	}

@@ -15,41 +15,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	maxRequestsPer24HrsWithoutBuffer      = 301000
-	maxRequestsPer24hrs                   = maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
-	maxRequestsPerSecond                  = 10.0
-	twentyFourHrs                         = 24 * time.Hour
-	maxExpectedDelay                      = twentyFourHrs / time.Duration(maxRequestsPer24hrs)
-	minExpectedDelay                      = 1 * time.Second / time.Duration(maxRequestsPerSecond)
-	defaultCheckpointInterval             = 1 * time.Minute
-	expectedMaxElapsedTimeForFirstRequest = 1 * time.Millisecond
-	expectedDeltaMinExpectedDelay         = 20 * time.Millisecond
-	expectedDeltaMaxExpectedDelay         = 20 * time.Millisecond
+const (
+	defaultMaxRequestsPer24HrsWithoutBuffer = 100000
+	defaultMaxRequestsPerSecond             = 10.0
+	defaultCheckpointInterval               = 1 * time.Minute
+	grantTimingTolerance                    = 15 * time.Millisecond
 )
 
-// Scenario1: Mesh starts X seconds after UTC midnight (start of next UTC day) and
-// therefore there are Y request grants that have accrued. This test verifies that
-// the first request is granted immediately, the next Y - 1 grants are issued at the
-// expected minimum rate imposed by the per second rate, and all subsequent requests
-// are issued at the max rate imposed by the per 24hr rate limit.
+// Scenario1: If the 24 hour limit has not been hit, requests should be granted
+// based on the per second limiter.
 func TestScenario1(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
-
 	initMetadata(t, meshDB)
 
-	// Set mock clock to three grants past UTC midnight
+	// Set up some constants for this test.
+	const maxRequestsPer24HrsWithoutBuffer = 100000
+	const maxRequestsPerSecond = 10
+
+	// Set mock clock to UTC midnight
 	aClock := clock.NewMock()
-	now := time.Now()
-	midnightUTC := GetUTCMidnightOfDate(now)
-	threeGrantsPastUTCMidnight := midnightUTC.Add(maxExpectedDelay * 3)
-	aClock.Set(threeGrantsPastUTCMidnight)
+	aClock.Set(GetUTCMidnightOfDate(time.Now()))
 
 	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -58,52 +49,47 @@ func TestScenario1(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	for i := 0; i < 5; i++ {
-		now := time.Now()
-		ctx := context.Background()
-		err = rateLimiter.Wait(ctx)
-		require.NoError(t, err)
-		elapsed := time.Since(now)
-
-		// First request goes through immediately
-		if i == 0 {
-			assert.True(t, elapsed < expectedMaxElapsedTimeForFirstRequest, "First request did not get granted immediately")
-		} else if i > 0 && i <= 3 {
-			// Subsequent requests take 1sec / maxRequestsPerSecond
-			// Note: Despite initially waiting for 3 grants to accrue, by
-			// the time we request the 4th, another has accrued.
-			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < expectedDeltaMinExpectedDelay, "Delta between minExpectedDelay and rate limit delay too large")
-		} else {
-			// Subsequent requests take 24hrs / maxRequestsPer24hrs
-			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < expectedDeltaMaxExpectedDelay, "Delta between maxExpectedDelay and rate limit delay too large")
-		}
-	}
+	// First maxRequestsPerSecond should be granted pretty much immediately.
+	expectRequestsGranted(t, rateLimiter, int(maxRequestsPerSecond), 0, grantTimingTolerance)
+	// Next 5 requests should be granted after 1s / maxRequestsPerSecond
+	expectedDelay := (1 * time.Second) / time.Duration(maxRequestsPerSecond)
+	expectRequestsGranted(t, rateLimiter, 5, expectedDelay-grantTimingTolerance, expectedDelay+grantTimingTolerance)
 
 	cancel()
 	wg.Wait()
 }
 
-// Scenario 2: Request grants have accrued but after 12am UTC, they get cleared
-// and a new day starts
+// Scenario 2: Max requests per 24 hours used up. Subsequent calls to Wait
+// should return an error.
 func TestScenario2(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
-	initMetadata(t, meshDB)
-
-	// Set mock clock close to end of current UTC day
-	aClock := clock.NewMock()
 	now := time.Now()
-	midnightUTC := GetUTCMidnightOfDate(now)
-	rightBeforeMidnight := midnightUTC.Add(twentyFourHrs - (500 * time.Millisecond))
-	aClock.Set(rightBeforeMidnight)
+	startOfCurrentUTCDay := GetUTCMidnightOfDate(now)
+	requestsRemainingInCurrentDay := 10
+	requestsSentInCurrentDay := defaultMaxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer - requestsRemainingInCurrentDay
 
-	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
+	// Set metadata to just short of maximum requests per 24 hours.
+	metadata := &meshdb.Metadata{
+		EthereumChainID:                   1337,
+		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
+		StartOfCurrentUTCDay:              startOfCurrentUTCDay,
+		EthRPCRequestsSentInCurrentUTCDay: requestsSentInCurrentDay,
+	}
+	err = meshDB.SaveMetadata(metadata)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start a new rate limiter and set time to a few hours past midnight.
+	// We set the max requests per second extremely high here because it's not
+	// what we're trying to test.
+	aClock := clock.NewMock()
+	aClock.Set(startOfCurrentUTCDay.Add(3 * time.Hour))
+	rateLimiter, err := New(defaultMaxRequestsPer24HrsWithoutBuffer, math.MaxFloat64, meshDB, aClock)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -112,57 +98,17 @@ func TestScenario2(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// Prior to re-setting the bucket for the next day, grant requests
-	// should happen according to the second rate (since many are queued)
-	for i := 0; i < 2; i++ {
-		now := time.Now()
-		ctx := context.Background()
-		err = rateLimiter.Wait(ctx)
-		require.NoError(t, err)
-		elapsed := time.Since(now)
+	// Up until we reach the 24 hour limit, requests should be granted pretty much
+	// immediately.
+	expectRequestsGranted(t, rateLimiter, requestsRemainingInCurrentDay, 0, grantTimingTolerance)
 
-		// First request goes through immediately
-		if i == 0 {
-			assert.True(t, elapsed < expectedMaxElapsedTimeForFirstRequest, "First request did not get granted immediately")
-		} else {
-			// Subsequent requests take 1sec / maxRequestsPerSecond
-			// Note: Despite initially waiting for 3 grants to accrue, by
-			// the time we request the 4th, another has accrued.
-			delta := math.Abs(float64(minExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < expectedDeltaMinExpectedDelay, "Delta between minExpectedDelay and rate limit delay too large")
-		}
-	}
-
-	// Move time forward by 500ms
-	// NOTE: This does not move time forward within the rate.Limiter instances
-	// we use. They unfortunately don't expose their internal clock to us
-	aClock.Add(500 * time.Millisecond)
-
-	// After moving into the next UTC day, the accrued grant requests should have been
-	// cleared, causing subsequent requests to happen according to the 24hr rate (since
-	// none are queued)
-	for i := 0; i < 3; i++ {
-		now := time.Now()
-		ctx := context.Background()
-		err = rateLimiter.Wait(ctx)
-		require.NoError(t, err)
-		elapsed := time.Since(now)
-
-		// First request takes 500 extra miliseconds because the clock within rate.Limiter
-		// is actually 500ms behind. This means the RateLimiter will attempt to
-		// empty the bucket AS IF the 500ms has passed, but because it hasn't, we will
-		// wait 500ms for those last grants to accrue before the bucket can clear.
-		// The remaining time is close to what we'd expect from an empty bucket the needs
-		// refilling.
-		if i == 0 {
-			expectedDuration := (500 * time.Millisecond) + maxExpectedDelay
-			delta := elapsed - expectedDuration
-			assert.True(t, delta < expectedDuration/10, "Delta between expected and elapsed duration too large")
-		} else {
-			// Subsequent requests take 24hrs / maxRequestsPer24hrs
-			delta := math.Abs(float64(maxExpectedDelay - elapsed))
-			assert.True(t, time.Duration(delta) < expectedDeltaMaxExpectedDelay, "Delta between maxExpectedDelay and rate limit delay too large")
-		}
+	// Subsequent reuqests should result in ErrTooManyRequestsIn24Hours
+	for i := 0; i < 5; i++ {
+		waitCtx, waitCancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer waitCancel()
+		err := rateLimiter.Wait(waitCtx)
+		require.Error(t, err, "expected ErrTooManyRequestsIn24Hours")
+		assert.Equal(t, ErrTooManyRequestsIn24Hours.Error(), err.Error(), "wrong error message")
 	}
 
 	cancel()
@@ -193,30 +139,36 @@ func TestScenario3(t *testing.T) {
 	require.NoError(t, err)
 
 	aClock := clock.NewMock()
-	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
+	aClock.Set(now)
+	rateLimiter, err := New(defaultMaxRequestsPer24HrsWithoutBuffer, defaultMaxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
 	assert.Equal(t, 0, rateLimiter.getGrantedInLast24hrsUTC())
-	now = aClock.Now()
-	expectedCurrentUTCCheckpoint := GetUTCMidnightOfDate(now)
+	expectedCurrentUTCCheckpoint := GetUTCMidnightOfDate(aClock.Now())
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	checkpointInterval := 200 * time.Millisecond
+	// Start the rateLimiter
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := rateLimiter.Start(ctx, checkpointInterval)
+		err := rateLimiter.Start(ctx, defaultCheckpointInterval)
 		require.NoError(t, err)
 	}()
 
-	// Grant a request
-	err = rateLimiter.Wait(ctx)
-	require.NoError(t, err)
+	// Grant a request. It should be granted immediately.
+	expectRequestsGranted(t, rateLimiter, 1, 0, 5*time.Millisecond)
 
-	time.Sleep(checkpointInterval + 50*time.Millisecond)
+	// Wait for rate-limiter background process to start.
+	time.Sleep(10 * time.Millisecond)
+
+	// Advance time past the checkpointInterval
+	aClock.Add(defaultCheckpointInterval + 1*time.Millisecond)
+
+	// Wait for the metadata to be updated.
+	time.Sleep(50 * time.Millisecond)
 
 	// Check metadata was stored in DB
 	metadata, err = meshDB.GetMetadata()
@@ -247,7 +199,7 @@ func TestScenario4(t *testing.T) {
 
 	// If we are not properly converting times to UTC, instantiation will fail with err
 	// `Wait(n=450000) exceeds limiter's burst 300000`
-	_, err = New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
+	_, err = New(defaultMaxRequestsPer24HrsWithoutBuffer, defaultMaxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 }
 
@@ -258,4 +210,17 @@ func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
 	}
 	err := meshDB.SaveMetadata(metadata)
 	require.NoError(t, err)
+}
+
+func expectRequestsGranted(t *testing.T, rateLimiter RateLimiter, numRequests int, minDelay time.Duration, maxDelay time.Duration) {
+	for i := 0; i < numRequests; i++ {
+		now := time.Now()
+		ctx, cancel := context.WithTimeout(context.Background(), maxDelay)
+		defer cancel()
+		err := rateLimiter.Wait(ctx)
+		require.NoError(t, err, "waited too long to grant request %d", i)
+		elapsed := time.Since(now)
+		assert.True(t, elapsed <= maxDelay, "waited too long to grant request %d", i)
+		assert.True(t, elapsed >= minDelay, "request %d was granted too quickly", i)
+	}
 }
