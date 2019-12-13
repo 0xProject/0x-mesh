@@ -598,12 +598,23 @@ func (e ErrSnapshotNotFound) Error() string {
 	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
 }
 
+// ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
+type ErrPerPageZero struct{}
+
+func (e ErrPerPageZero) Error() string {
+	return "perPage cannot be zero"
+}
+
 // GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
 // string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
 	<-app.started
+
+	if perPage <= 0 {
+		return nil, ErrPerPageZero{}
+	}
 
 	ordersInfos := []*rpc.OrderInfo{}
 	var snapshot *db.Snapshot
@@ -646,14 +657,6 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
-	}
-
-	if perPage <= 0 {
-		return &rpc.GetOrdersResponse{
-			SnapshotID:        snapshotID,
-			SnapshotTimestamp: createdAt,
-			OrdersInfos:       ordersInfos,
-		}, nil
 	}
 
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
