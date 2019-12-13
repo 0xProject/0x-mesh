@@ -27,6 +27,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Fixed a bug which could cause Mesh to crash with a nil pointer exception if RPC requests are sent too quickly during/immediately after start up ([#560](https://github.com/0xProject/0x-mesh/pull/560)).
 
+
 ## v6.1.1-beta
 
 ### Bug fixes 🐞
