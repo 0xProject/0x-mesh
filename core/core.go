@@ -256,9 +256,6 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
-	if err != nil {
-		return nil, err
-	}
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
