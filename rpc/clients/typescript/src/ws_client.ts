@@ -87,6 +87,14 @@ export class WSClient {
         });
         return orderInfos;
     }
+    private static _convertRawGetOrdersResponse(rawGetOrdersResponse: RawGetOrdersResponse): GetOrdersResponse {
+        return {
+            snapshotID: rawGetOrdersResponse.snapshotID,
+            // tslint:disable-next-line:custom-no-magic-numbers
+            snapshotTimestamp: Math.round(new Date(rawGetOrdersResponse.snapshotTimestamp).getTime() / 1000),
+            ordersInfos: WSClient._convertRawOrderInfos(rawGetOrdersResponse.ordersInfos),
+        };
+    }
     private static _convertStringifiedContractEvents(rawContractEvents: StringifiedContractEvent[]): ContractEvent[] {
         const contractEvents: ContractEvent[] = [];
         if (rawContractEvents === null) {
@@ -288,9 +296,8 @@ export class WSClient {
             perPage,
             snapshotID,
         ]);
+        let getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
         snapshotID = rawGetOrdersResponse.snapshotID;
-        const snapshotTimestampStr = rawGetOrdersResponse.snapshotTimestamp;
-        const snapshotTimestamp = new Date(snapshotTimestampStr);
         let rawOrdersInfos = rawGetOrdersResponse.ordersInfos;
 
         let allRawOrderInfos: RawOrderInfo[] = [];
@@ -301,10 +308,9 @@ export class WSClient {
         } while (Object.keys(rawOrdersInfos).length > 0);
 
         const orderInfos = WSClient._convertRawOrderInfos(allRawOrderInfos);
-        const getOrdersResponse: GetOrdersResponse = {
+        getOrdersResponse = {
             snapshotID,
-            // tslint:disable-next-line:custom-no-magic-numbers
-            snapshotTimestamp: Math.round(snapshotTimestamp.getTime() / 1000),
+            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
             ordersInfos: orderInfos,
         };
         return getOrdersResponse;
