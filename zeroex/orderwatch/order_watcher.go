@@ -340,10 +340,10 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 	}
 }
 
-func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, didBlockTimestampIncrease bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, previousLatestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 
-	if didBlockTimestampIncrease {
+	if previousLatestBlockTimestamp.Before(latestBlockTimestamp) {
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			orderHash := common.HexToHash(expiredOrder.ID)
@@ -366,7 +366,7 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		}
-	} else {
+	} else if previousLatestBlockTimestamp.After(latestBlockTimestamp) {
 		// A block re-org happened resulting in the latest block timestamp being
 		// lower than on the previous latest block. We need to "unexpire" any orders
 		// that have now become valid again as a result.
@@ -391,6 +391,8 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 				orderEvents = append(orderEvents, orderEvent)
 			}
 		}
+	} else {
+		// The block timestamp hasn't changed, noop
 	}
 
 	return orderEvents, nil
@@ -415,9 +417,13 @@ func (w *Watcher) handleBlockEvents(
 		_ = ordersColTxn.Discard()
 	}()
 
-	latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease := w.getBlockchainState(events)
+	previousLatestBlock, err := w.meshDB.FindLatestMiniHeader()
+	if err != nil {
+		return err
+	}
+	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 
-	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, didBlockTimestampIncrease)
+	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlock.Timestamp)
 	if err != nil {
 		return err
 	}
@@ -1616,30 +1622,14 @@ func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
 	}
 }
 
-func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time.Time, bool) {
-	var defaultTime time.Time
-
-	// Whether or not the block timestamp of the latest block is greater than the previous latest
-	// block timestamp. Sometimes a re-org can result in a new latest block with a lower timestamp
-	// and this would require us to check for unexpired orders.
-	didBlockTimestampIncrease := true
-
+func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time.Time) {
 	var latestBlockNumber *big.Int
 	var latestBlockTimestamp time.Time
-	var previousLatestBlockTimestamp time.Time
-	for i, event := range events {
+	for _, event := range events {
 		latestBlockNumber = event.BlockHeader.Number
 		latestBlockTimestamp = event.BlockHeader.Timestamp
-		// The first removed block is the previous latest block
-		if previousLatestBlockTimestamp == defaultTime && event.Type == blockwatch.Removed {
-			previousLatestBlockTimestamp = event.BlockHeader.Timestamp
-		}
-		isLastBlockEvent := i == len(events)-1
-		if isLastBlockEvent && previousLatestBlockTimestamp != defaultTime && event.BlockHeader.Timestamp.Before(previousLatestBlockTimestamp) {
-			didBlockTimestampIncrease = false
-		}
 	}
-	return latestBlockNumber, latestBlockTimestamp, didBlockTimestampIncrease
+	return latestBlockNumber, latestBlockTimestamp
 }
 
 // WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed it's
