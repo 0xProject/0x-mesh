@@ -299,7 +299,8 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 	})
 }
 
-// Ensure that the signed orders
+// Ensure that all of the orders in given list of signed orders are included in a list of order info. The list
+// of order info can contain more orders than the first list and still pass this assertion.
 func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*rpc.OrderInfo) {
 	for _, expectedOrder := range expectedSignedOrders {
 		foundMatchingOrder := false

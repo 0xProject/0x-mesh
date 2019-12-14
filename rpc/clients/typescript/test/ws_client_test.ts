@@ -41,7 +41,8 @@ describe('WSClient', () => {
                                 "id": "${jsonRpcRequest.id}",
                                 "jsonrpc": "2.0",
                                 "result": {
-                                    "snapshotID": "123",
+                                    "snapshotID": "${snapshotID}",
+                                    "snapshotTimestamp": "${snapshotTimestamp}",
                                     "ordersInfos": [
                                         {
                                             "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
@@ -73,7 +74,8 @@ describe('WSClient', () => {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc": "2.0",
                                     "result": {
-                                        "snapshotID": "123",
+                                        "snapshotID": "${snapshotID}",
+                                        "snapshotTimestamp": "${snapshotTimestamp}",
                                         "ordersInfos": []
                                     }
                                 }
@@ -86,14 +88,18 @@ describe('WSClient', () => {
 
             const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
             const perPage = 1;
-            const { ordersInfos } = await client.getOrdersAsync(perPage);
-            expect(ordersInfos).to.have.length(1);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.takerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.makerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.takerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.salt)).to.equal(true);
-            expect(BigNumber.isBigNumber(ordersInfos[0].signedOrder.expirationTimeSeconds)).to.equal(true);
+            const getOrdersResponse = await client.getOrdersAsync(perPage);
+            const orderInfos = getOrdersResponse.ordersInfos;
+            expect(orderInfos).to.have.length(1);
+            expect(getOrdersResponse.snapshotID).to.equal('123');
+            // tslint:disable-next-line:custom-no-magic-numbers
+            expect(getOrdersResponse.snapshotTimestamp).to.equal(1257894000);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.salt)).to.equal(true);
+            expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.expirationTimeSeconds)).to.equal(true);
 
             client.destroy();
         });
