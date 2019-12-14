@@ -344,8 +344,9 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 
 func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, previousLatestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
+	var defaultTime time.Time
 
-	if previousLatestBlockTimestamp.Before(latestBlockTimestamp) {
+	if previousLatestBlockTimestamp == defaultTime || previousLatestBlockTimestamp.Before(latestBlockTimestamp) {
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			orderHash := common.HexToHash(expiredOrder.ID)
@@ -419,13 +420,20 @@ func (w *Watcher) handleBlockEvents(
 		_ = ordersColTxn.Discard()
 	}()
 
+	var previousLatestBlockTimestamp time.Time
 	previousLatestBlock, err := w.meshDB.FindLatestMiniHeader()
 	if err != nil {
-		return err
+		// If no previousLatestBlock, that's ok
+		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); !ok {
+			return err
+		}
+	}
+	if previousLatestBlock != nil {
+		previousLatestBlockTimestamp = previousLatestBlock.Timestamp
 	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 
-	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlock.Timestamp)
+	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp)
 	if err != nil {
 		return err
 	}
