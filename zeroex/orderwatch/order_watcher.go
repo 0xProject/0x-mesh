@@ -162,9 +162,11 @@ func New(config Config) (*Watcher, error) {
 
 	// Check if any orders need to be removed right away due to high expiration
 	// times.
-	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
+	orderEvents, err := w.decreaseMaxExpirationTimeIfNeeded()
+	if err != nil {
 		return nil, err
 	}
+	w.orderFeed.Send(orderEvents)
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
 	orders := []*meshdb.Order{}
@@ -856,8 +858,8 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
 func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlockNumber *big.Int, pinned bool) ([]*zeroex.OrderEvent, error) {
-	orderEvents := []*zeroex.OrderEvent{}
-	if err := w.decreaseMaxExpirationTimeIfNeeded(); err != nil {
+	orderEvents, err := w.decreaseMaxExpirationTimeIfNeeded()
+	if err != nil {
 		return orderEvents, err
 	}
 
@@ -911,7 +913,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		IsRemoved:                false,
 		IsPinned:                 pinned,
 	}
-	err := txn.Insert(order)
+	err = txn.Insert(order)
 	if err != nil {
 		if _, ok := err.(db.AlreadyExistsError); ok {
 			// If we're already watching the order, that's fine in this case. Don't
@@ -940,11 +942,13 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 	return orderEvents, nil
 }
 
-func (w *Watcher) trimOrdersAndFireEvents() error {
+func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
+	orderEvents := []*zeroex.OrderEvent{}
+
 	targetMaxOrders := int(maxOrdersTrimRatio * float64(w.maxOrders))
 	newMaxExpirationTime, removedOrders, err := w.meshDB.TrimOrdersByExpirationTime(targetMaxOrders)
 	if err != nil {
-		return err
+		return orderEvents, err
 	}
 	if len(removedOrders) > 0 {
 		logger.WithFields(logger.Fields{
@@ -960,8 +964,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESStoppedWatching,
 		}
-		// TODO(fabio): Batch emit these order events
-		w.orderFeed.Send([]*zeroex.OrderEvent{orderEvent})
+		orderEvents = append(orderEvents, orderEvent)
 
 		// Remove in-memory state
 		expirationTimestamp := time.Unix(removedOrder.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
@@ -974,7 +977,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 				"error":       err.Error(),
 				"signedOrder": removedOrder.SignedOrder,
 			}).Error("Unexpected error when trying to remove an assetData from decoder")
-			return err
+			return orderEvents, err
 		}
 	}
 	if newMaxExpirationTime.Cmp(w.maxExpirationTime) == -1 {
@@ -989,7 +992,7 @@ func (w *Watcher) trimOrdersAndFireEvents() error {
 		w.saveMaxExpirationTime(newMaxExpirationTime)
 	}
 
-	return nil
+	return orderEvents, nil
 }
 
 // MaxExpirationTime returns the current maximum expiration time for incoming
@@ -1581,15 +1584,14 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() error {
+func (w *Watcher) decreaseMaxExpirationTimeIfNeeded() ([]*zeroex.OrderEvent, error) {
+	orderEvents := []*zeroex.OrderEvent{}
 	if orderCount, err := w.meshDB.Orders.Count(); err != nil {
-		return err
+		return orderEvents, err
 	} else if orderCount+1 > w.maxOrders {
-		if err := w.trimOrdersAndFireEvents(); err != nil {
-			return err
-		}
+		return w.trimOrdersAndGenerateEvents()
 	}
-	return nil
+	return orderEvents, nil
 }
 
 func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
