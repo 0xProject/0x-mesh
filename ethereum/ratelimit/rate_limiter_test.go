@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	defaultMaxRequestsPer24HrsWithoutBuffer = 100000
-	defaultMaxRequestsPerSecond             = 10.0
-	defaultCheckpointInterval               = 1 * time.Minute
-	grantTimingTolerance                    = 15 * time.Millisecond
+	defaultMaxRequestsPer24Hrs  = 100000
+	defaultMaxRequestsPerSecond = 10.0
+	defaultCheckpointInterval   = 1 * time.Minute
+	grantTimingTolerance        = 15 * time.Millisecond
 )
 
 // Scenario1: If the 24 hour limit has not been hit, requests should be granted
@@ -31,14 +31,14 @@ func TestScenario1(t *testing.T) {
 	initMetadata(t, meshDB)
 
 	// Set up some constants for this test.
-	const maxRequestsPer24HrsWithoutBuffer = 100000
+	const maxRequestsPer24Hrs = 100000
 	const maxRequestsPerSecond = 10
 
 	// Set mock clock to UTC midnight
 	aClock := clock.NewMock()
 	aClock.Set(GetUTCMidnightOfDate(time.Now()))
 
-	rateLimiter, err := New(maxRequestsPer24HrsWithoutBuffer, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
@@ -69,7 +69,7 @@ func TestScenario2(t *testing.T) {
 	now := time.Now()
 	startOfCurrentUTCDay := GetUTCMidnightOfDate(now)
 	requestsRemainingInCurrentDay := 10
-	requestsSentInCurrentDay := defaultMaxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer - requestsRemainingInCurrentDay
+	requestsSentInCurrentDay := defaultMaxRequestsPer24Hrs - requestsRemainingInCurrentDay
 
 	// Set metadata to just short of maximum requests per 24 hours.
 	metadata := &meshdb.Metadata{
@@ -86,7 +86,7 @@ func TestScenario2(t *testing.T) {
 	// what we're trying to test.
 	aClock := clock.NewMock()
 	aClock.Set(startOfCurrentUTCDay.Add(3 * time.Hour))
-	rateLimiter, err := New(defaultMaxRequestsPer24HrsWithoutBuffer, math.MaxFloat64, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, meshDB, aClock)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -140,7 +140,7 @@ func TestScenario3(t *testing.T) {
 
 	aClock := clock.NewMock()
 	aClock.Set(now)
-	rateLimiter, err := New(defaultMaxRequestsPer24HrsWithoutBuffer, defaultMaxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
@@ -199,7 +199,7 @@ func TestScenario4(t *testing.T) {
 
 	// If we are not properly converting times to UTC, instantiation will fail with err
 	// `Wait(n=450000) exceeds limiter's burst 300000`
-	_, err = New(defaultMaxRequestsPer24HrsWithoutBuffer, defaultMaxRequestsPerSecond, meshDB, aClock)
+	_, err = New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
 }
 

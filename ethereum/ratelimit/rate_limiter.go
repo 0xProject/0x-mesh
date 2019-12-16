@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	// maxRequestsPer24HrsBuffer is the buffer subtracted from the operator supplied
-	// maxRequestsPer24Hrs. This buffer helps ensure that we don't overstep the desired
-	// max number of requests.
-	maxRequestsPer24HrsBuffer         = 1000
 	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
@@ -47,12 +43,10 @@ type rateLimiter struct {
 }
 
 // New instantiates a new RateLimiter
-func New(maxRequestsPer24HrsWithoutBuffer int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (RateLimiter, error) {
-	if maxRequestsPer24HrsWithoutBuffer < lowestPossibleMaxRequestsPer24Hrs {
+func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (RateLimiter, error) {
+	if maxRequestsPer24Hrs < lowestPossibleMaxRequestsPer24Hrs {
 		return nil, fmt.Errorf("EthereumRPCMaxRequestsPer24HrUTC too low. Should be at least %d", lowestPossibleMaxRequestsPer24Hrs)
 	}
-	// Reduce the requested maxRequestsPer24Hrs by maxRequestsPer24HrsBuffer out of extra precaution
-	maxRequestsPer24Hrs := maxRequestsPer24HrsWithoutBuffer - maxRequestsPer24HrsBuffer
 
 	metadata, err := meshDB.GetMetadata()
 	if err != nil {
