@@ -933,6 +933,56 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	require.Len(t, orders, 2)
 }
 
+func TestOrderWatcherCleanup(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+
+	// Create and add two orders to OrderWatcher
+	amount := big.NewInt(10000)
+	signedOrderOne := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, amount, amount)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
+	signedOrderTwo := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, amount, amount)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
+	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Set lastUpdate for signedOrderOne to more than defaultLastUpdatedBuffer so that signedOrderOne
+	// does not get re-validated by the cleanup job
+	signedOrderOneDB := &meshdb.Order{}
+	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), signedOrderOneDB)
+	require.NoError(t, err)
+	signedOrderOneDB.LastUpdated = time.Now().UTC().Add(-defaultLastUpdatedBuffer).Add(-1 * time.Minute)
+	err = meshDB.Orders.Update(signedOrderOneDB)
+	require.NoError(t, err)
+
+	// Subscribe to OrderWatcher
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Since no state changes occurred without corresponding events being emitted, we expect
+	// cleanup not to result in any new events
+	err = orderWatcher.Cleanup(ctx, defaultLastUpdatedBuffer)
+	require.NoError(t, err)
+
+	select {
+	case _ = <-orderEventsChan:
+		t.Error("Expected no orderEvents to fire after calling Cleanup()")
+	case <-time.After(100 * time.Millisecond):
+		// Noop
+	}
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
