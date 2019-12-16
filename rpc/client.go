@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -43,7 +44,10 @@ type AddOrdersOpts struct {
 // 0x Mesh network.
 func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	var validationResults ordervalidator.ValidationResults
-	if len(opts) > 0 {
+	if len(opts) > 1 {
+		return nil, errors.New("invalid number of add orders opts")
+	}
+	if len(opts) == 1 {
 		if err := c.rpcClient.Call(&validationResults, "mesh_addOrders", orders, opts[0]); err != nil {
 			return nil, err
 		}

@@ -18,7 +18,7 @@ type fakeLimiter struct {
 // that are allowed.
 func NewUnlimited() RateLimiter {
 	return &fakeLimiter{
-		currentUTCCheckpoint:  getUTCMidnightOfDate(time.Now()),
+		currentUTCCheckpoint:  GetUTCMidnightOfDate(time.Now()),
 		grantedInLast24hrsUTC: 0,
 	}
 }
