@@ -3,7 +3,6 @@ package ratelimit
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -13,10 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/time/rate"
-)
-
-const (
-	lowestPossibleMaxRequestsPer24Hrs = 40000
 )
 
 var ErrTooManyRequestsIn24Hours = errors.New("too many Ethereum RPC requests have been sent this 24 hour period")
@@ -44,10 +39,6 @@ type rateLimiter struct {
 
 // New instantiates a new RateLimiter
 func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (RateLimiter, error) {
-	if maxRequestsPer24Hrs < lowestPossibleMaxRequestsPer24Hrs {
-		return nil, fmt.Errorf("EthereumRPCMaxRequestsPer24HrUTC too low. Should be at least %d", lowestPossibleMaxRequestsPer24Hrs)
-	}
-
 	metadata, err := meshDB.GetMetadata()
 	if err != nil {
 		return nil, err
