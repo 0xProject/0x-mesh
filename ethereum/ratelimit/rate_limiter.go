@@ -62,10 +62,12 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 		}
 	}
 
-	// Instantiate limiter with a bucketsize of one and a limit that results
-	// in no more than `maxRequestsPerSecond` requests per second.
+	// Instantiate limiter with a bucketsize of maxRequestsPerSecond/2 and a limit
+	// of `maxRequestsPerSecond` requests per second. This does a pretty good job
+	// of limiting the number of requests we send per second while still allowing
+	// for some bursts.
 	limit := rate.Limit(maxRequestsPerSecond)
-	perSecondLimiter := rate.NewLimiter(limit, int(math.Max(1, maxRequestsPerSecond)))
+	perSecondLimiter := rate.NewLimiter(limit, int(math.Max(1, maxRequestsPerSecond/2)))
 
 	return &rateLimiter{
 		aClock:                aClock,
@@ -143,7 +145,10 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 	}
 }
 
-// Wait blocks until the rateLimiter allows for another request to be sent
+// Wait blocks until the rateLimiter allows for another request to be sent. It
+// returns an error if the deadline of the given context is before the request
+// would be granted. It also returns an error if too many requests have been
+// sent during this 24 hour period.
 func (r *rateLimiter) Wait(ctx context.Context) error {
 	r.mu.Lock()
 	if r.grantedInLast24hrsUTC >= r.maxRequestsPer24Hrs {

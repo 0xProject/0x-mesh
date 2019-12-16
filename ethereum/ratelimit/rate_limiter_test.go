@@ -19,11 +19,15 @@ const (
 	defaultMaxRequestsPer24Hrs  = 100000
 	defaultMaxRequestsPerSecond = 10.0
 	defaultCheckpointInterval   = 1 * time.Minute
-	grantTimingTolerance        = 15 * time.Millisecond
+
+	// grantTimingTolerance is the maximum allowed difference between the expected
+	// time for a request to be granted and the actual time it is granted. Used
+	// throughout these tests to account for subtle timing differences.
+	grantTimingTolerance = 15 * time.Millisecond
 )
 
-// Scenario1: If the 24 hour limit has not been hit, requests should be granted
-// based on the per second limiter.
+// Scenario1: If the 24 hour limit has *not* been hit, requests should be
+// granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
@@ -49,8 +53,8 @@ func TestScenario1(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// First maxRequestsPerSecond should be granted pretty much immediately.
-	expectRequestsGranted(t, rateLimiter, int(maxRequestsPerSecond), 0, grantTimingTolerance)
+	// First maxRequestsPerSecond/2 should be granted pretty much immediately.
+	expectRequestsGranted(t, rateLimiter, int(maxRequestsPerSecond/2), 0, grantTimingTolerance)
 	// Next 5 requests should be granted after 1s / maxRequestsPerSecond
 	expectedDelay := (1 * time.Second) / time.Duration(maxRequestsPerSecond)
 	expectRequestsGranted(t, rateLimiter, 5, expectedDelay-grantTimingTolerance, expectedDelay+grantTimingTolerance)
@@ -212,15 +216,18 @@ func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
 	require.NoError(t, err)
 }
 
+// expectRequestsGranted calls ratelimiter.Wait until the given number of
+// reqeusts are allowed. It returns an error if it waits for less than
+// minDelay or longer than maxDelay for any single request.
 func expectRequestsGranted(t *testing.T, rateLimiter RateLimiter, numRequests int, minDelay time.Duration, maxDelay time.Duration) {
 	for i := 0; i < numRequests; i++ {
-		now := time.Now()
+		requestedAt := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), maxDelay)
 		defer cancel()
 		err := rateLimiter.Wait(ctx)
-		require.NoError(t, err, "waited too long to grant request %d", i)
-		elapsed := time.Since(now)
-		assert.True(t, elapsed <= maxDelay, "waited too long to grant request %d", i)
-		assert.True(t, elapsed >= minDelay, "request %d was granted too quickly", i)
+		require.NoError(t, err, "unexpected error for request %d: possible context timeout meaning the request took too long (max delay was %s, actual delay was >%s)", i, maxDelay, time.Since(requestedAt))
+		actualDelay := time.Since(requestedAt)
+		assert.True(t, actualDelay <= maxDelay, "waited too long to grant request %d (max delay was %s, actual delay was %s)", i, maxDelay, actualDelay)
+		assert.True(t, actualDelay >= minDelay, "request %d was granted too quickly (min delay was %s, actual delay was %s)", i, minDelay, actualDelay)
 	}
 }
