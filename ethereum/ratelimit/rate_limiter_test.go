@@ -106,7 +106,7 @@ func TestScenario2(t *testing.T) {
 	// immediately.
 	expectRequestsGranted(t, rateLimiter, requestsRemainingInCurrentDay, 0, grantTimingTolerance)
 
-	// Subsequent reuqests should result in ErrTooManyRequestsIn24Hours
+	// Subsequent requests should result in ErrTooManyRequestsIn24Hours
 	for i := 0; i < 5; i++ {
 		waitCtx, waitCancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer waitCancel()
