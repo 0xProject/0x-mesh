@@ -1005,7 +1005,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		order, found := orderHashToDBOrder[acceptedOrderInfo.OrderHash]
 		if !found {
-			logger.WithField("orderHash", acceptedOrderInfo.OrderHash).Error("validationResults.Accepted contained unknown order hash")
+			logger.WithFields(logger.Fields{
+				"unknownOrderHash":   acceptedOrderInfo.OrderHash,
+				"validationResults":  validationResults,
+				"orderHashToDBOrder": orderHashToDBOrder,
+			}).Error("validationResults.Accepted contained unknown order hash")
 			continue
 		}
 		oldFillableAmount := order.FillableTakerAssetAmount
@@ -1063,7 +1067,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 		case ordervalidator.ZeroExValidation:
 			order, found := orderHashToDBOrder[rejectedOrderInfo.OrderHash]
 			if !found {
-				logger.WithField("orderHash", rejectedOrderInfo.OrderHash).Error("validationResults.Rejected contained unknown order hash")
+				logger.WithFields(logger.Fields{
+					"unknownOrderHash":   rejectedOrderInfo.OrderHash,
+					"validationResults":  validationResults,
+					"orderHashToDBOrder": orderHashToDBOrder,
+				}).Error("validationResults.Rejected contained unknown order hash")
 				continue
 			}
 			oldFillableAmount := order.FillableTakerAssetAmount
