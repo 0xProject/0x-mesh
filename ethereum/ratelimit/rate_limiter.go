@@ -105,7 +105,7 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			case <-ctx.Done():
 				return
 			case <-r.aClock.After(untilNextUTCCheckpoint):
-				// Reset the number of requests granted and the set the next UTC
+				// Reset the number of requests granted and set the next UTC
 				// checkpoint.
 				r.mu.Lock()
 				r.currentUTCCheckpoint = nextUTCCheckpoint
