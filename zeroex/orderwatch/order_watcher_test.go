@@ -962,7 +962,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	signedOrderOneDB := &meshdb.Order{}
 	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), signedOrderOneDB)
 	require.NoError(t, err)
-	signedOrderOneDB.LastUpdated = time.Now().UTC().Add(-defaultLastUpdatedBuffer).Add(-1 * time.Minute)
+	signedOrderOneDB.LastUpdated = time.Now().Add(-defaultLastUpdatedBuffer - 1*time.Minute)
 	err = meshDB.Orders.Update(signedOrderOneDB)
 	require.NoError(t, err)
 
