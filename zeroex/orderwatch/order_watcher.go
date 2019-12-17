@@ -1003,7 +1003,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
-		order := orderHashToDBOrder[acceptedOrderInfo.OrderHash]
+		order, found := orderHashToDBOrder[acceptedOrderInfo.OrderHash]
+		if !found {
+			logger.WithField("orderHash", acceptedOrderInfo.OrderHash).Error("validationResults.Accepted contained unknown order hash")
+			continue
+		}
 		oldFillableAmount := order.FillableTakerAssetAmount
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
@@ -1057,7 +1061,11 @@ func (w *Watcher) generateOrderEventsIfChanged(ctx context.Context, ordersColTxn
 		case ordervalidator.MeshError:
 			// TODO(fabio): Do we want to handle MeshErrors somehow here?
 		case ordervalidator.ZeroExValidation:
-			order := orderHashToDBOrder[rejectedOrderInfo.OrderHash]
+			order, found := orderHashToDBOrder[rejectedOrderInfo.OrderHash]
+			if !found {
+				logger.WithField("orderHash", rejectedOrderInfo.OrderHash).Error("validationResults.Rejected contained unknown order hash")
+				continue
+			}
 			oldFillableAmount := order.FillableTakerAssetAmount
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
