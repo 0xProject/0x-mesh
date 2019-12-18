@@ -95,9 +95,9 @@ export interface Config {
     // ethereumRPCMaxRequestsPerSecond will have no effect.
     enableEthereumRPCRateLimiting?: boolean;
     // A cap on the number of Ethereum JSON-RPC requests a Mesh node will make
-    // per 24hr UTC time window (time window starts and ends at 12am UTC). It
-    // defaults to the 100k limit on Infura's free tier but can be increased
-    // well beyond this limit for those using alternative infra/plans.
+    // per 24hr UTC time window (time window starts and ends at midnight UTC).
+    // It defaults to 200k but can be increased well beyond this limit depending
+    // on your infrastructure or Ethereum RPC provider.
     ethereumRPCMaxRequestsPer24HrUTC?: number;
     // A cap on the number of Ethereum JSON-RPC requests a Mesh node will make
     // per second. This limits the concurrency of these requests and prevents
