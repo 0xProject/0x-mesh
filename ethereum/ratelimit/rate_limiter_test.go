@@ -23,7 +23,7 @@ const (
 	// grantTimingTolerance is the maximum allowed difference between the expected
 	// time for a request to be granted and the actual time it is granted. Used
 	// throughout these tests to account for subtle timing differences.
-	grantTimingTolerance = 15 * time.Millisecond
+	grantTimingTolerance = 20 * time.Millisecond
 )
 
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
