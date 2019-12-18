@@ -216,7 +216,7 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, err
 	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.app.AddOrders(rawMessages, pinned)
+	results, err := cw.app.AddOrders(cw.ctx, rawMessages, pinned)
 	if err != nil {
 		return js.Undefined(), err
 	}

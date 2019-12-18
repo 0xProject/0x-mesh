@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -18,6 +19,7 @@ import (
 // methods used by Mesh
 type Client interface {
 	HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*miniheader.MiniHeader, error)
 	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
@@ -90,6 +92,27 @@ func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.He
 		return nil, err
 	}
 	return header, nil
+}
+
+func (ec *client) HeaderByNumber(ctx context.Context, number *big.Int) (*miniheader.MiniHeader, error) {
+	err := ec.rateLimiter.Wait(ctx)
+	if err != nil {
+		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
+		// Context cancelled or deadline exceeded
+		return nil, err
+	}
+
+	header, err := ec.client.HeaderByNumber(ctx, number)
+	if err != nil {
+		return nil, err
+	}
+	miniHeader := &miniheader.MiniHeader{
+		Hash:      header.Hash(),
+		Parent:    header.ParentHash,
+		Number:    header.Number,
+		Timestamp: time.Unix(int64(header.Time), 0),
+	}
+	return miniHeader, nil
 }
 
 // CodeAt returns the code of the given account. This is needed to differentiate

@@ -183,6 +183,8 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, logMessa
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
 		"RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(rpcPort+nodeID),
+		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
+		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
 	)
 
 	// Pipe messages from stderr through the logMessages channel.

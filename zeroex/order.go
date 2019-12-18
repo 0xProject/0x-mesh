@@ -291,23 +291,31 @@ type OrderEventEndState string
 
 // OrderEventEndState values
 const (
-	ESInvalid          = OrderEventEndState("INVALID")
-	ESOrderAdded       = OrderEventEndState("ADDED")
-	ESOrderFilled      = OrderEventEndState("FILLED")
+	// ESInvalid is an event that is never emitted. It is here to discern between a declared but uninitialized OrderEventEndState
+	ESInvalid = OrderEventEndState("INVALID")
+	// ESOrderAdded means an order was successfully added to the Mesh node
+	ESOrderAdded = OrderEventEndState("ADDED")
+	// ESOrderFilled means an order was filled for a partial amount
+	ESOrderFilled = OrderEventEndState("FILLED")
+	// ESOrderFullyFilled means an order was fully filled such that it's remaining fillableTakerAssetAmount is 0
 	ESOrderFullyFilled = OrderEventEndState("FULLY_FILLED")
-	ESOrderCancelled   = OrderEventEndState("CANCELLED")
-	ESOrderExpired     = OrderEventEndState("EXPIRED")
-	ESOrderUnexpired   = OrderEventEndState("UNEXPIRED")
-	// An order becomes unfunded if the maker transfers the balance / changes their
-	// allowance backing an order
+	// ESOrderCancelled means an order was cancelled on-chain
+	ESOrderCancelled = OrderEventEndState("CANCELLED")
+	// ESOrderExpired means an order expired according to the latest block timestamp
+	ESOrderExpired = OrderEventEndState("EXPIRED")
+	// ESOrderUnexpired means an order is no longer expired. This can happen if a block re-org causes the latest
+	// block timestamp to decline below the order's expirationTimestamp (rare and usually short-lived)
+	ESOrderUnexpired = OrderEventEndState("UNEXPIRED")
+	// ESOrderBecameUnfunded means an order has become unfunded. This happens if the maker transfers the balance /
+	// changes their allowance backing an order
 	ESOrderBecameUnfunded = OrderEventEndState("UNFUNDED")
-	// Fillability for an order can increase if a previously processed fill event
-	// gets reverted, or if a maker tops up their balance/allowance backing an order
+	// ESOrderFillabilityIncreased means the fillability of an order has increased. Fillability for an order can
+	// increase if a previously processed fill event gets reverted, or if a maker tops up their balance/allowance
+	// backing an order
 	ESOrderFillabilityIncreased = OrderEventEndState("FILLABILITY_INCREASED")
-	// Order is potentially still valid but was removed for a different reason
-	// (e.g. the database is full or the peer that sent the order was
-	// misbehaving). The order will no longer be watched and no further events for
-	// this order will be emitted. In some cases, the order may be re-added in the
+	// ESStoppedWatching means an order is potentially still valid but was removed for a different reason (e.g. 
+	// the database is full or the peer that sent the order was misbehaving). The order will no longer be watched
+	// and no further events for this order will be emitted. In some cases, the order may be re-added in the
 	// future.
 	ESStoppedWatching = OrderEventEndState("STOPPED_WATCHING")
 )

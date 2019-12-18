@@ -52,6 +52,12 @@ func TestAddOrdersSuccess(t *testing.T) {
 	// Create a new valid order.
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 
 	// Send the "AddOrders" request to the rpc server.
 	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
@@ -115,6 +121,12 @@ func TestGetOrders(t *testing.T) {
 	for i := 0; i < numOrders; i++ {
 		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, newWethAmount, newZrxAmount)
 	}
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 
 	// Send the newly created order to "AddOrders." The order is valid, and this should
 	// be reflected in the validation results.
@@ -278,6 +290,12 @@ func TestOrdersSubscription(t *testing.T) {
 	// Create a valid order and send it to the rpc client's "AddOrders" endpoint.
 	ethClient := ethclient.NewClient(ethRPCClient)
 	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 	_, err = client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})

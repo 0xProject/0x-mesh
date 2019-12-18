@@ -76,36 +76,44 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	stack             Stack
-	client            Client
-	blockFeed         event.Feed
-	blockScope        event.SubscriptionScope // Subscription scope tracking current live listeners
-	wasStartedOnce    bool                    // Whether the block watcher has previously been started
-	pollingInterval   time.Duration
-	withLogs          bool
-	topics            []common.Hash
-	mu                sync.RWMutex
+	stack               Stack
+	client              Client
+	blockFeed           event.Feed
+	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
+	wasStartedOnce      bool                    // Whether the block watcher has previously been started
+	pollingInterval     time.Duration
+	withLogs            bool
+	topics              []common.Hash
+	mu                  sync.RWMutex
+	syncToLatestBlockMu sync.Mutex
 }
 
 // New creates a new Watcher instance.
 func New(config Config) *Watcher {
 	return &Watcher{
-		pollingInterval:   config.PollingInterval,
-		stack:             config.Stack,
-		client:            config.Client,
-		withLogs:          config.WithLogs,
-		topics:            config.Topics,
+		pollingInterval: config.PollingInterval,
+		stack:           config.Stack,
+		client:          config.Client,
+		withLogs:        config.WithLogs,
+		topics:          config.Topics,
 	}
 }
 
-// SyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
+// FastSyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
 // catches it back up. If less than 128 blocks passed, we are able to fetch all missing
 // block events and process them. If more than 128 blocks passed, we cannot catch up
 // without an archive Ethereum node (see: http://bit.ly/2D11Hr6) so we instead clear
 // previously tracked blocks so BlockWatcher starts again from the latest block. This
 // function blocks until complete or the context is  cancelled.
-func (w *Watcher) SyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
-	latestBlockProcessed, err := w.GetLatestBlockProcessed()
+func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
+	w.mu.Lock()
+	if w.wasStartedOnce {
+		w.mu.Unlock()
+		return 0, errors.New("Can only fast-sync to latest block before starting BlockWatcher")
+	}
+	w.mu.Unlock()
+
+	latestBlockProcessed, err := w.stack.Peek()
 	if err != nil {
 		return 0, err
 	}
@@ -157,7 +165,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 
 	// Sync immediately when `Watch()` is called instead of waiting for the
 	// first Ticker tick
-	if err := w.syncChain(); err != nil {
+	if err := w.SyncToLatestBlock(); err != nil {
 		if err == leveldb.ErrClosed {
 			// We can't continue if the database is closed. Stop the watcher and
 			// return an error.
@@ -173,7 +181,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
-			if err := w.syncChain(); err != nil {
+			if err := w.SyncToLatestBlock(); err != nil {
 				if err == leveldb.ErrClosed {
 					// We can't continue if the database is closed. Stop the watcher and
 					// return an error.
@@ -182,7 +190,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 				}
 				if _, ok := err.(TooMayBlocksBehindError); ok {
 					// We've fallen too many blocks behind to sync to the latest block.
-					// We'd need to start again from the latest block but also require 
+					// We'd need to start again from the latest block but also require
 					// the OrderWatcher to re-validate all orders at the latest block.
 					// By returning an error here, we cause Mesh to gracefully shut down.
 					// Upon re-booting, it will reset the blocks stored in the DB and
@@ -204,19 +212,12 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 	return w.blockScope.Track(w.blockFeed.Subscribe(sink))
 }
 
-// GetLatestBlockProcessed returns the latest block processed
-func (w *Watcher) GetLatestBlockProcessed() (*miniheader.MiniHeader, error) {
-	return w.stack.Peek()
-}
-
-// GetAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
-func (w *Watcher) GetAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
-	return w.stack.PeekAll()
-}
-
-// syncChain syncs our local state of the chain to the latest block found via
+// SyncToLatestBlock syncs our local state of the chain to the latest block found via
 // Ethereum RPC
-func (w *Watcher) syncChain() error {
+func (w *Watcher) SyncToLatestBlock() error {
+	w.syncToLatestBlockMu.Lock()
+	defer w.syncToLatestBlockMu.Unlock()
+
 	checkpointID, err := w.stack.Checkpoint()
 	if err != nil {
 		return err
@@ -662,4 +663,9 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
+}
+
+// getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
+func (w *Watcher) getAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
+	return w.stack.PeekAll()
 }

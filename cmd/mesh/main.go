@@ -62,7 +62,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.WithField("rpc_addr", config.RPCAddr).Info("starting RPC server")
-		if err := listenRPC(app, config, ctx); err != nil {
+		if err := listenRPC(ctx, app, config); err != nil {
 			rpcErrChan <- err
 		}
 	}()

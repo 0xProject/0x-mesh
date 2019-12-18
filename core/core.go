@@ -14,11 +14,12 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -250,10 +251,11 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
-	stack, err := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
 	}
+	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
@@ -444,7 +446,7 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 
 	// Note: this is a blocking call so we won't continue set up until its finished.
-	blocksElapsed, err := app.blockWatcher.SyncToLatestBlock(innerCtx)
+	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
 		return err
 	}
@@ -457,6 +459,13 @@ func (app *App) Start(ctx context.Context) error {
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
+
+	// Ensure orderWatcher has processed at least one recent block before
+	// starting the P2P node and completing app start, so that Mesh does
+	// not validate any orders at outdated block heights
+	if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+		return err
+	}
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
@@ -687,7 +696,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 // peers. If pinned is true, the orders will be marked as pinned, which means
 // they will only be removed if they become unfillable and will not be removed
 // due to having a high expiration time or any incentive mechanisms.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -752,10 +761,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.validateOrders(schemaValidOrders)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, pinned, app.chainID)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, orderInfo := range validationResults.Accepted {
 		allValidationResults.Accepted = append(allValidationResults.Accepted, orderInfo)
 	}
@@ -763,28 +773,13 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
 	}
 
-	for i, acceptedOrderInfo := range allValidationResults.Accepted {
+	for _, acceptedOrderInfo := range allValidationResults.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
 		// or share the order with peers.
 		if !acceptedOrderInfo.IsNew {
 			continue
 		}
-		// Add the order to the OrderWatcher. This also saves the order in the
-		// database.
-		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
-		if err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				allValidationResults.Accepted = append(allValidationResults.Accepted[:i], allValidationResults.Accepted[i+1:]...)
-				allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   acceptedOrderInfo.OrderHash,
-					SignedOrder: acceptedOrderInfo.SignedOrder,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.RODatabaseFullOfOrders,
-				})
-			} else {
-				return nil, err
-			}
-		}
+
 		log.WithFields(log.Fields{
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
 		}).Debug("added new valid order via RPC or browser callback")
@@ -794,6 +789,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 			return nil, err
 		}
 	}
+
 	return allValidationResults, nil
 }
 
@@ -801,7 +797,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encodeOrder(order)
+	encoded, err := encoding.OrderToRawMessage(order)
 	if err != nil {
 		return err
 	}
@@ -819,16 +815,13 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	<-app.started
 
-	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
+	latestBlockHeader, err := app.db.FindLatestMiniHeader()
 	if err != nil {
 		return nil, err
 	}
-	var latestBlock rpc.LatestBlock
-	if latestBlockHeader != nil {
-		latestBlock = rpc.LatestBlock{
-			Number: int(latestBlockHeader.Number.Int64()),
-			Hash:   latestBlockHeader.Hash,
-		}
+	latestBlock := rpc.LatestBlock{
+		Number: int(latestBlockHeader.Number.Int64()),
+		Hash:   latestBlockHeader.Hash,
 	}
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()

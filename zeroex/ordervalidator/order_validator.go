@@ -22,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 )
@@ -269,7 +268,7 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 // retrieve up until the failure.
 // The `blockNumber` parameter lets the caller specify a specific block height at which to validate
 // the orders. This can be set to the `latest` block or any other historical block number.
-func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber rpc.BlockNumber) *ValidationResults {
+func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber *big.Int) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -327,11 +326,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					Pending: false,
 					Context: ctx,
 				}
-				if blockNumber == rpc.PendingBlockNumber {
-					opts.Pending = true
-				} else if blockNumber != rpc.LatestBlockNumber {
-					opts.BlockNumber = big.NewInt(int64(blockNumber))
-				}
+				opts.BlockNumber = blockNumber
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, orders, signatures)
 				if err != nil {
