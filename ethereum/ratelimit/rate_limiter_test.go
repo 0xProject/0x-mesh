@@ -185,28 +185,6 @@ func TestScenario3(t *testing.T) {
 	wg.Wait()
 }
 
-// Scenario 4: Regression to test make sure that if local time is one day behind UTC time, the
-// rate limiter still functions as expected.
-func TestScenario4(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
-	require.NoError(t, err)
-	defer meshDB.Close()
-
-	initMetadata(t, meshDB)
-
-	aClock := clock.NewMock()
-	// Set timezone of Mock clock to `Pacific/Majuro` so that it's on the day before UTC
-	now := aClock.Now()
-	loc := time.FixedZone("UTC+12", 12*60*60)
-	aTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	aClock.Set(aTime)
-
-	// If we are not properly converting times to UTC, instantiation will fail with err
-	// `Wait(n=450000) exceeds limiter's burst 300000`
-	_, err = New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, meshDB, aClock)
-	require.NoError(t, err)
-}
-
 func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
 	metadata := &meshdb.Metadata{
 		EthereumChainID:   1337,
@@ -229,5 +207,43 @@ func expectRequestsGranted(t *testing.T, rateLimiter RateLimiter, numRequests in
 		actualDelay := time.Since(requestedAt)
 		assert.True(t, actualDelay <= maxDelay, "waited too long to grant request %d (max delay was %s, actual delay was %s)", i, maxDelay, actualDelay)
 		assert.True(t, actualDelay >= minDelay, "request %d was granted too quickly (min delay was %s, actual delay was %s)", i, minDelay, actualDelay)
+	}
+}
+
+func TestGetUTCMidnightOfDate(t *testing.T) {
+	testCases := []struct {
+		input    time.Time
+		expected time.Time
+	}{
+		{
+			// Timezone behind UTC. Day stays the same.
+			input:    time.Date(1992, time.September, 29, 8, 30, 10, 99, time.FixedZone("Eastern Standard", -5*60*60)),
+			expected: time.Date(1992, time.September, 29, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Timezone behind UTC. Day changes forward.
+			input:    time.Date(1992, time.September, 29, 20, 30, 10, 99, time.FixedZone("Eastern Standard", -5*60*60)),
+			expected: time.Date(1992, time.September, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Timezone ahead of UTC. Day changes backward.
+			input:    time.Date(2019, time.June, 18, 6, 45, 10, 99, time.FixedZone("Japan Standard", 9*60*60)),
+			expected: time.Date(2019, time.June, 17, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Timezone ahead of UTC. Day stays the same.
+			input:    time.Date(2019, time.June, 18, 9, 45, 10, 99, time.FixedZone("Japan Standard", 9*60*60)),
+			expected: time.Date(2019, time.June, 18, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Timezone at UTC.
+			input:    time.Date(2019, time.December, 25, 0, 45, 15, 89, time.UTC),
+			expected: time.Date(2019, time.December, 25, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tc := range testCases {
+		actual := GetUTCMidnightOfDate(tc.input)
+		assert.Equal(t, tc.expected, actual, "input: %s", tc.input)
 	}
 }
