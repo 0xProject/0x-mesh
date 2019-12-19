@@ -49,8 +49,12 @@ const (
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
-	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
-	defaultNonPollingEthRPCRequestBuffer = 82720
+	// estimatedNonPollingEthereumRPCRequestsPer24Hrs is an estimate of the
+	// minimum number of RPC requests Mesh needs to send (not including block
+	// polling). It's based on real-world data from a mainnet Mesh node. This
+	// estimate won't necessarily hold true as network activity grows over time or
+	// for different Ethereum networks, but it should be good enough.
+	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
 	version          = "development"
@@ -108,9 +112,9 @@ type Config struct {
 	// and ethereumRPCMaxRequestsPerSecond will have no effect.
 	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true"`
 	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
-	// per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
-	// Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
-	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
+	// per 24hr UTC time window (time window starts and ends at midnight UTC). It defaults to 200k but
+	// can be increased well beyond this limit depending on your infrastructure or Ethereum RPC provider.
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"200000"`
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
@@ -203,7 +207,7 @@ func New(config Config) (*App, error) {
 
 	// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
 	per24HrPollingRequests := int((24 * time.Hour) / config.BlockPollingInterval)
-	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
+	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + estimatedNonPollingEthereumRPCRequestsPer24Hrs
 	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
 		return nil, fmt.Errorf(
 			"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
