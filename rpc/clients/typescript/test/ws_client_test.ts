@@ -504,4 +504,4 @@ describe('WSClient', () => {
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
     return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
-}
+} // tslint:disable:max-file-line-count
