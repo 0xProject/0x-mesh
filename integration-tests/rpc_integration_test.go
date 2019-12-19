@@ -236,19 +236,15 @@ func TestGetStats(t *testing.T) {
 	getStatsResponse.LatestBlock = rpc.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
-	expectedGetStatsResponse := &rpc.GetStatsResponse{
-		Version:              "development",
-		PubSubTopic:          "/0x-orders/network/1337/version/1",
-		Rendezvous:           "/0x-mesh/network/1337/version/1",
-		PeerID:               jsonLog.PeerID,
-		EthereumChainID:      1337,
-		LatestBlock:          rpc.LatestBlock{},
-		NumOrders:            0,
-		NumPeers:             0,
-		MaxExpirationTime:    constants.UnlimitedExpirationTime.String(),
-		StartOfCurrentUTCDay: ratelimit.GetUTCMidnightOfDate(time.Now()),
-	}
-	require.Equal(t, expectedGetStatsResponse, getStatsResponse)
+	require.Equal(t, "/0x-orders/network/1337/version/1", getStatsResponse.PubSubTopic)
+	require.Equal(t, "/0x-mesh/network/1337/version/1", getStatsResponse.Rendezvous)
+	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
+	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
+	require.Equal(t, rpc.LatestBlock{}, getStatsResponse.LatestBlock)
+	require.Equal(t, 0, getStatsResponse.NumOrders)
+	require.Equal(t, 0, getStatsResponse.NumPeers)
+	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime)
+	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay)
 
 	cancel()
 	wg.Wait()
