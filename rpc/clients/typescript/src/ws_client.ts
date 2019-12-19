@@ -51,6 +51,7 @@ const DEFAULT_WS_OPTS = {
         // Source: https://github.com/theturtle32/WebSocket-Node/issues/359
         fragmentOutgoingMessages: false,
     },
+    timeout: 30000,
     reconnectAfter: DEFAULT_RECONNECT_AFTER_MS,
 };
 
