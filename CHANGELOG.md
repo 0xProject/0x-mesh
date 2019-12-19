@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Breaking changes 🛠 
 
 - Changed the response from `@0x/mesh-ts-client`'s `getOrdersAsync` endpoint to include the `snapshotID` and `snapshotTimestamp` at which the Mesh DB was queried along with the orders found. ([#591](https://github.com/0xProject/0x-mesh/pull/591))
+- Increased the default `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` from 100k to 200k ([#596](https://github.com/0xProject/0x-mesh/pull/596)).
 
 ### Features ✅
 
@@ -20,6 +21,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fixed an issue where order updates could have been missed if Mesh discovered blocks but didn't have time to process them before getting shut down. Now, blocks are only persisted to the DB once any order updates resulting from it have been processed. ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
 - Fixed a race-condition when adding new orders to Mesh which could result in order-relevant events being missed if they occured very soon after the order was submitted and the order validation RPC call took a long time ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
 - Upgraded the `web3-provider` dependency used by `@0x/mesh-rpc-client` in order to fix a bug where it was requiring either `process` OR `window` to exist in the global scope ([#601](https://github.com/0xProject/0x-mesh/pull/601)).
+- Fixed an issue where the internal Ethereum RPC rate limiter could be too aggressive in certain scenarios ([#596](https://github.com/0xProject/0x-mesh/pull/596)).
 
 
 ## v6.1.2-beta
