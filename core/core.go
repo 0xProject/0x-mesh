@@ -57,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "6.1.2-beta"
+	version          = "7.0.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
