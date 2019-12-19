@@ -28,15 +28,17 @@ const orderEventsBufferSize = 8000
 
 type rpcHandler struct {
 	app *core.App
+	ctx context.Context
 }
 
 // listenRPC starts the RPC server and listens on config.RPCAddr. It blocks
 // until there is an error or the RPC server is closed.
-func listenRPC(app *core.App, config standaloneConfig, ctx context.Context) error {
+func listenRPC(ctx context.Context, app *core.App, config standaloneConfig) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
 	rpcAddr := fmt.Sprintf("%s", config.RPCAddr)
 	rpcHandler := &rpcHandler{
 		app: app,
+		ctx: ctx,
 	}
 	rpcServer, err := rpc.NewServer(rpcAddr, rpcHandler)
 	if err != nil {
@@ -85,8 +87,11 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 		if _, ok := err.(core.ErrSnapshotNotFound); ok {
 			return nil, err
 		}
+		if _, ok := err.(core.ErrPerPageZero); ok {
+			return nil, err
+		}
 		// We don't want to leak internal error details to the RPC client.
-		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")
+		log.WithField("error", err.Error()).Error("internal error in GetOrders RPC call")
 		return nil, constants.ErrInternal
 	}
 	return getOrdersResponse, nil
@@ -114,7 +119,7 @@ func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rp
 			err = errors.New("method handler crashed in AddOrders RPC call (check logs for stack trace)")
 		}
 	}()
-	validationResults, err := handler.app.AddOrders(signedOrdersRaw, opts.Pinned)
+	validationResults, err := handler.app.AddOrders(handler.ctx, signedOrdersRaw, opts.Pinned)
 	if err != nil {
 		// We don't want to leak internal error details to the RPC client.
 		log.WithField("error", err.Error()).Error("internal error in AddOrders RPC call")

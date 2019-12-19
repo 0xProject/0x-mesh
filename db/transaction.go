@@ -4,11 +4,14 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+
+	"github.com/albrow/stringset"
 )
 
 var (
-	ErrDiscarded = errors.New("transaction has already been discarded")
-	ErrCommitted = errors.New("transaction has already been committed")
+	ErrDiscarded             = errors.New("transaction has already been discarded")
+	ErrCommitted             = errors.New("transaction has already been committed")
+	ErrConflictingOperations = errors.New("cannot perform more than one operation (insert/delete/update) on the same model within a transaction")
 )
 
 // Transaction is an atomic database transaction for a single collection which
@@ -26,6 +29,9 @@ type Transaction struct {
 	// it. When the transaction is committed, internalCount is added to the
 	// current count.
 	internalCount int64
+	// affectedIDs keeps track of the model ids that are affected by this
+	// transaction.
+	affectedIDs stringset.Set
 }
 
 // OpenTransaction opens and returns a new transaction for the collection. While
@@ -55,6 +61,7 @@ func (c *Collection) OpenTransaction() *Transaction {
 		colInfo:     c.info.copy(),
 		batchWriter: c.ldb,
 		readWriter:  newReaderWithBatchWriter(c.ldb),
+		affectedIDs: stringset.New(),
 	}
 }
 
@@ -126,13 +133,19 @@ func (txn *Transaction) Discard() error {
 // returns an error if a model with the same id already exists. The model will
 // not actually be inserted until the transaction is committed.
 func (txn *Transaction) Insert(model Model) error {
-	if err := txn.checkState(); err != nil {
+	txn.mut.Lock()
+	defer txn.mut.Unlock()
+	if err := txn.unsafeCheckState(); err != nil {
 		return err
+	}
+	if txn.affectedIDs.Contains(string(model.ID())) {
+		return ErrConflictingOperations
 	}
 	if err := insertWithTransaction(txn.colInfo, txn.readWriter, model); err != nil {
 		return err
 	}
 	txn.updateInternalCount(1)
+	txn.affectedIDs.Add(string(model.ID()))
 	return nil
 }
 
@@ -140,23 +153,38 @@ func (txn *Transaction) Insert(model Model) error {
 // returns an error if the given model doesn't already exist. The model will
 // not actually be updated until the transaction is committed.
 func (txn *Transaction) Update(model Model) error {
-	if err := txn.checkState(); err != nil {
+	txn.mut.Lock()
+	defer txn.mut.Unlock()
+	if err := txn.unsafeCheckState(); err != nil {
 		return err
 	}
-	return updateWithTransaction(txn.colInfo, txn.readWriter, model)
+	if txn.affectedIDs.Contains(string(model.ID())) {
+		return ErrConflictingOperations
+	}
+	if err := updateWithTransaction(txn.colInfo, txn.readWriter, model); err != nil {
+		return err
+	}
+	txn.affectedIDs.Add(string(model.ID()))
+	return nil
 }
 
 // Delete queues an operation to delete the model with the given ID from the
 // database. It returns an error if the model doesn't exist in the database. The
 // model will not actually be deleted until the transaction is committed.
 func (txn *Transaction) Delete(id []byte) error {
-	if err := txn.checkState(); err != nil {
+	txn.mut.Lock()
+	defer txn.mut.Unlock()
+	if err := txn.unsafeCheckState(); err != nil {
 		return err
+	}
+	if txn.affectedIDs.Contains(string(id)) {
+		return ErrConflictingOperations
 	}
 	if err := deleteWithTransaction(txn.colInfo, txn.readWriter, id); err != nil {
 		return err
 	}
 	txn.updateInternalCount(-1)
+	txn.affectedIDs.Add(string(id))
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package core
+package encoding
 
 import (
 	"encoding/json"
@@ -12,14 +12,16 @@ type orderMessage struct {
 	Order       *zeroex.SignedOrder
 }
 
-func encodeOrder(order *zeroex.SignedOrder) ([]byte, error) {
+// OrderToRawMessage encodes an order into an order message to be sent over the wire
+func OrderToRawMessage(order *zeroex.SignedOrder) ([]byte, error) {
 	return json.Marshal(orderMessage{
 		MessageType: "order",
 		Order:       order,
 	})
 }
 
-func decodeOrder(data []byte) (*zeroex.SignedOrder, error) {
+// RawMessageToOrder decodes an order message sent over the wire into an order
+func RawMessageToOrder(data []byte) (*zeroex.SignedOrder, error) {
 	var orderMessage orderMessage
 	if err := json.Unmarshal(data, &orderMessage); err != nil {
 		return nil, err

@@ -602,7 +602,7 @@ type UntrackedTokenError struct {
 
 // Error returns the error string
 func (e UntrackedTokenError) Error() string {
-	return fmt.Sprintf("event for an untracked token: contract address: %s, topic: %s", e.TokenAddress, e.Topic)
+	return fmt.Sprintf("event for an untracked token: contract address: %s, topic: %s", e.TokenAddress.Hex(), e.Topic.Hex())
 }
 
 // Decoder decodes events relevant to the fillability of 0x orders. Since ERC20 & ERC721 events

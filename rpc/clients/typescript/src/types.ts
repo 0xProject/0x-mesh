@@ -1,6 +1,6 @@
 import { SignedOrder } from '@0x/types';
 
-import { BigNumber } from './configured_bignumber';
+export { BigNumber } from '@0x/utils';
 
 /**
  * WebSocketClient configs
@@ -24,14 +24,14 @@ export interface ClientConfig {
  * passed to http.request or https.request. This can be used to pass a custom agent to enable WebSocketClient usage
  * from behind an HTTP or HTTPS proxy server using koichik/node-tunnel or similar.
  * clientConfig: The client configs documented here: https://github.com/theturtle32/WebSocket-Node/blob/master/docs/WebSocketClient.md
- * reconnectAfter: time in milliseconds after which to attempt to reconnect to WS server after an error occurred (default: 5000)
+ * reconnectDelay: time in milliseconds after which to attempt to reconnect to WS server after an error occurred (default: 5000)
  */
 export interface WSOpts {
     timeout?: number;
     headers?: {};
     protocol?: string;
     clientConfig?: ClientConfig;
-    reconnectAfter?: number;
+    reconnectDelay?: number;
 }
 
 export interface StringifiedSignedOrder {
@@ -304,6 +304,7 @@ export interface HeartbeatEventPayload {
 }
 
 export interface RawOrderEvent {
+    timestamp: string;
     orderHash: string;
     signedOrder: StringifiedSignedOrder;
     endState: OrderEventEndState;
@@ -312,6 +313,7 @@ export interface RawOrderEvent {
 }
 
 export interface OrderEvent {
+    timestampMs: number;
     orderHash: string;
     signedOrder: SignedOrder;
     endState: OrderEventEndState;
@@ -397,9 +399,19 @@ export interface ValidationResults {
     rejected: RejectedOrderInfo[];
 }
 
+export interface RawGetOrdersResponse {
+    snapshotID: string;
+    snapshotTimestamp: string;
+    ordersInfos: RawAcceptedOrderInfo[];
+}
+
+// GetOrdersResponse is the response returned when calling the mesh_getOrders
+// method. The `snapshotTimestamp` is the second UTC timestamp of when the Mesh
+// was queried for these orders
 export interface GetOrdersResponse {
     snapshotID: string;
-    ordersInfos: RawAcceptedOrderInfo[];
+    snapshotTimestamp: number;
+    ordersInfos: OrderInfo[];
 }
 
 export interface WSMessage {

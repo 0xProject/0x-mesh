@@ -24,6 +24,8 @@ describe('WSClient', () => {
                 let requestNum = 0;
                 connection.on('message', ((message: WSMessage) => {
                     const jsonRpcRequest = JSON.parse(message.utf8Data);
+                    const snapshotID = '123';
+                    const snapshotTimestamp = '2009-11-10T23:00:00Z';
                     const responses = [
                         // Heartbeat subscription (under-the-hood)
                         `
@@ -39,7 +41,8 @@ describe('WSClient', () => {
                                 "id": "${jsonRpcRequest.id}",
                                 "jsonrpc": "2.0",
                                 "result": {
-                                    "snapshotID": "123",
+                                    "snapshotID": "${snapshotID}",
+                                    "snapshotTimestamp": "${snapshotTimestamp}",
                                     "ordersInfos": [
                                         {
                                             "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
@@ -74,7 +77,8 @@ describe('WSClient', () => {
                                     "id": "${jsonRpcRequest.id}",
                                     "jsonrpc": "2.0",
                                     "result": {
-                                        "snapshotID": "123",
+                                        "snapshotID": "${snapshotID}",
+                                        "snapshotTimestamp": "${snapshotTimestamp}",
                                         "ordersInfos": []
                                     }
                                 }
@@ -87,8 +91,12 @@ describe('WSClient', () => {
 
             const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
             const perPage = 1;
-            const orderInfos = await client.getOrdersAsync(perPage);
+            const getOrdersResponse = await client.getOrdersAsync(perPage);
+            const orderInfos = getOrdersResponse.ordersInfos;
             expect(orderInfos).to.have.length(1);
+            expect(getOrdersResponse.snapshotID).to.equal('123');
+            // tslint:disable-next-line:custom-no-magic-numbers
+            expect(getOrdersResponse.snapshotTimestamp).to.equal(1257894000);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerAssetAmount)).to.equal(true);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.takerAssetAmount)).to.equal(true);
             expect(BigNumber.isBigNumber(orderInfos[0].signedOrder.makerFee)).to.equal(true);
@@ -268,6 +276,7 @@ describe('WSClient', () => {
     });
     describe('#subscribeToOrdersAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
+            const timestamp = '2009-11-10T23:00:00Z';
             (async () => {
                 const wsServer = await setupServerAsync();
                 wsServer.on('connect', ((connection: WebSocket.connection) => {
@@ -313,6 +322,7 @@ describe('WSClient', () => {
                                         "subscription":"0xc2ba3e8af590364c09d0fa6a12103adb",
                                         "result": [
                                             {
+                                                "timestamp": "${timestamp}",
                                                 "orderHash": "0x96e6eb6174dbf0458686bdae44c9a330d9a9eb563962512a7be545c4ecc13fd4",
                                                 "signedOrder": {
                                                     "makerAddress": "0x50f84bbee6fb250d6f49e854fa280445369d64d9",
@@ -378,6 +388,8 @@ describe('WSClient', () => {
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.salt)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.expirationTimeSeconds)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].fillableTakerAssetAmount)).to.equal(true);
+                        // tslint:disable-next-line:custom-no-magic-numbers
+                        expect(orderEvents[0].timestampMs).to.equal(new Date(timestamp).getTime());
 
                         client.destroy();
                     },
@@ -437,7 +449,7 @@ describe('WSClient', () => {
                     }) as any);
                 });
 
-                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectAfter: 100 });
+                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
                 client.onReconnected(async () => {
                     // We need to add a sleep here so that we leave time for the client
                     // to get connected before destroying it.

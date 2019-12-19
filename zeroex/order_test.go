@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -76,6 +77,7 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	orderEvent := OrderEvent{
+		Timestamp:                time.Now().UTC(),
 		OrderHash:                orderHash,
 		SignedOrder:              signedOrder,
 		EndState:                 ESOrderAdded,

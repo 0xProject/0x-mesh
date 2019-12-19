@@ -26,7 +26,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,7 +149,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 
 	for _, testCase := range testCases {
 
-		rateLimiter := ratelimit.NewFakeLimiter()
+		rateLimiter := ratelimit.NewUnlimited()
 		ethClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 		require.NoError(t, err)
 
@@ -185,7 +184,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -193,7 +192,9 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -213,7 +214,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -221,7 +222,9 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
@@ -242,7 +245,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -250,7 +253,9 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
@@ -274,7 +279,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 		signedOrder,
 	}
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -313,7 +318,9 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx = context.Background()
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, rpc.LatestBlockNumber)
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
@@ -326,7 +333,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -344,7 +351,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
@@ -385,7 +392,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	signedMultiAssetOrder, err := zeroex.SignTestOrder(&testMultiAssetSignedOrder.Order)
 	require.NoError(t, err)
 
-	rateLimiter := ratelimit.NewFakeLimiter()
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 

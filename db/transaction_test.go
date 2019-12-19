@@ -258,3 +258,132 @@ func TestTransactionExclusion(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestTransactionDeleteThenInsertSameModel(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	defer db.Close()
+
+	// Create a collection and insert one model.
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	model := &testModel{
+		Name: "ExpectedPerson",
+		Age:  42,
+	}
+	require.NoError(t, col.Insert(model))
+
+	// Delete and then insert the same model in a single transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+	require.NoError(t, txn.Delete(model.ID()))
+	err = txn.Insert(model)
+	assert.Error(t, err)
+	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+}
+
+func TestTransactionInsertThenDeleteSameModel(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	defer db.Close()
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	model := &testModel{
+		Name: "ExpectedPerson",
+		Age:  42,
+	}
+
+	// Insert and then delete the same model in a single transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+	require.NoError(t, txn.Insert(model))
+	err = txn.Delete(model.ID())
+	assert.Error(t, err)
+	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+}
+
+func TestTransactionInsertThenInsertSameModel(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	defer db.Close()
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	model := &testModel{
+		Name: "ExpectedPerson",
+		Age:  42,
+	}
+
+	// Insert the same model twice in the same transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+	require.NoError(t, txn.Insert(model))
+	err = txn.Insert(model)
+	assert.Error(t, err)
+	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+}
+
+func TestTransactionDeleteThenDeleteSameModel(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	defer db.Close()
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	model := &testModel{
+		Name: "ExpectedPerson",
+		Age:  42,
+	}
+	require.NoError(t, col.Insert(model))
+
+	// Delete the same model twice in the same transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+	require.NoError(t, txn.Delete(model.ID()))
+	err = txn.Delete(model.ID())
+	assert.Error(t, err)
+	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+}
+
+func TestTransactionInsertThenUpdateSameModel(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	defer db.Close()
+	col, err := db.NewCollection("people", &testModel{})
+	require.NoError(t, err)
+	model := &testModel{
+		Name: "ExpectedPerson",
+		Age:  42,
+	}
+
+	// Insert and then update the same model within the same transaction.
+	txn := col.OpenTransaction()
+	defer func() {
+		err := txn.Discard()
+		if err != nil && err != ErrCommitted {
+			t.Error(err)
+		}
+	}()
+	require.NoError(t, txn.Insert(model))
+	err = txn.Update(model)
+	assert.Error(t, err)
+	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+}

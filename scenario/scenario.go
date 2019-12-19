@@ -21,6 +21,12 @@ import (
 
 // CreateZRXForWETHSignedTestOrder creates a valid 0x orders where the maker wishes to trade ZRX for WETH
 func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
+	expirationTime := time.Now().Add(24 * time.Hour)
+	return createZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount, expirationTime)
+}
+
+// CreateZRXForWETHSignedTestOrder creates a valid 0x orders where the maker wishes to trade ZRX for WETH
+func createZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int, expirationTime time.Time) *zeroex.SignedOrder {
 	// Create order
 	testOrder := &zeroex.Order{
 		ChainID:               big.NewInt(constants.TestChainID),
@@ -37,7 +43,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      zrxAmount,
 		TakerAssetAmount:      wethAmount,
-		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
 		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	}
 
@@ -103,31 +109,7 @@ func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 
 // CreateSignedTestOrderWithExpirationTime creates a valid 0x orders where the maker wishes to trade ZRX for WETH
 func CreateSignedTestOrderWithExpirationTime(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, expirationTime time.Time) *zeroex.SignedOrder {
-	// Create order
-	testOrder := &zeroex.Order{
-		ChainID:               big.NewInt(constants.TestChainID),
-		MakerAddress:          makerAddress,
-		TakerAddress:          constants.NullAddress,
-		SenderAddress:         constants.NullAddress,
-		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-		MakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		TakerAssetData:        common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082"),
-		TakerFeeAssetData:     constants.NullBytes,
-		MakerFeeAssetData:     constants.NullBytes,
-		Salt:                  big.NewInt(1548619145450),
-		MakerFee:              big.NewInt(0),
-		TakerFee:              big.NewInt(0),
-		MakerAssetAmount:      big.NewInt(1000),
-		TakerAssetAmount:      big.NewInt(1000),
-		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
-		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
-	}
-
-	// Sign Order
-	signedTestOrder, err := zeroex.SignTestOrder(testOrder)
-	require.NoError(t, err, "could not sign order")
-
-	return signedTestOrder
+	return createZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, big.NewInt(1000), big.NewInt(1000), expirationTime)
 }
 
 // CreateWETHForZRXSignedTestOrder creates a valid 0x orders where the maker wishes to trade WETH for ZRX
@@ -143,7 +125,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerFeeAssetData:     constants.NullBytes,
 		TakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerFeeAssetData:     constants.NullBytes,
-		Salt:                  big.NewInt(1548619145450),
+		Salt:                  big.NewInt(int64(time.Now().Nanosecond())),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      wethAmount,
@@ -241,7 +223,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 		MakerFeeAssetData:     constants.NullBytes,
 		TakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerFeeAssetData:     constants.NullBytes,
-		Salt:                  big.NewInt(1548619145450),
+		Salt:                  big.NewInt(int64(time.Now().Nanosecond())),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      big.NewInt(1),
@@ -448,7 +430,7 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 		MakerFeeAssetData:     constants.NullBytes,
 		TakerAssetData:        common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		TakerFeeAssetData:     constants.NullBytes,
-		Salt:                  big.NewInt(1548619145450),
+		Salt:                  big.NewInt(int64(time.Now().Nanosecond())),
 		MakerFee:              big.NewInt(0),
 		TakerFee:              big.NewInt(0),
 		MakerAssetAmount:      big.NewInt(1),

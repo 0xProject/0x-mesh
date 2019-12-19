@@ -13,10 +13,12 @@ type fakeLimiter struct {
 	mu                    sync.Mutex
 }
 
-// NewFakeLimiter returns a new fakeLimiter
-func NewFakeLimiter() RateLimiter {
+// NewUnlimited returns a new RateLimiter without any limits. It will always
+// allow requests immediately. It still keeps track of the number of requests
+// that are allowed.
+func NewUnlimited() RateLimiter {
 	return &fakeLimiter{
-		currentUTCCheckpoint:  getUTCMidnightOfDate(time.Now()),
+		currentUTCCheckpoint:  GetUTCMidnightOfDate(time.Now()),
 		grantedInLast24hrsUTC: 0,
 	}
 }
