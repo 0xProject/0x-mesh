@@ -1,22 +1,60 @@
-import { callbackErrorReporter } from '@0x/dev-utils';
-import { DoneCallback } from '@0x/types';
+import {callbackErrorReporter} from '@0x/dev-utils';
+import {DoneCallback} from '@0x/types';
 import * as chai from 'chai';
+import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
+import {} from 'fs';
 import 'mocha';
 import * as WebSocket from 'websocket';
 
-import { BigNumber, OrderEvent, WSClient } from '../src/index';
-import { WSMessage } from '../src/types';
+import {BigNumber, OrderEvent, WSClient} from '../src/index';
+import {WSMessage} from '../src/types';
 
-import { chaiSetup } from './utils/chai_setup';
-import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
+import {chaiSetup} from './utils/chai_setup';
+import {SERVER_PORT, setupMeshNodeAsync, waitForPatternLogAsync} from './utils/ws_server';
 
 chaiSetup.configure();
 const expect = chai.expect;
 
 describe('WSClient', () => {
-    afterEach(() => {
-        stopServer();
+    describe('example test', () => {
+        it('test', done => {
+            (async () => {
+                const cleanup = spawn('rm', ['-r', './0x_mesh']);
+
+                await new Promise<void>((resolve, reject) => {
+                    cleanup.on('close', code => {
+                        code === 0 ? resolve() : reject();
+                    });
+                });
+
+                const env = Object.create(process.env);
+                env.ETHEREUM_RPC_URL = 'http://localhost:8545';
+
+                /* tslint:disable:custom-no-magic-numbers */
+                env.ETHEREUM_CHAIN_ID = 1337;
+                env.VERBOSITY = 5;
+                /* tslint:enable:custom-no-magic-numbers */
+
+                env.RPC_ADDR = 'localhost:64321';
+
+                // Start the mesh node and wait for the RPC server to start.
+                const mesh = spawn('mesh', [], {env});
+
+                mesh.stderr.on('data', data => {
+                    console.log(data.toString());
+                });
+
+                await waitForPatternLogAsync(mesh, /started RPC server/);
+                const client = new WSClient('http://localhost:64321');
+                const validationResults = await client.addOrdersAsync([]);
+                console.log(validationResults);
+                const getOrdersResponse = await client.getOrdersAsync(5);
+                console.log(getOrdersResponse);
+                done();
+            })();
+        });
     });
+    /*
     describe('#getOrdersAsync', async () => {
         it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
             const wsServer = await setupServerAsync();
@@ -500,8 +538,10 @@ describe('WSClient', () => {
             })().catch(done);
         });
     });
+    */
 });
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
     return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
-} // tslint:disable:max-file-line-count
+}
+// tslint:disable-line:max-file-line-count
