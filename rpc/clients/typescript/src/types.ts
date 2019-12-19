@@ -312,7 +312,7 @@ export interface RawOrderEvent {
 }
 
 export interface OrderEvent {
-    timestamp: number;
+    timestampMs: number;
     orderHash: string;
     signedOrder: SignedOrder;
     endState: OrderEventEndState;

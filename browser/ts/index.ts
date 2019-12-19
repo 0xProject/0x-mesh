@@ -458,7 +458,7 @@ interface WrapperOrderEvent {
  * or filled.
  */
 export interface OrderEvent {
-    timestamp: number;
+    timestampMs: number;
     orderHash: string;
     signedOrder: SignedOrder;
     endState: OrderEventEndState;
@@ -844,8 +844,7 @@ function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSigne
 function wrapperOrderEventToOrderEvent(wrapperOrderEvent: WrapperOrderEvent): OrderEvent {
     return {
         ...wrapperOrderEvent,
-        // tslint:disable-next-line:custom-no-magic-numbers
-        timestamp: Math.round(new Date(wrapperOrderEvent.timestamp).getTime() / 1000),
+        timestampMs: new Date(wrapperOrderEvent.timestamp).getTime(),
         signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderEvent.signedOrder),
         fillableTakerAssetAmount: new BigNumber(wrapperOrderEvent.fillableTakerAssetAmount),
         contractEvents: wrapperContractEventsToContractEvents(wrapperOrderEvent.contractEvents),

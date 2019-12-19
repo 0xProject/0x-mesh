@@ -375,7 +375,7 @@ describe('WSClient', () => {
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.expirationTimeSeconds)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].fillableTakerAssetAmount)).to.equal(true);
                         // tslint:disable-next-line:custom-no-magic-numbers
-                        expect(BigNumber.isBigNumber(orderEvents[0].timestamp)).to.equal(1257894000);
+                        expect(BigNumber.isBigNumber(orderEvents[0].timestampMs)).to.equal(1257894000);
 
                         client.destroy();
                     },
