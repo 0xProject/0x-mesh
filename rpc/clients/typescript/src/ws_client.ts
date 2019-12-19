@@ -2,8 +2,8 @@ import { assert } from '@0x/assert';
 import { orderParsingUtils } from '@0x/order-utils';
 import { ObjectMap, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
-import * as Web3Providers from '@0x/web3-providers-fork';
 import { v4 as uuid } from 'uuid';
+import * as Web3Providers from 'web3-providers';
 import * as WebSocket from 'websocket';
 
 import {
@@ -52,7 +52,7 @@ const DEFAULT_WS_OPTS = {
         fragmentOutgoingMessages: false,
     },
     timeout: 30000,
-    reconnectAfter: DEFAULT_RECONNECT_AFTER_MS,
+    reconnectDelay: DEFAULT_RECONNECT_AFTER_MS,
 };
 
 /**
@@ -238,8 +238,8 @@ export class WSClient {
      */
     constructor(url: string, wsOpts?: WSOpts) {
         this._subscriptionIdToMeshSpecificId = {};
-        if (wsOpts !== undefined && wsOpts.reconnectAfter === undefined) {
-            wsOpts.reconnectAfter = DEFAULT_RECONNECT_AFTER_MS;
+        if (wsOpts !== undefined && wsOpts.reconnectDelay === undefined) {
+            wsOpts.reconnectDelay = DEFAULT_RECONNECT_AFTER_MS;
         }
         this._wsProvider = new Web3Providers.WebsocketProvider(
             url,

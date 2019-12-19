@@ -431,7 +431,7 @@ describe('WSClient', () => {
                     }) as any);
                 });
 
-                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectAfter: 100 });
+                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
                 client.onReconnected(async () => {
                     // We need to add a sleep here so that we leave time for the client
                     // to get connected before destroying it.
