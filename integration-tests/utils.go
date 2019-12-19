@@ -1,5 +1,3 @@
-// Package integrationtests contains broad integration integrationtests that
-// include a bootstrap node, a standalone node, and a browser node.
 package integrationtests
 
 import (
@@ -8,9 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"math/big"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,53 +13,26 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/rpc"
-	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
-	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	ethereumRPCURL  = "http://localhost:8545"
-	ethereumChainID = 1337
-
-	// Various config options/information for the bootstrap node. The private key
-	// for the bootstrap node is checked in to version control so we know it's
-	// peer ID ahead of time.
-	bootstrapAddr    = "/ip4/127.0.0.1/tcp/60500/ws"
-	bootstrapPeerID  = "16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7"
-	bootstrapList    = "/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7"
-	bootstrapDataDir = "./data/bootstrap-0"
-
-	// Various config options/information for the standalone node. Like the
-	// bootstrap node, we know the private key/peer ID ahead of time.
-	standalonePeerID      = "16Uiu2HAmM9j68mgGGSFkXsuzbGJA8ezVHtQ2H9y6mRJAPhx6xtj9"
-	standaloneDataDir     = "./data/standalone-0"
-	standaloneRPCEndpoint = "ws://localhost:60501"
-	standaloneRPCAddr     = "localhost:60501"
-)
-
-var makerAddress = constants.GanacheAccount1
-var takerAddress = constants.GanacheAccount2
-var eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-var wethAmount = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-var zrxAmount = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
-var integrationTestsEnabled bool
+var browserIntegrationTestsEnabled bool
+
+var nodeCount int32
 
 func init() {
-	flag.BoolVar(&integrationTestsEnabled, "integration", false, "enable integration tests")
+	flag.BoolVar(&browserIntegrationTestsEnabled, "enable-browser-integration-tests", false, "enable browser integration tests")
 	flag.Parse()
 }
 
@@ -82,173 +50,75 @@ func init() {
 	}
 }
 
-func TestBrowserIntegration(t *testing.T) {
-	if !integrationTestsEnabled {
-		t.Skip("Integration tests are disabled. You can enable them with the --integration flag")
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	// Declare a context that will be used for all child processes, servers, and
-	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
-	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildForTests(t, ctx)
-
-	// wg is a WaitGroup for the entire tests. We won't exit until wg is done.
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startBootstrapNode(t, ctx)
-	}()
-
-	// standaloneLogMessages is a channel through which log messages from the
-	// standalone node will be sent. We use a large buffer so it doesn't cause
-	// goroutines to block.
-	standaloneLogMessages := make(chan string, 1024)
-
-	// Start the standalone node in a goroutine.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, standaloneLogMessages)
-	}()
-
-	// standaloneOrder is an order that will be sent to the network by the
-	// standalone node.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
-	require.NoError(t, err, "could not compute order hash for standalone order")
-
-	// In a separate goroutine, send standaloneOrder through the RPC endpoint for
-	// the standalone node.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Wait for the RPC server to start before sending the order.
-		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
-		require.NoError(t, err, "RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpoint)
-		require.NoError(t, err)
-		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
-		require.NoError(t, err)
-		assert.Len(t, results.Accepted, 1, "Expected 1 order to be accepted over RPC")
-		assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected over RPC")
-	}()
-
-	// Start a sinple HTTP server to serve the web page for the browser node.
-	ts := httptest.NewServer(http.FileServer(http.Dir("./browser/dist")))
-	defer ts.Close()
-
-	// browserLogMessages is a channel through which log messages from the
-	// standalone node will be sent. We use a large buffer so it doesn't cause
-	// goroutines to block.
-	browserLogMessages := make(chan string, 1024)
-
-	// Start the browser node.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startBrowserNode(t, ctx, ts.URL, browserLogMessages)
-	}()
-
-	// browserPeerIDChan is used to retrieve the peer ID of the browser node.
-	// Unlike the other nodes, we can't know it ahead of time because we have no
-	// easy way to manipulate localStorage.
-	browserPeerIDChan := make(chan string, 1)
-
-	// browserOrderHashChan is used to retrieve the order hash of the order signed
-	// in the browser node.
-	browserOrderHashChan := make(chan string, 1)
-
-	// messageWG is a separate WaitGroup that will be used to wait for all
-	// expected messages to be logged.
-	messageWG := &sync.WaitGroup{}
-
-	// Start a goroutine to wait for the log messages we expect from the browser
-	// node.
-	messageWG.Add(1)
-	go func() {
-		defer messageWG.Done()
-
-		// Wait for the order hash to be logged.
-		msg, err := waitForSignedOrderLog(ctx, browserLogMessages)
-		assert.NoError(t, err, "Could not find browser orderHash in logs. Maybe the browser node didn't start?")
-		browserOrderHash, err := extractOrderHashFromLog(msg)
-		assert.NoError(t, err, "Could not extract brower orderHash from log message.")
-		fmt.Println("browser order hash is", browserOrderHash)
-		browserOrderHashChan <- browserOrderHash
-
-		// Wait for the peer ID to be logged first.
-		msg, err = waitForLogSubstring(ctx, browserLogMessages, "myPeerID")
-		assert.NoError(t, err, "Could not find browser peer ID in logs. Maybe the browser node didn't start?")
-		browserPeerID, err := extractPeerIDFromLog(msg)
-		assert.NoError(t, err, "Could not extract brower peer ID from log message.")
-		fmt.Println("browser peer ID is", browserPeerID)
-		browserPeerIDChan <- browserPeerID
-
-		// Next, wait for the order to be received.
-		expectedOrderEventLog := orderEventLog{
-			OrderHash: standaloneOrderHash.Hex(),
-			EndState:  "ADDED",
-		}
-		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
-		assert.NoError(t, err, "Browser node did not receive order sent by standalone node")
-	}()
-
-	// Start a goroutine to wait for the log messages we expect from the
-	// standalone node.
-	messageWG.Add(1)
-	go func() {
-		defer messageWG.Done()
-		browserOrderHash := <-browserOrderHashChan
-		browserPeerID := <-browserPeerIDChan
-		expectedOrderLog := receivedOrderLog{
-			OrderHash: browserOrderHash,
-			From:      browserPeerID,
-		}
-		_, err := waitForReceivedOrderLog(ctx, standaloneLogMessages, expectedOrderLog)
-		assert.NoError(t, err, "Standalone node did not receive order sent by browser node")
-	}()
-
-	// Wait for all expected messages to be logged.
-	messageWG.Wait()
-
-	// Cancel the context and wait for all outstanding goroutines to finish.
-	cancel()
-	wg.Wait()
+	return b
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
-	fmt.Println("Removing old files...")
-	require.NoError(t, os.RemoveAll(filepath.Join(standaloneDataDir, "db")))
-	require.NoError(t, os.RemoveAll(filepath.Join(standaloneDataDir, "p2p")))
+	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
+	require.NoError(t, err)
+
+	for _, oldFile := range oldFiles {
+		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "db")))
+		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "p2p")))
+	}
+
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
 }
 
-func buildForTests(t *testing.T, ctx context.Context) {
+var hasRunBuildStandalone bool
+
+func buildStandaloneForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
+	if hasRunBuildStandalone {
+		return
+	}
+	hasRunBuildStandalone = true
+
+	// Build the mesh executable
 	fmt.Println("Building mesh executable...")
 	cmd := exec.CommandContext(ctx, "go", "install", ".")
 	cmd.Dir = "../cmd/mesh"
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not build mesh: %s", string(output))
+}
 
+var hasRunBuildBootstrap bool
+
+func buildBootstrapForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
+	if hasRunBuildBootstrap {
+		return
+	}
+	hasRunBuildBootstrap = true
+
+	// Build the bootstrap executable
 	fmt.Println("Building mesh-bootstrap executable...")
-	cmd = exec.CommandContext(ctx, "go", "install", ".")
+	cmd := exec.CommandContext(ctx, "go", "install", ".")
 	cmd.Dir = "../cmd/mesh-bootstrap"
-	output, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not build mesh-bootstrap: %s", string(output))
+}
+
+var hasRunBuildAll bool
+
+func buildForTests(t *testing.T, ctx context.Context) {
+	// Skip building if this function has already been called.
+	if hasRunBuildAll {
+		return
+	}
+	hasRunBuildAll = true
+
+	buildStandaloneForTests(t, ctx)
+	buildBootstrapForTests(t, ctx)
 
 	fmt.Println("Clear yarn cache...")
-	cmd = exec.CommandContext(ctx, "yarn", "cache", "clean")
+	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
 	cmd.Dir = "../browser"
-	output, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
 
 	fmt.Println("Installing dependencies for TypeScript bindings...")
@@ -303,32 +173,40 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=5",
-		"DATA_DIR="+standaloneDataDir,
+		"DATA_DIR="+standaloneDataDirPrefix+strconv.Itoa(nodeID),
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"RPC_ADDR="+standaloneRPCAddr,
+		"RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(rpcPort+nodeID),
+		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
+		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
 	)
 
 	// Pipe messages from stderr through the logMessages channel.
 	stderr, err := cmd.StderrPipe()
 	require.NoError(t, err)
+
 	scanner := bufio.NewScanner(stderr)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	errChan := make(chan error)
+
 	go func() {
 		defer wg.Done()
+
 		for scanner.Scan() {
-			fmt.Println("[standalone]: " + scanner.Text())
+			fmt.Printf("[standalone %d]: %s\n", nodeID, scanner.Text())
 			logMessages <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
-			t.Fatal(err)
+			errChan <- err
 		}
 	}()
 
@@ -342,6 +220,9 @@ func startStandaloneNode(t *testing.T, ctx context.Context, logMessages chan<- s
 			// and the test is over.
 			return
 		}
+	}
+	if err := <-errChan; err != nil {
+		t.Fatal(err)
 	}
 	assert.NoError(t, err, "could not run standalone node: %s", err)
 	wg.Wait()
@@ -418,6 +299,28 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 		return foundLog.OrderHash == expectedLog.OrderHash &&
 			foundLog.From == expectedLog.From
 	})
+}
+
+// Ensure that all of the orders in given list of signed orders are included in a list of order info. The list
+// of order info can contain more orders than the first list and still pass this assertion.
+func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*rpc.OrderInfo) {
+	for _, expectedOrder := range expectedSignedOrders {
+		foundMatchingOrder := false
+
+		expectedOrderHash, err := expectedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		for _, orderInfo := range actualOrderInfo {
+			if orderInfo.OrderHash.Hex() == expectedOrderHash.Hex() {
+				foundMatchingOrder = true
+				expectedOrder.ResetHash()
+				assert.Equal(t, expectedOrder, orderInfo.SignedOrder, "signedOrder did not match")
+				assert.Equal(t, expectedOrder.TakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
+				break
+			}
+		}
+
+		assert.True(t, foundMatchingOrder, "found no matching entry in the getOrdersResponse")
+	}
 }
 
 // A holder type for parsing logged OrderEvents. These are received by either

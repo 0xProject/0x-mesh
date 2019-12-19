@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"context"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -17,7 +19,7 @@ type MessageHandler interface {
 	// HandleMessages is called whenever new messages are received. It should only
 	// return an error if there was a problem handling the messages. It should not
 	// return an error for invalid or duplicate messages.
-	HandleMessages([]*Message) error
+	HandleMessages(context.Context, []*Message) error
 	// GetMessagesToShare returns up to max messages to be shared with peers.
 	GetMessagesToShare(max int) ([][]byte, error)
 }

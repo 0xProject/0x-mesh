@@ -40,60 +40,6 @@
   },
   {
     "getLatestBlock": {
-      "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
-      "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-      "number": 6
-    },
-    "getBlockByNumber": {
-      "5": {
-        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
-        "number": 5
-      },
-      "6": {
-        "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
-        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "number": 6
-      }
-    },
-    "getBlockByHash": {
-      "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f": {
-        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
-        "number": 5
-      },
-      "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8": {
-        "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
-        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "number": 6
-      }
-    },
-    "getCorrectChain": [
-      {
-        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
-        "number": 5
-      },
-      {
-        "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
-        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-        "number": 6
-      }
-    ],
-    "blockEvents": [
-      {
-        "type": 0,
-        "blockHeader": {
-          "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
-          "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
-          "number": 6
-        }
-      }
-    ],
-    "scenarioLabel": "FIND_NEXT_BLOCK"
-  },
-  {
-    "getLatestBlock": {
       "hash": "0xe01518f323147f04d9a94741e1350bf34d6347499f9427b4395766b1849d074d",
       "parent": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
       "number": 7
@@ -153,13 +99,21 @@
       {
         "type": 0,
         "blockHeader": {
+          "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
+          "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+          "number": 6
+        }
+      },
+      {
+        "type": 0,
+        "blockHeader": {
           "hash": "0xe01518f323147f04d9a94741e1350bf34d6347499f9427b4395766b1849d074d",
           "parent": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
           "number": 7
         }
       }
     ],
-    "scenarioLabel": "FIND_NEXT_BLOCK"
+    "scenarioLabel": "FIND_NEXT_TWO_BLOCKS"
   },
   {
     "getLatestBlock": {
@@ -220,6 +174,81 @@
     ],
     "blockEvents": [],
     "scenarioLabel": "NO_NEW_BLOCK"
+  },
+  {
+    "getLatestBlock": {
+      "hash": "0xbb150e5bfcb715a3703c84d54235d7e1c97a7d0145843e5d2debbb80410471b1",
+      "parent": "0x7d8c97402267b41d56fcf4a2f250d78b34d9c78a9f8898803b15fc2026d56946",
+      "number": 8
+    },
+    "getBlockByNumber": {
+      "5": {
+        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
+        "number": 5
+      },
+      "6": {
+        "hash": "0xe02e97a883c429053d0266093c6b240d7d3ba2afef14cecc1da35af5d5509ee2",
+        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "number": 6
+      },
+      "7": {
+        "hash": "0x7d8c97402267b41d56fcf4a2f250d78b34d9c78a9f8898803b15fc2026d56946",
+        "parent": "0xe02e97a883c429053d0266093c6b240d7d3ba2afef14cecc1da35af5d5509ee2",
+        "number": 7
+      },
+      "8": {
+        "hash": "0xbb150e5bfcb715a3703c84d54235d7e1c97a7d0145843e5d2debbb80410471b1",
+        "parent": "0x7d8c97402267b41d56fcf4a2f250d78b34d9c78a9f8898803b15fc2026d56946",
+        "number": 8
+      }
+    },
+    "getBlockByHash": {
+      "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f": {
+        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
+        "number": 5
+      },
+      "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8": {
+        "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
+        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "number": 6
+      },
+      "0xe01518f323147f04d9a94741e1350bf34d6347499f9427b4395766b1849d074d": {
+        "hash": "0xe01518f323147f04d9a94741e1350bf34d6347499f9427b4395766b1849d074d",
+        "parent": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
+        "number": 7
+      },
+      "0xe02e97a883c429053d0266093c6b240d7d3ba2afef14cecc1da35af5d5509ee2": {
+        "hash": "0xe02e97a883c429053d0266093c6b240d7d3ba2afef14cecc1da35af5d5509ee2",
+        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "number": 6
+      },
+      "0xbb150e5bfcb715a3703c84d54235d7e1c97a7d0145843e5d2debbb80410471b1": {
+        "hash": "0xbb150e5bfcb715a3703c84d54235d7e1c97a7d0145843e5d2debbb80410471b1",
+        "parent": "0x7d8c97402267b41d56fcf4a2f250d78b34d9c78a9f8898803b15fc2026d56946",
+        "number": 8
+      }
+    },
+    "getCorrectChain": [
+      {
+        "hash": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "parent": "0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba",
+        "number": 5
+      },
+      {
+        "hash": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
+        "parent": "0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f",
+        "number": 6
+      },
+      {
+        "hash": "0xe01518f323147f04d9a94741e1350bf34d6347499f9427b4395766b1849d074d",
+        "parent": "0xcb7c375fbbd4f0c0d75424f64158d5b270acacb3e0d1be3e9cb20f92cf19ded8",
+        "number": 7
+      }
+    ],
+    "blockEvents": [],
+    "scenarioLabel": "ERROR_DURING_REORG_2_BLOCKS_DEEP_BLOCKBYHASH_FOR_7_NOT_FOUND"
   },
   {
     "getLatestBlock": {

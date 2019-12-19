@@ -216,7 +216,7 @@ func (m *MeshDB) Close() {
 	m.database.Close()
 }
 
-// FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted by block number
+// FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order
 func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, error) {
 	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All())
@@ -224,6 +224,14 @@ func (m *MeshDB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, e
 		return nil, err
 	}
 	return miniHeaders, nil
+}
+
+// MiniHeaderCollectionEmptyError is returned when no miniHeaders have been stored in
+// the DB yet
+type MiniHeaderCollectionEmptyError struct{}
+
+func (e MiniHeaderCollectionEmptyError) Error() string {
+	return "Latest MiniHeader not found"
 }
 
 // FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
@@ -235,7 +243,31 @@ func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 		return nil, err
 	}
 	if len(miniHeaders) == 0 {
-		return nil, nil
+		return nil, MiniHeaderCollectionEmptyError{}
+	}
+	return miniHeaders[0], nil
+}
+
+// MiniHeaderNotFoundError is returned when a miniHeaders is not found for a specific
+// block number
+type MiniHeaderNotFoundError struct {
+	blockNumber int64
+}
+
+func (e MiniHeaderNotFoundError) Error() string {
+	return fmt.Sprintf("MiniHeader not found for block number: %d", e.blockNumber)
+}
+
+// FindMiniHeaderByBlockNumber returns the MiniHeader with the specified block number
+func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.MiniHeader, error) {
+	miniHeaders := []*miniheader.MiniHeader{}
+	blockNumberFilter := m.MiniHeaders.numberIndex.ValueFilter(uint256ToConstantLengthBytes(blockNumber))
+	query := m.MiniHeaders.NewQuery(blockNumberFilter)
+	if err := query.Run(&miniHeaders); err != nil {
+		return nil, err
+	}
+	if len(miniHeaders) == 0 {
+		return nil, MiniHeaderNotFoundError{blockNumber: blockNumber.Int64()}
 	}
 	return miniHeaders[0], nil
 }

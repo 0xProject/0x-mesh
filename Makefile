@@ -56,12 +56,12 @@ test-go-parallel:
 
 .PHONY: test-go-serial
 test-go-serial:
-	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 30s -p=1 --serial
+	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 60s -p=1 --serial
 
 
-.PHONY: test-integration
-test-integration:
-	go test ./integration-tests -timeout 185s --integration
+.PHONY: test-browser-integration
+test-browser-integration:
+	go test ./integration-tests -timeout 185s --enable-browser-integration-tests -run BrowserIntegration
 
 
 .PHONY: test-wasm-node

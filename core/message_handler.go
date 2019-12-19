@@ -1,7 +1,10 @@
 package core
 
 import (
+	"context"
+
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -92,7 +95,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 		log.WithFields(map[string]interface{}{
 			"order": order,
 		}).Trace("selected order to share")
-		encoded, err := encodeOrder(order.SignedOrder)
+		encoded, err := encoding.OrderToRawMessage(order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +104,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 	return messageData, nil
 }
 
-func (app *App) HandleMessages(messages []*p2p.Message) error {
+func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
 	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
@@ -140,7 +143,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			continue
 		}
 
-		order, err := decodeOrder(msg.Data)
+		order, err := encoding.RawMessageToOrder(msg.Data)
 		if err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,
@@ -164,20 +167,21 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.validateOrders(orders)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, app.chainID)
 	if err != nil {
 		return err
 	}
 
 	// Store any valid orders and update the peer scores.
 	for _, acceptedOrderInfo := range validationResults.Accepted {
+		// If the order isn't new, we don't log it's receipt or adjust peer scores
 		if !acceptedOrderInfo.IsNew {
 			continue
 		}
 		msg := orderHashToMessage[acceptedOrderInfo.OrderHash]
-		// If we've reached this point, the message is valid and we were able to
-		// decode it into an order. Append it to the list of orders to validate and
-		// update peer scores accordingly.
+		// If we've reached this point, the message is valid, we were able to
+		// decode it into an order and check that this order is valid. Update
+		// peer scores accordingly.
 		log.WithFields(map[string]interface{}{
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
@@ -187,20 +191,6 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
 		}).Trace("all fields for new valid order received from peer")
-		// Add stores the message in the database.
-		if err := app.orderWatcher.Add(acceptedOrderInfo, false); err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				// If the database is full of pinned orders, log and then continue.
-				log.WithFields(map[string]interface{}{
-					"error":     err.Error(),
-					"orderHash": acceptedOrderInfo.OrderHash.Hex(),
-					"from":      msg.From.String(),
-				}).Error("could not store valid order because database is full")
-				continue
-			}
-			// For any other type of error, return it.
-			return err
-		}
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
 
@@ -213,7 +203,7 @@ func (app *App) HandleMessages(messages []*p2p.Message) error {
 			"from":              msg.From.String(),
 		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
-		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed:
+		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed, ordervalidator.RODatabaseFullOfOrders:
 			// Don't incur a negative score for these status types (it might not be
 			// their fault).
 		default:
