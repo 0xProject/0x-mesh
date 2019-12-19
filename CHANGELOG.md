@@ -15,6 +15,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added a new environment variable `ENABLE_ETHEREUM_RPC_RATE_LIMITING` and config option `enableEthereumRPCRateLimiting` which can be used to completely disable Mesh's internal Ethereum RPC rate limiting features. By default it is enabled, and disabling can have some consequences depending on your RPC provider. ([#584](https://github.com/0xProject/0x-mesh/pull/584))
 - Added a `SnapshotTimestamp` field to `GetOrdersResponse`, the return type of the `mesh_getOrders` RPC method. This way, the caller can know at what point in time the snapshot had been created. ([#591](https://github.com/0xProject/0x-mesh/pull/591))
 - Improved batching of events emitted from order events subscriptions ([#566](https://github.com/0xProject/0x-mesh/pull/566))
+- Added timestamp to order events ([#602](https://github.com/0xProject/0x-mesh/pull/602))
 
 ### Bug fixes 🐞
 
