@@ -8,7 +8,7 @@ jobs:
       - image: 0xorg/ganache-cli:latest
         environment:
             VERSION: 5.0.0
-            SNAPSHOT_NAME: 0x_ganache_snapshot-v3-beta
+            SNAPSHOT_NAME: 0x_ganache_snapshot
     resource_class: large
     working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
