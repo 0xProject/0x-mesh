@@ -333,6 +333,8 @@ export class WSClient {
             const orderEvents: OrderEvent[] = [];
             rawOrderEvents.forEach(rawOrderEvent => {
                 const orderEvent = {
+                    // tslint:disable-next-line:custom-no-magic-numbers
+                    timestamp: Math.round(new Date(rawOrderEvent.timestamp).getTime() / 1000),
                     orderHash: rawOrderEvent.orderHash,
                     signedOrder: orderParsingUtils.convertOrderStringFieldsToBigNumber(rawOrderEvent.signedOrder),
                     endState: rawOrderEvent.endState,

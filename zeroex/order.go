@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
@@ -116,17 +117,28 @@ func (c ContractEvent) MarshalJSON() ([]byte, error) {
 // OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
 // when calling JSON-RPC method `mesh_subscribe`
 type OrderEvent struct {
-	OrderHash                common.Hash        `json:"orderHash"`
-	SignedOrder              *SignedOrder       `json:"signedOrder"`
-	EndState                 OrderEventEndState `json:"endState"`
-	FillableTakerAssetAmount *big.Int           `json:"fillableTakerAssetAmount"`
-	// All the contract events that triggered this orders re-evaluation. They did not
-	// all necessarily cause the orders state change itself, only it's re-evaluation.
+	// Timestamp is an order event timestamp that can be used for bookkeeping purposes.
+	// If the OrderEvent represents a Mesh-specific event (e.g., ADDED, STOPPED_WATCHING),
+	// the timestamp is when the event was generated. If the event was generated after
+	// re-validating an order at the latest block height (e.g., FILLED, UNFUNDED, CANCELED),
+	// then it is set to the latest block timestamp at which the order was re-validated.
+	Timestamp time.Time `json:"timestamp"`
+	// OrderHash is the EIP712 hash of the 0x order
+	OrderHash common.Hash `json:"orderHash"`
+	// SignedOrder is the signed 0x order struct
+	SignedOrder *SignedOrder `json:"signedOrder"`
+	// EndState is the end state of this order at the time this event was generated
+	EndState OrderEventEndState `json:"endState"`
+	// FillableTakerAssetAmount is the amount for which this order is still fillable
+	FillableTakerAssetAmount *big.Int `json:"fillableTakerAssetAmount"`
+	// ContractEvents contains all the contract events that triggered this orders re-evaluation.
+	// They did not all necessarily cause the orders state change itself, only it's re-evaluation.
 	// Since it's state _did_ change, at least one of them did cause the actual state change.
 	ContractEvents []*ContractEvent `json:"contractEvents"`
 }
 
 type orderEventJSON struct {
+	Timestamp                time.Time            `json:"timestamp"`
 	OrderHash                string               `json:"orderHash"`
 	SignedOrder              *SignedOrder         `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
@@ -137,6 +149,7 @@ type orderEventJSON struct {
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
+		"timestamp":                o.Timestamp,
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
 		"endState":                 o.EndState,
@@ -156,6 +169,7 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 }
 
 func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
+	o.Timestamp = orderEventJSON.Timestamp
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
 	o.EndState = OrderEventEndState(orderEventJSON.EndState)
@@ -313,7 +327,7 @@ const (
 	// increase if a previously processed fill event gets reverted, or if a maker tops up their balance/allowance
 	// backing an order
 	ESOrderFillabilityIncreased = OrderEventEndState("FILLABILITY_INCREASED")
-	// ESStoppedWatching means an order is potentially still valid but was removed for a different reason (e.g. 
+	// ESStoppedWatching means an order is potentially still valid but was removed for a different reason (e.g.
 	// the database is full or the peer that sent the order was misbehaving). The order will no longer be watched
 	// and no further events for this order will be emitted. In some cases, the order may be re-added in the
 	// future.
