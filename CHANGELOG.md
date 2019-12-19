@@ -25,6 +25,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fixed an issue where the internal Ethereum RPC rate limiter could be too aggressive in certain scenarios ([#596](https://github.com/0xProject/0x-mesh/pull/596)).
 - Add a default RPC request timeout of 30sec to all non-subscription requests sent by `@0x/mesh-rpc-client` to avoid the client from hanging endlessly if it misses a response due to network disruption ([#603](https://github.com/0xProject/0x-mesh/pull/603)).
 
+## v7.2.2-beta-0xv3
+
+### Bug fixes 🐞
+
+- Fixed a bug where `makerAssetFeeData` or `takerAssetFeeData` were sometimes being set to an empty string instead of `0x` in the browser ([#579](https://github.com/0xProject/0x-mesh/pull/579)).
 
 ## v7.2.1-beta-0xv3
 
