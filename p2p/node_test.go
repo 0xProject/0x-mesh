@@ -36,7 +36,7 @@ const (
 // messages valid and doesn't actually store or share any messages.
 type dummyMessageHandler struct{}
 
-func (*dummyMessageHandler) HandleMessages(messages []*Message) error {
+func (*dummyMessageHandler) HandleMessages(ctx context.Context, messages []*Message) error {
 	return nil
 }
 
@@ -149,7 +149,7 @@ func (mh *inMemoryMessageHandler) count() int {
 	return len(mh.messages)
 }
 
-func (mh *inMemoryMessageHandler) HandleMessages(messages []*Message) error {
+func (mh *inMemoryMessageHandler) HandleMessages(ctx context.Context, messages []*Message) error {
 	validMessages := []*Message{}
 	for _, msg := range messages {
 		valid, err := mh.validator(msg)

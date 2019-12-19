@@ -47,8 +47,8 @@ jobs:
           name: Run WebAssembly tests in a headless browser
           command: make test-wasm-browser
       - run:
-          name: Run integration tests
-          command: make test-integration
+          name: Run browser integration tests
+          command: make test-browser-integration
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...

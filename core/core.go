@@ -14,11 +14,12 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
-	"github.com/0xProject/0x-mesh/ethereum/dbstack"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
@@ -32,7 +33,6 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -49,11 +49,15 @@ const (
 	checkNewAddrInterval          = 20 * time.Second
 	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
-	// Computed with default blockPollingInterval (5s), and EthereumRPCMaxRequestsPer24HrUTC (100k)
-	defaultNonPollingEthRPCRequestBuffer = 82720
+	// estimatedNonPollingEthereumRPCRequestsPer24Hrs is an estimate of the
+	// minimum number of RPC requests Mesh needs to send (not including block
+	// polling). It's based on real-world data from a mainnet Mesh node. This
+	// estimate won't necessarily hold true as network activity grows over time or
+	// for different Ethereum networks, but it should be good enough.
+	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "6.1.2-beta"
+	version          = "7.0.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -99,10 +103,18 @@ type Config struct {
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	// EnableEthereumRPCRateLimiting determines whether or not Mesh should limit
+	// the number of Ethereum RPC requests it sends. It defaults to true.
+	// Disabling Ethereum RPC rate limiting can reduce latency for receiving order
+	// events in some network conditions, but can also potentially lead to higher
+	// costs or other rate limiting issues outside of Mesh, depending on your
+	// Ethereum RPC provider. If set to false, ethereumRPCMaxRequestsPer24HrUTC
+	// and ethereumRPCMaxRequestsPerSecond will have no effect.
+	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true"`
 	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
-	// per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
-	// Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
-	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
+	// per 24hr UTC time window (time window starts and ends at midnight UTC). It defaults to 200k but
+	// can be increased well beyond this limit depending on your infrastructure or Ethereum RPC provider.
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"200000"`
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
@@ -134,6 +146,7 @@ type Config struct {
 
 type snapshotInfo struct {
 	Snapshot            *db.Snapshot
+	CreatedAt           time.Time
 	ExpirationTimestamp time.Time
 }
 
@@ -194,7 +207,7 @@ func New(config Config) (*App, error) {
 
 	// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
 	per24HrPollingRequests := int((24 * time.Hour) / config.BlockPollingInterval)
-	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + defaultNonPollingEthRPCRequestBuffer
+	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + estimatedNonPollingEthereumRPCRequestsPer24Hrs
 	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
 		return nil, fmt.Errorf(
 			"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
@@ -218,10 +231,16 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize ETH JSON-RPC RateLimiter
-	clock := clock.New()
-	ethRPCRateLimiter, err := ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
-	if err != nil {
-		return nil, err
+	var ethRPCRateLimiter ratelimit.RateLimiter
+	if config.EnableEthereumRPCRateLimiting == false {
+		ethRPCRateLimiter = ratelimit.NewUnlimited()
+	} else {
+		clock := clock.New()
+		var err error
+		ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
@@ -236,11 +255,14 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 	topics := orderwatch.GetRelevantTopics()
-	stack := dbstack.New(meshDB, blockWatcherRetentionLimit)
+	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	if err != nil {
+		return nil, err
+	}
+	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
-		StartBlockDepth: ethrpc.LatestBlockNumber,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,
@@ -428,7 +450,7 @@ func (app *App) Start(ctx context.Context) error {
 	}()
 
 	// Note: this is a blocking call so we won't continue set up until its finished.
-	blocksElapsed, err := app.blockWatcher.SyncToLatestBlock(innerCtx)
+	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
 		return err
 	}
@@ -441,6 +463,13 @@ func (app *App) Start(ctx context.Context) error {
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
+
+	// Ensure orderWatcher has processed at least one recent block before
+	// starting the P2P node and completing app start, so that Mesh does
+	// not validate any orders at outdated block heights
+	if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+		return err
+	}
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
@@ -582,6 +611,13 @@ func (e ErrSnapshotNotFound) Error() string {
 	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
 }
 
+// ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
+type ErrPerPageZero struct{}
+
+func (e ErrPerPageZero) Error() string {
+	return "perPage cannot be zero"
+}
+
 // GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
 // string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
@@ -589,15 +625,13 @@ func (e ErrSnapshotNotFound) Error() string {
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
 	<-app.started
 
-	ordersInfos := []*rpc.OrderInfo{}
 	if perPage <= 0 {
-		return &rpc.GetOrdersResponse{
-			OrdersInfos: ordersInfos,
-			SnapshotID:  snapshotID,
-		}, nil
+		return nil, ErrPerPageZero{}
 	}
 
+	ordersInfos := []*rpc.OrderInfo{}
 	var snapshot *db.Snapshot
+	var createdAt time.Time
 	if snapshotID == "" {
 		// Create a new snapshot
 		snapshotID = uuid.New().String()
@@ -606,11 +640,13 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		if err != nil {
 			return nil, err
 		}
+		createdAt = time.Now().UTC()
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.muIdToSnapshotInfo.Lock()
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
@@ -623,12 +659,14 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 			return nil, ErrSnapshotNotFound{id: snapshotID}
 		}
 		snapshot = info.Snapshot
+		createdAt = info.CreatedAt
 		// Reset the snapshot's expiry
 		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
 		expirationTimestamp := time.Now().Add(1 * time.Minute)
 		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
 		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
 			Snapshot:            snapshot,
+			CreatedAt:           createdAt,
 			ExpirationTimestamp: expirationTimestamp,
 		}
 		app.muIdToSnapshotInfo.Unlock()
@@ -649,8 +687,9 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 	}
 
 	getOrdersResponse := &rpc.GetOrdersResponse{
-		SnapshotID:  snapshotID,
-		OrdersInfos: ordersInfos,
+		SnapshotID:        snapshotID,
+		SnapshotTimestamp: createdAt,
+		OrdersInfos:       ordersInfos,
 	}
 
 	return getOrdersResponse, nil
@@ -661,7 +700,7 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 // peers. If pinned is true, the orders will be marked as pinned, which means
 // they will only be removed if they become unfillable and will not be removed
 // due to having a high expiration time or any incentive mechanisms.
-func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -726,10 +765,11 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.validateOrders(schemaValidOrders)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, pinned, app.chainID)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, orderInfo := range validationResults.Accepted {
 		allValidationResults.Accepted = append(allValidationResults.Accepted, orderInfo)
 	}
@@ -737,28 +777,13 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
 	}
 
-	for i, acceptedOrderInfo := range allValidationResults.Accepted {
+	for _, acceptedOrderInfo := range allValidationResults.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
 		// or share the order with peers.
 		if !acceptedOrderInfo.IsNew {
 			continue
 		}
-		// Add the order to the OrderWatcher. This also saves the order in the
-		// database.
-		err = app.orderWatcher.Add(acceptedOrderInfo, pinned)
-		if err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				allValidationResults.Accepted = append(allValidationResults.Accepted[:i], allValidationResults.Accepted[i+1:]...)
-				allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   acceptedOrderInfo.OrderHash,
-					SignedOrder: acceptedOrderInfo.SignedOrder,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.RODatabaseFullOfOrders,
-				})
-			} else {
-				return nil, err
-			}
-		}
+
 		log.WithFields(log.Fields{
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
 		}).Debug("added new valid order via RPC or browser callback")
@@ -768,6 +793,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 			return nil, err
 		}
 	}
+
 	return allValidationResults, nil
 }
 
@@ -775,7 +801,7 @@ func (app *App) AddOrders(signedOrdersRaw []*json.RawMessage, pinned bool) (*ord
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encodeOrder(order)
+	encoded, err := encoding.OrderToRawMessage(order)
 	if err != nil {
 		return err
 	}
@@ -793,16 +819,13 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 	<-app.started
 
-	latestBlockHeader, err := app.blockWatcher.GetLatestBlockProcessed()
+	latestBlockHeader, err := app.db.FindLatestMiniHeader()
 	if err != nil {
 		return nil, err
 	}
-	var latestBlock rpc.LatestBlock
-	if latestBlockHeader != nil {
-		latestBlock = rpc.LatestBlock{
-			Number: int(latestBlockHeader.Number.Int64()),
-			Hash:   latestBlockHeader.Hash,
-		}
+	latestBlock := rpc.LatestBlock{
+		Number: int(latestBlockHeader.Number.Int64()),
+		Hash:   latestBlockHeader.Hash,
 	}
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()

@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-6.1.2--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-7.0.0--beta-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh Deployment Guide
 
@@ -42,8 +42,7 @@ machine where all Mesh-related data will be stored.
 -   Ports 60557, 60558, and 60559 are the default ports used for the JSON RPC endpoint, communicating with peers over TCP, and communicating with peers over WebSockets, respectively.
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
--   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (*warning:* setting this higher than 100k won't fit into Infura's
-free tier).
+-   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (*warning:* changing this setting can exceed the limits of your Ethereum RPC provider).
 -   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
 
 ## Persisting State
@@ -100,10 +99,18 @@ type Config struct {
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
 	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	// EnableEthereumRPCRateLimiting determines whether or not Mesh should limit
+	// the number of Ethereum RPC requests it sends. It defaults to true.
+	// Disabling Ethereum RPC rate limiting can reduce latency for receiving order
+	// events in some network conditions, but can also potentially lead to higher
+	// costs or other rate limiting issues outside of Mesh, depending on your
+	// Ethereum RPC provider. If set to false, ethereumRPCMaxRequestsPer24HrUTC
+	// and ethereumRPCMaxRequestsPerSecond will have no effect.
+	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true"`
 	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
-	// per 24hr UTC time window (time window starts and ends at 12am UTC). It defaults to the 100k limit on
-	// Infura's free tier but can be increased well beyond this limit for those using alternative infra/plans.
-	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"100000"`
+	// per 24hr UTC time window (time window starts and ends at midnight UTC). It defaults to 200k but
+	// can be increased well beyond this limit depending on your infrastructure or Ethereum RPC provider.
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"200000"`
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
