@@ -45,13 +45,14 @@ const CLOSE_REASON_NO_HEARTBEAT = 3001;
 const CLOSE_DESCRIPTION_NO_HEARTBEAT = 'No heartbeat received';
 
 const DEFAULT_RECONNECT_AFTER_MS = 5000;
+const DEFAULT_RPC_REQUEST_TIMEOUT = 30000;
 const DEFAULT_WS_OPTS = {
     clientConfig: {
         // For some reason fragmenting the payloads causes the connection to close
         // Source: https://github.com/theturtle32/WebSocket-Node/issues/359
         fragmentOutgoingMessages: false,
     },
-    timeout: 30000,
+    timeout: DEFAULT_RPC_REQUEST_TIMEOUT,
     reconnectDelay: DEFAULT_RECONNECT_AFTER_MS,
 };
 
