@@ -22,6 +22,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fixed a race-condition when adding new orders to Mesh which could result in order-relevant events being missed if they occured very soon after the order was submitted and the order validation RPC call took a long time ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
 - Upgraded the `web3-provider` dependency used by `@0x/mesh-rpc-client` in order to fix a bug where it was requiring either `process` OR `window` to exist in the global scope ([#601](https://github.com/0xProject/0x-mesh/pull/601)).
 - Fixed an issue where the internal Ethereum RPC rate limiter could be too aggressive in certain scenarios ([#596](https://github.com/0xProject/0x-mesh/pull/596)).
+- Add a default RPC request timeout of 30sec to all non-subscription requests sent by `@0x/mesh-rpc-client` to avoid the client from hanging endlessly if it misses a response due to network disruption ([#603](https://github.com/0xProject/0x-mesh/pull/603)).
 
 
 ## v6.1.2-beta
