@@ -267,6 +267,7 @@ describe('WSClient', () => {
     });
     describe('#subscribeToOrdersAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
+            const timestamp = '2009-11-10T23:00:00Z';
             (async () => {
                 const wsServer = await setupServerAsync();
                 wsServer.on('connect', ((connection: WebSocket.connection) => {
@@ -304,7 +305,6 @@ describe('WSClient', () => {
                             // tslint:disable-next-line:custom-no-magic-numbers
                             await sleepAsync(100);
 
-                            const timestamp = '2009-11-10T23:00:00Z';
                             const eventResponse = `
                                 {
                                     "jsonrpc":"2.0",
@@ -375,7 +375,7 @@ describe('WSClient', () => {
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.expirationTimeSeconds)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].fillableTakerAssetAmount)).to.equal(true);
                         // tslint:disable-next-line:custom-no-magic-numbers
-                        expect(BigNumber.isBigNumber(orderEvents[0].timestampMs)).to.equal(1257894000);
+                        expect(orderEvents[0].timestampMs).to.equal(new Date(timestamp).getTime());
 
                         client.destroy();
                     },
