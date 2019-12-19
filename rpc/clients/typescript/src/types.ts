@@ -303,6 +303,7 @@ export interface HeartbeatEventPayload {
 }
 
 export interface RawOrderEvent {
+    timestamp: string;
     orderHash: string;
     signedOrder: StringifiedSignedOrder;
     endState: OrderEventEndState;
@@ -311,6 +312,7 @@ export interface RawOrderEvent {
 }
 
 export interface OrderEvent {
+    timestampMs: number;
     orderHash: string;
     signedOrder: SignedOrder;
     endState: OrderEventEndState;

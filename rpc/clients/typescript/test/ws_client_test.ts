@@ -267,6 +267,7 @@ describe('WSClient', () => {
     });
     describe('#subscribeToOrdersAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
+            const timestamp = '2009-11-10T23:00:00Z';
             (async () => {
                 const wsServer = await setupServerAsync();
                 wsServer.on('connect', ((connection: WebSocket.connection) => {
@@ -312,6 +313,7 @@ describe('WSClient', () => {
                                         "subscription":"0xc2ba3e8af590364c09d0fa6a12103adb",
                                         "result": [
                                             {
+                                                "timestamp": "${timestamp}",
                                                 "orderHash": "0x96e6eb6174dbf0458686bdae44c9a330d9a9eb563962512a7be545c4ecc13fd4",
                                                 "signedOrder": {
                                                     "makerAddress": "0x50f84bbee6fb250d6f49e854fa280445369d64d9",
@@ -372,6 +374,8 @@ describe('WSClient', () => {
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.salt)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].signedOrder.expirationTimeSeconds)).to.equal(true);
                         expect(BigNumber.isBigNumber(orderEvents[0].fillableTakerAssetAmount)).to.equal(true);
+                        // tslint:disable-next-line:custom-no-magic-numbers
+                        expect(orderEvents[0].timestampMs).to.equal(new Date(timestamp).getTime());
 
                         client.destroy();
                     },

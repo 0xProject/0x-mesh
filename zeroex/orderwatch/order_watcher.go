@@ -362,6 +362,7 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 			w.unwatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
 
 			orderEvent := &zeroex.OrderEvent{
+				Timestamp:                latestBlockTimestamp,
 				OrderHash:                common.HexToHash(expiredOrder.ID),
 				SignedOrder:              order.SignedOrder,
 				FillableTakerAssetAmount: big.NewInt(0),
@@ -386,6 +387,7 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 			if latestBlockTimestamp.Before(expiration) {
 				w.rewatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
 				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                latestBlockTimestamp,
 					OrderHash:                order.Hash,
 					SignedOrder:              order.SignedOrder,
 					FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -754,7 +756,7 @@ func (w *Watcher) handleBlockEvents(
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, done := context.WithTimeout(ctx, 1*time.Minute)
 	defer done()
-	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber)
+	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlockNumber, latestBlockTimestamp)
 	if err != nil {
 		return err
 	}
@@ -824,7 +826,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlock.Number)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, ordersColTxn, orderHashToDBOrder, orderHashToEvents, latestBlock.Number, latestBlock.Timestamp)
 	if err != nil {
 		return err
 	}
@@ -880,6 +882,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		_ = txn.Discard()
 	}()
 
+	now := time.Now().UTC()
 	// Final expiration time check before inserting the order. We might have just
 	// changed max expiration time above.
 	if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
@@ -897,6 +900,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		// watching it. This is not too far off from what really happened but is
 		// slightly inefficient.
 		addedEvent := &zeroex.OrderEvent{
+			Timestamp:                now,
 			OrderHash:                orderInfo.OrderHash,
 			SignedOrder:              orderInfo.SignedOrder,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
@@ -904,6 +908,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		}
 		orderEvents = append(orderEvents, addedEvent)
 		stoppedWatchingEvent := &zeroex.OrderEvent{
+			Timestamp:                now,
 			OrderHash:                orderInfo.OrderHash,
 			SignedOrder:              orderInfo.SignedOrder,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
@@ -916,7 +921,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 	order := &meshdb.Order{
 		Hash:                     orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
-		LastUpdated:              time.Now().UTC(),
+		LastUpdated:              now,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		IsRemoved:                false,
 		IsPinned:                 pinned,
@@ -940,6 +945,7 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 	}
 
 	addedOrderEvent := &zeroex.OrderEvent{
+		Timestamp:                now,
 		OrderHash:                orderInfo.OrderHash,
 		SignedOrder:              orderInfo.SignedOrder,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
@@ -964,9 +970,11 @@ func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
 			"targetMaxOrders":  targetMaxOrders,
 		}).Debug("removing orders to make space")
 	}
+	now := time.Now().UTC()
 	for _, removedOrder := range removedOrders {
 		// Fire a "STOPPED_WATCHING" event for each order that was removed.
 		orderEvent := &zeroex.OrderEvent{
+			Timestamp:                now,
 			OrderHash:                removedOrder.Hash,
 			SignedOrder:              removedOrder.SignedOrder,
 			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
@@ -1070,6 +1078,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	orderHashToDBOrder map[common.Hash]*meshdb.Order,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
 	validationBlockNumber *big.Int,
+	validationBlockTimestamp time.Time,
 ) ([]*zeroex.OrderEvent, error) {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orderHashToDBOrder {
@@ -1108,6 +1117,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
 			w.rewatchOrder(ordersColTxn, order, acceptedOrderInfo.FillableTakerAssetAmount)
 			orderEvent := &zeroex.OrderEvent{
+				Timestamp:                validationBlockTimestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
@@ -1122,6 +1132,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
+				Timestamp:                validationBlockTimestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
 				EndState:                 zeroex.ESOrderFilled,
@@ -1135,6 +1146,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			order.FillableTakerAssetAmount = newFillableAmount
 			w.updateOrderDBEntry(ordersColTxn, order)
 			orderEvent := &zeroex.OrderEvent{
+				Timestamp:                validationBlockTimestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder,
 				EndState:                 zeroex.ESOrderFillabilityIncreased,
@@ -1171,6 +1183,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 					return nil, err
 				}
 				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlockTimestamp,
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),

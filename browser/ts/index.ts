@@ -445,6 +445,7 @@ export enum OrderEventEndState {
 }
 
 interface WrapperOrderEvent {
+    timestamp: string;
     orderHash: string;
     signedOrder: WrapperSignedOrder;
     endState: OrderEventEndState;
@@ -457,6 +458,7 @@ interface WrapperOrderEvent {
  * or filled.
  */
 export interface OrderEvent {
+    timestampMs: number;
     orderHash: string;
     signedOrder: SignedOrder;
     endState: OrderEventEndState;
@@ -842,6 +844,7 @@ function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSigne
 function wrapperOrderEventToOrderEvent(wrapperOrderEvent: WrapperOrderEvent): OrderEvent {
     return {
         ...wrapperOrderEvent,
+        timestampMs: new Date(wrapperOrderEvent.timestamp).getTime(),
         signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderEvent.signedOrder),
         fillableTakerAssetAmount: new BigNumber(wrapperOrderEvent.fillableTakerAssetAmount),
         contractEvents: wrapperContractEventsToContractEvents(wrapperOrderEvent.contractEvents),

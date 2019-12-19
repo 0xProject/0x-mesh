@@ -303,21 +303,16 @@ func TestOrdersSubscription(t *testing.T) {
 
 	// Ensure that the "AddOrders" request triggered an order event that was
 	// passed through the subscription.
-	orderEvent := <-orderEventChan
+	orderEvents := <-orderEventChan
 	signedTestOrder.ResetHash()
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-	assert.EqualValues(t,
-		[]*zeroex.OrderEvent{
-			&zeroex.OrderEvent{
-				OrderHash:                expectedOrderHash,
-				SignedOrder:              signedTestOrder,
-				EndState:                 zeroex.ESOrderAdded,
-				FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
-				ContractEvents:           []*zeroex.ContractEvent{},
-			},
-		},
-		orderEvent,
-	)
+	assert.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, expectedOrderHash, orderEvent.OrderHash)
+	assert.Equal(t, signedTestOrder, orderEvent.SignedOrder)
+	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
+	assert.Equal(t, expectedFillableTakerAssetAmount, orderEvent.FillableTakerAssetAmount)
+	assert.Equal(t, []*zeroex.ContractEvent{}, orderEvent.ContractEvents)
 }
 
 func TestHeartbeatSubscription(t *testing.T) {
