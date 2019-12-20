@@ -47,7 +47,7 @@
     },
     "devDependencies": {
         "@0x/dev-utils": "^3.0.2",
-        "@0x/ts-doc-gen": "^0.0.23",
+        "@0x/ts-doc-gen": "^0.0.13",
         "@0x/tslint-config": "^4.0.0",
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",

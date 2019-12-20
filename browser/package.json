@@ -16,7 +16,7 @@
     "docsPath": "../docs/browser"
   },
   "devDependencies": {
-    "@0x/ts-doc-gen": "^0.0.23",
+    "@0x/ts-doc-gen": "^0.0.16",
     "@0x/tslint-config": "^4.0.0",
     "@types/base64-arraybuffer": "^0.1.0",
     "tslint": "5.11.0",
