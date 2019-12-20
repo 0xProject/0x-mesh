@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@0x/mesh-browser": "./../../browser/",
+        "@0x/utils": "^5.1.1",
         "@0x/order-utils": "^10.0.1",
         "@0x/subproviders": "^6.0.2"
     }
