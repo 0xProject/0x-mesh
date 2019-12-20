@@ -33,7 +33,7 @@ provider.start();
         chainId: 1337,
     };
     const signedOrder = await signatureUtils.ecSignOrderAsync(provider, order, order.makerAddress);
-    const orderHash = orderHashUtils.getOrderHashHex(order);
+    const orderHash = await orderHashUtils.getOrderHashAsync(order);
     console.log(
         JSON.stringify({
             message: 'signed order in browser',

@@ -16,15 +16,15 @@
     "docsPath": "../docs/browser"
   },
   "devDependencies": {
-    "@0x/ts-doc-gen": "^0.0.16",
-    "@0x/tslint-config": "^3.1.0-beta.1",
+    "@0x/ts-doc-gen": "^0.0.23",
+    "@0x/tslint-config": "^4.0.0",
     "@types/base64-arraybuffer": "^0.1.0",
     "tslint": "5.11.0",
     "typescript": "^3.5.3"
   },
   "dependencies": {
-    "@0x/order-utils": "8.5.0-beta.1",
-    "@0x/utils": "4.6.0-beta.1",
+    "@0x/order-utils": "^10.0.1",
+    "@0x/utils": "^5.1.1",
     "base64-arraybuffer": "^0.2.0",
     "browserfs": "^1.4.3"
   }
