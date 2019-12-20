@@ -9,58 +9,110 @@ import {BigNumber, OrderEvent, WSClient} from '../src/index';
 import {WSMessage} from '../src/types';
 
 import {chaiSetup} from './utils/chai_setup';
-import {startServerAndClientAsync} from './utils/ws_server';
+import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
+import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
 
 chaiSetup.configure();
 const expect = chai.expect;
 
 describe('WSClient', () => {
-    describe('#getStats', () => {
-        it.only('', async () => {
-            const deployment = await startServerAndClientAsync();
-            const stats = await deployment.client.getStatsAsync();
-            console.log(stats);
+    /*
+    describe('#addOrdersAsync', async () => {
+        it('sends a mesh_addOrders request and converts all numerical fields to BigNumbers in returned signedOrders', async () => {
+            const wsServer = await setupServerAsync();
+            wsServer.on('connect', ((connection: WebSocket.connection) => {
+                let requestNum = 0;
+                connection.on('message', ((message: WSMessage) => {
+                    const jsonRpcRequest = JSON.parse(message.utf8Data);
+                    const responses = [
+                        // Heartbeat subscription (under-the-hood)
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc": "2.0",
+                                "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+                            }
+                        `,
+                        // mesh_addOrders response
+                        `
+                            {
+                                "id": "${jsonRpcRequest.id}",
+                                "jsonrpc": "2.0",
+                                "result": {
+                                    "accepted": [
+                                        {
+                                            "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
+                                            "signedOrder": {
+                                                "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
+                                                "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
+                                                "makerFeeAssetData": "0x",
+                                                "makerAssetAmount": "1000000000000000000",
+                                                "makerFee": "0",
+                                                "takerAddress": "0x0000000000000000000000000000000000000000",
+                                                "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                                                "takerFeeAssetData": "0x",
+                                                "takerAssetAmount": "10000000000000000000000",
+                                                "takerFee": "0",
+                                                "senderAddress": "0x0000000000000000000000000000000000000000",
+                                                "exchangeAddress": "0x080bf510fcbf18b91105470639e9561022937712",
+                                                "chainId": 1,
+                                                "feeRecipientAddress": "0x0000000000000000000000000000000000000000",
+                                                "expirationTimeSeconds": "1586340602",
+                                                "salt": "41253767178111694375645046549067933145709740457131351457334397888365956743955",
+                                                "signature": "0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02"
+                                            },
+                                            "fillableTakerAssetAmount": "10000000000000000000000"
+                                        }
+                                    ],
+                                    "rejected": []
+                                }
+                            }
+                        `,
+                    ];
+                    connection.sendUTF(responses[requestNum]);
+                    requestNum++;
+                }) as any);
+            }) as any);
+
+            const signedOrders = [
+                {
+                    makerAddress: '0xa3ece5d5b6319fa785efc10d3112769a46c6e149',
+                    takerAddress: '0x0000000000000000000000000000000000000000',
+                    makerAssetAmount: new BigNumber('1000000000000000000'),
+                    takerAssetAmount: new BigNumber('10000000000000000000000'),
+                    expirationTimeSeconds: new BigNumber('1586340602'),
+                    makerFee: new BigNumber('0'),
+                    takerFee: new BigNumber('0'),
+                    feeRecipientAddress: '0x0000000000000000000000000000000000000000',
+                    senderAddress: '0x0000000000000000000000000000000000000000',
+                    salt: new BigNumber(
+                        '41253767178111694375645046549067933145709740457131351457334397888365956743955',
+                    ),
+                    makerAssetData: '0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498',
+                    takerAssetData: '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+                    exchangeAddress: '0x080bf510fcbf18b91105470639e9561022937712',
+                    signature:
+                        '0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02',
+                },
+            ];
+            const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+            const validationResults = await client.addOrdersAsync(signedOrders);
+            expect(typeof validationResults === 'object').to.equal(true);
+            expect(validationResults.accepted).to.have.length(1);
+            expect(validationResults.rejected).to.have.length(0);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.makerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.takerAssetAmount)).to.equal(true);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.makerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.takerFee)).to.equal(true);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.salt)).to.equal(true);
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.expirationTimeSeconds)).to.equal(
+                true,
+            );
+            expect(BigNumber.isBigNumber(validationResults.accepted[0].fillableTakerAssetAmount)).to.equal(true);
+
+            client.destroy();
         });
     });
-    /*
-    describe('example test', () => {
-        it('test', done => {
-            (async () => {
-                const cleanup = spawn('rm', ['-r', './0x_mesh']);
-
-                await new Promise<void>((resolve, reject) => {
-                    cleanup.on('close', code => {
-                        code === 0 ? resolve() : reject();
-                    });
-                });
-
-                const env = Object.create(process.env);
-                env.ETHEREUM_RPC_URL = 'http://localhost:8545';
-
-                env.ETHEREUM_CHAIN_ID = 1337;
-                env.VERBOSITY = 5;
-
-                env.RPC_ADDR = 'localhost:64321';
-
-                // Start the mesh node and wait for the RPC server to start.
-                const mesh = spawn('mesh', [], {env});
-
-                mesh.stderr.on('data', data => {
-                    console.log(data.toString());
-                });
-
-                await waitForPatternLogAsync(mesh, /started RPC server/);
-                const client = new WSClient('http://localhost:64321');
-                const validationResults = await client.addOrdersAsync([]);
-                console.log(validationResults);
-                const getOrdersResponse = await client.getOrdersAsync(5);
-                console.log(getOrdersResponse);
-                done();
-            })();
-        });
-    });
-    */
-    /*
     describe('#getOrdersAsync', async () => {
         it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
             const wsServer = await setupServerAsync();
@@ -151,173 +203,67 @@ describe('WSClient', () => {
             client.destroy();
         });
     });
-    describe('#addOrdersAsync', async () => {
-        it('sends a mesh_addOrders request and converts all numerical fields to BigNumbers in returned signedOrders', async () => {
-            const wsServer = await setupServerAsync();
-            wsServer.on('connect', ((connection: WebSocket.connection) => {
-                let requestNum = 0;
-                connection.on('message', ((message: WSMessage) => {
-                    const jsonRpcRequest = JSON.parse(message.utf8Data);
-                    const responses = [
-                        // Heartbeat subscription (under-the-hood)
-                        `
-                            {
-                                "id": "${jsonRpcRequest.id}",
-                                "jsonrpc": "2.0",
-                                "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                            }
-                        `,
-                        // mesh_addOrders response
-                        `
-                            {
-                                "id": "${jsonRpcRequest.id}",
-                                "jsonrpc": "2.0",
-                                "result": {
-                                    "accepted": [
-                                        {
-                                            "orderHash": "0xa0fcb54919f0b3823aa14b3f511146f6ac087ab333a70f9b24bbb1ba657a4250",
-                                            "signedOrder": {
-                                                "makerAddress": "0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149",
-                                                "makerAssetData": "0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498",
-                                                "makerFeeAssetData": "0x",
-                                                "makerAssetAmount": "1000000000000000000",
-                                                "makerFee": "0",
-                                                "takerAddress": "0x0000000000000000000000000000000000000000",
-                                                "takerAssetData": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                                                "takerFeeAssetData": "0x",
-                                                "takerAssetAmount": "10000000000000000000000",
-                                                "takerFee": "0",
-                                                "senderAddress": "0x0000000000000000000000000000000000000000",
-                                                "exchangeAddress": "0x080bf510fcbf18b91105470639e9561022937712",
-                                                "chainId": 1,
-                                                "feeRecipientAddress": "0x0000000000000000000000000000000000000000",
-                                                "expirationTimeSeconds": "1586340602",
-                                                "salt": "41253767178111694375645046549067933145709740457131351457334397888365956743955",
-                                                "signature": "0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02"
-                                            },
-                                            "fillableTakerAssetAmount": "10000000000000000000000"
-                                        }
-                                    ],
-                                    "rejected": []
-                                }
-                            }
-                        `,
-                    ];
-                    connection.sendUTF(responses[requestNum]);
-                    requestNum++;
-                }) as any);
-            }) as any);
+    */
 
-            const signedOrders = [
-                {
-                    makerAddress: '0xa3ece5d5b6319fa785efc10d3112769a46c6e149',
-                    takerAddress: '0x0000000000000000000000000000000000000000',
-                    makerAssetAmount: new BigNumber('1000000000000000000'),
-                    takerAssetAmount: new BigNumber('10000000000000000000000'),
-                    expirationTimeSeconds: new BigNumber('1586340602'),
-                    makerFee: new BigNumber('0'),
-                    takerFee: new BigNumber('0'),
-                    feeRecipientAddress: '0x0000000000000000000000000000000000000000',
-                    senderAddress: '0x0000000000000000000000000000000000000000',
-                    exchangeAddress: '0x080bf510fcbf18b91105470639e9561022937712',
-                    chainId: 1,
-                    salt: new BigNumber(
-                        '41253767178111694375645046549067933145709740457131351457334397888365956743955',
-                    ),
-                    makerAssetData: '0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498',
-                    makerFeeAssetData: '0x',
-                    takerAssetData: '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-                    takerFeeAssetData: '0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498',
-                    signature:
-                        '0x1c0827552a3bde2c72560362950a69f581ae7a1e6fa8c160bb437f3a61002bb96c22b646edd3b103b976db4aa4840a11c13306b2a02a0bb6ce647806c858c238ec02',
+    describe('#getStats', () => {
+        it('Ensure that the stats are correct when no orders have been added', async () => {
+            const deployment = await startServerAndClientAsync();
+            const stats = await deployment.client.getStatsAsync();
+
+            expect(stats.latestBlock).to.not.be.undefined();
+            expect(stats.latestBlock.number).to.be.greaterThan(0);
+
+            stats.version = '';
+            stats.latestBlock = {
+                number: 0,
+                hash: '',
+            };
+
+            const now = new Date(Date.now());
+            const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${now.getUTCMonth() +
+                1}-${now.getUTCDate()}T00:00:00Z`;
+
+            const expectedStats = {
+                version: '',
+                pubSubTopic: '/0x-orders/network/1337/version/1',
+                rendezvous: '/0x-mesh/network/1337/version/1',
+                peerID: deployment.peerID,
+                ethereumChainID: 1337,
+                latestBlock: {
+                    number: 0,
+                    hash: '',
                 },
-            ];
-            const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-            const validationResults = await client.addOrdersAsync(signedOrders);
-            expect(typeof validationResults === 'object').to.equal(true);
-            expect(validationResults.accepted).to.have.length(1);
-            expect(validationResults.rejected).to.have.length(0);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.makerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.takerAssetAmount)).to.equal(true);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.makerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.takerFee)).to.equal(true);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.salt)).to.equal(true);
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].signedOrder.expirationTimeSeconds)).to.equal(
-                true,
-            );
-            expect(BigNumber.isBigNumber(validationResults.accepted[0].fillableTakerAssetAmount)).to.equal(true);
-
-            client.destroy();
+                numPeers: 0,
+                numOrders: 0,
+                numOrdersIncludingRemoved: 0,
+                numPinnedOrders: 0,
+                maxExpirationTime: '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+                startOfCurrentUTCDay: expectedStartOfCurrentUTCDay,
+                ethRPCRequestsSentInCurrentUTCDay: 0,
+                ethRPCRateLimitExpiredRequests: 0,
+            };
+            expect(stats).to.be.deep.eq(expectedStats);
+            deployment.client.destroy();
+            deployment.mesh.stopMesh();
         });
     });
     describe('#_subscribeToHeartbeatAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
             (async () => {
-                const wsServer = await setupServerAsync();
-                wsServer.on('connect', ((connection: WebSocket.connection) => {
-                    let requestNum = 0;
-                    connection.on('message', (async (message: WSMessage) => {
-                        const jsonRpcRequest = JSON.parse(message.utf8Data);
-                        const responses = [
-                            // Heartbeat subscription (under-the-hood)
-                            `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc": "2.0",
-                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                                }
-                            `,
-                            // Requested heartbeat subscription
-                            `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc": "2.0",
-                                    "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-                                }
-                            `,
-                            // Response to unsubscribe
-                            `
-                                {
-                                    "id": "${jsonRpcRequest.id}",
-                                    "jsonrpc":"2.0",
-                                    "result":true,
-                                }
-                            `,
-                        ];
-                        connection.sendUTF(responses[requestNum]);
-                        requestNum++;
-
-                        if (requestNum === 2) {
-                            // tslint:disable-next-line:custom-no-magic-numbers
-                            await sleepAsync(100);
-
-                            const eventResponse = `
-                                {
-                                    "jsonrpc":"2.0",
-                                    "method":"mesh_subscription",
-                                    "params": {
-                                        "subscription":"0xab1a3e8af590364c09d0fa6a12103ada",
-                                        "result":"tick"
-                                    }
-                                }
-                            `;
-                            connection.sendUTF(eventResponse);
-                        }
-                    }) as any);
-                }) as any);
-
-                const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+                const deployment = await startServerAndClientAsync();
                 const expectToBeCalledOnce = true;
                 const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
                     async (ack: string) => {
                         expect(ack).to.be.equal('tick');
-                        client.destroy();
+                        deployment.client.destroy();
+                        deployment.mesh.stopMesh();
                     },
                 );
-                await (client as any)._subscribeToHeartbeatAsync(callback);
+                await (deployment.client as any)._subscribeToHeartbeatAsync(callback);
             })().catch(done);
         });
     });
+    /*
     describe('#subscribeToOrdersAsync', async () => {
         it('should receive subscription updates', (done: DoneCallback) => {
             const timestamp = '2009-11-10T23:00:00Z';
@@ -442,6 +388,7 @@ describe('WSClient', () => {
             })().catch(done);
         });
     });
+    */
     describe('#onClose', () => {
         it('should trigger when connection is closed', (done: DoneCallback) => {
             // tslint:disable-next-line:no-floating-promises
@@ -456,6 +403,7 @@ describe('WSClient', () => {
                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
                 client.onClose(() => {
                     client.destroy();
+                    stopServer();
                     done();
                 });
             })();
@@ -493,18 +441,20 @@ describe('WSClient', () => {
                     }) as any);
                 });
 
-                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
+                const client = new WSClient(`ws://localhost:${SERVER_PORT}`, {reconnectDelay: 100});
                 client.onReconnected(async () => {
                     // We need to add a sleep here so that we leave time for the client
                     // to get connected before destroying it.
                     // tslint:disable-next-line:custom-no-magic-numbers
                     await sleepAsync(100);
                     client.destroy();
+                    stopServer();
                     done();
                 });
             })();
         });
     });
+    /*
     describe('#destroy', async () => {
         it('should unsubscribe and trigger onClose when close() is called', (done: DoneCallback) => {
             // tslint:disable-next-line:no-floating-promises
