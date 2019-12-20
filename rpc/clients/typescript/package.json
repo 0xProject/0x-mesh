@@ -52,7 +52,6 @@
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
         "@types/websocket": "^0.0.40",
-        "@types/detect-node": "2.0.0",
         "chai": "^4.0.1",
         "chai-as-promised": "^7.1.0",
         "chai-bignumber": "^3.0.0",
