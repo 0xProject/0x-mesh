@@ -204,7 +204,7 @@ Gets certain configurations and stats about a Mesh node.
     "result": {
         "version": "development",
         "pubSubTopic": "/0x-orders/network/1/version/1",
-        "rendervous": "/0x-mesh/network/1/version/1",
+        "rendezvous": "/0x-mesh/network/1/version/1",
         "peerID": "16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
         "ethereumChainID": 1,
         "latestBlock": {
