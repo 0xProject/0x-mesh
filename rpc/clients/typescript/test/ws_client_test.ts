@@ -2,7 +2,6 @@ import {callbackErrorReporter} from '@0x/dev-utils';
 import {DoneCallback} from '@0x/types';
 import * as chai from 'chai';
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
-import {} from 'fs';
 import 'mocha';
 import * as WebSocket from 'websocket';
 
@@ -10,12 +9,20 @@ import {BigNumber, OrderEvent, WSClient} from '../src/index';
 import {WSMessage} from '../src/types';
 
 import {chaiSetup} from './utils/chai_setup';
-import {SERVER_PORT, setupMeshNodeAsync, waitForPatternLogAsync} from './utils/ws_server';
+import {startServerAndClientAsync} from './utils/ws_server';
 
 chaiSetup.configure();
 const expect = chai.expect;
 
 describe('WSClient', () => {
+    describe('#getStats', () => {
+        it.only('', async () => {
+            const deployment = await startServerAndClientAsync();
+            const stats = await deployment.client.getStatsAsync();
+            console.log(stats);
+        });
+    });
+    /*
     describe('example test', () => {
         it('test', done => {
             (async () => {
@@ -30,10 +37,8 @@ describe('WSClient', () => {
                 const env = Object.create(process.env);
                 env.ETHEREUM_RPC_URL = 'http://localhost:8545';
 
-                /* tslint:disable:custom-no-magic-numbers */
                 env.ETHEREUM_CHAIN_ID = 1337;
                 env.VERBOSITY = 5;
-                /* tslint:enable:custom-no-magic-numbers */
 
                 env.RPC_ADDR = 'localhost:64321';
 
@@ -54,6 +59,7 @@ describe('WSClient', () => {
             })();
         });
     });
+    */
     /*
     describe('#getOrdersAsync', async () => {
         it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
