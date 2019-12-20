@@ -1,21 +1,88 @@
+import {getContractAddressesForNetworkOrThrow} from '@0x/contract-addresses';
+import {artifacts, DummyERC20TokenContract} from '@0x/contracts-erc20';
+import {blockchainTests, constants, expect, getLatestBlockTimestampAsync, OrderFactory} from '@0x/contracts-test-utils';
 import {callbackErrorReporter} from '@0x/dev-utils';
-import {DoneCallback} from '@0x/types';
-import * as chai from 'chai';
+import {assetDataUtils} from '@0x/order-utils';
+import {DoneCallback, SignedOrder} from '@0x/types';
+import {BigNumber} from '@0x/utils';
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
 import 'mocha';
 import * as WebSocket from 'websocket';
 
-import {BigNumber, OrderEvent, WSClient} from '../src/index';
+import {OrderEvent, SignedOrder as MeshSignedOrder, WSClient} from '../src/index';
 import {WSMessage} from '../src/types';
 
 import {chaiSetup} from './utils/chai_setup';
 import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
 import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
 
-chaiSetup.configure();
-const expect = chai.expect;
+blockchainTests('WSClient', env => {
+    let orderFactory: OrderFactory;
 
-describe('WSClient', () => {
+    async function deployErc20TokenAsync(name: string, symbol: string): Promise<DummyERC20TokenContract> {
+        return DummyERC20TokenContract.deployFrom0xArtifactAsync(
+            artifacts.DummyERC20Token,
+            env.provider,
+            env.txDefaults,
+            artifacts,
+            name,
+            symbol,
+            new BigNumber(18),
+            new BigNumber('100e18'),
+        );
+    }
+
+    before(async () => {
+        const chainId = await env.getChainIdAsync();
+        const accounts = await env.getAccountAddressesAsync();
+        const [makerAddress] = accounts;
+        // NOTE(jalextowle): We seem to have an old dependency for `@0x:contract-addresses.
+        //                   If possible this should be updated so that we can use `chainId`
+        //                   instead of `networkId`.
+        const networkId = 50;
+        const exchangeAddress = getContractAddressesForNetworkOrThrow(networkId).exchange;
+        const erc20ProxyAddress = getContractAddressesForNetworkOrThrow(networkId).erc20Proxy;
+        const txDefaults = {
+            ...env.txDefaults,
+            from: makerAddress,
+        };
+
+        const makerToken = await deployErc20TokenAsync('MakerToken', 'MKT');
+        const feeToken = await deployErc20TokenAsync('FeeToken', 'FEE');
+
+        await makerToken.approve(erc20ProxyAddress, new BigNumber('100e18')).awaitTransactionSuccessAsync({ from: makerAddress });
+        await feeToken.approve(erc20ProxyAddress, new BigNumber('100e18')).awaitTransactionSuccessAsync({ from: makerAddress });
+
+        orderFactory = new OrderFactory(
+            constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)],
+            {
+                ...constants.STATIC_ORDER_PARAMS,
+                feeRecipientAddress: constants.NULL_ADDRESS,
+                makerAddress,
+                exchangeAddress,
+                chainId,
+                makerAssetData: assetDataUtils.encodeERC20AssetData(makerToken.address),
+                takerAssetData: assetDataUtils.encodeERC20AssetData(makerToken.address),
+                makerFeeAssetData: assetDataUtils.encodeERC20AssetData(feeToken.address),
+                takerFeeAssetData: assetDataUtils.encodeERC20AssetData(feeToken.address),
+            },
+        );
+    });
+
+    describe('#addOrdersAsync', async () => {
+        it.only('', async () => {
+            const deployment = await startServerAndClientAsync();
+            // HACK(jalextowle): I'm using the "as any" type loop-hole here because there
+            // is a conflicting BigNumber dependency between this package and the monorepo.
+            const order = await orderFactory.newSignedOrderAsync({});
+            console.log(order);
+            const validationResults = await deployment.client.addOrdersAsync([ order as any ]);
+            console.log(validationResults);
+            deployment.mesh.stopMesh();
+            deployment.client.destroy();
+        });
+    });
+
     /*
     describe('#addOrdersAsync', async () => {
         it('sends a mesh_addOrders request and converts all numerical fields to BigNumbers in returned signedOrders', async () => {

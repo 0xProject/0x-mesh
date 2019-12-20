@@ -47,6 +47,8 @@
     },
     "devDependencies": {
         "@0x/dev-utils": "^3.0.2",
+        "@0x/contracts-erc20": "^3.0.2",
+        "@0x/contracts-test-utils": "^5.0.1",
         "@0x/ts-doc-gen": "^0.0.13",
         "@0x/tslint-config": "^4.0.0",
         "@types/mocha": "^2.2.42",
