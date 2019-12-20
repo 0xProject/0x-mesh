@@ -1,8 +1,9 @@
 import {getContractAddressesForNetworkOrThrow} from '@0x/contract-addresses';
 import {artifacts, DummyERC20TokenContract} from '@0x/contracts-erc20';
 import {blockchainTests, constants, expect, getLatestBlockTimestampAsync, OrderFactory} from '@0x/contracts-test-utils';
-import {callbackErrorReporter} from '@0x/dev-utils';
+import {callbackErrorReporter, devConstants, EnvVars, Web3Config, web3Factory} from '@0x/dev-utils';
 import {assetDataUtils} from '@0x/order-utils';
+import { prependSubprovider, Web3ProviderEngine } from '@0x/subproviders';
 import {DoneCallback, SignedOrder} from '@0x/types';
 import {BigNumber} from '@0x/utils';
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
@@ -18,11 +19,12 @@ import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
 
 blockchainTests('WSClient', env => {
     let orderFactory: OrderFactory;
+    let provider: Web3ProviderEngine;
 
     async function deployErc20TokenAsync(name: string, symbol: string): Promise<DummyERC20TokenContract> {
         return DummyERC20TokenContract.deployFrom0xArtifactAsync(
             artifacts.DummyERC20Token,
-            env.provider,
+            provider,
             env.txDefaults,
             artifacts,
             name,
@@ -36,6 +38,17 @@ blockchainTests('WSClient', env => {
         const chainId = await env.getChainIdAsync();
         const accounts = await env.getAccountAddressesAsync();
         const [makerAddress] = accounts;
+
+        const providerConfigs: Web3Config = {
+            total_accounts: constants.NUM_TEST_ACCOUNTS,
+            shouldUseInProcessGanache: false,
+            shouldAllowUnlimitedContractSize: true,
+            unlocked_accounts: [
+                makerAddress,
+            ],
+        };
+        provider = web3Factory.getRpcProvider(providerConfigs);
+
         // NOTE(jalextowle): We seem to have an old dependency for `@0x:contract-addresses.
         //                   If possible this should be updated so that we can use `chainId`
         //                   instead of `networkId`.
