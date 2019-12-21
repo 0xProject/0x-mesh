@@ -43,6 +43,7 @@ machine where all Mesh-related data will be stored.
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (*warning:* changing this setting can exceed the limits of your Ethereum RPC provider).
+-   If you are using Ganache for your Ethereum RPC endpoint, you will need to set the environment variable `BLOCK_POLLING_INTERVAL` to have the value `'50ms'`, and the environment variable `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` to have a value of at least `'1778000'`.
 -   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
 
 ## Persisting State
