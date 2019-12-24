@@ -23,7 +23,7 @@ declare global {
 
 // We use the global willLoadBrowserFS variable to signal that we are going to
 // initialize BrowserFS.
-(window as any).willLoadBrowserFS = true;
+(self as any).willLoadBrowserFS = true;
 
 BrowserFS.configure(
     {
@@ -39,7 +39,7 @@ BrowserFS.configure(
         // We use the global browserFS variable as a handle for Go/Wasm code to
         // call into the BrowserFS API. Setting this variable also indicates
         // that BrowserFS has finished loading.
-        (window as any).browserFS = BrowserFS.BFSRequire('fs');
+        (self as any).browserFS = BrowserFS.BFSRequire('fs');
     },
 );
 
@@ -541,7 +541,7 @@ export interface RejectedOrderStatus {
 // We use a global variable to track whether the Wasm code has finished loading.
 let isWasmLoaded = false;
 const loadEventName = '0xmeshload';
-window.addEventListener(loadEventName, () => {
+self.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
 
