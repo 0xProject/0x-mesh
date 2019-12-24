@@ -1,27 +1,32 @@
 import {getContractAddressesForChainOrThrow} from '@0x/contract-addresses';
 import {artifacts, DummyERC20TokenContract} from '@0x/contracts-erc20';
+import {ExchangeContract} from '@0x/contracts-exchange';
 import {blockchainTests, constants, expect, OrderFactory, orderHashUtils} from '@0x/contracts-test-utils';
 import {callbackErrorReporter, Web3Config, web3Factory} from '@0x/dev-utils';
 import {assetDataUtils} from '@0x/order-utils';
 import {Web3ProviderEngine} from '@0x/subproviders';
 import {DoneCallback, SignedOrder} from '@0x/types';
-import {BigNumber} from '@0x/utils';
+import {BigNumber, hexUtils} from '@0x/utils';
 import 'mocha';
 import * as WebSocket from 'websocket';
 
 import {OrderEvent, OrderEventEndState, WSClient} from '../src/index';
-import {WSMessage} from '../src/types';
+import {ContractEventKind, ExchangeCancelEvent, RejectedKind, WSMessage} from '../src/types';
 
 import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
 import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
 
 blockchainTests.resets('WSClient', env => {
     describe('integration tests', () => {
+        let deployment: MeshDeployment;
+        let exchange: ExchangeContract;
+        let exchangeAddress: string;
+        let makerAddress: string;
         let orderFactory: OrderFactory;
         let provider: Web3ProviderEngine;
-        let deployment: MeshDeployment;
 
         const oneSecondInMs = 1000;
+        const twoSecondsInMs = 2000;
 
         beforeEach(async () => {
             deployment = await startServerAndClientAsync();
@@ -48,7 +53,7 @@ blockchainTests.resets('WSClient', env => {
         before(async () => {
             const chainId = await env.getChainIdAsync();
             const accounts = await env.getAccountAddressesAsync();
-            const [makerAddress] = accounts;
+            [makerAddress] = accounts;
 
             // Create a new provider so that the ganache instance running on port
             // 8545 will be used instead of the in-process ganache instance.
@@ -60,7 +65,8 @@ blockchainTests.resets('WSClient', env => {
             };
             provider = web3Factory.getRpcProvider(providerConfigs);
 
-            const exchangeAddress = getContractAddressesForChainOrThrow(chainId).exchange;
+            exchangeAddress = getContractAddressesForChainOrThrow(chainId).exchange;
+            exchange = new ExchangeContract(exchangeAddress, provider);
             const erc20ProxyAddress = getContractAddressesForChainOrThrow(chainId).erc20Proxy;
 
             // Configure two tokens and an order factory with a maker address so
@@ -87,7 +93,7 @@ blockchainTests.resets('WSClient', env => {
         });
 
         describe('#addOrdersAsync', async () => {
-            it('correctly validates a v3 order signed by OrderFactory `addOrdersAsync`', async () => {
+            it('accepts valid order', async () => {
                 const order = await orderFactory.newSignedOrderAsync({});
                 const validationResults = await deployment.client.addOrdersAsync([order]);
                 expect(validationResults).to.be.deep.eq({
@@ -98,6 +104,26 @@ blockchainTests.resets('WSClient', env => {
                         signedOrder: order,
                     }],
                     rejected: [],
+                });
+            });
+
+            it('rejects order with invalid signature', async () => {
+                const invalidOrder = {
+                    ...(await orderFactory.newSignedOrderAsync({})),
+                    signature: hexUtils.hash('0x0'),
+                };
+                const validationResults = await deployment.client.addOrdersAsync([invalidOrder]);
+                expect(validationResults).to.be.deep.eq({
+                    accepted: [],
+                    rejected: [{
+                        kind: RejectedKind.ZeroexValidation,
+                        orderHash: orderHashUtils.getOrderHashHex(invalidOrder),
+                        signedOrder: invalidOrder,
+                        status: {
+                          code: 'OrderHasInvalidSignature',
+                          message: 'order signature must be valid',
+                        },
+                    }],
                 });
             });
         });
@@ -165,7 +191,7 @@ blockchainTests.resets('WSClient', env => {
                 const now = new Date(Date.now()).getTime();
                 const perPage = 10;
                 const response = await deployment.client.getOrdersAsync(perPage);
-                assertRoughlyEquals(now, response.snapshotTimestamp * oneSecondInMs, oneSecondInMs);
+                assertRoughlyEquals(now, response.snapshotTimestamp * oneSecondInMs, twoSecondsInMs);
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the `getOrders` rpc response, and that the
@@ -200,16 +226,15 @@ blockchainTests.resets('WSClient', env => {
         });
 
         describe('#subscribeToOrdersAsync', async () => {
-            it('should receive subscription updates', (done: DoneCallback) => {
+            it('should receive subscription updates about added orders', (done: DoneCallback) => {
                 (async () => {
-                    // Create the subscription with a testing callback.
                     const orders = [] as SignedOrder[];
-                    const now = new Date(Date.now()).getTime();
-                    const callback = (orderEvents: OrderEvent[]) => {
+                    let now: number;
+                    const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
                         expect(orderEvents.length).to.be.eq(orders.length);
                         for (const orderEvent of orderEvents) {
                             expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
-                            assertRoughlyEquals(now, orderEvent.timestampMs, oneSecondInMs);
+                            assertRoughlyEquals(now, orderEvent.timestampMs, twoSecondsInMs);
                         }
 
                         // Ensure that all of the orders that were added had an associated order event emitted.
@@ -228,18 +253,64 @@ blockchainTests.resets('WSClient', env => {
                         }
 
                         done();
-                    };
-                    const subscription = deployment.client.subscribeToOrdersAsync(callback);
+                    });
 
                     // Add orders to the mesh node.
                     const ordersLength = 10;
                     for (let i = 0; i < ordersLength; i++) {
                         orders[i] = await orderFactory.newSignedOrderAsync({});
                     }
+                    now = new Date(Date.now()).getTime();
                     const validationResults = await deployment.client.addOrdersAsync(orders);
                     expect(validationResults.accepted.length).to.be.eq(ordersLength);
 
                     await subscription;
+                })().catch(done);
+            });
+
+            it('should receive subscription updates about cancelled orders', (done: DoneCallback) => {
+                (async () => {
+                    // Add an order and then cancel it.
+                    const order = await orderFactory.newSignedOrderAsync({});
+                    const validationResults = await deployment.client.addOrdersAsync([ order ]);
+                    expect(validationResults.accepted.length).to.be.eq(1);
+                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
+
+                    // Subscribe to order events and assert that only a single cancel event was received.
+                    const now = new Date(Date.now()).getTime();
+                    await deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
+                        // Ensure that the correct cancel event was logged.
+                        expect(orderEvents.length).to.be.eq(1);
+                        const [orderEvent] = orderEvents;
+                        expect(orderEvent.endState).to.be.eq(OrderEventEndState.Cancelled);
+                        expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(constants.ZERO_AMOUNT);
+                        expect(orderEvent.signedOrder).to.be.deep.eq(order);
+                        assertRoughlyEquals(orderEvent.timestampMs, now, twoSecondsInMs);
+                        expect(orderEvent.contractEvents.length).to.be.eq(1);
+
+                        // Ensure that the contract event is correct.
+                        const [contractEvent] = orderEvent.contractEvents;
+                        expect(contractEvent.address).to.be.eq(exchangeAddress);
+                        expect(contractEvent.kind).to.be.equal(ContractEventKind.ExchangeCancelEvent);
+                        expect(contractEvent.logIndex).to.be.eq(0);
+                        expect(contractEvent.isRemoved).to.be.false();
+                        expect(contractEvent.txIndex).to.be.eq(0);
+                        const hashLength = 66;
+                        expect(contractEvent.blockHash.length).to.be.eq(hashLength);
+                        expect(contractEvent.blockHash).to.not.be.eq(constants.NULL_BYTES32);
+                        expect(contractEvent.txHash.length).to.be.eq(hashLength);
+                        expect(contractEvent.txHash.length).to.be.eq(hashLength);
+                        const parameters = contractEvent.parameters as ExchangeCancelEvent;
+                        parameters.makerAddress = parameters.makerAddress.toLowerCase();
+                        parameters.senderAddress = parameters.makerAddress;
+                        expect(parameters.feeRecipientAddress.toLowerCase()).to.be.eq(order.feeRecipientAddress);
+                        expect(parameters.makerAddress.toLowerCase()).to.be.eq(makerAddress);
+                        expect(parameters.makerAssetData).to.be.eq(order.makerAssetData);
+                        expect(parameters.orderHash).to.be.eq(orderHashUtils.getOrderHashHex(order));
+                        expect(parameters.senderAddress.toLowerCase()).to.be.eq(makerAddress);
+                        expect(parameters.takerAssetData).to.be.eq(order.takerAssetData);
+                        done();
+                    });
                 })().catch(done);
             });
         });
