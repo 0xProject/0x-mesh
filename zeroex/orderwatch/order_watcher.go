@@ -460,12 +460,28 @@ func (w *Watcher) handleBlockEvents(
 		case blockwatch.Added:
 			err = miniHeadersColTxn.Insert(blockHeader)
 			if err != nil {
-				return err
+				if _, ok := err.(db.ConflictingOperationsError); ok {
+					logger.WithFields(logger.Fields{
+						"error":  err.Error(),
+						"hash":   blockHeader.Hash,
+						"number": blockHeader.Number,
+					}).Error("Failed to update miniHeaders")
+				} else {
+					return err
+				}
 			}
 		case blockwatch.Removed:
 			err = miniHeadersColTxn.Delete(blockHeader.ID())
 			if err != nil {
-				return err
+				if _, ok := err.(db.ConflictingOperationsError); ok {
+					logger.WithFields(logger.Fields{
+						"error":  err.Error(),
+						"hash":   blockHeader.Hash,
+						"number": blockHeader.Number,
+					}).Error("Failed to update miniHeaders")
+				} else {
+					return err
+				}
 			}
 		default:
 			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
@@ -948,6 +964,13 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 		if _, ok := err.(db.AlreadyExistsError); ok {
 			// If we're already watching the order, that's fine in this case. Don't
 			// return an error.
+			return orderEvents, nil
+		}
+		if _, ok := err.(db.ConflictingOperationsError); ok {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+				"order": order,
+			}).Error("Failed to insert order into DB")
 			return orderEvents, nil
 		}
 		return orderEvents, err
@@ -1514,16 +1537,20 @@ type orderDeleter interface {
 func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Order) error {
 	err := deleter.Delete(order.Hash.Bytes())
 	if err != nil {
-		logger.WithFields(logger.Fields{
-			"error": err.Error(),
-			"order": order,
-		}).Warn("Attempted to delete order that no longer exists")
-		// TODO(fabio): With the current way the OrderWatcher is written, it is possible for multiple
-		// events to trigger logic that updates the orders in the DB simultaneously. This is mostly
-		// benign but is a waste of computation, and causes processes to try and delete orders the
-		// have already been deleted. In order to fix this, we need to re-write the event handling logic
-		// to queue the processing of events so that they happen sequentially rather then in parallel.
-		return nil // Already deleted. Noop.
+		if _, ok := err.(db.ConflictingOperationsError); ok {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+				"order": order,
+			}).Error("Failed to permanently delete order")
+		}
+		if _, ok := err.(db.NotFoundError); ok {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+				"order": order,
+			}).Warn("Attempted to delete order that no longer exists")
+			return nil // Already deleted. Noop.
+		}
+		return err
 	}
 
 	// After permanently deleting an order, we also remove it's assetData from the Decoder
