@@ -284,7 +284,7 @@ func TestTransactionDeleteThenInsertSameModel(t *testing.T) {
 	require.NoError(t, txn.Delete(model.ID()))
 	err = txn.Insert(model)
 	assert.Error(t, err)
-	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+	assert.Equal(t, ConflictingOperationsError{operation: "insert"}, err, "wrong error")
 }
 
 func TestTransactionInsertThenDeleteSameModel(t *testing.T) {
@@ -309,7 +309,7 @@ func TestTransactionInsertThenDeleteSameModel(t *testing.T) {
 	require.NoError(t, txn.Insert(model))
 	err = txn.Delete(model.ID())
 	assert.Error(t, err)
-	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+	assert.Equal(t, ConflictingOperationsError{operation: "delete"}, err, "wrong error")
 }
 
 func TestTransactionInsertThenInsertSameModel(t *testing.T) {
@@ -334,7 +334,7 @@ func TestTransactionInsertThenInsertSameModel(t *testing.T) {
 	require.NoError(t, txn.Insert(model))
 	err = txn.Insert(model)
 	assert.Error(t, err)
-	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+	assert.Equal(t, ConflictingOperationsError{operation: "insert"}, err, "wrong error")
 }
 
 func TestTransactionDeleteThenDeleteSameModel(t *testing.T) {
@@ -360,7 +360,7 @@ func TestTransactionDeleteThenDeleteSameModel(t *testing.T) {
 	require.NoError(t, txn.Delete(model.ID()))
 	err = txn.Delete(model.ID())
 	assert.Error(t, err)
-	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+	assert.Equal(t, ConflictingOperationsError{operation: "delete"}, err, "wrong error")
 }
 
 func TestTransactionInsertThenUpdateSameModel(t *testing.T) {
@@ -385,5 +385,5 @@ func TestTransactionInsertThenUpdateSameModel(t *testing.T) {
 	require.NoError(t, txn.Insert(model))
 	err = txn.Update(model)
 	assert.Error(t, err)
-	assert.Equal(t, ErrConflictingOperations, err, "wrong error")
+	assert.Equal(t, ConflictingOperationsError{operation: "update"}, err, "wrong error")
 }
