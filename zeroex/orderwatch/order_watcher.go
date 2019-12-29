@@ -436,6 +436,8 @@ func (w *Watcher) handleBlockEvents(
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 
 	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp)
+	
+	err = w.updateBlockHeadersStoredInDB(miniHeadersColTxn, events)
 	if err != nil {
 		return err
 	}
@@ -443,37 +445,6 @@ func (w *Watcher) handleBlockEvents(
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 	for _, event := range events {
-		blockHeader := event.BlockHeader
-		switch event.Type {
-		case blockwatch.Added:
-			err = miniHeadersColTxn.Insert(blockHeader)
-			if err != nil {
-				if _, ok := err.(db.ConflictingOperationsError); ok {
-					logger.WithFields(logger.Fields{
-						"error":  err.Error(),
-						"hash":   blockHeader.Hash,
-						"number": blockHeader.Number,
-					}).Error("Failed to update miniHeaders")
-				} else {
-					return err
-				}
-			}
-		case blockwatch.Removed:
-			err = miniHeadersColTxn.Delete(blockHeader.ID())
-			if err != nil {
-				if _, ok := err.(db.ConflictingOperationsError); ok {
-					logger.WithFields(logger.Fields{
-						"error":  err.Error(),
-						"hash":   blockHeader.Hash,
-						"number": blockHeader.Number,
-					}).Error("Failed to update miniHeaders")
-				} else {
-					return err
-				}
-			}
-		default:
-			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
-		}
 		for _, log := range event.BlockHeader.Logs {
 			eventType, err := w.eventDecoder.FindEventType(log)
 			if err != nil {
@@ -1032,6 +1003,66 @@ func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
 	}
 
 	return orderEvents, nil
+}
+
+// updateBlockHeadersStoredInDB updates the block headers stored in the DB. Since our DB txns don't support
+// multiple operations involving the same entry, we make sure we only perform either an insert or a deletion
+// for each block in this method.
+func (w *Watcher) updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction, events []*blockwatch.Event) error {
+	blocksToAdd := map[common.Hash]*miniheader.MiniHeader{}
+	blocksToRemove := map[common.Hash]*miniheader.MiniHeader{}
+	for _, event := range events {
+		blockHeader := event.BlockHeader
+		switch event.Type {
+		case blockwatch.Added:
+			if _, ok := blocksToAdd[blockHeader.Hash]; ok {
+				continue
+			}
+			if _, ok := blocksToRemove[blockHeader.Hash]; ok {
+				continue
+			}
+			blocksToAdd[blockHeader.Hash] = blockHeader
+		case blockwatch.Removed:
+			if _, ok := blocksToAdd[blockHeader.Hash]; ok {
+				delete(blocksToAdd, blockHeader.Hash)
+			}
+			if _, ok := blocksToRemove[blockHeader.Hash]; ok {
+				continue
+			}
+			blocksToRemove[blockHeader.Hash] = blockHeader
+		default:
+			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
+		}
+	}
+
+	for _, blockHeader := range blocksToAdd {
+		if err := miniHeadersColTxn.Insert(blockHeader); err != nil {
+			if _, ok := err.(db.ConflictingOperationsError); ok {
+				logger.WithFields(logger.Fields{
+					"error":  err.Error(),
+					"hash":   blockHeader.Hash,
+					"number": blockHeader.Number,
+				}).Error("Failed to update miniHeaders")
+			} else {
+				return err
+			}
+		}
+	}
+	for _, blockHeader := range blocksToRemove {
+		if err := miniHeadersColTxn.Delete(blockHeader.ID()); err != nil {
+			if _, ok := err.(db.ConflictingOperationsError); ok {
+				logger.WithFields(logger.Fields{
+					"error":  err.Error(),
+					"hash":   blockHeader.Hash,
+					"number": blockHeader.Number,
+				}).Error("Failed to delete miniHeaders")
+			} else {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // MaxExpirationTime returns the current maximum expiration time for incoming
