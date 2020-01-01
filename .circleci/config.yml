@@ -9,12 +9,8 @@ jobs:
         environment:
             VERSION: 4.3.3
     resource_class: large
-    working_directory: /go/src/github.com/0xProject/0x-mesh
     steps:
       - checkout
-      - run:
-          name: Install dep
-          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run:
           name: Install nvm
           command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
@@ -32,8 +28,11 @@ jobs:
           name: Install dependencies
           command: make deps-no-lockfile
       - run:
+          name: Vendor Go dependencies as a workaround for https://github.com/golangci/golangci-lint/issues/865
+          command: go mod vendor
+      - run:
           name: Install Go linter
-          command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
+          command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.22.2
       - run:
           name: Run linters
           command: make lint
