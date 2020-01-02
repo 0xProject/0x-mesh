@@ -1037,28 +1037,20 @@ func (w *Watcher) updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction
 
 	for _, blockHeader := range blocksToAdd {
 		if err := miniHeadersColTxn.Insert(blockHeader); err != nil {
-			if _, ok := err.(db.ConflictingOperationsError); ok {
-				logger.WithFields(logger.Fields{
-					"error":  err.Error(),
-					"hash":   blockHeader.Hash,
-					"number": blockHeader.Number,
-				}).Error("Failed to update miniHeaders")
-			} else {
-				return err
-			}
+			logger.WithFields(logger.Fields{
+				"error":  err.Error(),
+				"hash":   blockHeader.Hash,
+				"number": blockHeader.Number,
+			}).Error("Failed to delete miniHeaders")
 		}
 	}
 	for _, blockHeader := range blocksToRemove {
 		if err := miniHeadersColTxn.Delete(blockHeader.ID()); err != nil {
-			if _, ok := err.(db.ConflictingOperationsError); ok {
-				logger.WithFields(logger.Fields{
-					"error":  err.Error(),
-					"hash":   blockHeader.Hash,
-					"number": blockHeader.Number,
-				}).Error("Failed to delete miniHeaders")
-			} else {
-				return err
-			}
+			logger.WithFields(logger.Fields{
+				"error":  err.Error(),
+				"hash":   blockHeader.Hash,
+				"number": blockHeader.Number,
+			}).Error("Failed to delete miniHeaders")
 		}
 	}
 
