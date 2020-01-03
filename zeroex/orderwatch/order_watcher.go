@@ -1568,6 +1568,7 @@ func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Ord
 				"error": err.Error(),
 				"order": order,
 			}).Error("Failed to permanently delete order")
+			return nil
 		}
 		if _, ok := err.(db.NotFoundError); ok {
 			logger.WithFields(logger.Fields{
