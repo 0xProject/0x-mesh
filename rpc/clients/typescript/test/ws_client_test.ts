@@ -1,5 +1,5 @@
 import {getContractAddressesForChainOrThrow} from '@0x/contract-addresses';
-import {artifacts, DummyERC20TokenContract} from '@0x/contracts-erc20';
+import {DummyERC20TokenContract} from '@0x/contracts-erc20';
 import {ExchangeContract} from '@0x/contracts-exchange';
 import {blockchainTests, constants, expect, OrderFactory, orderHashUtils} from '@0x/contracts-test-utils';
 import {callbackErrorReporter, Web3Config, web3Factory} from '@0x/dev-utils';
@@ -8,6 +8,7 @@ import {Web3ProviderEngine} from '@0x/subproviders';
 import {DoneCallback, SignedOrder} from '@0x/types';
 import {BigNumber, hexUtils} from '@0x/utils';
 import 'mocha';
+import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
 import {OrderEvent, OrderEventEndState, WSClient} from '../src/index';
@@ -25,9 +26,6 @@ blockchainTests.resets('WSClient', env => {
         let orderFactory: OrderFactory;
         let provider: Web3ProviderEngine;
 
-        const oneSecondInMs = 1000;
-        const twoSecondsInMs = 2000;
-
         beforeEach(async () => {
             deployment = await startServerAndClientAsync();
         });
@@ -36,19 +34,6 @@ blockchainTests.resets('WSClient', env => {
             deployment.client.destroy();
             deployment.mesh.stopMesh();
         });
-
-        async function deployErc20TokenAsync(name: string, symbol: string): Promise<DummyERC20TokenContract> {
-            return DummyERC20TokenContract.deployFrom0xArtifactAsync(
-                artifacts.DummyERC20Token,
-                provider,
-                env.txDefaults,
-                artifacts,
-                name,
-                symbol,
-                new BigNumber(18),
-                new BigNumber('100e18'),
-            );
-        }
 
         before(async () => {
             const chainId = await env.getChainIdAsync();
@@ -71,8 +56,11 @@ blockchainTests.resets('WSClient', env => {
 
             // Configure two tokens and an order factory with a maker address so
             // that valid orders can be created easily in the tests.
-            const makerToken = await deployErc20TokenAsync('MakerToken', 'MKT');
-            const feeToken = await deployErc20TokenAsync('FeeToken', 'FEE');
+            const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
+            const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
+            const mintAmount = new BigNumber('100e18');
+            await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
+            await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
             await makerToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({from: makerAddress});
@@ -144,8 +132,8 @@ blockchainTests.resets('WSClient', env => {
                 };
 
                 const now = new Date(Date.now());
-                const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${now.getUTCMonth() +
-                    1}-${now.getUTCDate()}T00:00:00Z`;
+                const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${leftPad(now.getUTCMonth() +
+                    1)}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
                     version: '',
                     pubSubTopic: '/0x-orders/network/1337/version/2',
@@ -169,10 +157,6 @@ blockchainTests.resets('WSClient', env => {
             });
         });
 
-        // This pattern will only match strings with the following pattern:
-        // [ 8 digits or letters ]-[ 4 digits or letters ]-[ 4 digits or letters ]-[ 4 digits or letters ]-[ 12 digits or letters ]
-        const ganacheSnapshotIdPattern = /^([0-9]|[a-z]){8}-([0-9]|[a-z]){4}-([0-9]|[a-z]){4}-([0-9]|[a-z]){4}-([0-9]|[a-z]){12}$/;
-
         describe('#getOrdersAsync', async () => {
             it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
                 const ordersLength = 10;
@@ -191,12 +175,12 @@ blockchainTests.resets('WSClient', env => {
                 const now = new Date(Date.now()).getTime();
                 const perPage = 10;
                 const response = await deployment.client.getOrdersAsync(perPage);
-                assertRoughlyEquals(now, response.snapshotTimestamp * oneSecondInMs, twoSecondsInMs);
+                assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the `getOrders` rpc response, and that the
                 // ganache snapshot ID in the response meets the expected schema.
-                expect(ganacheSnapshotIdPattern.test(response.snapshotID));
+                expect(uuidValidate(response.snapshotID)).to.be.true();
                 for (const order of orders) {
                     let hasSeenMatch = false;
                     for (const responseOrder of response.ordersInfos) {
@@ -228,13 +212,21 @@ blockchainTests.resets('WSClient', env => {
         describe('#subscribeToOrdersAsync', async () => {
             it('should receive subscription updates about added orders', (done: DoneCallback) => {
                 (async () => {
+                    // Create orders to add to the mesh node.
+                    const ordersLength = 10;
                     const orders = [] as SignedOrder[];
+                    for (let i = 0; i < ordersLength; i++) {
+                        orders[i] = await orderFactory.newSignedOrderAsync({});
+                    }
+
+                    // Subscribe to orders and wait for order events.
                     let now: number;
                     const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
                         expect(orderEvents.length).to.be.eq(orders.length);
                         for (const orderEvent of orderEvents) {
                             expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
-                            assertRoughlyEquals(now, orderEvent.timestampMs, twoSecondsInMs);
+                            // tslint:disable-next-line:custom-no-magic-numbers
+                            assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(4));
                         }
 
                         // Ensure that all of the orders that were added had an associated order event emitted.
@@ -254,16 +246,9 @@ blockchainTests.resets('WSClient', env => {
 
                         done();
                     });
-
-                    // Add orders to the mesh node.
-                    const ordersLength = 10;
-                    for (let i = 0; i < ordersLength; i++) {
-                        orders[i] = await orderFactory.newSignedOrderAsync({});
-                    }
                     now = new Date(Date.now()).getTime();
                     const validationResults = await deployment.client.addOrdersAsync(orders);
                     expect(validationResults.accepted.length).to.be.eq(ordersLength);
-
                     await subscription;
                 })().catch(done);
             });
@@ -274,18 +259,17 @@ blockchainTests.resets('WSClient', env => {
                     const order = await orderFactory.newSignedOrderAsync({});
                     const validationResults = await deployment.client.addOrdersAsync([ order ]);
                     expect(validationResults.accepted.length).to.be.eq(1);
-                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
 
                     // Subscribe to order events and assert that only a single cancel event was received.
                     const now = new Date(Date.now()).getTime();
-                    await deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
+                    const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
                         // Ensure that the correct cancel event was logged.
                         expect(orderEvents.length).to.be.eq(1);
                         const [orderEvent] = orderEvents;
                         expect(orderEvent.endState).to.be.eq(OrderEventEndState.Cancelled);
                         expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(constants.ZERO_AMOUNT);
                         expect(orderEvent.signedOrder).to.be.deep.eq(order);
-                        assertRoughlyEquals(orderEvent.timestampMs, now, twoSecondsInMs);
+                        assertRoughlyEquals(orderEvent.timestampMs, now, secondsToMs(2));
                         expect(orderEvent.contractEvents.length).to.be.eq(1);
 
                         // Ensure that the contract event is correct.
@@ -311,7 +295,34 @@ blockchainTests.resets('WSClient', env => {
                         expect(parameters.takerAssetData).to.be.eq(order.takerAssetData);
                         done();
                     });
+
+                    // Cancel an order and then wait for the emitted order event.
+                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
+                    await subscription;
                 })().catch(done);
+            });
+
+        });
+
+        describe('#unsubscribeAsync', async () => {
+            it('should unsubscribe successfully', async () => {
+                // tslint:disable-next-line:no-empty
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
+                await deployment.client.unsubscribeAsync(subscriptionID);
+            });
+
+            it('should throw an error after unsubscribing redundantly', async () => {
+                // tslint:disable-next-line:no-empty
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
+                await deployment.client.unsubscribeAsync(subscriptionID);
+                let thrownError: Error = new Error('');
+                try {
+                    await deployment.client.unsubscribeAsync(subscriptionID);
+                } catch (error) {
+                    thrownError = error;
+                }
+                expect(thrownError.name).to.be.eq('Error');
+                expect(thrownError.message).to.be.eq('Node error: {"code":-32000,"message":"subscription not found"}');
             });
         });
     });
@@ -426,6 +437,15 @@ blockchainTests.resets('WSClient', env => {
 
 function assertRoughlyEquals(a: number, b: number, delta: number): void {
     expect(Math.abs(a - b)).to.be.lessThan(delta);
+}
+
+function leftPad(a: number, paddingDigits: number = 2): string {
+    return `${'0'.repeat(paddingDigits - a.toString().length)}${a.toString()}`;
+}
+
+function secondsToMs(seconds: number): number {
+    const msPerSecond = 1000;
+    return seconds * msPerSecond;
 }
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {

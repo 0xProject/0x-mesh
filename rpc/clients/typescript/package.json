@@ -47,7 +47,6 @@
     },
     "devDependencies": {
         "@0x/contract-addresses": "^4.1.0",
-        "@0x/contracts-dev-utils": "^1.0.2",
         "@0x/contracts-erc20": "^3.0.2",
         "@0x/contracts-exchange": "^3.0.2",
         "@0x/contracts-test-utils": "^5.0.1",
@@ -58,8 +57,8 @@
         "@0x/tslint-config": "^4.0.0",
         "@types/mocha": "^2.2.42",
         "@types/uuid": "^3.4.3",
+        "@types/uuid-validate": "^0.0.1",
         "@types/websocket": "^0.0.40",
-        "bignumber.js": "~9.0.0",
         "chai": "^4.0.1",
         "chai-as-promised": "^7.1.0",
         "chai-bignumber": "^3.0.0",
@@ -68,7 +67,8 @@
         "mocha": "^4.1.0",
         "shx": "^0.2.2",
         "tslint": "5.11.0",
-        "typescript": "3.0.1"
+        "typescript": "3.0.1",
+        "uuid-validate": "^0.0.3"
     },
     "publishConfig": {
         "access": "public"
