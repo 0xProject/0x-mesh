@@ -1006,7 +1006,7 @@ func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
 }
 
 // updateBlockHeadersStoredInDB updates the block headers stored in the DB. Since our DB txns don't support
-// multiple operations involving the same entry, we make sure we only perform either an insert or a deletion
+// multiple operations involving the same entry, we make sure we only perform either an insertion or a deletion
 // for each block in this method.
 func (w *Watcher) updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction, events []*blockwatch.Event) error {
 	blocksToAdd := map[common.Hash]*miniheader.MiniHeader{}
