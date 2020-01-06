@@ -342,7 +342,7 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 	}
 }
 
-func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, previousLatestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp, previousLatestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*meshdb.Order) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 	var defaultTime time.Time
 
@@ -350,6 +350,11 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			orderHash := common.HexToHash(expiredOrder.ID)
+			// If we will re-validate this order, the revalidation process will discover that
+			// it's expired, and an appropriate event will already be emitted
+			if _, ok := ordersToRevalidate[orderHash]; ok {
+				continue
+			}
 			order := &meshdb.Order{}
 			err := w.meshDB.Orders.FindByID(orderHash.Bytes(), order)
 			if err != nil {
@@ -381,6 +386,11 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 		for _, order := range removedOrders {
 			// Orders removed due to expiration have non-zero FillableTakerAssetAmounts
 			if order.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+				continue
+			}
+			// If we will re-validate this order, the revalidation process will discover that
+			// it's unexpired, and an appropriate event will already be emitted
+			if _, ok := ordersToRevalidate[order.Hash]; ok {
 				continue
 			}
 			expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
@@ -434,11 +444,6 @@ func (w *Watcher) handleBlockEvents(
 		previousLatestBlockTimestamp = previousLatestBlock.Timestamp
 	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
-
-	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp)
-	if err != nil {
-		return err
-	}
 
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
@@ -751,6 +756,11 @@ func (w *Watcher) handleBlockEvents(
 				}
 			}
 		}
+	}
+
+	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, orderHashToDBOrder)
+	if err != nil {
+		return err
 	}
 
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
@@ -1142,35 +1152,52 @@ func (w *Watcher) generateOrderEventsIfChanged(
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
 			orderEvents = append(orderEvents, orderEvent)
-		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-			// No important state-change happened
-		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
-			// Order was filled, emit event and update order in DB
-			order.FillableTakerAssetAmount = newFillableAmount
-			w.updateOrderDBEntry(ordersColTxn, order)
-			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                validationBlockTimestamp,
-				OrderHash:                acceptedOrderInfo.OrderHash,
-				SignedOrder:              order.SignedOrder,
-				EndState:                 zeroex.ESOrderFilled,
-				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				ContractEvents:           orderHashToEvents[order.Hash],
+		} else {
+			// If order was previously expired, check if it has become unexpired
+			if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 {
+				expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+				if validationBlockTimestamp.Before(expiration) {
+					w.rewatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
+					orderEvent := &zeroex.OrderEvent{
+						Timestamp:                validationBlockTimestamp,
+						OrderHash:                order.Hash,
+						SignedOrder:              order.SignedOrder,
+						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+						EndState:                 zeroex.ESOrderUnexpired,
+					}
+					orderEvents = append(orderEvents, orderEvent)
+				}
 			}
-			orderEvents = append(orderEvents, orderEvent)
-		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
-			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
-			// Update order in DB and emit event
-			order.FillableTakerAssetAmount = newFillableAmount
-			w.updateOrderDBEntry(ordersColTxn, order)
-			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                validationBlockTimestamp,
-				OrderHash:                acceptedOrderInfo.OrderHash,
-				SignedOrder:              order.SignedOrder,
-				EndState:                 zeroex.ESOrderFillabilityIncreased,
-				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				ContractEvents:           orderHashToEvents[order.Hash],
+			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
+				// No important state-change happened
+			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+				// Order was filled, emit event and update order in DB
+				order.FillableTakerAssetAmount = newFillableAmount
+				w.updateOrderDBEntry(ordersColTxn, order)
+				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlockTimestamp,
+					OrderHash:                acceptedOrderInfo.OrderHash,
+					SignedOrder:              order.SignedOrder,
+					EndState:                 zeroex.ESOrderFilled,
+					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					ContractEvents:           orderHashToEvents[order.Hash],
+				}
+				orderEvents = append(orderEvents, orderEvent)
+			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
+				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
+				// Update order in DB and emit event
+				order.FillableTakerAssetAmount = newFillableAmount
+				w.updateOrderDBEntry(ordersColTxn, order)
+				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlockTimestamp,
+					OrderHash:                acceptedOrderInfo.OrderHash,
+					SignedOrder:              order.SignedOrder,
+					EndState:                 zeroex.ESOrderFillabilityIncreased,
+					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					ContractEvents:           orderHashToEvents[order.Hash],
+				}
+				orderEvents = append(orderEvents, orderEvent)
 			}
-			orderEvents = append(orderEvents, orderEvent)
 		}
 	}
 	for _, rejectedOrderInfo := range validationResults.Rejected {
