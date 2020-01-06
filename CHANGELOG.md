@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞
 
 - Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
+- Fix bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623))
 
 ## v8.0.0-beta-0xv3
 
