@@ -21,7 +21,7 @@ type ConflictingOperationsError struct {
 }
 
 func (e ConflictingOperationsError) Error() string {
-	return fmt.Sprintf("cannot perform more than one operation (%s) on the same model within a transaction", e.operation)
+	return fmt.Sprintf("error on %s: cannot perform more than one operation on the same model within a transaction", e.operation)
 }
 
 // Transaction is an atomic database transaction for a single collection which
