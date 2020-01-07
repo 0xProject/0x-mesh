@@ -13,7 +13,7 @@
         "skipLibCheck": true,
         "declaration": true,
         "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
-        "strict": true,
+        "strict": true
     },
     "include": ["./src/**/*", "./test/**/*"]
 }

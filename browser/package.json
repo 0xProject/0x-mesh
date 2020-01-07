@@ -9,6 +9,7 @@
     "build:ts": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
     "build:generate": "go run ./scripts/generate_wasm_buffer.go",
     "build:go": "GOOS=js GOARCH=wasm go build -o ./wasm/main.wasm ./go/main.go",
+    "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --exit",
     "docs:md": "ts-doc-gen --sourceDir=./ts --output=${npm_package_config_docsPath}",
     "lint": "tslint --format stylish --project ."
   },
@@ -19,6 +20,10 @@
     "@0x/ts-doc-gen": "^0.0.16",
     "@0x/tslint-config": "^4.0.0",
     "@types/base64-arraybuffer": "^0.1.0",
+    "@types/mocha": "^5.2.7",
+    "chai": "^4.2.0",
+    "make-promises-safe": "^1.1.0",
+    "mocha": "^7.0.0",
     "tslint": "5.11.0",
     "typescript": "^3.5.3"
   },
