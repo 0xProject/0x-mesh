@@ -3,7 +3,6 @@
 package zeroex
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -20,18 +19,24 @@ func TestContractEvent(t *testing.T) {
 	jsContractEvent := ContractEvent{
 		BlockHash: common.HexToHash("0x1"),
 		TxHash:    common.HexToHash("0x2"),
-		TxIndex:   0,
-		LogIndex:  0,
+		TxIndex:   1,
+		LogIndex:  2,
 		IsRemoved: true,
 		Address:   contracts.WETH9,
 		Kind:      "ERC20TransferEvent",
 		Parameters: decoder.ERC20TransferEvent{
 			From:  constants.GanacheAccount0,
-			To:    constants.GanacheAccount0,
-			Value: big.NewInt(1),
+			To:    constants.GanacheAccount1,
+			Value: big.NewInt(3),
 		},
 	}.JSValue()
-	fmt.Printf("%+v", jsContractEvent)
-	t.Logf("%+v", jsContractEvent)
-	t.Fail()
+	require.Equal(t, jsContractEvent.Get("blockHash").String(), common.HexToHash("0x1").Hex())
+	require.Equal(t, jsContractEvent.Get("txHash").String(), common.HexToHash("0x2").Hex())
+	require.Equal(t, jsContractEvent.Get("txIndex").Int(), 1)
+	require.Equal(t, jsContractEvent.Get("logIndex").Int(), 2)
+	require.Equal(t, jsContractEvent.Get("isRemoved").Bool(), true)
+	require.Equal(t, jsContractEvent.Get("kind").String(), "ERC20TransferEvent")
+	require.Equal(t, jsContractEvent.Get("parameters").Get("from").String(), constants.GanacheAccount0.Hex())
+	require.Equal(t, jsContractEvent.Get("parameters").Get("to").String(), constants.GanacheAccount1.Hex())
+	require.Equal(t, jsContractEvent.Get("parameters").Get("value").String(), "3")
 }
