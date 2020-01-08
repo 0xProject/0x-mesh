@@ -1,5 +1,6 @@
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
 import {join} from 'path';
+import * as rimraf from 'rimraf';
 
 import {WSClient} from '../../src';
 
@@ -8,27 +9,28 @@ async function buildBinaryAsync(): Promise<void> {
     const build = spawn('make', ['mesh'], {cwd});
     await new Promise<void>((resolve, reject) => {
         build.on('close', code => {
-            code === 0 ? resolve() : reject();
+            code === 0 ? resolve() : reject(new Error('Failed to build 0x-mesh'));
+        });
+        build.on('error', error => {
+            reject(error);
         });
     });
 }
 
 async function cleanupAsync(): Promise<void> {
-    const cleanup = spawn('rm', ['-r', './0x_mesh']);
     await new Promise<void>((resolve, reject) => {
-        cleanup.on('close', code => {
-            // NOTE(jalextowle): In the event that the 0x_mesh files
-            // are not in this directory, the "cleanup" command will
-            // fail. We want to allow this so that the rest of the
-            // program can execute.
-            code === 0 || code === 1 ? resolve() : reject();
+        rimraf('./0x_mesh', err => {
+            if (err != null) {
+                reject(err);
+            }
+            resolve();
         });
     });
 }
 
 export interface MeshDeployment {
     client: WSClient;
-    mesh: MeshManager;
+    mesh: MeshHarness;
     peerID: string;
 }
 
@@ -41,7 +43,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await cleanupAsync();
     await buildBinaryAsync();
 
-    const mesh = new MeshManager();
+    const mesh = new MeshHarness();
     const log = await mesh.waitForPatternAsync(/started RPC server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`http://localhost:${mesh.port}`);
@@ -52,7 +54,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     };
 }
 
-export class MeshManager {
+export class MeshHarness {
     public static readonly DEFAULT_TIMEOUT = 1000;
     protected static _serverPort = 64321;
 
@@ -75,7 +77,7 @@ export class MeshManager {
                     resolve(data.toString());
                 }
             });
-            setTimeout(reject, timeout || MeshManager.DEFAULT_TIMEOUT);
+            setTimeout(reject, timeout || MeshHarness.DEFAULT_TIMEOUT);
         });
     }
 
@@ -84,16 +86,19 @@ export class MeshManager {
      */
     public stopMesh(): void {
         this._killed = true;
-        this._mesh.kill();
+        this._mesh.kill('SIGKILL');
     }
 
     public constructor() {
         const env = Object.create(process.env);
-        this.port = MeshManager._serverPort++;
+        this.port = MeshHarness._serverPort++;
         env.ETHEREUM_RPC_URL = 'http://localhost:8545';
         env.ETHEREUM_CHAIN_ID = '1337';
         env.VERBOSITY = '5';
         env.RPC_ADDR = `localhost:${this.port}`;
         this._mesh = spawn('mesh', [], {env});
+        this._mesh.stderr.on('error', error => {
+            throw error;
+        });
     }
 }
