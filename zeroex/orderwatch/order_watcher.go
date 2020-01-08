@@ -1505,10 +1505,6 @@ func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Ord
 			return nil
 		}
 		if _, ok := err.(db.NotFoundError); ok {
-			logger.WithFields(logger.Fields{
-				"error": err.Error(),
-				"order": order,
-			}).Warn("Attempted to delete order that no longer exists")
 			return nil // Already deleted. Noop.
 		}
 		return err
