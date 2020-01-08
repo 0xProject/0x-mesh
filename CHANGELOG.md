@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v8.0.1
+
+### Bug fixes 🐞
+
+- Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
+
 ## v8.0.0-beta-0xv3
 
 ### Breaking changes 🛠
@@ -19,7 +25,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞
 
-- Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
 - Fixed an issue where order updates could have been missed if Mesh discovered blocks but didn't have time to process them before getting shut down. Now, blocks are only persisted to the DB once any order updates resulting from it have been processed. ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
 - Fixed a race-condition when adding new orders to Mesh which could result in order-relevant events being missed if they occured very soon after the order was submitted and the order validation RPC call took a long time ([#566](https://github.com/0xProject/0x-mesh/pull/566)).
 - Upgraded the `web3-provider` dependency used by `@0x/mesh-rpc-client` in order to fix a bug where it was requiring either `process` OR `window` to exist in the global scope ([#601](https://github.com/0xProject/0x-mesh/pull/601)).
