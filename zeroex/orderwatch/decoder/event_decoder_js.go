@@ -11,59 +11,59 @@ import (
 
 func (e ERC20TransferEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"from":                e.From.Hex(),
-		"to":              	   e.To.Hex(),
-		"value":               e.Value.String(),
+		"from":  e.From.Hex(),
+		"to":    e.To.Hex(),
+		"value": e.Value.String(),
 	})
 }
 
 func (e ERC20ApprovalEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"owner":                e.Owner.Hex(),
-		"spender":              e.Spender.Hex(),
-		"value":                e.Value.String(),
+		"owner":   e.Owner.Hex(),
+		"spender": e.Spender.Hex(),
+		"value":   e.Value.String(),
 	})
 }
 
 func (e ERC721TransferEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"from":                e.From.Hex(),
-		"to":              	   e.To.Hex(),
-		"tokenId":			   e.TokenId.String(),
+		"from":    e.From.Hex(),
+		"to":      e.To.Hex(),
+		"tokenId": e.TokenId.String(),
 	})
 }
 
 func (e ERC721ApprovalEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"owner":                e.Owner.Hex(),
-		"approved":             e.Approved.Hex(),
-		"tokenId":              e.TokenId.String(),
+		"owner":    e.Owner.Hex(),
+		"approved": e.Approved.Hex(),
+		"tokenId":  e.TokenId.String(),
 	})
 }
 
 func (e ERC721ApprovalForAllEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"owner":                e.Owner.Hex(),
-		"operator":             e.Operator.Hex(),
-		"approved":             e.Approved,
+		"owner":    e.Owner.Hex(),
+		"operator": e.Operator.Hex(),
+		"approved": e.Approved,
 	})
 }
 
 func (e ERC1155ApprovalForAllEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"owner":                e.Owner.Hex(),
-		"operator":             e.Operator.Hex(),
-		"approved":             e.Approved,
+		"owner":    e.Owner.Hex(),
+		"operator": e.Operator.Hex(),
+		"approved": e.Approved,
 	})
 }
 
 func (e ERC1155TransferSingleEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"operator":    e.Operator.Hex(),
-		"from":      e.From.Hex(),
-		"to":      e.To.Hex(),
-		"id": e.Id.String(),
-		"value": e.Value.String(),
+		"operator": e.Operator.Hex(),
+		"from":     e.From.Hex(),
+		"to":       e.To.Hex(),
+		"id":       e.Id.String(),
+		"value":    e.Value.String(),
 	})
 }
 
@@ -77,11 +77,11 @@ func (e ERC1155TransferBatchEvent) JSValue() js.Value {
 		values = append(values, value.String())
 	}
 	return js.ValueOf(map[string]interface{}{
-		"operator":    e.Operator.Hex(),
-		"from":      e.From.Hex(),
-		"to":      e.To.Hex(),
-		"ids": ids,
-		"values": values,
+		"operator": e.Operator.Hex(),
+		"from":     e.From.Hex(),
+		"to":       e.To.Hex(),
+		"ids":      ids,
+		"values":   values,
 	})
 }
 
@@ -111,12 +111,12 @@ func (e ExchangeFillEvent) JSValue() js.Value {
 		"takerAssetFilledAmount": e.TakerAssetFilledAmount.String(),
 		"makerFeePaid":           e.MakerFeePaid.String(),
 		"takerFeePaid":           e.TakerFeePaid.String(),
-		"protocolFeePaid":           e.ProtocolFeePaid.String(),
+		"protocolFeePaid":        e.ProtocolFeePaid.String(),
 		"orderHash":              e.OrderHash.Hex(),
 		"makerAssetData":         makerAssetData,
 		"takerAssetData":         takerAssetData,
-		"makerFeeAssetData":         makerFeeAssetData,
-		"takerFeeAssetData":         takerFeeAssetData,
+		"makerFeeAssetData":      makerFeeAssetData,
+		"takerFeeAssetData":      takerFeeAssetData,
 	})
 }
 
@@ -141,9 +141,9 @@ func (e ExchangeCancelEvent) JSValue() js.Value {
 
 func (e ExchangeCancelUpToEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"makerAddress":  e.MakerAddress.Hex(),
+		"makerAddress":       e.MakerAddress.Hex(),
 		"orderSenderAddress": e.OrderSenderAddress.Hex(),
-		"orderEpoch":    e.OrderEpoch.String(),
+		"orderEpoch":         e.OrderEpoch.String(),
 	})
 }
 
@@ -160,4 +160,3 @@ func (w WethDepositEvent) JSValue() js.Value {
 		"value": w.Value.String(),
 	})
 }
-
