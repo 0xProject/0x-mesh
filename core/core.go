@@ -24,6 +24,7 @@ import (
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -39,7 +40,6 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 const (
@@ -143,6 +143,13 @@ type Config struct {
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
 	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
+	// CustomOrderFilter is a JSON-schema which will be used for validating
+	// incoming orders. If provided, Mesh will only receive orders from other
+	// peers in the network with the same filter.
+	//
+	// TODO(albrow): Link to more documentation about JSON-schemas and how this
+	// filter works.
+	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
 }
 
 type snapshotInfo struct {
@@ -160,8 +167,7 @@ type App struct {
 	blockWatcher              *blockwatch.Watcher
 	orderWatcher              *orderwatch.Watcher
 	orderValidator            *ordervalidator.OrderValidator
-	orderJSONSchema           *gojsonschema.Schema
-	meshMessageJSONSchema     *gojsonschema.Schema
+	orderFilter               *orderfilter.Filter
 	snapshotExpirationWatcher *expirationwatch.Watcher
 	muIdToSnapshotInfo        sync.Mutex
 	idToSnapshotInfo          map[string]snapshotInfo
@@ -293,17 +299,16 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	snapshotExpirationWatcher := expirationwatch.New()
+	// Initialize the order filter
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter)
+	if err != nil {
+		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
+	}
 
-	orderJSONSchema, err := setupOrderSchemaValidator()
-	if err != nil {
-		return nil, err
-	}
-	meshMessageJSONSchema, err := setupMeshMessageSchemaValidator()
-	if err != nil {
-		return nil, err
-	}
+	// Initialize remaining fields.
+	snapshotExpirationWatcher := expirationwatch.New()
 	orderSelector := &orderSelector{
+		topic:      orderFilter.Topic(),
 		nextOffset: 0,
 		db:         meshDB,
 	}
@@ -317,8 +322,7 @@ func New(config Config) (*App, error) {
 		blockWatcher:              blockWatcher,
 		orderWatcher:              orderWatcher,
 		orderValidator:            orderValidator,
-		orderJSONSchema:           orderJSONSchema,
-		meshMessageJSONSchema:     meshMessageJSONSchema,
+		orderFilter:               orderFilter,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
 		orderSelector:             orderSelector,
@@ -346,8 +350,24 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPubSubTopic(chainID int) string {
-	return fmt.Sprintf("/0x-orders/network/%d/version/2", chainID)
+func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopic(chainID)
+	if err != nil {
+		return nil, err
+	}
+	customTopic := customFilter.Topic()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to publish to
+		// multiple topics.
+		return []string{defaultTopic}, nil
+	} else {
+		// If we are using a custom order filter, publish to *both* the default
+		// topic and the custom topic. All orders that match the custom order filter
+		// must necessarily match the default filter. This also allows us to
+		// implement cross-topic forwarding in the future.
+		// See https://github.com/0xProject/0x-mesh/pull/563
+		return []string{defaultTopic, customTopic}, nil
+	}
 }
 
 func getRendezvous(chainID int) string {
@@ -395,6 +415,12 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 }
 
 func (app *App) Start(ctx context.Context) error {
+	// Get the publish topics depending on our custom order filter.
+	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
+	if err != nil {
+		return err
+	}
+
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
 	innerCtx, cancel := context.WithCancel(ctx)
@@ -495,16 +521,18 @@ func (app *App) Start(ctx context.Context) error {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
 	nodeConfig := p2p.Config{
-		Topic:            getPubSubTopic(app.config.EthereumChainID),
-		TCPPort:          app.config.P2PTCPPort,
-		WebSocketsPort:   app.config.P2PWebSocketsPort,
-		Insecure:         false,
-		PrivateKey:       app.privKey,
-		MessageHandler:   app,
-		RendezvousString: getRendezvous(app.config.EthereumChainID),
-		UseBootstrapList: app.config.UseBootstrapList,
-		BootstrapList:    bootstrapList,
-		DataDir:          filepath.Join(app.config.DataDir, "p2p"),
+		SubscribeTopic:         app.orderFilter.Topic(),
+		PublishTopics:          publishTopics,
+		TCPPort:                app.config.P2PTCPPort,
+		WebSocketsPort:         app.config.P2PWebSocketsPort,
+		Insecure:               false,
+		PrivateKey:             app.privKey,
+		MessageHandler:         app,
+		RendezvousString:       getRendezvous(app.config.EthereumChainID),
+		UseBootstrapList:       app.config.UseBootstrapList,
+		BootstrapList:          bootstrapList,
+		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
+		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
@@ -519,6 +547,7 @@ func (app *App) Start(ctx context.Context) error {
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
+			"topic":     app.orderFilter.Topic(),
 		}).Info("starting p2p node")
 
 		wg.Add(1)
@@ -715,7 +744,7 @@ func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessag
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
-		result, err := app.schemaValidateOrder(signedOrderBytes)
+		result, err := app.orderFilter.ValidateOrderJSON(signedOrderBytes)
 		if err != nil {
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
@@ -805,7 +834,7 @@ func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessag
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encoding.OrderToRawMessage(order)
+	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
 	if err != nil {
 		return err
 	}
@@ -851,7 +880,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 
 	response := &rpc.GetStatsResponse{
 		Version:                           version,
-		PubSubTopic:                       getPubSubTopic(app.config.EthereumChainID),
+		PubSubTopic:                       app.orderFilter.Topic(),
 		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,

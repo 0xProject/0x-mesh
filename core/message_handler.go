@@ -17,6 +17,7 @@ import (
 var _ p2p.MessageHandler = &App{}
 
 type orderSelector struct {
+	topic      string
 	nextOffset int
 	db         *meshdb.MeshDB
 }
@@ -95,7 +96,7 @@ func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error
 		log.WithFields(map[string]interface{}{
 			"order": order,
 		}).Trace("selected order to share")
-		encoded, err := encoding.OrderToRawMessage(order.SignedOrder)
+		encoded, err := encoding.OrderToRawMessage(orderSelector.topic, order.SignedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -117,28 +118,6 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 				"maxMessageSizeInBytes": constants.MaxMessageSizeInBytes,
 				"actualSizeInBytes":     len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-
-		result, err := app.schemaValidateMeshMessage(msg.Data)
-		if err != nil {
-			log.WithFields(map[string]interface{}{
-				"error": err,
-				"from":  msg.From,
-			}).Trace("could not schema validate message")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-		if !result.Valid() {
-			formattedErrors := make([]string, len(result.Errors()))
-			for i, resultError := range result.Errors() {
-				formattedErrors[i] = resultError.String()
-			}
-			log.WithFields(map[string]interface{}{
-				"errors": formattedErrors,
-				"from":   msg.From,
-			}).Trace("order schema validation failed for message")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}

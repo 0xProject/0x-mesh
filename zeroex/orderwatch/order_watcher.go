@@ -10,7 +10,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
-	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
@@ -1480,26 +1479,6 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				continue
 			}
 		}
-		if err := validateOrderSize(order); err != nil {
-			if err == constants.ErrMaxOrderSize {
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshValidation,
-					Status:      ordervalidator.ROMaxOrderSizeExceeded,
-				})
-				continue
-			} else {
-				logger.WithField("error", err).Error("could not validate order size")
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.ROInternalError,
-				})
-				continue
-			}
-		}
 
 		// Check if order is already stored in DB
 		var dbOrder meshdb.Order
@@ -1537,17 +1516,6 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	}
 
 	return results, validMeshOrders, nil
-}
-
-func validateOrderSize(order *zeroex.SignedOrder) error {
-	encoded, err := encoding.OrderToRawMessage(order)
-	if err != nil {
-		return err
-	}
-	if len(encoded) > constants.MaxOrderSizeInBytes {
-		return constants.ErrMaxOrderSize
-	}
-	return nil
 }
 
 type orderUpdater interface {

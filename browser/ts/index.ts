@@ -126,6 +126,7 @@ export interface Config {
     // maximum expiration time for incoming orders and remove any orders with an
     // expiration time too far in the future. Defaults to 100,000.
     maxOrdersInStorage?: number;
+    // TODO(albrow): Add customOrderFilter here.
 }
 
 export interface ContractAddresses {

@@ -63,7 +63,7 @@
     lodash.values "^4.3.0"
 
 "@0x/mesh-browser@./../../browser/":
-  version "8.0.0-beta-0xv3"
+  version "3.0.1-beta"
   dependencies:
     "@0x/order-utils" "^10.0.1"
     "@0x/utils" "^5.1.1"
