@@ -103,7 +103,7 @@ describe('Type Conversion Unit Tests', () => {
             });
         });
 
-        it('encodes a config file with none of the optional fields', async () => {
+        it('encodes a config file missing all of the optional fields', async () => {
             const wrapperConfig = configToWrapperConfig({
                 ethereumRPCURL,
                 ethereumChainID,
@@ -131,5 +131,66 @@ describe('Type Conversion Unit Tests', () => {
                 customContractAddresses: undefined,
             });
         });
+    });
+
+    describe('orderEventsHandlerToWrapperOrderEventsHandler', () => {
+
+    });
+
+    describe('signedOrderToWrapperSignedOrder', () => {
+
+    });
+
+    describe('wrapperAcceptedOrderInfoToAcceptedOrderInfo', () => {
+
+    });
+
+    describe('wrapperContractEventsToContractEvents', () => {
+        it('decodes ERC20TransferEvent', async () => {});
+
+        it('decodes ERC20ApprovalEvent', async () => {});
+
+        it('decodes ERC721TransferEvent', async () => {});
+
+        it('decodes ERC721ApprovalEvent', async () => {});
+
+        it('decodes ERC721ApprovalForAllEvent', async () => {});
+
+        it('decodes ERC1155ApprovalForAllEvent', async () => {});
+
+        it('decodes ERC1155ApprovalForAllEvent', async () => {});
+
+        it('decodes ERC1155TransferSingleEvent', async () => {});
+
+        it('decodes ERC1155TransferBatchEvent', async () => {});
+
+        it('decodes ExchangeFillEvent', async () => {});
+
+        it('decodes ExchangeCancelEvent', async () => {});
+
+        it('decodes ExchangeCancelUpToEvent', async () => {});
+
+        it('decodes WethDepositEvent', async () => {});
+
+        it('decodes WethWithdrawalEvent', async () => {});
+
+        it('throws if event is not a recognized contract event kind', () => {});
+    });
+
+    // The exact encoding for a `WrapperOrderEvent` can be found by reading the
+    // implementation for `JSValue` on the `OrderEvent` type in the zeroex Go package.
+    describe('wrapperOrderEventToOrderEvent', () => {
+    });
+
+    describe('wrapperRejectedOrderInfoToRejectedOrderInfo', () => {
+
+    });
+
+    describe('wrapperSignedOrderToSignedOrder', () => {
+
+    });
+
+    describe('wrapperValidationResultsToValidationResults', () => {
+
     });
 });
