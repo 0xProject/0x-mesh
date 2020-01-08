@@ -98,7 +98,7 @@ type LatestBlock struct {
 type GetStatsResponse struct {
 	Version                           string      `json:"version"`
 	PubSubTopic                       string      `json:"pubSubTopic"`
-	Rendezvous                        string      `json:"rendervous"`
+	Rendezvous                        string      `json:"rendezvous"`
 	PeerID                            string      `json:"peerID"`
 	EthereumChainID                   int         `json:"ethereumChainID"`
 	LatestBlock                       LatestBlock `json:"latestBlock"`

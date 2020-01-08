@@ -2,9 +2,15 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v8.0.1
+
+### Bug fixes 🐞
+
+- Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
+
 ## v8.0.0-beta-0xv3
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Changed the response from `@0x/mesh-ts-client`'s `getOrdersAsync` endpoint to include the `snapshotID` and `snapshotTimestamp` at which the Mesh DB was queried along with the orders found. ([#591](https://github.com/0xProject/0x-mesh/pull/591))
 - Increased the default `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` from 100k to 200k ([#596](https://github.com/0xProject/0x-mesh/pull/596)).
@@ -60,7 +66,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fix bug where Mesh nodes were logging receipt and re-sharing with peers duplicate orders already stored in it's DB, if the duplicate order was submitted via JSON-RPC. ([#529](https://github.com/0xProject/0x-mesh/pull/529))
 - Add missing `UNEXPIRED` `OrderEventEndState` enum value to both `@0x/mesh-rpc-client` and `@0x/mesh-browser` and missing `STOPPED_WATCHING` value from `@0x/mesh-rpc-client`.
 - Fixed a potential memory leak by using the latest version of `github.com/libp2p/go-libp2p-kad-dht` ([#539](https://github.com/0xProject/0x-mesh/pull/539)).
-- Changed the default port for `RPC_ADDR` from a random available port to `60557`. _Some_ documentation already assumed `60557` was the default port. Now all documentation has been updated for consistency with this change. ([#542](https://github.com/0xProject/0x-mesh/pull/542)). 
+- Changed the default port for `RPC_ADDR` from a random available port to `60557`. _Some_ documentation already assumed `60557` was the default port. Now all documentation has been updated for consistency with this change. ([#542](https://github.com/0xProject/0x-mesh/pull/542)).
 - Fixed a potential nil pointer exception in log hooks ([#543](https://github.com/0xProject/0x-mesh/pull/543)).
 - Fixed a bug where successful closes of an rpc subscription were being reported as errors ([#544](https://github.com/0xProject/0x-mesh/pull/544)).
 - We now log the error and stack trace if an RPC method panics. Before, these errors were swallowed by the panic recovery logic in `go-ethereum`'s `rpc` package. ([#545](https://github.com/0xProject/0x-mesh/pull/545))
@@ -77,14 +83,14 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v7.0.2-beta-0xv3
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Upgrade Mesh's `libp2p/go-flow-metrics` dep in an attempt to fix a bug in the flow metrics module. ([#521](https://github.com/0xProject/0x-mesh/pull/521))
 - Updates `DevUtils.sol` addresses on all networks to the latest version which fixed a deploy issue. ([#520](https://github.com/0xProject/0x-mesh/pull/520))
 
 ## v7.0.1-beta-0xv3
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed an oversight which granted immunity from bandwidth banning for any peer using a relayed connection ([#509](https://github.com/0xProject/0x-mesh/pull/509)).
 - Fixed a typo in the `@0x/mesh-browser` package that resulted in some config options not being passed through correctly ([#502](https://github.com/0xProject/0x-mesh/pull/502)).
@@ -94,7 +100,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v7.0.0-beta-0xv3
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 *Note:* This release will require wiping your Mesh's DB before upgrading. The DB location defaults to `./0x_mesh/db`.
 
@@ -103,48 +109,48 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Changed the `EXPIRED` event such that it is emitted when an order is expired according to the latest block timestamp, not anymore based on UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 - Removed the `EXPIRATION_BUFFER_SECONDS` env config since we no longer compute order expiration using UTC time. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 
-### Features ✅ 
+### Features ✅
 
 - Added an `UNEXPIRED` order event kind which is emitted for orders that were previously considered expired but due to a block-reorg causing the latest block timestamp to be earlier than the previous latest block timestamp, are no longer expired. ([#490](https://github.com/0xProject/0x-mesh/pull/490))
 - Added support for decoding Axie Infinity `Transfer` and `Approve` ERC721 events which differ from the ERC721 standard. ([#494](https://github.com/0xProject/0x-mesh/pull/494))
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed a bug in the Go RPC client which resulted in errors when receving order events with at least one contract event ([#496](https://github.com/0xProject/0x-mesh/pull/496)).
 
 ## v6.0.0-beta-0xv3
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Renamed env config from `ETHEREUM_NETWORK_ID` to `ETHEREUM_CHAIN_ID` since `network` is a misnomer here and what we actually care about is the `chainID`. Most chains have the same id for their p2p network and chain. From the ones we support, the only outlier is Ganache, for which you will now need to supply `1337` instead of `50` (Learn more: https://medium.com/@pedrouid/chainid-vs-networkid-how-do-they-differ-on-ethereum-eec2ed41635b) ([#485](https://github.com/0xProject/0x-mesh/pull/485))
 - Rejected order code `OrderForIncorrectNetwork` has been changed to `OrderForIncorrectChain` ([#485](https://github.com/0xProject/0x-mesh/pull/485))
 
-### Features ✅ 
+### Features ✅
 
 - Implemented a new strategy for limiting the amount of database storage used by Mesh and removing orders when the database is full. This strategy involves a dynamically adjusting maximum expiration time. When the database is full, Mesh will enforce a maximum expiration time for all incoming orders and remove any existing orders with an expiration time too far in the future. If conditions change and there is enough space in the database again, the max expiration time will slowly increase. This is a short term solution which solves the immediate issue of finite storage capacities and does a decent job of protecting against spam. We expect to improve and possibly replace it in the future. See [#450](https://github.com/0xProject/0x-mesh/pull/450) for more details.
 - Added support for a new feature called "order pinning" ([#474](https://github.com/0xProject/0x-mesh/pull/474)). Pinned orders will not be affected by any DDoS prevention or incentive mechanisms (including the new dynamic max expiration time feature) and will always stay in storage until they are no longer fillable. By default, all orders which are submitted via either the JSON-RPC API or the `addOrdersAsync` function in the TypeScript bindings will be pinned.
 - Re-enabled bandwidth-based peer banning with a workaround to deal with erroneous spikes [#478](https://github.com/0xProject/0x-mesh/pull/478).
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Improved the aggressiveness at which we permanently delete orders that have been flagged for removal. Previously we would wait for the cleanup job to handle this (once an hour), but that meant many removed orders would accumulate. We now prune them every 5 minutes. ([#471](https://github.com/0xProject/0x-mesh/pull/471))
 
 ## v5.1.0-beta
 
-### Features ✅ 
+### Features ✅
 
 - The `getStats` RPC endpoint now includes a new field which accounts for the number of orders that have been marked as "removed" but not yet permanently deleted ([#461](https://github.com/0xProject/0x-mesh/pull/461)).
 - Improved historical order sharing using round-robin algorithm instead of random selection ([#454](https://github.com/0xProject/0x-mesh/pull/454)). This will reduce the warm-up time for receiving existing orders when first joining the network.
 - Added ERC1155 assetData support ([#453](https://github.com/0xProject/0x-mesh/pull/453)). This includes order watching and order events for orders involving ERC1155 tokens.
 - Added Ability to specify custom contract addresses via the `CUSTOM_ADDRESSES` environment variable or the `customAddresses` field in the TypeScript bindings ([#445](https://github.com/0xProject/0x-mesh/pull/445)).
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Temporarily disabled bandwidth-based peer banning ([#448](https://github.com/0xProject/0x-mesh/pull/448)). A [bug in libp2p](https://github.com/libp2p/go-libp2p-core/issues/65) was occasionally causing observed bandwidth usage to spike to unrealistic levels, which can result in peers being erroneously banned. We decided to temporarily stop banning peers while we're working with the libp2p team to resolve the issue.
 
 ## v5.0.2-beta-0xv3
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Updated DevUtils.sol contract address for the Kovan network to one including a bug fix for validating orders with nulled out `feeAssetData` fields. ([#446](https://github.com/0xProject/0x-mesh/pull/446)])
 - Added back Ropsten and Rinkeby support and fixed `exchange` address on Kovan ([#451](https://github.com/0xProject/0x-mesh/pull/451))
@@ -153,16 +159,16 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v5.0.0-beta
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Removes the `txHashes` key in the `OrderEvent`s emitted from the `orders` JSON-RPC subscription and replaced it with `contractEvents`, an array of decoded order-relevant contract events. Parsing these events allows callers to find every discrete order fill/cancel event. ([#420](https://github.com/0xProject/0x-mesh/pull/420))
 - Renames the `Kind` key in `OrderEvent` to `EndState` to better elucidate that it represents the aggregate change to the orders state since it was last re-validated. As an end state, it does not capture any possible intermediate states the order might have been in since the last re-validation. Intermediate states can be inferred from the `contractEvents` included ([#420](https://github.com/0xProject/0x-mesh/pull/420))
 
-### Features ✅ 
+### Features ✅
 
 - Removed the max expiration limit for orders. The only remaining expiration constraint is that the unix timestamp does not overflow int64 (i.e., is not larger than 9223372036854775807). ([#400](https://github.com/0xProject/0x-mesh/pull/400))
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed bug where we weren't updating an orders `fillableTakerAssetAmount` in the DB when orders were being partially filled or when their fillability increased due to a block re-org. ([#439](https://github.com/0xProject/0x-mesh/pull/439))
 - Made `verbosity` field optional in the TypeScript `Config` type. ([#410](https://github.com/0xProject/0x-mesh/pull/410))
@@ -170,17 +176,17 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v4.0.1-beta
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed a DB transaction deadlock accidentally introduced in the v4.0.0-beta release. ([#403](https://github.com/0xProject/0x-mesh/pull/403))
 
 ## v4.0.0-beta
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Renamed the environment variable `P2P_LISTEN_PORT` to `P2P_TCP_PORT` ([#366](https://github.com/0xProject/0x-mesh/pull/366)). This makes it possible to configure Mesh to use both the TCP and Websocket transports by listening on different ports.
 
-### Features ✅ 
+### Features ✅
 
 - Enabled WebSocket transport for bootstrap nodes and all other nodes ([#361](https://github.com/0xProject/0x-mesh/pull/361), [#363](https://github.com/0xProject/0x-mesh/pull/363), [#366](https://github.com/0xProject/0x-mesh/pull/366)). By default the WebSocket transport listens on port `60559` but this can be changed via the `P2P_WEBSOCKETS_PORT` environment variable.
 - Created TypeScript bindings and an NPM package for running Mesh directly in the browser ([#369](https://github.com/0xProject/0x-mesh/pull/369)). Documentation for the NPM package and a guide for running Mesh in the browser can be found at [https://0x-org.gitbook.io/mesh/](https://0x-org.gitbook.io/mesh/).
@@ -189,7 +195,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Order hash calculations are now cached, which slightly improves performance ([#365](https://github.com/0xProject/0x-mesh/pull/365)).
 - Refactored `BlockWatch` so that it can be used without using `LevelDB` for Ethereum block storage. ([#355](https://github.com/0xProject/0x-mesh/pull/355))
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed two related bugs: One where order expiration events would be emitted multiple times and another that meant subsequent fill/cancel events for orders deemed expired were not emitted. Fills/cancels for expired orders will continue to be emitted if they occur within ~4 mins (i.e. 20 blocks) of the expiration ([#385](https://github.com/0xProject/0x-mesh/pull/385)).
 - Fixed a data race-condition in OrderWatcher that could have caused order collection updates to be overwritten in the DB. ([#386](https://github.com/0xProject/0x-mesh/pull/386))
@@ -200,21 +206,21 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v3.0.1-beta
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Fixed bug where block number would sometimes be converted to hex with a leading zero, an invalid hex value per the [Ethereum JSON-RPC specification](https://github.com/ethereum/wiki/wiki/JSON-RPC#hex-value-encoding). ([#353](https://github.com/0xProject/0x-mesh/pull/353))
 - Fixed bug which resulted in orders that were close to expiring being re-added and removed multiple times, resulting in multiple ADDED and EXPIRED events for the same order ([#352](https://github.com/0xProject/0x-mesh/pull/352)).
 
 ## v3.0.0-beta
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Modified Mesh's validation logic to reject and consider invalid any _partially fillable_ orders. While this is
   technically a breaking change, partially fillable orders are rare in the wild and we don't expect this will
   affect many users. ([#333](https://github.com/0xProject/0x-mesh/pull/333))
 - Lowercased `GetStatsAsync` method to `getStatsAsync` in TS client
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - De-dup order submitted via the JSON-RPC method `mesh_addOrders` before performing validation ([#331](https://github.com/0xProject/0x-mesh/pull/331))
 - Added `"declaration": true,` to TS client's `tsconfig.json` so that downstream projects can use it's TS typings. ([#325](https://github.com/0xProject/0x-mesh/pull/325))
@@ -222,11 +228,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v2.0.0-beta
 
-### Breaking changes 🛠 
+### Breaking changes 🛠
 
 - Modified how `mesh_addOrders` treats orders that are already stored on the Mesh node. Previously, they would be rejected with code `OrderAlreadyStored`. Now, if the order is stored and fillable, it will be accepted. If it is stored but unfillable, it will be rejected with `OrderAlreadyStoredAndUnfillable`. We additionally added a `isNew` property to the accepted orderInfos returned, so that callers can discern which orders Mesh already knew about. ([#316](https://github.com/0xProject/0x-mesh/pull/316))
 
-### Features ✅ 
+### Features ✅
 
 - Added backup bootstrap nodes provided by the libp2p community
 - Improved log formatting and reduced verbosity in a few cases ([#314](https://github.com/0xProject/0x-mesh/pull/314), [#287](https://github.com/0xProject/0x-mesh/pull/287))
@@ -238,7 +244,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - RPC server is now started while block event backfilling is happening under the hood instead of waiting for it to complete ([#318](https://github.com/0xProject/0x-mesh/pull/318))
 - Added a `mesh_getStats` endpoint which returns a host of useful information about the state of the Mesh node (e.g., number of fillable order stored, number of peers, peerID, etc...) ([#322](https://github.com/0xProject/0x-mesh/pull/322))
 
-### Bug fixes 🐞 
+### Bug fixes 🐞
 
 - Log messages are no longer incorrectly fired when receiving orders which have already been seen ([#286](https://github.com/0xProject/0x-mesh/pull/286))
 - Fixed a bug where Mesh was still running after the database was closed ([#300](https://github.com/0xProject/0x-mesh/pull/300))
