@@ -31,7 +31,6 @@ func (e WrongTopicVersionError) Error() string {
 	return fmt.Sprintf("wrong topic version: expected %d but got %d", e.expectedVersion, e.actualVersion)
 }
 
-// TODO(albrow): Update these schemas for v3.
 var (
 	// Built-in schemas
 	addressSchemaLoader     = jsonschema.NewStringLoader(`{"id":"/address","type":"string","pattern":"^0x[0-9a-fA-F]{40}$"}`)
@@ -113,7 +112,6 @@ func loadExchangeAddress(loader *jsonschema.SchemaLoader, chainID int) error {
 	}
 	// Note that exchangeAddressSchema accepts both checksummed and
 	// non-checksummed (i.e. all lowercase) addresses.
-	// TODO(albrow): Can we set this to constant?
 	exchangeAddressSchema := fmt.Sprintf(`{"enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
 	return loader.AddSchema("/exchangeAddress", jsonschema.NewStringLoader(exchangeAddressSchema))
 }

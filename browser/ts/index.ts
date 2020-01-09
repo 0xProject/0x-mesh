@@ -1,12 +1,14 @@
 import { SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
 import * as BrowserFS from 'browserfs';
+import { Schema as JsonSchema } from 'jsonschema';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
+export { Schema as JsonSchema } from 'jsonschema';
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
@@ -126,7 +128,13 @@ export interface Config {
     // maximum expiration time for incoming orders and remove any orders with an
     // expiration time too far in the future. Defaults to 100,000.
     maxOrdersInStorage?: number;
-    // TODO(albrow): Add customOrderFilter here.
+    // CustomOrderFilter is a JSON-schema which will be used for validating
+    // incoming orders. If provided, Mesh will only receive orders from other
+    // peers in the network with the same filter.
+    //
+    // TODO(albrow): Link to more documentation about JSON-schemas and how this
+    // filter works.
+    customOrderFilter?: JsonSchema;
 }
 
 export interface ContractAddresses {
@@ -178,8 +186,9 @@ interface WrapperConfig {
     ethereumRPCMaxRequestsPer24HrUTC?: number;
     ethereumRPCMaxRequestsPerSecond?: number;
     enableEthereumRPCRateLimiting?: boolean;
-    customContractAddresses?: string; // json-encoded instead of Object.
+    customContractAddresses?: string; // json-encoded string instead of Object.
     maxOrdersInStorage?: number;
+    customOrderFilter?: string; // json-encoded string instead of Object
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -679,10 +688,12 @@ function configToWrapperConfig(config: Config): WrapperConfig {
     const bootstrapList = config.bootstrapList == null ? undefined : config.bootstrapList.join(',');
     const customContractAddresses =
         config.customContractAddresses == null ? undefined : JSON.stringify(config.customContractAddresses);
+    const customOrderFilter = config.customOrderFilter == null ? undefined : JSON.stringify(config.customOrderFilter);
     return {
         ...config,
         bootstrapList,
         customContractAddresses,
+        customOrderFilter,
     };
 }
 
