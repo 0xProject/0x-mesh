@@ -6,7 +6,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Features ✅
 
-- Increased the maximum size for encoded orders from ~8k to 16k bytes ([#631](https://github.com/0xProject/0x-mesh/pull/631)).
+- Increased the maximum size for encoded orders from ~8kB to 16kB ([#631](https://github.com/0xProject/0x-mesh/pull/631)).
 
 ### Bug fixes 🐞
 

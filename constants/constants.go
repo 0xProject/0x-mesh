@@ -94,8 +94,10 @@ const (
 const MaxBlocksStoredInNonArchiveNode = 128
 
 var (
-	// ErrMaxMessageSize is the error emitted when a GossipSub message exceeds the
-	// max size.
+	// ErrMaxMessageSize is returned or emitted when a GossipSub message exceeds
+	// the max size.
 	ErrMaxMessageSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxMessageSizeInBytes)
-	ErrMaxOrderSize   = fmt.Errorf("order exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
+	// ErrMaxOrderSize is returned or emitted when a signed order encoded as JSON
+	// exceeds the max size.
+	ErrMaxOrderSize = fmt.Errorf("order exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
 )
