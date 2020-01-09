@@ -1,14 +1,12 @@
 import { SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
 import * as BrowserFS from 'browserfs';
-import { Schema as JsonSchema } from 'jsonschema';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
-export { Schema as JsonSchema } from 'jsonschema';
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
@@ -47,6 +45,59 @@ BrowserFS.configure(
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
+
+/**
+ * An interface for JSON schema types, which are used for custom order filters.
+ */
+export interface JsonSchema {
+    id?: string;
+    $schema?: string;
+    $ref?: string;
+    title?: string;
+    description?: string;
+    multipleOf?: number;
+    maximum?: number;
+    exclusiveMaximum?: boolean;
+    minimum?: number;
+    exclusiveMinimum?: boolean;
+    maxLength?: number;
+    minLength?: number;
+    pattern?: string | RegExp;
+    additionalItems?: boolean | JsonSchema;
+    items?: JsonSchema | JsonSchema[];
+    maxItems?: number;
+    minItems?: number;
+    uniqueItems?: boolean;
+    maxProperties?: number;
+    minProperties?: number;
+    required?: string[];
+    additionalProperties?: boolean | JsonSchema;
+    definitions?: {
+        [name: string]: JsonSchema;
+    };
+    properties?: {
+        [name: string]: JsonSchema;
+    };
+    patternProperties?: {
+        [name: string]: JsonSchema;
+    };
+    dependencies?: {
+        [name: string]: JsonSchema | string[];
+    };
+    enum?: any[];
+    // NOTE(albrow): This interface type is based on
+    // https://github.com/tdegrunt/jsonschema/blob/9cb2cf847a33abb76b694c6ed4d8d12ef2037201/lib/index.d.ts#L50
+    // but modified to include the 'const' field from the JSON Schema
+    // specification draft 6 (https://json-schema.org/understanding-json-schema/reference/generic.html#constant-values)
+    // See also: https://github.com/tdegrunt/jsonschema/issues/271
+    const?: any;
+    type?: string | string[];
+    format?: string;
+    allOf?: JsonSchema[];
+    anyOf?: JsonSchema[];
+    oneOf?: JsonSchema[];
+    not?: JsonSchema;
+}
 
 // Note(albrow): This is currently copied over from core/core.go. We need to keep
 // both definitions in sync, so if you change one you must also change the

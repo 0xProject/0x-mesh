@@ -173,7 +173,7 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOrderFilter string, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
@@ -185,6 +185,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, logMessa
 		"RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(rpcPort+nodeID),
 		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
 		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
+		"CUSTOM_ORDER_FILTER="+customOrderFilter,
 	)
 
 	// Pipe messages from stderr through the logMessages channel.

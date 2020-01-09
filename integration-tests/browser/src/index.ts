@@ -49,6 +49,9 @@ provider.start();
         ethereumRPCURL,
         ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
+        customOrderFilter: {
+            properties: { makerAddress: { const: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb' } },
+        },
     });
 
     // This handler will be called whenver there is a critical error.
