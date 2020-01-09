@@ -452,7 +452,7 @@ func (w *Watcher) handleBlockEvents(
 	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 
-	err = w.updateBlockHeadersStoredInDB(miniHeadersColTxn, events)
+	err = updateBlockHeadersStoredInDB(miniHeadersColTxn, events)
 	if err != nil {
 		return err
 	}
@@ -1028,7 +1028,7 @@ func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
 // updateBlockHeadersStoredInDB updates the block headers stored in the DB. Since our DB txns don't support
 // multiple operations involving the same entry, we make sure we only perform either an insertion or a deletion
 // for each block in this method.
-func (w *Watcher) updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction, events []*blockwatch.Event) error {
+func updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction, events []*blockwatch.Event) error {
 	blocksToAdd := map[common.Hash]*miniheader.MiniHeader{}
 	blocksToRemove := map[common.Hash]*miniheader.MiniHeader{}
 	for _, event := range events {
