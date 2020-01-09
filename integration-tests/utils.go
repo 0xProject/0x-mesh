@@ -185,8 +185,10 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOr
 		"RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(rpcPort+nodeID),
 		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
 		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
-		"CUSTOM_ORDER_FILTER="+customOrderFilter,
 	)
+	if customOrderFilter != "" {
+		cmd.Env = append(cmd.Env, "CUSTOM_ORDER_FILTER="+customOrderFilter)
+	}
 
 	// Pipe messages from stderr through the logMessages channel.
 	stderr, err := cmd.StderrPipe()
