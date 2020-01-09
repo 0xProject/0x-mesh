@@ -246,7 +246,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		GlobalBurst:    config.GlobalPubSubMessageBurst,
 		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
 		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
-		MaxMessageSize: constants.MaxOrderSizeInBytes,
+		MaxMessageSize: constants.MaxMessageSizeInBytes,
 	})
 	if err != nil {
 		return nil, err

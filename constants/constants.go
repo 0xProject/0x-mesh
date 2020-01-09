@@ -75,14 +75,27 @@ func init() {
 	UnlimitedExpirationTime, _ = big.NewInt(0).SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 }
 
-// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded orders. It
-// is more than 10x the size of a typical ERC20 order to account for multiAsset orders.
-const MaxOrderSizeInBytes = 8192
+const (
+	// MaxOrderSizeInBytes is the maximum number of bytes allowed for encoded
+	// orders. It allows for MultiAssetProxy orders with roughly 45 total ERC20
+	// assets or roughly 36 total ERC721 assets (combined between both maker and
+	// taker; depends on the other fields of the order).
+	MaxOrderSizeInBytes = 16000
+	messageOverhead     = len(`{"messageType":"order","Order":}`)
+	// MaxMessageSizeInBytes is the maximum size for messages sent through
+	// GossipSub. It is the max order size plus some overhead for the message
+	// format.
+	MaxMessageSizeInBytes = MaxOrderSizeInBytes + messageOverhead
+)
 
 // MaxBlocksStoredInNonArchiveNode is the max number of historical blocks for which a regular Ethereum
 // node stores archive-level state. One cannot make `eth_call` requests specifying blocks earlier than
 // 128 blocks ago on non-archive nodes.
 const MaxBlocksStoredInNonArchiveNode = 128
 
-// ErrMaxMessageSize is the error emitted when a message exceeds it's max size
-var ErrMaxMessageSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
+var (
+	// ErrMaxMessageSize is the error emitted when a GossipSub message exceeds the
+	// max size.
+	ErrMaxMessageSize = fmt.Errorf("message exceeds maximum size of %d bytes", MaxMessageSizeInBytes)
+	ErrMaxOrderSize   = fmt.Errorf("order exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
+)
