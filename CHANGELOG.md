@@ -2,11 +2,15 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v8.0.1
+## v8.1.0
 
 ### Bug fixes 🐞
 
 - Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
+
+### Features ✅
+
+- Reduce startup time for Mesh node by only waiting for a block to be processed if Mesh isn't already sync'ed up to the latest block. ([#622](https://github.com/0xProject/0x-mesh/pull/622))
 
 ## v8.0.0-beta-0xv3
 

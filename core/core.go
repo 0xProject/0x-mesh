@@ -464,11 +464,14 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	// Ensure orderWatcher has processed at least one recent block before
-	// starting the P2P node and completing app start, so that Mesh does
-	// not validate any orders at outdated block heights
-	if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
-		return err
+	// If Mesh is not caught up with the latest block found via Ethereum RPC, ensure orderWatcher
+	// has processed at least one recent block before starting the P2P node and completing app start,
+	// so that Mesh does not validate any orders at outdated block heights
+	isCaughtUp := app.IsCaughtUpToLatestBlock(innerCtx)
+	if !isCaughtUp {
+		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+			return err
+		}
 	}
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
@@ -904,6 +907,29 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 	// app.orderWatcher is guaranteed to be initialized. No need to wait.
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
+}
+
+// IsCaughtUpToLatestBlock returns whether or not the latest block stored by Mesh corresponds
+// to the latest block retrieved from it's Ethereum RPC endpoint
+func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
+	latestBlockStored, err := app.db.FindLatestMiniHeader()
+	if err != nil {
+		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); ok {
+			return false
+		}
+		log.WithFields(map[string]interface{}{
+			"err": err.Error(),
+		}).Warn("failed to fetch the latest miniHeader from DB")
+		return false
+	}
+	latestBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.WithFields(map[string]interface{}{
+			"err": err.Error(),
+		}).Warn("failed to fetch the latest block header via Ethereum RPC")
+		return false
+	}
+	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
 func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {
