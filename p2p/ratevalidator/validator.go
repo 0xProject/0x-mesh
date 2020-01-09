@@ -102,7 +102,7 @@ func (v *Validator) Validate(ctx context.Context, peerID peer.ID, msg *pubsub.Me
 		return true
 	}
 
-	if len(msg.Data) > v.config.MaxMessageSize {
+	if data := msg.GetData(); data != nil && len(data) > v.config.MaxMessageSize {
 		return false
 	}
 
