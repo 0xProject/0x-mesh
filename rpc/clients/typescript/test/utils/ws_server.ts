@@ -45,8 +45,11 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
 
     const mesh = new MeshHarness();
     const log = await mesh.waitForPatternAsync(/started RPC server/);
+    // TODO(jalextowle): Remove this log once the underlying issue has
+    // been found.
+    console.log(log.toString()); // tslint:disable-line
     const peerID = JSON.parse(log.toString()).myPeerID;
-    const client = new WSClient(`http://localhost:${mesh.port}`);
+    const client = new WSClient(`ws://localhost:${mesh.port}`);
     return {
         client,
         mesh,
@@ -98,7 +101,7 @@ export class MeshHarness {
         env.RPC_ADDR = `localhost:${this.port}`;
         this._mesh = spawn('mesh', [], {env});
         this._mesh.stderr.on('error', error => {
-            throw error;
+            throw new Error(`${error.name} - ${error.message}`);
         });
     }
 }
