@@ -1443,10 +1443,6 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	assert.Equal(t, false, orderTwo.IsRemoved)
 }
 
-// TODO(fabio): Test once order expires/unexpires in validation step!!!
-// - Expires and fills
-// - Unexpires and fills
-
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
