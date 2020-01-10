@@ -72,6 +72,7 @@ func (s SignedOrder) JSValue() js.Value {
 
 func (c ContractEvent) JSValue() js.Value {
 	m := map[string]interface{}{
+		"address":    c.Address.Hex(),
 		"blockHash":  c.BlockHash.Hex(),
 		"txHash":     c.TxHash.Hex(),
 		"txIndex":    c.TxIndex,
