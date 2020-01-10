@@ -38,6 +38,12 @@ jobs:
           name: Run linters
           command: make lint
       - run:
+          name: Build browser package
+          command: cd browser && yarn install && yarn build
+      - run:
+          name: Build examples/browser
+          command: cd examples/browser && yarn install --force && yarn build
+      - run:
           name: Run Go tests
           command: make test-go
       - run:

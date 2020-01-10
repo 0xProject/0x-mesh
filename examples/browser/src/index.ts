@@ -26,14 +26,17 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber } from '@0x/mesh-browser';
     // This order is for demonstration purposes only and is invalid. It will be
     // rejected by Mesh. You can replace it with a valid order.
     const order: SignedOrder = {
+        chainId: 1,
         makerAddress: '0xa3eCE5D5B6319Fa785EfC10D3112769a46C6E149',
         makerAssetData: '0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498',
         makerAssetAmount: new BigNumber('1000000000000000000'),
         makerFee: new BigNumber('0'),
+        makerFeeAssetData: '0x',
         takerAddress: '0x0000000000000000000000000000000000000000',
         takerAssetData: '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
         takerAssetAmount: new BigNumber('10000000000000000000000'),
         takerFee: new BigNumber('0'),
+        takerFeeAssetData: '0x',
         senderAddress: '0x0000000000000000000000000000000000000000',
         exchangeAddress: '0x080bf510FCbF18b91105470639e9561022937712',
         feeRecipientAddress: '0x0000000000000000000000000000000000000000',
