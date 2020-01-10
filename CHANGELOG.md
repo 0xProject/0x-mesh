@@ -12,7 +12,8 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞
 
 - Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
-- Fixed a bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623))
+- Fixed a bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623)).
+- Fixed a bug which could cause Mesh to exit if a re-org condition occurs causing a block to be added and removed within the same block sync operation. ([#614](https://github.com/0xProject/0x-mesh/pull/614)).
 
 
 ## v8.0.0-beta-0xv3
