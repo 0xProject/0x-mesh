@@ -1159,30 +1159,13 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
 }
 
-func (w *Watcher) generateOrderEventsIfChanged(
-	ctx context.Context,
+func (w *Watcher) convertValidationResultsIntoOrderEvents(
 	ordersColTxn *db.Transaction,
+	validationResults *ordervalidator.ValidationResults,
 	orderHashToDBOrder map[common.Hash]*meshdb.Order,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	validationBlockNumber *big.Int,
 	validationBlockTimestamp time.Time,
 ) ([]*zeroex.OrderEvent, error) {
-	signedOrders := []*zeroex.SignedOrder{}
-	for _, order := range orderHashToDBOrder {
-		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
-			if err := w.permanentlyDeleteOrder(ordersColTxn, order); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		signedOrders = append(signedOrders, order.SignedOrder)
-	}
-	if len(signedOrders) == 0 {
-		return nil, nil
-	}
-	areNewOrders := false
-	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlockNumber)
-
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		order, found := orderHashToDBOrder[acceptedOrderInfo.OrderHash]
@@ -1213,10 +1196,11 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			// If order was previously expired, check if it has become unexpired
-			if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 {
-				expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
-				if validationBlockTimestamp.Before(expiration) {
+			expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+
+			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
+				// If order was previously expired, check if it has become unexpired
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
 					w.rewatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlockTimestamp,
@@ -1227,13 +1211,26 @@ func (w *Watcher) generateOrderEventsIfChanged(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				}
-			}
-			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// No important state-change happened
-			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
-				// Order was filled, emit event and update order in DB
-				order.FillableTakerAssetAmount = newFillableAmount
-				w.updateOrderDBEntry(ordersColTxn, order)
+				continue
+			}
+			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+				// If order was previously expired, check if it has become unexpired
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
+					w.rewatchOrder(ordersColTxn, order, newFillableAmount)
+					orderEvent := &zeroex.OrderEvent{
+						Timestamp:                validationBlockTimestamp,
+						OrderHash:                order.Hash,
+						SignedOrder:              order.SignedOrder,
+						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+						EndState:                 zeroex.ESOrderUnexpired,
+					}
+					orderEvents = append(orderEvents, orderEvent)
+				} else {
+					order.FillableTakerAssetAmount = newFillableAmount
+					w.updateOrderDBEntry(ordersColTxn, order)
+				}
+				// Order was filled, emit event
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlockTimestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1245,9 +1242,21 @@ func (w *Watcher) generateOrderEventsIfChanged(
 				orderEvents = append(orderEvents, orderEvent)
 			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
-				// Update order in DB and emit event
-				order.FillableTakerAssetAmount = newFillableAmount
-				w.updateOrderDBEntry(ordersColTxn, order)
+				// If order was previously expired, check if it has become unexpired
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
+					w.rewatchOrder(ordersColTxn, order, newFillableAmount)
+					orderEvent := &zeroex.OrderEvent{
+						Timestamp:                validationBlockTimestamp,
+						OrderHash:                order.Hash,
+						SignedOrder:              order.SignedOrder,
+						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+						EndState:                 zeroex.ESOrderUnexpired,
+					}
+					orderEvents = append(orderEvents, orderEvent)
+				} else {
+					order.FillableTakerAssetAmount = newFillableAmount
+					w.updateOrderDBEntry(ordersColTxn, order)
+				}
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlockTimestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1304,6 +1313,35 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	}
 
 	return orderEvents, nil
+}
+
+func (w *Watcher) generateOrderEventsIfChanged(
+	ctx context.Context,
+	ordersColTxn *db.Transaction,
+	orderHashToDBOrder map[common.Hash]*meshdb.Order,
+	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+	validationBlockNumber *big.Int,
+	validationBlockTimestamp time.Time,
+) ([]*zeroex.OrderEvent, error) {
+	signedOrders := []*zeroex.SignedOrder{}
+	for _, order := range orderHashToDBOrder {
+		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
+			if err := w.permanentlyDeleteOrder(ordersColTxn, order); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		signedOrders = append(signedOrders, order.SignedOrder)
+	}
+	if len(signedOrders) == 0 {
+		return nil, nil
+	}
+	areNewOrders := false
+	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlockNumber)
+
+	return w.convertValidationResultsIntoOrderEvents(
+		ordersColTxn, validationResults, orderHashToDBOrder, orderHashToEvents, validationBlockTimestamp,
+	)
 }
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
