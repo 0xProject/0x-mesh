@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Set errors and debug to be on. This will throw if the status code of a "yarn
+# test" command is nonzero.
+set -ex
+
+MAX=20
+
+# Build so that the tests run against the current source code.
+yarn build
+
+i=0
+while [[ $i -lt $MAX ]]
+do
+    echo $i
+    yarn test
+    i=$(($i + 1))
+done

@@ -31,7 +31,6 @@ blockchainTests.resets('WSClient', env => {
         });
 
         afterEach(async () => {
-            deployment.client.destroy();
             deployment.mesh.stopMesh();
         });
 
@@ -220,13 +219,10 @@ blockchainTests.resets('WSClient', env => {
                     }
 
                     // Subscribe to orders and wait for order events.
-                    let now: number;
                     const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
                         expect(orderEvents.length).to.be.eq(orders.length);
                         for (const orderEvent of orderEvents) {
                             expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
-                            // tslint:disable-next-line:custom-no-magic-numbers
-                            assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(4));
                         }
 
                         // Ensure that all of the orders that were added had an associated order event emitted.
@@ -246,7 +242,6 @@ blockchainTests.resets('WSClient', env => {
 
                         done();
                     });
-                    now = new Date(Date.now()).getTime();
                     const validationResults = await deployment.client.addOrdersAsync(orders);
                     expect(validationResults.accepted.length).to.be.eq(ordersLength);
                     await subscription;
@@ -282,7 +277,6 @@ blockchainTests.resets('WSClient', env => {
                         const hashLength = 66;
                         expect(contractEvent.blockHash.length).to.be.eq(hashLength);
                         expect(contractEvent.blockHash).to.not.be.eq(constants.NULL_BYTES32);
-                        expect(contractEvent.txHash.length).to.be.eq(hashLength);
                         expect(contractEvent.txHash.length).to.be.eq(hashLength);
                         const parameters = contractEvent.parameters as ExchangeCancelEvent;
                         parameters.makerAddress = parameters.makerAddress.toLowerCase();
