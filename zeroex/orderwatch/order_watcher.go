@@ -1390,7 +1390,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			}
 		}
 		if err := validateOrderSize(order); err != nil {
-			if err == constants.ErrMaxMessageSize {
+			if err == constants.ErrMaxOrderSize {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: order,
@@ -1454,7 +1454,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 		return err
 	}
 	if len(encoded) > constants.MaxOrderSizeInBytes {
-		return constants.ErrMaxMessageSize
+		return constants.ErrMaxOrderSize
 	}
 	return nil
 }

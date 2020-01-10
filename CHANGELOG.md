@@ -4,14 +4,16 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v8.1.0
 
+### Features ✅
+
+- Reduced startup time for Mesh node by only waiting for a block to be processed if Mesh isn't already sync'ed up to the latest block. ([#622](https://github.com/0xProject/0x-mesh/pull/622))
+- Increased the maximum size for encoded orders from ~8kB to 16kB ([#631](https://github.com/0xProject/0x-mesh/pull/631)).
+
 ### Bug fixes 🐞
 
 - Fixed a typo ("rendervouz" --> "rendezvous") in GetStatsResponse. ([#611](https://github.com/0x-mesh/pull/611)).
-- Fix bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623))
+- Fixed a bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623))
 
-### Features ✅
-
-- Reduce startup time for Mesh node by only waiting for a block to be processed if Mesh isn't already sync'ed up to the latest block. ([#622](https://github.com/0xProject/0x-mesh/pull/622))
 
 ## v8.0.0-beta-0xv3
 
