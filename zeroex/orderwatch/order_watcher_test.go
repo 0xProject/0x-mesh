@@ -1027,6 +1027,422 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	}
 }
 
+func TestOrderWatcherUpdateBlockHeadersStoredInDBHeaderExists(t *testing.T) {
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	headerOne := &miniheader.MiniHeader{
+		Number:    big.NewInt(5),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now().UTC(),
+	}
+
+	testCases := []struct {
+		events              []*blockwatch.Event
+		startMiniHeaders    []*miniheader.MiniHeader
+		expectedMiniHeaders []*miniheader.MiniHeader
+	}{
+		// Scenario 1: Header 1 exists in DB. Get's removed and then re-added.
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 2: Header doesn't exist, get's added and then removed
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders:    []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+		// Scenario 3: Header added, removed then re-added
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 4: Header removed, added then removed again
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+		// Scenario 5: Call added twice for the same block
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 6: Call removed twice for the same block
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		for _, startMiniHeader := range testCase.startMiniHeaders {
+			err = meshDB.MiniHeaders.Insert(startMiniHeader)
+			require.NoError(t, err)
+		}
+
+		miniHeadersColTxn := meshDB.MiniHeaders.OpenTransaction()
+		defer func() {
+			_ = miniHeadersColTxn.Discard()
+		}()
+
+		err = updateBlockHeadersStoredInDB(miniHeadersColTxn, testCase.events)
+		require.NoError(t, err)
+
+		err = miniHeadersColTxn.Commit()
+		require.NoError(t, err)
+
+		miniHeaders := []*miniheader.MiniHeader{}
+		err = meshDB.MiniHeaders.FindAll(&miniHeaders)
+		require.NoError(t, err)
+		assert.Equal(t, testCase.expectedMiniHeaders, miniHeaders)
+
+		err := meshDB.ClearAllMiniHeaders()
+		require.NoError(t, err)
+	}
+}
+
+func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	// Create and add an order (which will later become expired) to OrderWatcher
+	expirationTime := time.Now().Add(24 * time.Hour)
+	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	signedOrderTwo := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+
+	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
+	require.NoError(t, err)
+	var orderOne meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	require.NoError(t, err)
+	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
+	// expiry event for it.
+	ordersToRevalidate := map[common.Hash]*meshdb.Order{
+		signedOrderOneHash: &orderOne,
+	}
+
+	ordersColTxn := meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersColTxn.Discard()
+	}()
+
+	previousLatestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
+	latestBlockTimestamp := expirationTime.Add(1 * time.Second)
+	orderEvents, err := orderWatcher.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, ordersToRevalidate)
+	require.NoError(t, err)
+
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	signedOrderTwoHash, err := signedOrderTwo.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, signedOrderTwoHash, orderEvent.OrderHash)
+	assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
+	assert.Equal(t, big.NewInt(0), orderEvent.FillableTakerAssetAmount)
+	assert.Len(t, orderEvent.ContractEvents, 0)
+
+	err = ordersColTxn.Commit()
+	require.NoError(t, err)
+
+	var orderTwo meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderTwoHash.Bytes(), &orderTwo)
+	require.NoError(t, err)
+	assert.Equal(t, true, orderTwo.IsRemoved)
+}
+
+func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	// Create and add an order (which will later become expired) to OrderWatcher
+	expirationTime := time.Now().Add(24 * time.Hour)
+	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	signedOrderTwo := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Simulate a block found with a timestamp past expirationTime
+	latestBlock, err := meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	blockTimestamp := expirationTime.Add(1 * time.Minute)
+	nextBlock := &miniheader.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: blockTimestamp,
+	}
+	expiringBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- expiringBlockEvents
+
+	// Await expired event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 4*time.Second)
+	require.Len(t, orderEvents, 2)
+	for _, orderEvent := range orderEvents {
+		assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
+	}
+
+	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
+	require.NoError(t, err)
+	var orderOne meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	require.NoError(t, err)
+	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
+	// unexpiry event for it.
+	ordersToRevalidate := map[common.Hash]*meshdb.Order{
+		signedOrderOneHash: &orderOne,
+	}
+
+	ordersColTxn := meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersColTxn.Discard()
+	}()
+
+	// LatestBlockTimestamp is earlier than previous latest simulating block-reorg where new latest block
+	// has an earlier timestamp than the last
+	previousLatestBlockTimestamp := blockTimestamp
+	latestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, ordersToRevalidate)
+	require.NoError(t, err)
+
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	signedOrderTwoHash, err := signedOrderTwo.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, signedOrderTwoHash, orderEvent.OrderHash)
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState)
+	assert.Equal(t, signedOrderTwo.TakerAssetAmount, orderEvent.FillableTakerAssetAmount)
+	assert.Len(t, orderEvent.ContractEvents, 0)
+
+	err = ordersColTxn.Commit()
+	require.NoError(t, err)
+
+	var orderTwo meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderTwoHash.Bytes(), &orderTwo)
+	require.NoError(t, err)
+	assert.Equal(t, false, orderTwo.IsRemoved)
+}
+
+// Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
+// `convertValidationResultsIntoOrderEvents` since we cannot properly time-travel using Ganache.
+// Source: https://github.com/trufflesuite/ganache-cli/issues/708
+func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	// Create and add an order (which will later become expired) to OrderWatcher
+	expirationTime := time.Now().Add(24 * time.Hour)
+	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Simulate a block found with a timestamp past expirationTime. This will mark the order as removed
+	// and will remove it from the expiration watcher.
+	latestBlock, err := meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	blockTimestamp := expirationTime.Add(1 * time.Minute)
+	nextBlock := &miniheader.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: blockTimestamp,
+	}
+	expiringBlockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- expiringBlockEvents
+
+	// Await expired event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	assert.Equal(t, zeroex.ESOrderExpired, orderEvents[0].EndState)
+
+	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
+	require.NoError(t, err)
+	var orderOne meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	require.NoError(t, err)
+
+	ordersColTxn := meshDB.Orders.OpenTransaction()
+	defer func() {
+		_ = ordersColTxn.Discard()
+	}()
+
+	validationResults := ordervalidator.ValidationResults{
+		Accepted: []*ordervalidator.AcceptedOrderInfo{
+			&ordervalidator.AcceptedOrderInfo{
+				OrderHash:                signedOrderOneHash,
+				SignedOrder:              signedOrderOne,
+				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrderOne.TakerAssetAmount, big.NewInt(2)),
+				IsNew:                    false,
+			},
+		},
+		Rejected: []*ordervalidator.RejectedOrderInfo{},
+	}
+	orderHashToDBOrder := map[common.Hash]*meshdb.Order{
+		signedOrderOneHash: &orderOne,
+	}
+	exchangeFillEvent := "ExchangeFillEvent"
+	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{
+		signedOrderOneHash: []*zeroex.ContractEvent{
+			&zeroex.ContractEvent{
+				Kind: exchangeFillEvent,
+			},
+		},
+	}
+	validationBlockTimestamp := expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(ordersColTxn, &validationResults, orderHashToDBOrder, orderHashToEvents, validationBlockTimestamp)
+	require.NoError(t, err)
+
+	require.Len(t, orderEvents, 2)
+	orderEventTwo := orderEvents[0]
+	assert.Equal(t, signedOrderOneHash, orderEventTwo.OrderHash)
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEventTwo.EndState)
+	assert.Len(t, orderEventTwo.ContractEvents, 0)
+	orderEventOne := orderEvents[1]
+	assert.Equal(t, signedOrderOneHash, orderEventOne.OrderHash)
+	assert.Equal(t, zeroex.ESOrderFilled, orderEventOne.EndState)
+	assert.Len(t, orderEventOne.ContractEvents, 1)
+	assert.Equal(t, orderEventOne.ContractEvents[0].Kind, exchangeFillEvent)
+
+	err = ordersColTxn.Commit()
+	require.NoError(t, err)
+
+	var orderTwo meshdb.Order
+	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderTwo)
+	require.NoError(t, err)
+	assert.Equal(t, false, orderTwo.IsRemoved)
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 

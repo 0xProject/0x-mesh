@@ -84,7 +84,7 @@ func (app *App) schemaValidateMeshMessage(o []byte) (*gojsonschema.Result, error
 }
 
 func validateMessageSize(message *p2p.Message) error {
-	if len(message.Data) > constants.MaxOrderSizeInBytes {
+	if len(message.Data) > constants.MaxMessageSizeInBytes {
 		return constants.ErrMaxMessageSize
 	}
 	return nil

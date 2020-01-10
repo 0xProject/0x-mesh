@@ -112,10 +112,10 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 	for _, msg := range messages {
 		if err := validateMessageSize(msg); err != nil {
 			log.WithFields(map[string]interface{}{
-				"error":               err,
-				"from":                msg.From,
-				"maxOrderSizeInBytes": constants.MaxOrderSizeInBytes,
-				"actualSizeInBytes":   len(msg.Data),
+				"error":                 err,
+				"from":                  msg.From,
+				"maxMessageSizeInBytes": constants.MaxMessageSizeInBytes,
+				"actualSizeInBytes":     len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue

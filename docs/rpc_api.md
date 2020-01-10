@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-8.0.0--beta--0xv3-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-8.1.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh JSON-RPC API Documentation
 
@@ -204,7 +204,7 @@ Gets certain configurations and stats about a Mesh node.
     "result": {
         "version": "development",
         "pubSubTopic": "/0x-orders/network/1/version/1",
-        "rendervous": "/0x-mesh/network/1/version/1",
+        "rendezvous": "/0x-mesh/network/1/version/1",
         "peerID": "16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
         "ethereumChainID": 1,
         "latestBlock": {

@@ -108,10 +108,21 @@ func TestValidatorMaxMessageSize(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	valid := validator.Validate(ctx, peerIDs[1], &pubsub.Message{
-		Message: &pb.Message{
-			Data: make([]byte, maxSize+1),
-		},
-	})
-	assert.False(t, valid, "message should be valid")
+	{
+		isValid := validator.Validate(ctx, peerIDs[1], &pubsub.Message{
+			Message: &pb.Message{
+				Data: make([]byte, maxSize),
+			},
+		})
+		assert.True(t, isValid, "message should be valid")
+	}
+
+	{
+		isValid := validator.Validate(ctx, peerIDs[1], &pubsub.Message{
+			Message: &pb.Message{
+				Data: make([]byte, maxSize+1),
+			},
+		})
+		assert.False(t, isValid, "message should be invalid")
+	}
 }

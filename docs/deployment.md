@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-8.0.0--beta--0xv3-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-8.1.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh Deployment Guide
 

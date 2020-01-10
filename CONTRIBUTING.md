@@ -1,13 +1,11 @@
 # 0x Mesh Development and Contribution Guide
 
-## Directory Location
-
-If you are working on 0x-mesh, the root directory for the project must be at
-**\$GOPATH/src/github.com/0xProject/0x-mesh**. 0x Mesh uses
-[Dep](https://golang.github.io/dep/docs/installation.html) for dependency
-management and does not support Go modules.
-
 ## Cloning the Repository and Opening PRs
+
+Clone the repository with `git clone git@github.com:0xProject/0x-mesh.git`. Mesh
+uses [Go Modules](https://github.com/golang/go/wiki/Modules) for dependency
+management, so depending on your settings you might need to clone the repository
+_outside_ of your `GOPATH`.
 
 0x Mesh uses two main branches:
 
@@ -33,10 +31,9 @@ the dropdown menu in the GitHub UI to select `development`.
 
 -   [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
 -   [Go version 1.12.x](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g)). Go 1.13 is not supported yet (see https://github.com/0xProject/0x-mesh/issues/480).
--   [Dep package manager](https://golang.github.io/dep/docs/installation.html)
 -   [Node.js version >=11](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm))
 -   [Yarn package manager](https://yarnpkg.com/en/)
--   [golangci-lint version 1.16.0](https://github.com/golangci/golangci-lint#install)
+-   [golangci-lint version 1.22.2](https://github.com/golangci/golangci-lint#install)
 
 ## Installing Dependencies
 
@@ -101,7 +98,9 @@ make lint
 
 ## Managing Dependencies
 
-See https://golang.github.io/dep/docs/daily-dep.html.
+Mesh uses [Go Modules](https://github.com/golang/go/wiki/Modules) for managing
+Go dependencies and [Yarn](https://yarnpkg.com/lang/en/) for managing
+TypeScript/JavaScript dependencies.
 
 ## Editor Configuration
 

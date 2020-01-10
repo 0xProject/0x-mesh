@@ -1,10 +1,5 @@
 .PHONY: deps
-deps: deps-go deps-ts wasmbrowsertest
-
-
-.PHONY: deps-go
-deps-go:
-	dep ensure
+deps: deps-ts wasmbrowsertest
 
 
 .PHONY: deps-ts
@@ -28,12 +23,7 @@ wasmbrowsertest: gobin
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile: deps-go-no-lockfile deps-ts-no-lockfile wasmbrowsertest
-
-
-.PHONY: deps-go-no-lockfile
-deps-go-no-lockfile:
-	dep ensure --vendor-only
+deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
 
 
 .PHONY: deps-ts-no-lockfile

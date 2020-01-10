@@ -1,4 +1,4 @@
-## @0x/mesh-browser
+# @0x/mesh-browser
 
 TypeScript and JavaScript bindings for running Mesh directly in the browser.
 

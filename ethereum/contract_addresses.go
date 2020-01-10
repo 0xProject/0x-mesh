@@ -59,7 +59,7 @@ type ContractAddresses struct {
 // ChainIDToContractAddresses maps chainId to a mapping of contract name to Ethereum address
 // on that given chain
 var ChainIDToContractAddresses = map[int]ContractAddresses{
-	// // Mainnet
+	// Mainnet
 	1: ContractAddresses{
 		ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
 		ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
