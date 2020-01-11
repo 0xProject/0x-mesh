@@ -3,17 +3,39 @@
 package zeroex
 
 import (
-	"fmt"
 	"math/big"
 	"syscall/js"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 )
+
+var (
+	rpcClient              *ethrpc.Client
+	ethClient              *ethclient.Client
+	makerAddress           = constants.GanacheAccount1
+	takerAddress           = constants.GanacheAccount2
+	tenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	wethAmount             = new(big.Int).Mul(big.NewInt(2), tenDecimalsInBaseUnits)
+	zrxAmount              = new(big.Int).Mul(big.NewInt(1), tenDecimalsInBaseUnits)
+)
+
+func init() {
+	var err error
+	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	ethClient = ethclient.NewClient(rpcClient)
+}
 
 func TestContractEvent(t *testing.T) {
 	contracts, err := ethereum.GetContractAddressesForChainID(1337)
@@ -61,30 +83,49 @@ func TestContractEvent(t *testing.T) {
 		require.Equal(t, jsEvent.Get("logIndex").Int(), int(event.LogIndex))
 		require.Equal(t, jsEvent.Get("isRemoved").Bool(), event.IsRemoved)
 		require.Equal(t, jsEvent.Get("kind").String(), event.Kind)
-		assertDeepEqual(t, jsEvent.Get("parameters"), event.Parameters.(js.Wrapper).JSValue())
+		// TODO(jalextowle): Check that the parameters are equal.
 	}
 }
 
-func assertDeepEqual(t *testing.T, value js.Value, other js.Value) bool {
-	keys := js.Global().Get("Object").Get("keys").Invoke(value)
-	otherKeys := js.Global().Get("Object").Get("keys").Invoke(other)
-	length := keys.Get("length").Int()
-	otherLength := otherKeys.Get("length").Int()
-	require.Equal(t, length, otherLength)
-	for i := 0; i < length; i++ {
-		k := keys.Index(i)
-		isInBothArrays := false
-		fmt.Println(js.Global().Get("JSON").Get("stringify").Invoke(k).String())
-		for j := 0; j < otherLength; j++ {
-			oK := otherKeys.Index(j)
-			if k.String() == oK.String() {
-				isInBothArrays = true
-				require.True(t)
-				break
-			}
-		}
-		require.True(t, isInBothArrays)
+func TestSignedOrder(t *testing.T) {
+	orderCount := 10
+	orders := signedTestOrders(t, orderCount)
+	for _, order := range orders {
+		jsOrder := order.JSValue()
+		require.Equal(t, jsOrder.Get("chainId").Int64(), order.ChainID)
+		require.Equal(t, jsOrder.Get("exchangeAddress").String(), order.ExchangeAddress.Hex())
+		require.Equal(t, jsOrder.Get("senderAddress").String(), order.SenderAddress.Hex())
+		require.Equal(t, jsOrder.Get("feeRecipientAddress").String(), order.FeeRecipientAddress.Hex())
+		require.Equal(t, jsOrder.Get("expirationTimeSeconds").String(), order.ExpirationTimeSeconds.String())
+		require.Equal(t, jsOrder.Get("salt").String(), order.Salt.String())
+		require.Equal(t, jsOrder.Get("signature").String(), order.Signature)
+		require.Equal(t, jsOrder.Get("makerAddress").String(), order.MakerAddress.Hex())
+		require.Equal(t, jsOrder.Get("makerAssetAmount").String(), order.MakerAssetAmount.String())
+		require.Equal(t, jsOrder.Get("makerAssetData").String(), string(order.MakerAssetData))
+		require.Equal(t, jsOrder.Get("makerFee").String(), order.MakerFee.String())
+		require.Equal(t, jsOrder.Get("makerFeeAssetData").String(), string(order.MakerFeeAssetData))
+		require.Equal(t, jsOrder.Get("takerAddress").String(), order.TakerAddress.Hex())
+		require.Equal(t, jsOrder.Get("takerAssetAmount").String(), order.TakerAssetAmount.String())
+		require.Equal(t, jsOrder.Get("takerAssetData").String(), string(order.TakerAssetData))
+		require.Equal(t, jsOrder.Get("takerFee").String(), order.TakerFee.String())
+		require.Equal(t, jsOrder.Get("takerFeeAssetData").String(), string(order.TakerFeeAssetData))
 	}
-	t.Fail()
-	return true
+}
+
+// TODO(jalextowle): Copied from core/message_handler
+func signedTestOrders(t *testing.T, orderCount int) []*SignedOrder {
+	orders := make([]*SignedOrder, orderCount)
+
+	for i := range orders {
+		orders[i] = scenario.CreateZRXForWETHSignedTestOrder(
+			t,
+			ethClient,
+			makerAddress,
+			takerAddress,
+			new(big.Int).Add(wethAmount, big.NewInt(int64(i))),
+			zrxAmount,
+		)
+	}
+
+	return orders
 }

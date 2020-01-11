@@ -8,6 +8,7 @@ examples/javascript_websocket_client/lib
 rpc/clients/typescript/node_modules
 rpc/clients/typescript/lib
 rpc/clients/typescript/yarn-error.log
+rpc/clients/typescript/ganache.log
 *.wasm
 browser/lib
 browser/ts/generated
