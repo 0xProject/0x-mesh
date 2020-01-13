@@ -306,7 +306,7 @@ export class WSClient {
     /**
      * Get all 0x signed orders currently stored in the Mesh node
      * @param perPage number of signedOrders to fetch per paginated request
-     * @returns all orders, their hash and their fillableTakerAssetAmount
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
      */
     public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
         let snapshotID = ''; // New snapshot
