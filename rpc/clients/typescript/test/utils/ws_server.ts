@@ -44,10 +44,23 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await buildBinaryAsync();
 
     const mesh = new MeshHarness();
-    const log = await mesh.waitForPatternAsync(/started RPC server/);
-    // TODO(jalextowle): Remove this log once the underlying issue has
-    // been found.
-    console.log(log.toString()); // tslint:disable-line
+    const startingPattern = /started RPC server/;
+    const patternChunk = await mesh.waitForPatternAsync(startingPattern);
+
+    // Since chunks can contain more than one log, process the chunks until a
+    // chunk is found that contains the pattern.
+    let log;
+    const chunks = patternChunk.split('\n');
+    for (const chunk of chunks) {
+        if (startingPattern.test(chunk)) {
+            log = chunk;
+            break;
+        }
+    }
+    if (!log) {
+        throw new Error('Incorrect log found');
+    }
+
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`ws://localhost:${mesh.port}`);
     return {
