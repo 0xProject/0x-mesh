@@ -17,8 +17,8 @@ func GetContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 }
 
 func AddContractAddressesForChainID(chainID int, addresses ContractAddresses) error {
-	if _, alreadExists := ChainIDToContractAddresses[chainID]; alreadExists {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: addresses for this chain id are already defined", chainID)
+	if _, alreadExists := ChainIDToContractAddresses[chainID]; alreadExists && chainID == 1 {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: addresses for this chain id are hard-coded", chainID)
 	}
 	if addresses.Exchange == constants.NullAddress {
 		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
