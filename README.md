@@ -24,14 +24,14 @@ we have reached the point where Mesh is being used by some teams in production. 
   from market makers. This allows them to increase the depth of their order
   books and provide a better user experience.
 - Market makers can use Mesh to reach a broader audience. Their orders will be
-  sent throughout the network and are more likely to be filled.
+  sent throughout the network and picked up by many trading venues and are therefore more likely to be filled.
 - Mesh allows for a new type of relayer called a "serverless relayer". In the
   serverless relayer model, each user runs Mesh in their browser and there is
   no backend server or database. Instead, peers share orders directly with one
   another. (There are pros and cons to this approach and it is probably not
   suitable for all markets).
 
-Both Relayers and Market makers can use Mesh to watch a set of orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
+Both Relayers and Market makers can use Mesh to watch a set of 0x orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
 
 0x Mesh is intended to be entirely automatic. It takes care of all the work of
 receiving, sharing, and validating orders so that you can focus on building your
