@@ -300,8 +300,6 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	validators.Add("message rate limiting", rateValidator.Validate)
 
 	// Add the custom validator if there is one.
-	// TODO(albrow): Add test for custom validators. (Already somewhat covered in
-	// integration tests but we should add unit tests too).
 	if config.CustomMessageValidator != nil {
 		validators.Add("custom", config.CustomMessageValidator)
 	}
