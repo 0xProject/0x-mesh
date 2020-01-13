@@ -177,7 +177,7 @@ blockchainTests.resets('WSClient', env => {
                 // timestamp is approximately equal (within 1 second) because the server
                 // will receive the request slightly after it is sent.
                 const now = new Date(Date.now()).getTime();
-                const perPage = 10;
+                const perPage = ordersLength / 2;
                 const response = await deployment.client.getOrdersAsync(perPage);
                 assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
 
