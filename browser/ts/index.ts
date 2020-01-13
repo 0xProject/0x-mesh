@@ -187,9 +187,9 @@ export interface Config {
     // makerAssetData:
     //
     //    {
-    //        "properties": {
-    //            "makerAssetData": {
-    //                "const": "0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
+    //        properties: {
+    //            makerAssetData: {
+    //                const: "0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
     //            }
     //        }
     //    }
