@@ -337,6 +337,24 @@ export class WSClient {
         return getOrdersResponse;
     }
     /**
+     * Get page of 0x signed orders stored on the Mesh node at the specified snapshot
+     * @param page Page index at which to retrieve orders
+     * @param perPage number of signedOrders to fetch per paginated request
+     * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     */
+    public async getOrdersForPageAsync(page: number, perPage: number = 200, snapshotID?: string): Promise<GetOrdersResponse> {
+        const finalSnapshotID = snapshotID === undefined ? '' : snapshotID;
+
+        const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+            page,
+            perPage,
+            finalSnapshotID,
+        ]);
+        const getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
+        return getOrdersResponse;
+    }
+    /**
      * Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
      * subscriptionId that can be used to `unsubscribe()` from this subscription.
      * @param   cb   callback function where you'd like to get notified about order events
