@@ -126,14 +126,15 @@ type Config struct {
 	// is typically only needed for testing on custom chains/networks. The given
 	// addresses are added to the default list of addresses for known chains/networks and
 	// overriding any contract addresses for known chains/networks is not allowed. The
-	// addresses for exchange, devUtils, erc20Proxy, and erc721Proxy are required
+	// addresses for exchange, devUtils, erc20Proxy, erc721Proxy and erc1155Proxy are required
 	// for each chain/network. For example:
 	//
 	//    {
 	//        "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
 	//        "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
 	//        "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
-	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
+	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401",
+	//        "erc1155Proxy": "0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
