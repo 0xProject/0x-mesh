@@ -13,7 +13,7 @@ WORKDIR /go/src/github.com/0xProject/0x-mesh
 
 ADD . ./
 
-RUN make deps-go-no-lockfile
+RUN make gobin
 
 RUN go build ./cmd/mesh-bootstrap
 
