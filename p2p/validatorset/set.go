@@ -1,3 +1,6 @@
+// Package validatorset offers a way to combine a set of libp2p.Validators into
+// a single validator. The combined validator set only passes if *all* of its
+// constituent validators pass.
 package validatorset
 
 import (
@@ -9,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Set is a set of libp2p.Validators.
 type Set struct {
 	mu         sync.RWMutex
 	validators []*namedValidator
@@ -19,10 +23,13 @@ type namedValidator struct {
 	validator pubsub.Validator
 }
 
+// New creates a new validator set
 func New() *Set {
 	return &Set{}
 }
 
+// Add adds a new validator to the set with the given name. The name is used
+// in error messages.
 func (s *Set) Add(name string, validator pubsub.Validator) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -33,6 +40,9 @@ func (s *Set) Add(name string, validator pubsub.Validator) {
 	s.validators = append(s.validators, named)
 }
 
+// Validate validates the message. It returns true if all of the constituent
+// validators in the set also return true. If one or more of them return false,
+// Validate returns false.
 func (s *Set) Validate(ctx context.Context, sender peer.ID, msg *pubsub.Message) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -47,10 +57,9 @@ func (s *Set) Validate(ctx context.Context, sender peer.ID, msg *pubsub.Message)
 		// Otherwise continue by running this validator.
 		isValid := validator.validator(ctx, sender, msg)
 		if !isValid {
-			// TODO(albrow): Change the verbosity of this log to Trace.
 			// TODO(albrow): Should we reduce a peer's score as a penalty for invalid
 			//               messages?
-			log.WithField("validatorName", validator.name).Debug("pubsub message validation failed")
+			log.WithField("validatorName", validator.name).Trace("pubsub message validation failed")
 			return false
 		}
 	}
