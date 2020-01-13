@@ -45,22 +45,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
 
     const mesh = new MeshHarness();
     const startingPattern = /started RPC server/;
-    const patternChunk = await mesh.waitForPatternAsync(startingPattern);
-
-    // Since chunks can contain more than one log, process the chunks until a
-    // chunk is found that contains the pattern.
-    let log;
-    const chunks = patternChunk.split('\n');
-    for (const chunk of chunks) {
-        if (startingPattern.test(chunk)) {
-            log = chunk;
-            break;
-        }
-    }
-    if (!log) {
-        throw new Error('Incorrect log found');
-    }
-
+    const log = await mesh.waitForPatternAsync(startingPattern);
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`ws://localhost:${mesh.port}`);
     return {
@@ -90,7 +75,20 @@ export class MeshHarness {
         return new Promise<string>((resolve, reject) => {
             this._mesh.stderr.on('data', async data => {
                 if (pattern.test(data.toString())) {
-                    resolve(data.toString());
+                    // Since chunks can contain more than one log, process the chunks until a
+                    // chunk is found that contains the pattern.
+                    let log;
+                    const chunks = data.toString().split('\n');
+                    for (const chunk of chunks) {
+                        if (pattern.test(chunk)) {
+                            log = chunk;
+                            break;
+                        }
+                    }
+                    if (!log) {
+                        throw new Error('Incorrect log found');
+                    }
+                    resolve(log);
                 }
             });
             setTimeout(reject, timeout || MeshHarness.DEFAULT_TIMEOUT);
