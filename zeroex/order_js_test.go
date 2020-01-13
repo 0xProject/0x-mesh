@@ -3,129 +3,312 @@
 package zeroex
 
 import (
+	"encoding/json"
+	"errors"
 	"math/big"
 	"syscall/js"
 	"testing"
-	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	rpcClient              *ethrpc.Client
-	ethClient              *ethclient.Client
-	makerAddress           = constants.GanacheAccount1
-	takerAddress           = constants.GanacheAccount2
-	tenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
-	wethAmount             = new(big.Int).Mul(big.NewInt(2), tenDecimalsInBaseUnits)
-	zrxAmount              = new(big.Int).Mul(big.NewInt(1), tenDecimalsInBaseUnits)
+	blockHash        = constants.GanacheAccount0.Hash()
+	txHash           = constants.GanacheAccount1.Hash()
+	txIndex     uint = 1
+	logIndex    uint = 2
+	address          = constants.GanacheAccount2
+	one              = big.NewInt(1)
+	protocolFee      = big.NewInt(150000)
+	id          *big.Int
 )
 
 func init() {
-	var err error
-	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
-	if err != nil {
-		panic(err)
+	var success bool
+	id, success = (&big.Int{}).SetString("0xdeadbeef", 0)
+	if !success {
+		panic("Failed to set id to 0xdeadbeef")
 	}
-	ethClient = ethclient.NewClient(rpcClient)
 }
 
-func TestContractEvent(t *testing.T) {
-	contracts, err := ethereum.GetContractAddressesForChainID(1337)
-	require.NoError(t, err)
-
-	for _, event := range []ContractEvent{
-		ContractEvent{
-			BlockHash: common.HexToHash("0x1"),
-			TxHash:    common.HexToHash("0x2"),
-			TxIndex:   1,
-			LogIndex:  2,
-			IsRemoved: true,
-			Address:   contracts.WETH9,
-			Kind:      "ERC20TransferEvent",
-			Parameters: decoder.ERC20TransferEvent{
-				From:  constants.GanacheAccount0,
-				To:    constants.GanacheAccount1,
-				Value: big.NewInt(3),
+func TestContractEventConversion(t *testing.T) {
+	for _, testCase := range []struct {
+		event ContractEvent
+		err   error
+	}{
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC20ApprovalEvent",
+				Parameters: decoder.ERC20ApprovalEvent{
+					Owner:   constants.GanacheAccount3,
+					Spender: constants.GanacheAccount4,
+					Value:   one,
+				},
 			},
+			err: nil,
 		},
-		ContractEvent{
-			BlockHash: constants.GanacheAccount1.Hash(),
-			TxHash:    constants.GanacheAccount2.Hash(),
-			TxIndex:   342424,
-			LogIndex:  1000,
-			IsRemoved: false,
-			// NOTE(jalextowle): The ERC1155Proxy doesn't actually emit this event,
-			// but that isn't important in the context of this test.
-			Address: contracts.ERC1155Proxy,
-			Kind:    "ERC1155TransferSingleEvent",
-			Parameters: decoder.ERC1155TransferSingleEvent{
-				Operator: constants.GanacheAccount1,
-				From:     constants.GanacheAccount2,
-				To:       constants.GanacheAccount3,
-				Id:       big.NewInt(32423),
-				Value:    big.NewInt(10000),
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC20TransferEvent",
+				Parameters: decoder.ERC20TransferEvent{
+					From:  constants.GanacheAccount3,
+					To:    constants.GanacheAccount4,
+					Value: one,
+				},
 			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC721ApprovalEvent",
+				Parameters: decoder.ERC721ApprovalEvent{
+					Owner:    constants.GanacheAccount3,
+					Approved: constants.GanacheAccount4,
+					TokenId:  id,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC721ApprovalForAllEvent",
+				Parameters: decoder.ERC721ApprovalForAllEvent{
+					Owner:    constants.GanacheAccount3,
+					Operator: constants.GanacheAccount4,
+					Approved: true,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC721TransferEvent",
+				Parameters: decoder.ERC721TransferEvent{
+					From:    constants.GanacheAccount3,
+					To:      constants.GanacheAccount4,
+					TokenId: id,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC1155ApprovalForAllEvent",
+				Parameters: decoder.ERC1155ApprovalForAllEvent{
+					Owner:    constants.GanacheAccount3,
+					Operator: constants.GanacheAccount4,
+					Approved: false,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC1155TransferSingleEvent",
+				Parameters: decoder.ERC1155TransferSingleEvent{
+					Operator: constants.GanacheAccount2,
+					From:     constants.GanacheAccount3,
+					To:       constants.GanacheAccount4,
+					Id:       id,
+					Value:    one,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ERC1155TransferBatchEvent",
+				Parameters: decoder.ERC1155TransferBatchEvent{
+					Operator: constants.GanacheAccount2,
+					From:     constants.GanacheAccount3,
+					To:       constants.GanacheAccount4,
+					Ids:      []*big.Int{id},
+					Values:   []*big.Int{one},
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ExchangeFillEvent",
+				Parameters: decoder.ExchangeFillEvent{
+					MakerAddress:           constants.GanacheAccount0,
+					TakerAddress:           constants.NullAddress,
+					SenderAddress:          constants.GanacheAccount0,
+					FeeRecipientAddress:    constants.GanacheAccount1,
+					MakerAssetFilledAmount: one,
+					TakerAssetFilledAmount: one,
+					MakerFeePaid:           one,
+					TakerFeePaid:           one,
+					ProtocolFeePaid:        one,
+					OrderHash:              constants.GanacheAccount2.Hash(),
+					MakerAssetData:         constants.NullBytes,
+					TakerAssetData:         constants.NullBytes,
+					MakerFeeAssetData:      constants.NullBytes,
+					TakerFeeAssetData:      constants.NullBytes,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ExchangeCancelEvent",
+				Parameters: decoder.ExchangeCancelEvent{
+					MakerAddress:        constants.GanacheAccount0,
+					SenderAddress:       constants.GanacheAccount2,
+					FeeRecipientAddress: constants.GanacheAccount1,
+					OrderHash:           constants.GanacheAccount2.Hash(),
+					MakerAssetData:      constants.NullBytes,
+					TakerAssetData:      constants.NullBytes,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "ExchangeCancelUpToEvent",
+				Parameters: decoder.ExchangeCancelUpToEvent{
+					MakerAddress:       constants.GanacheAccount0,
+					OrderSenderAddress: constants.GanacheAccount2,
+					OrderEpoch:         big.NewInt(50),
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "WethDepositEvent",
+				Parameters: decoder.WethDepositEvent{
+					Owner: constants.GanacheAccount0,
+					Value: protocolFee,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "WethWithdrawalEvent",
+				Parameters: decoder.WethWithdrawalEvent{
+					Owner: constants.GanacheAccount0,
+					Value: protocolFee,
+				},
+			},
+			err: nil,
+		},
+		{
+			event: ContractEvent{
+				BlockHash: blockHash,
+				TxHash:    txHash,
+				TxIndex:   txIndex,
+				LogIndex:  logIndex,
+				IsRemoved: false,
+				Address:   constants.GanacheAccount2,
+				Kind:      "FooBarBazEvent",
+				// NOTE(jalextowle): We have to use something non-empty
+				// that implements `js.Wrapper` or else we'll experience
+				// a runtime panic.
+				Parameters: decoder.ERC20ApprovalEvent{
+					Owner:   constants.GanacheAccount3,
+					Spender: constants.GanacheAccount4,
+					Value:   one,
+				},
+			},
+			err: errors.New("unknown event kind: FooBarBazEvent"),
 		},
 	} {
-		jsEvent := event.JSValue()
-		require.Equal(t, jsEvent.Get("address").String(), event.Address.Hex())
-		require.Equal(t, jsEvent.Get("blockHash").String(), event.BlockHash.Hex())
-		require.Equal(t, jsEvent.Get("txHash").String(), event.TxHash.Hex())
-		require.Equal(t, jsEvent.Get("txIndex").Int(), int(event.TxIndex))
-		require.Equal(t, jsEvent.Get("logIndex").Int(), int(event.LogIndex))
-		require.Equal(t, jsEvent.Get("isRemoved").Bool(), event.IsRemoved)
-		require.Equal(t, jsEvent.Get("kind").String(), event.Kind)
-		// TODO(jalextowle): Check that the parameters are equal.
+		// Convert the contract event to a JSValue, and then attempt to
+		// recover it from the stringified JSON.
+		jsEvent := testCase.event.JSValue()
+		jsString := js.Global().Get("JSON").Call("stringify", jsEvent).String()
+		var eventJSON contractEventJSON
+		err := json.Unmarshal([]byte(jsString), &eventJSON)
+		require.NoError(t, err)
+		decodedEvent, err := unmarshalContractEvent(&eventJSON)
+		if testCase.err != nil {
+			require.Equal(t, testCase.err, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, testCase.event, *decodedEvent)
+		}
 	}
-}
-
-func TestSignedOrder(t *testing.T) {
-	orderCount := 10
-	orders := signedTestOrders(t, orderCount)
-	for _, order := range orders {
-		jsOrder := order.JSValue()
-		require.Equal(t, jsOrder.Get("chainId").Int64(), order.ChainID)
-		require.Equal(t, jsOrder.Get("exchangeAddress").String(), order.ExchangeAddress.Hex())
-		require.Equal(t, jsOrder.Get("senderAddress").String(), order.SenderAddress.Hex())
-		require.Equal(t, jsOrder.Get("feeRecipientAddress").String(), order.FeeRecipientAddress.Hex())
-		require.Equal(t, jsOrder.Get("expirationTimeSeconds").String(), order.ExpirationTimeSeconds.String())
-		require.Equal(t, jsOrder.Get("salt").String(), order.Salt.String())
-		require.Equal(t, jsOrder.Get("signature").String(), order.Signature)
-		require.Equal(t, jsOrder.Get("makerAddress").String(), order.MakerAddress.Hex())
-		require.Equal(t, jsOrder.Get("makerAssetAmount").String(), order.MakerAssetAmount.String())
-		require.Equal(t, jsOrder.Get("makerAssetData").String(), string(order.MakerAssetData))
-		require.Equal(t, jsOrder.Get("makerFee").String(), order.MakerFee.String())
-		require.Equal(t, jsOrder.Get("makerFeeAssetData").String(), string(order.MakerFeeAssetData))
-		require.Equal(t, jsOrder.Get("takerAddress").String(), order.TakerAddress.Hex())
-		require.Equal(t, jsOrder.Get("takerAssetAmount").String(), order.TakerAssetAmount.String())
-		require.Equal(t, jsOrder.Get("takerAssetData").String(), string(order.TakerAssetData))
-		require.Equal(t, jsOrder.Get("takerFee").String(), order.TakerFee.String())
-		require.Equal(t, jsOrder.Get("takerFeeAssetData").String(), string(order.TakerFeeAssetData))
-	}
-}
-
-// TODO(jalextowle): Copied from core/message_handler
-func signedTestOrders(t *testing.T, orderCount int) []*SignedOrder {
-	orders := make([]*SignedOrder, orderCount)
-
-	for i := range orders {
-		orders[i] = scenario.CreateZRXForWETHSignedTestOrder(
-			t,
-			ethClient,
-			makerAddress,
-			takerAddress,
-			new(big.Int).Add(wethAmount, big.NewInt(int64(i))),
-			zrxAmount,
-		)
-	}
-
-	return orders
 }

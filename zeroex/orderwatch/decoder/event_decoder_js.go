@@ -68,11 +68,13 @@ func (e ERC1155TransferSingleEvent) JSValue() js.Value {
 }
 
 func (e ERC1155TransferBatchEvent) JSValue() js.Value {
-	ids := []string{}
+	// NOTE(jalextowle): Both ids and values must be interface slices because
+	// `ValueOf` is only defined for slices of interfaces.
+	var ids []interface{}
 	for _, id := range e.Ids {
 		ids = append(ids, id.String())
 	}
-	values := []string{}
+	var values []interface{}
 	for _, value := range e.Values {
 		values = append(values, value.String())
 	}
@@ -86,22 +88,23 @@ func (e ERC1155TransferBatchEvent) JSValue() js.Value {
 }
 
 func (e ExchangeFillEvent) JSValue() js.Value {
-	makerAssetData := ""
+	makerAssetData := "0x"
 	if len(e.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerAssetData))
 	}
-	takerAssetData := ""
+	takerAssetData := "0x"
 	if len(e.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
 	}
-	makerFeeAssetData := ""
+	makerFeeAssetData := "0x"
 	if len(e.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerFeeAssetData))
 	}
-	takerFeeAssetData := ""
+	takerFeeAssetData := "0x"
 	if len(e.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerFeeAssetData))
 	}
+	fmt.Printf("%+v\n", e.ProtocolFeePaid.String())
 	return js.ValueOf(map[string]interface{}{
 		"makerAddress":           e.MakerAddress.Hex(),
 		"takerAddress":           e.TakerAddress.Hex(),
@@ -121,11 +124,11 @@ func (e ExchangeFillEvent) JSValue() js.Value {
 }
 
 func (e ExchangeCancelEvent) JSValue() js.Value {
-	makerAssetData := ""
+	makerAssetData := "0x"
 	if len(e.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerAssetData))
 	}
-	takerAssetData := ""
+	takerAssetData := "0x"
 	if len(e.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
 	}

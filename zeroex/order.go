@@ -93,14 +93,14 @@ type ContractEvent struct {
 }
 
 type contractEventJSON struct {
-	BlockHash  common.Hash
-	TxHash     common.Hash
-	TxIndex    uint
-	LogIndex   uint
-	IsRemoved  bool
-	Address    common.Address
-	Kind       string
-	Parameters json.RawMessage
+	BlockHash  common.Hash     `json:"blockHash"`
+	TxHash     common.Hash     `json:"txHash"`
+	TxIndex    uint            `json:"txIndex"`
+	LogIndex   uint            `json:"logIndex"`
+	IsRemoved  bool            `json:"isRemoved"`
+	Address    common.Address  `json:"address"`
+	Kind       string          `json:"kind"`
+	Parameters json.RawMessage `json:"parameters"`
 }
 
 // MarshalJSON implements a custom JSON marshaller for the ContractEvent type

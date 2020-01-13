@@ -353,19 +353,19 @@ type exchangeFillEventJSON struct {
 
 // MarshalJSON implements a custom JSON marshaller for the ExchangeFillEvent type
 func (e ExchangeFillEvent) MarshalJSON() ([]byte, error) {
-	makerAssetData := ""
+	makerAssetData := "0x"
 	if len(e.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerAssetData))
 	}
-	takerAssetData := ""
+	takerAssetData := "0x"
 	if len(e.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerAssetData))
 	}
-	makerFeeAssetData := ""
+	makerFeeAssetData := "0x"
 	if len(e.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.MakerFeeAssetData))
 	}
-	takerFeeAssetData := ""
+	takerFeeAssetData := "0x"
 	if len(e.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerFeeAssetData))
 	}
@@ -413,9 +413,15 @@ func (e *ExchangeFillEvent) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return fmt.Errorf("Invalid uint256 number for ExchangeFillEvent.TakerFeePaid: %q", eventJSON.TakerFeePaid)
 	}
+	e.ProtocolFeePaid, ok = math.ParseBig256(eventJSON.ProtocolFeePaid)
+	if !ok {
+		return fmt.Errorf("Invalid uint256 number for ExchangeFillEvent.ProtocolFeePaid: %q", eventJSON.ProtocolFeePaid)
+	}
 	e.OrderHash = common.HexToHash(eventJSON.OrderHash)
 	e.MakerAssetData = common.FromHex(eventJSON.MakerAssetData)
 	e.TakerAssetData = common.FromHex(eventJSON.TakerAssetData)
+	e.MakerFeeAssetData = common.FromHex(eventJSON.MakerFeeAssetData)
+	e.TakerFeeAssetData = common.FromHex(eventJSON.TakerFeeAssetData)
 
 	return nil
 }
@@ -483,7 +489,7 @@ type ExchangeCancelUpToEvent struct {
 
 type exchangeCancelUpToEventJSON struct {
 	MakerAddress       string `json:"makerAddress"`
-	OrderSenderAddress string `json:"senderAddress"`
+	OrderSenderAddress string `json:"orderSenderAddress"`
 	OrderEpoch         string `json:"orderEpoch"`
 }
 
