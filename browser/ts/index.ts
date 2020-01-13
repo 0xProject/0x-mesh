@@ -179,12 +179,25 @@ export interface Config {
     // maximum expiration time for incoming orders and remove any orders with an
     // expiration time too far in the future. Defaults to 100,000.
     maxOrdersInStorage?: number;
-    // CustomOrderFilter is a JSON-schema which will be used for validating
-    // incoming orders. If provided, Mesh will only receive orders from other
-    // peers in the network with the same filter.
+    // A a JSON Schema object which will be used for validating incoming orders.
+    // If provided, Mesh will only receive orders from other peers in the
+    // network with the same filter.
     //
-    // TODO(albrow): Link to more documentation about JSON-schemas and how this
-    // filter works.
+    // Here is an example filter which will only allow orders with a specific
+    // makerAssetData:
+    //
+    //    {
+    //        "properties": {
+    //            "makerAssetData": {
+    //                "const": "0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
+    //            }
+    //        }
+    //    }
+    //
+    // Note that you only need to include the requirements for your specific
+    // application in the filter. The default requirements for a valid order (e.g.
+    // all the required fields) are automatically included. For more information
+    // on JSON Schemas, see https://json-schema.org/
     customOrderFilter?: JsonSchema;
 }
 
