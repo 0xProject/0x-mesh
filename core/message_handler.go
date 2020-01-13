@@ -192,3 +192,10 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 	}
 	return nil
 }
+
+func validateMessageSize(message *p2p.Message) error {
+	if len(message.Data) > constants.MaxMessageSizeInBytes {
+		return constants.ErrMaxMessageSize
+	}
+	return nil
+}

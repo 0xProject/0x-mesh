@@ -2,6 +2,7 @@ package orderwatch
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -1480,6 +1481,27 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			}
 		}
 
+		if err := validateOrderSize(order); err != nil {
+			if err == constants.ErrMaxOrderSize {
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: order,
+					Kind:        ordervalidator.MeshValidation,
+					Status:      ordervalidator.ROMaxOrderSizeExceeded,
+				})
+				continue
+			} else {
+				logger.WithField("error", err).Error("could not validate order size")
+				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: order,
+					Kind:        ordervalidator.MeshError,
+					Status:      ordervalidator.ROInternalError,
+				})
+				continue
+			}
+		}
+
 		// Check if order is already stored in DB
 		var dbOrder meshdb.Order
 		err = w.meshDB.Orders.FindByID(orderHash.Bytes(), &dbOrder)
@@ -1516,6 +1538,17 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	}
 
 	return results, validMeshOrders, nil
+}
+
+func validateOrderSize(order *zeroex.SignedOrder) error {
+	encoded, err := json.Marshal(order)
+	if err != nil {
+		return err
+	}
+	if len(encoded) > constants.MaxOrderSizeInBytes {
+		return constants.ErrMaxOrderSize
+	}
+	return nil
 }
 
 type orderUpdater interface {
