@@ -103,7 +103,7 @@ var ChainIDToContractAddresses = map[int]ContractAddresses{
 		Exchange:            common.HexToAddress("0x30589010550762d2f0d06f650d8e8b6ade6dbf4b"),
 		Coordinator:         common.HexToAddress("0x2ba02e03ee0029311e0f43715307870a3e701b53"),
 		CoordinatorRegistry: common.HexToAddress("0x09fb99968c016a3ff537bf58fb3d9fe55a7975d5"),
-		DevUtils:            common.HexToAddress("0x09a379ef7218bcfd8913faa8b281ebc5a2e0bc04"),
+		DevUtils:            common.HexToAddress("0x80101f90446d9e19a80109ac2767c8c957debb29"),
 		WETH9:               common.HexToAddress("0xd0a1e359811322d97991e03f863a0c30c2cf029c"),
 		ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 	},
