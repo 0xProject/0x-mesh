@@ -1,4 +1,5 @@
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
+import * as jsonstream from 'jsonstream';
 import {join} from 'path';
 import * as rimraf from 'rimraf';
 
@@ -44,8 +45,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await buildBinaryAsync();
 
     const mesh = new MeshHarness();
-    const startingPattern = /started RPC server/;
-    const log = await mesh.waitForPatternAsync(startingPattern);
+    const log = await mesh.waitForPatternAsync(/started RPC server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`ws://localhost:${mesh.port}`);
     return {
@@ -73,24 +73,14 @@ export class MeshHarness {
             throw new Error('mesh instance has already been killed');
         }
         return new Promise<string>((resolve, reject) => {
-            this._mesh.stderr.on('data', async data => {
-                if (pattern.test(data.toString())) {
-                    // Since chunks can contain more than one log, process the chunks until a
-                    // chunk is found that contains the pattern.
-                    let log;
-                    const chunks = data.toString().split('\n');
-                    for (const chunk of chunks) {
-                        if (pattern.test(chunk)) {
-                            log = chunk;
-                            break;
-                        }
-                    }
-                    if (!log) {
-                        throw new Error('Incorrect log found');
-                    }
-                    resolve(log);
+            const stream = jsonstream.parse(true);
+            stream.on('data', data => {
+                const dataString = JSON.stringify(data);
+                if (pattern.test(dataString)) {
+                    resolve(dataString);
                 }
             });
+            this._mesh.stderr.pipe(stream);
             setTimeout(reject, timeout || MeshHarness.DEFAULT_TIMEOUT);
         });
     }
