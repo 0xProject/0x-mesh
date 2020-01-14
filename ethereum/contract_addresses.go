@@ -67,7 +67,7 @@ var ChainIDToContractAddresses = map[int]ContractAddresses{
 		ERC1155Proxy:        common.HexToAddress("0x7eefbd48fd63d441ec7435d024ec7c5131019add"),
 		Coordinator:         common.HexToAddress("0x38a795580d0f687e399913a00ddef6a17612c722"),
 		CoordinatorRegistry: common.HexToAddress("0x45797531b873fd5e519477a070a955764c1a5b07"),
-		DevUtils:            common.HexToAddress("0xccc2431a7335f21d9268ba62f0b32b0f2efc463f"),
+		DevUtils:            common.HexToAddress("0xd74ff1bfe071e4586c5ab969335a649e3bd9c518"),
 		WETH9:               common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
 		ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 	},
