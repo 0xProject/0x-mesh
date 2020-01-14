@@ -34,6 +34,7 @@ var nodeCount int32
 
 func init() {
 	flag.BoolVar(&browserIntegrationTestsEnabled, "enable-browser-integration-tests", false, "enable browser integration tests")
+	testing.Init()
 	flag.Parse()
 }
 
