@@ -171,6 +171,25 @@ func (f *Filter) Topic() string {
 }
 
 func (v *Filter) generateTopic() string {
+	// Note(albrow): We use canonicaljson to elminate any differences in spacing,
+	// formatting, and the order of field names. This ensures that two filters
+	// that are semantically the same JSON object always encode to exactly the
+	// same canonical topic string.
+	//
+	// So for example:
+	//
+	//     {
+	//         "foo": "bar",
+	//         "biz": "baz"
+	//     }
+	//
+	// Will encode to the same topic string as:
+	//
+	//     {
+	//         "biz":"baz",
+	//         "foo":"bar"
+	//     }
+	//
 	var holder interface{} = struct{}{}
 	_ = canonicaljson.Unmarshal([]byte(v.rawCustomOrderSchema), &holder)
 	canonicalOrderSchemaJSON, _ := canonicaljson.Marshal(holder)
