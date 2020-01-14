@@ -557,6 +557,13 @@
   resolved "https://registry.yarnpkg.com/@types/js-combinatorics/-/js-combinatorics-0.5.31.tgz#a61a3f625009e2e693492c158ac8afb243efecad"
   integrity sha512-0JGeWYJdHIpX2gttyxqnzpKwK3KmyFZysWI8+fnXdiOo/kEFxDMdo/pwhrtBrHvYgRAsDNJCSQzgA+m8vbHvFw==
 
+"@types/jsonstream@^0.8.30":
+  version "0.8.30"
+  resolved "https://registry.yarnpkg.com/@types/jsonstream/-/jsonstream-0.8.30.tgz#1c6b386df42c6d93bf7f0cd339eab6fb56bdc124"
+  integrity sha512-KqHs2eAapKL7ZKUiKI/giUYPVgkoDXkVGFehk3goo+3Q8qwxVVRC3iwg+hK/THORbcri4RRxTtlm3JoSY1KZLQ==
+  dependencies:
+    "@types/node" "*"
+
 "@types/lodash@4.14.104":
   version "4.14.104"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.104.tgz#53ee2357fa2e6e68379341d92eb2ecea4b11bb80"
@@ -4087,10 +4094,23 @@ jsonify@~0.0.0:
   resolved "https://registry.yarnpkg.com/jsonify/-/jsonify-0.0.0.tgz#2c74b6ee41d93ca51b7b5aaee8f503631d252a73"
   integrity sha1-LHS27kHZPKUbe1qu6PUDYx0lKnM=
 
+jsonparse@~1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/jsonparse/-/jsonparse-1.0.0.tgz#2622f4e66c08e1aac7edbeb76053c9b7e1211f76"
+  integrity sha1-JiL05mwI4arH7b63YFPJt+EhH3Y=
+
 jsonschema@^1.2.0:
   version "1.2.4"
   resolved "https://registry.yarnpkg.com/jsonschema/-/jsonschema-1.2.4.tgz#a46bac5d3506a254465bc548876e267c6d0d6464"
   integrity sha512-lz1nOH69GbsVHeVgEdvyavc/33oymY1AZwtePMiMj4HZPMbP5OIKK3zT9INMWjwua/V4Z4yq7wSlBbSG+g4AEw==
+
+jsonstream@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/jsonstream/-/jsonstream-1.0.3.tgz#ff2d49c4f479b5bbcdf9f9e56c841cf87f0efa1d"
+  integrity sha1-/y1JxPR5tbvN+fnlbIQc+H8O+h0=
+  dependencies:
+    jsonparse "~1.0.0"
+    through ">=2.2.7 <3"
 
 jsprim@^1.2.2:
   version "1.4.1"
@@ -6112,7 +6132,7 @@ through2@^2.0.3:
     readable-stream "~2.3.6"
     xtend "~4.0.1"
 
-through@^2.3.8, through@~2.3.4, through@~2.3.8:
+"through@>=2.2.7 <3", through@^2.3.8, through@~2.3.4, through@~2.3.8:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
   integrity sha1-DdTJ/6q8NXlgsbckEV1+Doai4fU=
