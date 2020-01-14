@@ -23,6 +23,10 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Fixed a regression which can result in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
 
 
+### Bug fixes 🐞
+
+- Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
+
 ## v8.1.0
 
 ### Features ✅
