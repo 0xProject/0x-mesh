@@ -104,7 +104,6 @@ func (e ExchangeFillEvent) JSValue() js.Value {
 	if len(e.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(e.TakerFeeAssetData))
 	}
-	fmt.Printf("%+v\n", e.ProtocolFeePaid.String())
 	return js.ValueOf(map[string]interface{}{
 		"makerAddress":           e.MakerAddress.Hex(),
 		"takerAddress":           e.TakerAddress.Hex(),

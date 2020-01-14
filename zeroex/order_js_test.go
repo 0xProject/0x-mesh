@@ -11,6 +11,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -298,10 +299,10 @@ func TestContractEventConversion(t *testing.T) {
 	} {
 		// Convert the contract event to a JSValue, and then attempt to
 		// recover it from the stringified JSON.
-		jsEvent := testCase.event.JSValue()
-		jsString := js.Global().Get("JSON").Call("stringify", jsEvent).String()
+		eventObject := testCase.event.JSValue()
+		eventString := stringify(eventObject)
 		var eventJSON contractEventJSON
-		err := json.Unmarshal([]byte(jsString), &eventJSON)
+		err := json.Unmarshal([]byte(eventString), &eventJSON)
 		require.NoError(t, err)
 		decodedEvent, err := unmarshalContractEvent(&eventJSON)
 		if testCase.err != nil {
@@ -311,4 +312,77 @@ func TestContractEventConversion(t *testing.T) {
 			require.Equal(t, testCase.event, *decodedEvent)
 		}
 	}
+}
+
+func TestSignedOrderConversion(t *testing.T) {
+	for _, order := range []SignedOrder{
+		SignedOrder{
+			Order: Order{
+				MakerAddress:          constants.NullAddress,
+				TakerAddress:          constants.NullAddress,
+				SenderAddress:         constants.NullAddress,
+				FeeRecipientAddress:   constants.NullAddress,
+				MakerAssetData:        common.FromHex(""),
+				MakerAssetAmount:      big.NewInt(0),
+				MakerFeeAssetData:     common.FromHex(""),
+				MakerFee:              big.NewInt(0),
+				TakerAssetData:        common.FromHex(""),
+				TakerAssetAmount:      big.NewInt(0),
+				TakerFeeAssetData:     common.FromHex(""),
+				TakerFee:              big.NewInt(0),
+				ChainID:               big.NewInt(1337),
+				ExpirationTimeSeconds: big.NewInt(0),
+				Salt:                  big.NewInt(0),
+			},
+			Signature: common.FromHex(""),
+		},
+		SignedOrder{
+			Order: Order{
+				MakerAddress:          constants.GanacheAccount0,
+				TakerAddress:          constants.NullAddress,
+				SenderAddress:         constants.NullAddress,
+				FeeRecipientAddress:   constants.GanacheAccount4,
+				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+				MakerAssetAmount:      big.NewInt(10000000),
+				MakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000089d24a6b4ccb1b6faa2625fe562bdd9a23260359"),
+				MakerFee:              big.NewInt(10000000),
+				TakerAssetData:        common.FromHex("0xf47261b000000000000000000000000081228eA33D680B0F51271aBAb1105886eCd01C2c"),
+				TakerAssetAmount:      big.NewInt(10000000),
+				TakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000089d24a6b4ccb1b6faa2625fe562bdd9a23260359"),
+				TakerFee:              big.NewInt(10000000),
+				ChainID:               big.NewInt(1337),
+				ExpirationTimeSeconds: big.NewInt(0),
+				Salt:                  big.NewInt(0),
+			},
+			Signature: common.Hex2Bytes("0x1befcf4b6b1da4d207067a4b06e9bfbf21f85e2b6644f3ecf3a15f009e484756f251e3e00e909447ce45a16c620d14920a9acf516d9f4fe45bc36c914be6c9ec2703"),
+		},
+	} {
+		orderObject := order.JSValue()
+		orderString := stringify(orderObject)
+		recoveredOrder := &SignedOrder{}
+		err := recoveredOrder.UnmarshalJSON([]byte(orderString))
+		require.NoError(t, err)
+
+		if len(order.MakerAssetData) == 0 {
+			require.Equal(t, "0x", orderObject.Get("makerAssetData").String())
+		}
+		if len(order.MakerFeeAssetData) == 0 {
+			require.Equal(t, "0x", orderObject.Get("makerFeeAssetData").String())
+		}
+		if len(order.TakerAssetData) == 0 {
+			require.Equal(t, "0x", orderObject.Get("takerAssetData").String())
+		}
+		if len(order.TakerFeeAssetData) == 0 {
+			require.Equal(t, "0x", orderObject.Get("takerFeeAssetData").String())
+		}
+		if len(order.Signature) == 0 {
+			require.Equal(t, "0x", orderObject.Get("signature").String())
+		}
+
+		require.Equal(t, order, *recoveredOrder)
+	}
+}
+
+func stringify(value js.Value) string {
+	return js.Global().Get("JSON").Call("stringify", value).String()
 }
