@@ -12,7 +12,7 @@ import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
 import {OrderEvent, OrderEventEndState, WSClient} from '../src/index';
-import {ContractEventKind, ExchangeCancelEvent, RejectedKind, WSMessage} from '../src/types';
+import {ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage} from '../src/types';
 
 import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
 import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
@@ -177,25 +177,54 @@ blockchainTests.resets('WSClient', env => {
                 // timestamp is approximately equal (within 1 second) because the server
                 // will receive the request slightly after it is sent.
                 const now = new Date(Date.now()).getTime();
-                const perPage = 10;
+                const perPage = ordersLength / 2;
                 const response = await deployment.client.getOrdersAsync(perPage);
                 assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
+                // Verify that snapshot ID in the response meets the expected schema.
+                expect(uuidValidate(response.snapshotID)).to.be.true();
 
                 // Verify that all of the orders that were added to the mesh node
-                // were returned in the `getOrders` rpc response, and that the
-                // ganache snapshot ID in the response meets the expected schema.
-                expect(uuidValidate(response.snapshotID)).to.be.true();
-                for (const order of orders) {
-                    let hasSeenMatch = false;
-                    for (const responseOrder of response.ordersInfos) {
-                        if (orderHashUtils.getOrderHashHex(order) === responseOrder.orderHash) {
-                            hasSeenMatch = true;
-                            expect(order).to.be.deep.eq(responseOrder.signedOrder);
-                            break;
-                        }
-                    }
-                    expect(hasSeenMatch).to.be.true();
+                // were returned in the `getOrders` rpc response
+                expectContainsOrders(orders, response.ordersInfos);
+            });
+        });
+
+        describe('#getOrdersForPageAsync', async () => {
+            it('properly makes paginated request and returns signedOrders', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({});
                 }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // NOTE(jalextowle): The time returned by Date uses milliseconds, but
+                // the mesh timestamp only uses second. Multiplying the seconds timestamp
+                // by 1000 gives us a comparable value. We only try to ensure that this
+                // timestamp is approximately equal (within 1 second) because the server
+                // will receive the request slightly after it is sent.
+                const now = new Date(Date.now()).getTime();
+                let page = 0;
+                const perPage = 5;
+                // First request for page index 0
+                let response = await deployment.client.getOrdersForPageAsync(page, perPage);
+                assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
+                expect(uuidValidate(response.snapshotID)).to.be.true();
+
+                let responseOrders = response.ordersInfos;
+
+                // Second request for page index 1
+                page = 1;
+                response = await deployment.client.getOrdersForPageAsync(page, perPage, response.snapshotID);
+                expect(uuidValidate(response.snapshotID)).to.be.true();
+
+                // Combine orders found in first and second paginated requests
+                responseOrders = [...responseOrders, ...response.ordersInfos];
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the two `getOrders` rpc response
+                expectContainsOrders(orders, responseOrders);
             });
         });
 
@@ -453,5 +482,21 @@ function secondsToMs(seconds: number): number {
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
     return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
+}
+
+// Verify that all of the orders that were added to the mesh node
+// were returned in the `getOrders` rpc response
+function expectContainsOrders(expectedOrders: SignedOrder[], ordersInfos: OrderInfo[]): void {
+    for (const order of expectedOrders) {
+        let hasSeenMatch = false;
+        for (const responseOrder of ordersInfos) {
+            if (orderHashUtils.getOrderHashHex(order) === responseOrder.orderHash) {
+                hasSeenMatch = true;
+                expect(order).to.be.deep.eq(responseOrder.signedOrder);
+                break;
+            }
+        }
+        expect(hasSeenMatch).to.be.true();
+    }
 }
 // tslint:disable-line:max-file-line-count

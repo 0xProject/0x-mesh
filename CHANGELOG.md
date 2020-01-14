@@ -7,6 +7,8 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Features ✅
 
 - Developers can now override the contract addresses for any testnet using the `CUSTOM_CONTRACT_ADDRESSES` env config ([#640](https://github.com/0xProject/0x-mesh/pull/640)).
+- Add `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
+
 
 ## v8.1.0
 
