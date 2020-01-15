@@ -2,6 +2,7 @@ package orderwatch
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
-	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
@@ -1480,6 +1480,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				continue
 			}
 		}
+
 		if err := validateOrderSize(order); err != nil {
 			if err == constants.ErrMaxOrderSize {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
@@ -1540,7 +1541,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
-	encoded, err := encoding.OrderToRawMessage(order)
+	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}

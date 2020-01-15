@@ -46,6 +46,59 @@ BrowserFS.configure(
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
 
+/**
+ * An interface for JSON schema types, which are used for custom order filters.
+ */
+export interface JsonSchema {
+    id?: string;
+    $schema?: string;
+    $ref?: string;
+    title?: string;
+    description?: string;
+    multipleOf?: number;
+    maximum?: number;
+    exclusiveMaximum?: boolean;
+    minimum?: number;
+    exclusiveMinimum?: boolean;
+    maxLength?: number;
+    minLength?: number;
+    pattern?: string | RegExp;
+    additionalItems?: boolean | JsonSchema;
+    items?: JsonSchema | JsonSchema[];
+    maxItems?: number;
+    minItems?: number;
+    uniqueItems?: boolean;
+    maxProperties?: number;
+    minProperties?: number;
+    required?: string[];
+    additionalProperties?: boolean | JsonSchema;
+    definitions?: {
+        [name: string]: JsonSchema;
+    };
+    properties?: {
+        [name: string]: JsonSchema;
+    };
+    patternProperties?: {
+        [name: string]: JsonSchema;
+    };
+    dependencies?: {
+        [name: string]: JsonSchema | string[];
+    };
+    enum?: any[];
+    // NOTE(albrow): This interface type is based on
+    // https://github.com/tdegrunt/jsonschema/blob/9cb2cf847a33abb76b694c6ed4d8d12ef2037201/lib/index.d.ts#L50
+    // but modified to include the 'const' field from the JSON Schema
+    // specification draft 6 (https://json-schema.org/understanding-json-schema/reference/generic.html#constant-values)
+    // See also: https://github.com/tdegrunt/jsonschema/issues/271
+    const?: any;
+    type?: string | string[];
+    format?: string;
+    allOf?: JsonSchema[];
+    anyOf?: JsonSchema[];
+    oneOf?: JsonSchema[];
+    not?: JsonSchema;
+}
+
 // Note(albrow): This is currently copied over from core/core.go. We need to keep
 // both definitions in sync, so if you change one you must also change the
 // other.
@@ -126,6 +179,26 @@ export interface Config {
     // maximum expiration time for incoming orders and remove any orders with an
     // expiration time too far in the future. Defaults to 100,000.
     maxOrdersInStorage?: number;
+    // A a JSON Schema object which will be used for validating incoming orders.
+    // If provided, Mesh will only receive orders from other peers in the
+    // network with the same filter.
+    //
+    // Here is an example filter which will only allow orders with a specific
+    // makerAssetData:
+    //
+    //    {
+    //        properties: {
+    //            makerAssetData: {
+    //                const: "0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
+    //            }
+    //        }
+    //    }
+    //
+    // Note that you only need to include the requirements for your specific
+    // application in the filter. The default requirements for a valid order (e.g.
+    // all the required fields) are automatically included. For more information
+    // on JSON Schemas, see https://json-schema.org/
+    customOrderFilter?: JsonSchema;
 }
 
 export interface ContractAddresses {
@@ -177,8 +250,9 @@ interface WrapperConfig {
     ethereumRPCMaxRequestsPer24HrUTC?: number;
     ethereumRPCMaxRequestsPerSecond?: number;
     enableEthereumRPCRateLimiting?: boolean;
-    customContractAddresses?: string; // json-encoded instead of Object.
+    customContractAddresses?: string; // json-encoded string instead of Object.
     maxOrdersInStorage?: number;
+    customOrderFilter?: string; // json-encoded string instead of Object
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -678,10 +752,12 @@ function configToWrapperConfig(config: Config): WrapperConfig {
     const bootstrapList = config.bootstrapList == null ? undefined : config.bootstrapList.join(',');
     const customContractAddresses =
         config.customContractAddresses == null ? undefined : JSON.stringify(config.customContractAddresses);
+    const customOrderFilter = config.customOrderFilter == null ? undefined : JSON.stringify(config.customOrderFilter);
     return {
         ...config,
         bootstrapList,
         customContractAddresses,
+        customOrderFilter,
     };
 }
 

@@ -1,21 +1,21 @@
-import {getContractAddressesForChainOrThrow} from '@0x/contract-addresses';
-import {DummyERC20TokenContract} from '@0x/contracts-erc20';
-import {ExchangeContract} from '@0x/contracts-exchange';
-import {blockchainTests, constants, expect, OrderFactory, orderHashUtils} from '@0x/contracts-test-utils';
-import {callbackErrorReporter, Web3Config, web3Factory} from '@0x/dev-utils';
-import {assetDataUtils} from '@0x/order-utils';
-import {Web3ProviderEngine} from '@0x/subproviders';
-import {DoneCallback, SignedOrder} from '@0x/types';
-import {BigNumber, hexUtils} from '@0x/utils';
+import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
+import { DummyERC20TokenContract } from '@0x/contracts-erc20';
+import { ExchangeContract } from '@0x/contracts-exchange';
+import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
+import { callbackErrorReporter, Web3Config, web3Factory } from '@0x/dev-utils';
+import { assetDataUtils } from '@0x/order-utils';
+import { Web3ProviderEngine } from '@0x/subproviders';
+import { DoneCallback, SignedOrder } from '@0x/types';
+import { BigNumber, hexUtils } from '@0x/utils';
 import 'mocha';
 import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
-import {OrderEvent, OrderEventEndState, WSClient} from '../src/index';
-import {ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage} from '../src/types';
+import { OrderEvent, OrderEventEndState, WSClient } from '../src/index';
+import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
-import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
-import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
+import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
+import { MeshDeployment, startServerAndClientAsync } from './utils/ws_server';
 
 blockchainTests.resets('WSClient', env => {
     describe('integration tests', () => {
@@ -58,14 +58,14 @@ blockchainTests.resets('WSClient', env => {
             const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
             const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
             const mintAmount = new BigNumber('100e18');
-            await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({from: makerAddress});
-            await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({from: makerAddress});
+            await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
+            await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
             await makerToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
-                .awaitTransactionSuccessAsync({from: makerAddress});
+                .awaitTransactionSuccessAsync({ from: makerAddress });
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
-                .awaitTransactionSuccessAsync({from: makerAddress});
+                .awaitTransactionSuccessAsync({ from: makerAddress });
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
                 ...constants.STATIC_ORDER_PARAMS,
                 feeRecipientAddress: constants.NULL_ADDRESS,
@@ -140,7 +140,7 @@ blockchainTests.resets('WSClient', env => {
                 )}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
                     version: '',
-                    pubSubTopic: '/0x-orders/network/1337/version/2',
+                    pubSubTopic: '/0x-orders/version/3/chain/1337/schema/e30=',
                     rendezvous: '/0x-mesh/network/1337/version/2',
                     peerID: deployment.peerID,
                     ethereumChainID: 1337,
@@ -232,11 +232,12 @@ blockchainTests.resets('WSClient', env => {
             it('should receive subscription updates', (done: DoneCallback) => {
                 (async () => {
                     const expectToBeCalledOnce = true;
-                    const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
-                        async (ack: string) => {
-                            expect(ack).to.be.equal('tick');
-                        },
-                    );
+                    const callback = callbackErrorReporter.reportNoErrorCallbackErrors(
+                        done,
+                        expectToBeCalledOnce,
+                    )(async (ack: string) => {
+                        expect(ack).to.be.equal('tick');
+                    });
                     await (deployment.client as any)._subscribeToHeartbeatAsync(callback);
                 })().catch(done);
             });
@@ -330,7 +331,7 @@ blockchainTests.resets('WSClient', env => {
                     });
 
                     // Cancel an order and then wait for the emitted order event.
-                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({from: makerAddress});
+                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
                     await subscription;
                 })().catch(done);
             });
@@ -412,7 +413,7 @@ blockchainTests.resets('WSClient', env => {
                         }) as any);
                     });
 
-                    const client = new WSClient(`ws://localhost:${SERVER_PORT}`, {reconnectDelay: 100});
+                    const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
                     client.onReconnected(async () => {
                         // We need to add a sleep here so that we leave time for the client
                         // to get connected before destroying it.

@@ -2,10 +2,15 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
-## v8.2.0
+## v9.0.0
+
+### Breaking changes 🛠
+
+- As a result of implementing custom order filters, some of the code Mesh uses under the hood to share orders with peers has changed. As a result this version of Mesh cannot share orders with any older versions and vice versa ([#630](https://github.com/0xProject/0x-mesh/pull/630)).
 
 ### Features ✅
 
+- Implemented custom order filters, which allow users to filter out all but the orders they care about. When a custom order filter is specified, Mesh will only send and receive orders that pass the filter. ([#630](https://github.com/0xProject/0x-mesh/pull/630)).
 - Developers can now override the contract addresses for any testnet using the `CUSTOM_CONTRACT_ADDRESSES` env config ([#640](https://github.com/0xProject/0x-mesh/pull/640)).
 - Add `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 

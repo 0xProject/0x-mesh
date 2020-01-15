@@ -52,12 +52,13 @@ func TestBrowserIntegration(t *testing.T) {
 	// goroutines to block.
 	standaloneLogMessages := make(chan string, 1024)
 	count := int(atomic.AddInt32(&nodeCount, 1))
+	customOrderFilter := `{"properties": { "makerAddress": { "const": "0x6ecbe1db9ef729cbe972c83fb886247691fb6beb" }}}`
 
 	// Start the standalone node in a goroutine.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, standaloneLogMessages)
+		startStandaloneNode(t, ctx, count, customOrderFilter, standaloneLogMessages)
 	}()
 
 	// standaloneOrder is an order that will be sent to the network by the

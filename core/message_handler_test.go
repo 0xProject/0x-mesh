@@ -139,6 +139,7 @@ func TestMessagesSharedSerial(t *testing.T) {
 	require.NoError(t, err)
 
 	selector := &orderSelector{
+		topic:      "customTopic",
 		nextOffset: 0,
 		db:         meshDB,
 	}
@@ -192,9 +193,8 @@ func verifyRoundRobinSharing(t *testing.T, selector *orderSelector, nextOffset i
 
 	// Calculate the orders that we expect to be shared
 	for i := 0; i < expectedOrdersLength; i++ {
-		encodedOrder, err := encoding.OrderToRawMessage(orderList[(nextOffset+i)%count].SignedOrder)
+		encodedOrder, err := encoding.OrderToRawMessage(selector.topic, orderList[(nextOffset+i)%count].SignedOrder)
 		require.NoError(t, err)
-
 		expectedOrders[i] = encodedOrder
 	}
 

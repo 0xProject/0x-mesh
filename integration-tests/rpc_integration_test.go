@@ -39,7 +39,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, logMessages)
+		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
 	// Wait until the rpc server has been started, and then create an rpc client
@@ -101,7 +101,7 @@ func TestGetOrders(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, logMessages)
+		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
@@ -209,7 +209,7 @@ func TestGetStats(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, logMessages)
+		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and get the peer ID of the node. Start the
@@ -236,7 +236,7 @@ func TestGetStats(t *testing.T) {
 	getStatsResponse.LatestBlock = rpc.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
-	require.Equal(t, "/0x-orders/network/1337/version/2", getStatsResponse.PubSubTopic)
+	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic)
 	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous)
 	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
 	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
@@ -267,7 +267,7 @@ func TestOrdersSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, logMessages)
+		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client.
@@ -328,7 +328,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, logMessages)
+		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client

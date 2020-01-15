@@ -8,15 +8,17 @@ import (
 )
 
 type orderMessage struct {
-	MessageType string
-	Order       *zeroex.SignedOrder
+	MessageType string              `json:"messageType"`
+	Order       *zeroex.SignedOrder `json:"order"`
+	Topics      []string            `json:"topics"`
 }
 
 // OrderToRawMessage encodes an order into an order message to be sent over the wire
-func OrderToRawMessage(order *zeroex.SignedOrder) ([]byte, error) {
+func OrderToRawMessage(topic string, order *zeroex.SignedOrder) ([]byte, error) {
 	return json.Marshal(orderMessage{
 		MessageType: "order",
 		Order:       order,
+		Topics:      []string{topic},
 	})
 }
 

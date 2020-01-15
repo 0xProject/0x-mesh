@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/event"
 )
@@ -91,6 +92,7 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 		EthereumRPCMaxRequestsPerSecond:  30,
 		EnableEthereumRPCRateLimiting:    true,
 		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
 	}
 
 	// Required config options
@@ -135,6 +137,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
 		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
+	}
+	if customOrderFilter := jsConfig.Get("customOrderFilter"); !isNullOrUndefined(customOrderFilter) {
+		config.CustomOrderFilter = customOrderFilter.String()
 	}
 
 	return config, nil
