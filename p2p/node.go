@@ -306,6 +306,18 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 
 	// Register the set of validators for all topics that we publish and/or
 	// subscribe to.
+	//
+	// Note(albrow) In some cases we will technically be doing some
+	// redundant work to validate messages again, since they were already
+	// validated in core.App.AddOrders. Luckily, using JSON Schemas in an inline
+	// validator has little to no performance impact.
+	//
+	// The reason we add the validators to publish topics as well as the subscribe
+	// topic is that not every order that we will share through GossipSub went
+	// through core.App.AddOrders. For example, there could be some older orders
+	// in the database that don't match the current filter. In most cases, the
+	// subscribe topic will be one of the publish topics so it doesn't matter much
+	// in practice in the current implementation.
 	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopic))
 	for topic := range allTopics {
 		if err := ps.RegisterTopicValidator(topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
