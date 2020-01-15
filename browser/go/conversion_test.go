@@ -13,39 +13,6 @@ import (
 )
 
 func TestConvertConfigEmpty(t *testing.T) {
-	config, err := convertConfig(js.ValueOf(map[string]interface{}{
-		"verbosity":                        js.Undefined(),
-		"ethereumRPCURL":                   js.ValueOf("http://localhost:8545"),
-		"ethereumChainID":                  js.ValueOf(1337),
-		"useBootstrapList":                 js.Undefined(),
-		"bootstrapList":                    js.Undefined(),
-		"blockPollingIntervalSeconds":      js.Undefined(),
-		"ethereumRPCMaxContentLength":      js.Undefined(),
-		"ethereumRPCMaxRequestsPer24HrUTC": js.Undefined(),
-		"ethereumRPCMaxRequestsPerSecond":  js.Undefined(),
-		"enableEthereumRPCRateLimiting":    js.Undefined(),
-		"customContractAddresses":          js.Undefined(),
-		"maxOrdersInStorage":               js.Undefined(),
-	}))
-	require.NoError(t, err)
-	require.Equal(t, config, core.Config{
-		EthereumRPCURL:                   "http://localhost:8545",
-		EthereumChainID:                  1337,
-		Verbosity:                        2,
-		DataDir:                          "0x-mesh",
-		P2PTCPPort:                       0,
-		P2PWebSocketsPort:                0,
-		UseBootstrapList:                 true,
-		BlockPollingInterval:             5 * time.Second,
-		EthereumRPCMaxContentLength:      524288,
-		EthereumRPCMaxRequestsPer24HrUTC: 100000,
-		EthereumRPCMaxRequestsPerSecond:  30,
-		EnableEthereumRPCRateLimiting:    true,
-		MaxOrdersInStorage:               100000,
-	})
-}
-
-func TestConvertConfigNonEmpty(t *testing.T) {
 	data, err := json.Marshal(struct {
 		Exchange     string `json:"exchange"`
 		DevUtils     string `json:"devUtils"`
@@ -60,40 +27,81 @@ func TestConvertConfigNonEmpty(t *testing.T) {
 		ERC1155Proxy: "0x2d7022f5b17d2f8b695918fb48fa1089c9f85401",
 	})
 	require.NoError(t, err)
-	config, err := convertConfig(js.ValueOf(map[string]interface{}{
-		"verbosity":        js.ValueOf(6),
-		"ethereumRPCURL":   js.ValueOf("http://localhost:8545"),
-		"ethereumChainID":  js.ValueOf(1337),
-		"useBootstrapList": js.ValueOf(true),
-		"bootstrapList": js.ValueOf(
-			"/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF," +
-				"/ip4/3.214.190.68/tcp/60559/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG",
-		),
-		"blockPollingIntervalSeconds":      js.ValueOf(50),
-		"ethereumRPCMaxContentLength":      js.ValueOf(10000),
-		"ethereumRPCMaxRequestsPer24HrUTC": js.ValueOf(10000),
-		"ethereumRPCMaxRequestsPerSecond":  js.ValueOf(50),
-		"enableEthereumRPCRateLimiting":    js.ValueOf(true),
-		"customContractAddresses":          string(data),
-		"maxOrdersInStorage":               js.ValueOf(10000),
-	}))
-	require.NoError(t, err)
-	require.Equal(t, config, core.Config{
-		BootstrapList: "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF," +
-			"/ip4/3.214.190.68/tcp/60559/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG",
-		CustomContractAddresses:          string(data),
-		EthereumRPCURL:                   "http://localhost:8545",
-		EthereumChainID:                  1337,
-		Verbosity:                        6,
-		DataDir:                          "0x-mesh",
-		P2PTCPPort:                       0,
-		P2PWebSocketsPort:                0,
-		UseBootstrapList:                 true,
-		BlockPollingInterval:             50 * time.Second,
-		EthereumRPCMaxContentLength:      10000,
-		EthereumRPCMaxRequestsPer24HrUTC: 10000,
-		EthereumRPCMaxRequestsPerSecond:  50,
-		EnableEthereumRPCRateLimiting:    true,
-		MaxOrdersInStorage:               10000,
-	})
+	for _, testCase := range []struct {
+		jsConfig       map[string]interface{}
+		expectedConfig core.Config
+	}{
+		{
+			jsConfig: map[string]interface{}{
+				"verbosity":                        js.Undefined(),
+				"ethereumRPCURL":                   js.ValueOf("http://localhost:8545"),
+				"ethereumChainID":                  js.ValueOf(1337),
+				"useBootstrapList":                 js.Undefined(),
+				"bootstrapList":                    js.Undefined(),
+				"blockPollingIntervalSeconds":      js.Undefined(),
+				"ethereumRPCMaxContentLength":      js.Undefined(),
+				"ethereumRPCMaxRequestsPer24HrUTC": js.Undefined(),
+				"ethereumRPCMaxRequestsPerSecond":  js.Undefined(),
+				"enableEthereumRPCRateLimiting":    js.Undefined(),
+				"customContractAddresses":          js.Undefined(),
+				"maxOrdersInStorage":               js.Undefined(),
+			},
+			expectedConfig: core.Config{
+				EthereumRPCURL:                   "http://localhost:8545",
+				EthereumChainID:                  1337,
+				Verbosity:                        2,
+				DataDir:                          "0x-mesh",
+				P2PTCPPort:                       0,
+				P2PWebSocketsPort:                0,
+				UseBootstrapList:                 true,
+				BlockPollingInterval:             5 * time.Second,
+				EthereumRPCMaxContentLength:      524288,
+				EthereumRPCMaxRequestsPer24HrUTC: 100000,
+				EthereumRPCMaxRequestsPerSecond:  30,
+				EnableEthereumRPCRateLimiting:    true,
+				MaxOrdersInStorage:               100000,
+			},
+		},
+		{
+			jsConfig: map[string]interface{}{
+				"verbosity":        js.ValueOf(6),
+				"ethereumRPCURL":   js.ValueOf("http://localhost:8545"),
+				"ethereumChainID":  js.ValueOf(1337),
+				"useBootstrapList": js.ValueOf(true),
+				"bootstrapList": js.ValueOf(
+					"/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF," +
+						"/ip4/3.214.190.68/tcp/60559/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG",
+				),
+				"blockPollingIntervalSeconds":      js.ValueOf(50),
+				"ethereumRPCMaxContentLength":      js.ValueOf(10000),
+				"ethereumRPCMaxRequestsPer24HrUTC": js.ValueOf(10000),
+				"ethereumRPCMaxRequestsPerSecond":  js.ValueOf(50),
+				"enableEthereumRPCRateLimiting":    js.ValueOf(true),
+				"customContractAddresses":          string(data),
+				"maxOrdersInStorage":               js.ValueOf(10000),
+			},
+			expectedConfig: core.Config{
+				BootstrapList: "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF," +
+					"/ip4/3.214.190.68/tcp/60559/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG",
+				CustomContractAddresses:          string(data),
+				EthereumRPCURL:                   "http://localhost:8545",
+				EthereumChainID:                  1337,
+				Verbosity:                        6,
+				DataDir:                          "0x-mesh",
+				P2PTCPPort:                       0,
+				P2PWebSocketsPort:                0,
+				UseBootstrapList:                 true,
+				BlockPollingInterval:             50 * time.Second,
+				EthereumRPCMaxContentLength:      10000,
+				EthereumRPCMaxRequestsPer24HrUTC: 10000,
+				EthereumRPCMaxRequestsPerSecond:  50,
+				EnableEthereumRPCRateLimiting:    true,
+				MaxOrdersInStorage:               10000,
+			},
+		},
+	} {
+		config, err := convertConfig(js.ValueOf(testCase.jsConfig))
+		require.NoError(t, err)
+		require.Equal(t, testCase.expectedConfig, config)
+	}
 }
