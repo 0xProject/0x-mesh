@@ -7,7 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞
 
-- Fixed a regression which can reuslt in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
+- Fixed a regression which can result in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
 
 
 ## v8.1.0
