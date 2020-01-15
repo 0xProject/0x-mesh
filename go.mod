@@ -66,17 +66,8 @@ require (
 	github.com/libp2p/go-libp2p-connmgr v0.1.1
 	github.com/libp2p/go-libp2p-core v0.2.4
 	github.com/libp2p/go-libp2p-crypto v0.1.0
-	github.com/libp2p/go-libp2p-discovery v0.1.0
-	github.com/libp2p/go-libp2p-host v0.0.0-20190226202054-2aa838333967 // indirect
-	github.com/libp2p/go-libp2p-interface-connmgr v0.0.0-20190226202048-6a96ea29ac65 // indirect
-	github.com/libp2p/go-libp2p-interface-pnet v0.0.0-20180919000501-d240acf619f6 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.2.1
-	github.com/libp2p/go-libp2p-kbucket v0.2.1
-	github.com/libp2p/go-libp2p-loggables v0.1.0
-	github.com/libp2p/go-libp2p-metrics v0.0.0-20190226174147-1f0f4db04727 // indirect
-	github.com/libp2p/go-libp2p-mplex v0.2.1
-	github.com/libp2p/go-libp2p-nat v0.0.4
-	github.com/libp2p/go-libp2p-net v0.0.0-20190226201932-e71fff5ba6e9 // indirect
+	github.com/libp2p/go-libp2p-discovery v0.2.0
+	github.com/libp2p/go-libp2p-kad-dht v0.3.0
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-protocol v0.0.0-20171212212132-b29f3d97e3a2 // indirect
@@ -157,6 +148,7 @@ require (
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
 	golang.org/x/text v0.3.2
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-	golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898
-	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
+	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
+	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
+	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff // indirect
 )
