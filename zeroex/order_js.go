@@ -16,6 +16,7 @@ func (o OrderEvent) JSValue() js.Value {
 		contractEventsJS[i] = contractEvent.JSValue()
 	}
 	return js.ValueOf(map[string]interface{}{
+		"timestamp":                o.Timestamp.String(),
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
 		"endState":                 string(o.EndState),

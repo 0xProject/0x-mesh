@@ -142,7 +142,7 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	Timestamp                time.Time            `json:"timestamp"`
+	Timestamp                string               `json:"timestamp"`
 	OrderHash                string               `json:"orderHash"`
 	SignedOrder              *SignedOrder         `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
@@ -153,7 +153,7 @@ type orderEventJSON struct {
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"timestamp":                o.Timestamp,
+		"timestamp":                o.Timestamp.String(),
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
 		"endState":                 o.EndState,
@@ -173,7 +173,12 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 }
 
 func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
-	o.Timestamp = orderEventJSON.Timestamp
+	layout := "2006-01-02 15:04:05 -0700 MST"
+	timestamp, err := time.Parse(layout, orderEventJSON.Timestamp)
+	if err != nil {
+		return err
+	}
+	o.Timestamp = timestamp
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
 	o.EndState = OrderEventEndState(orderEventJSON.EndState)
