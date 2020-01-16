@@ -7,7 +7,7 @@ jobs:
       - image: circleci/golang:1.12.13-browsers
       - image: 0xorg/ganache-cli:latest
         environment:
-            VERSION: 5.0.0
+            VERSION: 5.1.0
             SNAPSHOT_NAME: 0x_ganache_snapshot
     resource_class: large
     steps:
