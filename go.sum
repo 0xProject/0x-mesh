@@ -310,6 +310,7 @@ github.com/libp2p/go-libp2p-discovery v0.0.4/go.mod h1:ReQGiv7QTtza8FUWzewfuMmRD
 github.com/libp2p/go-libp2p-discovery v0.0.5/go.mod h1:YtF20GUxjgoKZ4zmXj8j3Nb2TUSBHFlOCetzYdbZL5I=
 github.com/libp2p/go-libp2p-discovery v0.1.0 h1:j+R6cokKcGbnZLf4kcNwpx6mDEUPF3N6SrqMymQhmvs=
 github.com/libp2p/go-libp2p-discovery v0.1.0/go.mod h1:4F/x+aldVHjHDHuX85x1zWoFTGElt8HnoDzwkFZm29g=
+github.com/libp2p/go-libp2p-discovery v0.2.0/go.mod h1:s4VGaxYMbw4+4+tsoQTqh7wfxg97AEdo4GYBt6BadWg=
 github.com/libp2p/go-libp2p-host v0.0.0-20190226202054-2aa838333967 h1:arERhb/u8bUN55fZ7YrG7EzJoQbfSRccbZMATNOXF2E=
 github.com/libp2p/go-libp2p-host v0.0.0-20190226202054-2aa838333967/go.mod h1:iAthoepYpyqzb89f4RmqzF9+ebsWPFBTvSedSlcWupg=
 github.com/libp2p/go-libp2p-host v0.0.1/go.mod h1:qWd+H1yuU0m5CwzAkvbSjqKairayEHdR5MMl7Cwa7Go=
@@ -341,10 +342,7 @@ github.com/libp2p/go-libp2p-kad-dht v0.1.1/go.mod h1:1kj2Rk5pX3/0RwqMm9AMNCT7Dzc
 github.com/libp2p/go-libp2p-kad-dht v0.2.0/go.mod h1:TmnCYcbasyFTKJg/P/AIIqJQYQ6+jgtYZTKUCLgu7js=
 github.com/libp2p/go-libp2p-kad-dht v0.2.1 h1:+pb1DCkV/6oNQjTZVXl+Y++eV0rnelx/L8y1t4J+Rnw=
 github.com/libp2p/go-libp2p-kad-dht v0.2.1/go.mod h1:k7ONOlup7HKzQ68dE6lSnp07cdxdkmnRa+6B4Fh9/w0=
-github.com/libp2p/go-libp2p-kad-dht v0.2.2/go.mod h1:k7ONOlup7HKzQ68dE6lSnp07cdxdkmnRa+6B4Fh9/w0=
-github.com/libp2p/go-libp2p-kad-dht v0.3.0 h1:KUJaqW3kkHP6zcL0s1CDg+yO0NYNNPkXmG4FrnZbwzM=
 github.com/libp2p/go-libp2p-kad-dht v0.3.0/go.mod h1:7nBsfkMq2zN1qPs6n/fNopJfvmK9NZRNicRrCnwQR8o=
-github.com/libp2p/go-libp2p-kbucket v0.0.0-20190226223454-719fa0d0a853/go.mod h1:MTtm31eal94QTxVOWYTDZ6G1YOJRN2G3ESQHbaPytLk=
 github.com/libp2p/go-libp2p-kbucket v0.2.1 h1:q9Jfwww9XnXc1K9dyYuARJxJvIvhgYVaQCuziO/dF3c=
 github.com/libp2p/go-libp2p-kbucket v0.2.1/go.mod h1:/Rtu8tqbJ4WQ2KTCOMJhggMukOLNLNPY1EtEWWLxUvc=
 github.com/libp2p/go-libp2p-loggables v0.0.0-20190226201908-4c6f06110532/go.mod h1:jcP5HmpEBcQ2w5u9xhLkCv73GBPKz3weC/s6ZWhXn+k=
@@ -755,7 +753,9 @@ gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLks
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/fsnotify.v1 v1.4.7/go.mod h1:Tz8NjZHkW78fSQdbUxIjBTcgA1z1m8ZHf0WmKUhAMys=
+gopkg.in/karlseguin/expect.v1 v1.0.1/go.mod h1:uB7QIJBcclvYbwlUDkSCsGjAOMis3fP280LyhuDEf2I=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
+gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff/go.mod h1:uAJfkITjFhyEEuUfm7bsmCZRbW5WRq8s9EY8HZ6hCns=
 gopkg.in/src-d/go-cli.v0 v0.0.0-20181105080154-d492247bbc0d/go.mod h1:z+K8VcOYVYcSwSjGebuDL6176A1XskgbtNl64NSg+n8=
 gopkg.in/src-d/go-log.v1 v1.0.1/go.mod h1:GN34hKP0g305ysm2/hctJ0Y8nWP3zxXXJ8GFabTyABE=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWDmTeBkI65Dw0HsyUHuEVlX15mw=

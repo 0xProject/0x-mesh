@@ -2,6 +2,14 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+
+## v8.1.1
+
+### Bug fixes 🐞
+
+- Fixed a regression which can result in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
+
+
 ## v8.1.0
 
 ### Features ✅
