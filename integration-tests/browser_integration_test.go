@@ -1,3 +1,5 @@
+// +build !js
+
 // Package integrationtests contains broad integration tests that
 // include a bootstrap node, a standalone node, and a browser node.
 package integrationtests
