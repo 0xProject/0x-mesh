@@ -15,6 +15,13 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Add `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 
 
+## v8.1.1
+
+### Bug fixes 🐞
+
+- Fixed a regression which can result in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
+
+
 ## v8.1.0
 
 ### Features ✅
