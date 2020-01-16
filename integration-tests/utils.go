@@ -14,9 +14,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/0xProject/0x-mesh/common/types"
+
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
@@ -303,7 +304,7 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 
 // Ensure that all of the orders in given list of signed orders are included in a list of order info. The list
 // of order info can contain more orders than the first list and still pass this assertion.
-func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*rpc.OrderInfo) {
+func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*types.OrderInfo) {
 	for _, expectedOrder := range expectedSignedOrders {
 		foundMatchingOrder := false
 
