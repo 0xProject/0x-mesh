@@ -1,3 +1,5 @@
+// +build !js
+
 package rpc
 
 import (
@@ -7,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -28,13 +31,13 @@ type rpcService struct {
 // RPCHandler is used to respond to incoming requests from the client.
 type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
-	AddOrders(signedOrdersRaw []*json.RawMessage, opts AddOrdersOpts) (*ordervalidator.ValidationResults, error)
+	AddOrders(signedOrdersRaw []*json.RawMessage, opts types.AddOrdersOpts) (*ordervalidator.ValidationResults, error)
 	// GetOrders is called when the clients sends a GetOrders request
-	GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error)
+	GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
 	// GetStats is called when the client sends an GetStats request.
-	GetStats() (*GetStatsResponse, error)
+	GetStats() (*types.Stats, error)
 	// SubscribeToOrders is called when a client sends a Subscribe to `orders` request
 	SubscribeToOrders(ctx context.Context) (*rpc.Subscription, error)
 }
@@ -120,12 +123,12 @@ func SetupHeartbeat(ctx context.Context) (*ethrpc.Subscription, error) {
 	return rpcSub, nil
 }
 
-var defaultAddOrdersOpts = AddOrdersOpts{
+var defaultAddOrdersOpts = types.AddOrdersOpts{
 	Pinned: true,
 }
 
 // AddOrders calls rpcHandler.AddOrders and returns the validation results.
-func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage, opts *AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if opts == nil {
 		opts = &defaultAddOrdersOpts
 	}
@@ -133,7 +136,7 @@ func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage, opts *AddOrde
 }
 
 // GetOrders calls rpcHandler.GetOrders and returns the validation results.
-func (s *rpcService) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
+func (s *rpcService) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
 	return s.rpcHandler.GetOrders(page, perPage, snapshotID)
 }
 
@@ -164,6 +167,6 @@ func (s *rpcService) AddPeer(peerID string, multiaddrs []string) error {
 }
 
 // GetStats calls rpcHandler.GetStats. If there is an error, it returns it.
-func (s *rpcService) GetStats() (*GetStatsResponse, error) {
+func (s *rpcService) GetStats() (*types.Stats, error) {
 	return s.rpcHandler.GetStats()
 }

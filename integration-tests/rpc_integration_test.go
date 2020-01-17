@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
+
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/rpc"
@@ -173,7 +175,7 @@ func TestGetOrders(t *testing.T) {
 
 			// Iterate through enough pages to get all of the orders in the mesh nodes database. Compare the
 			// responses to the orders that we expect to be in the database.
-			var responseOrders []*rpc.OrderInfo
+			var responseOrders []*types.OrderInfo
 			for pageNumber := 0; pageNumber < highestPageNumber; pageNumber++ {
 				expectedTimestamp := time.Now().UTC()
 				getOrdersResponse, err := client.GetOrders(pageNumber, testCase.ordersPerPage, snapshotID)
@@ -233,14 +235,14 @@ func TestGetStats(t *testing.T) {
 
 	// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
 	//                   should be the latest block.
-	getStatsResponse.LatestBlock = rpc.LatestBlock{}
+	getStatsResponse.LatestBlock = types.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
 	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic)
 	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous)
 	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
 	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
-	require.Equal(t, rpc.LatestBlock{}, getStatsResponse.LatestBlock)
+	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock)
 	require.Equal(t, 0, getStatsResponse.NumOrders)
 	require.Equal(t, 0, getStatsResponse.NumPeers)
 	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime)
