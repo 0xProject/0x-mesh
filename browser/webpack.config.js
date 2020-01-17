@@ -6,8 +6,13 @@ module.exports = {
         rules: [
             {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
-                exclude: /node_modules/,
+                use: [{
+                    loader: 'ts-loader',
+                    options: {
+                        configFile: 'webpack.tsconfig.json',
+                    }
+                }],
+                exclude: /node_modules/
             },
         ],
     },
@@ -17,5 +22,5 @@ module.exports = {
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
-    },
+    }
 };
