@@ -225,6 +225,16 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, err
 	return resultsJS, nil
 }
 
+// GetStats calls core.GetStats, converts the result to a js.Value and returns
+// it.
+func (cw *MeshWrapper) GetStats() (js.Value, error) {
+	stats, err := cw.app.GetStats()
+	if err != nil {
+		return js.Undefined(), err
+	}
+	return js.ValueOf(stats), nil
+}
+
 // JSValue satisfies the js.Wrapper interface. The return value is a JavaScript
 // object consisting of named functions. They act like methods by capturing the
 // MeshWrapper through a closure.
@@ -247,6 +257,12 @@ func (cw *MeshWrapper) JSValue() js.Value {
 			handler := args[0]
 			cw.orderEventsHandler = handler
 			return nil
+		}),
+		// getStatsAsync(): Promise<Stats>
+		"getStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return wrapInPromise(func() (interface{}, error) {
+				return cw.GetStats()
+			})
 		}),
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
