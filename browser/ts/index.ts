@@ -671,6 +671,10 @@ export class Mesh {
         return this._wrapper.startAsync();
     }
 
+    /**
+     * Returns various stats about Mesh, including the total number of orders
+     * and the number of peers Mesh is connected to.
+     */
     public async getStatsAsync(): Promise<Stats> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
