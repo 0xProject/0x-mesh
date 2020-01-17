@@ -5,12 +5,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/event"
 )
@@ -39,8 +38,8 @@ func setGlobals() {
 	zeroexMesh := map[string]interface{}{
 		// newWrapperAsync(config: Config): Promise<MeshWrapper>;
 		"newWrapperAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
-				config, err := convertConfig(args[0])
+			return types.WrapInPromise(func() (interface{}, error) {
+				config, err := core.ConvertConfig(args[0])
 				if err != nil {
 					return nil, err
 				}
@@ -70,79 +69,6 @@ type MeshWrapper struct {
 	orderEvents             chan []*zeroex.OrderEvent
 	orderEventsSubscription event.Subscription
 	orderEventsHandler      js.Value
-}
-
-// convertConfig converts a JavaScript config object into a core.Config. It also
-// adds default values for any that are missing in the JavaScript object.
-func convertConfig(jsConfig js.Value) (core.Config, error) {
-	if isNullOrUndefined(jsConfig) {
-		return core.Config{}, errors.New("config is required")
-	}
-
-	// Default config options. Some might be overridden.
-	config := core.Config{
-		Verbosity:                        2,
-		DataDir:                          "0x-mesh",
-		P2PTCPPort:                       0,
-		P2PWebSocketsPort:                0,
-		UseBootstrapList:                 true,
-		BlockPollingInterval:             5 * time.Second,
-		EthereumRPCMaxContentLength:      524288,
-		EthereumRPCMaxRequestsPer24HrUTC: 100000,
-		EthereumRPCMaxRequestsPerSecond:  30,
-		EnableEthereumRPCRateLimiting:    true,
-		MaxOrdersInStorage:               100000,
-		CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
-	}
-
-	// Required config options
-	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); isNullOrUndefined(ethereumRPCURL) || ethereumRPCURL.String() == "" {
-		return core.Config{}, errors.New("ethereumRPCURL is required")
-	} else {
-		config.EthereumRPCURL = ethereumRPCURL.String()
-	}
-	if ethereumChainID := jsConfig.Get("ethereumChainID"); isNullOrUndefined(ethereumChainID) {
-		return core.Config{}, errors.New("ethereumChainID is required")
-	} else {
-		config.EthereumChainID = ethereumChainID.Int()
-	}
-
-	// Optional config options
-	if verbosity := jsConfig.Get("verbosity"); !isNullOrUndefined(verbosity) {
-		config.Verbosity = verbosity.Int()
-	}
-	if useBootstrapList := jsConfig.Get("useBootstrapList"); !isNullOrUndefined(useBootstrapList) {
-		config.UseBootstrapList = useBootstrapList.Bool()
-	}
-	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
-		config.BootstrapList = bootstrapList.String()
-	}
-	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !isNullOrUndefined(blockPollingIntervalSeconds) {
-		config.BlockPollingInterval = time.Duration(blockPollingIntervalSeconds.Int()) * time.Second
-	}
-	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
-		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
-	}
-	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !isNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
-		config.EthereumRPCMaxRequestsPer24HrUTC = ethereumRPCMaxRequestsPer24HrUTC.Int()
-	}
-	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
-		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
-	}
-	if enableEthereumRPCRateLimiting := jsConfig.Get("enableEthereumRPCRateLimiting"); !isNullOrUndefined(enableEthereumRPCRateLimiting) {
-		config.EnableEthereumRPCRateLimiting = enableEthereumRPCRateLimiting.Bool()
-	}
-	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
-		config.CustomContractAddresses = customContractAddresses.String()
-	}
-	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
-		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
-	}
-	if customOrderFilter := jsConfig.Get("customOrderFilter"); !isNullOrUndefined(customOrderFilter) {
-		config.CustomOrderFilter = customOrderFilter.String()
-	}
-
-	return config, nil
 }
 
 // NewMeshWrapper creates a new wrapper from the given config.
@@ -190,13 +116,13 @@ func (cw *MeshWrapper) Start() error {
 			select {
 			case err := <-cw.errChan:
 				// core.App exited with an error. Call errHandler.
-				if !isNullOrUndefined(cw.errHandler) {
-					cw.errHandler.Invoke(errorToJS(err))
+				if !types.IsNullOrUndefined(cw.errHandler) {
+					cw.errHandler.Invoke(types.ErrorToJS(err))
 				}
 			case <-cw.ctx.Done():
 				return
 			case events := <-cw.orderEvents:
-				if !isNullOrUndefined(cw.orderEventsHandler) {
+				if !types.IsNullOrUndefined(cw.orderEventsHandler) {
 					eventsJS := make([]interface{}, len(events))
 					for i, event := range events {
 						eventsJS[i] = event.JSValue()
@@ -247,7 +173,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		// startAsync(): Promise<void>;
 		"startAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return types.WrapInPromise(func() (interface{}, error) {
 				return nil, cw.Start()
 			})
 		}),
@@ -265,46 +191,15 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		}),
 		// getStatsAsync(): Promise<Stats>
 		"getStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return types.WrapInPromise(func() (interface{}, error) {
 				return cw.GetStats()
 			})
 		}),
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return types.WrapInPromise(func() (interface{}, error) {
 				return cw.AddOrders(args[0], args[1].Bool())
 			})
 		}),
 	})
-}
-
-// errorToJS converts a Go error to a JavaScript Error.
-func errorToJS(err error) js.Value {
-	return js.Global().Get("Error").New(err.Error())
-}
-
-func isNullOrUndefined(value js.Value) bool {
-	return value == js.Null() || value == js.Undefined()
-}
-
-// wrapInPromise converts a potentially blocking Go function to a non-blocking
-// JavaScript Promise. If the function returns an error, the promise will reject
-// with that error. Otherwise, the promise will resolve with the first return
-// value.
-func wrapInPromise(f func() (interface{}, error)) js.Value {
-	var executor js.Func
-	executor = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		resolve := args[0]
-		reject := args[1]
-		go func() {
-			defer executor.Release()
-			if result, err := f(); err != nil {
-				reject.Invoke(errorToJS(err))
-			} else {
-				resolve.Invoke(result)
-			}
-		}()
-		return nil
-	})
-	return js.Global().Get("Promise").New(executor)
 }
