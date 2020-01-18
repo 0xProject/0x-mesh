@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Breaking changes 🛠
 
 - As a result of implementing custom order filters, some of the code Mesh uses under the hood to share orders with peers has changed. As a result this version of Mesh cannot share orders with any older versions and vice versa ([#630](https://github.com/0xProject/0x-mesh/pull/630)).
+- Rename `RPC_ADDR` to `WS_RPC_ADDR` since we now support both WS and HTTP JSON-RPC endpoints. ([#658](https://github.com/0xProject/0x-mesh/pull/658))
 
 ### Features ✅
 
@@ -15,6 +16,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 - Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
 - Add support for orders involving Chai ERC20Bridge assetData ([#663](https://github.com/0xProject/0x-mesh/pull/663)) 
+- Add support for calling JSON-RPC methods over HTTP (env config `HTTP_RPC_ADDR` defaults to `localhost:60556`). ([#658](https://github.com/0xProject/0x-mesh/pull/658))
 
 
 ## v8.2.0
@@ -28,12 +30,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Update DevUtils contract address to fix intermittent revert issues. ([#671](https://github.com/0xProject/0x-mesh/pull/671)).
 
-
 ## v8.1.2
 
 ### Bug fixes 🐞
 
-- Update DevUtils contract addresses to version that fixes issues for Augur. ([#662](https://github.com/0xProject/0x-mesh/pull/662)).
+- Update DevUtils contract to version that removed maker transfer simulation. ([#662](https://github.com/0xProject/0x-mesh/pull/662)).
 - Fix faulty Go to Javascript conversion logic. ([#659](https://github.com/0xProject/0x-mesh/pull/659)).
 - Updated dockerfiles to work with Go modules. ([#646](https://github.com/0xProject/0x-mesh/pull/646)).
 - Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
