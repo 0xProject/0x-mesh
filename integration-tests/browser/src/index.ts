@@ -63,11 +63,15 @@ provider.start();
         (async () => {
             for (let event of events) {
                 // Check the happy path for getOrdersForPageAsync. There should
-                // be two orders.
+                // be two orders. (just make sure it doesn't throw/reject).
                 const firstOrdersResponse = await mesh.getOrdersForPageAsync(0, 1, '');
                 console.log(JSON.stringify(firstOrdersResponse));
                 const secondOrdersResponse = await mesh.getOrdersForPageAsync(1, 1, firstOrdersResponse.snapshotID);
                 console.log(JSON.stringify(secondOrdersResponse));
+
+                // Check the happy path for getOrders (just make sure it
+                // doesn't throw/reject).
+                await mesh.getOrders();
 
                 // Log the event. The Go code will be watching the logs for
                 // this.
