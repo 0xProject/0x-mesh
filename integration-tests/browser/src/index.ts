@@ -71,7 +71,7 @@ provider.start();
 
                 // Check the happy path for getOrders (just make sure it
                 // doesn't throw/reject).
-                await mesh.getOrders();
+                await mesh.getOrdersAsync();
 
                 // Log the event. The Go code will be watching the logs for
                 // this.
