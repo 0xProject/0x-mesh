@@ -18,9 +18,12 @@ import (
 // standaloneConfig contains configuration options specific to running 0x Mesh
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
-	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
 	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
+	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
+	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
+	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
+	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`
 }
 
 func main() {
@@ -61,7 +64,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.WithField("rpc_addr", config.RPCAddr).Info("starting RPC server")
+		log.WithFields(log.Fields{"ws_rpc_addr": config.WSRPCAddr, "http_rpc_addr": config.HTTPRPCAddr}).Info("starting RPC server")
 		if err := listenRPC(ctx, app, config); err != nil {
 			rpcErrChan <- err
 		}

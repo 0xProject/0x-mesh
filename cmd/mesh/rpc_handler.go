@@ -36,7 +36,7 @@ type rpcHandler struct {
 // until there is an error or the RPC server is closed.
 func listenRPC(ctx context.Context, app *core.App, config standaloneConfig) error {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
-	rpcAddr := fmt.Sprintf("%s", config.RPCAddr)
+	rpcAddr := fmt.Sprintf("%s", config.WSRPCAddr)
 	rpcHandler := &rpcHandler{
 		app: app,
 		ctx: ctx,
