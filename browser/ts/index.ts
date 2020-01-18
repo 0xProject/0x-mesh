@@ -213,6 +213,45 @@ export interface ContractAddresses {
     zrxToken?: string;
 }
 
+export interface LatestBlock {
+    number: number;
+    hash: string;
+}
+
+interface WrapperStats {
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumChainID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
+    numPinnedOrders: number;
+    maxExpirationTime: string; // string instead of BigNumber
+    startOfCurrentUTCDay: string; // string instead of Date
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
+}
+
+export interface Stats {
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumChainID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
+    numPinnedOrders: number;
+    maxExpirationTime: BigNumber;
+    startOfCurrentUTCDay: Date;
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
+}
+
 export enum Verbosity {
     Panic = 0,
     Fatal = 1,
@@ -235,6 +274,7 @@ interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
+    getStatsAsync(): Promise<WrapperStats>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
@@ -706,6 +746,22 @@ export class Mesh {
     }
 
     /**
+     * Returns various stats about Mesh, including the total number of orders
+     * and the number of peers Mesh is connected to.
+     */
+    public async getStatsAsync(): Promise<Stats> {
+        await waitForLoadAsync();
+        if (this._wrapper === undefined) {
+            // If this is called after startAsync, this._wrapper is always
+            // defined. This check is here just in case and satisfies the
+            // compiler.
+            return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
+        }
+        const wrapperStats = await this._wrapper.getStatsAsync();
+        return wrapperStatsToStats(wrapperStats);
+    }
+
+    /**
      * Validates and adds the given orders to Mesh. If an order is successfully
      * added, Mesh will share it with any peers in the network and start
      * watching it for changes (e.g. filled, canceled, expired). The returned
@@ -936,6 +992,14 @@ function orderEventsHandlerToWrapperOrderEventsHandler(
     return (wrapperOrderEvents: WrapperOrderEvent[]) => {
         const orderEvents = wrapperOrderEvents.map(wrapperOrderEventToOrderEvent);
         orderEventsHandler(orderEvents);
+    };
+}
+
+function wrapperStatsToStats(wrapperStats: WrapperStats): Stats {
+    return {
+        ...wrapperStats,
+        startOfCurrentUTCDay: new Date(wrapperStats.startOfCurrentUTCDay),
+        maxExpirationTime: new BigNumber(wrapperStats.maxExpirationTime),
     };
 }
 
