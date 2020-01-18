@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,14 +60,27 @@ func main() {
 		}
 	}()
 
-	// Start RPC server.
-	rpcErrChan := make(chan error, 1)
+	// Start WS RPC server.
+	wsRPCErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.WithFields(log.Fields{"ws_rpc_addr": config.WSRPCAddr, "http_rpc_addr": config.HTTPRPCAddr}).Info("starting RPC server")
-		if err := listenRPC(ctx, app, config); err != nil {
-			rpcErrChan <- err
+		log.WithField("ws_rpc_addr", config.WSRPCAddr).Info("starting WS RPC server")
+		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr)
+		if err := rpcServer.Listen(ctx, rpc.WSHandler); err != nil {
+			wsRPCErrChan <- err
+		}
+	}()
+
+	// Start HTTP RPC server.
+	httpRPCErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
+		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr)
+		if err := rpcServer.Listen(ctx, rpc.HTTPHandler); err != nil {
+			httpRPCErrChan <- err
 		}
 	}()
 
@@ -80,9 +94,12 @@ func main() {
 	case err := <-coreErrChan:
 		cancel()
 		log.WithField("error", err.Error()).Error("core app exited with error")
-	case err := <-rpcErrChan:
+	case err := <-wsRPCErrChan:
 		cancel()
-		log.WithField("error", err.Error()).Error("RPC server returned error")
+		log.WithField("error", err.Error()).Error("WS RPC server returned error")
+	case err := <-httpRPCErrChan:
+		cancel()
+		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
 	}
 
 	// If we reached here it means there was an error. Wait for all goroutines

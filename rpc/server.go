@@ -4,6 +4,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -34,10 +35,19 @@ func NewServer(addr string, rpcHandler RPCHandler) (*Server, error) {
 	}, nil
 }
 
-// Listen causes the server to listen for new connections. You can call Close to
+// HandlerType represents the type of handler to attach to the server
+type HandlerType uint8
+
+// HandlerType values
+const (
+	HTTPHandler HandlerType = iota
+	WSHandler
+)
+
+// Listen causes the server to listen for new WS connections. You can call Close to
 // stop listening. Listen blocks until there is an error or the given context is
 // canceled.
-func (s *Server) Listen(ctx context.Context) error {
+func (s *Server) Listen(ctx context.Context, handlerType HandlerType) error {
 	s.mut.Lock()
 
 	rpcService := &rpcService{
@@ -64,7 +74,17 @@ func (s *Server) Listen(ctx context.Context) error {
 		_ = s.listener.Close()
 	}()
 
-	if err := http.Serve(s.listener, s.rpcServer.WebsocketHandler([]string{"*"})); err != nil {
+	var handler http.Handler
+	switch handlerType {
+	case HTTPHandler:
+		handler = s.rpcServer
+	case WSHandler:
+		handler = s.rpcServer.WebsocketHandler([]string{"*"})
+	default:
+		return fmt.Errorf("Unrecogniced HandlerType: %d", handlerType)
+	}
+
+	if err := http.Serve(s.listener, handler); err != nil {
 		// HACK(albrow): http.Serve doesn't accept a context. This means that
 		// everytime we close the context for our rpc.Server, we see a "use of
 		// closed network connection" error.
