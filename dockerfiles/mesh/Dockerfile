@@ -24,8 +24,11 @@ WORKDIR /usr/mesh
 
 COPY --from=mesh-builder /0x-mesh/mesh /usr/mesh/mesh
 
-ENV RPC_ADDR=localhost:60557
+ENV WS_RPC_ADDR=localhost:60557
 EXPOSE 60557
+
+ENV HTTP_RPC_ADDR=localhost:60556
+EXPOSE 60556
 
 ENV P2P_TCP_PORT=60558
 EXPOSE 60558
