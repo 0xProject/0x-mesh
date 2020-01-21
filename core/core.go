@@ -4,6 +4,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,7 +34,9 @@ import (
 	"github.com/albrow/stringset"
 	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -163,6 +166,10 @@ type Config struct {
 	// all the required fields) are automatically included. For more information
 	// on JSON Schemas, see https://json-schema.org/
 	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
+	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
+	// settable in browsers and cannot be set via environment variable. If
+	// provided, EthereumRPCURL will be ignored.
+	EthereumRPCClient ethclient.RPCClient
 }
 
 type snapshotInfo struct {
@@ -264,7 +271,22 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
-	ethClient, err := ethrpcclient.New(config.EthereumRPCURL, ethereumRPCRequestTimeout, ethRPCRateLimiter)
+	var ethRPCClient ethclient.RPCClient
+	if config.EthereumRPCClient != nil {
+		if config.EthereumRPCURL != "" {
+			log.Warn("Ignoring EthereumRPCURL and using the provided EthereumRPCClient")
+		}
+		ethRPCClient = config.EthereumRPCClient
+	} else if config.EthereumRPCURL != "" {
+		ethRPCClient, err = rpc.Dial(config.EthereumRPCURL)
+		if err != nil {
+			log.WithError(err).Error("Could not dial EthereumRPCURL")
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("cannot initialize core.App: neither EthereumRPCURL or EthereumRPCClient were provided")
+	}
+	ethClient, err := ethrpcclient.New(ethRPCClient, ethereumRPCRequestTimeout, ethRPCRateLimiter)
 	if err != nil {
 		return nil, err
 	}
