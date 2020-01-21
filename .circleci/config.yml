@@ -5,9 +5,9 @@ jobs:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
       - image: circleci/golang:1.12.13-browsers
-      - image: 0xorg/ganache-cli:latest
+      - image: 0xorg/ganache-cli:istanbul
         environment:
-            VERSION: 5.0.0
+            VERSION: 5.1.0
             SNAPSHOT_NAME: 0x_ganache_snapshot
     resource_class: large
     steps:
