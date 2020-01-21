@@ -25,7 +25,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞
 
-- Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
+- Update DevUtils contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
 
 ## v8.1.0
 
