@@ -240,6 +240,17 @@ func (cw *MeshWrapper) GetStats() (js.Value, error) {
 	return js.ValueOf(stats), nil
 }
 
+// GetOrders converts raw JavaScript parameters into the appropriate type, calls
+// core.App.GetOrders, converts the result into basic JavaScript types (string,
+// int, etc.) and returns it.
+func (cw *MeshWrapper) GetOrders(page int, perPage int, snapshotID string) (js.Value, error) {
+	ordersResponse, err := cw.app.GetOrders(page, perPage, snapshotID)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	return js.ValueOf(ordersResponse), nil
+}
+
 // JSValue satisfies the js.Wrapper interface. The return value is a JavaScript
 // object consisting of named functions. They act like methods by capturing the
 // MeshWrapper through a closure.
@@ -267,6 +278,18 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		"getStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return wrapInPromise(func() (interface{}, error) {
 				return cw.GetStats()
+			})
+		}),
+		// getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse>
+		"getOrdersForPageAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return wrapInPromise(func() (interface{}, error) {
+				// snapshotID is optional in the JavaScript function. Check if it is
+				// null or undefined.
+				snapshotID := ""
+				if !isNullOrUndefined(args[2]) {
+					snapshotID = args[2].String()
+				}
+				return cw.GetOrders(args[0].Int(), args[1].Int(), snapshotID)
 			})
 		}),
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>

@@ -63,9 +63,24 @@ provider.start();
     // canceled, or filled. We will check for certain events to be logged in the
     // integration tests.
     mesh.onOrderEvents((events: Array<OrderEvent>) => {
-        for (let event of events) {
-            console.log(JSON.stringify(event));
-        }
+        (async () => {
+            for (let event of events) {
+                // Check the happy path for getOrdersForPageAsync. There should
+                // be two orders. (just make sure it doesn't throw/reject).
+                const firstOrdersResponse = await mesh.getOrdersForPageAsync(0, 1, '');
+                console.log(JSON.stringify(firstOrdersResponse));
+                const secondOrdersResponse = await mesh.getOrdersForPageAsync(1, 1, firstOrdersResponse.snapshotID);
+                console.log(JSON.stringify(secondOrdersResponse));
+
+                // Check the happy path for getOrders (just make sure it
+                // doesn't throw/reject).
+                await mesh.getOrdersAsync();
+
+                // Log the event. The Go code will be watching the logs for
+                // this.
+                console.log(JSON.stringify(event));
+            }
+        })().catch(err => console.error(err));
     });
 
     // Start Mesh *after* we set up the handlers.
