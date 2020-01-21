@@ -142,7 +142,7 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	Timestamp                time.Time            `json:"timestamp"`
+	Timestamp                string               `json:"timestamp"`
 	OrderHash                string               `json:"orderHash"`
 	SignedOrder              *SignedOrder         `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
@@ -152,8 +152,12 @@ type orderEventJSON struct {
 
 // MarshalJSON implements a custom JSON marshaller for the OrderEvent type
 func (o OrderEvent) MarshalJSON() ([]byte, error) {
+	timestamp, err := o.Timestamp.MarshalText()
+	if err != nil {
+		return nil, err
+	}
 	return json.Marshal(map[string]interface{}{
-		"timestamp":                o.Timestamp,
+		"timestamp":                string(timestamp),
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
 		"endState":                 o.EndState,
@@ -173,7 +177,11 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 }
 
 func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
-	o.Timestamp = orderEventJSON.Timestamp
+	timestamp, err := time.Parse(time.RFC3339, orderEventJSON.Timestamp)
+	if err != nil {
+		return err
+	}
+	o.Timestamp = timestamp
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
 	o.EndState = OrderEventEndState(orderEventJSON.EndState)
@@ -557,7 +565,7 @@ type SignedOrderJSON struct {
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
 func (s SignedOrder) MarshalJSON() ([]byte, error) {
-	makerAssetData := ""
+	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
 	}
@@ -568,7 +576,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	if len(s.MakerFeeAssetData) != 0 {
 		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
 	}
-	takerAssetData := ""
+	takerAssetData := "0x"
 	if len(s.TakerAssetData) != 0 {
 		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
 	}
@@ -576,7 +584,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	if len(s.TakerFeeAssetData) != 0 {
 		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
 	}
-	signature := ""
+	signature := "0x"
 	if len(s.Signature) != 0 {
 		signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
 	}
