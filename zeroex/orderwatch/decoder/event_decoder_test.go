@@ -606,9 +606,12 @@ func TestJSONMarshalUnmarshalExchangeFill(t *testing.T) {
 		TakerAssetFilledAmount: big.NewInt(142668604964864),
 		MakerFeePaid:           big.NewInt(142668604964864),
 		TakerFeePaid:           big.NewInt(142668604964864),
+		ProtocolFeePaid:        big.NewInt(142668604964864),
 		OrderHash:              common.HexToHash("0xe5cd991e034cd4517cbf180307031074f3d560949fe9ddae9a06a829052dc759"),
 		MakerAssetData:         common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32"),
 		TakerAssetData:         common.Hex2Bytes("f47261b0000000000000000000000000aa7427d8f17d87a28f5e1ba3adbb270badbe1011"),
+		MakerFeeAssetData:      common.Hex2Bytes("0x"),
+		TakerFeeAssetData:      common.Hex2Bytes("0x"),
 	}
 
 	buf := bytes.Buffer{}
