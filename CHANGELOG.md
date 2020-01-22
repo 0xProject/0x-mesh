@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v8.1.2
+
+### Bug fixes 🐞
+
+- Fix faulty Go to Javascript conversion logic. ([#659](https://github.com/0xProject/0x-mesh/pull/659)).
+- Updated dockerfiles to work with Go modules. ([#646](https://github.com/0xProject/0x-mesh/pull/646)).
 
 ## v8.1.1
 
