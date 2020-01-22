@@ -113,7 +113,7 @@ export interface Config {
     verbosity?: Verbosity;
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
-    ethereumRPCURL: string;
+    ethereumRPCURL?: string;
     // EthereumChainID is the chain ID specifying which Ethereum chain you wish to
     // run your Mesh node for
     ethereumChainID: number;
@@ -311,7 +311,7 @@ interface MeshWrapper {
 // The type for configuration exposed by MeshWrapper.
 interface WrapperConfig {
     verbosity?: number;
-    ethereumRPCURL: string;
+    ethereumRPCURL?: string;
     ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.

@@ -69,6 +69,7 @@
     "@0x/utils" "^5.1.2"
     base64-arraybuffer "^0.2.0"
     browserfs "^1.4.3"
+    ethereum-types "^3.0.0"
 
 "@0x/order-utils@^10.0.1":
   version "10.1.0"

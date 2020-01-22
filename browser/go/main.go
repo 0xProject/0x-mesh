@@ -97,11 +97,6 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 
 	// Required config options
-	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); isNullOrUndefined(ethereumRPCURL) || ethereumRPCURL.String() == "" {
-		return core.Config{}, errors.New("ethereumRPCURL is required")
-	} else {
-		config.EthereumRPCURL = ethereumRPCURL.String()
-	}
 	if ethereumChainID := jsConfig.Get("ethereumChainID"); isNullOrUndefined(ethereumChainID) {
 		return core.Config{}, errors.New("ethereumChainID is required")
 	} else {
@@ -142,7 +137,10 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	if customOrderFilter := jsConfig.Get("customOrderFilter"); !isNullOrUndefined(customOrderFilter) {
 		config.CustomOrderFilter = customOrderFilter.String()
 	}
-	if web3Provider := jsConfig.Get("web3Provider"); isNullOrUndefined(web3Provider) {
+	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); !isNullOrUndefined(ethereumRPCURL) && ethereumRPCURL.String() != "" {
+		config.EthereumRPCURL = ethereumRPCURL.String()
+	}
+	if web3Provider := jsConfig.Get("web3Provider"); !isNullOrUndefined(web3Provider) {
 		config.EthereumRPCClient = providerwrapper.NewRPCClient(web3Provider)
 	}
 
