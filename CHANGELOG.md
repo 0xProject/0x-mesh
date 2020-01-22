@@ -16,6 +16,15 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added `getStatsAsync` to the `@0x/mesh-browser` package. ([#654](https://github.com/0xProject/0x-mesh/pull/654)).
 - Added `getOrdersAsync` and `getOrdersForPageAsync` to the `@0x/mesh-browser` package. ([#655](https://github.com/0xProject/0x-mesh/pull/655)).
 
+## v8.1.2
+
+### Bug fixes 🐞
+
+- Update DevUtils contract addresses to version that fixes issues for Augur. ([#662](https://github.com/0xProject/0x-mesh/pull/662)).
+- Fix faulty Go to Javascript conversion logic. ([#659](https://github.com/0xProject/0x-mesh/pull/659)).
+- Updated dockerfiles to work with Go modules. ([#646](https://github.com/0xProject/0x-mesh/pull/646)).
+- Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
+
 
 ## v8.1.1
 
