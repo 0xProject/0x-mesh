@@ -75,7 +75,7 @@ type OrdersCollection struct {
 	MakerAddressMakerFeeAssetAddressTokenIDIndex *db.Index
 	LastUpdatedIndex                             *db.Index
 	IsRemovedIndex                               *db.Index
-	ExpirationTimeIndex                  *db.Index
+	ExpirationTimeIndex                          *db.Index
 }
 
 // MetadataCollection represents a DB collection used to store instance metadata
@@ -211,7 +211,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		MakerAddressAndSaltIndex:                     makerAddressAndSaltIndex,
 		LastUpdatedIndex:                             lastUpdatedIndex,
 		IsRemovedIndex:                               isRemovedIndex,
-		ExpirationTimeIndex:                  expirationTimeIndex,
+		ExpirationTimeIndex:                          expirationTimeIndex,
 	}, nil
 }
 
@@ -515,6 +515,16 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleA
 			}
 			singleAssetDatas = append(singleAssetDatas, as...)
 		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		a := singleAssetData{
+			Address: decodedAssetData.TokenAddress,
+		}
+		singleAssetDatas = append(singleAssetDatas, a)
 	default:
 		return nil, fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
