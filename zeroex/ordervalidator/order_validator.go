@@ -677,64 +677,64 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 
 		contractAddresses, err := ethereum.GetContractAddressesForChainID(o.chainID)
 		if err != nil {
-			log.WithError(err).WithField("chainID", o.chainID).Error("Couldn't find contract addresses for chainID")
-		} else {
-			isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData, contractAddresses)
-			if !isMakerAssetDataSupported {
-				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      ROInvalidMakerAssetData,
-				})
-				continue
-			}
-			isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData, contractAddresses)
-			if !isTakerAssetDataSupported {
-				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      ROInvalidTakerAssetData,
-				})
-				continue
-			}
+			log.WithError(err).WithField("chainID", o.chainID).Panic("Couldn't find contract addresses for chainID")
+		}
 
-			if len(signedOrder.MakerFeeAssetData) != 0 {
-				isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData, contractAddresses)
-				if !isMakerFeeAssetDataSupported {
-					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        ZeroExValidation,
-						Status:      ROInvalidMakerFeeAssetData,
-					})
-					continue
-				}
-			}
-			if len(signedOrder.TakerFeeAssetData) != 0 {
-				isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData, contractAddresses)
-				if !isTakerFeeAssetDataSupported {
-					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        ZeroExValidation,
-						Status:      ROInvalidTakerFeeAssetData,
-					})
-					continue
-				}
-			}
+		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData, contractAddresses)
+		if !isMakerAssetDataSupported {
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidMakerAssetData,
+			})
+			continue
+		}
+		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData, contractAddresses)
+		if !isTakerAssetDataSupported {
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidTakerAssetData,
+			})
+			continue
+		}
 
-			isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
-			if !isSupportedSignature {
+		if len(signedOrder.MakerFeeAssetData) != 0 {
+			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData, contractAddresses)
+			if !isMakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: signedOrder,
 					Kind:        ZeroExValidation,
-					Status:      ROInvalidSignature,
+					Status:      ROInvalidMakerFeeAssetData,
 				})
 				continue
 			}
+		}
+		if len(signedOrder.TakerFeeAssetData) != 0 {
+			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData, contractAddresses)
+			if !isTakerFeeAssetDataSupported {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        ZeroExValidation,
+					Status:      ROInvalidTakerFeeAssetData,
+				})
+				continue
+			}
+		}
+
+		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
+		if !isSupportedSignature {
+			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: signedOrder,
+				Kind:        ZeroExValidation,
+				Status:      ROInvalidSignature,
+			})
+			continue
 		}
 
 		offchainValidSignedOrders = append(offchainValidSignedOrders, signedOrder)
