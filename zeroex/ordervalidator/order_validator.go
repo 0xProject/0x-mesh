@@ -675,61 +675,66 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
-		if !isMakerAssetDataSupported {
-			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidMakerAssetData,
-			})
-			continue
-		}
-		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
-		if !isTakerAssetDataSupported {
-			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidTakerAssetData,
-			})
-			continue
-		}
-
-		if len(signedOrder.MakerFeeAssetData) != 0 {
-			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData)
-			if !isMakerFeeAssetDataSupported {
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(o.chainID)
+		if err != nil {
+			log.WithError(err).WithField("chainID", o.chainID).Error("Couldn't find contract addresses for chainID")
+		} else {
+			isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData, contractAddresses)
+			if !isMakerAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: signedOrder,
 					Kind:        ZeroExValidation,
-					Status:      ROInvalidMakerFeeAssetData,
+					Status:      ROInvalidMakerAssetData,
 				})
 				continue
 			}
-		}
-		if len(signedOrder.TakerFeeAssetData) != 0 {
-			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
-			if !isTakerFeeAssetDataSupported {
+			isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData, contractAddresses)
+			if !isTakerAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
 					SignedOrder: signedOrder,
 					Kind:        ZeroExValidation,
-					Status:      ROInvalidTakerFeeAssetData,
+					Status:      ROInvalidTakerAssetData,
 				})
 				continue
 			}
-		}
 
-		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
-		if !isSupportedSignature {
-			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidSignature,
-			})
-			continue
+			if len(signedOrder.MakerFeeAssetData) != 0 {
+				isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData, contractAddresses)
+				if !isMakerFeeAssetDataSupported {
+					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+						OrderHash:   orderHash,
+						SignedOrder: signedOrder,
+						Kind:        ZeroExValidation,
+						Status:      ROInvalidMakerFeeAssetData,
+					})
+					continue
+				}
+			}
+			if len(signedOrder.TakerFeeAssetData) != 0 {
+				isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData, contractAddresses)
+				if !isTakerFeeAssetDataSupported {
+					rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+						OrderHash:   orderHash,
+						SignedOrder: signedOrder,
+						Kind:        ZeroExValidation,
+						Status:      ROInvalidTakerFeeAssetData,
+					})
+					continue
+				}
+			}
+
+			isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
+			if !isSupportedSignature {
+				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
+					OrderHash:   orderHash,
+					SignedOrder: signedOrder,
+					Kind:        ZeroExValidation,
+					Status:      ROInvalidSignature,
+				})
+				continue
+			}
 		}
 
 		offchainValidSignedOrders = append(offchainValidSignedOrders, signedOrder)
@@ -738,7 +743,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 	return offchainValidSignedOrders, rejectedOrderInfos
 }
 
-func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
+func (o *OrderValidator) isSupportedAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) bool {
 	assetDataName, err := o.assetDataDecoder.GetName(assetData)
 	if err != nil {
 		return false
@@ -766,6 +771,17 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
+			return false
+		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+		// We currently restrict ERC20Bridge orders to those referencing the
+		// Chai bridge
+		if decodedAssetData.BridgeAddress != contractAddresses.ChaiBridge {
 			return false
 		}
 	default:
