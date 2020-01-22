@@ -9,6 +9,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/browser/go/providerwrapper"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -140,6 +141,9 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 	if customOrderFilter := jsConfig.Get("customOrderFilter"); !isNullOrUndefined(customOrderFilter) {
 		config.CustomOrderFilter = customOrderFilter.String()
+	}
+	if web3Provider := jsConfig.Get("web3Provider"); isNullOrUndefined(web3Provider) {
+		config.EthereumRPCClient = providerwrapper.NewRPCClient(web3Provider)
 	}
 
 	return config, nil

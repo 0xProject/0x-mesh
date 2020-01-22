@@ -1,6 +1,8 @@
 // +build js,wasm
 
-package ethprovider
+// Package providerwrapper wraps a web3 provider in order to implement the
+// RPCClient interface.
+package providerwrapper
 
 import (
 	"context"
