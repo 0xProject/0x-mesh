@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-rpc-client",
-    "version": "8.1.1",
+    "version": "8.1.2",
     "engines": {
         "node": ">=6.12"
     },

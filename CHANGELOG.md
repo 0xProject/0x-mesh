@@ -6,8 +6,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Bug fixes 🐞
 
+- Update DevUtils contract to version that removed maker transfer simulation. ([#662](https://github.com/0xProject/0x-mesh/pull/662)).
 - Fix faulty Go to Javascript conversion logic. ([#659](https://github.com/0xProject/0x-mesh/pull/659)).
 - Updated dockerfiles to work with Go modules. ([#646](https://github.com/0xProject/0x-mesh/pull/646)).
+- Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
+
 
 ## v8.1.1
 
@@ -15,10 +18,6 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Fixed a regression which can result in memory leaks. ([#650](https://github.com/0xProject/0x-mesh/pull/650)).
 
-
-### Bug fixes 🐞
-
-- Update DevUtils mainnet contract address to version that fixes MAP order validation issue ([#644](https://github.com/0xProject/0x-mesh/pull/644)).
 
 ## v8.1.0
 
