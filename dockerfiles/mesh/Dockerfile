@@ -9,11 +9,9 @@ FROM golang:1.12.13-alpine3.9 as mesh-builder
 
 RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
 
-WORKDIR /go/src/github.com/0xProject/0x-mesh
+WORKDIR /0x-mesh
 
 ADD . ./
-
-RUN make deps-go-no-lockfile
 
 RUN go build ./cmd/mesh
 
@@ -24,7 +22,7 @@ RUN apk update && apk add ca-certificates --no-cache
 
 WORKDIR /usr/mesh
 
-COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh /usr/mesh/mesh
+COPY --from=mesh-builder /0x-mesh/mesh /usr/mesh/mesh
 
 ENV RPC_ADDR=localhost:60557
 EXPOSE 60557

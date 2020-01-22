@@ -31,7 +31,6 @@ blockchainTests.resets('WSClient', env => {
         });
 
         afterEach(async () => {
-            deployment.client.destroy();
             deployment.mesh.stopMesh();
         });
 
@@ -59,8 +58,8 @@ blockchainTests.resets('WSClient', env => {
             const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
             const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
             const mintAmount = new BigNumber('100e18');
-            await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
-            await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
+            await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({from: makerAddress});
+            await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({from: makerAddress});
             await makerToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({from: makerAddress});
@@ -85,12 +84,14 @@ blockchainTests.resets('WSClient', env => {
                 const order = await orderFactory.newSignedOrderAsync({});
                 const validationResults = await deployment.client.addOrdersAsync([order]);
                 expect(validationResults).to.be.deep.eq({
-                    accepted: [{
-                        fillableTakerAssetAmount: order.takerAssetAmount,
-                        isNew: true,
-                        orderHash: orderHashUtils.getOrderHashHex(order),
-                        signedOrder: order,
-                    }],
+                    accepted: [
+                        {
+                            fillableTakerAssetAmount: order.takerAssetAmount,
+                            isNew: true,
+                            orderHash: orderHashUtils.getOrderHashHex(order),
+                            signedOrder: order,
+                        },
+                    ],
                     rejected: [],
                 });
             });
@@ -103,15 +104,17 @@ blockchainTests.resets('WSClient', env => {
                 const validationResults = await deployment.client.addOrdersAsync([invalidOrder]);
                 expect(validationResults).to.be.deep.eq({
                     accepted: [],
-                    rejected: [{
-                        kind: RejectedKind.ZeroexValidation,
-                        orderHash: orderHashUtils.getOrderHashHex(invalidOrder),
-                        signedOrder: invalidOrder,
-                        status: {
-                          code: 'OrderHasInvalidSignature',
-                          message: 'order signature must be valid',
+                    rejected: [
+                        {
+                            kind: RejectedKind.ZeroexValidation,
+                            orderHash: orderHashUtils.getOrderHashHex(invalidOrder),
+                            signedOrder: invalidOrder,
+                            status: {
+                                code: 'OrderHasInvalidSignature',
+                                message: 'order signature must be valid',
+                            },
                         },
-                    }],
+                    ],
                 });
             });
         });
@@ -132,8 +135,9 @@ blockchainTests.resets('WSClient', env => {
                 };
 
                 const now = new Date(Date.now());
-                const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${leftPad(now.getUTCMonth() +
-                    1)}-${leftPad(now.getUTCDate())}T00:00:00Z`;
+                const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${leftPad(
+                    now.getUTCMonth() + 1,
+                )}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
                     version: '',
                     pubSubTopic: '/0x-orders/network/1337/version/2',
@@ -226,7 +230,7 @@ blockchainTests.resets('WSClient', env => {
                         for (const orderEvent of orderEvents) {
                             expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
                             // tslint:disable-next-line:custom-no-magic-numbers
-                            assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(4));
+                            assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(10));
                         }
 
                         // Ensure that all of the orders that were added had an associated order event emitted.
@@ -237,16 +241,17 @@ blockchainTests.resets('WSClient', env => {
                                 if (orderHash === orderEvent.orderHash) {
                                     hasSeenMatch = true;
                                     expect(orderEvent.signedOrder).to.be.deep.eq(order);
-                                    expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(order.takerAssetAmount);
+                                    expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(
+                                        order.takerAssetAmount,
+                                    );
                                     break;
                                 }
                             }
                             expect(hasSeenMatch).to.be.true();
                         }
-
                         done();
                     });
-                    now = new Date(Date.now()).getTime();
+                    now = Date.now();
                     const validationResults = await deployment.client.addOrdersAsync(orders);
                     expect(validationResults.accepted.length).to.be.eq(ordersLength);
                     await subscription;
@@ -257,7 +262,7 @@ blockchainTests.resets('WSClient', env => {
                 (async () => {
                     // Add an order and then cancel it.
                     const order = await orderFactory.newSignedOrderAsync({});
-                    const validationResults = await deployment.client.addOrdersAsync([ order ]);
+                    const validationResults = await deployment.client.addOrdersAsync([order]);
                     expect(validationResults.accepted.length).to.be.eq(1);
 
                     // Subscribe to order events and assert that only a single cancel event was received.
@@ -283,7 +288,6 @@ blockchainTests.resets('WSClient', env => {
                         expect(contractEvent.blockHash.length).to.be.eq(hashLength);
                         expect(contractEvent.blockHash).to.not.be.eq(constants.NULL_BYTES32);
                         expect(contractEvent.txHash.length).to.be.eq(hashLength);
-                        expect(contractEvent.txHash.length).to.be.eq(hashLength);
                         const parameters = contractEvent.parameters as ExchangeCancelEvent;
                         parameters.makerAddress = parameters.makerAddress.toLowerCase();
                         parameters.senderAddress = parameters.makerAddress;
@@ -297,11 +301,10 @@ blockchainTests.resets('WSClient', env => {
                     });
 
                     // Cancel an order and then wait for the emitted order event.
-                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
+                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({from: makerAddress});
                     await subscription;
                 })().catch(done);
             });
-
         });
 
         describe('#unsubscribeAsync', async () => {
@@ -345,7 +348,7 @@ blockchainTests.resets('WSClient', env => {
                         stopServer();
                         done();
                     });
-                })();
+                })().catch(done);
             });
         });
         describe('#onReconnected', async () => {
@@ -390,7 +393,7 @@ blockchainTests.resets('WSClient', env => {
                         stopServer();
                         done();
                     });
-                })();
+                })().catch(done);
             });
         });
         describe('#destroy', async () => {

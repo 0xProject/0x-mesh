@@ -1,4 +1,5 @@
 import {ChildProcessWithoutNullStreams, spawn} from 'child_process';
+import * as jsonstream from 'jsonstream';
 import {join} from 'path';
 import * as rimraf from 'rimraf';
 
@@ -46,7 +47,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     const mesh = new MeshHarness();
     const log = await mesh.waitForPatternAsync(/started RPC server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
-    const client = new WSClient(`http://localhost:${mesh.port}`);
+    const client = new WSClient(`ws://localhost:${mesh.port}`);
     return {
         client,
         mesh,
@@ -72,11 +73,14 @@ export class MeshHarness {
             throw new Error('mesh instance has already been killed');
         }
         return new Promise<string>((resolve, reject) => {
-            this._mesh.stderr.on('data', async data => {
-                if (pattern.test(data.toString())) {
-                    resolve(data.toString());
+            const stream = jsonstream.parse(true);
+            stream.on('data', data => {
+                const dataString = JSON.stringify(data);
+                if (pattern.test(dataString)) {
+                    resolve(dataString);
                 }
             });
+            this._mesh.stderr.pipe(stream);
             setTimeout(reject, timeout || MeshHarness.DEFAULT_TIMEOUT);
         });
     }
@@ -98,7 +102,7 @@ export class MeshHarness {
         env.RPC_ADDR = `localhost:${this.port}`;
         this._mesh = spawn('mesh', [], {env});
         this._mesh.stderr.on('error', error => {
-            throw error;
+            throw new Error(`${error.name} - ${error.message}`);
         });
     }
 }
