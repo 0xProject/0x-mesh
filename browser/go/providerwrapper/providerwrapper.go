@@ -48,6 +48,18 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	//         jsonrpc: string;
 	//     }
 	//
+	//     interface JSONRPCResponseError {
+	//         message: string;
+	//         code: number;
+	//     }
+	//
+	//     interface JSONRPCResponsePayload {
+	//         result: any;
+	//         id: number;
+	//         jsonrpc: string;
+	//         error?: JSONRPCResponseError;
+	//     }
+	//
 	//     type JSONRPCErrorCallback = (err: Error | null, result?: JSONRPCResponsePayload) => void;
 	//
 	//     sendAsync(payload: JSONRPCRequestPayload, callback: JSONRPCErrorCallback): void;
@@ -107,7 +119,9 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	case err := <-errChan:
 		return err
 	case jsResult := <-resultChan:
-		// TOOD(albrow): Handle jsResult.error?
+		if rpcErr := jsResult.Get("error"); !jsutil.IsNullOrUndefined(rpcErr) {
+			return jsErrorToRPCError(rpcErr)
+		}
 		if result == nil {
 			return nil
 		}
@@ -141,4 +155,30 @@ func (c *RPCClient) EthSubscribe(ctx context.Context, channel interface{}, args 
 // Close is a no-op in this implementation.
 func (c *RPCClient) Close() {
 	// no-op for now.
+}
+
+var _ rpc.Error = &rpcError{}
+
+type rpcError struct {
+	message string
+	code    int
+}
+
+func (e rpcError) Message() string {
+	return e.message
+}
+
+func (e rpcError) Error() string {
+	return fmt.Sprintf("Web3Provider returned RPC error (code %d): %s", e.code, e.message)
+}
+
+func (e rpcError) ErrorCode() int {
+	return e.code
+}
+
+func jsErrorToRPCError(jsError js.Value) rpc.Error {
+	return &rpcError{
+		message: jsError.Get("message").String(),
+		code:    jsError.Get("code").Int(),
+	}
 }
