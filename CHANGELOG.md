@@ -15,6 +15,8 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 - Added `getStatsAsync` to the `@0x/mesh-browser` package. ([#654](https://github.com/0xProject/0x-mesh/pull/654)).
 - Added `getOrdersAsync` and `getOrdersForPageAsync` to the `@0x/mesh-browser` package. ([#655](https://github.com/0xProject/0x-mesh/pull/655)).
+- Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
+
 
 ## v8.1.2
 
