@@ -5,6 +5,7 @@ import { signatureUtils, Order, orderHashUtils } from '@0x/order-utils';
 
 const ethereumRPCURL = 'http://localhost:8545';
 
+// Set up a Web3 Provider that uses the RPC endpoint
 const provider = new Web3ProviderEngine();
 provider.addProvider(new RPCSubprovider(ethereumRPCURL));
 provider.start();
@@ -46,12 +47,12 @@ provider.start();
     // node.
     const mesh = new Mesh({
         verbosity: Verbosity.Debug,
-        ethereumRPCURL,
         ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
         customOrderFilter: {
             properties: { makerAddress: { const: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb' } },
         },
+        web3Provider: provider,
     });
 
     // This handler will be called whenver there is a critical error.

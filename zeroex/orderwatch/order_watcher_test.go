@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +79,11 @@ func init() {
 		panic(err)
 	}
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err = ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	ethRPCClient, err = ethrpcclient.New(rpcClient, ethereumRPCRequestTimeout, rateLimiter)
 	if err != nil {
 		panic(err)
 	}

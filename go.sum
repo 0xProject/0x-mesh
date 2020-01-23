@@ -1,6 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/0xProject/go-ethereum v1.8.8-0.20191104224527-9d5c202240be h1:48+Xt5qtLvEUOJJD2pxM4qVbF3eoTsYmHthq2+zT8M4=
 github.com/0xProject/go-ethereum v1.8.8-0.20191104224527-9d5c202240be/go.mod h1:GCj8W8G7wxclyZu5dgA4vru0iUU4DK6pUE/FSPRd4Rg=
+github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f h1:3V/XMVlgBlSh+Q1G0kg8e4dEh3UxsTpce9Ix1dDyRiU=
+github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f/go.mod h1:GCj8W8G7wxclyZu5dgA4vru0iUU4DK6pUE/FSPRd4Rg=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c h1:sMhvadadLwwpHsq4hDRAd+lcmQHJYpn44Oe9f7sFTmA=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c/go.mod h1:vCim/erjgVmww+K+tF4+tf/zs63CPRiOtgdXqLgTM1Q=
 github.com/0xProject/qunit v0.0.0-20190730000255-81c18fdf7752/go.mod h1:Onz5mS+Tpffz0tyRWdHDrqKcQ1ZFNeRhYHrNAkaMgeQ=
@@ -11,6 +13,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/Kubuxu/go-os-helper v0.0.1/go.mod h1:N8B+I7vPCT80IcP58r50u4+gEEcsZETFUpAzWW2ep1Y=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
+github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7 h1:KyGi2bFjYJwahVfEJT1T5YvHTrEEYAqIZkIuxTAYRPY=
+github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7/go.mod h1:jGxERjkVawmx7yWrFUix71jtSXm1ZtUai96wBHTwkPo=
 github.com/albrow/stringset v2.1.0+incompatible h1:P90SSV7fle22yLbhDSLRC8Jtec0tCE3A8hJihfxf25E=
 github.com/albrow/stringset v2.1.0+incompatible/go.mod h1:ltP0XRz96SPEM8ofD1BaE4IpTR2uCGSk6Z2VRfh1Llw=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

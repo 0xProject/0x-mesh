@@ -3,9 +3,10 @@ module github.com/0xProject/0x-mesh
 go 1.12
 
 replace (
-	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20191104224527-9d5c202240be
+	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-ws-transport => github.com/libp2p/go-ws-transport v0.0.0-20191008032742-3098bba549e8
+	github.com/plaid/go-envvar => github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7
 	github.com/syndtr/goleveldb => github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c
 )
 
