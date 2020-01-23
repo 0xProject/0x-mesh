@@ -9,6 +9,8 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/browser/go/jsutil"
+
 	"github.com/0xProject/0x-mesh/browser/go/providerwrapper"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/orderfilter"
@@ -40,7 +42,7 @@ func setGlobals() {
 	zeroexMesh := map[string]interface{}{
 		// newWrapperAsync(config: Config): Promise<MeshWrapper>;
 		"newWrapperAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				config, err := convertConfig(args[0])
 				if err != nil {
 					return nil, err
@@ -76,7 +78,7 @@ type MeshWrapper struct {
 // convertConfig converts a JavaScript config object into a core.Config. It also
 // adds default values for any that are missing in the JavaScript object.
 func convertConfig(jsConfig js.Value) (core.Config, error) {
-	if isNullOrUndefined(jsConfig) {
+	if jsutil.IsNullOrUndefined(jsConfig) {
 		return core.Config{}, errors.New("config is required")
 	}
 
@@ -97,50 +99,50 @@ func convertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 
 	// Required config options
-	if ethereumChainID := jsConfig.Get("ethereumChainID"); isNullOrUndefined(ethereumChainID) {
+	if ethereumChainID := jsConfig.Get("ethereumChainID"); jsutil.IsNullOrUndefined(ethereumChainID) {
 		return core.Config{}, errors.New("ethereumChainID is required")
 	} else {
 		config.EthereumChainID = ethereumChainID.Int()
 	}
 
 	// Optional config options
-	if verbosity := jsConfig.Get("verbosity"); !isNullOrUndefined(verbosity) {
+	if verbosity := jsConfig.Get("verbosity"); !jsutil.IsNullOrUndefined(verbosity) {
 		config.Verbosity = verbosity.Int()
 	}
-	if useBootstrapList := jsConfig.Get("useBootstrapList"); !isNullOrUndefined(useBootstrapList) {
+	if useBootstrapList := jsConfig.Get("useBootstrapList"); !jsutil.IsNullOrUndefined(useBootstrapList) {
 		config.UseBootstrapList = useBootstrapList.Bool()
 	}
-	if bootstrapList := jsConfig.Get("bootstrapList"); !isNullOrUndefined(bootstrapList) {
+	if bootstrapList := jsConfig.Get("bootstrapList"); !jsutil.IsNullOrUndefined(bootstrapList) {
 		config.BootstrapList = bootstrapList.String()
 	}
-	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !isNullOrUndefined(blockPollingIntervalSeconds) {
+	if blockPollingIntervalSeconds := jsConfig.Get("blockPollingIntervalSeconds"); !jsutil.IsNullOrUndefined(blockPollingIntervalSeconds) {
 		config.BlockPollingInterval = time.Duration(blockPollingIntervalSeconds.Int()) * time.Second
 	}
-	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !isNullOrUndefined(ethereumRPCMaxContentLength) {
+	if ethereumRPCMaxContentLength := jsConfig.Get("ethereumRPCMaxContentLength"); !jsutil.IsNullOrUndefined(ethereumRPCMaxContentLength) {
 		config.EthereumRPCMaxContentLength = ethereumRPCMaxContentLength.Int()
 	}
-	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !isNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
+	if ethereumRPCMaxRequestsPer24HrUTC := jsConfig.Get("ethereumRPCMaxRequestsPer24HrUTC"); !jsutil.IsNullOrUndefined(ethereumRPCMaxRequestsPer24HrUTC) {
 		config.EthereumRPCMaxRequestsPer24HrUTC = ethereumRPCMaxRequestsPer24HrUTC.Int()
 	}
-	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !isNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
+	if ethereumRPCMaxRequestsPerSecond := jsConfig.Get("ethereumRPCMaxRequestsPerSecond"); !jsutil.IsNullOrUndefined(ethereumRPCMaxRequestsPerSecond) {
 		config.EthereumRPCMaxRequestsPerSecond = ethereumRPCMaxRequestsPerSecond.Float()
 	}
-	if enableEthereumRPCRateLimiting := jsConfig.Get("enableEthereumRPCRateLimiting"); !isNullOrUndefined(enableEthereumRPCRateLimiting) {
+	if enableEthereumRPCRateLimiting := jsConfig.Get("enableEthereumRPCRateLimiting"); !jsutil.IsNullOrUndefined(enableEthereumRPCRateLimiting) {
 		config.EnableEthereumRPCRateLimiting = enableEthereumRPCRateLimiting.Bool()
 	}
-	if customContractAddresses := jsConfig.Get("customContractAddresses"); !isNullOrUndefined(customContractAddresses) {
+	if customContractAddresses := jsConfig.Get("customContractAddresses"); !jsutil.IsNullOrUndefined(customContractAddresses) {
 		config.CustomContractAddresses = customContractAddresses.String()
 	}
-	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !isNullOrUndefined(maxOrdersInStorage) {
+	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !jsutil.IsNullOrUndefined(maxOrdersInStorage) {
 		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
 	}
-	if customOrderFilter := jsConfig.Get("customOrderFilter"); !isNullOrUndefined(customOrderFilter) {
+	if customOrderFilter := jsConfig.Get("customOrderFilter"); !jsutil.IsNullOrUndefined(customOrderFilter) {
 		config.CustomOrderFilter = customOrderFilter.String()
 	}
-	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); !isNullOrUndefined(ethereumRPCURL) && ethereumRPCURL.String() != "" {
+	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); !jsutil.IsNullOrUndefined(ethereumRPCURL) && ethereumRPCURL.String() != "" {
 		config.EthereumRPCURL = ethereumRPCURL.String()
 	}
-	if web3Provider := jsConfig.Get("web3Provider"); !isNullOrUndefined(web3Provider) {
+	if web3Provider := jsConfig.Get("web3Provider"); !jsutil.IsNullOrUndefined(web3Provider) {
 		config.EthereumRPCClient = providerwrapper.NewRPCClient(web3Provider)
 	}
 
@@ -192,13 +194,13 @@ func (cw *MeshWrapper) Start() error {
 			select {
 			case err := <-cw.errChan:
 				// core.App exited with an error. Call errHandler.
-				if !isNullOrUndefined(cw.errHandler) {
-					cw.errHandler.Invoke(errorToJS(err))
+				if !jsutil.IsNullOrUndefined(cw.errHandler) {
+					cw.errHandler.Invoke(jsutil.ErrorToJS(err))
 				}
 			case <-cw.ctx.Done():
 				return
 			case events := <-cw.orderEvents:
-				if !isNullOrUndefined(cw.orderEventsHandler) {
+				if !jsutil.IsNullOrUndefined(cw.orderEventsHandler) {
 					eventsJS := make([]interface{}, len(events))
 					for i, event := range events {
 						eventsJS[i] = event.JSValue()
@@ -260,7 +262,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		// startAsync(): Promise<void>;
 		"startAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return nil, cw.Start()
 			})
 		}),
@@ -278,17 +280,17 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		}),
 		// getStatsAsync(): Promise<Stats>
 		"getStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return cw.GetStats()
 			})
 		}),
 		// getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse>
 		"getOrdersForPageAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				// snapshotID is optional in the JavaScript function. Check if it is
 				// null or undefined.
 				snapshotID := ""
-				if !isNullOrUndefined(args[2]) {
+				if !jsutil.IsNullOrUndefined(args[2]) {
 					snapshotID = args[2].String()
 				}
 				return cw.GetOrders(args[0].Int(), args[1].Int(), snapshotID)
@@ -296,40 +298,9 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		}),
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return wrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return cw.AddOrders(args[0], args[1].Bool())
 			})
 		}),
 	})
-}
-
-// errorToJS converts a Go error to a JavaScript Error.
-func errorToJS(err error) js.Value {
-	return js.Global().Get("Error").New(err.Error())
-}
-
-func isNullOrUndefined(value js.Value) bool {
-	return value == js.Null() || value == js.Undefined()
-}
-
-// wrapInPromise converts a potentially blocking Go function to a non-blocking
-// JavaScript Promise. If the function returns an error, the promise will reject
-// with that error. Otherwise, the promise will resolve with the first return
-// value.
-func wrapInPromise(f func() (interface{}, error)) js.Value {
-	var executor js.Func
-	executor = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		resolve := args[0]
-		reject := args[1]
-		go func() {
-			defer executor.Release()
-			if result, err := f(); err != nil {
-				reject.Invoke(errorToJS(err))
-			} else {
-				resolve.Invoke(result)
-			}
-		}()
-		return nil
-	})
-	return js.Global().Get("Promise").New(executor)
 }
