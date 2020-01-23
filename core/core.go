@@ -169,7 +169,7 @@ type Config struct {
 	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
-	EthereumRPCClient ethclient.RPCClient
+	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
 }
 
 type snapshotInfo struct {
