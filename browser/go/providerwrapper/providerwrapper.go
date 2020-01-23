@@ -68,9 +68,8 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	// Set up payload
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
-		// TODO(albrow): Do we need to do something special for the id here?
-		"id":     rand.Intn(math.MaxInt32),
-		"method": method,
+		"id":      rand.Intn(math.MaxInt32),
+		"method":  method,
 	}
 	if len(args) > 0 {
 		// Convert args to a value that is compatible with syscall/js. Since we don't
