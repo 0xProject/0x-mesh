@@ -156,28 +156,28 @@ func (c *RPCClient) Close() {
 	// no-op for now.
 }
 
+// rpcError is an implementation of rpc.Error from the go-ethereum/rpc package.
+type rpcError struct {
+	Message string
+	Code    int
+}
+
 var _ rpc.Error = &rpcError{}
 
-type rpcError struct {
-	message string
-	code    int
-}
-
-func (e rpcError) Message() string {
-	return e.message
-}
-
 func (e rpcError) Error() string {
-	return fmt.Sprintf("Web3Provider returned RPC error (code %d): %s", e.code, e.message)
+	if e.Message == "" {
+		return fmt.Sprintf("json-rpc error %d", e.Code)
+	}
+	return e.Message
 }
 
 func (e rpcError) ErrorCode() int {
-	return e.code
+	return e.Code
 }
 
 func jsErrorToRPCError(jsError js.Value) rpc.Error {
 	return &rpcError{
-		message: jsError.Get("message").String(),
-		code:    jsError.Get("code").Int(),
+		Message: jsError.Get("message").String(),
+		Code:    jsError.Get("code").Int(),
 	}
 }
