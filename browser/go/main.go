@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/browser/go/jsutil"
-
 	"github.com/0xProject/0x-mesh/browser/go/providerwrapper"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/orderfilter"

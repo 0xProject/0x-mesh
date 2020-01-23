@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Ensure that we implement the ethclient.RPCClient interface.
 var _ ethclient.RPCClient = &RPCClient{}
 
 type RPCClient struct {
@@ -32,6 +33,11 @@ func NewRPCClient(provider js.Value) *RPCClient {
 	}
 }
 
+// CallContext performs a JSON-RPC call with the given arguments. If the context is
+// canceled before the call has successfully returned, CallContext returns immediately.
+//
+// The result must be a pointer so that package json can unmarshal into it. You
+// can also pass nil, in which case the result is ignored.
 func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	// Notable type definitions from Web3:
 	//
@@ -97,11 +103,14 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	c.provider.Call("sendAsync", payload, callback)
 	select {
 	case <-ctx.Done():
-		return context.Canceled
+		return ctx.Err()
 	case err := <-errChan:
 		return err
 	case jsResult := <-resultChan:
 		// TOOD(albrow): Handle jsResult.error?
+		if result == nil {
+			return nil
+		}
 		if err := jsutil.InefficientlyConvertFromJS(jsResult.Get("result"), result); err != nil {
 			return fmt.Errorf("could not decode JSON RPC response: %s", err.Error())
 		}
@@ -109,16 +118,27 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	}
 }
 
+// BatchCall sends all given requests as a single batch and waits for the server
+// to return a response for all of them. The wait duration is bounded by the
+// context's deadline.
+//
+// In contrast to CallContext, BatchCallContext only returns errors that have occurred
+// while sending the request. Any error specific to a request is reported through the
+// Error field of the corresponding BatchElem.
+//
+// Note that batch calls may not be executed atomically on the server side.
 func (c *RPCClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) error {
 	log.WithField("batch", b).Error("BatchCallContext was unexpectedly called in the browser")
 	return errors.New("BatchCallContext not yet implemented")
 }
 
+// EthSubscribe registers a subscripion under the "eth" namespace.
 func (c *RPCClient) EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	log.WithField("args", args).Error("EthSubscribe was unexpectedly called in the browser")
 	return nil, errors.New("EthSubscribe not yet implemented")
 }
 
+// Close is a no-op in this implementation.
 func (c *RPCClient) Close() {
 	// no-op for now.
 }

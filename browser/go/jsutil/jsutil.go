@@ -1,7 +1,7 @@
 // +build js,wasm
 
 // Package jsutil contains various utility functions for working with
-// JavaScript and WebAssemblysysa
+// JavaScript and WebAssembly
 package jsutil
 
 import (
@@ -16,6 +16,8 @@ func ErrorToJS(err error) js.Value {
 	return js.Global().Get("Error").New(err.Error())
 }
 
+// IsNullOrUndefined returns true if the given JavaScript value is either null
+// or undefined.
 func IsNullOrUndefined(value js.Value) bool {
 	return value == js.Null() || value == js.Undefined()
 }
@@ -42,6 +44,9 @@ func WrapInPromise(f func() (interface{}, error)) js.Value {
 	return js.Global().Get("Promise").New(executor)
 }
 
+// InefficientlyConvertToJS converts the given Go value to a JS value by
+// encoding to JSON and then decoding it. This function is not very efficient
+// and its use should be phased out over time as much as possible.
 func InefficientlyConvertToJS(value interface{}) (js.Value, error) {
 	var jsValue interface{}
 	buf := bytes.Buffer{}
@@ -54,6 +59,9 @@ func InefficientlyConvertToJS(value interface{}) (js.Value, error) {
 	return js.ValueOf(jsValue), nil
 }
 
+// InefficientlyConvertFromJS converts the given JS value to a Go value and sets
+// it. This function is not very efficient and its use should be phased out over
+// time as much as possible.
 func InefficientlyConvertFromJS(jsValue js.Value, value interface{}) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
