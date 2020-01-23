@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,7 +151,9 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 	for _, testCase := range testCases {
 
 		rateLimiter := ratelimit.NewUnlimited()
-		ethClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+		rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+		require.NoError(t, err)
+		ethClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 		require.NoError(t, err)
 
 		signedOrders := []*zeroex.SignedOrder{
@@ -185,7 +188,9 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
@@ -215,7 +220,9 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
@@ -246,7 +253,9 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
@@ -280,7 +289,9 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	}
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
@@ -334,7 +345,9 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
@@ -352,7 +365,9 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
@@ -393,7 +408,9 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err := ethrpcclient.New(constants.GanacheEndpoint, defaultEthRPCTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
