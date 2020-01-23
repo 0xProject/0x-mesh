@@ -38,7 +38,9 @@ func TestBrowserConversions(t *testing.T) {
 	messageWg.Add(1)
 	go func() {
 		defer messageWg.Done()
-		waitForLogSubstring(ctx, browserLogs, "test cases initialized")
+		waitForLogSubstring(ctx, browserLogs, "test started")
+		waitForLogSubstring(ctx, browserLogs, "orderEvents")
+		waitForLogSubstring(ctx, browserLogs, "test ended")
 	}()
 
 	messageWg.Wait()

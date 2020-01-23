@@ -1,5 +1,4 @@
 import { logUtils } from '@0x/utils';
-import * as BrowserFS from 'browserfs';
 
 import {
     configToWrapperConfig,
@@ -15,7 +14,9 @@ import {
 import { wasmBuffer } from '../ts/generated/test_wasm_buffer';
 import '../ts/wasm_exec';
 
-interface TestCase {}
+interface ConversionTestCase {
+    orderEvents: any;
+}
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
@@ -27,30 +28,8 @@ declare global {
     }
 
     // Define variables that are defined in `browser/go/conversion-test.go`
-    const testCases: TestCase;
+    const conversionTestCases: ConversionTestCase;
 }
-
-// We use the global willLoadBrowserFS variable to signal that we are going to
-// initialize BrowserFS.
-(window as any).willLoadBrowserFS = true;
-
-BrowserFS.configure(
-    {
-        fs: 'IndexedDB',
-        options: {
-            storeName: '0x-mesh-db',
-        },
-    },
-    e => {
-        if (e) {
-            throw e;
-        }
-        // We use the global browserFS variable as a handle for Go/Wasm code to
-        // call into the BrowserFS API. Setting this variable also indicates
-        // that BrowserFS has finished loading.
-        (window as any).browserFS = BrowserFS.BFSRequire('fs');
-    },
-);
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
@@ -86,13 +65,10 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 
 (async () => {
     await waitForLoadAsync();
-
-    if (!testCases) {
-        console.log('test cases not initialized');
-        console.error('test cases not initialized');
-    }
-
-    console.log('test cases initialized');
+    console.log('test started');
+    const data = await conversionTestCases.orderEvents();
+    console.log(`orderEvents: ${JSON.stringify(data)}`);
+    console.log('test ended');
 })();
 
 // tslint:enable:no-console
