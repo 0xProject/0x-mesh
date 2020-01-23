@@ -1,11 +1,11 @@
-import { Mesh, OrderEvent, SignedOrder, BigNumber, Provider } from '@0x/mesh-browser';
+import { Mesh, OrderEvent, SignedOrder, BigNumber, SupportedProvider } from '@0x/mesh-browser';
 
 (async () => {
-    // Configure Mesh to use mainnet and Infura.
+    // Configure Mesh to use web3.currentProvider (e.g. provided by MetaMask).
     const mesh = new Mesh({
         verbosity: 4,
         ethereumChainID: 1,
-        web3Provider: (window as any).web3.currentProvider as Provider,
+        web3Provider: (window as any).web3.currentProvider as SupportedProvider,
     });
 
     // This handler will be called whenver there is a critical error.
@@ -24,8 +24,9 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber, Provider } from '@0x/mesh-bro
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
 
-    // This order is for demonstration purposes only and is invalid. It will be
-    // rejected by Mesh. You can replace it with a valid order.
+    // This order is for demonstration purposes only and will likely be expired
+    // by the time you run this example. If so, it will be rejected by Mesh. You
+    // can replace it with a valid order.
     const order: SignedOrder = {
         signature:
             '0x1c68eb1e2577e9f51776bdb06ec51fcec9aec0ea1565eca5e243917cecaafaa46b3b9590ff6575bf1c048d0b4ec5773a2e3a8df3bf117e1613e2a7b57d6f95c95a02',
