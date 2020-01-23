@@ -15,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	log "github.com/sirupsen/logrus"
 )
 
 var _ ethclient.RPCClient = &RPCClient{}
@@ -100,6 +101,7 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 	case err := <-errChan:
 		return err
 	case jsResult := <-resultChan:
+		// TOOD(albrow): Handle jsResult.error?
 		if err := jsutil.InefficientlyConvertFromJS(jsResult.Get("result"), result); err != nil {
 			return fmt.Errorf("could not decode JSON RPC response: %s", err.Error())
 		}
@@ -108,10 +110,12 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 }
 
 func (c *RPCClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) error {
+	log.WithField("batch", b).Error("BatchCallContext was unexpectedly called in the browser")
 	return errors.New("BatchCallContext not yet implemented")
 }
 
 func (c *RPCClient) EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+	log.WithField("args", args).Error("EthSubscribe was unexpectedly called in the browser")
 	return nil, errors.New("EthSubscribe not yet implemented")
 }
 
