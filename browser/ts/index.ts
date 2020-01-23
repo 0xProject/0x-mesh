@@ -1,14 +1,14 @@
 import { SignedOrder } from '@0x/order-utils';
-import { BigNumber } from '@0x/utils';
+import { BigNumber, providerUtils } from '@0x/utils';
 import * as BrowserFS from 'browserfs';
-import { Provider } from 'ethereum-types';
+import { SupportedProvider, ZeroExProvider } from 'ethereum-types';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
-export { Provider } from 'ethereum-types';
+export { SupportedProvider } from 'ethereum-types';
 
 // The Go code sets certain global values and this is our only way of
 // interacting with it. Define those values and their types here.
@@ -203,7 +203,7 @@ export interface Config {
     customOrderFilter?: JsonSchema;
     // Offers the ability to use your own web3 provider for all Ethereum RPC
     // requests instead of the default.
-    web3Provider?: Provider;
+    web3Provider?: SupportedProvider;
 }
 
 export interface ContractAddresses {
@@ -323,7 +323,7 @@ interface WrapperConfig {
     customContractAddresses?: string; // json-encoded string instead of Object.
     maxOrdersInStorage?: number;
     customOrderFilter?: string; // json-encoded string instead of Object
-    web3Provider?: Provider;
+    web3Provider?: ZeroExProvider; // Standardized ZeroExProvider instead the more permissive SupportedProvider interface
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the
@@ -900,11 +900,14 @@ function configToWrapperConfig(config: Config): WrapperConfig {
     const customContractAddresses =
         config.customContractAddresses == null ? undefined : JSON.stringify(config.customContractAddresses);
     const customOrderFilter = config.customOrderFilter == null ? undefined : JSON.stringify(config.customOrderFilter);
+    const standardizedProvider =
+        config.web3Provider == null ? undefined : providerUtils.standardizeOrThrow(config.web3Provider);
     return {
         ...config,
         bootstrapList,
         customContractAddresses,
         customOrderFilter,
+        web3Provider: standardizedProvider,
     };
 }
 
