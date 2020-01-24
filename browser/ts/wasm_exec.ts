@@ -509,15 +509,8 @@
 
         _makeFuncWrapper(id: any) {
             const go = this;
-            return function() {
-                // Original version was:
-                //
-                //     const event = { id: id, this: this, args: arguments };
-                //
-                // TypeScript compiler complained about `this: this`. I think
-                // in this context, `this` is undefined. TODO(albrow): Look into
-                // this more. It might be a bug.
-                const event = { id: id, this: undefined, args: arguments };
+            return function(this: any) {
+                const event = { id: id, this: this, args: arguments };
                 (go as any)._pendingEvent = event;
                 go._resume();
                 return (event as any).result;
