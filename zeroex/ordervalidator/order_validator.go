@@ -357,6 +357,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 						log.WithFields(log.Fields{
 							"error":     err.Error(),
 							"numOrders": len(trimmedOrders),
+							"orders":    trimmedOrders,
 						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
@@ -691,7 +692,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 					Status:      ROInvalidMakerFeeAssetData,
 				})
 				continue
-			}	
+			}
 		}
 		if len(signedOrder.TakerFeeAssetData) != 0 {
 			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
@@ -703,7 +704,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 					Status:      ROInvalidTakerFeeAssetData,
 				})
 				continue
-			}	
+			}
 		}
 
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
