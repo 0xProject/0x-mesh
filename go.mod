@@ -1,6 +1,6 @@
 module github.com/0xProject/0x-mesh
 
-go 1.12
+go 1.13
 
 replace (
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f

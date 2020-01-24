@@ -37,6 +37,7 @@ var serialTestsEnabled bool
 
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	testing.Init()
 	flag.Parse()
 
 	var err error
