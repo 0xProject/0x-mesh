@@ -17,6 +17,9 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added `getOrdersAsync` and `getOrdersForPageAsync` to the `@0x/mesh-browser` package. ([#655](https://github.com/0xProject/0x-mesh/pull/655)).
 - Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
 
+### Bug fixes 🐞
+
+- Update DevUtils contract address to fix intermittent revert issues. ([#671](https://github.com/0xProject/0x-mesh/pull/671)).
 
 ## v8.1.2
 
