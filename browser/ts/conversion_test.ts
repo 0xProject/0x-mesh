@@ -1,4 +1,4 @@
-import { logUtils } from '@0x/utils';
+import { BigNumber, hexUtils, logUtils } from '@0x/utils';
 
 import {
     configToWrapperConfig,
@@ -12,10 +12,11 @@ import {
     wrapperValidationResultsToValidationResults,
 } from '../ts/encoding';
 import { wasmBuffer } from '../ts/generated/test_wasm_buffer';
+import { ContractEvent, ERC20ApprovalEvent, WrapperContractEvent } from '../ts/types';
 import '../ts/wasm_exec';
 
 interface ConversionTestCase {
-    orderEvents: any;
+    contractEventsAsync: () => ContractEvent[];
 }
 
 // The Go code sets certain global values and this is our only way of
@@ -61,17 +62,41 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
     });
 
 /*********************** Tests ***********************/
+// tslint:disable:custom-no-magic-numbers
 // tslint:disable:no-console
+
+const NULL_BYTES = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 (async () => {
     await waitForLoadAsync();
-    console.log('test started');
-    const data = await conversionTestCases.orderEvents();
-    console.log(`orderEvents: ${JSON.stringify(data)}`);
-    console.log('test ended');
+    const contractEvents = await conversionTestCases.contractEventsAsync();
+    testContractEvents(contractEvents);
 })();
 
+function testContractEvents(contractEvents: ContractEvent[]): void {
+    const print = prettyPrintTestCase('contractEventTest', 0);
+    print('blockHash', contractEvents[0].blockHash === hexUtils.leftPad(1, 32));
+    print('txHash', contractEvents[0].txHash === hexUtils.leftPad(2, 32));
+    print('txIndex', contractEvents[0].txIndex === 123);
+    print('logIndex', contractEvents[0].logIndex === 321);
+    print('isRemoved', contractEvents[0].isRemoved === 'false');
+    print('address', contractEvents[0].address === hexUtils.leftPad(3, 32));
+    print('kind', contractEvents[0].kind === 'ERC20ApprovalEvent');
+
+    const parameters = contractEvents[0].parameters as ERC20ApprovalEvent;
+    print('parameter | owner', parameters.owner === hexUtils.leftPad('0x4', 20));
+    print('parameter | spender', parameters.spender === hexUtils.leftPad('0x5', 20));
+    print('parameter | value', new BigNumber(1000).isEqualTo(parameters.value));
+}
+
+function prettyPrintTestCase(name: string, idx: number): (section: string, value: boolean) => void {
+    return (section: string, value: boolean) => {
+        console.log(`(${name} | ${idx} | ${section}): ${value}`);
+    };
+}
+
 // tslint:enable:no-console
+// tslint:enable:custom-no-magic-numbers
 /*********************** Utils ***********************/
 
 async function waitForLoadAsync(): Promise<void> {
