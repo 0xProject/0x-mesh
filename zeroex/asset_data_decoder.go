@@ -30,7 +30,7 @@ const erc20AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"addres
 const erc721AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721Token\",\"type\":\"function\"}]"
 const erc1155AssetDataAbi = "[{\"constant\":false,\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"ids\",\"type\":\"uint256[]\"},{\"name\":\"values\",\"type\":\"uint256[]\"},{\"name\":\"callbackData\",\"type\":\"bytes\"}],\"name\":\"ERC1155Assets\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 const multiAssetDataAbi = "[{\"inputs\":[{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"MultiAsset\",\"type\":\"function\"}]"
-const erc20BuyerAssetDataAbi = "[{\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"name\":\"calldata\",\"type\":\"bytes\"}],\"name\":\"ERC20Bridge\",\"type\":\"function\"}]"
+const erc20BridgeAssetDataAbi = "[{\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"name\":\"calldata\",\"type\":\"bytes\"}],\"name\":\"ERC20Bridge\",\"type\":\"function\"}]"
 
 // ERC20AssetData represents an ERC20 assetData
 type ERC20AssetData struct {
@@ -92,9 +92,9 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 	if err != nil {
 		log.WithField("multiAssetDataAbi", multiAssetDataAbi).Panic("multiAssetDataAbi should be ABI parsable")
 	}
-	erc20BuyerAssetDataABI, err := abi.JSON(strings.NewReader(erc20BuyerAssetDataAbi))
+	erc20BridgeAssetDataABI, err := abi.JSON(strings.NewReader(erc20BridgeAssetDataAbi))
 	if err != nil {
-		log.WithField("erc20BuyerAssetDataABI", erc20BuyerAssetDataAbi).Panic("erc20BuyerAssetDataABI should be ABI parsable")
+		log.WithField("erc20BridgeAssetDataABI", erc20BridgeAssetDataAbi).Panic("erc20BridgeAssetDataABI should be ABI parsable")
 	}
 	idToAssetDataInfo := map[string]assetDataInfo{
 		ERC20AssetDataID: assetDataInfo{
@@ -115,7 +115,7 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 		},
 		ERC20BridgeAssetDataID: assetDataInfo{
 			name: "ERC20Bridge",
-			abi:  erc20BuyerAssetDataABI,
+			abi:  erc20BridgeAssetDataABI,
 		},
 	}
 	decoder := &AssetDataDecoder{
