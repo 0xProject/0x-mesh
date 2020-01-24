@@ -20,7 +20,7 @@ import (
 
 type clientEnvVars struct {
 	// RPCAddress is the address of the 0x Mesh node to communicate with.
-	WSRPCAddress string `envvar:"WS_RPC_ADDRESS"`
+	WSRPCAddress string `envvar:"WS_RPC_ADDR"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`

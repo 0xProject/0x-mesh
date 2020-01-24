@@ -14,7 +14,7 @@ import (
 
 type clientEnvVars struct {
 	// RPCAddress is the address of the 0x Mesh node to communicate with.
-	WSRPCAddress string `envvar:"WS_RPC_ADDRESS"`
+	WSRPCAddress string `envvar:"WS_RPC_ADDR"`
 }
 
 func main() {
