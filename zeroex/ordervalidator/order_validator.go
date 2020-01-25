@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -354,10 +355,24 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					d := b.Duration()
 					if d == maxDuration {
 						<-semaphoreChan
-						log.WithFields(log.Fields{
-							"error":     err.Error(),
-							"numOrders": len(trimmedOrders),
-						}).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
+						var fields log.Fields
+						match, regexpErr := regexp.MatchString("abi: improperly formatted output", err.Error())
+						if regexpErr != nil {
+							log.WithField("error", regexpErr).Error("Unexpectedly failed to test regexp on error")
+						}
+						if err.Error() == "VM execution error." || match {
+							fields = log.Fields{
+								"error":     err.Error(),
+								"numOrders": len(trimmedOrders),
+								"orders":    trimmedOrders,
+							}
+						} else {
+							fields = log.Fields{
+								"error":     err.Error(),
+								"numOrders": len(trimmedOrders),
+							}
+						}
+						log.WithFields(fields).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 						for _, signedOrder := range signedOrders {
 							orderHash, err := signedOrder.ComputeOrderHash()
 							if err != nil {
@@ -691,7 +706,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 					Status:      ROInvalidMakerFeeAssetData,
 				})
 				continue
-			}	
+			}
 		}
 		if len(signedOrder.TakerFeeAssetData) != 0 {
 			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
@@ -703,7 +718,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 					Status:      ROInvalidTakerFeeAssetData,
 				})
 				continue
-			}	
+			}
 		}
 
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
