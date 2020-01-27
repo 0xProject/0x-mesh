@@ -2,6 +2,18 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v8.2.0
+
+### Features ✅
+
+- Added `getStatsAsync` to the `@0x/mesh-browser` package. ([#654](https://github.com/0xProject/0x-mesh/pull/654)).
+- Added `getOrdersAsync` and `getOrdersForPageAsync` to the `@0x/mesh-browser` package. ([#655](https://github.com/0xProject/0x-mesh/pull/655)).
+
+### Bug fixes 🐞
+
+- Update DevUtils contract address to fix intermittent revert issues. ([#671](https://github.com/0xProject/0x-mesh/pull/671)).
+
+
 ## v8.1.2
 
 ### Bug fixes 🐞
