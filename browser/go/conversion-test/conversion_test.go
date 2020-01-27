@@ -47,16 +47,27 @@ func TestBrowserConversions(t *testing.T) {
 }
 
 func testContractEvents(ctx context.Context, browserLogs chan string) {
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | blockHash): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | txHash): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | txIndex): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | logIndex): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | isRemoved): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | address): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | kind): true")
+	// ERC20ApprovalEvent
+	testContractEventPrelude(ctx, 0, browserLogs)
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | owner): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | spender): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | value): true")
+
+	// ERC20TransferEvent
+	testContractEventPrelude(ctx, 1, browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | value): true")
+}
+
+func testContractEventPrelude(ctx context.Context, idx int, browserLogs chan string) {
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | blockHash): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | txHash): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | txIndex): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | logIndex): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | isRemoved): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | address): true", idx))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | kind): true", idx))
 }
 
 // FIXME(jalextowle): This is a direct copy from integration-tests. I should find a way to avoid duplication.
