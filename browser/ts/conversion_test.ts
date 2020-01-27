@@ -12,7 +12,23 @@ import {
     wrapperValidationResultsToValidationResults,
 } from '../ts/encoding';
 import { wasmBuffer } from '../ts/generated/test_wasm_buffer';
-import { ContractEvent, ERC20ApprovalEvent, ERC20TransferEvent, WrapperContractEvent } from '../ts/types';
+import {
+    ContractEvent,
+    ERC1155ApprovalForAllEvent,
+    ERC1155TransferBatchEvent,
+    ERC1155TransferSingleEvent,
+    ERC20ApprovalEvent,
+    ERC20TransferEvent,
+    ERC721ApprovalEvent,
+    ERC721ApprovalForAllEvent,
+    ERC721TransferEvent,
+    ExchangeCancelEvent,
+    ExchangeCancelUpToEvent,
+    ExchangeFillEvent,
+    WethDepositEvent,
+    WethWithdrawalEvent,
+    WrapperContractEvent,
+} from '../ts/types';
 import '../ts/wasm_exec';
 
 interface ConversionTestCase {
@@ -78,19 +94,48 @@ function testContractEvents(contractEvents: ContractEvent[]): void {
     let printer = prettyPrintTestCase('contractEventTest', 0);
     testContractEventPrelude(printer, contractEvents[0]);
     printer('kind', contractEvents[0].kind === 'ERC20ApprovalEvent');
-    const approvalParams = contractEvents[0].parameters as ERC20ApprovalEvent;
-    printer('parameter | owner', approvalParams.owner === hexUtils.leftPad('0x4', 20));
-    printer('parameter | spender', approvalParams.spender === hexUtils.leftPad('0x5', 20));
-    printer('parameter | value', new BigNumber(1000).isEqualTo(approvalParams.value));
+    const erc20ApprovalParams = contractEvents[0].parameters as ERC20ApprovalEvent;
+    printer('parameter | owner', erc20ApprovalParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | spender', erc20ApprovalParams.spender === hexUtils.leftPad('0x5', 20));
+    printer('parameter | value', new BigNumber(1000).isEqualTo(erc20ApprovalParams.value));
 
     // ERC20TransferEvent
     printer = prettyPrintTestCase('contractEventTest', 1);
     testContractEventPrelude(printer, contractEvents[1]);
     printer('kind', contractEvents[1].kind === 'ERC20TransferEvent');
-    const transferParams = contractEvents[1].parameters as ERC20TransferEvent;
-    printer('parameter | from', transferParams.from === hexUtils.leftPad('0x4', 20));
-    printer('parameter | to', transferParams.to === hexUtils.leftPad('0x5', 20));
-    printer('parameter | value', new BigNumber(1000).isEqualTo(transferParams.value));
+    const erc20TransferParams = contractEvents[1].parameters as ERC20TransferEvent;
+    printer('parameter | from', erc20TransferParams.from === hexUtils.leftPad('0x4', 20));
+    printer('parameter | to', erc20TransferParams.to === hexUtils.leftPad('0x5', 20));
+    printer('parameter | value', new BigNumber(1000).isEqualTo(erc20TransferParams.value));
+
+    // ERC721ApprovalEvent
+    printer = prettyPrintTestCase('contractEventTest', 2);
+    testContractEventPrelude(printer, contractEvents[2]);
+    printer('kind', contractEvents[2].kind === 'ERC721ApprovalEvent');
+    const erc721ApprovalParams = contractEvents[2].parameters as ERC721ApprovalEvent;
+    printer('parameter | owner', erc721ApprovalParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | approved', erc721ApprovalParams.approved === hexUtils.leftPad('0x5', 20));
+    printer('parameter | tokenId', new BigNumber(1).isEqualTo(erc721ApprovalParams.tokenId));
+
+    // ERC721ApprovalForAllEvent
+    printer = prettyPrintTestCase('contractEventTest', 3);
+    testContractEventPrelude(printer, contractEvents[3]);
+    printer('kind', contractEvents[3].kind === 'ERC721ApprovalForAllEvent');
+    const erc721ApprovalForAllParams = contractEvents[3].parameters as ERC721ApprovalForAllEvent;
+    printer('parameter | owner', erc721ApprovalForAllParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | operator', erc721ApprovalForAllParams.operator === hexUtils.leftPad('0x5', 20));
+    printer('parameter | approved', erc721ApprovalForAllParams.approved);
+
+    // ERC721TransferEvent
+    printer = prettyPrintTestCase('contractEventTest', 4);
+    testContractEventPrelude(printer, contractEvents[4]);
+    printer('kind', contractEvents[4].kind === 'ERC721TransferEvent');
+    const erc721TransferParams = contractEvents[4].parameters as ERC721TransferEvent;
+    printer('parameter | from', erc721TransferParams.from === hexUtils.leftPad('0x4', 20));
+    printer('parameter | to', erc721TransferParams.to === hexUtils.leftPad('0x5', 20));
+    printer('parameter | tokenId', new BigNumber(1).isEqualTo(erc721TransferParams.tokenId));
+
+    console.log('test');
 }
 
 function testContractEventPrelude(
