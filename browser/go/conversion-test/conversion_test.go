@@ -38,7 +38,6 @@ func TestBrowserConversions(t *testing.T) {
 	messageWg.Add(1)
 	go func() {
 		defer messageWg.Done()
-		// FIXME - Add the remaining tests
 		testContractEvents(ctx, browserLogs)
 	}()
 
@@ -52,8 +51,8 @@ func testContractEvents(ctx context.Context, browserLogs chan string) {
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | txHash): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | txIndex): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | logIndex): true")
-	//waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | isRemoved): true")
-	//waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | address): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | isRemoved): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | address): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | kind): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | owner): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | spender): true")
