@@ -79,8 +79,8 @@ function testContractEvents(contractEvents: ContractEvent[]): void {
     print('txHash', contractEvents[0].txHash === hexUtils.leftPad(2, 32));
     print('txIndex', contractEvents[0].txIndex === 123);
     print('logIndex', contractEvents[0].logIndex === 321);
-    print('isRemoved', contractEvents[0].isRemoved === 'false');
-    print('address', contractEvents[0].address === hexUtils.leftPad(3, 32));
+    print('isRemoved', !contractEvents[0].isRemoved);
+    print('address', contractEvents[0].address === hexUtils.leftPad(3, 20));
     print('kind', contractEvents[0].kind === 'ERC20ApprovalEvent');
 
     const parameters = contractEvents[0].parameters as ERC20ApprovalEvent;
