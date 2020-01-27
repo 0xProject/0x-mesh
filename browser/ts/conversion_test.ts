@@ -12,7 +12,7 @@ import {
     wrapperValidationResultsToValidationResults,
 } from '../ts/encoding';
 import { wasmBuffer } from '../ts/generated/test_wasm_buffer';
-import { ContractEvent, ERC20ApprovalEvent, WrapperContractEvent } from '../ts/types';
+import { ContractEvent, ERC20ApprovalEvent, ERC20TransferEvent, WrapperContractEvent } from '../ts/types';
 import '../ts/wasm_exec';
 
 interface ConversionTestCase {
@@ -74,19 +74,35 @@ const NULL_BYTES = '0x0000000000000000000000000000000000000000000000000000000000
 })();
 
 function testContractEvents(contractEvents: ContractEvent[]): void {
-    const print = prettyPrintTestCase('contractEventTest', 0);
-    print('blockHash', contractEvents[0].blockHash === hexUtils.leftPad(1, 32));
-    print('txHash', contractEvents[0].txHash === hexUtils.leftPad(2, 32));
-    print('txIndex', contractEvents[0].txIndex === 123);
-    print('logIndex', contractEvents[0].logIndex === 321);
-    print('isRemoved', !contractEvents[0].isRemoved);
-    print('address', contractEvents[0].address === hexUtils.leftPad(3, 20));
-    print('kind', contractEvents[0].kind === 'ERC20ApprovalEvent');
+    // ERC20ApprovalEvent
+    let printer = prettyPrintTestCase('contractEventTest', 0);
+    testContractEventPrelude(printer, contractEvents[0]);
+    printer('kind', contractEvents[0].kind === 'ERC20ApprovalEvent');
+    const approvalParams = contractEvents[0].parameters as ERC20ApprovalEvent;
+    printer('parameter | owner', approvalParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | spender', approvalParams.spender === hexUtils.leftPad('0x5', 20));
+    printer('parameter | value', new BigNumber(1000).isEqualTo(approvalParams.value));
 
-    const parameters = contractEvents[0].parameters as ERC20ApprovalEvent;
-    print('parameter | owner', parameters.owner === hexUtils.leftPad('0x4', 20));
-    print('parameter | spender', parameters.spender === hexUtils.leftPad('0x5', 20));
-    print('parameter | value', new BigNumber(1000).isEqualTo(parameters.value));
+    // ERC20TransferEvent
+    printer = prettyPrintTestCase('contractEventTest', 1);
+    testContractEventPrelude(printer, contractEvents[1]);
+    printer('kind', contractEvents[1].kind === 'ERC20TransferEvent');
+    const transferParams = contractEvents[1].parameters as ERC20TransferEvent;
+    printer('parameter | from', transferParams.from === hexUtils.leftPad('0x4', 20));
+    printer('parameter | to', transferParams.to === hexUtils.leftPad('0x5', 20));
+    printer('parameter | value', new BigNumber(1000).isEqualTo(transferParams.value));
+}
+
+function testContractEventPrelude(
+    printer: (section: string, value: boolean) => void,
+    contractEvent: ContractEvent,
+): void {
+    printer('blockHash', contractEvent.blockHash === hexUtils.leftPad(1, 32));
+    printer('txHash', contractEvent.txHash === hexUtils.leftPad(2, 32));
+    printer('txIndex', contractEvent.txIndex === 123);
+    printer('logIndex', contractEvent.logIndex === 321);
+    printer('isRemoved', !contractEvent.isRemoved);
+    printer('address', contractEvent.address === hexUtils.leftPad(3, 20));
 }
 
 function prettyPrintTestCase(name: string, idx: number): (section: string, value: boolean) => void {
