@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/rpc"
@@ -60,7 +61,7 @@ func listenRPC(ctx context.Context, app *core.App, config standaloneConfig) erro
 }
 
 // GetOrders is called when an RPC client calls GetOrders.
-func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (result *rpc.GetOrdersResponse, err error) {
+func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (result *types.GetOrdersResponse, err error) {
 	log.WithFields(map[string]interface{}{
 		"page":       page,
 		"perPage":    perPage,
@@ -98,7 +99,7 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 }
 
 // AddOrders is called when an RPC client calls AddOrders.
-func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts rpc.AddOrdersOpts) (results *ordervalidator.ValidationResults, err error) {
+func (handler *rpcHandler) AddOrders(signedOrdersRaw []*json.RawMessage, opts types.AddOrdersOpts) (results *ordervalidator.ValidationResults, err error) {
 	log.WithFields(log.Fields{
 		"count":  len(signedOrdersRaw),
 		"pinned": opts.Pinned,
@@ -155,7 +156,7 @@ func (handler *rpcHandler) AddPeer(peerInfo peerstore.PeerInfo) (err error) {
 }
 
 // GetStats is called when an RPC client calls GetStats,
-func (handler *rpcHandler) GetStats() (result *rpc.GetStatsResponse, err error) {
+func (handler *rpcHandler) GetStats() (result *types.Stats, err error) {
 	log.Debug("received GetStats request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {

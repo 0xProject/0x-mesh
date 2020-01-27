@@ -140,6 +140,69 @@ export interface ContractAddresses {
     zrxToken?: string;
 }
 
+export interface LatestBlock {
+    number: number;
+    hash: string;
+}
+
+interface WrapperStats {
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumChainID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
+    numPinnedOrders: number;
+    maxExpirationTime: string; // string instead of BigNumber
+    startOfCurrentUTCDay: string; // string instead of Date
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
+}
+
+export interface Stats {
+    version: string;
+    pubSubTopic: string;
+    rendezvous: string;
+    peerID: string;
+    ethereumChainID: number;
+    latestBlock: LatestBlock;
+    numPeers: number;
+    numOrders: number;
+    numOrdersIncludingRemoved: number;
+    numPinnedOrders: number;
+    maxExpirationTime: BigNumber;
+    startOfCurrentUTCDay: Date;
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    ethRPCRateLimitExpiredRequests: number;
+}
+
+interface WrapperOrderInfo {
+    orderHash: string;
+    signedOrder: WrapperSignedOrder;
+    fillableTakerAssetAmount: string;
+}
+
+export interface OrderInfo {
+    orderHash: string;
+    signedOrder: SignedOrder;
+    fillableTakerAssetAmount: BigNumber;
+}
+
+interface WrapperGetOrdersResponse {
+    snapshotID: string;
+    snapshotTimestamp: number;
+    ordersInfos: WrapperOrderInfo[];
+}
+
+export interface GetOrdersResponse {
+    snapshotID: string;
+    snapshotTimestamp: number;
+    ordersInfos: OrderInfo[];
+}
+
 export enum Verbosity {
     Panic = 0,
     Fatal = 1,
@@ -162,6 +225,8 @@ interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
+    getStatsAsync(): Promise<WrapperStats>;
+    getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<WrapperGetOrdersResponse>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
@@ -632,6 +697,82 @@ export class Mesh {
     }
 
     /**
+     * Returns various stats about Mesh, including the total number of orders
+     * and the number of peers Mesh is connected to.
+     */
+    public async getStatsAsync(): Promise<Stats> {
+        await waitForLoadAsync();
+        if (this._wrapper === undefined) {
+            // If this is called after startAsync, this._wrapper is always
+            // defined. This check is here just in case and satisfies the
+            // compiler.
+            return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
+        }
+        const wrapperStats = await this._wrapper.getStatsAsync();
+        return wrapperStatsToStats(wrapperStats);
+    }
+
+    /**
+     * Get all 0x signed orders currently stored in the Mesh node
+     * @param perPage number of signedOrders to fetch per paginated request
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     */
+    public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
+        await waitForLoadAsync();
+        if (this._wrapper === undefined) {
+            // If this is called after startAsync, this._wrapper is always
+            // defined. This check is here just in case and satisfies the
+            // compiler.
+            return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
+        }
+
+        let snapshotID = ''; // New snapshot
+
+        // TODO(albrow): De-dupe this code with the method by the same name
+        // in the TypeScript RPC client.
+        let page = 0;
+        let getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+        snapshotID = getOrdersResponse.snapshotID;
+        let ordersInfos = getOrdersResponse.ordersInfos;
+
+        let allOrderInfos: OrderInfo[] = [];
+
+        do {
+            allOrderInfos = [...allOrderInfos, ...ordersInfos];
+            page++;
+            getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+            ordersInfos = getOrdersResponse.ordersInfos;
+        } while (ordersInfos.length > 0);
+
+        getOrdersResponse = {
+            snapshotID,
+            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
+            ordersInfos: allOrderInfos,
+        };
+        return getOrdersResponse;
+    }
+
+    /**
+     * Get page of 0x signed orders stored on the Mesh node at the specified snapshot
+     * @param page Page index at which to retrieve orders
+     * @param perPage Number of signedOrders to fetch per paginated request
+     * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     */
+    public async getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse> {
+        await waitForLoadAsync();
+        if (this._wrapper === undefined) {
+            // If this is called after startAsync, this._wrapper is always
+            // defined. This check is here just in case and satisfies the
+            // compiler.
+            return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
+        }
+
+        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(page, perPage, snapshotID);
+        return wrapperGetOrdersResponseToGetOrdersResponse(wrapperOrderResponse);
+    }
+
+    /**
      * Validates and adds the given orders to Mesh. If an order is successfully
      * added, Mesh will share it with any peers in the network and start
      * watching it for changes (e.g. filled, canceled, expired). The returned
@@ -860,6 +1001,31 @@ function orderEventsHandlerToWrapperOrderEventsHandler(
     return (wrapperOrderEvents: WrapperOrderEvent[]) => {
         const orderEvents = wrapperOrderEvents.map(wrapperOrderEventToOrderEvent);
         orderEventsHandler(orderEvents);
+    };
+}
+
+function wrapperStatsToStats(wrapperStats: WrapperStats): Stats {
+    return {
+        ...wrapperStats,
+        startOfCurrentUTCDay: new Date(wrapperStats.startOfCurrentUTCDay),
+        maxExpirationTime: new BigNumber(wrapperStats.maxExpirationTime),
+    };
+}
+
+function wrapperGetOrdersResponseToGetOrdersResponse(
+    wrapperGetOrdersResponse: WrapperGetOrdersResponse,
+): GetOrdersResponse {
+    return {
+        ...wrapperGetOrdersResponse,
+        ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
+    };
+}
+
+function wrapperOrderInfoToOrderInfo(wrapperOrderInfo: WrapperOrderInfo): OrderInfo {
+    return {
+        ...wrapperOrderInfo,
+        fillableTakerAssetAmount: new BigNumber(wrapperOrderInfo.fillableTakerAssetAmount),
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderInfo.signedOrder),
     };
 }
 

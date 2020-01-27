@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
@@ -25,7 +26,6 @@ import (
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
-	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
@@ -57,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "8.1.2"
+	version          = "8.2.0"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -625,14 +625,14 @@ func (e ErrPerPageZero) Error() string {
 // string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
-func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersResponse, error) {
+func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
 	<-app.started
 
 	if perPage <= 0 {
 		return nil, ErrPerPageZero{}
 	}
 
-	ordersInfos := []*rpc.OrderInfo{}
+	ordersInfos := []*types.OrderInfo{}
 	var snapshot *db.Snapshot
 	var createdAt time.Time
 	if snapshotID == "" {
@@ -682,14 +682,14 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*rpc.GetOrdersR
 		return nil, err
 	}
 	for _, order := range selectedOrders {
-		ordersInfos = append(ordersInfos, &rpc.OrderInfo{
+		ordersInfos = append(ordersInfos, &types.OrderInfo{
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder,
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 		})
 	}
 
-	getOrdersResponse := &rpc.GetOrdersResponse{
+	getOrdersResponse := &types.GetOrdersResponse{
 		SnapshotID:        snapshotID,
 		SnapshotTimestamp: createdAt,
 		OrdersInfos:       ordersInfos,
@@ -819,14 +819,14 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 }
 
 // GetStats retrieves stats about the Mesh node
-func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
+func (app *App) GetStats() (*types.Stats, error) {
 	<-app.started
 
 	latestBlockHeader, err := app.db.FindLatestMiniHeader()
 	if err != nil {
 		return nil, err
 	}
-	latestBlock := rpc.LatestBlock{
+	latestBlock := types.LatestBlock{
 		Number: int(latestBlockHeader.Number.Int64()),
 		Hash:   latestBlockHeader.Hash,
 	}
@@ -848,7 +848,7 @@ func (app *App) GetStats() (*rpc.GetStatsResponse, error) {
 		return nil, err
 	}
 
-	response := &rpc.GetStatsResponse{
+	response := &types.Stats{
 		Version:                           version,
 		PubSubTopic:                       getPubSubTopic(app.config.EthereumChainID),
 		Rendezvous:                        getRendezvous(app.config.EthereumChainID),

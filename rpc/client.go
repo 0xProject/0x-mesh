@@ -1,13 +1,14 @@
+// +build !js
+
 package rpc
 
 import (
 	"context"
 	"errors"
-	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -31,18 +32,9 @@ func NewClient(addr string) (*Client, error) {
 	}, nil
 }
 
-// AddOrdersOpts is a set of options for the AddOrders RPC method.
-type AddOrdersOpts struct {
-	// Pinned determines whether or not the added orders should be pinned. Pinned
-	// orders will not be affected by any DDoS prevention or incentive mechanisms
-	// and will always stay in storage until they are no longer fillable. Defaults
-	// to true.
-	Pinned bool `json:"pinned"`
-}
-
 // AddOrders adds orders to the 0x Mesh node and broadcasts them throughout the
 // 0x Mesh network.
-func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	var validationResults ordervalidator.ValidationResults
 	if len(opts) > 1 {
 		return nil, errors.New("invalid number of add orders opts")
@@ -58,16 +50,9 @@ func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) 
 	return &validationResults, nil
 }
 
-// GetOrdersResponse is the response returned for an RPC request to mesh_getOrders
-type GetOrdersResponse struct {
-	SnapshotID        string       `json:"snapshotID"`
-	SnapshotTimestamp time.Time    `json:"snapshotTimestamp"`
-	OrdersInfos       []*OrderInfo `json:"ordersInfos"`
-}
-
 // GetOrders gets all orders stored on the Mesh node at a particular point in time in a paginated fashion
-func (c *Client) GetOrders(page, perPage int, snapshotID string) (*GetOrdersResponse, error) {
-	var getOrdersResponse GetOrdersResponse
+func (c *Client) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
+	var getOrdersResponse types.GetOrdersResponse
 	if err := c.rpcClient.Call(&getOrdersResponse, "mesh_getOrders", page, perPage, snapshotID); err != nil {
 		return nil, err
 	}
@@ -88,33 +73,9 @@ func (c *Client) AddPeer(peerInfo peerstore.PeerInfo) error {
 	return nil
 }
 
-// LatestBlock is the latest block processed by the Mesh node
-type LatestBlock struct {
-	Number int         `json:"number"`
-	Hash   common.Hash `json:"hash"`
-}
-
-// GetStatsResponse is the response returned for an RPC request to mesh_getStats
-type GetStatsResponse struct {
-	Version                           string      `json:"version"`
-	PubSubTopic                       string      `json:"pubSubTopic"`
-	Rendezvous                        string      `json:"rendezvous"`
-	PeerID                            string      `json:"peerID"`
-	EthereumChainID                   int         `json:"ethereumChainID"`
-	LatestBlock                       LatestBlock `json:"latestBlock"`
-	NumPeers                          int         `json:"numPeers"`
-	NumOrders                         int         `json:"numOrders"`
-	NumOrdersIncludingRemoved         int         `json:"numOrdersIncludingRemoved"`
-	NumPinnedOrders                   int         `json:"numPinnedOrders"`
-	MaxExpirationTime                 string      `json:"maxExpirationTime"`
-	StartOfCurrentUTCDay              time.Time   `json:"startOfCurrentUTCDay"`
-	EthRPCRequestsSentInCurrentUTCDay int         `json:"ethRPCRequestsSentInCurrentUTCDay"`
-	EthRPCRateLimitExpiredRequests    int64       `json:"ethRPCRateLimitExpiredRequests"`
-}
-
 // GetStats retrieves stats about the Mesh node
-func (c *Client) GetStats() (*GetStatsResponse, error) {
-	var getStatsResponse *GetStatsResponse
+func (c *Client) GetStats() (*types.Stats, error) {
+	var getStatsResponse *types.Stats
 	if err := c.rpcClient.Call(&getStatsResponse, "mesh_getStats"); err != nil {
 		return nil, err
 	}
