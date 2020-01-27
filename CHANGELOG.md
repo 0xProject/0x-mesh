@@ -12,12 +12,15 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Implemented custom order filters, which allow users to filter out all but the orders they care about. When a custom order filter is specified, Mesh will only send and receive orders that pass the filter. ([#630](https://github.com/0xProject/0x-mesh/pull/630)).
 - Developers can now override the contract addresses for any testnet using the `CUSTOM_CONTRACT_ADDRESSES` env config ([#640](https://github.com/0xProject/0x-mesh/pull/640)).
+- Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
+
+## v8.2.0
+
+### Features ✅
+
 - Added `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 - Added `getStatsAsync` to the `@0x/mesh-browser` package. ([#654](https://github.com/0xProject/0x-mesh/pull/654)).
 - Added `getOrdersAsync` and `getOrdersForPageAsync` to the `@0x/mesh-browser` package. ([#655](https://github.com/0xProject/0x-mesh/pull/655)).
-- Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
-
-## v8.1.3
 
 ### Bug fixes 🐞
 
