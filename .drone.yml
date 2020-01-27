@@ -30,7 +30,7 @@ steps:
       from_secret: docker_username
     password:
       from_secret: docker_password
-    dockerfile: dockerfiles/mesh/Dockerfile
+    dockerfile: dockerfiles/mesh-bootstrap/Dockerfile
 node_selector:
   drone-builds: true
 ---
@@ -74,7 +74,7 @@ steps:
       from_secret: docker_username
     password:
       from_secret: docker_password
-    dockerfile: dockerfiles/mesh/Dockerfile
+    dockerfile: dockerfiles/mesh-bootstrap/Dockerfile
 trigger:
   branch:
   - development
