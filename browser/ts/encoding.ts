@@ -162,7 +162,7 @@ export function wrapperContractEventsToContractEvents(wrapperContractEvents: Wra
                 const exchangeCancelUpToEvent = rawParameters as WrapperExchangeCancelUpToEvent;
                 parameters = {
                     makerAddress: exchangeCancelUpToEvent.makerAddress,
-                    senderAddress: exchangeCancelUpToEvent.senderAddress,
+                    orderSenderAddress: exchangeCancelUpToEvent.orderSenderAddress,
                     orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
                 };
                 break;
