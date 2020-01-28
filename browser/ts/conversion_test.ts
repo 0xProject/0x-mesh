@@ -135,7 +135,43 @@ function testContractEvents(contractEvents: ContractEvent[]): void {
     printer('parameter | to', erc721TransferParams.to === hexUtils.leftPad('0x5', 20));
     printer('parameter | tokenId', new BigNumber(1).isEqualTo(erc721TransferParams.tokenId));
 
-    console.log('test');
+    // ERC1155ApprovalForAllEvent
+    printer = prettyPrintTestCase('contractEventTest', 5);
+    testContractEventPrelude(printer, contractEvents[5]);
+    printer('kind', contractEvents[5].kind === 'ERC1155ApprovalForAllEvent');
+    const erc1155ApprovalForAllParams = contractEvents[5].parameters as ERC1155ApprovalForAllEvent;
+    printer('parameter | owner', erc1155ApprovalForAllParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | operator', erc1155ApprovalForAllParams.operator === hexUtils.leftPad('0x5', 20));
+    printer('parameter | approved', !erc1155ApprovalForAllParams.approved);
+
+    // ERC1155TransferSingleEvent
+    printer = prettyPrintTestCase('contractEventTest', 6);
+    testContractEventPrelude(printer, contractEvents[6]);
+    printer('kind', contractEvents[6].kind === 'ERC1155TransferSingleEvent');
+    const erc1155TransferSingleParams = contractEvents[6].parameters as ERC1155TransferSingleEvent;
+    printer('parameter | operator', erc1155TransferSingleParams.operator === hexUtils.leftPad('0x4', 20));
+    printer('parameter | from', erc1155TransferSingleParams.from === hexUtils.leftPad('0x5', 20));
+    printer('parameter | to', erc1155TransferSingleParams.to === hexUtils.leftPad('0x6', 20));
+    printer('parameter | id', new BigNumber(1).isEqualTo(erc1155TransferSingleParams.id));
+    printer('parameter | value', new BigNumber(100).isEqualTo(erc1155TransferSingleParams.value));
+
+    // ERC1155TransferBatchEvent
+    printer = prettyPrintTestCase('contractEventTest', 7);
+    testContractEventPrelude(printer, contractEvents[7]);
+    printer('kind', contractEvents[7].kind === 'ERC1155TransferBatchEvent');
+    const erc1155TransferBatchParams = contractEvents[7].parameters as ERC1155TransferBatchEvent;
+    printer('parameter | operator', erc1155TransferBatchParams.operator === hexUtils.leftPad('0x4', 20));
+    printer('parameter | from', erc1155TransferBatchParams.from === hexUtils.leftPad('0x5', 20));
+    printer('parameter | to', erc1155TransferBatchParams.to === hexUtils.leftPad('0x6', 20));
+    printer(
+        'parameter | ids',
+        erc1155TransferBatchParams.ids.length === 1 && new BigNumber(1).isEqualTo(erc1155TransferBatchParams.ids[0]),
+    );
+    printer(
+        'parameter | values',
+        erc1155TransferBatchParams.values.length === 1 &&
+            new BigNumber(100).isEqualTo(erc1155TransferBatchParams.values[0]),
+    );
 }
 
 function testContractEventPrelude(
