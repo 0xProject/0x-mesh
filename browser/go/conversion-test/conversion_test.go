@@ -87,6 +87,28 @@ func testContractEvents(ctx context.Context, browserLogs chan string) {
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 4 | parameter | to): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 4 | parameter | tokenId): true")
 
+	// ERC1155ApprovalForAllEvent
+	testContractEventPrelude(ctx, 5, browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | approved): true")
+
+	// ERC1155TransferSingleEvent
+	testContractEventPrelude(ctx, 6, browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | id): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | value): true")
+
+	// ERC1155TransferBatchEvent
+	testContractEventPrelude(ctx, 7, browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | ids): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | values): true")
+
 	// NOTE(jalextowle): This logic ensures that tests that have been created in the
 	// typescript file "conversion_test.ts" will fail without a corresponding log section
 	// in this file.
@@ -105,7 +127,7 @@ func testContractEventPrelude(ctx context.Context, idx int, browserLogs chan str
 	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | kind): true", idx))
 }
 
-// FIXME(jalextowle): This is a direct copy from integration-tests. I should find a way to avoid duplication.
+// FIXME(jalextowle): This is a modified copy from integration-tests. I should find a way to avoid duplication.
 func startBrowserInstance(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string) {
 	// Use chromedp to visit the web page for the browser node.
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
