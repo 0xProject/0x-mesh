@@ -335,9 +335,12 @@ export interface ExchangeFillEvent {
     takerAssetFilledAmount: BigNumber;
     makerFeePaid: BigNumber;
     takerFeePaid: BigNumber;
+    protocolFeePaid: BigNumber;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 export interface WrapperExchangeFillEvent {
@@ -349,9 +352,12 @@ export interface WrapperExchangeFillEvent {
     takerAssetFilledAmount: string;
     makerFeePaid: string;
     takerFeePaid: string;
+    protocolFeePaid: string;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 export interface ExchangeCancelEvent {
@@ -365,13 +371,13 @@ export interface ExchangeCancelEvent {
 
 export interface ExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: BigNumber;
 }
 
 export interface WrapperExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: string;
 }
 

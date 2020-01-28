@@ -58,56 +58,88 @@ func TestBrowserConversions(t *testing.T) {
 
 func testContractEvents(ctx context.Context, browserLogs chan string) {
 	// ERC20ApprovalEvent
-	testContractEventPrelude(ctx, 0, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | spender): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 0 | parameter | value): true")
+	testContractEventPrelude(ctx, "ERC20ApprovalEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | spender): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | value): true")
 
 	// ERC20TransferEvent
-	testContractEventPrelude(ctx, 1, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 1 | parameter | value): true")
+	testContractEventPrelude(ctx, "ERC20TransferEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | value): true")
 
 	// ERC721ApprovalEvent
-	testContractEventPrelude(ctx, 2, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 2 | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 2 | parameter | approved): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 2 | parameter | tokenId): true")
+	testContractEventPrelude(ctx, "ERC721ApprovalEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | approved): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | tokenId): true")
 
 	// ERC721ApprovalForAllEvent
-	testContractEventPrelude(ctx, 3, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 3 | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 3 | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 3 | parameter | approved): true")
+	testContractEventPrelude(ctx, "ERC721ApprovalForAllEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | approved): true")
 
 	// ERC721TransferEvent
-	testContractEventPrelude(ctx, 4, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 4 | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 4 | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 4 | parameter | tokenId): true")
+	testContractEventPrelude(ctx, "ERC721TransferEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | tokenId): true")
 
 	// ERC1155ApprovalForAllEvent
-	testContractEventPrelude(ctx, 5, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 5 | parameter | approved): true")
+	testContractEventPrelude(ctx, "ERC1155ApprovalForAllEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | approved): true")
 
 	// ERC1155TransferSingleEvent
-	testContractEventPrelude(ctx, 6, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | id): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 6 | parameter | value): true")
+	testContractEventPrelude(ctx, "ERC1155TransferSingleEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | id): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | value): true")
 
 	// ERC1155TransferBatchEvent
-	testContractEventPrelude(ctx, 7, browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | ids): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | 7 | parameter | values): true")
+	testContractEventPrelude(ctx, "ERC1155TransferBatchEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | operator): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | from): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | to): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | ids): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | values): true")
+
+	// ExchangeFillEvent
+	testContractEventPrelude(ctx, "ExchangeFillEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | senderAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | feeRecipientAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAssetFilledAmount): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAssetFilledAmount): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerFeePaid): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerFeePaid): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | protocolFeePaid): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | orderHash): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAssetData): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAssetData): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerFeeAssetData): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerFeeAssetData): true")
+
+	// ExchangeCancelEvent
+	testContractEventPrelude(ctx, "ExchangeCancelEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | makerAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | senderAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | feeRecipientAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | orderHash): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | makerAssetData): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | takerAssetData): true")
+
+	// ExchangeCancelUpToEvent
+	testContractEventPrelude(ctx, "ExchangeCancelUpToEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | makerAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderSenderAddress): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderEpoch): true")
 
 	// NOTE(jalextowle): This logic ensures that tests that have been created in the
 	// typescript file "conversion_test.ts" will fail without a corresponding log section
@@ -117,14 +149,14 @@ func testContractEvents(ctx context.Context, browserLogs chan string) {
 	stop.Unlock()
 }
 
-func testContractEventPrelude(ctx context.Context, idx int, browserLogs chan string) {
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | blockHash): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | txHash): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | txIndex): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | logIndex): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | isRemoved): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | address): true", idx))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %d | kind): true", idx))
+func testContractEventPrelude(ctx context.Context, description string, browserLogs chan string) {
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | blockHash): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | txHash): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | txIndex): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | logIndex): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | isRemoved): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | address): true", description))
+	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | kind): true", description))
 }
 
 // FIXME(jalextowle): This is a modified copy from integration-tests. I should find a way to avoid duplication.
