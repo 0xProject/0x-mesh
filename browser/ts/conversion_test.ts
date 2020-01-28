@@ -227,6 +227,32 @@ function testContractEvents(contractEvents: WrapperContractEvent[]): void {
         exchangeCancelUpToParams.orderSenderAddress === hexUtils.leftPad('0x5', 20),
     );
     printer('parameter | orderEpoch', exchangeCancelUpToParams.orderEpoch === '50');
+
+    // WethDepositEvent
+    printer = prettyPrintTestCase('contractEventTest', 'WethDepositEvent');
+    testContractEventPrelude(printer, contractEvents[11]);
+    printer('kind', contractEvents[11].kind === 'WethDepositEvent');
+    const wethDepositParams = contractEvents[11].parameters as WrapperWethDepositEvent;
+    printer('parameter | owner', wethDepositParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | value', wethDepositParams.value === '150000');
+
+    // WethWithdrawalEvent
+    printer = prettyPrintTestCase('contractEventTest', 'WethWithdrawalEvent');
+    testContractEventPrelude(printer, contractEvents[12]);
+    printer('kind', contractEvents[12].kind === 'WethWithdrawalEvent');
+    const wethWithdrawalParams = contractEvents[12].parameters as WrapperWethWithdrawalEvent;
+    printer('parameter | owner', wethWithdrawalParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | value', wethWithdrawalParams.value === '150000');
+
+    // FooBarBaz
+    printer = prettyPrintTestCase('contractEventTest', 'FooBarBazEvent');
+    testContractEventPrelude(printer, contractEvents[13]);
+    printer('kind', contractEvents[13].kind === 'FooBarBazEvent');
+    const fooBarBazParams = contractEvents[13].parameters as any;
+    console.log(JSON.stringify(contractEvents[13]));
+    printer('parameter | owner', fooBarBazParams.owner === hexUtils.leftPad('0x4', 20));
+    printer('parameter | spender', fooBarBazParams.spender === hexUtils.leftPad('0x5', 20));
+    printer('parameter | value', fooBarBazParams.value === '1');
 }
 
 function testContractEventPrelude(

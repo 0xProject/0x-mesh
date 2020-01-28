@@ -141,6 +141,22 @@ func testContractEvents(ctx context.Context, browserLogs chan string) {
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderSenderAddress): true")
 	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderEpoch): true")
 
+	// WethDepositEvent
+	testContractEventPrelude(ctx, "WethDepositEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethDepositEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethDepositEvent | parameter | value): true")
+
+	// WethWithdrawalEvent
+	testContractEventPrelude(ctx, "WethWithdrawalEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethWithdrawalEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethWithdrawalEvent | parameter | value): true")
+
+	// FooBarBazEvent
+	testContractEventPrelude(ctx, "FooBarBazEvent", browserLogs)
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | owner): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | spender): true")
+	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | value): true")
+
 	// NOTE(jalextowle): This logic ensures that tests that have been created in the
 	// typescript file "conversion_test.ts" will fail without a corresponding log section
 	// in this file.
