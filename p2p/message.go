@@ -20,6 +20,4 @@ type MessageHandler interface {
 	// return an error if there was a problem handling the messages. It should not
 	// return an error for invalid or duplicate messages.
 	HandleMessages(context.Context, []*Message) error
-	// GetMessagesToShare returns up to max messages to be shared with peers.
-	GetMessagesToShare(max int) ([][]byte, error)
 }

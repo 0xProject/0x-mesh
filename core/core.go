@@ -193,7 +193,6 @@ type App struct {
 	idToSnapshotInfo          map[string]snapshotInfo
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
-	orderSelector             *orderSelector
 	db                        *meshdb.MeshDB
 
 	// started is closed to signal that the App has been started. Some methods
@@ -348,11 +347,6 @@ func New(config Config) (*App, error) {
 
 	// Initialize remaining fields.
 	snapshotExpirationWatcher := expirationwatch.New()
-	orderSelector := &orderSelector{
-		topic:      orderFilter.Topic(),
-		nextOffset: 0,
-		db:         meshDB,
-	}
 
 	app := &App{
 		started:                   make(chan struct{}),
@@ -366,7 +360,6 @@ func New(config Config) (*App, error) {
 		orderFilter:               orderFilter,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
-		orderSelector:             orderSelector,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
 		db:                        meshDB,

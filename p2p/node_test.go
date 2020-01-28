@@ -40,10 +40,6 @@ func (*dummyMessageHandler) HandleMessages(ctx context.Context, messages []*Mess
 	return nil
 }
 
-func (*dummyMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
-	return nil, nil
-}
-
 // testNotifee can be used to listen for new connections and new streams.
 type testNotifee struct {
 	conns   chan p2pnet.Conn
@@ -190,21 +186,6 @@ func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 	return nil
 }
 
-func (mh *inMemoryMessageHandler) GetMessagesToShare(max int) ([][]byte, error) {
-	// Always just return the first messages up to max.
-	var toShare []*Message
-	if max > len(mh.messages) {
-		toShare = mh.messages
-	} else {
-		toShare = mh.messages[:max]
-	}
-	data := make([][]byte, len(toShare))
-	for i, msg := range toShare {
-		data[i] = msg.Data
-	}
-	return data, nil
-}
-
 func TestPingPong(t *testing.T) {
 	t.Parallel()
 
@@ -261,108 +242,6 @@ func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Dur
 			return
 		}
 	}
-}
-
-func TestMessagesAreShared(t *testing.T) {
-	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	node0 := newTestNode(t, ctx, nil)
-	node1 := newTestNode(t, ctx, nil)
-	connectTestNodes(t, node0, node1)
-
-	// Set up special MessageHandlers for testing purposes.
-	// oddMessageHandler only considers messages valid if the first byte is odd.
-	oddMessageHandler := newInMemoryMessageHandler(func(msg *Message) (bool, error) {
-		if len(msg.Data) < 1 {
-			return false, nil
-		}
-		isFirstByteOdd := msg.Data[0]%2 != 0
-		return isFirstByteOdd, nil
-	})
-	oddMessageHandler.messages = []*Message{
-		{
-			From: node0.host.ID(),
-			Data: []byte{1, 2, 3, 4},
-		},
-		{
-			From: node0.host.ID(),
-			Data: []byte{3, 4, 5, 6},
-		},
-	}
-	node0.messageHandler = oddMessageHandler
-
-	// allMessageHandler considers all messages valid.
-	allMessageHandler := newInMemoryMessageHandler(func(msg *Message) (bool, error) {
-		return true, nil
-	})
-	allMessageHandler.messages = []*Message{
-		{
-			From: node1.host.ID(),
-			Data: []byte{0, 1, 2, 3},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{1, 2, 3, 4},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{2, 3, 4, 5},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{5, 6, 7, 8},
-		},
-	}
-	node1.messageHandler = allMessageHandler
-
-	// Call runOnce to cause each node to share and receive messages.
-	require.NoError(t, node0.runOnce())
-	require.NoError(t, node1.runOnce())
-	require.NoError(t, node0.runOnce())
-	require.NoError(t, node1.runOnce())
-
-	// We expect that all the odd messages have been collected by node0.
-	expectedOddMessages := []*Message{
-		{
-			From: node0.host.ID(),
-			Data: []byte{1, 2, 3, 4},
-		},
-		{
-			From: node0.host.ID(),
-			Data: []byte{3, 4, 5, 6},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{5, 6, 7, 8},
-		},
-	}
-	assert.Equal(t, expectedOddMessages, node0.messageHandler.(*inMemoryMessageHandler).messages, "node0 should be storing all odd messages")
-
-	// We expect that all messages have been collected by node1.
-	expectedAllMessages := []*Message{
-		{
-			From: node1.host.ID(),
-			Data: []byte{0, 1, 2, 3},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{1, 2, 3, 4},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{2, 3, 4, 5},
-		},
-		{
-			From: node0.host.ID(),
-			Data: []byte{3, 4, 5, 6},
-		},
-		{
-			From: node1.host.ID(),
-			Data: []byte{5, 6, 7, 8},
-		},
-	}
-	assert.Equal(t, expectedAllMessages, node1.messageHandler.(*inMemoryMessageHandler).messages, "node1 should be storing all messages")
 }
 
 func TestPeerDiscovery(t *testing.T) {

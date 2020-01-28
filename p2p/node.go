@@ -468,10 +468,6 @@ func (n *Node) runOnce() error {
 		n.banner.CheckBandwidthUsage()
 	}
 
-	// Send up to maxSendBatch messages.
-	if err := n.shareBatch(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -575,22 +571,6 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 		}
 		messages = append(messages, msg)
 	}
-}
-
-// shareBatch shares up to maxShareBatch messages (selected via the
-// MessageHandler) with all connected peers.
-func (n *Node) shareBatch() error {
-	// TODO(albrow): This will need to change when we switch to WeijieSub.
-	outgoing, err := n.messageHandler.GetMessagesToShare(maxShareBatch)
-	if err != nil {
-		return err
-	}
-	for _, data := range outgoing {
-		if err := n.Send(data); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Send sends a message continaing the given data to all connected peers.
