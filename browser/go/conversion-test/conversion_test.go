@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	"github.com/stretchr/testify/require"
 )
 
 var stop struct {
@@ -25,6 +27,8 @@ func TestBrowserConversions(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
+
+	buildForTests(t, ctx)
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -214,6 +218,27 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, browser
 	); err != nil && err != context.Canceled {
 		t.Error(err)
 	}
+}
+
+func buildForTests(t *testing.T, ctx context.Context) {
+	fmt.Println("Clear yarn cache...")
+	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
+	cmd.Dir = "../../"
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
+
+	fmt.Println("Installing dependencies for Wasm binary and Typescript bindings...")
+	cmd = exec.CommandContext(ctx, "yarn", "install")
+	cmd.Dir = "../../"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
+
+	fmt.Println("Building Wasm binary and Typescript bindings...")
+	cmd = exec.CommandContext(ctx, "yarn", "build")
+	cmd.Dir = "../../"
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, "could not build Wasm binary and Typescript bindings: %s", string(output))
+	fmt.Println("Done building everything")
 }
 
 // TODO(jalextowle): This should be inlined in the tests so that we make sure that all of the logs contain our tests (and no extra).

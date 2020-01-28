@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/0xProject/0x-mesh/common/types"
-
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
