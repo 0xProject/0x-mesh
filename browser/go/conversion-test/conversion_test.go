@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,10 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var stop struct {
-	value bool
-	sync.Mutex
-}
+var testCases []string
 
 func TestBrowserConversions(t *testing.T) {
 	// Declare a context that will be used for all child processes, servers, and
@@ -29,158 +25,168 @@ func TestBrowserConversions(t *testing.T) {
 	defer cancel()
 
 	buildForTests(t, ctx)
+	registerContractEventTest()
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
 	defer ts.Close()
 
-	browserLogs := make(chan string, 1024)
+	done := make(chan interface{})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startBrowserInstance(t, ctx, ts.URL, browserLogs)
+		startBrowserInstance(t, ctx, ts.URL, done)
 	}()
 
-	messageWg := &sync.WaitGroup{}
-	messageWg.Add(1)
 	go func() {
-		defer messageWg.Done()
-		testContractEvents(ctx, browserLogs)
-
-		// NOTE(jalextowle): Sleep to wait for any late logs. This isn't a perfect
-		// solution, but it should improve the DevEx of working with these tests since
-		// this will allow the tests to fail for extra logs that aren't too late.
-		time.Sleep(time.Second)
+		select {
+		case <-done:
+			fmt.Println("finished testing")
+			// NOTE(jalextowle): It is somewhat useful to know whether or not
+			// there are test results that were logged in the typescript but were
+			// not registered in this test file. For these purposes, we wait for
+			// last logs to appear before closing the test. Logs that are logged
+			// after the sleeping period will still be ignored.
+			time.Sleep(2 * time.Second)
+			cancel()
+		}
 	}()
 
-	messageWg.Wait()
-	cancel()
 	wg.Wait()
 }
 
-func testContractEvents(ctx context.Context, browserLogs chan string) {
+func registerContractEventTest() {
 	// ERC20ApprovalEvent
-	testContractEventPrelude(ctx, "ERC20ApprovalEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | spender): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20ApprovalEvent | parameter | value): true")
+	registerContractEventPrelude("ERC20ApprovalEvent")
+	registerContractEventParams("ERC20ApprovalEvent", "owner")
+	registerContractEventParams("ERC20ApprovalEvent", "spender")
+	registerContractEventParams("ERC20ApprovalEvent", "value")
 
 	// ERC20TransferEvent
-	testContractEventPrelude(ctx, "ERC20TransferEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC20TransferEvent | parameter | value): true")
+	registerContractEventPrelude("ERC20TransferEvent")
+	registerContractEventParams("ERC20TransferEvent", "from")
+	registerContractEventParams("ERC20TransferEvent", "to")
+	registerContractEventParams("ERC20TransferEvent", "value")
 
 	// ERC721ApprovalEvent
-	testContractEventPrelude(ctx, "ERC721ApprovalEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | approved): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalEvent | parameter | tokenId): true")
+	registerContractEventPrelude("ERC721ApprovalEvent")
+	registerContractEventParams("ERC721ApprovalEvent", "owner")
+	registerContractEventParams("ERC721ApprovalEvent", "approved")
+	registerContractEventParams("ERC721ApprovalEvent", "tokenId")
 
 	// ERC721ApprovalForAllEvent
-	testContractEventPrelude(ctx, "ERC721ApprovalForAllEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721ApprovalForAllEvent | parameter | approved): true")
+	registerContractEventPrelude("ERC721ApprovalForAllEvent")
+	registerContractEventParams("ERC721ApprovalForAllEvent", "owner")
+	registerContractEventParams("ERC721ApprovalForAllEvent", "operator")
+	registerContractEventParams("ERC721ApprovalForAllEvent", "approved")
 
 	// ERC721TransferEvent
-	testContractEventPrelude(ctx, "ERC721TransferEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC721TransferEvent | parameter | tokenId): true")
+	registerContractEventPrelude("ERC721TransferEvent")
+	registerContractEventParams("ERC721TransferEvent", "from")
+	registerContractEventParams("ERC721TransferEvent", "to")
+	registerContractEventParams("ERC721TransferEvent", "tokenId")
 
 	// ERC1155ApprovalForAllEvent
-	testContractEventPrelude(ctx, "ERC1155ApprovalForAllEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155ApprovalForAllEvent | parameter | approved): true")
+	registerContractEventPrelude("ERC1155ApprovalForAllEvent")
+	registerContractEventParams("ERC1155ApprovalForAllEvent", "owner")
+	registerContractEventParams("ERC1155ApprovalForAllEvent", "operator")
+	registerContractEventParams("ERC1155ApprovalForAllEvent", "approved")
 
 	// ERC1155TransferSingleEvent
-	testContractEventPrelude(ctx, "ERC1155TransferSingleEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | id): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferSingleEvent | parameter | value): true")
+	registerContractEventPrelude("ERC1155TransferSingleEvent")
+	registerContractEventParams("ERC1155TransferSingleEvent", "operator")
+	registerContractEventParams("ERC1155TransferSingleEvent", "from")
+	registerContractEventParams("ERC1155TransferSingleEvent", "to")
+	registerContractEventParams("ERC1155TransferSingleEvent", "id")
+	registerContractEventParams("ERC1155TransferSingleEvent", "value")
 
 	// ERC1155TransferBatchEvent
-	testContractEventPrelude(ctx, "ERC1155TransferBatchEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | operator): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | from): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | to): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | ids): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ERC1155TransferBatchEvent | parameter | values): true")
+	registerContractEventPrelude("ERC1155TransferBatchEvent")
+	registerContractEventParams("ERC1155TransferBatchEvent", "operator")
+	registerContractEventParams("ERC1155TransferBatchEvent", "from")
+	registerContractEventParams("ERC1155TransferBatchEvent", "to")
+	registerContractEventParams("ERC1155TransferBatchEvent", "ids")
+	registerContractEventParams("ERC1155TransferBatchEvent", "values")
 
 	// ExchangeFillEvent
-	testContractEventPrelude(ctx, "ExchangeFillEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | senderAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | feeRecipientAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAssetFilledAmount): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAssetFilledAmount): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerFeePaid): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerFeePaid): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | protocolFeePaid): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | orderHash): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerAssetData): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerAssetData): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | makerFeeAssetData): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeFillEvent | parameter | takerFeeAssetData): true")
+	registerContractEventPrelude("ExchangeFillEvent")
+	registerContractEventParams("ExchangeFillEvent", "makerAddress")
+	registerContractEventParams("ExchangeFillEvent", "takerAddress")
+	registerContractEventParams("ExchangeFillEvent", "senderAddress")
+	registerContractEventParams("ExchangeFillEvent", "feeRecipientAddress")
+	registerContractEventParams("ExchangeFillEvent", "makerAssetFilledAmount")
+	registerContractEventParams("ExchangeFillEvent", "takerAssetFilledAmount")
+	registerContractEventParams("ExchangeFillEvent", "makerFeePaid")
+	registerContractEventParams("ExchangeFillEvent", "takerFeePaid")
+	registerContractEventParams("ExchangeFillEvent", "protocolFeePaid")
+	registerContractEventParams("ExchangeFillEvent", "orderHash")
+	registerContractEventParams("ExchangeFillEvent", "makerAssetData")
+	registerContractEventParams("ExchangeFillEvent", "takerAssetData")
+	registerContractEventParams("ExchangeFillEvent", "makerFeeAssetData")
+	registerContractEventParams("ExchangeFillEvent", "takerFeeAssetData")
 
 	// ExchangeCancelEvent
-	testContractEventPrelude(ctx, "ExchangeCancelEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | makerAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | senderAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | feeRecipientAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | orderHash): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | makerAssetData): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelEvent | parameter | takerAssetData): true")
+	registerContractEventPrelude("ExchangeCancelEvent")
+	registerContractEventParams("ExchangeCancelEvent", "makerAddress")
+	registerContractEventParams("ExchangeCancelEvent", "senderAddress")
+	registerContractEventParams("ExchangeCancelEvent", "feeRecipientAddress")
+	registerContractEventParams("ExchangeCancelEvent", "orderHash")
+	registerContractEventParams("ExchangeCancelEvent", "makerAssetData")
+	registerContractEventParams("ExchangeCancelEvent", "takerAssetData")
 
 	// ExchangeCancelUpToEvent
-	testContractEventPrelude(ctx, "ExchangeCancelUpToEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | makerAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderSenderAddress): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | ExchangeCancelUpToEvent | parameter | orderEpoch): true")
+	registerContractEventPrelude("ExchangeCancelUpToEvent")
+	registerContractEventParams("ExchangeCancelUpToEvent", "makerAddress")
+	registerContractEventParams("ExchangeCancelUpToEvent", "orderSenderAddress")
+	registerContractEventParams("ExchangeCancelUpToEvent", "orderEpoch")
 
 	// WethDepositEvent
-	testContractEventPrelude(ctx, "WethDepositEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethDepositEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethDepositEvent | parameter | value): true")
+	registerContractEventPrelude("WethDepositEvent")
+	registerContractEventParams("WethDepositEvent", "owner")
+	registerContractEventParams("WethDepositEvent", "value")
 
 	// WethWithdrawalEvent
-	testContractEventPrelude(ctx, "WethWithdrawalEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethWithdrawalEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | WethWithdrawalEvent | parameter | value): true")
+	registerContractEventPrelude("WethWithdrawalEvent")
+	registerContractEventParams("WethWithdrawalEvent", "owner")
+	registerContractEventParams("WethWithdrawalEvent", "value")
 
 	// FooBarBazEvent
-	testContractEventPrelude(ctx, "FooBarBazEvent", browserLogs)
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | owner): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | spender): true")
-	waitForLogSubstring(ctx, browserLogs, "(contractEventTest | FooBarBazEvent | parameter | value): true")
+	registerContractEventPrelude("FooBarBazEvent")
+	registerContractEventParams("FooBarBazEvent", "owner")
+	registerContractEventParams("FooBarBazEvent", "spender")
+	registerContractEventParams("FooBarBazEvent", "value")
 
-	// NOTE(jalextowle): This logic ensures that tests that have been created in the
-	// typescript file "conversion_test.ts" will fail without a corresponding log section
-	// in this file.
-	stop.Lock()
-	stop.value = true
-	stop.Unlock()
+	fmt.Println("Done registering ContractEvent test")
 }
 
-func testContractEventPrelude(ctx context.Context, description string, browserLogs chan string) {
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | blockHash): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | txHash): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | txIndex): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | logIndex): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | isRemoved): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | address): true", description))
-	waitForLogSubstring(ctx, browserLogs, fmt.Sprintf("(contractEventTest | %s | kind): true", description))
+func registerContractEventPrelude(description string) {
+	registerContractEventField(description, "blockHash")
+	registerContractEventField(description, "txHash")
+	registerContractEventField(description, "txIndex")
+	registerContractEventField(description, "logIndex")
+	registerContractEventField(description, "isRemoved")
+	registerContractEventField(description, "address")
+	registerContractEventField(description, "kind")
 }
 
-// FIXME(jalextowle): This is a modified copy from integration-tests. I should find a way to avoid duplication.
-func startBrowserInstance(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string) {
+func registerContractEventParams(description string, param string) {
+	registerContractEventField(description, fmt.Sprintf("parameter | %s", param))
+}
+
+func registerContractEventField(description string, field string) {
+	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
+}
+
+func registerTest(test string) {
+	testCases = append(testCases, fmt.Sprintf("\"%s: true\"", test))
+}
+
+func startBrowserInstance(t *testing.T, ctx context.Context, url string, done chan interface{}) {
+	testLength := len(testCases)
+	count := 0
+
 	// Use chromedp to visit the web page for the browser node.
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -189,16 +195,16 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, browser
 			case runtime.APITypeLog:
 				// Send console.log events through the channel.
 				for _, arg := range ev.Args {
-					stop.Lock()
-					shouldStop := stop.value
-					stop.Unlock()
-					if !shouldStop {
-						if arg.Type == runtime.TypeString {
-							fmt.Println("[browser]: " + string(arg.Value))
-							browserLogMessages <- string(arg.Value)
+					if arg.Type == runtime.TypeString && count < testLength {
+						if testCases[count] != string(arg.Value) {
+							t.Errorf("expected: %s | actual: %s", testCases[count], string(arg.Value))
+						}
+						count++
+						if count == testLength {
+							done <- struct{}{}
 						}
 					} else {
-						t.Errorf("Browser log after test: (%s)", arg.Value)
+						t.Errorf("Unexpected test results: %s", arg.Value)
 					}
 				}
 			case runtime.APITypeError:
@@ -239,29 +245,4 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build Wasm binary and Typescript bindings: %s", string(output))
 	fmt.Println("Done building everything")
-}
-
-// TODO(jalextowle): This should be inlined in the tests so that we make sure that all of the logs contain our tests (and no extra).
-// This will allow the "late log" logic to be removed.
-//
-// waitForLogMessage blocks until a message is logged that psses the given
-// filter or the context is done. If the message is logged before the context is
-// done, it will return the entire message. Otherwise it returns an error.
-func waitForLogMessage(ctx context.Context, logMessages <-chan string, filter func(string) bool) (string, error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return "", fmt.Errorf("(%s) timed out waiting for message", ctx.Err())
-		case msg := <-logMessages:
-			if filter(msg) {
-				return msg, nil
-			}
-		}
-	}
-}
-
-func waitForLogSubstring(ctx context.Context, logMessages <-chan string, substr string) (string, error) {
-	return waitForLogMessage(ctx, logMessages, func(msg string) bool {
-		return strings.Contains(msg, substr)
-	})
 }

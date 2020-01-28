@@ -249,7 +249,6 @@ function testContractEvents(contractEvents: WrapperContractEvent[]): void {
     testContractEventPrelude(printer, contractEvents[13]);
     printer('kind', contractEvents[13].kind === 'FooBarBazEvent');
     const fooBarBazParams = contractEvents[13].parameters as any;
-    console.log(JSON.stringify(contractEvents[13]));
     printer('parameter | owner', fooBarBazParams.owner === hexUtils.leftPad('0x4', 20));
     printer('parameter | spender', fooBarBazParams.spender === hexUtils.leftPad('0x5', 20));
     printer('parameter | value', fooBarBazParams.value === '1');
