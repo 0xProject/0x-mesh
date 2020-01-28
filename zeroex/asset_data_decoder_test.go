@@ -78,7 +78,7 @@ func TestDecodeERC1155AssetData(t *testing.T) {
 	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "ERC1155 Asset Data properly decoded")
 }
 
-func TestDecodeERC20BridgeAssetData(t *testing.T) {
+func TestDecodeERC20BridgeChaiAssetData(t *testing.T) {
 	assetData := common.Hex2Bytes("dc1600f30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f00000000000000000000000077c31eba23043b9a72d13470f3a3a311344d743800000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000")
 
 	d := NewAssetDataDecoder()
@@ -90,7 +90,24 @@ func TestDecodeERC20BridgeAssetData(t *testing.T) {
 	expectedDecodedAssetData := ERC20BridgeAssetData{
 		TokenAddress:  common.HexToAddress("0x6b175474e89094c44da98b954eedeac495271d0f"),
 		BridgeAddress: common.HexToAddress("0x77c31eba23043b9a72d13470f3a3a311344d7438"),
-		Calldata:      common.Hex2Bytes("0x"),
+		Calldata:      common.Hex2Bytes(""),
+	}
+	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "ERC20Bridge Asset Data properly decoded")
+}
+
+func TestDecodeERC20BridgeEth2DaiAssetData(t *testing.T) {
+	assetData := common.Hex2Bytes("dc1600f30000000000000000000000006b175474e89094c44da98b954eedeac495271d0f000000000000000000000000e97ea901d034ba2e018155264f77c417ce7717f900000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+
+	d := NewAssetDataDecoder()
+
+	var actualDecodedAssetData ERC20BridgeAssetData
+	err := d.Decode(assetData, &actualDecodedAssetData)
+	require.NoError(t, err)
+
+	expectedDecodedAssetData := ERC20BridgeAssetData{
+		TokenAddress:  common.HexToAddress("0x6b175474e89094c44da98b954eedeac495271d0f"),
+		BridgeAddress: common.HexToAddress("0xe97ea901d034ba2e018155264f77c417ce7717f9"),
+		Calldata:      common.Hex2Bytes("000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
 	}
 	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "ERC20Bridge Asset Data properly decoded")
 }
