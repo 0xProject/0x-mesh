@@ -11,6 +11,7 @@ replace (
 )
 
 require (
+	github.com/0xProject/sql-datastore v0.0.0-20200128001316-0d09a9c4c5f6
 	github.com/albrow/stringset v2.1.0+incompatible
 	github.com/allegro/bigcache v0.0.0-20190618191010-69ea0af04088 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20190712234253-ed1100a1c015 // indirect
@@ -28,35 +29,32 @@ require (
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.3
-	github.com/ipfs/go-datastore v0.1.1
-	github.com/ipfs/go-ds-leveldb v0.0.2
+	github.com/ipfs/go-datastore v0.3.1
+	github.com/ipfs/go-ds-leveldb v0.4.0
 	github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-libp2p v0.3.1
+	github.com/libp2p/go-libp2p v0.5.1
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
-	github.com/libp2p/go-libp2p-circuit v0.1.2
-	github.com/libp2p/go-libp2p-connmgr v0.1.1
-	github.com/libp2p/go-libp2p-core v0.2.4
-	github.com/libp2p/go-libp2p-crypto v0.1.0
+	github.com/libp2p/go-libp2p-circuit v0.1.4
+	github.com/libp2p/go-libp2p-connmgr v0.2.1
+	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/libp2p/go-libp2p-discovery v0.2.0
-	github.com/libp2p/go-libp2p-kad-dht v0.3.0
-	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.3
-	github.com/libp2p/go-libp2p-pubsub v0.2.3
+	github.com/libp2p/go-libp2p-kad-dht v0.5.0
+	github.com/libp2p/go-libp2p-peerstore v0.1.4
+	github.com/libp2p/go-libp2p-pubsub v0.2.5
 	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/libp2p/go-ws-transport v0.1.0
+	github.com/libp2p/go-ws-transport v0.2.0
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/multiformats/go-multiaddr v0.1.2
+	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33
 	github.com/olekukonko/tablewriter v0.0.1 // indirect
-	github.com/opaolini/go-ds-sql v0.0.0-20191105113501-15a4c8e2fea5
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/plaid/go-envvar v1.1.0
@@ -67,7 +65,7 @@ require (
 	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48 // indirect
 	github.com/steakknife/bloomfilter v0.0.0-20180906043351-99ee86d9200f // indirect
 	github.com/steakknife/hamming v0.0.0-20180906055317-003c143a81c2 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208 // indirect
@@ -81,4 +79,5 @@ require (
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff // indirect
+	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 )
