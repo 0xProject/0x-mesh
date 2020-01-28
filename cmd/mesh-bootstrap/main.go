@@ -15,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
+	sqlds "github.com/0xProject/sql-datastore"
 	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -33,7 +34,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
-	sqlds "github.com/opaolini/go-ds-sql"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )

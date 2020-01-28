@@ -1,7 +1,7 @@
 package loghooks
 
 import (
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	log "github.com/sirupsen/logrus"
 )
 

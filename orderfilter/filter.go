@@ -9,7 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	canonicaljson "github.com/gibson042/canonicaljson-go"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/sirupsen/logrus"
 	jsonschema "github.com/xeipuuv/gojsonschema"
