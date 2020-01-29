@@ -1449,6 +1449,41 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	assert.Equal(t, false, orderTwo.IsRemoved)
 }
 
+func TestDrainAllBlockEventsChan(t *testing.T) {
+	blockEventsChan := make(chan []*blockwatch.Event, 100)
+	ts := time.Now().Add(1 * time.Hour)
+	blockEventsOne := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    common.HexToHash("0x0"),
+				Hash:      common.HexToHash("0x1"),
+				Number:    big.NewInt(1),
+				Timestamp: ts,
+			},
+		},
+	}
+	blockEventsChan <- blockEventsOne
+
+	blockEventsTwo := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    common.HexToHash("0x1"),
+				Hash:      common.HexToHash("0x2"),
+				Number:    big.NewInt(2),
+				Timestamp: ts.Add(1 * time.Second),
+			},
+		},
+	}
+	blockEventsChan <- blockEventsTwo
+
+	allEvents := drainBlockEventsChan(blockEventsChan)
+	assert.Len(t, allEvents, 2)
+	require.Equal(t, allEvents[0], blockEventsOne[0])
+	require.Equal(t, allEvents[1], blockEventsTwo[0])
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
