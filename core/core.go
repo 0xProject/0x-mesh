@@ -28,6 +28,7 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
+	"github.com/0xProject/0x-mesh/p2p/ordersync"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
@@ -61,6 +62,9 @@ const (
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
 	version          = "development"
+	// orderSyncDelay is the amount of time to wait before attempting to sync
+	// orders again after no orders were found.
+	orderSyncDelay = 1 * time.Second
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -194,6 +198,7 @@ type App struct {
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
 	db                        *meshdb.MeshDB
+	orderSync                 *ordersync.Service
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -573,6 +578,18 @@ func (app *App) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Register ordersync provider and start ordersync service.
+	provider := newOrderProvider(app.db)
+	app.orderSync = app.node.NewOrderSyncService(provider)
+	orderSyncErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := app.syncOrders(innerCtx); err != nil {
+			orderSyncErrChan <- err
+		}
+	}()
+
 	// Start the p2p node.
 	p2pErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -621,14 +638,20 @@ func (app *App) Start(ctx context.Context) error {
 			return err
 		}
 	case err := <-blockWatcherErrChan:
-		log.WithError(err).Error("block watcher exited with error")
 		if err != nil {
+			log.WithError(err).Error("block watcher exited with error")
 			cancel()
 			return err
 		}
 	case err := <-ethRPCRateLimiterErrChan:
-		log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
 		if err != nil {
+			log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
+			cancel()
+			return err
+		}
+	case err := <-orderSyncErrChan:
+		if err != nil {
+			log.WithError(err).Error("ordersync service exited with error")
 			cancel()
 			return err
 		}
@@ -1005,4 +1028,55 @@ func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses st
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
 	return nil
+}
+
+// syncOrders uses the ordersync protocol to attempt to get as many
+// existing orders as possible from our peers. It should be called once during
+// initialization. This is a blocking function which will continue to request
+// orders from different peers until enough orders have been received. It
+// returns an error if there was a problem syncing orders.
+func (app *App) syncOrders(ctx context.Context) error {
+
+	// TODO(albrow): Currently we just send one call to GetOrders, which only gets
+	// results from one peer. We probably need to send multiple calls to multiple
+	// peers either here or in the implementation of GetOrders.
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		rawOrders, err := app.orderSync.GetOrders(ctx, app.orderFilter.Topic())
+		if err != nil {
+			if err == ordersync.ErrNoOrders {
+				time.Sleep(orderSyncDelay)
+				continue
+			}
+			return err
+		}
+
+		var orders []*zeroex.SignedOrder
+		if err := json.Unmarshal(rawOrders, &orders); err != nil {
+			return err
+		}
+
+		filteredOrders := []*zeroex.SignedOrder{}
+		for _, order := range orders {
+			matches, err := app.orderFilter.MatchOrder(order)
+			if err != nil {
+				return err
+			}
+			if matches {
+				filteredOrders = append(filteredOrders, order)
+			} else {
+				// This means the peer gave us back orders that don't match our filter.
+				// TODO(albrow): Penalize peer.
+			}
+		}
+
+		_, err = app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, app.chainID)
+		return err
+	}
 }

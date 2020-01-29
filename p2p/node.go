@@ -14,6 +14,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/p2p/banner"
+	"github.com/0xProject/0x-mesh/p2p/ordersync"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	"github.com/0xProject/0x-mesh/p2p/validatorset"
 	"github.com/albrow/stringset"
@@ -433,6 +434,10 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 		return err
 	}
 	return nil
+}
+
+func (n *Node) NewOrderSyncService(provider ordersync.Provider) *ordersync.Service {
+	return ordersync.New(n.host, provider)
 }
 
 // mainLoop is where the core logic for a Node is implemented. On each iteration

@@ -17,7 +17,7 @@ type inMemoryOrderProvider struct {
 	orderData map[string][]byte
 }
 
-func (p inMemoryOrderProvider) ProvideOrders(topic string) ([]byte, error) {
+func (p inMemoryOrderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]byte, error) {
 	if p.orderData == nil {
 		return nil, nil
 	}

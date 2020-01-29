@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	network "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -54,7 +56,7 @@ type Service struct {
 type Provider interface {
 	// TODO(albrow): Add arbitrary metadata to make the request/response more
 	// efficient.
-	ProvideOrders(topic string) ([]byte, error)
+	ProvideOrders(topic string, requestingPeer peer.ID) ([]byte, error)
 }
 
 func New(h host.Host, provider Provider) *Service {
@@ -67,19 +69,24 @@ func New(h host.Host, provider Provider) *Service {
 }
 
 func (s *Service) handleStream(stream network.Stream) {
+	defer func() {
+		_ = stream.Close()
+	}()
+	remotePeerID := stream.Conn().RemotePeer()
 	for {
+		// TODO(albrow): Close stream if we haven't received any requests in a
+		// while.
 		var req GetOrdersRequest
 		if err := json.NewDecoder(stream).Decode(&req); err != nil {
-			remotePeerID := stream.Conn().RemotePeer()
 			log.WithError(err).WithField("remotePeer", remotePeerID.Pretty()).Warn("received invalid GetOrdersRequest from peer")
 			// TODO(albrow): Handle peer scores somewhere else?
 			s.host.ConnManager().UpsertTag(remotePeerID, scoreTag, func(current int) int { return current + inavlidMessageScoreDiff })
-			_ = stream.Close()
+			return
 		}
 		if req.Type != "getOrdersRequest" {
 			log.WithField("gotType", req.Type).Warn("wrong type for GetOrdersRequest")
 		}
-		orders, err := s.provider.ProvideOrders(req.Topic)
+		orders, err := s.provider.ProvideOrders(req.Topic, remotePeerID)
 		if err != nil {
 			log.WithError(err).Error("ProvideOrders returned error")
 			time.Sleep(providerErrorDelay)
@@ -91,6 +98,7 @@ func (s *Service) handleStream(stream network.Stream) {
 			Orders: orders,
 		}
 		if err := json.NewEncoder(stream).Encode(res); err != nil {
+			// TODO(albrow): Close stream if we couldn't write to it.
 			log.WithError(err).Error("could not JSON encode orders returned by ProvideOrders")
 			time.Sleep(providerErrorDelay)
 			continue
@@ -99,6 +107,13 @@ func (s *Service) handleStream(stream network.Stream) {
 }
 
 func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
+	// if err := s.waitForPeers(ctx); err != nil {
+	// 	return nil, err
+	// }
+	// peers, err := s.getOrderSyncPeers()
+	// if err != nil {
+	// 	return nil, err
+	// }
 	peers := s.host.Network().Peers()
 	shufflePeers(peers)
 	// TODO(albrow): Do this for loop partly in parallel.
@@ -114,6 +129,7 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 			// TODO(albrow): Detect the type of error. Do we want to return it?
 			continue
 		}
+		// TODO(albrow): Close the stream when we're done.
 		req := GetOrdersRequest{
 			Type:  "getOrdersRequest",
 			Topic: topic,
@@ -146,7 +162,67 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 	return nil, ErrNoOrders
 }
 
+func (s *Service) waitForPeers(ctx context.Context) error {
+	// Subscribe to the event bus so we can be notified when we connect to peers
+	// that speak new protocols.
+	//
+	// NOTE(albrow): The ordering here is really important. We need to subscribe
+	// to the event bus *and then* check if we are already connected to peers that
+	// speak the ordersync protocol. Otherwise we could potentially miss events.
+	eventSub, err := s.host.EventBus().Subscribe(new(event.EvtPeerProtocolsUpdated))
+	if err != nil {
+		return err
+	}
+	defer eventSub.Close()
+
+	// Check if we already are connected to any peers that speak ordersync.
+	orderSyncPeers, err := s.getOrderSyncPeers()
+	if err != nil {
+		return err
+	}
+	if len(orderSyncPeers) > 0 {
+		// We already are connected to peers that speak the ordersync protocol. No
+		// need to wait.
+		return nil
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case ev := <-eventSub.Out():
+		updatedEvent, ok := ev.(*event.EvtPeerProtocolsUpdated)
+		if !ok {
+			log.WithField("eventType", fmt.Sprintf("%T", ev)).Error("unexpected event type received from bus")
+		}
+		for _, added := range updatedEvent.Added {
+			// We connected to at least one peer that speaks the ordersync protocol.
+			if added == ID {
+				log.WithField("peerID", updatedEvent.Peer.Pretty).Info("found peer who speaks ordersync protocol")
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
 func shufflePeers(peers []peer.ID) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(peers), func(i, j int) { peers[i], peers[j] = peers[j], peers[i] })
+}
+
+func (s *Service) getOrderSyncPeers() ([]peer.ID, error) {
+	allPeers := s.host.Network().Peers()
+	orderSyncPeers := []peer.ID{}
+	for _, peerID := range allPeers {
+		protocols, err := s.host.Peerstore().GetProtocols(peerID)
+		if err != nil {
+			return nil, err
+		}
+		for _, protocol := range protocols {
+			if protocol == string(ID) {
+				orderSyncPeers = append(orderSyncPeers, peerID)
+			}
+		}
+	}
+	return orderSyncPeers, nil
 }

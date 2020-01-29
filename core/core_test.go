@@ -3,10 +3,18 @@
 package core
 
 import (
+	"context"
+	"math/big"
 	"testing"
+	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,4 +35,77 @@ func TestEthereumChainDetection(t *testing.T) {
 	// should error when attempting to start on different chain
 	_, err = initMetadata(2, meshDB)
 	assert.Error(t, err)
+}
+
+func newTestApp(t *testing.T) *App {
+	dataDir := "/tmp/test_node/" + uuid.New().String()
+	config := Config{
+		Verbosity:                        5,
+		DataDir:                          dataDir,
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		EthereumRPCURL:                   constants.GanacheEndpoint,
+		EthereumChainID:                  constants.TestChainID,
+		UseBootstrapList:                 false,
+		BootstrapList:                    "",
+		BlockPollingInterval:             5 * time.Second,
+		EthereumRPCMaxContentLength:      524288,
+		EnableEthereumRPCRateLimiting:    false,
+		EthereumRPCMaxRequestsPer24HrUTC: 200000,
+		EthereumRPCMaxRequestsPerSecond:  30,
+		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                "{}",
+	}
+	app, err := New(config)
+	require.NoError(t, err)
+	return app
+}
+
+func TestOrderSync(t *testing.T) {
+	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
+	// the network without any orders.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalNode := newTestApp(t)
+	go func() {
+		require.NoError(t, originalNode.Start(ctx))
+	}()
+	newNode := newTestApp(t)
+	go func() {
+		require.NoError(t, newNode.Start(ctx))
+	}()
+
+	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+
+	// Manually add some orders to originalNode.
+	originalOrders := make([]*zeroex.SignedOrder, 10)
+	for i := range originalOrders {
+		originalOrders[i] = scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, constants.GanacheAccount1, constants.GanacheAccount2, big.NewInt(20), big.NewInt(5))
+	}
+	_, err = originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+	require.NoError(t, err)
+
+	err = originalNode.AddPeer(peer.AddrInfo{
+		ID:    newNode.node.ID(),
+		Addrs: newNode.node.Multiaddrs(),
+	})
+	require.NoError(t, err)
+
+	// Manually call syncOrders. It should run automatically, but we don't know
+	// exactly what the timing will be. This lets us avoid using time.Sleep.
+	require.NoError(t, newNode.syncOrders(ctx))
+
+	newNodeOrdersResp, err := newNode.GetOrders(0, len(originalOrders), "")
+	require.NoError(t, err)
+	assert.Len(t, newNodeOrdersResp.OrdersInfos, len(originalOrders), "new node should have %d orders", len(originalOrders))
+	for _, expectedOrder := range originalOrders {
+		orderHash, err := expectedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		expectedOrder.ResetHash()
+		var dbOrder meshdb.Order
+		require.NoError(t, newNode.db.Orders.FindByID(orderHash.Bytes(), &dbOrder))
+		actualOrder := dbOrder.SignedOrder
+		assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
+	}
 }
