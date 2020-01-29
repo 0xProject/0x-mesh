@@ -49,9 +49,15 @@ func TestOrderSync(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	topic0ActualOrders, err := requestingService.GetOrders(ctx, "topic-0")
-	require.NoError(t, err)
-	assert.Equal(t, string(orderData["topic-0"]), string(topic0ActualOrders), "incorrect order data for topic 0")
 
-	// TODO(albrow): Same test for topic-1
+	for topic, expectedData := range orderData {
+		actualData, err := requestingService.GetOrders(ctx, topic)
+		require.NoError(t, err)
+		assert.Equal(t, string(expectedData), string(actualData), "incorrect order data for topic: %q", topic)
+	}
+
+	actualData, err := requestingService.GetOrders(ctx, "unkown-topic")
+	assert.Error(t, err, "expected error when getting orders for an unknown topic")
+	assert.Equal(t, ErrNoOrders, err, "wrong error type")
+	assert.Nil(t, actualData, "actual data should be nil for unknown topic")
 }
