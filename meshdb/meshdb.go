@@ -9,6 +9,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -75,7 +76,7 @@ type OrdersCollection struct {
 	MakerAddressMakerFeeAssetAddressTokenIDIndex *db.Index
 	LastUpdatedIndex                             *db.Index
 	IsRemovedIndex                               *db.Index
-	ExpirationTimeIndex                  *db.Index
+	ExpirationTimeIndex                          *db.Index
 }
 
 // MetadataCollection represents a DB collection used to store instance metadata
@@ -136,7 +137,13 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 	// here is compute time for storage space.
 	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
-		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerAssetData)
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Panic("Failed to retrieve contractAddresses for chainID")
+		}
+		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerAssetData, contractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -165,7 +172,14 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 			}
 		}
 
-		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerFeeAssetData)
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Panic("Failed to retrieve contractAddresses for chainID")
+		}
+
+		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerFeeAssetData, contractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -211,7 +225,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 		MakerAddressAndSaltIndex:                     makerAddressAndSaltIndex,
 		LastUpdatedIndex:                             lastUpdatedIndex,
 		IsRemovedIndex:                               isRemovedIndex,
-		ExpirationTimeIndex:                  expirationTimeIndex,
+		ExpirationTimeIndex:                          expirationTimeIndex,
 	}, nil
 }
 
@@ -459,7 +473,7 @@ type singleAssetData struct {
 	TokenID *big.Int
 }
 
-func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleAssetData, error) {
+func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]singleAssetData, error) {
 	singleAssetDatas := []singleAssetData{}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
@@ -509,12 +523,29 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte) ([]singleA
 			return nil, err
 		}
 		for _, assetData := range decodedAssetData.NestedAssetData {
-			as, err := parseContractAddressesAndTokenIdsFromAssetData(assetData)
+			as, err := parseContractAddressesAndTokenIdsFromAssetData(assetData, contractAddresses)
 			if err != nil {
 				return nil, err
 			}
 			singleAssetDatas = append(singleAssetDatas, as...)
 		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		tokenAddress := decodedAssetData.TokenAddress
+		// HACK(fabio): Despite Chai ERC20Bridge orders encoding the Dai address as
+		// the tokenAddress, we actually want to react to the Chai token's contract
+		// events, so we actually return it instead.
+		if decodedAssetData.BridgeAddress == contractAddresses.ChaiBridge {
+			tokenAddress = contractAddresses.ChaiToken
+		}
+		a := singleAssetData{
+			Address: tokenAddress,
+		}
+		singleAssetDatas = append(singleAssetDatas, a)
 	default:
 		return nil, fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
