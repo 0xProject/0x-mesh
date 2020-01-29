@@ -24,7 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAddOrdersSuccess(t *testing.T) {
+func TestWSAddOrdersSuccess(t *testing.T) {
+	runAddOrdersSuccessTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+}
+
+func TestHTTPAddOrdersSuccess(t *testing.T) {
+	runAddOrdersSuccessTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+}
+
+func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -48,7 +56,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	// that connects to the rpc server.
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	// Create a new valid order.
@@ -82,11 +90,19 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
+func TestWSGetOrders(t *testing.T) {
+	runGetOrdersTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+}
+
+func TestHTTPGetOrders(t *testing.T) {
+	runGetOrdersTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+}
+
 // TODO(jalextowle): Since the uuid creation process is inherently random, we
 //                   can't meaningfully sanity check the returnedSnapshotID in
 //                   this test. Unit testing should be implemented to verify that
 //                   this logic is correct, if necessary.
-func TestGetOrders(t *testing.T) {
+func runGetOrdersTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -109,7 +125,7 @@ func TestGetOrders(t *testing.T) {
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
 
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	// Create 10 new valid orders.
@@ -194,7 +210,15 @@ func TestGetOrders(t *testing.T) {
 	wg.Wait()
 }
 
-func TestGetStats(t *testing.T) {
+func TestWSGetStats(t *testing.T) {
+	runGetStatsTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+}
+
+func TestHTTPGetStats(t *testing.T) {
+	runGetStatsTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+}
+
+func runGetStatsTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -223,7 +247,7 @@ func TestGetStats(t *testing.T) {
 	require.NoError(t, err, "RPC server didn't start")
 	err = json.Unmarshal([]byte(log), &jsonLog)
 	require.NoError(t, err)
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
 	getStatsResponse, err := client.GetStats()
@@ -275,7 +299,7 @@ func TestOrdersSubscription(t *testing.T) {
 	// Wait for the rpc server to start and then start the rpc client.
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 	require.NoError(t, err)
 
 	// Subscribe to order events through the rpc client and ensure that the subscription
@@ -336,7 +360,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	// Wait for the rpc server to start and then start the rpc client
 	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
 	require.NoError(t, err, "RPC server didn't start")
-	client, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 	require.NoError(t, err)
 
 	// Send the "SubscribeToHeartbeat" request through the rpc client and assert
