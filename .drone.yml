@@ -83,3 +83,30 @@ trigger:
       - push
 node_selector:
   drone-builds: true
+---
+kind: pipeline
+type: docker
+name: mesh-browser-npm-publish
+
+steps:
+- name: npm
+  image: circleci/golang:1.13.4-browsers
+  commands:
+    - curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+    - export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    - nvm install 11
+    - npm i -g yarn@1.17
+    - cd browser
+    - yarn install
+    - yarn build
+    - npm publish
+
+trigger:
+  branch:
+  - master
+  event:
+    include:
+      - push
+
+node_selector:
+  drone-builds: true
