@@ -11,7 +11,7 @@ replace (
 )
 
 require (
-	github.com/0xProject/sql-datastore v0.0.0-20200128001316-0d09a9c4c5f6
+	github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115
 	github.com/albrow/stringset v2.1.0+incompatible
 	github.com/allegro/bigcache v0.0.0-20190618191010-69ea0af04088 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20190712234253-ed1100a1c015 // indirect
