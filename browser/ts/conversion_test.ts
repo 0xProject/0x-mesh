@@ -36,13 +36,15 @@ import {
     WrapperERC721TransferEvent,
     WrapperExchangeCancelUpToEvent,
     WrapperExchangeFillEvent,
+    WrapperSignedOrder,
     WrapperWethDepositEvent,
     WrapperWethWithdrawalEvent,
 } from '../ts/types';
 import '../ts/wasm_exec';
 
 interface ConversionTestCase {
-    contractEventsAsync: () => WrapperContractEvent[];
+    contractEventsAsync: () => Promise<WrapperContractEvent[]>;
+    signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
 }
 
 // The Go code sets certain global values and this is our only way of
@@ -93,9 +95,68 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 
 (async () => {
     await waitForLoadAsync();
+    const signedOrders = await conversionTestCases.signedOrdersAsync();
+    testSignedOrders(signedOrders);
     const contractEvents = await conversionTestCases.contractEventsAsync();
     testContractEvents(contractEvents);
 })();
+
+function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
+    let printer = prettyPrintTestCase('signedOrderTest', 'NullAssetData');
+    printer('chainId', signedOrders[0].chainId === 1337);
+    printer('makerAddress', signedOrders[0].makerAddress === hexUtils.leftPad('0x1', 20));
+    printer('takerAddress', signedOrders[0].takerAddress === hexUtils.leftPad('0x2', 20));
+    printer('senderAddress', signedOrders[0].senderAddress === hexUtils.leftPad('0x3', 20));
+    printer('feeRecipientAddress', signedOrders[0].feeRecipientAddress === hexUtils.leftPad('0x4', 20));
+    printer('exchangeAddress', signedOrders[0].exchangeAddress === hexUtils.leftPad('0x5', 20));
+    printer('makerAssetData', signedOrders[0].makerAssetData === '0x');
+    printer('makerAssetAmount', signedOrders[0].makerAssetAmount === '0');
+    printer('makerFeeAssetData', signedOrders[0].makerFeeAssetData === '0x');
+    printer('makerFee', signedOrders[0].makerFee === '0');
+    printer('takerAssetData', signedOrders[0].takerAssetData === '0x');
+    printer('takerAssetAmount', signedOrders[0].takerAssetAmount === '0');
+    printer('takerFeeAssetData', signedOrders[0].takerFeeAssetData === '0x');
+    printer('takerFee', signedOrders[0].takerFee === '0');
+    printer('expirationTimeSeconds', signedOrders[0].expirationTimeSeconds === '10000000000');
+    printer('salt', signedOrders[0].salt === '1532559225');
+    printer('signature', signedOrders[0].signature === '0x');
+
+    printer = prettyPrintTestCase('signedOrderTest', 'NonNullAssetData');
+    printer('chainId', signedOrders[1].chainId === 1337);
+    printer('makerAddress', signedOrders[1].makerAddress === hexUtils.leftPad('0x1', 20));
+    printer('takerAddress', signedOrders[1].takerAddress === hexUtils.leftPad('0x2', 20));
+    printer('senderAddress', signedOrders[1].senderAddress === hexUtils.leftPad('0x3', 20));
+    printer('feeRecipientAddress', signedOrders[1].feeRecipientAddress === hexUtils.leftPad('0x4', 20));
+    printer('exchangeAddress', signedOrders[1].exchangeAddress === hexUtils.leftPad('0x5', 20));
+    printer(
+        'makerAssetData',
+        signedOrders[1].makerAssetData === '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+    );
+    printer('makerAssetAmount', signedOrders[1].makerAssetAmount === '123456789');
+    printer(
+        'makerFeeAssetData',
+        signedOrders[1].makerFeeAssetData ===
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+    );
+    printer('makerFee', signedOrders[1].makerFee === '89');
+    printer(
+        'takerAssetData',
+        signedOrders[1].takerAssetData === '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    );
+    printer('takerAssetAmount', signedOrders[1].takerAssetAmount === '987654321');
+    printer(
+        'takerFeeAssetData',
+        signedOrders[1].takerFeeAssetData ===
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+    );
+    printer('takerFee', signedOrders[1].takerFee === '12');
+    printer('expirationTimeSeconds', signedOrders[1].expirationTimeSeconds === '10000000000');
+    printer('salt', signedOrders[1].salt === '1532559225');
+    printer(
+        'signature',
+        signedOrders[1].signature === '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
+    );
+}
 
 function testContractEvents(contractEvents: WrapperContractEvent[]): void {
     // ERC20ApprovalEvent
