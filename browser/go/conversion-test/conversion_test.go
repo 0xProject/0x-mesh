@@ -25,6 +25,8 @@ func TestBrowserConversions(t *testing.T) {
 	defer cancel()
 
 	buildForTests(t, ctx)
+	registerSignedOrderTest("NullAssetData")
+	registerSignedOrderTest("NonNullAssetData")
 	registerContractEventTest()
 
 	// Start a simple HTTP server to serve the web page for the browser node.
@@ -43,7 +45,6 @@ func TestBrowserConversions(t *testing.T) {
 	go func() {
 		select {
 		case <-done:
-			fmt.Println("finished testing")
 			// NOTE(jalextowle): It is somewhat useful to know whether or not
 			// there are test results that were logged in the typescript but were
 			// not registered in this test file. For these purposes, we wait for
@@ -57,6 +58,9 @@ func TestBrowserConversions(t *testing.T) {
 	wg.Wait()
 }
 
+// NOTE(jalextowle): The ContractEvent tests and the event decoder tests are combined
+// because it is important that `ContractEvents` are converted correctly, which directly
+// tests event decoding.
 func registerContractEventTest() {
 	// ERC20ApprovalEvent
 	registerContractEventPrelude("ERC20ApprovalEvent")
@@ -177,6 +181,30 @@ func registerContractEventParams(description string, param string) {
 
 func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
+}
+
+func registerSignedOrderTest(description string) {
+	registerSignedOrderField(description, "chainId")
+	registerSignedOrderField(description, "makerAddress")
+	registerSignedOrderField(description, "takerAddress")
+	registerSignedOrderField(description, "senderAddress")
+	registerSignedOrderField(description, "feeRecipientAddress")
+	registerSignedOrderField(description, "exchangeAddress")
+	registerSignedOrderField(description, "makerAssetData")
+	registerSignedOrderField(description, "makerAssetAmount")
+	registerSignedOrderField(description, "makerFeeAssetData")
+	registerSignedOrderField(description, "makerFee")
+	registerSignedOrderField(description, "takerAssetData")
+	registerSignedOrderField(description, "takerAssetAmount")
+	registerSignedOrderField(description, "takerFeeAssetData")
+	registerSignedOrderField(description, "takerFee")
+	registerSignedOrderField(description, "expirationTimeSeconds")
+	registerSignedOrderField(description, "salt")
+	registerSignedOrderField(description, "signature")
+}
+
+func registerSignedOrderField(description string, field string) {
+	registerTest(fmt.Sprintf("(signedOrderTest | %s | %s)", description, field))
 }
 
 func registerTest(test string) {
