@@ -278,8 +278,20 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 				"error": err.Error(),
 			}).Error("block subscription error encountered")
 		case events := <-w.blockEventsChan:
+			// Instead of simply processing the first array of events in the blockEventsChan,
+			// we might as well process _all_ events in the channel.
+			allEvents := events
+		L:
+			for {
+				select {
+				case moreEvents := <-w.blockEventsChan:
+					allEvents = append(allEvents, moreEvents...)
+				default:
+					break L
+				}
+			}
 			w.handleBlockEventsMu.Lock()
-			if err := w.handleBlockEvents(ctx, events); err != nil {
+			if err := w.handleBlockEvents(ctx, allEvents); err != nil {
 				w.handleBlockEventsMu.Unlock()
 				return err
 			}
