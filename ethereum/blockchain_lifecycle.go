@@ -46,6 +46,9 @@ func (b *BlockchainLifecycle) Revert(t *testing.T) {
 }
 
 // Mine force-mines a block with the specified block timestamp
+// WARNING(fabio): Using this method will brick `eth_getLogs` such that it always
+// returns the logs for the latest block, even if a specific blockHash is specified
+// Source: https://github.com/trufflesuite/ganache-cli/issues/708
 func (b *BlockchainLifecycle) Mine(t *testing.T, blockTimestamp time.Time) {
 	var didForceMine string
 	err := b.rpcClient.Call(&didForceMine, "evm_mine", blockTimestamp.Unix())
