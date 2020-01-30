@@ -119,7 +119,7 @@ function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     printer('orderHash', orderEvents[0].orderHash === hexUtils.leftPad('0x1', 32));
     printer('endState', orderEvents[0].endState === 'ADDED');
     printer('fillableTakerAssetAmount', orderEvents[0].fillableTakerAssetAmount === '1');
-    printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents | signedOrder | parameter');
+    printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents | signedOrder');
     printer('chainId', orderEvents[0].signedOrder.chainId === 1337);
     printer('makerAddress', orderEvents[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20));
     printer('takerAddress', orderEvents[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20));
@@ -138,6 +138,55 @@ function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     printer('salt', orderEvents[0].signedOrder.salt === '1532559225');
     printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents | contractEvents');
     printer('length', orderEvents[0].contractEvents.length === 0);
+
+    printer = prettyPrintTestCase('orderEventTest', 'ExchangeFillContractEvent');
+    printer('timestamp', orderEvents[1].timestamp === '2006-01-01 01:01:01.000000001 +0000 UTC');
+    printer('orderHash', orderEvents[1].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('endState', orderEvents[1].endState === 'FILLED');
+    printer('fillableTakerAssetAmount', orderEvents[1].fillableTakerAssetAmount === '0');
+    printer = prettyPrintTestCase('orderEventTest', 'ExchangeFillContractEvent | signedOrder');
+    printer('chainId', orderEvents[1].signedOrder.chainId === 1337);
+    printer('makerAddress', orderEvents[1].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20));
+    printer('takerAddress', orderEvents[1].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20));
+    printer('senderAddress', orderEvents[1].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20));
+    printer('feeRecipientAddress', orderEvents[1].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20));
+    printer('exchangeAddress', orderEvents[1].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20));
+    printer(
+        'makerAssetData',
+        orderEvents[1].signedOrder.makerAssetData ===
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+    );
+    printer('makerAssetAmount', orderEvents[1].signedOrder.makerAssetAmount === '123456789');
+    printer(
+        'makerFeeAssetData',
+        orderEvents[1].signedOrder.makerFeeAssetData ===
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+    );
+    printer('makerFee', orderEvents[1].signedOrder.makerFee === '89');
+    printer(
+        'takerAssetData',
+        orderEvents[1].signedOrder.takerAssetData ===
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    );
+    printer('takerAssetAmount', orderEvents[1].signedOrder.takerAssetAmount === '987654321');
+    printer(
+        'takerFeeAssetData',
+        orderEvents[1].signedOrder.takerFeeAssetData ===
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+    );
+    printer('takerFee', orderEvents[1].signedOrder.takerFee === '12');
+    printer('expirationTimeSeconds', orderEvents[1].signedOrder.expirationTimeSeconds === '10000000000');
+    printer('salt', orderEvents[1].signedOrder.salt === '1532559225');
+    printer = prettyPrintTestCase('orderEventTest', 'ExchangeFillContractEvent | contractEvents');
+    printer('length', orderEvents[1].contractEvents.length === 1);
+    printer = prettyPrintTestCase('orderEventTest', 'ExchangeFillContractEvent | contractEvents');
+    printer('blockHash', orderEvents[1].contractEvents[0].blockHash === hexUtils.leftPad('0x1', 32));
+    printer('txHash', orderEvents[1].contractEvents[0].txHash === hexUtils.leftPad('0x2', 32));
+    printer('txIndex', orderEvents[1].contractEvents[0].txIndex === 123);
+    printer('logIndex', orderEvents[1].contractEvents[0].logIndex === 321);
+    printer('isRemoved', orderEvents[1].contractEvents[0].isRemoved === false);
+    printer('address', orderEvents[1].contractEvents[0].address === hexUtils.leftPad('0x5', 20));
+    printer('kind', orderEvents[1].contractEvents[0].kind === 'ExchangeFillEvent');
 }
 
 function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {

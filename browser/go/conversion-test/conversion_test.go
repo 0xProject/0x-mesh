@@ -25,7 +25,8 @@ func TestBrowserConversions(t *testing.T) {
 	defer cancel()
 
 	buildForTests(t, ctx)
-	registerOrderEventTest("EmptyContractEvents")
+	registerOrderEventTest("EmptyContractEvents", 0)
+	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
 	registerContractEventTest()
@@ -204,17 +205,32 @@ func registerSignedOrderTest(description string) {
 	registerSignedOrderField(description, "signature")
 }
 
-func registerOrderEventTest(description string) {
+func registerOrderEventTest(description string, length int) {
 	registerOrderEventField(description, "timestamp")
 	registerOrderEventField(description, "orderHash")
 	registerOrderEventField(description, "endState")
 	registerOrderEventField(description, "fillableTakerAssetAmount")
 	registerOrderEventSignedOrder(description)
-	registerOrderEventField(description, "contractEvents | length")
+	registerOrderEventContractEventsPrelude(description, length)
+}
+
+func registerOrderEventContractEventsPrelude(description string, length int) {
+	boilerplate := "contractEvents | "
+	registerOrderEventField(description, boilerplate+"length")
+	if length == 0 {
+		return
+	}
+	registerOrderEventField(description, boilerplate+"blockHash")
+	registerOrderEventField(description, boilerplate+"txHash")
+	registerOrderEventField(description, boilerplate+"txIndex")
+	registerOrderEventField(description, boilerplate+"logIndex")
+	registerOrderEventField(description, boilerplate+"isRemoved")
+	registerOrderEventField(description, boilerplate+"address")
+	registerOrderEventField(description, boilerplate+"kind")
 }
 
 func registerOrderEventSignedOrder(description string) {
-	boilerplate := "signedOrder | parameter | "
+	boilerplate := "signedOrder | "
 	registerOrderEventField(description, boilerplate+"chainId")
 	registerOrderEventField(description, boilerplate+"makerAddress")
 	registerOrderEventField(description, boilerplate+"takerAddress")
