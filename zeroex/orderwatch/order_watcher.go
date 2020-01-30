@@ -62,6 +62,10 @@ const (
 	// increase the max expiration time.
 	maxExpirationTimeCheckInterval = 30 * time.Second
 
+	// maxBlockEventsToHandle is the max number of block events we want to process in a single
+	// call to `handleBlockEvents`
+	maxBlockEventsToHandle = 500
+
 	// configuration options for the SlowCounter used for increasing max
 	// expiration time. Effectively, we will increase every 5 minutes as long as
 	// there is enough space in the database for orders. The first increase will
@@ -300,7 +304,7 @@ Loop:
 		case moreEvents := <-blockEventsChan:
 			allEvents = append(allEvents, moreEvents...)
 			if len(allEvents) >= maxBlockEventsToHandle {
-			    break L
+				break Loop
 			}
 		default:
 			break Loop
