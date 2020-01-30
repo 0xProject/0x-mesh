@@ -26,6 +26,25 @@ func main() {
 
 	generateTypescriptClientDocs()
 	generateTypescriptBrowserDocs()
+
+	createReleaseChangelog(env.Version)
+}
+
+func createReleaseChangelog(version string) {
+	regex := fmt.Sprintf(`(?ms)(## v%s\n)(.*?)(## v)`, version)
+	changelog := getFileContentsWithRegex("CHANGELOG.md", regex)
+
+	releaseChangelog := fmt.Sprintf(`- [Docker image](https://hub.docker.com/r/0xorg/mesh/tags)
+- [README](https://github.com/0xProject/0x-mesh/blob/v%s/README.md)
+
+## Summary
+%s
+`, version, changelog)
+
+	err := ioutil.WriteFile("RELEASE-CHANGELOG.md", []byte(releaseChangelog), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func generateTypescriptClientDocs() {
@@ -122,4 +141,16 @@ func updateFileWithRegex(filePath string, regex string, replacement string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getFileContentsWithRegex(filePath string, regex string) string {
+	dat, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var re = regexp.MustCompile(regex)
+	matches := re.FindAllStringSubmatch(string(dat), -1)
+
+	return matches[0][2]
 }
