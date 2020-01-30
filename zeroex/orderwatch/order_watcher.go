@@ -299,6 +299,9 @@ L:
 		select {
 		case moreEvents := <-blockEventsChan:
 			allEvents = append(allEvents, moreEvents...)
+			if len(allEvents) >= maxBlockEventsToHandle {
+			    break L
+			}
 		default:
 			break L
 		}
