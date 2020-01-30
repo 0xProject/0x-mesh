@@ -4,15 +4,18 @@ package core
 
 import (
 	"context"
+	"flag"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
@@ -61,7 +64,38 @@ func newTestApp(t *testing.T) *App {
 	return app
 }
 
+var (
+	rpcClient           *ethrpc.Client
+	ethClient           *ethclient.Client
+	blockchainLifecycle *ethereum.BlockchainLifecycle
+)
+
+// Since these tests must be run sequentially, we don't want them to run as part of
+// the normal testing process. They will only be run if the "--serial" flag is used.
+var serialTestsEnabled bool
+
+func init() {
+	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	testing.Init()
+	flag.Parse()
+
+	var err error
+	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	ethClient = ethclient.NewClient(rpcClient)
+	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestOrderSync(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
 	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
 	// the network without any orders.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,15 +109,12 @@ func TestOrderSync(t *testing.T) {
 		require.NoError(t, newNode.Start(ctx))
 	}()
 
-	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-
 	// Manually add some orders to originalNode.
 	originalOrders := make([]*zeroex.SignedOrder, 10)
 	for i := range originalOrders {
 		originalOrders[i] = scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, constants.GanacheAccount1, constants.GanacheAccount2, big.NewInt(20), big.NewInt(5))
 	}
-	_, err = originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+	_, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
 
 	err = originalNode.AddPeer(peer.AddrInfo{
