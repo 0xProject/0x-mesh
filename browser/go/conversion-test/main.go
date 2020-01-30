@@ -10,6 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -381,6 +382,13 @@ func setGlobals() {
 							},
 						},
 					},
+				}, nil
+			})
+		}),
+		"validationResultsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return types.WrapInPromise(func() (interface{}, error) {
+				return []interface{}{
+					ordervalidator.ValidationResults{},
 				}, nil
 			})
 		}),

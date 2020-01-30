@@ -25,11 +25,14 @@ func TestBrowserConversions(t *testing.T) {
 	defer cancel()
 
 	buildForTests(t, ctx)
+
+	// Register the test cases that should be logged.
+	registerContractEventTest()
 	registerOrderEventTest("EmptyContractEvents", 0)
 	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
-	registerContractEventTest()
+	registerValidationResultsTest("emptyValidationResults", 0, 0)
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -249,12 +252,22 @@ func registerOrderEventSignedOrder(description string) {
 	registerOrderEventField(description, boilerplate+"salt")
 }
 
+// FIXME(jalextowle): Generalize for non-empty validation results
+func registerValidationResultsTest(description string, _acceptedLength int, _rejectedLength int) {
+	registerValidationResultsField(description, "accepted | length")
+	registerValidationResultsField(description, "rejected | length")
+}
+
 func registerOrderEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(orderEventTest | %s | %s)", description, field))
 }
 
 func registerSignedOrderField(description string, field string) {
 	registerTest(fmt.Sprintf("(signedOrderTest | %s | %s)", description, field))
+}
+
+func registerValidationResultsField(description string, field string) {
+	registerTest(fmt.Sprintf("(validationResultsTest | %s | %s)", description, field))
 }
 
 func registerTest(test string) {
