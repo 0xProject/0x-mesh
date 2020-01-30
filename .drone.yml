@@ -101,5 +101,9 @@ steps:
         event: tag
         ref:
           - refs/tags/v*
+trigger:
+  event:
+    include:
+      - tag
 node_selector:
   drone-builds: true
