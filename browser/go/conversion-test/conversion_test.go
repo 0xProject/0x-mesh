@@ -25,6 +25,7 @@ func TestBrowserConversions(t *testing.T) {
 	defer cancel()
 
 	buildForTests(t, ctx)
+	registerOrderEventTest("EmptyContractEvents")
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
 	registerContractEventTest()
@@ -201,6 +202,39 @@ func registerSignedOrderTest(description string) {
 	registerSignedOrderField(description, "expirationTimeSeconds")
 	registerSignedOrderField(description, "salt")
 	registerSignedOrderField(description, "signature")
+}
+
+func registerOrderEventTest(description string) {
+	registerOrderEventField(description, "timestamp")
+	registerOrderEventField(description, "orderHash")
+	registerOrderEventField(description, "endState")
+	registerOrderEventField(description, "fillableTakerAssetAmount")
+	registerOrderEventSignedOrder(description)
+	registerOrderEventField(description, "contractEvents | length")
+}
+
+func registerOrderEventSignedOrder(description string) {
+	boilerplate := "signedOrder | parameter | "
+	registerOrderEventField(description, boilerplate+"chainId")
+	registerOrderEventField(description, boilerplate+"makerAddress")
+	registerOrderEventField(description, boilerplate+"takerAddress")
+	registerOrderEventField(description, boilerplate+"senderAddress")
+	registerOrderEventField(description, boilerplate+"feeRecipientAddress")
+	registerOrderEventField(description, boilerplate+"exchangeAddress")
+	registerOrderEventField(description, boilerplate+"makerAssetData")
+	registerOrderEventField(description, boilerplate+"makerAssetAmount")
+	registerOrderEventField(description, boilerplate+"makerFeeAssetData")
+	registerOrderEventField(description, boilerplate+"makerFee")
+	registerOrderEventField(description, boilerplate+"takerAssetData")
+	registerOrderEventField(description, boilerplate+"takerAssetAmount")
+	registerOrderEventField(description, boilerplate+"takerFeeAssetData")
+	registerOrderEventField(description, boilerplate+"takerFee")
+	registerOrderEventField(description, boilerplate+"expirationTimeSeconds")
+	registerOrderEventField(description, boilerplate+"salt")
+}
+
+func registerOrderEventField(description string, field string) {
+	registerTest(fmt.Sprintf("(orderEventTest | %s | %s)", description, field))
 }
 
 func registerSignedOrderField(description string, field string) {

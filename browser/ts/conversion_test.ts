@@ -36,6 +36,7 @@ import {
     WrapperERC721TransferEvent,
     WrapperExchangeCancelUpToEvent,
     WrapperExchangeFillEvent,
+    WrapperOrderEvent,
     WrapperSignedOrder,
     WrapperWethDepositEvent,
     WrapperWethWithdrawalEvent,
@@ -45,6 +46,7 @@ import '../ts/wasm_exec';
 interface ConversionTestCase {
     contractEventsAsync: () => Promise<WrapperContractEvent[]>;
     signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
+    orderEventsAsync: () => Promise<WrapperOrderEvent[]>;
 }
 
 // The Go code sets certain global values and this is our only way of
@@ -95,11 +97,48 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 
 (async () => {
     await waitForLoadAsync();
+    const orderEvents = await conversionTestCases.orderEventsAsync();
+    testOrderEvents(orderEvents);
     const signedOrders = await conversionTestCases.signedOrdersAsync();
     testSignedOrders(signedOrders);
     const contractEvents = await conversionTestCases.contractEventsAsync();
     testContractEvents(contractEvents);
-})();
+
+    // This special #jsFinished div is used to signal the headless Chrome driver
+    // that the JavaScript code is done running.
+    const finishedDiv = document.createElement('div');
+    finishedDiv.setAttribute('id', 'jsFinished');
+    document.querySelector('body')!.appendChild(finishedDiv); // tslint:disable-line:no-non-null-assertion
+})().catch(err => {
+    throw err;
+});
+
+function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
+    let printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents');
+    printer('timestamp', orderEvents[0].timestamp === '2006-01-01 00:00:00 +0000 UTC');
+    printer('orderHash', orderEvents[0].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('endState', orderEvents[0].endState === 'ADDED');
+    printer('fillableTakerAssetAmount', orderEvents[0].fillableTakerAssetAmount === '1');
+    printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents | signedOrder | parameter');
+    printer('chainId', orderEvents[0].signedOrder.chainId === 1337);
+    printer('makerAddress', orderEvents[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20));
+    printer('takerAddress', orderEvents[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20));
+    printer('senderAddress', orderEvents[0].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20));
+    printer('feeRecipientAddress', orderEvents[0].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20));
+    printer('exchangeAddress', orderEvents[0].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20));
+    printer('makerAssetData', orderEvents[0].signedOrder.makerAssetData === '0x');
+    printer('makerAssetAmount', orderEvents[0].signedOrder.makerAssetAmount === '0');
+    printer('makerFeeAssetData', orderEvents[0].signedOrder.makerFeeAssetData === '0x');
+    printer('makerFee', orderEvents[0].signedOrder.makerFee === '0');
+    printer('takerAssetData', orderEvents[0].signedOrder.takerAssetData === '0x');
+    printer('takerAssetAmount', orderEvents[0].signedOrder.takerAssetAmount === '0');
+    printer('takerFeeAssetData', orderEvents[0].signedOrder.takerFeeAssetData === '0x');
+    printer('takerFee', orderEvents[0].signedOrder.takerFee === '0');
+    printer('expirationTimeSeconds', orderEvents[0].signedOrder.expirationTimeSeconds === '10000000000');
+    printer('salt', orderEvents[0].signedOrder.salt === '1532559225');
+    printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents | contractEvents');
+    printer('length', orderEvents[0].contractEvents.length === 0);
+}
 
 function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
     let printer = prettyPrintTestCase('signedOrderTest', 'NullAssetData');

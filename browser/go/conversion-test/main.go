@@ -5,6 +5,7 @@ package main
 import (
 	"math/big"
 	"syscall/js"
+	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
@@ -291,6 +292,40 @@ func setGlobals() {
 							Salt:                  big.NewInt(1532559225),
 						},
 						Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
+					},
+				}, nil
+			})
+		}),
+		"orderEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return types.WrapInPromise(func() (interface{}, error) {
+				return []interface{}{
+					zeroex.OrderEvent{
+						Timestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
+						OrderHash: common.HexToHash("0x1"),
+						SignedOrder: &zeroex.SignedOrder{
+							Order: zeroex.Order{
+								ChainID:               big.NewInt(1337),
+								MakerAddress:          common.HexToAddress("0x1"),
+								TakerAddress:          common.HexToAddress("0x2"),
+								SenderAddress:         common.HexToAddress("0x3"),
+								FeeRecipientAddress:   common.HexToAddress("0x4"),
+								ExchangeAddress:       common.HexToAddress("0x5"),
+								MakerAssetData:        common.FromHex("0x"),
+								MakerAssetAmount:      big.NewInt(0),
+								MakerFeeAssetData:     common.FromHex("0x"),
+								MakerFee:              big.NewInt(0),
+								TakerAssetData:        common.FromHex("0x"),
+								TakerAssetAmount:      big.NewInt(0),
+								TakerFeeAssetData:     common.FromHex("0x"),
+								TakerFee:              big.NewInt(0),
+								ExpirationTimeSeconds: big.NewInt(10000000000),
+								Salt:                  big.NewInt(1532559225),
+							},
+							Signature: common.FromHex("0x"),
+						},
+						EndState:                 zeroex.ESOrderAdded,
+						FillableTakerAssetAmount: big.NewInt(1),
+						ContractEvents:           []*zeroex.ContractEvent{},
 					},
 				}, nil
 			})
