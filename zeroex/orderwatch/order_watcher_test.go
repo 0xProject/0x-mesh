@@ -1478,10 +1478,20 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 	}
 	blockEventsChan <- blockEventsTwo
 
-	allEvents := drainBlockEventsChan(blockEventsChan)
-	assert.Len(t, allEvents, 2)
+	max := 2 // enough
+	allEvents := drainBlockEventsChan(blockEventsChan, max)
+	assert.Len(t, allEvents, 2, "Two events should be drained from the channel")
 	require.Equal(t, allEvents[0], blockEventsOne[0])
 	require.Equal(t, allEvents[1], blockEventsTwo[0])
+
+	// Test case where more than max events in channel
+	blockEventsChan <- blockEventsOne
+	blockEventsChan <- blockEventsTwo
+
+	max = 1
+	allEvents = drainBlockEventsChan(blockEventsChan, max)
+	assert.Len(t, allEvents, 1, "Only max number of events should be drained from the channel, even if more than max events are present")
+	require.Equal(t, allEvents[0], blockEventsOne[0])
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {

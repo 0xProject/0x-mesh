@@ -284,7 +284,7 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 		case events := <-w.blockEventsChan:
 			// Instead of simply processing the first array of events in the blockEventsChan,
 			// we might as well process _all_ events in the channel.
-			drainedEvents := drainBlockEventsChan(w.blockEventsChan)
+			drainedEvents := drainBlockEventsChan(w.blockEventsChan, maxBlockEventsToHandle)
 			events = append(events, drainedEvents...)
 			w.handleBlockEventsMu.Lock()
 			if err := w.handleBlockEvents(ctx, events); err != nil {
@@ -296,14 +296,14 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 	}
 }
 
-func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event) []*blockwatch.Event {
+func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event, max int) []*blockwatch.Event {
 	allEvents := []*blockwatch.Event{}
 Loop:
 	for {
 		select {
 		case moreEvents := <-blockEventsChan:
 			allEvents = append(allEvents, moreEvents...)
-			if len(allEvents) >= maxBlockEventsToHandle {
+			if len(allEvents) >= max {
 				break Loop
 			}
 		default:
