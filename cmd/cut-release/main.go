@@ -41,7 +41,7 @@ func createReleaseChangelog(version string) {
 %s
 `, version, changelog)
 
-	err := ioutil.WriteFile("RELEASE-CHANGELOG.md", []byte(releaseChangelog), 0644)
+	err := ioutil.WriteFile("RELEASE_CHANGELOG.md", []byte(releaseChangelog), 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
