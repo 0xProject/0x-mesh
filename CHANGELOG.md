@@ -16,6 +16,10 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
 - Add support for orders involving Chai ERC20Bridge assetData ([#663](https://github.com/0xProject/0x-mesh/pull/663)) 
 
+### Bug fixes 🐞
+
+- Fix bug causing us not to store blocks in the DB unless they have events we care about. This causes Mesh to exit within 1min if on a private testnet without any other transactions, and can cause Mesh to re-process blocks without events upon re-booting ([#693](https://github.com/0xProject/0x-mesh/pull/693)).
+
 
 ## v8.2.0
 
