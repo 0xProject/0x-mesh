@@ -2,6 +2,20 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v7.1.0-beta
+
+### Features ✅
+
+ - Reduce startup time for Mesh node by only waiting for a block to be processed if Mesh isn't already sync'ed up to the latest block. ([#622](https://github.com/0xProject/0x-mesh/pull/622))
+ - Developers can now override the contract addresses for any testnet using the `CUSTOM_CONTRACT_ADDRESSES` env config ([#640](https://github.com/0xProject/0x-mesh/pull/640)).
+  - Add `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
+
+### Bug fixes 🐞
+
+ - Fixed a bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623)).
+- Fixed a bug which could cause Mesh to exit if a re-org condition occurs causing a block to be added and removed within the same block sync operation. ([#614](https://github.com/0xProject/0x-mesh/pull/614)).
+ - Fix bug where we attempted to update the same order multiple times in a single DB txn, causing the later update to noop. ([#623](https://github.com/0xProject/0x-mesh/pull/623))
+
 ## v7.0.0-beta
 
 ### Breaking changes 🛠 

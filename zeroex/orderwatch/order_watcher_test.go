@@ -983,6 +983,161 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	}
 }
 
+func TestOrderWatcherUpdateBlockHeadersStoredInDBHeaderExists(t *testing.T) {
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+
+	headerOne := &miniheader.MiniHeader{
+		Number:    big.NewInt(5),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now().UTC(),
+	}
+
+	testCases := []struct {
+		events              []*blockwatch.Event
+		startMiniHeaders    []*miniheader.MiniHeader
+		expectedMiniHeaders []*miniheader.MiniHeader
+	}{
+		// Scenario 1: Header 1 exists in DB. Get's removed and then re-added.
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 2: Header doesn't exist, get's added and then removed
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders:    []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+		// Scenario 3: Header added, removed then re-added
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 4: Header removed, added then removed again
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+		// Scenario 5: Call added twice for the same block
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Added,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{},
+			expectedMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+		},
+		// Scenario 6: Call removed twice for the same block
+		{
+			events: []*blockwatch.Event{
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+				&blockwatch.Event{
+					Type:        blockwatch.Removed,
+					BlockHeader: headerOne,
+				},
+			},
+			startMiniHeaders: []*miniheader.MiniHeader{
+				headerOne,
+			},
+			expectedMiniHeaders: []*miniheader.MiniHeader{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		for _, startMiniHeader := range testCase.startMiniHeaders {
+			err = meshDB.MiniHeaders.Insert(startMiniHeader)
+			require.NoError(t, err)
+		}
+
+		miniHeadersColTxn := meshDB.MiniHeaders.OpenTransaction()
+		defer func() {
+			_ = miniHeadersColTxn.Discard()
+		}()
+
+		err = updateBlockHeadersStoredInDB(miniHeadersColTxn, testCase.events)
+		require.NoError(t, err)
+
+		err = miniHeadersColTxn.Commit()
+		require.NoError(t, err)
+
+		miniHeaders := []*miniheader.MiniHeader{}
+		err = meshDB.MiniHeaders.FindAll(&miniHeaders)
+		require.NoError(t, err)
+		assert.Equal(t, testCase.expectedMiniHeaders, miniHeaders)
+
+		err := meshDB.ClearAllMiniHeaders()
+		require.NoError(t, err)
+	}
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 

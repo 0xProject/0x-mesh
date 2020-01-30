@@ -342,7 +342,14 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 	}
 }
 
-func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp time.Time, previousLatestBlockTimestamp time.Time) ([]*zeroex.OrderEvent, error) {
+// handleOrderExpirations takes care of generating expired and unexpired order events for orders that do not require re-validation.
+// Since expiry is now done according to block timestamp, we can figure out which orders have expired/unexpired statically. We do not
+// process blocks that require re-validation, since the validation process will already emit the necessary events and we cannot make
+// multiple updates to an order within a single DB transaction.
+// latestBlockTimestamp is the latest block timestamp Mesh knows about
+// previousLatestBlockTimestamp is the previous latest block timestamp Mesh knew about
+// ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
+func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlockTimestamp, previousLatestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*meshdb.Order) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 	var defaultTime time.Time
 
@@ -350,6 +357,11 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
 		for _, expiredOrder := range expiredOrders {
 			orderHash := common.HexToHash(expiredOrder.ID)
+			// If we will re-validate this order, the revalidation process will discover that
+			// it's expired, and an appropriate event will already be emitted
+			if _, ok := ordersToRevalidate[orderHash]; ok {
+				continue
+			}
 			order := &meshdb.Order{}
 			err := w.meshDB.Orders.FindByID(orderHash.Bytes(), order)
 			if err != nil {
@@ -381,6 +393,11 @@ func (w *Watcher) handleOrderExpirations(ordersColTxn *db.Transaction, latestBlo
 		for _, order := range removedOrders {
 			// Orders removed due to expiration have non-zero FillableTakerAssetAmounts
 			if order.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+				continue
+			}
+			// If we will re-validate this order, the revalidation process will discover that
+			// it's unexpired, and an appropriate event will already be emitted
+			if _, ok := ordersToRevalidate[order.Hash]; ok {
 				continue
 			}
 			expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
@@ -435,29 +452,13 @@ func (w *Watcher) handleBlockEvents(
 	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 
-	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp)
+	err = updateBlockHeadersStoredInDB(miniHeadersColTxn, events)
 	if err != nil {
 		return err
 	}
-
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 	for _, event := range events {
-		blockHeader := event.BlockHeader
-		switch event.Type {
-		case blockwatch.Added:
-			err = miniHeadersColTxn.Insert(blockHeader)
-			if err != nil {
-				return err
-			}
-		case blockwatch.Removed:
-			err = miniHeadersColTxn.Delete(blockHeader.ID())
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
-		}
 		for _, log := range event.BlockHeader.Logs {
 			eventType, err := w.eventDecoder.FindEventType(log)
 			if err != nil {
@@ -753,6 +754,11 @@ func (w *Watcher) handleBlockEvents(
 		}
 	}
 
+	expirationOrderEvents, err := w.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, orderHashToDBOrder)
+	if err != nil {
+		return err
+	}
+
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, done := context.WithTimeout(ctx, 1*time.Minute)
 	defer done()
@@ -933,6 +939,13 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 			// return an error.
 			return orderEvents, nil
 		}
+		if _, ok := err.(db.ConflictingOperationsError); ok {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+				"order": order,
+			}).Error("Failed to insert order into DB")
+			return orderEvents, nil
+		}
 		return orderEvents, err
 	}
 	if err := txn.Commit(); err != nil {
@@ -1009,6 +1022,62 @@ func (w *Watcher) trimOrdersAndGenerateEvents() ([]*zeroex.OrderEvent, error) {
 	}
 
 	return orderEvents, nil
+}
+
+// updateBlockHeadersStoredInDB updates the block headers stored in the DB. Since our DB txns don't support
+// multiple operations involving the same entry, we make sure we only perform either an insertion or a deletion
+// for each block in this method.
+func updateBlockHeadersStoredInDB(miniHeadersColTxn *db.Transaction, events []*blockwatch.Event) error {
+	blocksToAdd := map[common.Hash]*miniheader.MiniHeader{}
+	blocksToRemove := map[common.Hash]*miniheader.MiniHeader{}
+	for _, event := range events {
+		blockHeader := event.BlockHeader
+		switch event.Type {
+		case blockwatch.Added:
+			if _, ok := blocksToAdd[blockHeader.Hash]; ok {
+				continue
+			}
+			if _, ok := blocksToRemove[blockHeader.Hash]; ok {
+				delete(blocksToRemove, blockHeader.Hash)
+			}
+			blocksToAdd[blockHeader.Hash] = blockHeader
+		case blockwatch.Removed:
+			if _, ok := blocksToAdd[blockHeader.Hash]; ok {
+				delete(blocksToAdd, blockHeader.Hash)
+			}
+			if _, ok := blocksToRemove[blockHeader.Hash]; ok {
+				continue
+			}
+			blocksToRemove[blockHeader.Hash] = blockHeader
+		default:
+			return fmt.Errorf("Unrecognized block event type encountered: %d", event.Type)
+		}
+	}
+
+	for _, blockHeader := range blocksToAdd {
+		if err := miniHeadersColTxn.Insert(blockHeader); err != nil {
+			if _, ok := err.(db.AlreadyExistsError); !ok {
+				logger.WithFields(logger.Fields{
+					"error":  err.Error(),
+					"hash":   blockHeader.Hash,
+					"number": blockHeader.Number,
+				}).Error("Failed to insert miniHeaders")
+			}
+		}
+	}
+	for _, blockHeader := range blocksToRemove {
+		if err := miniHeadersColTxn.Delete(blockHeader.ID()); err != nil {
+			if _, ok := err.(db.NotFoundError); !ok {
+				logger.WithFields(logger.Fields{
+					"error":  err.Error(),
+					"hash":   blockHeader.Hash,
+					"number": blockHeader.Number,
+				}).Error("Failed to delete miniHeaders")
+			}
+		}
+	}
+
+	return nil
 }
 
 // MaxExpirationTime returns the current maximum expiration time for incoming
@@ -1125,35 +1194,52 @@ func (w *Watcher) generateOrderEventsIfChanged(
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
 			orderEvents = append(orderEvents, orderEvent)
-		} else if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-			// No important state-change happened
-		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
-			// Order was filled, emit event and update order in DB
-			order.FillableTakerAssetAmount = newFillableAmount
-			w.updateOrderDBEntry(ordersColTxn, order)
-			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                validationBlockTimestamp,
-				OrderHash:                acceptedOrderInfo.OrderHash,
-				SignedOrder:              order.SignedOrder,
-				EndState:                 zeroex.ESOrderFilled,
-				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				ContractEvents:           orderHashToEvents[order.Hash],
+		} else {
+			// If order was previously expired, check if it has become unexpired
+			if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 {
+				expiration := time.Unix(order.SignedOrder.ExpirationTimeSeconds.Int64(), 0)
+				if validationBlockTimestamp.Before(expiration) {
+					w.rewatchOrder(ordersColTxn, order, order.FillableTakerAssetAmount)
+					orderEvent := &zeroex.OrderEvent{
+						Timestamp:                validationBlockTimestamp,
+						OrderHash:                order.Hash,
+						SignedOrder:              order.SignedOrder,
+						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+						EndState:                 zeroex.ESOrderUnexpired,
+					}
+					orderEvents = append(orderEvents, orderEvent)
+				}
 			}
-			orderEvents = append(orderEvents, orderEvent)
-		} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
-			// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
-			// Update order in DB and emit event
-			order.FillableTakerAssetAmount = newFillableAmount
-			w.updateOrderDBEntry(ordersColTxn, order)
-			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                validationBlockTimestamp,
-				OrderHash:                acceptedOrderInfo.OrderHash,
-				SignedOrder:              order.SignedOrder,
-				EndState:                 zeroex.ESOrderFillabilityIncreased,
-				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-				ContractEvents:           orderHashToEvents[order.Hash],
+			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
+				// No important state-change happened
+			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+				// Order was filled, emit event and update order in DB
+				order.FillableTakerAssetAmount = newFillableAmount
+				w.updateOrderDBEntry(ordersColTxn, order)
+				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlockTimestamp,
+					OrderHash:                acceptedOrderInfo.OrderHash,
+					SignedOrder:              order.SignedOrder,
+					EndState:                 zeroex.ESOrderFilled,
+					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					ContractEvents:           orderHashToEvents[order.Hash],
+				}
+				orderEvents = append(orderEvents, orderEvent)
+			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
+				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
+				// Update order in DB and emit event
+				order.FillableTakerAssetAmount = newFillableAmount
+				w.updateOrderDBEntry(ordersColTxn, order)
+				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlockTimestamp,
+					OrderHash:                acceptedOrderInfo.OrderHash,
+					SignedOrder:              order.SignedOrder,
+					EndState:                 zeroex.ESOrderFillabilityIncreased,
+					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					ContractEvents:           orderHashToEvents[order.Hash],
+				}
+				orderEvents = append(orderEvents, orderEvent)
 			}
-			orderEvents = append(orderEvents, orderEvent)
 		}
 	}
 	for _, rejectedOrderInfo := range validationResults.Rejected {
@@ -1451,16 +1537,17 @@ type orderDeleter interface {
 func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Order) error {
 	err := deleter.Delete(order.Hash.Bytes())
 	if err != nil {
-		logger.WithFields(logger.Fields{
-			"error": err.Error(),
-			"order": order,
-		}).Warn("Attempted to delete order that no longer exists")
-		// TODO(fabio): With the current way the OrderWatcher is written, it is possible for multiple
-		// events to trigger logic that updates the orders in the DB simultaneously. This is mostly
-		// benign but is a waste of computation, and causes processes to try and delete orders the
-		// have already been deleted. In order to fix this, we need to re-write the event handling logic
-		// to queue the processing of events so that they happen sequentially rather then in parallel.
-		return nil // Already deleted. Noop.
+		if _, ok := err.(db.ConflictingOperationsError); ok {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+				"order": order,
+			}).Error("Failed to permanently delete order")
+			return nil
+		}
+		if _, ok := err.(db.NotFoundError); ok {
+			return nil // Already deleted. Noop.
+		}
+		return err
 	}
 
 	// After permanently deleting an order, we also remove it's assetData from the Decoder

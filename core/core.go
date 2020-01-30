@@ -57,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "7.0.1-beta"
+	version          = "7.1.0-beta"
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -126,14 +126,15 @@ type Config struct {
 	// is typically only needed for testing on custom chains/networks. The given
 	// addresses are added to the default list of addresses for known chains/networks and
 	// overriding any contract addresses for known chains/networks is not allowed. The
-	// addresses for exchange, devUtils, erc20Proxy, and erc721Proxy are required
+	// addresses for exchange, devUtils, erc20Proxy, erc721Proxy and erc1155Proxy are required
 	// for each chain/network. For example:
 	//
 	//    {
 	//        "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
 	//        "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
 	//        "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
-	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
+	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401",
+	//        "erc1155Proxy": "0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
@@ -464,11 +465,14 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
-	// Ensure orderWatcher has processed at least one recent block before
-	// starting the P2P node and completing app start, so that Mesh does
-	// not validate any orders at outdated block heights
-	if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
-		return err
+	// If Mesh is not caught up with the latest block found via Ethereum RPC, ensure orderWatcher
+	// has processed at least one recent block before starting the P2P node and completing app start,
+	// so that Mesh does not validate any orders at outdated block heights
+	isCaughtUp := app.IsCaughtUpToLatestBlock(innerCtx)
+	if !isCaughtUp {
+		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+			return err
+		}
 	}
 
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
@@ -904,6 +908,29 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 	// app.orderWatcher is guaranteed to be initialized. No need to wait.
 	subscription := app.orderWatcher.Subscribe(sink)
 	return subscription
+}
+
+// IsCaughtUpToLatestBlock returns whether or not the latest block stored by Mesh corresponds
+// to the latest block retrieved from it's Ethereum RPC endpoint
+func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
+	latestBlockStored, err := app.db.FindLatestMiniHeader()
+	if err != nil {
+		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); ok {
+			return false
+		}
+		log.WithFields(map[string]interface{}{
+			"err": err.Error(),
+		}).Warn("failed to fetch the latest miniHeader from DB")
+		return false
+	}
+	latestBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.WithFields(map[string]interface{}{
+			"err": err.Error(),
+		}).Warn("failed to fetch the latest block header via Ethereum RPC")
+		return false
+	}
+	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
 func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {

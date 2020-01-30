@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -9,10 +10,19 @@ import (
 )
 
 var (
-	ErrDiscarded             = errors.New("transaction has already been discarded")
-	ErrCommitted             = errors.New("transaction has already been committed")
-	ErrConflictingOperations = errors.New("cannot perform more than one operation (insert/delete/update) on the same model within a transaction")
+	ErrDiscarded = errors.New("transaction has already been discarded")
+	ErrCommitted = errors.New("transaction has already been committed")
 )
+
+// ConflictingOperationsError is returned when two conflicting operations are attempted within the same
+// transaction
+type ConflictingOperationsError struct {
+	operation string
+}
+
+func (e ConflictingOperationsError) Error() string {
+	return fmt.Sprintf("error on %s: cannot perform more than one operation on the same model within a transaction", e.operation)
+}
 
 // Transaction is an atomic database transaction for a single collection which
 // can be used to guarantee consistency.
@@ -139,7 +149,7 @@ func (txn *Transaction) Insert(model Model) error {
 		return err
 	}
 	if txn.affectedIDs.Contains(string(model.ID())) {
-		return ErrConflictingOperations
+		return ConflictingOperationsError{operation: "insert"}
 	}
 	if err := insertWithTransaction(txn.colInfo, txn.readWriter, model); err != nil {
 		return err
@@ -159,7 +169,7 @@ func (txn *Transaction) Update(model Model) error {
 		return err
 	}
 	if txn.affectedIDs.Contains(string(model.ID())) {
-		return ErrConflictingOperations
+		return ConflictingOperationsError{operation: "update"}
 	}
 	if err := updateWithTransaction(txn.colInfo, txn.readWriter, model); err != nil {
 		return err
@@ -178,7 +188,7 @@ func (txn *Transaction) Delete(id []byte) error {
 		return err
 	}
 	if txn.affectedIDs.Contains(string(id)) {
-		return ErrConflictingOperations
+		return ConflictingOperationsError{operation: "delete"}
 	}
 	if err := deleteWithTransaction(txn.colInfo, txn.readWriter, id); err != nil {
 		return err

@@ -287,34 +287,48 @@ export class WSClient {
     /**
      * Get all 0x signed orders currently stored in the Mesh node
      * @param perPage number of signedOrders to fetch per paginated request
-     * @returns all orders, their hash and their fillableTakerAssetAmount
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
      */
     public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
         let snapshotID = ''; // New snapshot
 
         let page = 0;
-        const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
-            page,
-            perPage,
-            snapshotID,
-        ]);
-        let getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
-        snapshotID = rawGetOrdersResponse.snapshotID;
-        let rawOrdersInfos = rawGetOrdersResponse.ordersInfos;
+        let getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+        snapshotID = getOrdersResponse.snapshotID;
+        let ordersInfos = getOrdersResponse.ordersInfos;
 
-        let allRawOrderInfos: RawOrderInfo[] = [];
+        let allOrderInfos: OrderInfo[] = [];
+
         do {
-            allRawOrderInfos = [...allRawOrderInfos, ...rawOrdersInfos];
+            allOrderInfos = [...allOrderInfos, ...ordersInfos];
             page++;
-            rawOrdersInfos = (await this._wsProvider.send('mesh_getOrders', [page, perPage, snapshotID])).ordersInfos;
-        } while (rawOrdersInfos.length > 0);
+            getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+            ordersInfos = getOrdersResponse.ordersInfos;
+        } while (ordersInfos.length > 0);
 
-        const orderInfos = WSClient._convertRawOrderInfos(allRawOrderInfos);
         getOrdersResponse = {
             snapshotID,
             snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
-            ordersInfos: orderInfos,
+            ordersInfos: allOrderInfos,
         };
+        return getOrdersResponse;
+    }
+    /**
+     * Get page of 0x signed orders stored on the Mesh node at the specified snapshot
+     * @param page Page index at which to retrieve orders
+     * @param perPage number of signedOrders to fetch per paginated request
+     * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
+     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     */
+    public async getOrdersForPageAsync(page: number, perPage: number = 200, snapshotID?: string): Promise<GetOrdersResponse> {
+        const finalSnapshotID = snapshotID === undefined ? '' : snapshotID;
+
+        const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
+            page,
+            perPage,
+            finalSnapshotID,
+        ]);
+        const getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
         return getOrdersResponse;
     }
     /**
