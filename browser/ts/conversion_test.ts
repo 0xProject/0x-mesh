@@ -36,6 +36,7 @@ import {
     WrapperERC721TransferEvent,
     WrapperExchangeCancelUpToEvent,
     WrapperExchangeFillEvent,
+    WrapperOrderEvent,
     WrapperSignedOrder,
     WrapperWethDepositEvent,
     WrapperWethWithdrawalEvent,
@@ -43,8 +44,9 @@ import {
 import '../ts/wasm_exec';
 
 interface ConversionTestCase {
-    contractEventsAsync: () => Promise<WrapperContractEvent[]>;
-    signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
+    //    contractEventsAsync: () => Promise<WrapperContractEvent[]>;
+    //    signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
+    orderEventsAsync: () => Promise<WrapperOrderEvent[]>;
 }
 
 // The Go code sets certain global values and this is our only way of
@@ -95,10 +97,15 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
 
 (async () => {
     await waitForLoadAsync();
-    const signedOrders = await conversionTestCases.signedOrdersAsync();
-    testSignedOrders(signedOrders);
-    const contractEvents = await conversionTestCases.contractEventsAsync();
-    testContractEvents(contractEvents);
+    console.log(1);
+    const orderEvents = await conversionTestCases.orderEventsAsync();
+    console.log(2);
+    console.log(JSON.stringify(orderEvents));
+    console.log(3);
+    //    const signedOrders = await conversionTestCases.signedOrdersAsync();
+    //    testSignedOrders(signedOrders);
+    //    const contractEvents = await conversionTestCases.contractEventsAsync();
+    //    testContractEvents(contractEvents);
 })();
 
 function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {

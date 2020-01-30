@@ -3,11 +3,13 @@
 package main
 
 import (
+	"fmt"
 	"math/big"
 	"syscall/js"
+	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/constants"
+	//	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,272 +27,323 @@ func main() {
 
 func setGlobals() {
 	conversionTestCases := map[string]interface{}{
-		"contractEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		//		"contractEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		//			return types.WrapInPromise(func() (interface{}, error) {
+		//				return []interface{}{
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC20ApprovalEvent",
+		//						Parameters: decoder.ERC20ApprovalEvent{
+		//							Owner:   common.HexToAddress("0x4"),
+		//							Spender: common.HexToAddress("0x5"),
+		//							Value:   big.NewInt(1000),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC20TransferEvent",
+		//						Parameters: decoder.ERC20TransferEvent{
+		//							From:  common.HexToAddress("0x4"),
+		//							To:    common.HexToAddress("0x5"),
+		//							Value: big.NewInt(1000),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC721ApprovalEvent",
+		//						Parameters: decoder.ERC721ApprovalEvent{
+		//							Owner:    common.HexToAddress("0x4"),
+		//							Approved: common.HexToAddress("0x5"),
+		//							TokenId:  big.NewInt(1),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC721ApprovalForAllEvent",
+		//						Parameters: decoder.ERC721ApprovalForAllEvent{
+		//							Owner:    common.HexToAddress("0x4"),
+		//							Operator: common.HexToAddress("0x5"),
+		//							Approved: true,
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC721TransferEvent",
+		//						Parameters: decoder.ERC721TransferEvent{
+		//							From:    common.HexToAddress("0x4"),
+		//							To:      common.HexToAddress("0x5"),
+		//							TokenId: big.NewInt(1),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC1155ApprovalForAllEvent",
+		//						Parameters: decoder.ERC1155ApprovalForAllEvent{
+		//							Owner:    common.HexToAddress("0x4"),
+		//							Operator: common.HexToAddress("0x5"),
+		//							Approved: false,
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC1155TransferSingleEvent",
+		//						Parameters: decoder.ERC1155TransferSingleEvent{
+		//							Operator: common.HexToAddress("0x4"),
+		//							From:     common.HexToAddress("0x5"),
+		//							To:       common.HexToAddress("0x6"),
+		//							Id:       big.NewInt(1),
+		//							Value:    big.NewInt(100),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ERC1155TransferBatchEvent",
+		//						Parameters: decoder.ERC1155TransferBatchEvent{
+		//							Operator: common.HexToAddress("0x4"),
+		//							From:     common.HexToAddress("0x5"),
+		//							To:       common.HexToAddress("0x6"),
+		//							Ids:      []*big.Int{big.NewInt(1)},
+		//							Values:   []*big.Int{big.NewInt(100)},
+		//						},
+		//					},
+		//					// FIXME(jalextowle): Should I include another event with non-null asset data?
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ExchangeFillEvent",
+		//						Parameters: decoder.ExchangeFillEvent{
+		//							MakerAddress:           common.HexToAddress("0x4"),
+		//							TakerAddress:           constants.NullAddress,
+		//							SenderAddress:          common.HexToAddress("0x5"),
+		//							FeeRecipientAddress:    common.HexToAddress("0x6"),
+		//							MakerAssetFilledAmount: big.NewInt(456),
+		//							TakerAssetFilledAmount: big.NewInt(654),
+		//							MakerFeePaid:           big.NewInt(12),
+		//							TakerFeePaid:           big.NewInt(21),
+		//							ProtocolFeePaid:        big.NewInt(150000),
+		//							OrderHash:              common.HexToHash("0x7"),
+		//							MakerAssetData:         constants.NullBytes,
+		//							TakerAssetData:         constants.NullBytes,
+		//							MakerFeeAssetData:      constants.NullBytes,
+		//							TakerFeeAssetData:      constants.NullBytes,
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ExchangeCancelEvent",
+		//						Parameters: decoder.ExchangeCancelEvent{
+		//							MakerAddress:        common.HexToAddress("0x4"),
+		//							SenderAddress:       common.HexToAddress("0x5"),
+		//							FeeRecipientAddress: common.HexToAddress("0x6"),
+		//							OrderHash:           common.HexToHash("0x7"),
+		//							MakerAssetData:      constants.NullBytes,
+		//							TakerAssetData:      constants.NullBytes,
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "ExchangeCancelUpToEvent",
+		//						Parameters: decoder.ExchangeCancelUpToEvent{
+		//							MakerAddress:       common.HexToAddress("0x4"),
+		//							OrderSenderAddress: common.HexToAddress("0x5"),
+		//							OrderEpoch:         big.NewInt(50),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "WethDepositEvent",
+		//						Parameters: decoder.WethDepositEvent{
+		//							Owner: common.HexToAddress("0x4"),
+		//							Value: big.NewInt(150000),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "WethWithdrawalEvent",
+		//						Parameters: decoder.WethWithdrawalEvent{
+		//							Owner: common.HexToAddress("0x4"),
+		//							Value: big.NewInt(150000),
+		//						},
+		//					},
+		//					zeroex.ContractEvent{
+		//						BlockHash: common.HexToHash("0x1"),
+		//						TxHash:    common.HexToHash("0x2"),
+		//						TxIndex:   123,
+		//						LogIndex:  321,
+		//						IsRemoved: false,
+		//						Address:   common.HexToAddress("0x3"),
+		//						Kind:      "FooBarBazEvent",
+		//						// NOTE(jalextowle): We have to use something non-empty
+		//						// that implements `js.Wrapper` or else we'll experience
+		//						// a runtime panic.
+		//						Parameters: decoder.ERC20ApprovalEvent{
+		//							Owner:   common.HexToAddress("0x4"),
+		//							Spender: common.HexToAddress("0x5"),
+		//							Value:   big.NewInt(1),
+		//						},
+		//					},
+		//				}, nil
+		//			})
+		//		}),
+		//		"signedOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		//			return types.WrapInPromise(func() (interface{}, error) {
+		//				return []interface{}{
+		//					zeroex.SignedOrder{
+		//						Order: zeroex.Order{
+		//							ChainID:               big.NewInt(1337),
+		//							MakerAddress:          common.HexToAddress("0x1"),
+		//							TakerAddress:          common.HexToAddress("0x2"),
+		//							SenderAddress:         common.HexToAddress("0x3"),
+		//							FeeRecipientAddress:   common.HexToAddress("0x4"),
+		//							ExchangeAddress:       common.HexToAddress("0x5"),
+		//							MakerAssetData:        common.FromHex("0x"),
+		//							MakerAssetAmount:      big.NewInt(0),
+		//							MakerFeeAssetData:     common.FromHex("0x"),
+		//							MakerFee:              big.NewInt(0),
+		//							TakerAssetData:        common.FromHex("0x"),
+		//							TakerAssetAmount:      big.NewInt(0),
+		//							TakerFeeAssetData:     common.FromHex("0x"),
+		//							TakerFee:              big.NewInt(0),
+		//							ExpirationTimeSeconds: big.NewInt(10000000000),
+		//							Salt:                  big.NewInt(1532559225),
+		//						},
+		//						Signature: common.FromHex("0x"),
+		//					},
+		//					zeroex.SignedOrder{
+		//						Order: zeroex.Order{
+		//							ChainID:               big.NewInt(1337),
+		//							MakerAddress:          common.HexToAddress("0x1"),
+		//							TakerAddress:          common.HexToAddress("0x2"),
+		//							SenderAddress:         common.HexToAddress("0x3"),
+		//							FeeRecipientAddress:   common.HexToAddress("0x4"),
+		//							ExchangeAddress:       common.HexToAddress("0x5"),
+		//							MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+		//							MakerAssetAmount:      big.NewInt(123456789),
+		//							MakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+		//							MakerFee:              big.NewInt(89),
+		//							TakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+		//							TakerAssetAmount:      big.NewInt(987654321),
+		//							TakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
+		//							TakerFee:              big.NewInt(12),
+		//							ExpirationTimeSeconds: big.NewInt(10000000000),
+		//							Salt:                  big.NewInt(1532559225),
+		//						},
+		//						Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
+		//					},
+		//				}, nil
+		//			})
+		//		}),
+		"orderEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			fmt.Println("1")
 			return types.WrapInPromise(func() (interface{}, error) {
+				fmt.Println("2")
 				return []interface{}{
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC20ApprovalEvent",
-						Parameters: decoder.ERC20ApprovalEvent{
-							Owner:   common.HexToAddress("0x4"),
-							Spender: common.HexToAddress("0x5"),
-							Value:   big.NewInt(1000),
+					zeroex.OrderEvent{
+						Timestamp: time.Now(),
+						OrderHash: common.HexToHash("0x1"),
+						SignedOrder: &zeroex.SignedOrder{
+							Order: zeroex.Order{
+								ChainID:               big.NewInt(1337),
+								MakerAddress:          common.HexToAddress("0x1"),
+								TakerAddress:          common.HexToAddress("0x2"),
+								SenderAddress:         common.HexToAddress("0x3"),
+								FeeRecipientAddress:   common.HexToAddress("0x4"),
+								ExchangeAddress:       common.HexToAddress("0x5"),
+								MakerAssetData:        common.FromHex("0x"),
+								MakerAssetAmount:      big.NewInt(0),
+								MakerFeeAssetData:     common.FromHex("0x"),
+								MakerFee:              big.NewInt(0),
+								TakerAssetData:        common.FromHex("0x"),
+								TakerAssetAmount:      big.NewInt(0),
+								TakerFeeAssetData:     common.FromHex("0x"),
+								TakerFee:              big.NewInt(0),
+								ExpirationTimeSeconds: big.NewInt(10000000000),
+								Salt:                  big.NewInt(1532559225),
+							},
+							Signature: common.FromHex("0x"),
 						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC20TransferEvent",
-						Parameters: decoder.ERC20TransferEvent{
-							From:  common.HexToAddress("0x4"),
-							To:    common.HexToAddress("0x5"),
-							Value: big.NewInt(1000),
+						EndState:                 zeroex.ESOrderAdded,
+						FillableTakerAssetAmount: big.NewInt(1),
+						ContractEvents: []*zeroex.ContractEvent{
+							&zeroex.ContractEvent{
+								BlockHash: common.HexToHash("0x1"),
+								TxHash:    common.HexToHash("0x2"),
+								TxIndex:   123,
+								LogIndex:  321,
+								IsRemoved: false,
+								Address:   common.HexToAddress("0x3"),
+								Kind:      "ERC20ApprovalEvent",
+								Parameters: decoder.ERC20ApprovalEvent{
+									Owner:   common.HexToAddress("0x4"),
+									Spender: common.HexToAddress("0x5"),
+									Value:   big.NewInt(1000),
+								},
+							},
 						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC721ApprovalEvent",
-						Parameters: decoder.ERC721ApprovalEvent{
-							Owner:    common.HexToAddress("0x4"),
-							Approved: common.HexToAddress("0x5"),
-							TokenId:  big.NewInt(1),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC721ApprovalForAllEvent",
-						Parameters: decoder.ERC721ApprovalForAllEvent{
-							Owner:    common.HexToAddress("0x4"),
-							Operator: common.HexToAddress("0x5"),
-							Approved: true,
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC721TransferEvent",
-						Parameters: decoder.ERC721TransferEvent{
-							From:    common.HexToAddress("0x4"),
-							To:      common.HexToAddress("0x5"),
-							TokenId: big.NewInt(1),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC1155ApprovalForAllEvent",
-						Parameters: decoder.ERC1155ApprovalForAllEvent{
-							Owner:    common.HexToAddress("0x4"),
-							Operator: common.HexToAddress("0x5"),
-							Approved: false,
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC1155TransferSingleEvent",
-						Parameters: decoder.ERC1155TransferSingleEvent{
-							Operator: common.HexToAddress("0x4"),
-							From:     common.HexToAddress("0x5"),
-							To:       common.HexToAddress("0x6"),
-							Id:       big.NewInt(1),
-							Value:    big.NewInt(100),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ERC1155TransferBatchEvent",
-						Parameters: decoder.ERC1155TransferBatchEvent{
-							Operator: common.HexToAddress("0x4"),
-							From:     common.HexToAddress("0x5"),
-							To:       common.HexToAddress("0x6"),
-							Ids:      []*big.Int{big.NewInt(1)},
-							Values:   []*big.Int{big.NewInt(100)},
-						},
-					},
-					// FIXME(jalextowle): Should I include another event with non-null asset data?
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ExchangeFillEvent",
-						Parameters: decoder.ExchangeFillEvent{
-							MakerAddress:           common.HexToAddress("0x4"),
-							TakerAddress:           constants.NullAddress,
-							SenderAddress:          common.HexToAddress("0x5"),
-							FeeRecipientAddress:    common.HexToAddress("0x6"),
-							MakerAssetFilledAmount: big.NewInt(456),
-							TakerAssetFilledAmount: big.NewInt(654),
-							MakerFeePaid:           big.NewInt(12),
-							TakerFeePaid:           big.NewInt(21),
-							ProtocolFeePaid:        big.NewInt(150000),
-							OrderHash:              common.HexToHash("0x7"),
-							MakerAssetData:         constants.NullBytes,
-							TakerAssetData:         constants.NullBytes,
-							MakerFeeAssetData:      constants.NullBytes,
-							TakerFeeAssetData:      constants.NullBytes,
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ExchangeCancelEvent",
-						Parameters: decoder.ExchangeCancelEvent{
-							MakerAddress:        common.HexToAddress("0x4"),
-							SenderAddress:       common.HexToAddress("0x5"),
-							FeeRecipientAddress: common.HexToAddress("0x6"),
-							OrderHash:           common.HexToHash("0x7"),
-							MakerAssetData:      constants.NullBytes,
-							TakerAssetData:      constants.NullBytes,
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "ExchangeCancelUpToEvent",
-						Parameters: decoder.ExchangeCancelUpToEvent{
-							MakerAddress:       common.HexToAddress("0x4"),
-							OrderSenderAddress: common.HexToAddress("0x5"),
-							OrderEpoch:         big.NewInt(50),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "WethDepositEvent",
-						Parameters: decoder.WethDepositEvent{
-							Owner: common.HexToAddress("0x4"),
-							Value: big.NewInt(150000),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "WethWithdrawalEvent",
-						Parameters: decoder.WethWithdrawalEvent{
-							Owner: common.HexToAddress("0x4"),
-							Value: big.NewInt(150000),
-						},
-					},
-					zeroex.ContractEvent{
-						BlockHash: common.HexToHash("0x1"),
-						TxHash:    common.HexToHash("0x2"),
-						TxIndex:   123,
-						LogIndex:  321,
-						IsRemoved: false,
-						Address:   common.HexToAddress("0x3"),
-						Kind:      "FooBarBazEvent",
-						// NOTE(jalextowle): We have to use something non-empty
-						// that implements `js.Wrapper` or else we'll experience
-						// a runtime panic.
-						Parameters: decoder.ERC20ApprovalEvent{
-							Owner:   common.HexToAddress("0x4"),
-							Spender: common.HexToAddress("0x5"),
-							Value:   big.NewInt(1),
-						},
-					},
-				}, nil
-			})
-		}),
-		"signedOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return types.WrapInPromise(func() (interface{}, error) {
-				return []interface{}{
-					zeroex.SignedOrder{
-						Order: zeroex.Order{
-							ChainID:               big.NewInt(1337),
-							MakerAddress:          common.HexToAddress("0x1"),
-							TakerAddress:          common.HexToAddress("0x2"),
-							SenderAddress:         common.HexToAddress("0x3"),
-							FeeRecipientAddress:   common.HexToAddress("0x4"),
-							ExchangeAddress:       common.HexToAddress("0x5"),
-							MakerAssetData:        common.FromHex("0x"),
-							MakerAssetAmount:      big.NewInt(0),
-							MakerFeeAssetData:     common.FromHex("0x"),
-							MakerFee:              big.NewInt(0),
-							TakerAssetData:        common.FromHex("0x"),
-							TakerAssetAmount:      big.NewInt(0),
-							TakerFeeAssetData:     common.FromHex("0x"),
-							TakerFee:              big.NewInt(0),
-							ExpirationTimeSeconds: big.NewInt(10000000000),
-							Salt:                  big.NewInt(1532559225),
-						},
-						Signature: common.FromHex("0x"),
-					},
-					zeroex.SignedOrder{
-						Order: zeroex.Order{
-							ChainID:               big.NewInt(1337),
-							MakerAddress:          common.HexToAddress("0x1"),
-							TakerAddress:          common.HexToAddress("0x2"),
-							SenderAddress:         common.HexToAddress("0x3"),
-							FeeRecipientAddress:   common.HexToAddress("0x4"),
-							ExchangeAddress:       common.HexToAddress("0x5"),
-							MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-							MakerAssetAmount:      big.NewInt(123456789),
-							MakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-							MakerFee:              big.NewInt(89),
-							TakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
-							TakerAssetAmount:      big.NewInt(987654321),
-							TakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
-							TakerFee:              big.NewInt(12),
-							ExpirationTimeSeconds: big.NewInt(10000000000),
-							Salt:                  big.NewInt(1532559225),
-						},
-						Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
 					},
 				}, nil
 			})

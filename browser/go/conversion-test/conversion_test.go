@@ -224,6 +224,7 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 				// Send console.log events through the channel.
 				for _, arg := range ev.Args {
 					if arg.Type == runtime.TypeString && count < testLength {
+						fmt.Println(string(arg.Value))
 						if testCases[count] != string(arg.Value) {
 							t.Errorf("expected: %s | actual: %s", testCases[count], string(arg.Value))
 						}
