@@ -294,13 +294,13 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 
 func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event) []*blockwatch.Event {
 	allEvents := []*blockwatch.Event{}
-L:
+Loop:
 	for {
 		select {
 		case moreEvents := <-blockEventsChan:
 			allEvents = append(allEvents, moreEvents...)
 		default:
-			break L
+			break Loop
 		}
 	}
 	return allEvents
