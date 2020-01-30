@@ -1,6 +1,6 @@
 {
   "name": "@0x/mesh-browser",
-  "version": "3.0.1-beta",
+  "version": "7.1.0-beta",
   "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
   "main": "./lib/index.js",
   "license": "Apache-2.0",
