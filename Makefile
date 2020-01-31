@@ -34,7 +34,7 @@ deps-ts-no-lockfile:
 
 
 .PHONY: test-all
-test-all: test-go test-browser-conversion test-wasm-node test-wasm-browser
+test-all: test-go test-wasm-node test-wasm-browser
 
 
 .PHONY: test-go
@@ -47,10 +47,6 @@ test-go-parallel:
 .PHONY: test-go-serial
 test-go-serial:
 	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial
-
-.PHONY: test-browser-conversion
-test-browser-conversion:
-	go test ./browser/go/conversion-test -timeout 185s -run BrowserConversions
 
 .PHONY: test-browser-integration
 test-browser-integration:
