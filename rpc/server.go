@@ -81,7 +81,7 @@ func (s *Server) Listen(ctx context.Context, handlerType HandlerType) error {
 	case WSHandler:
 		handler = s.rpcServer.WebsocketHandler([]string{"*"})
 	default:
-		return fmt.Errorf("Unrecogniced HandlerType: %d", handlerType)
+		return fmt.Errorf("Unrecognized HandlerType: %d", handlerType)
 	}
 
 	if err := http.Serve(s.listener, handler); err != nil {
