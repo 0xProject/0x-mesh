@@ -1,7 +1,5 @@
 import { SignedOrder } from '@0x/order-utils';
-import { BigNumber, providerUtils } from '@0x/utils';
 import * as BrowserFS from 'browserfs';
-import { SupportedProvider, ZeroExProvider } from 'ethereum-types';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 import './wasm_exec';
@@ -23,8 +21,6 @@ import {
     Config,
     ContractAddresses,
     ContractEvent,
-    ContractEventKind,
-    ContractEventParameters,
     ERC1155ApprovalForAllEvent,
     ERC1155TransferBatchEvent,
     ERC1155TransferSingleEvent,
@@ -51,25 +47,9 @@ import {
     Verbosity,
     WethDepositEvent,
     WethWithdrawalEvent,
-    WrapperAcceptedOrderInfo,
-    WrapperConfig,
-    WrapperContractEvent,
-    WrapperContractEventParameters,
-    WrapperERC1155TransferBatchEvent,
-    WrapperERC1155TransferSingleEvent,
-    WrapperERC20ApprovalEvent,
-    WrapperERC20TransferEvent,
-    WrapperERC721ApprovalEvent,
-    WrapperERC721TransferEvent,
-    WrapperExchangeCancelUpToEvent,
-    WrapperExchangeFillEvent,
     WrapperOrderEvent,
-    WrapperRejectedOrderInfo,
-    WrapperSignedOrder,
     WrapperStats,
     WrapperValidationResults,
-    WrapperWethDepositEvent,
-    WrapperWethWithdrawalEvent,
     ZeroExMesh,
 } from './types';
 

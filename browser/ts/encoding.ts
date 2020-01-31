@@ -38,6 +38,9 @@ import {
     WrapperWethWithdrawalEvent,
 } from './types';
 
+// NOTE(jalextowle): These functions are only exported so that it's easier to share code with
+// the conversion tests. They should not be used outside of `0x-mesh/browser/ts/index.ts`.
+// tslint:disable:completed-docs
 export function configToWrapperConfig(config: Config): WrapperConfig {
     const bootstrapList = config.bootstrapList == null ? undefined : config.bootstrapList.join(',');
     const customContractAddresses =
@@ -281,3 +284,4 @@ export function wrapperOrderInfoToOrderInfo(wrapperOrderInfo: WrapperOrderInfo):
         signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderInfo.signedOrder),
     };
 }
+// tslint:enable:completed-docs
