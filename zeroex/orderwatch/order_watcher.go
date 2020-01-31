@@ -62,6 +62,10 @@ const (
 	// increase the max expiration time.
 	maxExpirationTimeCheckInterval = 30 * time.Second
 
+	// maxBlockEventsToHandle is the max number of block events we want to process in a single
+	// call to `handleBlockEvents`
+	maxBlockEventsToHandle = 500
+
 	// configuration options for the SlowCounter used for increasing max
 	// expiration time. Effectively, we will increase every 5 minutes as long as
 	// there is enough space in the database for orders. The first increase will
@@ -278,6 +282,10 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 				"error": err.Error(),
 			}).Error("block subscription error encountered")
 		case events := <-w.blockEventsChan:
+			// Instead of simply processing the first array of events in the blockEventsChan,
+			// we might as well process _all_ events in the channel.
+			drainedEvents := drainBlockEventsChan(w.blockEventsChan, maxBlockEventsToHandle)
+			events = append(events, drainedEvents...)
 			w.handleBlockEventsMu.Lock()
 			if err := w.handleBlockEvents(ctx, events); err != nil {
 				w.handleBlockEventsMu.Unlock()
@@ -286,6 +294,23 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 			w.handleBlockEventsMu.Unlock()
 		}
 	}
+}
+
+func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event, max int) []*blockwatch.Event {
+	allEvents := []*blockwatch.Event{}
+Loop:
+	for {
+		select {
+		case moreEvents := <-blockEventsChan:
+			allEvents = append(allEvents, moreEvents...)
+			if len(allEvents) >= max {
+				break Loop
+			}
+		default:
+			break Loop
+		}
+	}
+	return allEvents
 }
 
 func (w *Watcher) cleanupLoop(ctx context.Context) error {
