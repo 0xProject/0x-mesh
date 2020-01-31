@@ -1,6 +1,10 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f h1:3V/XMVlgBlSh+Q1G0kg8e4dEh3UxsTpce9Ix1dDyRiU=
 github.com/0xProject/go-ethereum v1.8.8-0.20200121231321-1510563ddd1f/go.mod h1:GCj8W8G7wxclyZu5dgA4vru0iUU4DK6pUE/FSPRd4Rg=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200123233232-0b38359294da h1:8POpSF5LiutCqYqgG+vP4OcUFj3nnyOSddcSjUEbGKA=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200123233232-0b38359294da/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200131210609-7f37eee84b58 h1:p9qXd3Krt69MEC2YqNiNjuP+Hxe7cTuABx59GPLCc5s=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200131210609-7f37eee84b58/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c h1:sMhvadadLwwpHsq4hDRAd+lcmQHJYpn44Oe9f7sFTmA=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c/go.mod h1:vCim/erjgVmww+K+tF4+tf/zs63CPRiOtgdXqLgTM1Q=
 github.com/0xProject/qunit v0.0.0-20190730000255-81c18fdf7752/go.mod h1:Onz5mS+Tpffz0tyRWdHDrqKcQ1ZFNeRhYHrNAkaMgeQ=
@@ -227,6 +231,8 @@ github.com/libp2p/go-addr-util v0.0.1/go.mod h1:4ac6O7n9rIAKB1dnd+s8IbbMXkt+oBpz
 github.com/libp2p/go-buffer-pool v0.0.1/go.mod h1:xtyIz9PMobb13WaxR6Zo1Pd1zXJKYg0a8KiIvDp3TzQ=
 github.com/libp2p/go-buffer-pool v0.0.2 h1:QNK2iAFa8gjAe1SPz6mHSMuCcjs+X1wlHzeOSqcmlfs=
 github.com/libp2p/go-buffer-pool v0.0.2/go.mod h1:MvaB6xw5vOrDl8rYZGLFdKAuk/hRoRZd1Vi32+RXyFM=
+github.com/libp2p/go-conn-security v0.1.0 h1:q8ii9TUOtSBD1gIoKTSOZIzPFP/agPM28amrCCoeIIA=
+github.com/libp2p/go-conn-security v0.1.0/go.mod h1:NQdPF4opCZ5twtEUadzPL0tNSdkrbFc/HmLO7eWqEzY=
 github.com/libp2p/go-conn-security-multistream v0.1.0 h1:aqGmto+ttL/uJgX0JtQI0tD21CIEy5eYd1Hlp0juHY0=
 github.com/libp2p/go-conn-security-multistream v0.1.0/go.mod h1:aw6eD7LOsHEX7+2hJkDxw1MteijaVcI+/eP2/x3J1xc=
 github.com/libp2p/go-eventbus v0.1.0 h1:mlawomSAjjkk97QnYiEmHsLu7E136+2oCWSHRUvMfzQ=
@@ -525,6 +531,7 @@ golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnf
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190211182817-74369b46fc67/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190225124518-7f87c0fbb88b/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
