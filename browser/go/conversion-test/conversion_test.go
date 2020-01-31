@@ -34,6 +34,7 @@ func TestBrowserConversions(t *testing.T) {
 	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
+	registerStatsTest("realisticStats")
 	registerValidationResultsTest("emptyValidationResults", 0, 0)
 	registerValidationResultsTest("oneAcceptedResult", 1, 0)
 	registerValidationResultsTest("oneRejectedResult", 0, 1)
@@ -193,26 +194,6 @@ func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
 }
 
-func registerSignedOrderTest(description string) {
-	registerSignedOrderField(description, "chainId")
-	registerSignedOrderField(description, "makerAddress")
-	registerSignedOrderField(description, "takerAddress")
-	registerSignedOrderField(description, "senderAddress")
-	registerSignedOrderField(description, "feeRecipientAddress")
-	registerSignedOrderField(description, "exchangeAddress")
-	registerSignedOrderField(description, "makerAssetData")
-	registerSignedOrderField(description, "makerAssetAmount")
-	registerSignedOrderField(description, "makerFeeAssetData")
-	registerSignedOrderField(description, "makerFee")
-	registerSignedOrderField(description, "takerAssetData")
-	registerSignedOrderField(description, "takerAssetAmount")
-	registerSignedOrderField(description, "takerFeeAssetData")
-	registerSignedOrderField(description, "takerFee")
-	registerSignedOrderField(description, "expirationTimeSeconds")
-	registerSignedOrderField(description, "salt")
-	registerSignedOrderField(description, "signature")
-}
-
 func registerOrderEventTest(description string, length int) {
 	registerOrderEventField(description, "timestamp")
 	registerOrderEventField(description, "orderHash")
@@ -255,6 +236,44 @@ func registerOrderEventSignedOrder(description string) {
 	registerOrderEventField(description, boilerplate+"takerFee")
 	registerOrderEventField(description, boilerplate+"expirationTimeSeconds")
 	registerOrderEventField(description, boilerplate+"salt")
+}
+
+func registerSignedOrderTest(description string) {
+	registerSignedOrderField(description, "chainId")
+	registerSignedOrderField(description, "makerAddress")
+	registerSignedOrderField(description, "takerAddress")
+	registerSignedOrderField(description, "senderAddress")
+	registerSignedOrderField(description, "feeRecipientAddress")
+	registerSignedOrderField(description, "exchangeAddress")
+	registerSignedOrderField(description, "makerAssetData")
+	registerSignedOrderField(description, "makerAssetAmount")
+	registerSignedOrderField(description, "makerFeeAssetData")
+	registerSignedOrderField(description, "makerFee")
+	registerSignedOrderField(description, "takerAssetData")
+	registerSignedOrderField(description, "takerAssetAmount")
+	registerSignedOrderField(description, "takerFeeAssetData")
+	registerSignedOrderField(description, "takerFee")
+	registerSignedOrderField(description, "expirationTimeSeconds")
+	registerSignedOrderField(description, "salt")
+	registerSignedOrderField(description, "signature")
+}
+
+func registerStatsTest(description string) {
+	registerStatsField(description, "version")
+	registerStatsField(description, "pubSubTopic")
+	registerStatsField(description, "rendezvous")
+	registerStatsField(description, "peerID")
+	registerStatsField(description, "ethereumChainID")
+	registerStatsField(description, "latestBlock | hash")
+	registerStatsField(description, "latestBlock | number")
+	registerStatsField(description, "numOrders")
+	registerStatsField(description, "numPeers")
+	registerStatsField(description, "numOrdersIncludingRemoved")
+	registerStatsField(description, "numPinnedOrders")
+	registerStatsField(description, "maxExpirationTime")
+	registerStatsField(description, "startOfCurrentUTCDay")
+	registerStatsField(description, "ethRPCRequestsSentInCurrentUTCDay")
+	registerStatsField(description, "ethRPCRateLimitExpiredRequests")
 }
 
 // FIXME(jalextowle): Generalize for non-empty validation results
@@ -315,6 +334,10 @@ func registerOrderEventField(description string, field string) {
 
 func registerSignedOrderField(description string, field string) {
 	registerTest(fmt.Sprintf("(signedOrderTest | %s | %s)", description, field))
+}
+
+func registerStatsField(description string, field string) {
+	registerTest(fmt.Sprintf("(statsTest | %s | %s)", description, field))
 }
 
 func registerValidationResultsField(description string, field string) {

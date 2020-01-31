@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -249,54 +250,6 @@ func setGlobals() {
 				}, nil
 			})
 		}),
-		"signedOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return jsutil.WrapInPromise(func() (interface{}, error) {
-				return []interface{}{
-					zeroex.SignedOrder{
-						Order: zeroex.Order{
-							ChainID:               big.NewInt(1337),
-							MakerAddress:          common.HexToAddress("0x1"),
-							TakerAddress:          common.HexToAddress("0x2"),
-							SenderAddress:         common.HexToAddress("0x3"),
-							FeeRecipientAddress:   common.HexToAddress("0x4"),
-							ExchangeAddress:       common.HexToAddress("0x5"),
-							MakerAssetData:        common.FromHex("0x"),
-							MakerAssetAmount:      big.NewInt(0),
-							MakerFeeAssetData:     common.FromHex("0x"),
-							MakerFee:              big.NewInt(0),
-							TakerAssetData:        common.FromHex("0x"),
-							TakerAssetAmount:      big.NewInt(0),
-							TakerFeeAssetData:     common.FromHex("0x"),
-							TakerFee:              big.NewInt(0),
-							ExpirationTimeSeconds: big.NewInt(10000000000),
-							Salt:                  big.NewInt(1532559225),
-						},
-						Signature: common.FromHex("0x"),
-					},
-					zeroex.SignedOrder{
-						Order: zeroex.Order{
-							ChainID:               big.NewInt(1337),
-							MakerAddress:          common.HexToAddress("0x1"),
-							TakerAddress:          common.HexToAddress("0x2"),
-							SenderAddress:         common.HexToAddress("0x3"),
-							FeeRecipientAddress:   common.HexToAddress("0x4"),
-							ExchangeAddress:       common.HexToAddress("0x5"),
-							MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-							MakerAssetAmount:      big.NewInt(123456789),
-							MakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-							MakerFee:              big.NewInt(89),
-							TakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
-							TakerAssetAmount:      big.NewInt(987654321),
-							TakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
-							TakerFee:              big.NewInt(12),
-							ExpirationTimeSeconds: big.NewInt(10000000000),
-							Salt:                  big.NewInt(1532559225),
-						},
-						Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
-					},
-				}, nil
-			})
-		}),
 		"orderEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return []interface{}{
@@ -381,6 +334,79 @@ func setGlobals() {
 								},
 							},
 						},
+					},
+				}, nil
+			})
+		}),
+		"signedOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return []interface{}{
+					zeroex.SignedOrder{
+						Order: zeroex.Order{
+							ChainID:               big.NewInt(1337),
+							MakerAddress:          common.HexToAddress("0x1"),
+							TakerAddress:          common.HexToAddress("0x2"),
+							SenderAddress:         common.HexToAddress("0x3"),
+							FeeRecipientAddress:   common.HexToAddress("0x4"),
+							ExchangeAddress:       common.HexToAddress("0x5"),
+							MakerAssetData:        common.FromHex("0x"),
+							MakerAssetAmount:      big.NewInt(0),
+							MakerFeeAssetData:     common.FromHex("0x"),
+							MakerFee:              big.NewInt(0),
+							TakerAssetData:        common.FromHex("0x"),
+							TakerAssetAmount:      big.NewInt(0),
+							TakerFeeAssetData:     common.FromHex("0x"),
+							TakerFee:              big.NewInt(0),
+							ExpirationTimeSeconds: big.NewInt(10000000000),
+							Salt:                  big.NewInt(1532559225),
+						},
+						Signature: common.FromHex("0x"),
+					},
+					zeroex.SignedOrder{
+						Order: zeroex.Order{
+							ChainID:               big.NewInt(1337),
+							MakerAddress:          common.HexToAddress("0x1"),
+							TakerAddress:          common.HexToAddress("0x2"),
+							SenderAddress:         common.HexToAddress("0x3"),
+							FeeRecipientAddress:   common.HexToAddress("0x4"),
+							ExchangeAddress:       common.HexToAddress("0x5"),
+							MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+							MakerAssetAmount:      big.NewInt(123456789),
+							MakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
+							MakerFee:              big.NewInt(89),
+							TakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+							TakerAssetAmount:      big.NewInt(987654321),
+							TakerFeeAssetData:     common.FromHex("0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3"),
+							TakerFee:              big.NewInt(12),
+							ExpirationTimeSeconds: big.NewInt(10000000000),
+							Salt:                  big.NewInt(1532559225),
+						},
+						Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
+					},
+				}, nil
+			})
+		}),
+		"statsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return []interface{}{
+					types.Stats{
+						Version:         "development",
+						PubSubTopic:     "someTopic",
+						Rendezvous:      "/0x-mesh/network/1337/version/2",
+						PeerID:          "16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7",
+						EthereumChainID: 1337,
+						LatestBlock: types.LatestBlock{
+							Hash:   common.HexToHash("0x1"),
+							Number: 1500,
+						},
+						NumPeers:                          200,
+						NumOrders:                         100000,
+						NumOrdersIncludingRemoved:         200000,
+						NumPinnedOrders:                   400,
+						MaxExpirationTime:                 "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+						StartOfCurrentUTCDay:              time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
+						EthRPCRequestsSentInCurrentUTCDay: 100000,
+						EthRPCRateLimitExpiredRequests:    5000,
 					},
 				}, nil
 			})

@@ -38,6 +38,7 @@ import {
     WrapperExchangeFillEvent,
     WrapperOrderEvent,
     WrapperSignedOrder,
+    WrapperStats,
     WrapperValidationResults,
     WrapperWethDepositEvent,
     WrapperWethWithdrawalEvent,
@@ -48,6 +49,7 @@ interface ConversionTestCase {
     contractEventsAsync: () => Promise<WrapperContractEvent[]>;
     orderEventsAsync: () => Promise<WrapperOrderEvent[]>;
     signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
+    statsAsync: () => Promise<WrapperStats[]>;
     validationResultsAsync: () => Promise<WrapperValidationResults[]>;
 }
 
@@ -105,6 +107,8 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
     testOrderEvents(orderEvents);
     const signedOrders = await conversionTestCases.signedOrdersAsync();
     testSignedOrders(signedOrders);
+    const stats = await conversionTestCases.statsAsync();
+    testStats(stats);
     const validationResults = await conversionTestCases.validationResultsAsync();
     testValidationResults(validationResults);
 
@@ -423,6 +427,28 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
         'signature',
         signedOrders[1].signature === '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
     );
+}
+
+function testStats(stats: WrapperStats[]): void {
+    const printer = prettyPrintTestCase('statsTest', 'realisticStats');
+    printer('version', stats[0].version === 'development');
+    printer('pubSubTopic', stats[0].pubSubTopic === 'someTopic');
+    printer('rendezvous', stats[0].rendezvous === '/0x-mesh/network/1337/version/2');
+    printer('peerID', stats[0].peerID === '16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7');
+    printer('ethereumChainID', stats[0].ethereumChainID === 1337);
+    printer('latestBlock | hash', stats[0].latestBlock.hash === hexUtils.leftPad('0x1', 32));
+    printer('latestBlock | number', stats[0].latestBlock.number === 1500);
+    printer('numOrders', stats[0].numOrders === 100000);
+    printer('numPeers', stats[0].numPeers === 200);
+    printer('numOrdersIncludingRemoved', stats[0].numOrdersIncludingRemoved === 200000);
+    printer('numPinnedOrders', stats[0].numPinnedOrders === 400);
+    printer(
+        'maxExpirationTime',
+        stats[0].maxExpirationTime === '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+    );
+    printer('startOfCurrentUTCDay', stats[0].startOfCurrentUTCDay === '2006-01-01 00:00:00 +0000 UTC');
+    printer('ethRPCRequestsSentInCurrentUTCDay', stats[0].ethRPCRequestsSentInCurrentUTCDay === 100000);
+    printer('ethRPCRateLimitExpiredRequests', stats[0].ethRPCRateLimitExpiredRequests === 5000);
 }
 
 function testValidationResults(validationResults: WrapperValidationResults[]): void {
