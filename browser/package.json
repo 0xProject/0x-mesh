@@ -11,7 +11,7 @@
         "build:ts": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
         "build:generate": "yarn build:generate:main && yarn build:generate:conversion-test",
         "build:generate:main": "INPUT_PATH=./wasm/main.wasm OUTPUT_PATH=./ts/generated/wasm_buffer.ts go run ./scripts/generate_wasm_buffer.go",
-        "build:generate:conversion-test": "INPUT_PATH=./wasm/conversion_test.wasm OUTPUT_PATH=./ts/generated/test_wasm_buffer.ts go run ./scripts/generate_wasm_buffer.go",
+        "build:generate:conversion-test": "INPUT_PATH=./wasm/conversion_test.wasm OUTPUT_PATH=./conversion-tests/generated/test_wasm_buffer.ts go run ./scripts/generate_wasm_buffer.go",
         "build:go": "yarn build:go:main && yarn build:go:conversion-test",
         "build:go:main": "GOOS=js GOARCH=wasm go build -o ./wasm/main.wasm ./go/mesh-browser/main.go",
         "build:go:conversion-test": "GOOS=js GOARCH=wasm go build -o ./wasm/conversion_test.wasm ./go/conversion-test/main.go",

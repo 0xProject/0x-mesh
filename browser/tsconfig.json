@@ -16,5 +16,5 @@
         "strict": true
     },
     "include": ["./ts/**/*"],
-    "exclude": ["./ts/conversion_test.ts"]
+    "exclude": ["./conversion-tests/**/*"]
 }
