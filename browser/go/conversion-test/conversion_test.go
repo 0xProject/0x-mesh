@@ -37,6 +37,7 @@ func TestBrowserConversions(t *testing.T) {
 	registerValidationResultsTest("emptyValidationResults", 0, 0)
 	registerValidationResultsTest("oneAcceptedResult", 1, 0)
 	registerValidationResultsTest("oneRejectedResult", 0, 1)
+	registerValidationResultsTest("realisticValidationResults", 2, 1)
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -277,6 +278,7 @@ func registerValidationResultsTest(description string, acceptedLength int, rejec
 		registerValidationResultsField(description, "accepted | signedOrder | takerFee")
 		registerValidationResultsField(description, "accepted | signedOrder | expirationTimeSeconds")
 		registerValidationResultsField(description, "accepted | signedOrder | salt")
+		registerValidationResultsField(description, "accepted | signedOrder | signature")
 		registerValidationResultsField(description, "accepted | fillableTakerAssetAmount")
 		registerValidationResultsField(description, "accepted | isNew")
 	}
@@ -300,6 +302,7 @@ func registerValidationResultsTest(description string, acceptedLength int, rejec
 		registerValidationResultsField(description, "rejected | signedOrder | takerFee")
 		registerValidationResultsField(description, "rejected | signedOrder | expirationTimeSeconds")
 		registerValidationResultsField(description, "rejected | signedOrder | salt")
+		registerValidationResultsField(description, "rejected | signedOrder | signature")
 		registerValidationResultsField(description, "rejected | kind")
 		registerValidationResultsField(description, "rejected | status | code")
 		registerValidationResultsField(description, "rejected | status | message")
