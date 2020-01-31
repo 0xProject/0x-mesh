@@ -33,6 +33,8 @@ func TestBrowserConversions(t *testing.T) {
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
 	registerValidationResultsTest("emptyValidationResults", 0, 0)
+	registerValidationResultsTest("oneAcceptedResult", 1, 0)
+	registerValidationResultsTest("oneRejectedResult", 0, 1)
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -253,9 +255,53 @@ func registerOrderEventSignedOrder(description string) {
 }
 
 // FIXME(jalextowle): Generalize for non-empty validation results
-func registerValidationResultsTest(description string, _acceptedLength int, _rejectedLength int) {
+func registerValidationResultsTest(description string, acceptedLength int, rejectedLength int) {
 	registerValidationResultsField(description, "accepted | length")
+	for i := 0; i < acceptedLength; i++ {
+		registerValidationResultsField(description, "accepted | orderHash")
+		registerValidationResultsField(description, "accepted | signedOrder | chainId")
+		registerValidationResultsField(description, "accepted | signedOrder | makerAddress")
+		registerValidationResultsField(description, "accepted | signedOrder | takerAddress")
+		registerValidationResultsField(description, "accepted | signedOrder | senderAddress")
+		registerValidationResultsField(description, "accepted | signedOrder | feeRecipientAddress")
+		registerValidationResultsField(description, "accepted | signedOrder | exchangeAddress")
+		registerValidationResultsField(description, "accepted | signedOrder | makerAssetData")
+		registerValidationResultsField(description, "accepted | signedOrder | makerAssetAmount")
+		registerValidationResultsField(description, "accepted | signedOrder | makerFeeAssetData")
+		registerValidationResultsField(description, "accepted | signedOrder | makerFee")
+		registerValidationResultsField(description, "accepted | signedOrder | takerAssetData")
+		registerValidationResultsField(description, "accepted | signedOrder | takerAssetAmount")
+		registerValidationResultsField(description, "accepted | signedOrder | takerFeeAssetData")
+		registerValidationResultsField(description, "accepted | signedOrder | takerFee")
+		registerValidationResultsField(description, "accepted | signedOrder | expirationTimeSeconds")
+		registerValidationResultsField(description, "accepted | signedOrder | salt")
+		registerValidationResultsField(description, "accepted | fillableTakerAssetAmount")
+		registerValidationResultsField(description, "accepted | isNew")
+	}
+
 	registerValidationResultsField(description, "rejected | length")
+	for i := 0; i < rejectedLength; i++ {
+		registerValidationResultsField(description, "rejected | orderHash")
+		registerValidationResultsField(description, "rejected | signedOrder | chainId")
+		registerValidationResultsField(description, "rejected | signedOrder | makerAddress")
+		registerValidationResultsField(description, "rejected | signedOrder | takerAddress")
+		registerValidationResultsField(description, "rejected | signedOrder | senderAddress")
+		registerValidationResultsField(description, "rejected | signedOrder | feeRecipientAddress")
+		registerValidationResultsField(description, "rejected | signedOrder | exchangeAddress")
+		registerValidationResultsField(description, "rejected | signedOrder | makerAssetData")
+		registerValidationResultsField(description, "rejected | signedOrder | makerAssetAmount")
+		registerValidationResultsField(description, "rejected | signedOrder | makerFeeAssetData")
+		registerValidationResultsField(description, "rejected | signedOrder | makerFee")
+		registerValidationResultsField(description, "rejected | signedOrder | takerAssetData")
+		registerValidationResultsField(description, "rejected | signedOrder | takerAssetAmount")
+		registerValidationResultsField(description, "rejected | signedOrder | takerFeeAssetData")
+		registerValidationResultsField(description, "rejected | signedOrder | takerFee")
+		registerValidationResultsField(description, "rejected | signedOrder | expirationTimeSeconds")
+		registerValidationResultsField(description, "rejected | signedOrder | salt")
+		registerValidationResultsField(description, "rejected | kind")
+		registerValidationResultsField(description, "rejected | status | code")
+		registerValidationResultsField(description, "rejected | status | message")
+	}
 }
 
 func registerOrderEventField(description string, field string) {
@@ -314,6 +360,11 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 		chromedp.WaitVisible("#jsFinished", chromedp.ByID),
 	); err != nil && err != context.Canceled {
 		t.Error(err)
+	}
+	if count < len(testCases) {
+		for i := count; i < len(testCases); i++ {
+			t.Errorf("expected: %s actual: no response", testCases[i])
+		}
 	}
 }
 

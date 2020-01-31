@@ -1,5 +1,10 @@
 import { SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
+import { SupportedProvider, ZeroExProvider } from 'ethereum-types';
+
+export { SignedOrder } from '@0x/order-utils';
+export { BigNumber } from '@0x/utils';
+export { SupportedProvider } from 'ethereum-types';
 
 export interface WrapperGetOrdersResponse {
     snapshotID: string;
@@ -90,7 +95,7 @@ export interface Config {
     verbosity?: Verbosity;
     // The URL of an Ethereum node which supports the Ethereum JSON RPC API.
     // Used to validate and watch orders.
-    ethereumRPCURL: string;
+    ethereumRPCURL?: string;
     // EthereumChainID is the chain ID specifying which Ethereum chain you wish to
     // run your Mesh node for
     ethereumChainID: number;
@@ -178,6 +183,9 @@ export interface Config {
     // all the required fields) are automatically included. For more information
     // on JSON Schemas, see https://json-schema.org/
     customOrderFilter?: JsonSchema;
+    // Offers the ability to use your own web3 provider for all Ethereum RPC
+    // requests instead of the default.
+    web3Provider?: SupportedProvider;
 }
 
 export interface ContractAddresses {
@@ -222,7 +230,7 @@ export interface MeshWrapper {
 // The type for configuration exposed by MeshWrapper.
 export interface WrapperConfig {
     verbosity?: number;
-    ethereumRPCURL: string;
+    ethereumRPCURL?: string;
     ethereumChainID: number;
     useBootstrapList?: boolean;
     bootstrapList?: string; // comma-separated string instead of an array of strings.
@@ -234,6 +242,7 @@ export interface WrapperConfig {
     customContractAddresses?: string; // json-encoded string instead of Object.
     maxOrdersInStorage?: number;
     customOrderFilter?: string; // json-encoded string instead of Object
+    web3Provider?: ZeroExProvider; // Standardized ZeroExProvider instead the more permissive SupportedProvider interface
 }
 
 // The type for signed orders exposed by MeshWrapper. Unlike other types, the

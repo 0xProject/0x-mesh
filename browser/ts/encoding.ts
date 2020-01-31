@@ -1,5 +1,5 @@
 import { SignedOrder } from '@0x/order-utils';
-import { BigNumber } from '@0x/utils';
+import { BigNumber, providerUtils } from '@0x/utils';
 
 import {
     AcceptedOrderInfo,
@@ -46,11 +46,14 @@ export function configToWrapperConfig(config: Config): WrapperConfig {
     const customContractAddresses =
         config.customContractAddresses == null ? undefined : JSON.stringify(config.customContractAddresses);
     const customOrderFilter = config.customOrderFilter == null ? undefined : JSON.stringify(config.customOrderFilter);
+    const standardizedProvider =
+        config.web3Provider == null ? undefined : providerUtils.standardizeOrThrow(config.web3Provider);
     return {
         ...config,
         bootstrapList,
         customContractAddresses,
         customOrderFilter,
+        web3Provider: standardizedProvider,
     };
 }
 

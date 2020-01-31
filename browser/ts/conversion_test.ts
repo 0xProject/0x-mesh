@@ -426,9 +426,135 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
 }
 
 function testValidationResults(validationResults: WrapperValidationResults[]): void {
-    const printer = prettyPrintTestCase('validationResultsTest', 'emptyValidationResults');
+    let printer = prettyPrintTestCase('validationResultsTest', 'emptyValidationResults');
     printer('accepted | length', validationResults[0].accepted.length === 0);
     printer('rejected | length', validationResults[0].rejected.length === 0);
+
+    printer = prettyPrintTestCase('validationResultsTest', 'oneAcceptedResult');
+    printer('accepted | length', validationResults[1].accepted.length === 1);
+    printer('accepted | orderHash', validationResults[1].accepted[0].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('accepted | signedOrder | chainId', validationResults[1].accepted[0].signedOrder.chainId === 1337);
+    printer(
+        'accepted | signedOrder | makerAddress',
+        validationResults[1].accepted[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20),
+    );
+    printer(
+        'accepted | signedOrder | takerAddress',
+        validationResults[1].accepted[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20),
+    );
+    printer(
+        'accepted | signedOrder | senderAddress',
+        validationResults[1].accepted[0].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20),
+    );
+    printer(
+        'accepted | signedOrder | feeRecipientAddress',
+        validationResults[1].accepted[0].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20),
+    );
+    printer(
+        'accepted | signedOrder | exchangeAddress',
+        validationResults[1].accepted[0].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20),
+    );
+    printer(
+        'accepted | signedOrder | makerAssetData',
+        validationResults[1].accepted[0].signedOrder.makerAssetData === '0x',
+    );
+    printer(
+        'accepted | signedOrder | makerAssetAmount',
+        validationResults[1].accepted[0].signedOrder.makerAssetAmount === '0',
+    );
+    printer(
+        'accepted | signedOrder | makerFeeAssetData',
+        validationResults[1].accepted[0].signedOrder.makerFeeAssetData === '0x',
+    );
+    printer('accepted | signedOrder | makerFee', validationResults[1].accepted[0].signedOrder.makerFee === '0');
+    printer(
+        'accepted | signedOrder | takerAssetData',
+        validationResults[1].accepted[0].signedOrder.takerAssetData === '0x',
+    );
+    printer(
+        'accepted | signedOrder | takerAssetAmount',
+        validationResults[1].accepted[0].signedOrder.takerAssetAmount === '0',
+    );
+    printer(
+        'accepted | signedOrder | takerFeeAssetData',
+        validationResults[1].accepted[0].signedOrder.takerFeeAssetData === '0x',
+    );
+    printer('accepted | signedOrder | takerFee', validationResults[1].accepted[0].signedOrder.takerFee === '0');
+    printer(
+        'accepted | signedOrder | expirationTimeSeconds',
+        validationResults[1].accepted[0].signedOrder.expirationTimeSeconds === '10000000000',
+    );
+    printer('accepted | signedOrder | salt', validationResults[1].accepted[0].signedOrder.salt === '1532559225');
+    printer('accepted | fillableTakerAssetAmount', validationResults[1].accepted[0].fillableTakerAssetAmount === '0');
+    printer('accepted | isNew', validationResults[1].accepted[0].isNew);
+    printer('rejected | length', validationResults[1].rejected.length === 0);
+
+    printer = prettyPrintTestCase('validationResultsTest', 'oneRejectedResult');
+    printer('accepted | length', validationResults[2].accepted.length === 0);
+    printer('rejected | length', validationResults[2].rejected.length === 1);
+    printer('rejected | orderHash', validationResults[2].rejected[0].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('rejected | signedOrder | chainId', validationResults[2].rejected[0].signedOrder.chainId === 1337);
+    printer(
+        'rejected | signedOrder | makerAddress',
+        validationResults[2].rejected[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20),
+    );
+    printer(
+        'rejected | signedOrder | takerAddress',
+        validationResults[2].rejected[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20),
+    );
+    printer(
+        'rejected | signedOrder | senderAddress',
+        validationResults[2].rejected[0].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20),
+    );
+    printer(
+        'rejected | signedOrder | feeRecipientAddress',
+        validationResults[2].rejected[0].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20),
+    );
+    printer(
+        'rejected | signedOrder | exchangeAddress',
+        validationResults[2].rejected[0].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20),
+    );
+    printer(
+        'rejected | signedOrder | makerAssetData',
+        validationResults[2].rejected[0].signedOrder.makerAssetData === '0x',
+    );
+    printer(
+        'rejected | signedOrder | makerAssetAmount',
+        validationResults[2].rejected[0].signedOrder.makerAssetAmount === '0',
+    );
+    printer(
+        'rejected | signedOrder | makerFeeAssetData',
+        validationResults[2].rejected[0].signedOrder.makerFeeAssetData === '0x',
+    );
+    printer('rejected | signedOrder | makerFee', validationResults[1].accepted[0].signedOrder.makerFee === '0');
+    printer(
+        'rejected | signedOrder | takerAssetData',
+        validationResults[2].rejected[0].signedOrder.takerAssetData === '0x',
+    );
+    printer(
+        'rejected | signedOrder | takerAssetAmount',
+        validationResults[2].rejected[0].signedOrder.takerAssetAmount === '0',
+    );
+    printer(
+        'rejected | signedOrder | takerFeeAssetData',
+        validationResults[2].rejected[0].signedOrder.takerFeeAssetData === '0x',
+    );
+    printer('rejected | signedOrder | takerFee', validationResults[1].accepted[0].signedOrder.takerFee === '0');
+    printer(
+        'rejected | signedOrder | expirationTimeSeconds',
+        validationResults[2].rejected[0].signedOrder.expirationTimeSeconds === '10000000000',
+    );
+    printer('rejected | signedOrder | salt', validationResults[2].rejected[0].signedOrder.salt === '1532559225');
+    printer('rejected | kind', validationResults[2].rejected[0].kind === 'ZEROEX_VALIDATION');
+    printer(
+        'rejected | status | code',
+        validationResults[2].rejected[0].status.code === 'OrderHasInvalidMakerAssetData',
+    );
+    printer(
+        'rejected | status | message',
+        validationResults[2].rejected[0].status.message ===
+            'order makerAssetData must encode a supported assetData type',
+    );
 }
 
 // tslint:enable:no-console

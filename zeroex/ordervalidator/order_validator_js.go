@@ -24,7 +24,7 @@ func (a AcceptedOrderInfo) JSValue() js.Value {
 		"orderHash":                a.OrderHash.Hex(),
 		"signedOrder":              a.SignedOrder.JSValue(),
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
-		"IsNew":                    a.IsNew,
+		"isNew":                    a.IsNew,
 	})
 }
 
