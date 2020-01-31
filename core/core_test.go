@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -100,12 +101,17 @@ func TestOrderSync(t *testing.T) {
 	// the network without any orders.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	wg := &sync.WaitGroup{}
 	originalNode := newTestApp(t)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, originalNode.Start(ctx))
 	}()
 	newNode := newTestApp(t)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, newNode.Start(ctx))
 	}()
 
@@ -139,4 +145,8 @@ func TestOrderSync(t *testing.T) {
 		actualOrder := dbOrder.SignedOrder
 		assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
 	}
+
+	// Wait for nodes to exit without error.
+	cancel()
+	wg.Wait()
 }
