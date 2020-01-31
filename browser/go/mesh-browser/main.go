@@ -5,12 +5,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"syscall/js"
 	"time"
 
 	"github.com/0xProject/0x-mesh/browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/browser/go/providerwrapper"
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/event"
 )

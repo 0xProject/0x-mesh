@@ -7,7 +7,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -28,7 +28,7 @@ func main() {
 func setGlobals() {
 	conversionTestCases := map[string]interface{}{
 		"contractEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return types.WrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return []interface{}{
 					zeroex.ContractEvent{
 						BlockHash: common.HexToHash("0x1"),
@@ -250,7 +250,7 @@ func setGlobals() {
 			})
 		}),
 		"signedOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return types.WrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return []interface{}{
 					zeroex.SignedOrder{
 						Order: zeroex.Order{
@@ -298,7 +298,7 @@ func setGlobals() {
 			})
 		}),
 		"orderEventsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return types.WrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return []interface{}{
 					zeroex.OrderEvent{
 						Timestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
@@ -386,9 +386,39 @@ func setGlobals() {
 			})
 		}),
 		"validationResultsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			return types.WrapInPromise(func() (interface{}, error) {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return []interface{}{
 					ordervalidator.ValidationResults{},
+					ordervalidator.ValidationResults{
+						Accepted: []*ordervalidator.AcceptedOrderInfo{
+							&ordervalidator.AcceptedOrderInfo{
+								OrderHash: common.HexToHash("0x1"),
+								SignedOrder: &zeroex.SignedOrder{
+									Order: zeroex.Order{
+										ChainID:               big.NewInt(1337),
+										MakerAddress:          common.HexToAddress("0x1"),
+										TakerAddress:          common.HexToAddress("0x2"),
+										SenderAddress:         common.HexToAddress("0x3"),
+										FeeRecipientAddress:   common.HexToAddress("0x4"),
+										ExchangeAddress:       common.HexToAddress("0x5"),
+										MakerAssetData:        common.FromHex("0x"),
+										MakerAssetAmount:      big.NewInt(0),
+										MakerFeeAssetData:     common.FromHex("0x"),
+										MakerFee:              big.NewInt(0),
+										TakerAssetData:        common.FromHex("0x"),
+										TakerAssetAmount:      big.NewInt(0),
+										TakerFeeAssetData:     common.FromHex("0x"),
+										TakerFee:              big.NewInt(0),
+										ExpirationTimeSeconds: big.NewInt(10000000000),
+										Salt:                  big.NewInt(1532559225),
+									},
+									Signature: common.FromHex("0x"),
+								},
+								FillableTakerAssetAmount: big.NewInt(0),
+								IsNew:                    true,
+							},
+						},
+					},
 				}, nil
 			})
 		}),
