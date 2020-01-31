@@ -294,13 +294,13 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-time.After(minCleanupInterval - time.Since(start)):
+			// Wait minCleanupInterval before calling cleanup again. Since
+			// we only start sleeping _after_ cleanup completes, we will never
+			// have multiple calls to cleanup running in parallel
+			break
 		}
 
-		// Wait minCleanupInterval before calling cleanup again. Since
-		// we only start sleeping _after_ cleanup completes, we will never
-		// have multiple calls to cleanup running in parallel
-		time.Sleep(minCleanupInterval - time.Since(start))
 		start = time.Now()
 		if err := w.Cleanup(ctx, defaultLastUpdatedBuffer); err != nil {
 			return err
