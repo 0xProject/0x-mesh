@@ -30,6 +30,7 @@ func TestBrowserConversions(t *testing.T) {
 
 	// Register the test cases that should be logged.
 	registerContractEventTest()
+	registerGetOrdersResponseTest("emptyOrderInfo", 0)
 	registerOrderEventTest("EmptyContractEvents", 0)
 	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
@@ -194,6 +195,13 @@ func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
 }
 
+// FIXME - Generalize for length
+func registerGetOrdersResponseTest(description string, orderInfoLength int) {
+	registerGetOrdersResponseField(description, "snapshotID")
+	registerGetOrdersResponseField(description, "snapshotTimestamp")
+	registerGetOrdersResponseField(description, "orderInfo | length")
+}
+
 func registerOrderEventTest(description string, length int) {
 	registerOrderEventField(description, "timestamp")
 	registerOrderEventField(description, "orderHash")
@@ -326,6 +334,10 @@ func registerValidationResultsTest(description string, acceptedLength int, rejec
 		registerValidationResultsField(description, "rejected | status | code")
 		registerValidationResultsField(description, "rejected | status | message")
 	}
+}
+
+func registerGetOrdersResponseField(description string, field string) {
+	registerTest(fmt.Sprintf("(getOrdersResponseTest | %s | %s)", description, field))
 }
 
 func registerOrderEventField(description string, field string) {

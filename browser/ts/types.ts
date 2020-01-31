@@ -8,7 +8,7 @@ export { SupportedProvider } from 'ethereum-types';
 
 export interface WrapperGetOrdersResponse {
     snapshotID: string;
-    snapshotTimestamp: number;
+    snapshotTimestamp: string;
     ordersInfos: WrapperOrderInfo[];
 }
 

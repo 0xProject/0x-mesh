@@ -36,6 +36,7 @@ import {
     WrapperERC721TransferEvent,
     WrapperExchangeCancelUpToEvent,
     WrapperExchangeFillEvent,
+    WrapperGetOrdersResponse,
     WrapperOrderEvent,
     WrapperSignedOrder,
     WrapperStats,
@@ -47,6 +48,7 @@ import '../ts/wasm_exec';
 
 interface ConversionTestCase {
     contractEventsAsync: () => Promise<WrapperContractEvent[]>;
+    getOrdersResponseAsync: () => Promise<WrapperGetOrdersResponse[]>;
     orderEventsAsync: () => Promise<WrapperOrderEvent[]>;
     signedOrdersAsync: () => Promise<WrapperSignedOrder[]>;
     statsAsync: () => Promise<WrapperStats[]>;
@@ -103,6 +105,8 @@ WebAssembly.instantiate(wasmBuffer, go.importObject)
     await waitForLoadAsync();
     const contractEvents = await conversionTestCases.contractEventsAsync();
     testContractEvents(contractEvents);
+    const getOrdersResponse = await conversionTestCases.getOrdersResponseAsync();
+    testGetOrdersResponse(getOrdersResponse);
     const orderEvents = await conversionTestCases.orderEventsAsync();
     testOrderEvents(orderEvents);
     const signedOrders = await conversionTestCases.signedOrdersAsync();
@@ -296,9 +300,16 @@ function testContractEventPrelude(
     printer('address', contractEvent.address === hexUtils.leftPad(3, 20));
 }
 
+function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): void {
+    const printer = prettyPrintTestCase('getOrdersResponseTest', 'emptyOrderInfo');
+    printer('snapshotID', getOrdersResponse[0].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
+    printer('snapshotTimestamp', getOrdersResponse[0].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('orderInfo | length', getOrdersResponse[0].ordersInfos.length === 0);
+}
+
 function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     let printer = prettyPrintTestCase('orderEventTest', 'EmptyContractEvents');
-    printer('timestamp', orderEvents[0].timestamp === '2006-01-01 00:00:00 +0000 UTC');
+    printer('timestamp', orderEvents[0].timestamp === '2006-01-01T00:00:00Z');
     printer('orderHash', orderEvents[0].orderHash === hexUtils.leftPad('0x1', 32));
     printer('endState', orderEvents[0].endState === 'ADDED');
     printer('fillableTakerAssetAmount', orderEvents[0].fillableTakerAssetAmount === '1');
@@ -323,7 +334,7 @@ function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     printer('length', orderEvents[0].contractEvents.length === 0);
 
     printer = prettyPrintTestCase('orderEventTest', 'ExchangeFillContractEvent');
-    printer('timestamp', orderEvents[1].timestamp === '2006-01-01 01:01:01.000000001 +0000 UTC');
+    printer('timestamp', orderEvents[1].timestamp === '2006-01-01T01:01:01Z');
     printer('orderHash', orderEvents[1].orderHash === hexUtils.leftPad('0x1', 32));
     printer('endState', orderEvents[1].endState === 'FILLED');
     printer('fillableTakerAssetAmount', orderEvents[1].fillableTakerAssetAmount === '0');
