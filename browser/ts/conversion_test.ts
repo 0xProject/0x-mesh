@@ -301,10 +301,199 @@ function testContractEventPrelude(
 }
 
 function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): void {
-    const printer = prettyPrintTestCase('getOrdersResponseTest', 'emptyOrderInfo');
+    let printer = prettyPrintTestCase('getOrdersResponseTest', 'emptyOrderInfo');
     printer('snapshotID', getOrdersResponse[0].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
     printer('snapshotTimestamp', getOrdersResponse[0].snapshotTimestamp === '2006-01-01T00:00:00Z');
     printer('orderInfo | length', getOrdersResponse[0].ordersInfos.length === 0);
+
+    printer = prettyPrintTestCase('getOrdersResponseTest', 'oneOrderInfo');
+    printer('snapshotID', getOrdersResponse[1].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
+    printer('snapshotTimestamp', getOrdersResponse[1].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('orderInfo | length', getOrdersResponse[1].ordersInfos.length === 1);
+    printer('orderInfo | orderHash', getOrdersResponse[1].ordersInfos[0].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('orderInfo | signedOrder | chainId', getOrdersResponse[1].ordersInfos[0].signedOrder.chainId === 1337);
+    printer(
+        'orderInfo | signedOrder | makerAddress',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | takerAddress',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | senderAddress',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | feeRecipientAddress',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | exchangeAddress',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetData',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.makerAssetData ===
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetAmount',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.makerAssetAmount === '123456789',
+    );
+    printer(
+        'orderInfo | signedOrder | makerFeeAssetData',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.makerFeeAssetData ===
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+    );
+    printer('orderInfo | signedOrder | makerFee', getOrdersResponse[1].ordersInfos[0].signedOrder.makerFee === '89');
+    printer(
+        'orderInfo | signedOrder | takerAssetData',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.takerAssetData ===
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    );
+    printer(
+        'orderInfo | signedOrder | takerAssetAmount',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.takerAssetAmount === '987654321',
+    );
+    printer(
+        'orderInfo | signedOrder | takerFeeAssetData',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.takerFeeAssetData ===
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+    );
+    printer('orderInfo | signedOrder | takerFee', getOrdersResponse[1].ordersInfos[0].signedOrder.takerFee === '12');
+    printer(
+        'orderInfo | signedOrder | expirationTimeSeconds',
+        getOrdersResponse[1].ordersInfos[0].signedOrder.expirationTimeSeconds === '10000000000',
+    );
+    printer('orderInfo | signedOrder | salt', getOrdersResponse[1].ordersInfos[0].signedOrder.salt === '1532559225');
+    printer(
+        'orderInfo | fillableTakerAssetAmount',
+        getOrdersResponse[1].ordersInfos[0].fillableTakerAssetAmount === '987654321',
+    );
+
+    printer = prettyPrintTestCase('getOrdersResponseTest', 'twoOrderInfos');
+    printer('snapshotID', getOrdersResponse[2].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
+    printer('snapshotTimestamp', getOrdersResponse[2].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('orderInfo | length', getOrdersResponse[2].ordersInfos.length === 2);
+    printer('orderInfo | orderHash', getOrdersResponse[2].ordersInfos[0].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('orderInfo | signedOrder | chainId', getOrdersResponse[2].ordersInfos[0].signedOrder.chainId === 1337);
+    printer(
+        'orderInfo | signedOrder | makerAddress',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | takerAddress',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | senderAddress',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | feeRecipientAddress',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | exchangeAddress',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetData',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.makerAssetData === '0x',
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetAmount',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.makerAssetAmount === '0',
+    );
+    printer(
+        'orderInfo | signedOrder | makerFeeAssetData',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.makerFeeAssetData === '0x',
+    );
+    printer('orderInfo | signedOrder | makerFee', getOrdersResponse[2].ordersInfos[0].signedOrder.makerFee === '0');
+    printer(
+        'orderInfo | signedOrder | takerAssetData',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.takerAssetData === '0x',
+    );
+    printer(
+        'orderInfo | signedOrder | takerAssetAmount',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.takerAssetAmount === '0',
+    );
+    printer(
+        'orderInfo | signedOrder | takerFeeAssetData',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.takerFeeAssetData === '0x',
+    );
+    printer('orderInfo | signedOrder | takerFee', getOrdersResponse[2].ordersInfos[0].signedOrder.takerFee === '0');
+    printer(
+        'orderInfo | signedOrder | expirationTimeSeconds',
+        getOrdersResponse[2].ordersInfos[0].signedOrder.expirationTimeSeconds === '10000000000',
+    );
+    printer('orderInfo | signedOrder | salt', getOrdersResponse[2].ordersInfos[0].signedOrder.salt === '1532559225');
+    printer(
+        'orderInfo | fillableTakerAssetAmount',
+        getOrdersResponse[2].ordersInfos[0].fillableTakerAssetAmount === '0',
+    );
+    printer('orderInfo | orderHash', getOrdersResponse[2].ordersInfos[1].orderHash === hexUtils.leftPad('0x1', 32));
+    printer('orderInfo | signedOrder | chainId', getOrdersResponse[2].ordersInfos[1].signedOrder.chainId === 1337);
+    printer(
+        'orderInfo | signedOrder | makerAddress',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.makerAddress === hexUtils.leftPad('0x1', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | takerAddress',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.takerAddress === hexUtils.leftPad('0x2', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | senderAddress',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.senderAddress === hexUtils.leftPad('0x3', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | feeRecipientAddress',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.feeRecipientAddress === hexUtils.leftPad('0x4', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | exchangeAddress',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.exchangeAddress === hexUtils.leftPad('0x5', 20),
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetData',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.makerAssetData ===
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+    );
+    printer(
+        'orderInfo | signedOrder | makerAssetAmount',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.makerAssetAmount === '123456789',
+    );
+    printer(
+        'orderInfo | signedOrder | makerFeeAssetData',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.makerFeeAssetData ===
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+    );
+    printer('orderInfo | signedOrder | makerFee', getOrdersResponse[2].ordersInfos[1].signedOrder.makerFee === '89');
+    printer(
+        'orderInfo | signedOrder | takerAssetData',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.takerAssetData ===
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    );
+    printer(
+        'orderInfo | signedOrder | takerAssetAmount',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.takerAssetAmount === '987654321',
+    );
+    printer(
+        'orderInfo | signedOrder | takerFeeAssetData',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.takerFeeAssetData ===
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+    );
+    printer('orderInfo | signedOrder | takerFee', getOrdersResponse[2].ordersInfos[1].signedOrder.takerFee === '12');
+    printer(
+        'orderInfo | signedOrder | expirationTimeSeconds',
+        getOrdersResponse[2].ordersInfos[1].signedOrder.expirationTimeSeconds === '10000000000',
+    );
+    printer('orderInfo | signedOrder | salt', getOrdersResponse[2].ordersInfos[1].signedOrder.salt === '1532559225');
+    printer(
+        'orderInfo | fillableTakerAssetAmount',
+        getOrdersResponse[2].ordersInfos[1].fillableTakerAssetAmount === '987654321',
+    );
 }
 
 function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {

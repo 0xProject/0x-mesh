@@ -31,6 +31,8 @@ func TestBrowserConversions(t *testing.T) {
 	// Register the test cases that should be logged.
 	registerContractEventTest()
 	registerGetOrdersResponseTest("emptyOrderInfo", 0)
+	registerGetOrdersResponseTest("oneOrderInfo", 1)
+	registerGetOrdersResponseTest("twoOrderInfos", 2)
 	registerOrderEventTest("EmptyContractEvents", 0)
 	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
@@ -195,11 +197,30 @@ func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
 }
 
-// FIXME - Generalize for length
 func registerGetOrdersResponseTest(description string, orderInfoLength int) {
 	registerGetOrdersResponseField(description, "snapshotID")
 	registerGetOrdersResponseField(description, "snapshotTimestamp")
 	registerGetOrdersResponseField(description, "orderInfo | length")
+	for i := 0; i < orderInfoLength; i++ {
+		registerGetOrdersResponseField(description, "orderInfo | orderHash")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | chainId")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAddress")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAddress")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | senderAddress")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | feeRecipientAddress")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | exchangeAddress")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAssetData")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAssetAmount")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerFeeAssetData")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerFee")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAssetData")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAssetAmount")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerFeeAssetData")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerFee")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | expirationTimeSeconds")
+		registerGetOrdersResponseField(description, "orderInfo | signedOrder | salt")
+		registerGetOrdersResponseField(description, "orderInfo | fillableTakerAssetAmount")
+	}
 }
 
 func registerOrderEventTest(description string, length int) {
