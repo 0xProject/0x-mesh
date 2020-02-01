@@ -5,6 +5,8 @@ github.com/0xProject/go-ws-transport v0.1.1-0.20200123233232-0b38359294da h1:8PO
 github.com/0xProject/go-ws-transport v0.1.1-0.20200123233232-0b38359294da/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200131210609-7f37eee84b58 h1:p9qXd3Krt69MEC2YqNiNjuP+Hxe7cTuABx59GPLCc5s=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200131210609-7f37eee84b58/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39 h1:zMth0Fw7e4MWjaNoN+lKzwdvqeNI2Mj12Zk63AMC3vI=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c h1:sMhvadadLwwpHsq4hDRAd+lcmQHJYpn44Oe9f7sFTmA=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c/go.mod h1:vCim/erjgVmww+K+tF4+tf/zs63CPRiOtgdXqLgTM1Q=
 github.com/0xProject/qunit v0.0.0-20190730000255-81c18fdf7752/go.mod h1:Onz5mS+Tpffz0tyRWdHDrqKcQ1ZFNeRhYHrNAkaMgeQ=
