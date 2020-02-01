@@ -17,6 +17,7 @@ const DHTProtocolID = protocol.ID("/0x-mesh-dht/version/1")
 // DefaultBootstrapList is a list of addresses to use by default for
 // bootstrapping the DHT.
 var DefaultBootstrapList = []string{
+	// bootstrap nodes
 	"/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
 	"/ip4/3.214.190.67/tcp/60559/ws/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
 	"/dns4/bootstrap-0.mesh.0x.org/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF",
@@ -32,6 +33,17 @@ var DefaultBootstrapList = []string{
 	"/dns4/bootstrap-2.mesh.0x.org/tcp/60558/ipfs/16Uiu2HAkykwoBxwyvoEbaEkuKMeKrmJDPZ2uKFPUKtqd2JbGHUNH",
 	"/dns4/bootstrap-2.mesh.0x.org/tcp/60559/ws/ipfs/16Uiu2HAkykwoBxwyvoEbaEkuKMeKrmJDPZ2uKFPUKtqd2JbGHUNH",
 	"/dns4/bootstrap-2.mesh.0x.org/tcp/443/wss/ipfs/16Uiu2HAkykwoBxwyvoEbaEkuKMeKrmJDPZ2uKFPUKtqd2JbGHUNH",
+
+	// relay nodes
+	// We could consider hard-coding these at the circuit-relay level. See
+	// https://github.com/libp2p/go-libp2p/pull/705. Hard-coding them in the
+	// bootstrap list is likely good enough for now.
+	"/ip4/167.172.201.142/tcp/60558/ipfs/16Uiu2HAkzuS8DfyZ2CPzZbxGCXLSHvvbvh8nvGCHjY6wEXe2jhAm",
+	"/dns4/fra1.relayer.mesh.0x.org/tcp/443/wss/ipfs/16Uiu2HAkzuS8DfyZ2CPzZbxGCXLSHvvbvh8nvGCHjY6wEXe2jhAm",
+	"/ip4/167.172.201.142/tcp/60558/ipfs/16Uiu2HAmM1dkXwZK5HsnknGFxzPBLuCw4EboiC2sdwKrPJZ6kcio",
+	"/dns4/sfo2.relayer.mesh.0x.org/tcp/443/wss/ipfs/16Uiu2HAmM1dkXwZK5HsnknGFxzPBLuCw4EboiC2sdwKrPJZ6kcio",
+	"/ip4/159.65.4.82/tcp/60558/ipfs/16Uiu2HAm9brLYhoM1wCTRtGRR7ZqXhk8kfEt6a2rSFSZpeV8eB7L",
+	"/dns4/sgp1.relayer.mesh.0x.org/tcp/443/wss/ipfs/16Uiu2HAm9brLYhoM1wCTRtGRR7ZqXhk8kfEt6a2rSFSZpeV8eB7L",
 
 	// These nodes are provided by the libp2p community on a best-effort basis.
 	// We're using them as a backup for increased redundancy.
