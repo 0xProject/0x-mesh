@@ -4,6 +4,7 @@ package p2p
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,8 @@ import (
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	tcp "github.com/libp2p/go-tcp-transport"
+	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -69,7 +72,17 @@ func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error)
 	if err != nil {
 		return nil, err
 	}
+
+	// Set up the WebSocket transport to ignore TLS verification. We use secio so
+	// it is not necessary.
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	newWebsocketTransport := ws.NewWithOptions(ws.TLSClientConfig(tlsConfig))
+
 	return []libp2p.Option{
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(newWebsocketTransport),
 		libp2p.ListenAddrs(tcpBindAddr, wsBindAddr),
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.Peerstore(pstore),
