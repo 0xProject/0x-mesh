@@ -84,7 +84,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the RPC server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
 		require.NoError(t, err, "RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+		rpcClient, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 		require.NoError(t, err)
 		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)

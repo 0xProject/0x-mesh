@@ -32,11 +32,9 @@ type rpcHandler struct {
 	ctx context.Context
 }
 
-// listenRPC starts the RPC server and listens on config.RPCAddr. It blocks
-// until there is an error or the RPC server is closed.
-func listenRPC(ctx context.Context, app *core.App, config standaloneConfig) error {
+// instantiateServer instantiates a new RPC server with the rpcHandler.
+func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.Server {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
-	rpcAddr := fmt.Sprintf("%s", config.RPCAddr)
 	rpcHandler := &rpcHandler{
 		app: app,
 		ctx: ctx,
@@ -57,7 +55,7 @@ func listenRPC(ctx context.Context, app *core.App, config standaloneConfig) erro
 		}
 		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
 	}()
-	return rpcServer.Listen(ctx)
+	return rpcServer
 }
 
 // GetOrders is called when an RPC client calls GetOrders.

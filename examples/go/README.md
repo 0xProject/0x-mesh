@@ -9,7 +9,7 @@ variables.
 
 
 ```
-RPC_ADDRESS=ws://167.71.80.233:60557 go run ./examples/go/subscribe-to-orders/main.go
+WS_RPC_ADDR=ws://167.71.80.233:60557 go run ./examples/go/subscribe-to-orders/main.go
 ```
 
 ### More Information

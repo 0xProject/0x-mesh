@@ -166,8 +166,10 @@ Mesh executable](../cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
-	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
 	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
-}
+	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
+	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
+	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
+	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`}
 ```
