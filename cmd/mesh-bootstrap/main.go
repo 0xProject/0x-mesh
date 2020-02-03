@@ -277,16 +277,6 @@ func main() {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
 	}
 
-	bootstrapList := p2p.DefaultBootstrapList
-	if config.UseBootstrapList {
-		if config.BootstrapList != "" {
-			bootstrapList = strings.Split(config.BootstrapList, ",")
-		}
-		if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
-			log.WithField("error", err).Fatal("could not connect to bootstrap peers")
-		}
-	}
-
 	// Configure banner.
 	banner := banner.New(ctx, banner.Config{
 		Host:                   basicHost,
@@ -296,19 +286,30 @@ func main() {
 		LogBandwidthUsageStats: true,
 	})
 
-	// Protect each other bootstrap peer via the connection manager so that we
-	// maintain an active connection to them. Also prevent other bootstrap nodes
-	// from being banned.
-	bootstrapAddrInfos, err := p2p.BootstrapListToAddrInfos(bootstrapList)
-	if err != nil {
-		log.WithField("error", err).Fatal("could not parse bootstrap list")
-	}
-
-	for _, addrInfo := range bootstrapAddrInfos {
-		connManager.Protect(addrInfo.ID, "bootstrap-peer")
-		for _, addr := range addrInfo.Addrs {
-			_ = banner.ProtectIP(addr)
+	bootstrapList := p2p.DefaultBootstrapList
+	if config.UseBootstrapList {
+		if config.BootstrapList != "" {
+			bootstrapList = strings.Split(config.BootstrapList, ",")
 		}
+		if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
+			log.WithField("error", err).Fatal("could not connect to bootstrap peers")
+		}
+
+		// Protect each other bootstrap peer via the connection manager so that we
+		// maintain an active connection to them. Also prevent other bootstrap nodes
+		// from being banned.
+		bootstrapAddrInfos, err := p2p.BootstrapListToAddrInfos(bootstrapList)
+		if err != nil {
+			log.WithField("error", err).Fatal("could not parse bootstrap list")
+		}
+
+		for _, addrInfo := range bootstrapAddrInfos {
+			connManager.Protect(addrInfo.ID, "bootstrap-peer")
+			for _, addr := range addrInfo.Addrs {
+				_ = banner.ProtectIP(addr)
+			}
+		}
+
 	}
 
 	log.WithFields(map[string]interface{}{
