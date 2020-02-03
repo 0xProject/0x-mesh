@@ -271,13 +271,13 @@ export interface OrderInfo {
 
 interface WrapperGetOrdersResponse {
     snapshotID: string;
-    snapshotTimestamp: number;
+    snapshotTimestamp: string;
     ordersInfos: WrapperOrderInfo[];
 }
 
 export interface GetOrdersResponse {
     snapshotID: string;
-    snapshotTimestamp: number;
+    snapshotTimestamp: Date;
     ordersInfos: OrderInfo[];
 }
 
@@ -450,9 +450,12 @@ export interface ExchangeFillEvent {
     takerAssetFilledAmount: BigNumber;
     makerFeePaid: BigNumber;
     takerFeePaid: BigNumber;
+    protocolFeePaid: BigNumber;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 interface WrapperExchangeFillEvent {
@@ -464,9 +467,12 @@ interface WrapperExchangeFillEvent {
     takerAssetFilledAmount: string;
     makerFeePaid: string;
     takerFeePaid: string;
+    protocolFeePaid: BigNumber;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 export interface ExchangeCancelEvent {
@@ -480,13 +486,13 @@ export interface ExchangeCancelEvent {
 
 export interface ExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: BigNumber;
 }
 
 interface WrapperExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: string;
 }
 
@@ -561,7 +567,7 @@ export interface ContractEvent {
     txHash: string;
     txIndex: number;
     logIndex: number;
-    isRemoved: string;
+    isRemoved: boolean;
     address: string;
     kind: ContractEventKind;
     parameters: ContractEventParameters;
@@ -573,7 +579,7 @@ interface WrapperContractEvent {
     txHash: string;
     txIndex: number;
     logIndex: number;
-    isRemoved: string;
+    isRemoved: boolean;
     address: string;
     kind: string;
     parameters: WrapperContractEventParameters;
@@ -1010,9 +1016,12 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                     takerAssetFilledAmount: new BigNumber(exchangeFillEvent.takerAssetFilledAmount),
                     makerFeePaid: new BigNumber(exchangeFillEvent.makerFeePaid),
                     takerFeePaid: new BigNumber(exchangeFillEvent.takerFeePaid),
+                    protocolFeePaid: new BigNumber(exchangeFillEvent.protocolFeePaid),
                     orderHash: exchangeFillEvent.orderHash,
                     makerAssetData: exchangeFillEvent.makerAssetData,
                     takerAssetData: exchangeFillEvent.takerAssetData,
+                    makerFeeAssetData: exchangeFillEvent.makerFeeAssetData,
+                    takerFeeAssetData: exchangeFillEvent.takerFeeAssetData,
                 };
                 break;
             case ContractEventKind.ExchangeCancelEvent:
@@ -1022,7 +1031,7 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                 const exchangeCancelUpToEvent = rawParameters as WrapperExchangeCancelUpToEvent;
                 parameters = {
                     makerAddress: exchangeCancelUpToEvent.makerAddress,
-                    senderAddress: exchangeCancelUpToEvent.senderAddress,
+                    orderSenderAddress: exchangeCancelUpToEvent.orderSenderAddress,
                     orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
                 };
                 break;
@@ -1102,6 +1111,7 @@ function wrapperGetOrdersResponseToGetOrdersResponse(
 ): GetOrdersResponse {
     return {
         ...wrapperGetOrdersResponse,
+        snapshotTimestamp: new Date(wrapperGetOrdersResponse.snapshotTimestamp),
         ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
     };
 }

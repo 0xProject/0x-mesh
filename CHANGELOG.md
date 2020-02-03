@@ -15,9 +15,12 @@ This changelog is a work in progress and may contain notes for versions which ha
 - Developers can now override the contract addresses for any testnet using the `CUSTOM_CONTRACT_ADDRESSES` env config ([#640](https://github.com/0xProject/0x-mesh/pull/640)).
 - Added `getOrdersForPageAsync` method to `@0x/mesh-rpc-client` WS client interface so that clients can paginate through the retrieved orders themselves ([#642](https://github.com/0xProject/0x-mesh/pull/642)).
 - Added support for passing in your own Web3 provider when using the `@0x/mesh-browser` package. ([#665](https://github.com/0xProject/0x-mesh/pull/665)).
-- Add support for orders involving Chai ERC20Bridge assetData ([#663](https://github.com/0xProject/0x-mesh/pull/663)) 
+- Add support for orders involving Chai ERC20Bridge assetData ([#663](https://github.com/0xProject/0x-mesh/pull/663))
 - Add support for calling JSON-RPC methods over HTTP (env config `HTTP_RPC_ADDR` defaults to `localhost:60556`). ([#658](https://github.com/0xProject/0x-mesh/pull/658))
 
+### Bug fixes 🐞
+
+- Fixed some of the browser typescript bindings to be consistent with the Go and smart contract implementations ([#697](https://github.com/0xProject/0x-mesh/pull/697)).
 
 ## v8.2.0
 
