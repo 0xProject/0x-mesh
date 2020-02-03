@@ -480,13 +480,13 @@ export interface ExchangeCancelEvent {
 
 export interface ExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: BigNumber;
 }
 
 interface WrapperExchangeCancelUpToEvent {
     makerAddress: string;
-    senderAddress: string;
+    orderSenderAddress: string;
     orderEpoch: string;
 }
 
@@ -1022,7 +1022,7 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                 const exchangeCancelUpToEvent = rawParameters as WrapperExchangeCancelUpToEvent;
                 parameters = {
                     makerAddress: exchangeCancelUpToEvent.makerAddress,
-                    senderAddress: exchangeCancelUpToEvent.senderAddress,
+                    orderSenderAddress: exchangeCancelUpToEvent.orderSenderAddress,
                     orderEpoch: new BigNumber(exchangeCancelUpToEvent.orderEpoch),
                 };
                 break;
