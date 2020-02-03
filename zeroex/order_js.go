@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"syscall/js"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -16,7 +17,7 @@ func (o OrderEvent) JSValue() js.Value {
 		contractEventsJS[i] = contractEvent.JSValue()
 	}
 	return js.ValueOf(map[string]interface{}{
-		"timestamp":                o.Timestamp.String(),
+		"timestamp":                o.Timestamp.Format(time.RFC3339),
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder.JSValue(),
 		"endState":                 string(o.EndState),

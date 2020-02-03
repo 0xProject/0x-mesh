@@ -271,13 +271,13 @@ export interface OrderInfo {
 
 interface WrapperGetOrdersResponse {
     snapshotID: string;
-    snapshotTimestamp: number;
+    snapshotTimestamp: string;
     ordersInfos: WrapperOrderInfo[];
 }
 
 export interface GetOrdersResponse {
     snapshotID: string;
-    snapshotTimestamp: number;
+    snapshotTimestamp: Date;
     ordersInfos: OrderInfo[];
 }
 
@@ -1111,6 +1111,7 @@ function wrapperGetOrdersResponseToGetOrdersResponse(
 ): GetOrdersResponse {
     return {
         ...wrapperGetOrdersResponse,
+        snapshotTimestamp: new Date(wrapperGetOrdersResponse.snapshotTimestamp),
         ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
     };
 }
