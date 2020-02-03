@@ -450,9 +450,12 @@ export interface ExchangeFillEvent {
     takerAssetFilledAmount: BigNumber;
     makerFeePaid: BigNumber;
     takerFeePaid: BigNumber;
+    protocolFeePaid: BigNumber;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 interface WrapperExchangeFillEvent {
@@ -464,9 +467,12 @@ interface WrapperExchangeFillEvent {
     takerAssetFilledAmount: string;
     makerFeePaid: string;
     takerFeePaid: string;
+    protocolFeePaid: BigNumber;
     orderHash: string;
     makerAssetData: string;
     takerAssetData: string;
+    makerFeeAssetData: string;
+    takerFeeAssetData: string;
 }
 
 export interface ExchangeCancelEvent {
@@ -1010,9 +1016,12 @@ function wrapperContractEventsToContractEvents(wrapperContractEvents: WrapperCon
                     takerAssetFilledAmount: new BigNumber(exchangeFillEvent.takerAssetFilledAmount),
                     makerFeePaid: new BigNumber(exchangeFillEvent.makerFeePaid),
                     takerFeePaid: new BigNumber(exchangeFillEvent.takerFeePaid),
+                    protocolFeePaid: new BigNumber(exchangeFillEvent.protocolFeePaid),
                     orderHash: exchangeFillEvent.orderHash,
                     makerAssetData: exchangeFillEvent.makerAssetData,
                     takerAssetData: exchangeFillEvent.takerAssetData,
+                    makerFeeAssetData: exchangeFillEvent.makerFeeAssetData,
+                    takerFeeAssetData: exchangeFillEvent.takerFeeAssetData,
                 };
                 break;
             case ContractEventKind.ExchangeCancelEvent:
