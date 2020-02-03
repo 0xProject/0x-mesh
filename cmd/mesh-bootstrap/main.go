@@ -286,8 +286,8 @@ func main() {
 		LogBandwidthUsageStats: true,
 	})
 
-	bootstrapList := p2p.DefaultBootstrapList
 	if config.UseBootstrapList {
+		bootstrapList := p2p.DefaultBootstrapList
 		if config.BootstrapList != "" {
 			bootstrapList = strings.Split(config.BootstrapList, ",")
 		}
