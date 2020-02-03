@@ -100,6 +100,9 @@ type Config struct {
 	// database driver.
 	// NOTE: Currently only `postgres` driver is supported.
 	SQLDBEngine string `envvar:"SQL_DB_ENGINE" default:"postgres"`
+	// UseBootstrapList determines whether or not to use the list of hard-coded
+	// peers to bootstrap the DHT for peer discovery.
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
@@ -273,12 +276,15 @@ func main() {
 	if err := kadDHT.Bootstrap(ctx); err != nil {
 		log.WithField("error", err).Fatal("could not bootstrap DHT")
 	}
+
 	bootstrapList := p2p.DefaultBootstrapList
-	if config.BootstrapList != "" {
-		bootstrapList = strings.Split(config.BootstrapList, ",")
-	}
-	if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
-		log.WithField("error", err).Fatal("could not connect to bootstrap peers")
+	if config.UseBootstrapList {
+		if config.BootstrapList != "" {
+			bootstrapList = strings.Split(config.BootstrapList, ",")
+		}
+		if err := p2p.ConnectToBootstrapList(ctx, basicHost, bootstrapList); err != nil {
+			log.WithField("error", err).Fatal("could not connect to bootstrap peers")
+		}
 	}
 
 	// Configure banner.
@@ -297,6 +303,7 @@ func main() {
 	if err != nil {
 		log.WithField("error", err).Fatal("could not parse bootstrap list")
 	}
+
 	for _, addrInfo := range bootstrapAddrInfos {
 		connManager.Protect(addrInfo.ID, "bootstrap-peer")
 		for _, addr := range addrInfo.Addrs {
