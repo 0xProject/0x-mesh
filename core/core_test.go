@@ -120,8 +120,9 @@ func TestOrderSync(t *testing.T) {
 	for i := range originalOrders {
 		originalOrders[i] = scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, constants.GanacheAccount1, constants.GanacheAccount2, big.NewInt(20), big.NewInt(5))
 	}
-	_, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
+	require.NotEmpty(t, results.Accepted, "some original orders where not considered valid: %+v\n", results)
 
 	err = originalNode.AddPeer(peer.AddrInfo{
 		ID:    newNode.node.ID(),

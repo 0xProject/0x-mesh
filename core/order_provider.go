@@ -39,6 +39,17 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 	if err := p.db.Orders.NewQuery(notRemovedFilter).Run(&nonRemovedOrders); err != nil {
 		return nil, err
 	}
+	if len(nonRemovedOrders) == 0 {
+		var allOrders []*meshdb.Order
+		if err := p.db.Orders.FindAll(&allOrders); err != nil {
+			return nil, err
+		}
+		log.WithFields(log.Fields{
+			"me":           p.app.peerID.Pretty(),
+			"requester":    requestingPeer.Pretty(),
+			"numAllOrders": len(allOrders),
+		}).Trace("no non-removed orders found")
+	}
 	filter, err := orderfilter.NewFromTopic(topic)
 	if err != nil {
 		return nil, err
@@ -54,6 +65,10 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 		}
 	}
 	if len(filteredOrders) == 0 {
+		log.WithFields(log.Fields{
+			"me":        p.app.peerID.Pretty(),
+			"requester": requestingPeer.Pretty(),
+		}).Trace("no orders found that pass filter")
 		return nil, nil
 	}
 
