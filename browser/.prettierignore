@@ -1,8 +1,0 @@
-lib
-package.json
-webpack.config.js
-ts/wasm_exec.ts
-ts/generated/*
-README.md
-tslint.json
-tsconfig.json

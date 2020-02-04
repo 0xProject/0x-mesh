@@ -9,14 +9,6 @@ export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
 
 import {
-    configToWrapperConfig,
-    orderEventsHandlerToWrapperOrderEventsHandler,
-    signedOrderToWrapperSignedOrder,
-    wrapperGetOrdersResponseToGetOrdersResponse,
-    wrapperStatsToStats,
-    wrapperValidationResultsToValidationResults,
-} from './encoding';
-import {
     AcceptedOrderInfo,
     Config,
     ContractAddresses,
@@ -52,6 +44,14 @@ import {
     WrapperValidationResults,
     ZeroExMesh,
 } from './types';
+import {
+    configToWrapperConfig,
+    orderEventsHandlerToWrapperOrderEventsHandler,
+    signedOrderToWrapperSignedOrder,
+    wrapperGetOrdersResponseToGetOrdersResponse,
+    wrapperStatsToStats,
+    wrapperValidationResultsToValidationResults,
+} from './wrapper_conversion';
 
 export {
     AcceptedOrderInfo,

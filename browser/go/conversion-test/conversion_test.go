@@ -19,10 +19,23 @@ import (
 
 var testCases []string
 
+// This test is the entry-point to the Browser Conversion Tests. The other relevant
+// files are "../../conversion-test/conversion_test.ts" and "./main.go."
+//
+// This entry-point builds the repository so that the current codebase is tested
+// rather than an old version. After building, this test will register any test
+// cases that are expected to be executed. Finally, a file server and a headless
+// browser are initialized. The file server serves the "../../dist" directory,
+// which will contain a webpage that contains a test script that will instantiate
+// the Wasm buffer and execute the tests. As the tests are executed, test results
+// are logged to the browser console, which this test will be able to access. As
+// these logs are received, they are verified against registered test cases. Test
+// failures, unexpected tests, and missing tests are all failure conditions for this
+// test.
 func TestBrowserConversions(t *testing.T) {
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 
@@ -30,18 +43,18 @@ func TestBrowserConversions(t *testing.T) {
 
 	// Register the test cases that should be logged.
 	registerContractEventTest()
-	registerGetOrdersResponseTest("emptyOrderInfo", 0)
-	registerGetOrdersResponseTest("oneOrderInfo", 1)
-	registerGetOrdersResponseTest("twoOrderInfos", 2)
+	registerGetOrdersResponseTest("EmptyOrderInfo", 0)
+	registerGetOrdersResponseTest("OneOrderInfo", 1)
+	registerGetOrdersResponseTest("TwoOrderInfos", 2)
 	registerOrderEventTest("EmptyContractEvents", 0)
 	registerOrderEventTest("ExchangeFillContractEvent", 1)
 	registerSignedOrderTest("NullAssetData")
 	registerSignedOrderTest("NonNullAssetData")
-	registerStatsTest("realisticStats")
-	registerValidationResultsTest("emptyValidationResults", 0, 0)
-	registerValidationResultsTest("oneAcceptedResult", 1, 0)
-	registerValidationResultsTest("oneRejectedResult", 0, 1)
-	registerValidationResultsTest("realisticValidationResults", 2, 1)
+	registerStatsTest("RealisticStats")
+	registerValidationResultsTest("EmptyValidationResults", 0, 0)
+	registerValidationResultsTest("OneAcceptedResult", 1, 0)
+	registerValidationResultsTest("OneRejectedResult", 0, 1)
+	registerValidationResultsTest("RealisticValidationResults", 2, 1)
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -175,8 +188,6 @@ func registerContractEventTest() {
 	registerContractEventParams("FooBarBazEvent", "owner")
 	registerContractEventParams("FooBarBazEvent", "spender")
 	registerContractEventParams("FooBarBazEvent", "value")
-
-	fmt.Println("Done registering ContractEvent test")
 }
 
 func registerContractEventPrelude(description string) {
@@ -190,36 +201,36 @@ func registerContractEventPrelude(description string) {
 }
 
 func registerContractEventParams(description string, param string) {
-	registerContractEventField(description, fmt.Sprintf("parameter | %s", param))
+	registerContractEventField(description, fmt.Sprintf("parameters.%s", param))
 }
 
 func registerContractEventField(description string, field string) {
-	registerTest(fmt.Sprintf("(contractEventTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(contractEvent | %s | %s)", description, field))
 }
 
 func registerGetOrdersResponseTest(description string, orderInfoLength int) {
 	registerGetOrdersResponseField(description, "snapshotID")
 	registerGetOrdersResponseField(description, "snapshotTimestamp")
-	registerGetOrdersResponseField(description, "orderInfo | length")
+	registerGetOrdersResponseField(description, "orderInfo.length")
 	for i := 0; i < orderInfoLength; i++ {
-		registerGetOrdersResponseField(description, "orderInfo | orderHash")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | chainId")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAddress")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAddress")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | senderAddress")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | feeRecipientAddress")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | exchangeAddress")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAssetData")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerAssetAmount")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerFeeAssetData")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | makerFee")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAssetData")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerAssetAmount")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerFeeAssetData")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | takerFee")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | expirationTimeSeconds")
-		registerGetOrdersResponseField(description, "orderInfo | signedOrder | salt")
-		registerGetOrdersResponseField(description, "orderInfo | fillableTakerAssetAmount")
+		registerGetOrdersResponseField(description, "orderInfo.orderHash")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.chainId")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.makerAddress")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.takerAddress")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.senderAddress")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.feeRecipientAddress")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.exchangeAddress")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.makerAssetData")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.makerAssetAmount")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.makerFeeAssetData")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.makerFee")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.takerAssetData")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.takerAssetAmount")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.takerFeeAssetData")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.takerFee")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.expirationTimeSeconds")
+		registerGetOrdersResponseField(description, "orderInfo.signedOrder.salt")
+		registerGetOrdersResponseField(description, "orderInfo.fillableTakerAssetAmount")
 	}
 }
 
@@ -233,7 +244,7 @@ func registerOrderEventTest(description string, length int) {
 }
 
 func registerOrderEventContractEventsPrelude(description string, length int) {
-	boilerplate := "contractEvents | "
+	boilerplate := "contractEvents."
 	registerOrderEventField(description, boilerplate+"length")
 	if length == 0 {
 		return
@@ -248,7 +259,7 @@ func registerOrderEventContractEventsPrelude(description string, length int) {
 }
 
 func registerOrderEventSignedOrder(description string) {
-	boilerplate := "signedOrder | "
+	boilerplate := "signedOrder."
 	registerOrderEventField(description, boilerplate+"chainId")
 	registerOrderEventField(description, boilerplate+"makerAddress")
 	registerOrderEventField(description, boilerplate+"takerAddress")
@@ -307,78 +318,78 @@ func registerStatsTest(description string) {
 
 // FIXME(jalextowle): Generalize for non-empty validation results
 func registerValidationResultsTest(description string, acceptedLength int, rejectedLength int) {
-	registerValidationResultsField(description, "accepted | length")
+	registerValidationResultsField(description, "accepted.length")
 	for i := 0; i < acceptedLength; i++ {
-		registerValidationResultsField(description, "accepted | orderHash")
-		registerValidationResultsField(description, "accepted | signedOrder | chainId")
-		registerValidationResultsField(description, "accepted | signedOrder | makerAddress")
-		registerValidationResultsField(description, "accepted | signedOrder | takerAddress")
-		registerValidationResultsField(description, "accepted | signedOrder | senderAddress")
-		registerValidationResultsField(description, "accepted | signedOrder | feeRecipientAddress")
-		registerValidationResultsField(description, "accepted | signedOrder | exchangeAddress")
-		registerValidationResultsField(description, "accepted | signedOrder | makerAssetData")
-		registerValidationResultsField(description, "accepted | signedOrder | makerAssetAmount")
-		registerValidationResultsField(description, "accepted | signedOrder | makerFeeAssetData")
-		registerValidationResultsField(description, "accepted | signedOrder | makerFee")
-		registerValidationResultsField(description, "accepted | signedOrder | takerAssetData")
-		registerValidationResultsField(description, "accepted | signedOrder | takerAssetAmount")
-		registerValidationResultsField(description, "accepted | signedOrder | takerFeeAssetData")
-		registerValidationResultsField(description, "accepted | signedOrder | takerFee")
-		registerValidationResultsField(description, "accepted | signedOrder | expirationTimeSeconds")
-		registerValidationResultsField(description, "accepted | signedOrder | salt")
-		registerValidationResultsField(description, "accepted | signedOrder | signature")
-		registerValidationResultsField(description, "accepted | fillableTakerAssetAmount")
-		registerValidationResultsField(description, "accepted | isNew")
+		registerValidationResultsField(description, "accepted.orderHash")
+		registerValidationResultsField(description, "accepted.signedOrder.chainId")
+		registerValidationResultsField(description, "accepted.signedOrder.makerAddress")
+		registerValidationResultsField(description, "accepted.signedOrder.takerAddress")
+		registerValidationResultsField(description, "accepted.signedOrder.senderAddress")
+		registerValidationResultsField(description, "accepted.signedOrder.feeRecipientAddress")
+		registerValidationResultsField(description, "accepted.signedOrder.exchangeAddress")
+		registerValidationResultsField(description, "accepted.signedOrder.makerAssetData")
+		registerValidationResultsField(description, "accepted.signedOrder.makerAssetAmount")
+		registerValidationResultsField(description, "accepted.signedOrder.makerFeeAssetData")
+		registerValidationResultsField(description, "accepted.signedOrder.makerFee")
+		registerValidationResultsField(description, "accepted.signedOrder.takerAssetData")
+		registerValidationResultsField(description, "accepted.signedOrder.takerAssetAmount")
+		registerValidationResultsField(description, "accepted.signedOrder.takerFeeAssetData")
+		registerValidationResultsField(description, "accepted.signedOrder.takerFee")
+		registerValidationResultsField(description, "accepted.signedOrder.expirationTimeSeconds")
+		registerValidationResultsField(description, "accepted.signedOrder.salt")
+		registerValidationResultsField(description, "accepted.signedOrder.signature")
+		registerValidationResultsField(description, "accepted.fillableTakerAssetAmount")
+		registerValidationResultsField(description, "accepted.isNew")
 	}
 
-	registerValidationResultsField(description, "rejected | length")
+	registerValidationResultsField(description, "rejected.length")
 	for i := 0; i < rejectedLength; i++ {
-		registerValidationResultsField(description, "rejected | orderHash")
-		registerValidationResultsField(description, "rejected | signedOrder | chainId")
-		registerValidationResultsField(description, "rejected | signedOrder | makerAddress")
-		registerValidationResultsField(description, "rejected | signedOrder | takerAddress")
-		registerValidationResultsField(description, "rejected | signedOrder | senderAddress")
-		registerValidationResultsField(description, "rejected | signedOrder | feeRecipientAddress")
-		registerValidationResultsField(description, "rejected | signedOrder | exchangeAddress")
-		registerValidationResultsField(description, "rejected | signedOrder | makerAssetData")
-		registerValidationResultsField(description, "rejected | signedOrder | makerAssetAmount")
-		registerValidationResultsField(description, "rejected | signedOrder | makerFeeAssetData")
-		registerValidationResultsField(description, "rejected | signedOrder | makerFee")
-		registerValidationResultsField(description, "rejected | signedOrder | takerAssetData")
-		registerValidationResultsField(description, "rejected | signedOrder | takerAssetAmount")
-		registerValidationResultsField(description, "rejected | signedOrder | takerFeeAssetData")
-		registerValidationResultsField(description, "rejected | signedOrder | takerFee")
-		registerValidationResultsField(description, "rejected | signedOrder | expirationTimeSeconds")
-		registerValidationResultsField(description, "rejected | signedOrder | salt")
-		registerValidationResultsField(description, "rejected | signedOrder | signature")
-		registerValidationResultsField(description, "rejected | kind")
-		registerValidationResultsField(description, "rejected | status | code")
-		registerValidationResultsField(description, "rejected | status | message")
+		registerValidationResultsField(description, "rejected.orderHash")
+		registerValidationResultsField(description, "rejected.signedOrder.chainId")
+		registerValidationResultsField(description, "rejected.signedOrder.makerAddress")
+		registerValidationResultsField(description, "rejected.signedOrder.takerAddress")
+		registerValidationResultsField(description, "rejected.signedOrder.senderAddress")
+		registerValidationResultsField(description, "rejected.signedOrder.feeRecipientAddress")
+		registerValidationResultsField(description, "rejected.signedOrder.exchangeAddress")
+		registerValidationResultsField(description, "rejected.signedOrder.makerAssetData")
+		registerValidationResultsField(description, "rejected.signedOrder.makerAssetAmount")
+		registerValidationResultsField(description, "rejected.signedOrder.makerFeeAssetData")
+		registerValidationResultsField(description, "rejected.signedOrder.makerFee")
+		registerValidationResultsField(description, "rejected.signedOrder.takerAssetData")
+		registerValidationResultsField(description, "rejected.signedOrder.takerAssetAmount")
+		registerValidationResultsField(description, "rejected.signedOrder.takerFeeAssetData")
+		registerValidationResultsField(description, "rejected.signedOrder.takerFee")
+		registerValidationResultsField(description, "rejected.signedOrder.expirationTimeSeconds")
+		registerValidationResultsField(description, "rejected.signedOrder.salt")
+		registerValidationResultsField(description, "rejected.signedOrder.signature")
+		registerValidationResultsField(description, "rejected.kind")
+		registerValidationResultsField(description, "rejected.status.code")
+		registerValidationResultsField(description, "rejected.status.message")
 	}
 }
 
 func registerGetOrdersResponseField(description string, field string) {
-	registerTest(fmt.Sprintf("(getOrdersResponseTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(getOrdersResponse | %s | %s)", description, field))
 }
 
 func registerOrderEventField(description string, field string) {
-	registerTest(fmt.Sprintf("(orderEventTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(orderEvent | %s | %s)", description, field))
 }
 
 func registerSignedOrderField(description string, field string) {
-	registerTest(fmt.Sprintf("(signedOrderTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(signedOrder | %s | %s)", description, field))
 }
 
 func registerStatsField(description string, field string) {
-	registerTest(fmt.Sprintf("(statsTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(stats | %s | %s)", description, field))
 }
 
 func registerValidationResultsField(description string, field string) {
-	registerTest(fmt.Sprintf("(validationResultsTest | %s | %s)", description, field))
+	registerTest(fmt.Sprintf("(validationResults | %s | %s)", description, field))
 }
 
 func registerTest(test string) {
-	testCases = append(testCases, fmt.Sprintf("\"%s: true\"", test))
+	testCases = append(testCases, fmt.Sprintf(`"%s: true"`, test))
 }
 
 func startBrowserInstance(t *testing.T, ctx context.Context, url string, done chan interface{}) {
@@ -447,5 +458,5 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	cmd.Dir = "../../"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build Wasm binary and Typescript bindings: %s", string(output))
-	fmt.Println("Done building everything")
+	fmt.Println("Finished building for tests")
 }
