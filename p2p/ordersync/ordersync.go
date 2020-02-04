@@ -107,6 +107,9 @@ func (s *Service) handleStream(stream network.Stream) {
 }
 
 func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
+	log.WithFields(log.Fields{
+		"me": s.host.ID().Pretty(),
+	}).Trace("inside ordersync.GetOrders")
 	// if err := s.waitForPeers(ctx); err != nil {
 	// 	return nil, err
 	// }
@@ -119,6 +122,10 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 	// TODO(albrow): Do this for loop partly in parallel.
 	// TODO(albrow): Add a timeout when waiting for a response.
 	for _, peerID := range peers {
+		log.WithFields(log.Fields{
+			"me":       s.host.ID().Pretty(),
+			"provider": peerID.Pretty(),
+		}).Trace("requesting orders from neighbor")
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

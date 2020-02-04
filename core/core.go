@@ -579,7 +579,7 @@ func (app *App) Start(ctx context.Context) error {
 	}
 
 	// Register ordersync provider and start ordersync service.
-	provider := newOrderProvider(app.db)
+	provider := newOrderProvider(app, app.db)
 	app.orderSync = app.node.NewOrderSyncService(provider)
 	orderSyncErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -1040,6 +1040,10 @@ func (app *App) syncOrders(ctx context.Context) error {
 	// TODO(albrow): Currently we just send one call to GetOrders, which only gets
 	// results from one peer. We probably need to send multiple calls to multiple
 	// peers either here or in the implementation of GetOrders.
+
+	log.WithFields(log.Fields{
+		"me": app.peerID.Pretty(),
+	}).Trace("inside syncOrders")
 
 	for {
 		select {

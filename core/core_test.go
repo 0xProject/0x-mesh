@@ -44,7 +44,7 @@ func TestEthereumChainDetection(t *testing.T) {
 func newTestApp(t *testing.T) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
-		Verbosity:                        5,
+		Verbosity:                        6,
 		DataDir:                          dataDir,
 		P2PTCPPort:                       0,
 		P2PWebSocketsPort:                0,
