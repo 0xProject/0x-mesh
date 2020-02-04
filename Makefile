@@ -48,7 +48,8 @@ test-go-parallel:
 
 .PHONY: test-go-serial
 test-go-serial:
-	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial
+	go test ./zeroex/ordervalidator ./zeroex/orderwatch -race -timeout 90s -p=1 --serial
+	go test ./core -timeout 90s -p=1 --serial
 
 .PHONY: test-browser-integration
 test-browser-integration:
