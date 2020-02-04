@@ -15,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
@@ -122,7 +123,7 @@ func TestOrderSync(t *testing.T) {
 	}
 	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
-	require.NotEmpty(t, results.Accepted, "some original orders where not considered valid: %+v\n", results)
+	require.NotEmpty(t, results.Accepted, "some original orders where not considered valid: \n%s\n", spew.Sdump(results))
 
 	err = originalNode.AddPeer(peer.AddrInfo{
 		ID:    newNode.node.ID(),
