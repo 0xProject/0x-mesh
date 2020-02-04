@@ -62,8 +62,8 @@ func newTestApp(t *testing.T) *App {
 		BlockPollingInterval:             250 * time.Millisecond,
 		EthereumRPCMaxContentLength:      524288,
 		EnableEthereumRPCRateLimiting:    false,
-		EthereumRPCMaxRequestsPer24HrUTC: 200000,
-		EthereumRPCMaxRequestsPerSecond:  30,
+		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
+		EthereumRPCMaxRequestsPerSecond:  99999999999999,
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                "{}",
 	}
