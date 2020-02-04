@@ -24,6 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	// blockProcessingWaitTime is the amount of time to wait for Mesh to process
+	// new blocks that have been mined.
+	blockProcessingWaitTime = 2 * time.Second
+)
+
 func TestEthereumChainDetection(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
 	require.NoError(t, err)
@@ -53,7 +59,7 @@ func newTestApp(t *testing.T) *App {
 		EthereumChainID:                  constants.TestChainID,
 		UseBootstrapList:                 false,
 		BootstrapList:                    "",
-		BlockPollingInterval:             5 * time.Second,
+		BlockPollingInterval:             250 * time.Millisecond,
 		EthereumRPCMaxContentLength:      524288,
 		EnableEthereumRPCRateLimiting:    false,
 		EthereumRPCMaxRequestsPer24HrUTC: 200000,
@@ -123,12 +129,15 @@ func TestOrderSync(t *testing.T) {
 	}
 
 	// We have to wait for latest block to be processed by the Mesh node.
-	time.Sleep(5 * time.Second)
+	time.Sleep(blockProcessingWaitTime)
 
 	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
-	require.NotEmpty(t, results.Accepted, "some original orders where not considered valid: \n%s\n", spew.Sdump(results))
+	require.NotEmpty(t, results.Accepted, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
+	// Connect the two nodes *after* adding orders to one of them. This should
+	// trigger the ordersync
+	// protocol.
 	err = originalNode.AddPeer(peer.AddrInfo{
 		ID:    newNode.node.ID(),
 		Addrs: newNode.node.Multiaddrs(),
