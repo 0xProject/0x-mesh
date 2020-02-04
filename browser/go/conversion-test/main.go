@@ -149,7 +149,6 @@ func setGlobals() {
 						Values:   []*big.Int{big.NewInt(100)},
 					},
 				},
-				// FIXME(jalextowle): Should I include another event with non-null asset data?
 				zeroex.ContractEvent{
 					BlockHash: common.HexToHash("0x1"),
 					TxHash:    common.HexToHash("0x2"),

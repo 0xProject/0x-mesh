@@ -316,7 +316,6 @@ func registerStatsTest(description string) {
 	registerStatsField(description, "ethRPCRateLimitExpiredRequests")
 }
 
-// FIXME(jalextowle): Generalize for non-empty validation results
 func registerValidationResultsTest(description string, acceptedLength int, rejectedLength int) {
 	registerValidationResultsField(description, "accepted.length")
 	for i := 0; i < acceptedLength; i++ {
