@@ -13,57 +13,60 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install nvm
-          command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
-      - run:
-          name: Configure nvm
-          command: export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      - run:
-          name: Install Node v11
-          command: nvm install 11
-      - run: node --version
-      - run:
-          name: Install yarn
-          command: npm i -g yarn@1.17
-      - run:
-          name: Install dependencies
-          command: make deps-no-lockfile
-      - run:
-          name: Vendor Go dependencies as a workaround for https://github.com/golangci/golangci-lint/issues/865
-          command: go mod vendor
-      - run:
-          name: Install Go linter
-          command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.22.2
-      - run:
-          name: Run linters
-          command: make lint
-      - run:
-          name: Build browser package
-          command: cd browser && yarn install && yarn build
-      - run:
-          name: Build examples/browser
-          command: cd examples/browser && yarn install --force && yarn build
-      - run:
-          name: Run Go tests
-          command: make test-go
-      - run:
-          name: Run WebAssembly tests in Node.js
-          command: make test-wasm-node
-      - run:
-          name: Run WebAssembly tests in a headless browser
-          command: make test-wasm-browser
-      - run:
-          name: Run browser integration tests
-          command: make test-browser-integration
-      - run:
-          name: Test installing Mesh without CGO
-          command: CGO_ENABLED=0 go install ./...
-      - run:
-          name: Build TS RPC client
-          command: cd rpc/clients/typescript && yarn build
-      - run:
-          name: Run TS RPC client tests
-          command: cd rpc/clients/typescript && yarn test
-      - run:
-          name: Run cut-release script to test it still works
-          command: VERSION=100.0.0 make cut-release
+          name: Run core tests
+          command: make test-go-serial
+    #   - run:
+    #       name: Install nvm
+    #       command: curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+    #   - run:
+    #       name: Configure nvm
+    #       command: export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    #   - run:
+    #       name: Install Node v11
+    #       command: nvm install 11
+    #   - run: node --version
+    #   - run:
+    #       name: Install yarn
+    #       command: npm i -g yarn@1.17
+    #   - run:
+    #       name: Install dependencies
+    #       command: make deps-no-lockfile
+    #   - run:
+    #       name: Vendor Go dependencies as a workaround for https://github.com/golangci/golangci-lint/issues/865
+    #       command: go mod vendor
+    #   - run:
+    #       name: Install Go linter
+    #       command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.22.2
+    #   - run:
+    #       name: Run linters
+    #       command: make lint
+    #   - run:
+    #       name: Build browser package
+    #       command: cd browser && yarn install && yarn build
+    #   - run:
+    #       name: Build examples/browser
+    #       command: cd examples/browser && yarn install --force && yarn build
+    #   - run:
+    #       name: Run Go tests
+    #       command: make test-go
+    #   - run:
+    #       name: Run WebAssembly tests in Node.js
+    #       command: make test-wasm-node
+    #   - run:
+    #       name: Run WebAssembly tests in a headless browser
+    #       command: make test-wasm-browser
+    #   - run:
+    #       name: Run browser integration tests
+    #       command: make test-browser-integration
+    #   - run:
+    #       name: Test installing Mesh without CGO
+    #       command: CGO_ENABLED=0 go install ./...
+    #   - run:
+    #       name: Build TS RPC client
+    #       command: cd rpc/clients/typescript && yarn build
+    #   - run:
+    #       name: Run TS RPC client tests
+    #       command: cd rpc/clients/typescript && yarn test
+    #   - run:
+    #       name: Run cut-release script to test it still works
+    #       command: VERSION=100.0.0 make cut-release
