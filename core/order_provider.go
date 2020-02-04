@@ -56,5 +56,11 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 	if len(filteredOrders) == 0 {
 		return nil, nil
 	}
+
+	log.WithFields(log.Fields{
+		"me":        p.app.peerID.Pretty(),
+		"requester": requestingPeer.Pretty(),
+		"numOrders": len(filteredOrders),
+	}).Trace("provided orders to neighbor")
 	return json.Marshal(filteredOrders)
 }

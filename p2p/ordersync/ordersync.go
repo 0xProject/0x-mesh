@@ -162,6 +162,11 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 		if len(res.Orders) != 0 {
 			// TODO(albrow): Handle peer scores somewhere else?
 			s.host.ConnManager().UpsertTag(peerID, scoreTag, func(current int) int { return current + validMessageScoreDiff })
+			log.WithFields(log.Fields{
+				"me":        s.host.ID().Pretty(),
+				"provider":  peerID.Pretty(),
+				"numOrders": len(res.Orders),
+			}).Trace("received orders from neighbor")
 			return res.Orders, nil
 		}
 	}
