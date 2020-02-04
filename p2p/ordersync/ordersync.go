@@ -107,9 +107,6 @@ func (s *Service) handleStream(stream network.Stream) {
 }
 
 func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
-	log.WithFields(log.Fields{
-		"me": s.host.ID().Pretty(),
-	}).Trace("inside ordersync.GetOrders")
 	// if err := s.waitForPeers(ctx); err != nil {
 	// 	return nil, err
 	// }
@@ -123,9 +120,8 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 	// TODO(albrow): Add a timeout when waiting for a response.
 	for _, peerID := range peers {
 		log.WithFields(log.Fields{
-			"me":       s.host.ID().Pretty(),
 			"provider": peerID.Pretty(),
-		}).Trace("requesting orders from neighbor")
+		}).Trace("requesting orders from neighbor via ordersync")
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -163,10 +159,9 @@ func (s *Service) GetOrders(ctx context.Context, topic string) ([]byte, error) {
 			// TODO(albrow): Handle peer scores somewhere else?
 			s.host.ConnManager().UpsertTag(peerID, scoreTag, func(current int) int { return current + validMessageScoreDiff })
 			log.WithFields(log.Fields{
-				"me":        s.host.ID().Pretty(),
 				"provider":  peerID.Pretty(),
 				"numOrders": len(res.Orders),
-			}).Trace("received orders from neighbor")
+			}).Trace("received orders from neighbor via ordersync")
 			return res.Orders, nil
 		}
 	}

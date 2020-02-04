@@ -30,10 +30,6 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 	// TODO(albrow): Optimize this.
 	// For now we simply get all non-removed orders and return those that match
 	// the topic.
-	log.WithFields(log.Fields{
-		"me":        p.app.peerID.Pretty(),
-		"requester": requestingPeer.Pretty(),
-	}).Trace("inside ProvideOrders")
 	notRemovedFilter := p.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var nonRemovedOrders []*meshdb.Order
 	if err := p.db.Orders.NewQuery(notRemovedFilter).Run(&nonRemovedOrders); err != nil {
@@ -44,11 +40,6 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 		if err := p.db.Orders.FindAll(&allOrders); err != nil {
 			return nil, err
 		}
-		log.WithFields(log.Fields{
-			"me":           p.app.peerID.Pretty(),
-			"requester":    requestingPeer.Pretty(),
-			"numAllOrders": len(allOrders),
-		}).Trace("no non-removed orders found")
 	}
 	filter, err := orderfilter.NewFromTopic(topic)
 	if err != nil {
@@ -68,6 +59,7 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 		log.WithFields(log.Fields{
 			"me":        p.app.peerID.Pretty(),
 			"requester": requestingPeer.Pretty(),
+			"topic":     topic,
 		}).Trace("no orders found that pass filter")
 		return nil, nil
 	}
