@@ -15,14 +15,12 @@ import (
 var _ ordersync.Provider = (*orderProvider)(nil)
 
 type orderProvider struct {
-	app *App
-	db  *meshdb.MeshDB
+	db *meshdb.MeshDB
 }
 
-func newOrderProvider(app *App, db *meshdb.MeshDB) *orderProvider {
+func newOrderProvider(db *meshdb.MeshDB) *orderProvider {
 	return &orderProvider{
-		db:  db,
-		app: app,
+		db: db,
 	}
 }
 
@@ -57,7 +55,6 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 	}
 	if len(filteredOrders) == 0 {
 		log.WithFields(log.Fields{
-			"me":        p.app.peerID.Pretty(),
 			"requester": requestingPeer.Pretty(),
 			"topic":     topic,
 		}).Trace("no orders found that pass filter")
@@ -65,7 +62,6 @@ func (p *orderProvider) ProvideOrders(topic string, requestingPeer peer.ID) ([]b
 	}
 
 	log.WithFields(log.Fields{
-		"me":        p.app.peerID.Pretty(),
 		"requester": requestingPeer.Pretty(),
 		"numOrders": len(filteredOrders),
 	}).Trace("provided orders to neighbor")
