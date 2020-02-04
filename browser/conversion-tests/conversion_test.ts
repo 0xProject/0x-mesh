@@ -80,30 +80,17 @@ window.addEventListener(loadEventName, () => {
 // Start compiling the WebAssembly as soon as the script is loaded. This lets
 // us initialize as quickly as possible.
 const go = new Go();
-fetch('conversion_test.wasm')
-    .then(wasm => {
-        WebAssembly.instantiateStreaming(wasm, go.importObject)
-            .then(module => {
-                go.run(module.instance);
-            })
-            .catch(err => {
-                // tslint:disable-next-line no-console
-                console.error('Could not load Wasm');
-                // tslint:disable-next-line no-console
-                console.error(err);
-                // If the Wasm bytecode didn't compile, Mesh won't work. We have no
-                // choice but to throw an error.
-                setImmediate(() => {
-                    throw err;
-                });
-            });
+
+WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
+    .then(module => {
+        go.run(module.instance);
     })
     .catch(err => {
         // tslint:disable-next-line no-console
-        console.error('Could not fetch Wasm');
+        console.error('Could not load Wasm');
         // tslint:disable-next-line no-console
         console.error(err);
-        // If the Wasm bytecode wasn't fetched, Mesh won't work. We have no
+        // If the Wasm bytecode didn't compile, Mesh won't work. We have no
         // choice but to throw an error.
         setImmediate(() => {
             throw err;
@@ -141,15 +128,15 @@ fetch('conversion_test.wasm')
     await waitForLoadAsync();
     const contractEvents = conversionTestCases.contractEvents();
     testContractEvents(contractEvents);
-    const getOrdersResponse = await conversionTestCases.getOrdersResponse();
+    const getOrdersResponse = conversionTestCases.getOrdersResponse();
     testGetOrdersResponse(getOrdersResponse);
-    const orderEvents = await conversionTestCases.orderEvents();
+    const orderEvents = conversionTestCases.orderEvents();
     testOrderEvents(orderEvents);
-    const signedOrders = await conversionTestCases.signedOrders();
+    const signedOrders = conversionTestCases.signedOrders();
     testSignedOrders(signedOrders);
-    const stats = await conversionTestCases.stats();
+    const stats = conversionTestCases.stats();
     testStats(stats);
-    const validationResults = await conversionTestCases.validationResults();
+    const validationResults = conversionTestCases.validationResults();
     testValidationResults(validationResults);
 
     // This special #jsFinished div is used to signal the headless Chrome driver
