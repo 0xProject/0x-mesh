@@ -141,11 +141,8 @@ func (cw *MeshWrapper) Start() error {
 // core.App.AddOrders, converts the result into basic JavaScript types (string,
 // int, etc.) and returns it.
 func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
-	// HACK(albrow): There is a more effecient way to do this, but for now,
-	// just use JSON to convert to the Go type.
-	encodedOrders := js.Global().Get("JSON").Call("stringify", rawOrders).String()
 	var rawMessages []*json.RawMessage
-	if err := json.Unmarshal([]byte(encodedOrders), &rawMessages); err != nil {
+	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
 	results, err := cw.app.AddOrders(cw.ctx, rawMessages, pinned)
