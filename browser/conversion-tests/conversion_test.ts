@@ -15,6 +15,7 @@ import {
     ExchangeFillEvent,
     WethDepositEvent,
     WethWithdrawalEvent,
+    WrapperConfig,
     WrapperContractEvent,
     WrapperERC1155TransferBatchEvent,
     WrapperERC1155TransferSingleEvent,
@@ -51,6 +52,7 @@ interface ConversionTestCase {
     orderEvents: () => WrapperOrderEvent[];
     signedOrders: () => WrapperSignedOrder[];
     stats: () => WrapperStats[];
+    testConvertConfig: (...configs: WrapperConfig[]) => void;
     validationResults: () => WrapperValidationResults[];
 }
 
@@ -117,15 +119,18 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
 //
 // Verification has been very simple in practice as it has only entailed equality
 // comparisons so far. These findings must be reported so that the conversion test
-// entry-point knows whether or not individual tests succeed of fail. The current
-// methodology for reporting findings is to print a string of the from: "$description: true."
+// entry-point knows whether or not individual tests succeed or fail. The current
+// methodology for reporting findings is to print a string of the from: "$description: true".
 // These printed strings are received by the test's entry-point, which can then verify
 // that the print statement corresponds to a registered "test case" in the entry-point.
 // The entry-point verifies that all registered tests have passed, and it also has
 // features that will cause the test to fail if (1) unexpected logs are received or (2)
 // if some test cases were not tested.
 (async () => {
+    // Wait for the Wasm module to finish initializing.
     await waitForLoadAsync();
+
+    // Execute the Go --> Typescript tests
     const contractEvents = conversionTestCases.contractEvents();
     testContractEvents(contractEvents);
     const getOrdersResponse = conversionTestCases.getOrdersResponse();
@@ -138,6 +143,13 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     testStats(stats);
     const validationResults = conversionTestCases.validationResults();
     testValidationResults(validationResults);
+
+    // Execute the Typescript --> Go tests
+    // tslint:disable:no-object-literal-type-assertion
+    conversionTestCases.testConvertConfig(
+        ...[(null as unknown) as WrapperConfig, (undefined as unknown) as WrapperConfig, {} as WrapperConfig],
+    );
+    // tslint:enable:no-object-literal-type-assertion
 
     // This special #jsFinished div is used to signal the headless Chrome driver
     // that the JavaScript code is done running. This is not a native Javascript

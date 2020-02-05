@@ -3,12 +3,16 @@
 package main
 
 import (
+	"fmt"
 	"math/big"
+	"reflect"
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -650,8 +654,31 @@ func setGlobals() {
 				},
 			}
 		}),
+		"testConvertConfig": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			if len(args) < 3 {
+				panic("Invalid number of test cases provided to testConvertConfig")
+			}
+			testConvertConfig("NullConfig", args[0], core.Config{}, "config is required")
+			testConvertConfig("UndefinedConfig", args[1], core.Config{}, "config is required")
+			testConvertConfig("EmptyConfig", args[2], core.Config{}, "ethereumChainID is required")
+			return nil
+		}),
 	}
 	js.Global().Set("conversionTestCases", conversionTestCases)
+}
+
+func testConvertConfig(description string, jsConfig js.Value, expectedConfig core.Config, expectedErr string) {
+	actualConfig, actualErr := browserutil.ConvertConfig(jsConfig)
+	prettyPrintTest(fmt.Sprintf("(convertConfig | %s | config): ", description), expectedConfig, actualConfig)
+	prettyPrintTest(fmt.Sprintf("(convertConfig | %s | err): ", description), expectedErr, actualErr.Error())
+}
+
+func prettyPrintTest(testHeader string, expected, actual interface{}) {
+	if !reflect.DeepEqual(expected, actual) {
+		fmt.Printf(testHeader+"\"%+v\" is not equal to \"%+v\"\n", expected, actual)
+	} else {
+		fmt.Println(testHeader + "true")
+	}
 }
 
 // triggerLoadEvent triggers the global load event to indicate that the Wasm is
