@@ -48,7 +48,6 @@ test-go-parallel:
 test-go-serial:
 	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial
 
-
 .PHONY: test-browser-integration
 test-browser-integration:
 	go test ./integration-tests -timeout 185s --enable-browser-integration-tests -run BrowserIntegration

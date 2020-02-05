@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
         "outDir": "lib",
-        "rootDir": "./ts",
         "resolveJsonModule": true,
         "module": "commonjs",
         "target": "es5",
@@ -15,6 +14,6 @@
         "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
         "strict": true
     },
-    "include": ["./ts/**/*"],
-    "exclude": ["./conversion-tests/**/*"]
+    "include": ["./conversion-tests/**/*", "./ts/**/*"],
+    "exclude": ["./ts/index.ts"]
 }

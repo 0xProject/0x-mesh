@@ -104,10 +104,12 @@ provider.start();
     console.log(JSON.stringify(stats));
 
     // This special #jsFinished div is used to signal the headless Chrome driver
-    // that the JavaScript code is done running.
+    // that the JavaScript code is done running. This is not a native Javascript
+    // concept. Rather, it is our way of letting the Go program that serves this
+    // Javascript know whether or not the test has completed.
     const finishedDiv = document.createElement('div');
     finishedDiv.setAttribute('id', 'jsFinished');
-    document.querySelector('body')!.appendChild(finishedDiv);
+    document.body.appendChild(finishedDiv);
 })().catch(err => {
     if (err instanceof Error) {
         console.error(err.name + ': ' + err.message);
