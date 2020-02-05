@@ -60,6 +60,8 @@ func TestBrowserConversions(t *testing.T) {
 	registerConvertConfigTest("NullConfig")
 	registerConvertConfigTest("UndefinedConfig")
 	registerConvertConfigTest("EmptyConfig")
+	registerConvertConfigTest("MinimalConfig")
+	registerConvertConfigTest("FullConfig")
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -214,8 +216,8 @@ func registerContractEventField(description string, field string) {
 }
 
 func registerConvertConfigTest(description string) {
-	// FIXME(jalextowle): Should I give more granular detail?
 	registerConvertConfigField(description, "config")
+	registerConvertConfigField(description, "web3Provider")
 	registerConvertConfigField(description, "err")
 }
 
@@ -426,8 +428,8 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 						if count == testLength {
 							done <- struct{}{}
 						}
-					} else {
-						t.Errorf("Unexpected test results: %s", arg.Value)
+					} else if len(string(arg.Value)) > 1 {
+						t.Errorf("Unexpected test results: %s\n", string(arg.Value))
 					}
 				}
 			case runtime.APITypeError:
