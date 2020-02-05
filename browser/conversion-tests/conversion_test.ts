@@ -147,10 +147,10 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     testValidationResults(validationResults);
 
     // Execute the Typescript --> Go tests
-    // tslint:disable:no-object-literal-type-assertion
     const ethereumRPCURL = 'http://localhost:8545';
 
     // Set up a Web3 Provider that uses the RPC endpoint
+    // tslint:disable:no-object-literal-type-assertion
     const provider = new Web3ProviderEngine();
     provider.addProvider(new RPCSubprovider(ethereumRPCURL));
     provider.start();
