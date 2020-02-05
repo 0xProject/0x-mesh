@@ -14,7 +14,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	"github.com/0xProject/0x-mesh/p2p/ordersync"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	"github.com/0xProject/0x-mesh/p2p/validatorset"
 	"github.com/albrow/stringset"
@@ -24,7 +23,9 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -422,6 +423,21 @@ func (n *Node) GetNumPeers() int {
 	return n.connManager.GetInfo().ConnCount
 }
 
+// SetStreamHandler registers a handler for a custom protocol.
+func (n *Node) SetStreamHandler(pid protocol.ID, handler network.StreamHandler) {
+	n.host.SetStreamHandler(pid, handler)
+}
+
+func (n *Node) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (network.Stream, error) {
+	return n.host.NewStream(ctx, p, pids...)
+}
+
+// Neighbors returns a list of peer IDs that this node is currently connected
+// to.
+func (n *Node) Neighbors() []peer.ID {
+	return n.host.Network().Peers()
+}
+
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, timeout is exceeded, or an error
@@ -434,10 +450,6 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 		return err
 	}
 	return nil
-}
-
-func (n *Node) NewOrderSyncService(provider ordersync.Provider) *ordersync.Service {
-	return ordersync.New(n.host, provider)
 }
 
 // mainLoop is where the core logic for a Node is implemented. On each iteration

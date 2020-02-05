@@ -146,7 +146,7 @@ func TestOrderSync(t *testing.T) {
 
 	// Manually call syncOrders. It should run automatically, but we don't know
 	// exactly what the timing will be. This lets us avoid using time.Sleep.
-	require.NoError(t, newNode.syncOrders(ctx))
+	require.NoError(t, newNode.ordersyncService.GetOrders(ctx, 1))
 
 	newNodeOrdersResp, err := newNode.GetOrders(0, len(originalOrders), "")
 	require.NoError(t, err)
