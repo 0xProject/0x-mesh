@@ -713,6 +713,8 @@ func testConvertConfig(description string, jsConfig js.Value, expectedConfig cor
 	actualConfig.EthereumRPCClient = nil
 	prettyPrintTest(fmt.Sprintf("(convertConfig | %s | config): ", description), expectedConfig, actualConfig)
 	actualConfig.EthereumRPCClient = rpcClient
+	// NOTE(jalextowle): This is not a robust validation on the Web3Provider. In the event that provider
+	// conversions appear to be causing issues, this validation may need to be improved.
 	if expectProvider {
 		fmt.Printf("(convertConfig | %s | web3Provider): %t\n", description, actualConfig.EthereumRPCClient != nil)
 	} else {
