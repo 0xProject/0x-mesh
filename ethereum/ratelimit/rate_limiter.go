@@ -93,8 +93,8 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 
 	// Start 24hr UTC accrued grants resetter
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 		for {
 			now := r.aClock.Now()
