@@ -41,7 +41,7 @@ func TestBrowserConversions(t *testing.T) {
 
 	buildForTests(t, ctx)
 
-	// Register the test cases that should be logged.
+	// Register the Go --> Typescript test cases that should be logged.
 	registerContractEventTest()
 	registerGetOrdersResponseTest("EmptyOrderInfo", 0)
 	registerGetOrdersResponseTest("OneOrderInfo", 1)
@@ -55,6 +55,11 @@ func TestBrowserConversions(t *testing.T) {
 	registerValidationResultsTest("OneAcceptedResult", 1, 0)
 	registerValidationResultsTest("OneRejectedResult", 0, 1)
 	registerValidationResultsTest("RealisticValidationResults", 2, 1)
+
+	// Register the Typescript --> Go test cases that should be logged.
+	registerConvertConfigTest("NullConfig")
+	registerConvertConfigTest("UndefinedConfig")
+	registerConvertConfigTest("EmptyConfig")
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -206,6 +211,16 @@ func registerContractEventParams(description string, param string) {
 
 func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEvent | %s | %s)", description, field))
+}
+
+func registerConvertConfigTest(description string) {
+	// FIXME(jalextowle): Should I give more granular detail?
+	registerConvertConfigField(description, "config")
+	registerConvertConfigField(description, "err")
+}
+
+func registerConvertConfigField(description string, field string) {
+	registerTest(fmt.Sprintf("(convertConfig | %s | %s)", description, field))
 }
 
 func registerGetOrdersResponseTest(description string, orderInfoLength int) {
