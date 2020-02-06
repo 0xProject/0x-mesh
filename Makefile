@@ -6,7 +6,7 @@ deps: deps-ts wasmbrowsertest
 deps-ts:
 	yarn install
 	cd rpc/clients/typescript && yarn install
-	cd browser/ && yarn install
+	cd typescript/ && yarn install
 
 
 # gobin allows us to install specific versions of binary tools written in Go.
@@ -30,7 +30,7 @@ deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
 deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
 	cd rpc/clients/typescript && yarn install --frozen-lockfile
-	cd browser/ && yarn install --frozen-lockfile
+	cd typescript/ && yarn install --frozen-lockfile
 
 
 .PHONY: test-all
@@ -75,7 +75,7 @@ lint-go:
 .PHONY: lint-ts
 lint-ts:
 	cd rpc/clients/typescript && yarn lint
-	cd browser/ && yarn lint
+	cd typescript/ && yarn lint
 
 
 .PHONY: mesh

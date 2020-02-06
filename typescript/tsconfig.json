@@ -2,13 +2,13 @@
     "compilerOptions": {
         "module": "commonjs",
         "target": "es5",
-        "lib": ["es2017", "dom", "esnext.asynciterable"],
+        "lib": ["es2017", "dom"],
         "experimentalDecorators": true,
         "downlevelIteration": true,
         "noImplicitReturns": true,
         "pretty": true,
         "skipLibCheck": true,
-        "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
+        "typeRoots": ["node_modules/@types"],
         "strict": true,
         // These settings are required for TypeScript project references
         "composite": true,
@@ -22,6 +22,6 @@
     "references": [
         { "path": "./packages/mesh-browser" },
         { "path": "./packages/mesh-browser-lib" },
-        { "path": "./packages/mesh-browser-lite" },
+        { "path": "./packages/mesh-browser-lite" }
     ]
 }

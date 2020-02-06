@@ -1,6 +1,8 @@
 import { SignedOrder } from '@0x/order-utils';
 import * as BrowserFS from 'browserfs';
 
+import './wasm_exec.ts';
+
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';

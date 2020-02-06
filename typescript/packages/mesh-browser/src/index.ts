@@ -1,8 +1,7 @@
-import 'wasm_exec.ts';
+import '@0x/mesh-browser-lib/src/wasm_exec.ts';
+export * from '@0x/mesh-browser-lib';
 
 import { wasmBuffer } from './generated/wasm_buffer';
-
-export * from '@0x/mesh-browser-lib';
 
 // Start compiling the WebAssembly as soon as the script is loaded. This lets
 // us initialize as quickly as possible.

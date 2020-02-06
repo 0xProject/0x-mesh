@@ -6,14 +6,16 @@
     ],
     "scripts": {
         "lerna": "lerna",
-        "build": "lerna link && wsrun build $PKG"
+        "wsrun": "wsrun",
+        "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit build $PKG ",
+        "lint": "wsrun lint $PKG"
     },
     "devDependencies": {
         "@0x/ts-doc-gen": "^0.0.16",
         "@0x/tslint-config": "^4.0.0",
         "@types/base64-arraybuffer": "^0.1.0",
         "ignore-loader": "^0.1.2",
-        "lerna": "^3.20.2",
+        "@0x-lerna-fork/lerna": "3.16.10",
         "prettier": "^1.19.1",
         "ts-loader": "^6.2.1",
         "tslint": "5.11.0",
