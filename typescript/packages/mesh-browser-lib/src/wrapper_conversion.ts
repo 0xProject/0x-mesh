@@ -1,5 +1,6 @@
 import { SignedOrder } from '@0x/order-utils';
-import { BigNumber, providerUtils } from '@0x/utils';
+import { providerUtils } from '@0x/utils';
+import { BigNumber } from 'bignumber.js';
 
 import {
     AcceptedOrderInfo,

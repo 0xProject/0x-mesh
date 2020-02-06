@@ -1,5 +1,4 @@
-import 'wasm_exec.ts';
-
+import '@0x/mesh-browser-lib/src/wasm_exec.ts';
 export * from '@0x/mesh-browser-lib';
 
 // Start compiling the WebAssembly as soon as the script is loaded. This lets
