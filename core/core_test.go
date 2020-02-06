@@ -104,6 +104,9 @@ func TestOrderSync(t *testing.T) {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
 
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
 	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
 	// the network without any orders.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -164,4 +167,11 @@ func TestOrderSync(t *testing.T) {
 	// Wait for nodes to exit without error.
 	cancel()
 	wg.Wait()
+}
+
+func setupSubTest(t *testing.T) func(t *testing.T) {
+	blockchainLifecycle.Start(t)
+	return func(t *testing.T) {
+		blockchainLifecycle.Revert(t)
+	}
 }
