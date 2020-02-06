@@ -654,12 +654,12 @@ func (app *App) Start(ctx context.Context) error {
 			cancel()
 			return err
 		}
-		// case err := <-orderSyncErrChan:
-		// 	if err != nil {
-		// 		log.WithError(err).Error("ordersync service exited with error")
-		// 		cancel()
-		// 		return err
-		// 	}
+	case err := <-orderSyncErrChan:
+		if err != nil {
+			log.WithError(err).Error("ordersync service exited with error")
+			cancel()
+			return err
+		}
 	}
 
 	// Wait for all goroutines to exit. If we reached here it means we are done
@@ -1034,54 +1034,3 @@ func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses st
 	}
 	return nil
 }
-
-// // syncOrders uses the ordersync protocol to attempt to get as many
-// // existing orders as possible from our peers. It should be called once during
-// // initialization. This is a blocking function which will continue to request
-// // orders from different peers until enough orders have been received. It
-// // returns an error if there was a problem syncing orders.
-// func (app *App) syncOrders(ctx context.Context) error {
-
-// 	// TODO(albrow): Currently we just send one call to GetOrders, which only gets
-// 	// results from one peer. We probably need to send multiple calls to multiple
-// 	// peers either here or in the implementation of GetOrders.
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return ctx.Err()
-// 		default:
-// 		}
-
-// 		rawOrders, err := app.orderSync.GetOrders(ctx, app.orderFilter.Topic())
-// 		if err != nil {
-// 			if err == ordersync.ErrNoOrders {
-// 				time.Sleep(orderSyncDelay)
-// 				continue
-// 			}
-// 			return err
-// 		}
-
-// 		var orders []*zeroex.SignedOrder
-// 		if err := json.Unmarshal(rawOrders, &orders); err != nil {
-// 			return err
-// 		}
-
-// 		filteredOrders := []*zeroex.SignedOrder{}
-// 		for _, order := range orders {
-// 			matches, err := app.orderFilter.MatchOrder(order)
-// 			if err != nil {
-// 				return err
-// 			}
-// 			if matches {
-// 				filteredOrders = append(filteredOrders, order)
-// 			} else {
-// 				// This means the peer gave us back orders that don't match our filter.
-// 				// TODO(albrow): Penalize peer.
-// 			}
-// 		}
-
-// 		_, err = app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, app.chainID)
-// 		return err
-// 	}
-// }
