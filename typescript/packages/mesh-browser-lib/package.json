@@ -3,20 +3,25 @@
     "version": "1.0.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
+    "types": "./lib/index.d.ts",
     "license": "Apache-2.0",
     "scripts": {
-        "build": "tsc -b",
-        "docs:md": "ts-doc-gen --sourceDir=./ts --output=${npm_package_config_docsPath}",
+        "build": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
+        "docs:md": "ts-doc-gen --sourceDir=./src --output=${npm_package_config_docsPath}",
         "lint": "tslint --format stylish --project ."
     },
     "config": {
         "docsPath": "../docs/browser"
     },
     "dependencies": {
-        "@0x/order-utils": "^10.0.1",
-        "@0x/utils": "^5.1.2",
+        "@0x/order-utils": "^10.1.1",
+        "@0x/utils": "^5.2.0",
         "base64-arraybuffer": "^0.2.0",
+        "bignumber.js": "~9.0.0",
         "browserfs": "^1.4.3",
         "ethereum-types": "^3.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^3.5.3"
     }
 }

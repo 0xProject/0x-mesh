@@ -39,7 +39,7 @@ jobs:
           command: make lint
       - run:
           name: Build browser package
-          command: cd browser && yarn install && yarn build
+          command: cd typescript && yarn install && yarn build
       - run:
           name: Build examples/browser
           command: cd examples/browser && yarn install --force && yarn build

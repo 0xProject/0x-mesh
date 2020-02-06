@@ -1,19 +1,6 @@
 {
-    "compilerOptions": {
-        "outDir": "lib",
-        "resolveJsonModule": true,
-        "module": "commonjs",
-        "target": "es5",
-        "lib": ["es2017", "dom"],
-        "experimentalDecorators": true,
-        "downlevelIteration": true,
-        "noImplicitReturns": true,
-        "pretty": true,
-        "skipLibCheck": true,
-        "declaration": true,
-        "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
-        "strict": true
-    },
-    "include": ["./conversion-tests/**/*", "./ts/**/*"],
-    "exclude": ["./ts/index.ts"]
+    "extends": "../../tsconfig",
+    "compilerOptions": { "outDir": "lib", "rootDir": "." },
+    "include": ["./src/**/*", "./conversion-tests/**/*"],
+    "exclude": ["./src/index.ts"]
 }

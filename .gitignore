@@ -11,9 +11,11 @@ rpc/clients/typescript/lib
 rpc/clients/typescript/yarn-error.log
 rpc/clients/typescript/ganache.log
 *.wasm
-monorepo/**/lib/**/*
-monorepo/mesh-browser/src/generated
-monorepo/mesh-browser/dist/bundle.js
+typescript/**/tsconfig.tsbuildinfo
+typescript/**/lib/**/*
+yarn-error.log*
+typescript/packages/mesh-browser/src/generated
+typescript/packages/mesh-browser/dist/bundle.js
 examples/browser/dist/bundle.js
 integration-tests/browser/dist/bundle.js
 !integration-tests/data/standalone-0/keys/privKey
