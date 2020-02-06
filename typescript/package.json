@@ -1,0 +1,25 @@
+{
+    "name": "root",
+    "private": true,
+    "workspaces": [
+        "packages/*"
+    ],
+    "scripts": {
+        "lerna": "lerna",
+        "build": "lerna link && wsrun build $PKG"
+    },
+    "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.16",
+        "@0x/tslint-config": "^4.0.0",
+        "@types/base64-arraybuffer": "^0.1.0",
+        "ignore-loader": "^0.1.2",
+        "lerna": "^3.20.2",
+        "prettier": "^1.19.1",
+        "ts-loader": "^6.2.1",
+        "tslint": "5.11.0",
+        "typescript": "^3.5.3",
+        "webpack": "^4.41.5",
+        "webpack-cli": "^3.3.10",
+        "wsrun": "^5.2.0"
+    }
+}
