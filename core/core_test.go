@@ -27,7 +27,9 @@ import (
 const (
 	// blockProcessingWaitTime is the amount of time to wait for Mesh to process
 	// new blocks that have been mined.
-	blockProcessingWaitTime = 2 * time.Second
+	blockProcessingWaitTime = 1 * time.Second
+	// ordersyncWaitTime is the amount of time to wait for ordersync to run.
+	ordersyncWaitTime = 2 * time.Second
 )
 
 func TestEthereumChainDetection(t *testing.T) {
@@ -109,7 +111,7 @@ func TestOrderSync(t *testing.T) {
 
 	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
 	// the network without any orders.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	wg := &sync.WaitGroup{}
 	originalNode := newTestApp(t)
@@ -138,6 +140,10 @@ func TestOrderSync(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, results.Accepted, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
+	orderEventsChan := make(chan []*zeroex.OrderEvent)
+	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)
+	defer orderEventsSub.Unsubscribe()
+
 	// Connect the two nodes *after* adding orders to one of them. This should
 	// trigger the ordersync
 	// protocol.
@@ -147,10 +153,27 @@ func TestOrderSync(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Manually call syncOrders. It should run automatically, but we don't know
-	// exactly what the timing will be. This lets us avoid using time.Sleep.
-	require.NoError(t, newNode.ordersyncService.GetOrders(ctx, 1))
+	// Wait for newNode to get the orders via ordersync.
+	receivedAddedEvents := []*zeroex.OrderEvent{}
+OrderEventLoop:
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for %d order added events (received %d so far)", len(originalOrders), len(receivedAddedEvents))
+		case orderEvents := <-orderEventsChan:
+			for _, orderEvent := range orderEvents {
+				if orderEvent.EndState == zeroex.ESOrderAdded {
+					receivedAddedEvents = append(receivedAddedEvents, orderEvent)
+				}
+			}
+			if len(receivedAddedEvents) >= 10 {
+				break OrderEventLoop
+			}
+		}
+	}
 
+	// Test that the orders are actually in the database and are returned by
+	// GetOrders.
 	newNodeOrdersResp, err := newNode.GetOrders(0, len(originalOrders), "")
 	require.NoError(t, err)
 	assert.Len(t, newNodeOrdersResp.OrdersInfos, len(originalOrders), "new node should have %d orders", len(originalOrders))
