@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p"
-
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/albrow/stringset"
+	"github.com/jpillora/backoff"
 	network "github.com/libp2p/go-libp2p-core/network"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -21,6 +21,16 @@ import (
 const (
 	TypeRequest  = "Request"
 	TypeResponse = "Response"
+)
+
+var (
+	// retryBackoff defines how long to wait before trying again if we didn't get
+	// orders from enough peers during the ordersync process.
+	retryBackoff = &backoff.Backoff{
+		Min:    250 * time.Millisecond, // First back-off length
+		Max:    1 * time.Minute,        // Longest back-off length
+		Factor: 2,                      // Factor to multiple each successive back-off
+	}
 )
 
 var (
@@ -103,10 +113,12 @@ func New(node *p2p.Node, subprotocols []Subprotocol) *Service {
 	for _, subp := range subprotocols {
 		supportedSubprotocols[subp.Name()] = subp
 	}
-	return &Service{
+	s := &Service{
 		node:         node,
 		subprotocols: supportedSubprotocols,
 	}
+	s.node.SetStreamHandler(ID, s.HandleStream)
+	return s
 }
 
 func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error) {
@@ -211,7 +223,6 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, rawRes *rawResponse) 
 }
 
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
-	allPeers := s.node.Neighbors()
 	successfullySyncedPeers := stringset.New()
 
 	for len(successfullySyncedPeers) < minPeers {
@@ -223,8 +234,9 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 
 		// TODO(albrow): Do this for loop partly in parallel.
 		// TODO(albrow): Add a timeout when waiting for a response.
-		shufflePeers(allPeers)
-		for _, peerID := range allPeers {
+		currentNeighbors := s.node.Neighbors()
+		shufflePeers(currentNeighbors)
+		for _, peerID := range currentNeighbors {
 			if successfullySyncedPeers.Contains(peerID.Pretty()) {
 				continue
 			}
@@ -244,12 +256,23 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					"provider": peerID.Pretty(),
 				}).Warn("could not get orders from peer via ordersync")
 			} else {
+				// TODO(albrow): Handle case where no orders were returned from this
+				// peer. We need to not try them again, but also not count them toward
+				// the number of peers we have successfully synced with.
 				log.WithFields(log.Fields{
 					"provider": peerID.Pretty(),
 				}).Trace("succesfully got orders from peer via ordersync")
 				successfullySyncedPeers.Add(peerID.Pretty())
 			}
 		}
+
+		delayBeforeNextRetry := retryBackoff.Duration()
+		log.WithFields(log.Fields{
+			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
+			"minPeers":                minPeers,
+			"successfullySyncedPeers": len(successfullySyncedPeers),
+		}).Debug("ordersync could not get orders from enough peers (trying again soon)")
+		time.Sleep(delayBeforeNextRetry)
 	}
 
 	return nil

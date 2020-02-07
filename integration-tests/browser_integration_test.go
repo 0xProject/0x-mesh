@@ -34,7 +34,8 @@ func TestBrowserIntegration(t *testing.T) {
 
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	// TODO(albrow): Change this back to 180 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 

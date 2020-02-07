@@ -46,7 +46,7 @@ provider.start();
     // Configure Mesh to use our local Ganache instance and local bootstrap
     // node.
     const mesh = new Mesh({
-        verbosity: Verbosity.Debug,
+        verbosity: Verbosity.Trace,
         ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
         customOrderFilter: {
@@ -85,7 +85,9 @@ provider.start();
     });
 
     // Start Mesh *after* we set up the handlers.
+    console.log(JSON.stringify({ message: 'calling startAsync' }));
     await mesh.startAsync();
+    console.log(JSON.stringify({ message: 'startAsync returned' }));
 
     // Send an order to the network. In the integration tests we will check that
     // the order was received.

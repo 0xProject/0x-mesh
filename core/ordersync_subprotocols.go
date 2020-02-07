@@ -82,6 +82,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrders(res *ordersync.Response) (*
 		return nil, fmt.Errorf("FilteredPaginationSubProtocol received response with wrong metadata type (got %T)", res.Metadata)
 	}
 	// TODO(albrow): Pass in context to ValidateAndStoreValidOrders
+	// TODO(albrow): Check that this order matches our current filter/topic
 	_, err := p.app.orderWatcher.ValidateAndStoreValidOrders(context.Background(), res.Orders, false, p.app.chainID)
 	if err != nil {
 		return nil, err

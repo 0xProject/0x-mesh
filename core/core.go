@@ -585,7 +585,6 @@ func (app *App) Start(ctx context.Context) error {
 		NewFilteredPaginationSubprotocol(app, paginationSubprotocolPerPage),
 	}
 	app.ordersyncService = ordersync.New(app.node, ordersyncSubprotocols)
-	app.node.SetStreamHandler(ordersync.ID, app.ordersyncService.HandleStream)
 	orderSyncErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
