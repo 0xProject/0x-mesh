@@ -1,7 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
 import * as BrowserFS from 'browserfs';
 
-import './wasm_exec.ts';
+import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';

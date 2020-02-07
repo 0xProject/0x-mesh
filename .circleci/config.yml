@@ -38,11 +38,8 @@ jobs:
           name: Run linters
           command: make lint
       - run:
-          name: Build browser package
-          command: cd typescript && yarn install && yarn build
-      - run:
-          name: Build examples/browser
-          command: cd examples/browser && yarn install --force && yarn build
+          name: Build the typescript monorepo
+          command: cd typescript && yarn install --force && yarn build
       - run:
           name: Run Go tests
           command: make test-go
