@@ -72,10 +72,12 @@ func generateTypescriptClientDocs() {
 	}
 }
 
+// TODO(jalextowle): Docs should also be built for `@0x/mesh-browser-lite` or the
+// pair of docs should be combined in some way
 func generateTypescriptBrowserDocs() {
 	// Run `yarn install` to make sure `TypeDoc` dep is installed
 	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
-	cmd.Dir = "browser"
+	cmd.Dir = "typescript/packages/mesh-browser"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -84,7 +86,7 @@ func generateTypescriptBrowserDocs() {
 
 	// Run `yarn docs:md` to generate MD docs
 	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "browser"
+	cmd.Dir = "typescript/packages/mesh-browser"
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -101,11 +103,23 @@ func updateHardCodedVersions(version string) {
 	regex := `"version": "(.*)"`
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
-	// Update `browser/package.json`
-	browserPackageJSONPath := "browser/package.json"
+	// Update `mesh-browser/package.json`
+	meshBrowserPackageJSONPath := "typescript/packages/mesh-browser/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
-	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
+	updateFileWithRegex(meshBrowserPackageJSONPath, regex, newVersionString)
+
+	// Update `mesh-browser-lite/package.json`
+	meshBrowserLitePackageJSONPath := "typescript/packages/mesh-browser-lite/package.json"
+	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
+	regex = `"version": "(.*)"`
+	updateFileWithRegex(meshBrowserLitePackageJSONPath, regex, newVersionString)
+
+	// Update `mesh-browser-lib/package.json`
+	meshBrowserLibPackageJSONPath := "typescript/packages/mesh-browser-lib/package.json"
+	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
+	regex = `"version": "(.*)"`
+	updateFileWithRegex(meshBrowserLibPackageJSONPath, regex, newVersionString)
 
 	// Update `core.go`
 	corePath := "core/core.go"
