@@ -1,5 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
 import { providerUtils } from '@0x/utils';
+// HACK(jalextowle): We need to use this BigNumber so that `yarn` doesn't complain
+// about the difference in the `@0x/types` and `@0x/utils` `BigNumber` type.
 import { BigNumber } from 'bignumber.js';
 
 import {
