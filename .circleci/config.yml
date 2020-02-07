@@ -41,6 +41,9 @@ jobs:
           name: Build the typescript monorepo
           command: cd typescript && yarn install --force && yarn build
       - run:
+          name: Run TS RPC client tests
+          command: cd typescript/packages/rpc-client && yarn test
+      - run:
           name: Run Go tests
           command: make test-go
       - run:
@@ -55,12 +58,6 @@ jobs:
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
-      - run:
-          name: Build TS RPC client
-          command: cd rpc/clients/typescript && yarn build
-      - run:
-          name: Run TS RPC client tests
-          command: cd rpc/clients/typescript && yarn test
       - run:
           name: Run cut-release script to test it still works
           command: VERSION=100.0.0 make cut-release

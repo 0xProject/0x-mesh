@@ -55,7 +55,7 @@ func createReleaseChangelog(version string) {
 func generateTypescriptClientDocs() {
 	// Run `yarn install` to make sure `TypeDoc` dep is installed
 	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
-	cmd.Dir = "rpc/clients/typescript"
+	cmd.Dir = "typescript/packages/rpc-client"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -64,7 +64,7 @@ func generateTypescriptClientDocs() {
 
 	// Run `yarn docs:md` to generate MD docs
 	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "rpc/clients/typescript"
+	cmd.Dir = "typescript/packages/rpc-client"
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -97,8 +97,8 @@ func generateTypescriptBrowserDocs() {
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
 
-	// Update `rpc/clients/typescript/package.json`
-	tsClientPackageJSONPath := "rpc/clients/typescript/package.json"
+	// Update `typescript/rpc-client/package.json`
+	tsClientPackageJSONPath := "typescript/rpc-client/package.json"
 	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
 	regex := `"version": "(.*)"`
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
