@@ -23,6 +23,8 @@ const (
 	TypeResponse = "Response"
 )
 
+const requestResponseTimeout = 15 * time.Second
+
 var (
 	// retryBackoff defines how long to wait before trying again if we didn't get
 	// orders from enough peers during the ordersync process.
@@ -88,6 +90,7 @@ type rawResponse struct {
 // Service is the main entrypoint for running the ordersync protocol. It handles
 // responding to and sending ordersync requests.
 type Service struct {
+	ctx          context.Context
 	node         *p2p.Node
 	subprotocols map[string]Subprotocol
 }
@@ -108,12 +111,13 @@ type Subprotocol interface {
 	ParseResponseMetadata(metadata json.RawMessage) (interface{}, error)
 }
 
-func New(node *p2p.Node, subprotocols []Subprotocol) *Service {
+func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Service {
 	supportedSubprotocols := map[string]Subprotocol{}
 	for _, subp := range subprotocols {
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
+		ctx:          ctx,
 		node:         node,
 		subprotocols: supportedSubprotocols,
 	}
@@ -142,28 +146,21 @@ func (s *Service) HandleStream(stream network.Stream) {
 	}()
 	remotePeerID := stream.Conn().RemotePeer()
 	for {
-		// TODO(albrow): Close stream if we haven't received any requests in a
-		// while.
-		var rawReq rawRequest
-		if err := json.NewDecoder(stream).Decode(&rawReq); err != nil {
-			log.WithFields(log.Fields{
-				"error":     err.Error(),
-				"requester": remotePeerID.Pretty(),
-			}).Warn("could not encode ordersync request")
-			// TODO(albrow): Handle peer scores somewhere else?
-			// s.host.ConnManager().UpsertTag(remotePeerID, scoreTag, func(current int) int { return current + inavlidMessageScoreDiff })
+		rawReq, err := waitForRequest(s.ctx, stream)
+		if err != nil {
+			log.WithError(err).Warn("waitForRequest returned error")
 			return
 		}
 		if rawReq.Type != TypeRequest {
 			log.WithField("gotType", rawReq.Type).Warn("wrong type for Request")
 			return
 		}
-		subprotocol, err := s.GetMatchingSubprotocol(&rawReq)
+		subprotocol, err := s.GetMatchingSubprotocol(rawReq)
 		if err != nil {
 			log.WithError(err).Warn("GetMatchingSubprotocol returned error")
 			return
 		}
-		res, err := handleRequestWithSubprotocol(subprotocol, &rawReq)
+		res, err := handleRequestWithSubprotocol(subprotocol, rawReq)
 		if err != nil {
 			log.WithError(err).Warn("subprotocol returned error")
 			return
@@ -190,36 +187,6 @@ func (s *Service) HandleStream(stream network.Stream) {
 			return
 		}
 	}
-}
-
-func handleRequestWithSubprotocol(subprotocol Subprotocol, rawReq *rawRequest) (*Response, error) {
-	req, err := parseRequestWithSubprotocol(subprotocol, rawReq)
-	if err != nil {
-		return nil, err
-	}
-	return subprotocol.GetOrders(req)
-}
-
-func parseRequestWithSubprotocol(subprotocol Subprotocol, rawReq *rawRequest) (*Request, error) {
-	metadata, err := subprotocol.ParseRequestMetadata(rawReq.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	return &Request{
-		Metadata: metadata,
-	}, nil
-}
-
-func parseResponseWithSubprotocol(subprotocol Subprotocol, rawRes *rawResponse) (*Response, error) {
-	metadata, err := subprotocol.ParseResponseMetadata(rawRes.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	return &Response{
-		Orders:   rawRes.Orders,
-		Complete: rawRes.Complete,
-		Metadata: metadata,
-	}, nil
 }
 
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
@@ -278,6 +245,36 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	return nil
 }
 
+func handleRequestWithSubprotocol(subprotocol Subprotocol, rawReq *rawRequest) (*Response, error) {
+	req, err := parseRequestWithSubprotocol(subprotocol, rawReq)
+	if err != nil {
+		return nil, err
+	}
+	return subprotocol.GetOrders(req)
+}
+
+func parseRequestWithSubprotocol(subprotocol Subprotocol, rawReq *rawRequest) (*Request, error) {
+	metadata, err := subprotocol.ParseRequestMetadata(rawReq.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	return &Request{
+		Metadata: metadata,
+	}, nil
+}
+
+func parseResponseWithSubprotocol(subprotocol Subprotocol, rawRes *rawResponse) (*Response, error) {
+	metadata, err := subprotocol.ParseResponseMetadata(rawRes.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	return &Response{
+		Orders:   rawRes.Orders,
+		Complete: rawRes.Complete,
+		Metadata: metadata,
+	}, nil
+}
+
 func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) error {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
@@ -319,8 +316,8 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 		if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
 			return err
 		}
-		var rawRes rawResponse
-		if err := json.NewDecoder(stream).Decode(&rawRes); err != nil {
+		rawRes, err := waitForResponse(ctx, stream)
+		if err != nil {
 			return err
 		}
 		subprotocol, found := s.subprotocols[rawRes.Subprotocol]
@@ -328,7 +325,7 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return fmt.Errorf("unsupported subprotocol: %s", subprotocol)
 		}
 		selectedSubprotocol = subprotocol
-		res, err := parseResponseWithSubprotocol(subprotocol, &rawRes)
+		res, err := parseResponseWithSubprotocol(subprotocol, rawRes)
 		if err != nil {
 			return err
 		}
@@ -346,4 +343,62 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 func shufflePeers(peers []peer.ID) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(peers), func(i, j int) { peers[i], peers[j] = peers[j], peers[i] })
+}
+
+func waitForRequest(parentCtx context.Context, stream network.Stream) (*rawRequest, error) {
+	ctx, cancel := context.WithTimeout(parentCtx, requestResponseTimeout)
+	defer cancel()
+	reqChan := make(chan *rawRequest, 1)
+	go func() {
+		var rawReq rawRequest
+		if err := json.NewDecoder(stream).Decode(&rawReq); err != nil {
+			log.WithFields(log.Fields{
+				"error":     err.Error(),
+				"requester": stream.Conn().RemotePeer().Pretty(),
+			}).Warn("could not encode ordersync request")
+			reqChan <- &rawReq
+			// TODO(albrow): Handle peer scores somewhere else?
+			// s.host.ConnManager().UpsertTag(remotePeerID, scoreTag, func(current int) int { return current + inavlidMessageScoreDiff })
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.WithFields(log.Fields{
+			"error":     ctx.Err(),
+			"requester": stream.Conn().RemotePeer().Pretty(),
+		}).Warn("timed out waiting for ordersync request")
+		return nil, ctx.Err()
+	case rawReq := <-reqChan:
+		return rawReq, nil
+	}
+}
+
+func waitForResponse(parentCtx context.Context, stream network.Stream) (*rawResponse, error) {
+	ctx, cancel := context.WithTimeout(parentCtx, requestResponseTimeout)
+	defer cancel()
+	resChan := make(chan *rawResponse, 1)
+	go func() {
+		var rawRes rawResponse
+		if err := json.NewDecoder(stream).Decode(&rawRes); err != nil {
+			log.WithFields(log.Fields{
+				"error":    err.Error(),
+				"provider": stream.Conn().RemotePeer().Pretty(),
+			}).Warn("could not encode ordersync response")
+			resChan <- &rawRes
+			// TODO(albrow): Handle peer scores somewhere else?
+			// s.host.ConnManager().UpsertTag(remotePeerID, scoreTag, func(current int) int { return current + inavlidMessageScoreDiff })
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.WithFields(log.Fields{
+			"error":    ctx.Err(),
+			"provider": stream.Conn().RemotePeer().Pretty(),
+		}).Warn("timed out waiting for ordersync response")
+		return nil, ctx.Err()
+	case rawRes := <-resChan:
+		return rawRes, nil
+	}
 }
