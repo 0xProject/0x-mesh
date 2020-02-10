@@ -1417,7 +1417,13 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		allOrderEvents = append(allOrderEvents, orderEvents...)
 	}
 
-	w.orderFeed.Send(allOrderEvents)
+	if len(allOrderEvents) > 0 {
+		// NOTE(albrow): Send can block if the subscriber(s) are slow. Blocking here can cause problems when Mesh is
+		// shutting down, so to prevent that, we call Send in a goroutine.
+		go func() {
+			w.orderFeed.Send(allOrderEvents)
+		}()
+	}
 
 	return results, nil
 }

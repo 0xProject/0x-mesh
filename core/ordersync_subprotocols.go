@@ -38,7 +38,7 @@ func (p *FilteredPaginationSubProtocol) Name() string {
 	return "/pagination-with-filter/version/0"
 }
 
-func (p *FilteredPaginationSubProtocol) GetOrders(req *ordersync.Request) (*ordersync.Response, error) {
+func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
 	var metadata *FilteredPaginationRequestMetadata
 	if req.Metadata == nil {
 		// Default metadata for the first request.
@@ -73,7 +73,7 @@ func (p *FilteredPaginationSubProtocol) GetOrders(req *ordersync.Request) (*orde
 	}, nil
 }
 
-func (p *FilteredPaginationSubProtocol) HandleOrders(res *ordersync.Response) (*ordersync.Request, error) {
+func (p *FilteredPaginationSubProtocol) HandleOrders(ctx context.Context, res *ordersync.Response) (*ordersync.Request, error) {
 	if res.Metadata == nil {
 		return nil, errors.New("FilteredPaginationSubProtocol received response with nil metadata")
 	}
@@ -81,9 +81,8 @@ func (p *FilteredPaginationSubProtocol) HandleOrders(res *ordersync.Response) (*
 	if !ok {
 		return nil, fmt.Errorf("FilteredPaginationSubProtocol received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	// TODO(albrow): Pass in context to ValidateAndStoreValidOrders
 	// TODO(albrow): Check that this order matches our current filter/topic
-	_, err := p.app.orderWatcher.ValidateAndStoreValidOrders(context.Background(), res.Orders, false, p.app.chainID)
+	_, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, res.Orders, false, p.app.chainID)
 	if err != nil {
 		return nil, err
 	}

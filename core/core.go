@@ -476,6 +476,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing app.db")
+		}()
 		<-innerCtx.Done()
 		app.db.Close()
 	}()
@@ -485,6 +488,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing eth RPC rate limiter")
+		}()
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
 
@@ -492,6 +498,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing snapshot expiration watcher")
+		}()
 		ticker := time.NewTicker(expirationPollingInterval)
 		for {
 			select {
@@ -513,6 +522,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing order watcher")
+		}()
 		log.Info("starting order watcher")
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
@@ -528,6 +540,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing block watcher")
+		}()
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
@@ -589,6 +604,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing ordersync service")
+		}()
 		if err := app.ordersyncService.GetOrders(innerCtx, ordersyncMinPeers); err != nil {
 			orderSyncErrChan <- err
 		}
@@ -599,6 +617,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing p2p node")
+		}()
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
@@ -608,6 +629,9 @@ func (app *App) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				log.Debug("closing new addrs checker")
+			}()
 			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
 		}()
 
@@ -618,6 +642,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing periodic stats logger")
+		}()
 		app.periodicallyLogStats(innerCtx)
 	}()
 
@@ -664,6 +691,7 @@ func (app *App) Start(ctx context.Context) error {
 	// Wait for all goroutines to exit. If we reached here it means we are done
 	// and there are no errors.
 	wg.Wait()
+	log.Debug("app successfully closed")
 	return nil
 }
 
