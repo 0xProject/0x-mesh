@@ -339,7 +339,11 @@ export class WSClient {
      * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
      * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
      */
-    public async getOrdersForPageAsync(page: number, perPage: number = 200, snapshotID?: string): Promise<GetOrdersResponse> {
+    public async getOrdersForPageAsync(
+        page: number,
+        perPage: number = 200,
+        snapshotID?: string,
+    ): Promise<GetOrdersResponse> {
         const finalSnapshotID = snapshotID === undefined ? '' : snapshotID;
 
         const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [

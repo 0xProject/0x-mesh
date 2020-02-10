@@ -1,13 +1,16 @@
-## @0x/mesh-browser-lib
+## @0x/mesh-browser
 
-This is an internal package used to share code used to provide Typescript and Javascript bindings for browser
-based mesh nodes. This package should not be used outside of the mesh codebase. Instead, the @0x/mesh-browser
-and @0x/mesh-browser-lite packages are designed to be used externally.
+This package provides an easy way to run a browser-based mesh node. Specifically, it
+provides Typescript and Javascript bindings that can be used to interact with a mesh
+node that is running in the browser and handles the process of loading the mesh node
+on the webpage. Because of the fact that this package handles Wasm loading, it is
+considerably heavier-weight and may take longer to load than the @0x/mesh-browser-lite
+package.
 
 ## Installation
 
 ```bash
-yarn add @0x/mesh-browser-lib
+yarn add @0x/mesh-browser
 ```
 
 If your project is in [TypeScript](https://www.typescriptlang.org/), add the following to your `tsconfig.json`:

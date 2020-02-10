@@ -16,12 +16,13 @@
     "dependencies": {
         "@0x/order-utils": "^10.1.1",
         "@0x/utils": "^5.2.0",
+        "@0x/types": "^3.1.1",
         "base64-arraybuffer": "^0.2.0",
-        "bignumber.js": "~9.0.0",
         "browserfs": "^1.4.3",
         "ethereum-types": "^3.0.0"
     },
     "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.16",
         "typescript": "^3.5.3"
     }
 }
