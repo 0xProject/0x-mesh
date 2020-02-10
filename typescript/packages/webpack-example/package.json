@@ -10,6 +10,7 @@
         "lint": "tslint --format stylish --project ."
     },
     "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.16",
         "rimraf": "^3.0.0",
         "ts-loader": "^6.0.4",
         "typescript": "^3.5.3",
