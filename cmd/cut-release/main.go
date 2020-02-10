@@ -72,12 +72,12 @@ func generateTypescriptClientDocs() {
 	}
 }
 
-// TODO(jalextowle): Docs should also be built for `@0x/mesh-browser-lite` or the
+// TODO(jalextowle): Docs should also be built for `@0x/browser-lite` or the
 // pair of docs should be combined in some way
 func generateTypescriptBrowserDocs() {
 	// Run `yarn install` to make sure `TypeDoc` dep is installed
 	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
-	cmd.Dir = "typescript/packages/mesh-browser"
+	cmd.Dir = "typescript/packages/browser"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -86,7 +86,7 @@ func generateTypescriptBrowserDocs() {
 
 	// Run `yarn docs:md` to generate MD docs
 	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/mesh-browser"
+	cmd.Dir = "typescript/packages/browser"
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -104,19 +104,19 @@ func updateHardCodedVersions(version string) {
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
 	// Update `mesh-browser/package.json`
-	meshBrowserPackageJSONPath := "typescript/packages/mesh-browser/package.json"
+	meshBrowserPackageJSONPath := "typescript/packages/browser/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(meshBrowserPackageJSONPath, regex, newVersionString)
 
 	// Update `mesh-browser-lite/package.json`
-	meshBrowserLitePackageJSONPath := "typescript/packages/mesh-browser-lite/package.json"
+	meshBrowserLitePackageJSONPath := "typescript/packages/browser-lite/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(meshBrowserLitePackageJSONPath, regex, newVersionString)
 
 	// Update `mesh-browser-lib/package.json`
-	meshBrowserLibPackageJSONPath := "typescript/packages/mesh-browser-lib/package.json"
+	meshBrowserLibPackageJSONPath := "typescript/packages/browser-lib/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(meshBrowserLibPackageJSONPath, regex, newVersionString)
