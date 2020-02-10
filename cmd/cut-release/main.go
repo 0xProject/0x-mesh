@@ -25,6 +25,15 @@ func main() {
 
 	updateHardCodedVersions(env.Version)
 
+	// Run `yarn install` to make sure `TypeDoc` dep is installed
+	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
+	cmd.Dir = "typescript"
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+
 	generateTypescriptClientDocs()
 	generateTypescriptBrowserDocs()
 
@@ -53,41 +62,21 @@ func createReleaseChangelog(version string) {
 }
 
 func generateTypescriptClientDocs() {
-	// Run `yarn install` to make sure `TypeDoc` dep is installed
-	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
+	// Run `yarn docs:md` to generate MD docs
+	cmd := exec.Command("yarn", "docs:md")
 	cmd.Dir = "typescript/packages/rpc-client"
 	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-
-	// Run `yarn docs:md` to generate MD docs
-	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/rpc-client"
-	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
 		log.Fatal(err)
 	}
 }
 
-// TODO(jalextowle): Docs should also be built for `@0x/browser-lite` or the
-// pair of docs should be combined in some way
 func generateTypescriptBrowserDocs() {
-	// Run `yarn install` to make sure `TypeDoc` dep is installed
-	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
+	// Run `yarn docs:md` to generate MD docs
+	cmd := exec.Command("yarn", "docs:md")
 	cmd.Dir = "typescript/packages/browser"
 	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-
-	// Run `yarn docs:md` to generate MD docs
-	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/browser"
-	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
 		log.Fatal(err)
@@ -96,35 +85,10 @@ func generateTypescriptBrowserDocs() {
 
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
-
-	// Update `typescript/rpc-client/package.json`
-	tsClientPackageJSONPath := "typescript/rpc-client/package.json"
-	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
-	regex := `"version": "(.*)"`
-	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
-
-	// Update `mesh-browser/package.json`
-	meshBrowserPackageJSONPath := "typescript/packages/browser/package.json"
-	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
-	regex = `"version": "(.*)"`
-	updateFileWithRegex(meshBrowserPackageJSONPath, regex, newVersionString)
-
-	// Update `mesh-browser-lite/package.json`
-	meshBrowserLitePackageJSONPath := "typescript/packages/browser-lite/package.json"
-	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
-	regex = `"version": "(.*)"`
-	updateFileWithRegex(meshBrowserLitePackageJSONPath, regex, newVersionString)
-
-	// Update `mesh-browser-lib/package.json`
-	meshBrowserLibPackageJSONPath := "typescript/packages/browser-lib/package.json"
-	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
-	regex = `"version": "(.*)"`
-	updateFileWithRegex(meshBrowserLibPackageJSONPath, regex, newVersionString)
-
 	// Update `core.go`
 	corePath := "core/core.go"
-	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
-	regex = `version(.*)= "(.*)"`
+	newVersionString := fmt.Sprintf(`version$1= "%s"`, version)
+	regex := `version(.*)= "(.*)"`
 	updateFileWithRegex(corePath, regex, newVersionString)
 
 	// Update `docs/deployment_with_telemetry.md`
