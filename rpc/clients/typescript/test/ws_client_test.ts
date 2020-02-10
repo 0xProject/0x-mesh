@@ -431,12 +431,11 @@ blockchainTests.resets('WSClient', env => {
                 // tslint:disable-next-line:no-floating-promises
                 (async () => {
                     const wsServer = await setupServerAsync();
-                    let numMessages = 0;
+                    let hasReceivedUnsubscribeMessage = false;
                     wsServer.on('connect', ((connection: WebSocket.connection) => {
                         connection.on('message', (async (message: WSMessage) => {
                             const jsonRpcRequest = JSON.parse(message.utf8Data);
-                            if (numMessages === 0) {
-                                expect(jsonRpcRequest.method).to.be.equal('mesh_subscribe');
+                            if (jsonRpcRequest.method === 'mesh_subscribe') {
                                 const response = `
                                     {
                                         "id": "${jsonRpcRequest.id}",
@@ -445,16 +444,15 @@ blockchainTests.resets('WSClient', env => {
                                     }
                                 `;
                                 connection.sendUTF(response);
-                                numMessages++;
-                                return;
+                            } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
+                                hasReceivedUnsubscribeMessage = true;
                             }
-                            numMessages++;
                         }) as any);
                     }) as any);
 
                     const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
                     client.onClose(() => {
-                        expect(numMessages).to.be.equal(2);
+                        expect(hasReceivedUnsubscribeMessage).to.be.equal(true);
                         done();
                     });
                     // We need to add a sleep here so that we leave time for the client
