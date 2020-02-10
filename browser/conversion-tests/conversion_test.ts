@@ -153,7 +153,6 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     // tslint:disable:no-object-literal-type-assertion
     const provider = new Web3ProviderEngine();
     provider.addProvider(new RPCSubprovider(ethereumRPCURL));
-    provider.start();
     conversionTestCases.testConvertConfig(
         ...[
             (null as unknown) as WrapperConfig,

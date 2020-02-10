@@ -38,7 +38,7 @@ test-all: test-go test-wasm-node test-wasm-browser
 
 
 .PHONY: test-go
-test-go: test-go-parallel test-go-serial
+test-go: test-go-parallel test-go-serial test-browser-conversion
 
 .PHONY: test-go-parallel
 test-go-parallel:
@@ -52,6 +52,9 @@ test-go-serial:
 test-browser-integration:
 	go test ./integration-tests -timeout 185s --enable-browser-integration-tests -run BrowserIntegration
 
+.PHONY: test-browser-conversion
+test-browser-conversion:
+	go test ./browser/go/conversion-test -timeout 120s --enable-browser-conversion-tests -run BrowserConversions
 
 .PHONY: test-wasm-node
 test-wasm-node:

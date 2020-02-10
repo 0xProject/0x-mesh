@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,16 @@ import (
 
 var testCases []string
 
+var browserConversionTestsEnabled bool
+
+// The test `TestBrowserConversions` has a non-standard timeout, so it needs to be
+// run seperately from other go tests.
+func init() {
+	flag.BoolVar(&browserConversionTestsEnabled, "enable-browser-conversion-tests", false, "enable browser conversion tests")
+	testing.Init()
+	flag.Parse()
+}
+
 // This test is the entry-point to the Browser Conversion Tests. The other relevant
 // files are "../../conversion-test/conversion_test.ts" and "./main.go."
 //
@@ -33,9 +44,13 @@ var testCases []string
 // failures, unexpected tests, and missing tests are all failure conditions for this
 // test.
 func TestBrowserConversions(t *testing.T) {
+	if !browserConversionTestsEnabled {
+		t.Skip("Browser conversion tests are disabled. You can enable them with the --enable-browser-conversion-tests flag")
+	}
+
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 
