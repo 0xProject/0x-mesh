@@ -34,8 +34,8 @@ import {
     WrapperValidationResults,
     WrapperWethDepositEvent,
     WrapperWethWithdrawalEvent,
-} from '@0x/mesh-browser-lib/src/types';
-import '@0x/mesh-browser-lib/src/wasm_exec';
+} from '@0x/mesh-browser-lib/lib/src/types';
+import '@0x/mesh-browser-lib/lib/src/wasm_exec';
 import {
     configToWrapperConfig,
     orderEventsHandlerToWrapperOrderEventsHandler,
@@ -46,7 +46,7 @@ import {
     wrapperRejectedOrderInfoToRejectedOrderInfo,
     wrapperSignedOrderToSignedOrder,
     wrapperValidationResultsToValidationResults,
-} from '@0x/mesh-browser-lib/src/wrapper_conversion';
+} from '@0x/mesh-browser-lib/lib/src/wrapper_conversion';
 
 interface ConversionTestCase {
     contractEvents: () => WrapperContractEvent[];
