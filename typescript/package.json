@@ -9,6 +9,7 @@
         "wsrun": "wsrun",
         "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit  --exclude-missing build $PKG ",
         "lint": "wsrun lint $PKG",
+        "docs:md": "wsrun docs:md --fast-exit --exclude-missing $PKG",
         "test": "lerna link && lerna bootstrap && wsrun --fast-exit --exclude-missing test $PKG "
     },
     "devDependencies": {

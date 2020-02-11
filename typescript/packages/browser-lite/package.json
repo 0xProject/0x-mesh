@@ -11,13 +11,14 @@
         "lint": "tslint --format stylish --project ."
     },
     "config": {
-        "docsPath": "../docs/browser"
+        "docsPath": "../../../docs/browser-lite"
     },
     "dependencies": {
         "@0x/mesh-browser-lib": "^8.2.0",
         "base64-arraybuffer": "^0.2.0",
         "browserfs": "^1.4.3",
-        "ethereum-types": "^3.0.0"
+        "ethereum-types": "^3.0.0",
+        "typedoc": "^0.16.9"
     },
     "devDependencies": {
         "@0x/ts-doc-gen": "^0.0.16",
