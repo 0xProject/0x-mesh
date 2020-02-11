@@ -7,9 +7,9 @@
     "scripts": {
         "lerna": "lerna",
         "wsrun": "wsrun",
-        "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit  --exclude-missing build $PKG ",
+        "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit  --exclude-missing build $PKG",
         "lint": "wsrun lint $PKG",
-        "test": "lerna link && lerna bootstrap && wsrun --fast-exit --exclude-missing test $PKG "
+        "test": "lerna link && lerna bootstrap && wsrun --fast-exit --exclude-missing test $PKG"
     },
     "devDependencies": {
         "@0x/tslint-config": "^4.0.0",
