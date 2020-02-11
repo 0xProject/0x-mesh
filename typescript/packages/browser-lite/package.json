@@ -5,7 +5,8 @@
     "main": "./lib/index.js",
     "license": "Apache-2.0",
     "scripts": {
-        "build": "node --max_old_space_size=4096 ./node_modules/.bin/tsc -b",
+        "build": "tsc -b",
+        "watch:ts": "tsc -b -w",
         "docs:md": "ts-doc-gen --sourceDir=./src --output=${npm_package_config_docsPath}",
         "lint": "tslint --format stylish --project ."
     },

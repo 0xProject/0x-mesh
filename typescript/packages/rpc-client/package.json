@@ -17,6 +17,7 @@
     "types": "lib/src/index.d.ts",
     "scripts": {
         "build": "tsc -b",
+        "watch:ts": "tsc -b -w",
         "clean": "shx rm -rf lib",
         "lint": "tslint --format stylish --project .",
         "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --timeout 200000 --exit",
