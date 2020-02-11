@@ -1,5 +1,5 @@
 {
-    "name": "@0x/mesh-browser",
+    "name": "@0x/mesh-browser-extra-peers",
     "version": "1.0.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
