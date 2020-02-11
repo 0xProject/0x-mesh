@@ -1,5 +1,6 @@
-import { Mesh, OrderEvent, SignedOrder, BigNumber, SupportedProvider } from '@0x/mesh-browser';
+import { BigNumber, Mesh, OrderEvent, SignedOrder, SupportedProvider } from '@0x/mesh-browser';
 
+// tslint:disable:no-console
 (async () => {
     // Configure Mesh to use web3.currentProvider (e.g. provided by MetaMask).
     const mesh = new Mesh({
@@ -15,8 +16,8 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber, SupportedProvider } from '@0x
 
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled.
-    mesh.onOrderEvents((events: Array<OrderEvent>) => {
-        for (let event of events) {
+    mesh.onOrderEvents((events: OrderEvent[]) => {
+        for (const event of events) {
             console.log(event);
         }
     });
@@ -54,3 +55,4 @@ import { Mesh, OrderEvent, SignedOrder, BigNumber, SupportedProvider } from '@0x
 })().catch(err => {
     console.error(err);
 });
+// tslint:enable:no-console

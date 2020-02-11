@@ -1,7 +1,7 @@
 import { Mesh, OrderEvent, Verbosity } from '@0x/mesh-browser';
+import { Order, orderHashUtils, signatureUtils } from '@0x/order-utils';
+import { RPCSubprovider, Web3ProviderEngine } from '@0x/subproviders';
 import { BigNumber } from '@0x/utils';
-import { Web3ProviderEngine, RPCSubprovider } from '@0x/subproviders';
-import { signatureUtils, Order, orderHashUtils } from '@0x/order-utils';
 
 const ethereumRPCURL = 'http://localhost:8545';
 
@@ -10,12 +10,13 @@ const provider = new Web3ProviderEngine();
 provider.addProvider(new RPCSubprovider(ethereumRPCURL));
 provider.start();
 
+// tslint:disable:no-console
 (async () => {
     // Sign an order and log the order hash so that we can use it in the
     // integration tests.
     console.log('signing order...');
-    const currentTime = Math.floor(Date.now() / 1000);
-    const expirationTime = currentTime + 24 * 60 * 60;
+    const currentTime = Math.floor(Date.now() / 1000); // tslint:disable-line:custom-no-magic-numbers
+    const expirationTime = currentTime + 24 * 60 * 60; // tslint:disable-line:custom-no-magic-numbers
     const order: Order = {
         makerAddress: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
         makerAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
@@ -39,7 +40,7 @@ provider.start();
     console.log(
         JSON.stringify({
             message: 'signed order in browser',
-            orderHash: orderHash,
+            orderHash,
         }),
     );
 
@@ -63,9 +64,9 @@ provider.start();
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled. We will check for certain events to be logged in the
     // integration tests.
-    mesh.onOrderEvents((events: Array<OrderEvent>) => {
+    mesh.onOrderEvents((events: OrderEvent[]) => {
         (async () => {
-            for (let event of events) {
+            for (const event of events) {
                 // Check the happy path for getOrdersForPageAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
                 const firstOrdersResponse = await mesh.getOrdersForPageAsync(0, 1, '');
@@ -98,11 +99,11 @@ provider.start();
     const result = await mesh.addOrdersAsync([signedOrder as any]);
     if (result.accepted.length !== 1) {
         console.log(JSON.stringify(result));
-        throw new Error('Expected exactly one order to be accepted but got: ' + result.accepted.length);
+        throw new Error(`Expected exactly one order to be accepted but got: ${result.accepted.length}`);
     }
     if (result.rejected.length !== 0) {
         console.log(JSON.stringify(result));
-        throw new Error('Expected no orders to be rejected but got: ' + result.rejected.length);
+        throw new Error(`Expected no orders to be rejected but got: ${result.rejected.length}`);
     }
 
     // Call getStatsAsync and make sure it works.
@@ -118,7 +119,7 @@ provider.start();
     document.body.appendChild(finishedDiv);
 })().catch(err => {
     if (err instanceof Error) {
-        console.error(err.name + ': ' + err.message);
+        console.error(`${err.name}: ${err.message}`);
     } else {
         console.error(err.toString());
     }
@@ -127,3 +128,4 @@ provider.start();
 async function sleepAsync(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+// tslint:enable:no-console
