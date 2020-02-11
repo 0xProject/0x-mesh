@@ -57,15 +57,34 @@ export function configToWrapperConfig(config: Config): WrapperConfig {
     };
 }
 
-export function wrapperSignedOrderToSignedOrder(wrapperSignedOrder: WrapperSignedOrder): SignedOrder {
+export function orderEventsHandlerToWrapperOrderEventsHandler(
+    orderEventsHandler: (events: OrderEvent[]) => void,
+): (events: WrapperOrderEvent[]) => void {
+    return (wrapperOrderEvents: WrapperOrderEvent[]) => {
+        const orderEvents = wrapperOrderEvents.map(wrapperOrderEventToOrderEvent);
+        orderEventsHandler(orderEvents);
+    };
+}
+
+export function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSignedOrder {
     return {
-        ...wrapperSignedOrder,
-        makerFee: new BigNumber(wrapperSignedOrder.makerFee),
-        takerFee: new BigNumber(wrapperSignedOrder.takerFee),
-        makerAssetAmount: new BigNumber(wrapperSignedOrder.makerAssetAmount),
-        takerAssetAmount: new BigNumber(wrapperSignedOrder.takerAssetAmount),
-        salt: new BigNumber(wrapperSignedOrder.salt),
-        expirationTimeSeconds: new BigNumber(wrapperSignedOrder.expirationTimeSeconds),
+        ...signedOrder,
+        makerFee: signedOrder.makerFee.toString(),
+        takerFee: signedOrder.takerFee.toString(),
+        makerAssetAmount: signedOrder.makerAssetAmount.toString(),
+        takerAssetAmount: signedOrder.takerAssetAmount.toString(),
+        salt: signedOrder.salt.toString(),
+        expirationTimeSeconds: signedOrder.expirationTimeSeconds.toString(),
+    };
+}
+
+export function wrapperAcceptedOrderInfoToAcceptedOrderInfo(
+    wrapperAcceptedOrderInfo: WrapperAcceptedOrderInfo,
+): AcceptedOrderInfo {
+    return {
+        ...wrapperAcceptedOrderInfo,
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperAcceptedOrderInfo.signedOrder),
+        fillableTakerAssetAmount: new BigNumber(wrapperAcceptedOrderInfo.fillableTakerAssetAmount),
     };
 }
 
@@ -204,15 +223,13 @@ export function wrapperContractEventsToContractEvents(wrapperContractEvents: Wra
     return contractEvents;
 }
 
-export function signedOrderToWrapperSignedOrder(signedOrder: SignedOrder): WrapperSignedOrder {
+export function wrapperGetOrdersResponseToGetOrdersResponse(
+    wrapperGetOrdersResponse: WrapperGetOrdersResponse,
+): GetOrdersResponse {
     return {
-        ...signedOrder,
-        makerFee: signedOrder.makerFee.toString(),
-        takerFee: signedOrder.takerFee.toString(),
-        makerAssetAmount: signedOrder.makerAssetAmount.toString(),
-        takerAssetAmount: signedOrder.takerAssetAmount.toString(),
-        salt: signedOrder.salt.toString(),
-        expirationTimeSeconds: signedOrder.expirationTimeSeconds.toString(),
+        ...wrapperGetOrdersResponse,
+        snapshotTimestamp: new Date(wrapperGetOrdersResponse.snapshotTimestamp).getTime(),
+        ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
     };
 }
 
@@ -226,31 +243,11 @@ export function wrapperOrderEventToOrderEvent(wrapperOrderEvent: WrapperOrderEve
     };
 }
 
-export function orderEventsHandlerToWrapperOrderEventsHandler(
-    orderEventsHandler: (events: OrderEvent[]) => void,
-): (events: WrapperOrderEvent[]) => void {
-    return (wrapperOrderEvents: WrapperOrderEvent[]) => {
-        const orderEvents = wrapperOrderEvents.map(wrapperOrderEventToOrderEvent);
-        orderEventsHandler(orderEvents);
-    };
-}
-
-export function wrapperValidationResultsToValidationResults(
-    wrapperValidationResults: WrapperValidationResults,
-): ValidationResults {
+export function wrapperOrderInfoToOrderInfo(wrapperOrderInfo: WrapperOrderInfo): OrderInfo {
     return {
-        accepted: wrapperValidationResults.accepted.map(wrapperAcceptedOrderInfoToAcceptedOrderInfo),
-        rejected: wrapperValidationResults.rejected.map(wrapperRejectedOrderInfoToRejectedOrderInfo),
-    };
-}
-
-export function wrapperAcceptedOrderInfoToAcceptedOrderInfo(
-    wrapperAcceptedOrderInfo: WrapperAcceptedOrderInfo,
-): AcceptedOrderInfo {
-    return {
-        ...wrapperAcceptedOrderInfo,
-        signedOrder: wrapperSignedOrderToSignedOrder(wrapperAcceptedOrderInfo.signedOrder),
-        fillableTakerAssetAmount: new BigNumber(wrapperAcceptedOrderInfo.fillableTakerAssetAmount),
+        ...wrapperOrderInfo,
+        fillableTakerAssetAmount: new BigNumber(wrapperOrderInfo.fillableTakerAssetAmount),
+        signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderInfo.signedOrder),
     };
 }
 
@@ -263,6 +260,18 @@ export function wrapperRejectedOrderInfoToRejectedOrderInfo(
     };
 }
 
+export function wrapperSignedOrderToSignedOrder(wrapperSignedOrder: WrapperSignedOrder): SignedOrder {
+    return {
+        ...wrapperSignedOrder,
+        makerFee: new BigNumber(wrapperSignedOrder.makerFee),
+        takerFee: new BigNumber(wrapperSignedOrder.takerFee),
+        makerAssetAmount: new BigNumber(wrapperSignedOrder.makerAssetAmount),
+        takerAssetAmount: new BigNumber(wrapperSignedOrder.takerAssetAmount),
+        salt: new BigNumber(wrapperSignedOrder.salt),
+        expirationTimeSeconds: new BigNumber(wrapperSignedOrder.expirationTimeSeconds),
+    };
+}
+
 export function wrapperStatsToStats(wrapperStats: WrapperStats): Stats {
     return {
         ...wrapperStats,
@@ -271,21 +280,12 @@ export function wrapperStatsToStats(wrapperStats: WrapperStats): Stats {
     };
 }
 
-export function wrapperGetOrdersResponseToGetOrdersResponse(
-    wrapperGetOrdersResponse: WrapperGetOrdersResponse,
-): GetOrdersResponse {
+export function wrapperValidationResultsToValidationResults(
+    wrapperValidationResults: WrapperValidationResults,
+): ValidationResults {
     return {
-        ...wrapperGetOrdersResponse,
-        snapshotTimestamp: new Date(wrapperGetOrdersResponse.snapshotTimestamp).getTime(),
-        ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
-    };
-}
-
-export function wrapperOrderInfoToOrderInfo(wrapperOrderInfo: WrapperOrderInfo): OrderInfo {
-    return {
-        ...wrapperOrderInfo,
-        fillableTakerAssetAmount: new BigNumber(wrapperOrderInfo.fillableTakerAssetAmount),
-        signedOrder: wrapperSignedOrderToSignedOrder(wrapperOrderInfo.signedOrder),
+        accepted: wrapperValidationResults.accepted.map(wrapperAcceptedOrderInfoToAcceptedOrderInfo),
+        rejected: wrapperValidationResults.rejected.map(wrapperRejectedOrderInfoToRejectedOrderInfo),
     };
 }
 // tslint:enable:completed-docs
