@@ -130,7 +130,7 @@ func buildForTests(t *testing.T, ctx context.Context) {
 
 	fmt.Println("Running postinstall for browser node...")
 	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
-	cmd.Dir = "../typescript/packages/mesh-integration-tests"
+	cmd.Dir = "../typescript/packages/integration-tests"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
 
