@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-browser",
-    "version": "1.0.0",
+    "version": "8.2.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
     "license": "Apache-2.0",
@@ -33,7 +33,7 @@
         "webpack-cli": "^3.3.10"
     },
     "dependencies": {
-        "@0x/mesh-browser-lib": "^1.0.0",
+        "@0x/mesh-browser-lib": "^8.2.0",
         "base64-arraybuffer": "^0.2.0",
         "browserfs": "^1.4.3",
         "ethereum-types": "^3.0.0"
