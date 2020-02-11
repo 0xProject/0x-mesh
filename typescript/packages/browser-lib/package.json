@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-browser-lib",
-    "version": "1.0.0",
+    "version": "8.2.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
     "types": "./lib/index.d.ts",
