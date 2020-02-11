@@ -36,6 +36,7 @@ func main() {
 
 	generateTypescriptClientDocs()
 	generateTypescriptBrowserDocs()
+	generateTypescriptBrowserLiteDocs()
 
 	createReleaseChangelog(env.Version)
 }
@@ -76,6 +77,17 @@ func generateTypescriptBrowserDocs() {
 	// Run `yarn docs:md` to generate MD docs
 	cmd := exec.Command("yarn", "docs:md")
 	cmd.Dir = "typescript/packages/browser"
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+}
+
+func generateTypescriptBrowserLiteDocs() {
+	// Run `yarn docs:md` to generate MD docs
+	cmd := exec.Command("yarn", "docs:md")
+	cmd.Dir = "typescript/packages/browser-lite"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
