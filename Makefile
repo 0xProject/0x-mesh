@@ -5,7 +5,6 @@ deps: deps-ts wasmbrowsertest
 .PHONY: deps-ts
 deps-ts:
 	yarn install
-	cd rpc/clients/typescript && yarn install
 	cd typescript/ && yarn install
 
 
@@ -29,7 +28,6 @@ deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
 .PHONY: deps-ts-no-lockfile
 deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
-	cd rpc/clients/typescript && yarn install --frozen-lockfile
 	cd typescript/ && yarn install --frozen-lockfile
 
 
@@ -79,7 +77,6 @@ lint-go:
 
 .PHONY: lint-ts
 lint-ts:
-	cd rpc/clients/typescript && yarn lint
 	cd typescript/ && yarn lint
 
 
