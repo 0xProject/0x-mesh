@@ -656,7 +656,7 @@ func setGlobals() {
 			}
 		}),
 		"testConvertConfig": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			if len(args) < 3 {
+			if len(args) != 5 {
 				panic("Invalid number of test cases provided to testConvertConfig")
 			}
 			testConvertConfig("NullConfig", args[0], core.Config{}, "config is required", false)
