@@ -1,3 +1,4 @@
+import { RPCSubprovider, Web3ProviderEngine } from '@0x/subproviders';
 import { BigNumber, hexUtils, logUtils } from '@0x/utils';
 
 import {
@@ -13,8 +14,10 @@ import {
     ExchangeCancelEvent,
     ExchangeCancelUpToEvent,
     ExchangeFillEvent,
+    JsonSchema,
     WethDepositEvent,
     WethWithdrawalEvent,
+    WrapperConfig,
     WrapperContractEvent,
     WrapperERC1155TransferBatchEvent,
     WrapperERC1155TransferSingleEvent,
@@ -51,6 +54,7 @@ interface ConversionTestCase {
     orderEvents: () => WrapperOrderEvent[];
     signedOrders: () => WrapperSignedOrder[];
     stats: () => WrapperStats[];
+    testConvertConfig: (...configs: WrapperConfig[]) => void;
     validationResults: () => WrapperValidationResults[];
 }
 
@@ -117,15 +121,18 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
 //
 // Verification has been very simple in practice as it has only entailed equality
 // comparisons so far. These findings must be reported so that the conversion test
-// entry-point knows whether or not individual tests succeed of fail. The current
-// methodology for reporting findings is to print a string of the from: "$description: true."
+// entry-point knows whether or not individual tests succeed or fail. The current
+// methodology for reporting findings is to print a string of the from: "$description: true".
 // These printed strings are received by the test's entry-point, which can then verify
 // that the print statement corresponds to a registered "test case" in the entry-point.
 // The entry-point verifies that all registered tests have passed, and it also has
 // features that will cause the test to fail if (1) unexpected logs are received or (2)
 // if some test cases were not tested.
 (async () => {
+    // Wait for the Wasm module to finish initializing.
     await waitForLoadAsync();
+
+    // Execute the Go --> Typescript tests
     const contractEvents = conversionTestCases.contractEvents();
     testContractEvents(contractEvents);
     const getOrdersResponse = conversionTestCases.getOrdersResponse();
@@ -139,6 +146,50 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     const validationResults = conversionTestCases.validationResults();
     testValidationResults(validationResults);
 
+    // Execute the Typescript --> Go tests
+    const ethereumRPCURL = 'http://localhost:8545';
+
+    // Set up a Web3 Provider that uses the RPC endpoint
+    // tslint:disable:no-object-literal-type-assertion
+    const provider = new Web3ProviderEngine();
+    provider.addProvider(new RPCSubprovider(ethereumRPCURL));
+    conversionTestCases.testConvertConfig(
+        ...[
+            (null as unknown) as WrapperConfig,
+            (undefined as unknown) as WrapperConfig,
+            {} as WrapperConfig,
+            { ethereumChainID: 1337 },
+            configToWrapperConfig({
+                ethereumChainID: 1337,
+                verbosity: 5,
+                useBootstrapList: false,
+                bootstrapList: [
+                    '/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF',
+                    '/ip4/3.214.190.67/tcp/60557/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG',
+                ],
+                blockPollingIntervalSeconds: 2,
+                ethereumRPCMaxContentLength: 524100,
+                ethereumRPCMaxRequestsPer24HrUTC: 500000,
+                ethereumRPCMaxRequestsPerSecond: 12,
+                enableEthereumRPCRateLimiting: false,
+                customContractAddresses: {
+                    exchange: '0x48bacb9266a570d521063ef5dd96e61686dbe788',
+                    devUtils: '0x38ef19fdf8e8415f18c307ed71967e19aac28ba1',
+                    erc20Proxy: '0x1dc4c1cefef38a777b15aa20260a54e584b16c48',
+                    erc721Proxy: '0x1d7022f5b17d2f8b695918fb48fa1089c9f85401',
+                    erc1155Proxy: '0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f',
+                },
+                maxOrdersInStorage: 500000,
+                customOrderFilter: {
+                    id: '/foobarbaz',
+                },
+                ethereumRPCURL: 'http://localhost:8545',
+                web3Provider: provider,
+            }),
+        ],
+    );
+    // tslint:enable:no-object-literal-type-assertion
+
     // This special #jsFinished div is used to signal the headless Chrome driver
     // that the JavaScript code is done running. This is not a native Javascript
     // concept. Rather, it is our way of letting the Go program that serves this
@@ -147,7 +198,7 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     finishedDiv.setAttribute('id', 'jsFinished');
     document.body.appendChild(finishedDiv);
 })().catch(err => {
-    throw err;
+    console.log(err);
 });
 
 function prettyPrintTestCase(name: string, description: string): (section: string, value: boolean) => void {

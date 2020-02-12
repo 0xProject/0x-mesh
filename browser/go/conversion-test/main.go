@@ -3,12 +3,17 @@
 package main
 
 import (
+	"fmt"
 	"math/big"
+	"reflect"
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -650,8 +655,82 @@ func setGlobals() {
 				},
 			}
 		}),
+		"testConvertConfig": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			if len(args) != 5 {
+				panic("Invalid number of test cases provided to testConvertConfig")
+			}
+			testConvertConfig("NullConfig", args[0], core.Config{}, "config is required", false)
+			testConvertConfig("UndefinedConfig", args[1], core.Config{}, "config is required", false)
+			testConvertConfig("EmptyConfig", args[2], core.Config{}, "ethereumChainID is required", false)
+			testConvertConfig("MinimalConfig", args[3], core.Config{
+				Verbosity:                        2,
+				DataDir:                          "0x-mesh",
+				P2PTCPPort:                       0,
+				P2PWebSocketsPort:                0,
+				UseBootstrapList:                 true,
+				BlockPollingInterval:             5 * time.Second,
+				EthereumRPCMaxContentLength:      524288,
+				EthereumRPCMaxRequestsPer24HrUTC: 100000,
+				EthereumRPCMaxRequestsPerSecond:  30,
+				EnableEthereumRPCRateLimiting:    true,
+				MaxOrdersInStorage:               100000,
+				CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
+				EthereumChainID:                  1337,
+			}, "", false)
+			testConvertConfig("FullConfig", args[4], core.Config{
+				Verbosity:                        5,
+				DataDir:                          "0x-mesh",
+				P2PTCPPort:                       0,
+				P2PWebSocketsPort:                0,
+				UseBootstrapList:                 false,
+				BootstrapList:                    "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF,/ip4/3.214.190.67/tcp/60557/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumG",
+				BlockPollingInterval:             2 * time.Second,
+				EthereumRPCMaxContentLength:      524100,
+				EthereumRPCMaxRequestsPer24HrUTC: 500000,
+				EthereumRPCMaxRequestsPerSecond:  12,
+				EnableEthereumRPCRateLimiting:    false,
+				MaxOrdersInStorage:               500000,
+				CustomOrderFilter:                `{"id":"/foobarbaz"}`,
+				CustomContractAddresses:          "{\"exchange\":\"0x48bacb9266a570d521063ef5dd96e61686dbe788\",\"devUtils\":\"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1\",\"erc20Proxy\":\"0x1dc4c1cefef38a777b15aa20260a54e584b16c48\",\"erc721Proxy\":\"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401\",\"erc1155Proxy\":\"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f\"}",
+				EthereumChainID:                  1337,
+				EthereumRPCURL:                   "http://localhost:8545",
+			}, "", true)
+			return nil
+		}),
 	}
 	js.Global().Set("conversionTestCases", conversionTestCases)
+}
+
+func testConvertConfig(description string, jsConfig js.Value, expectedConfig core.Config, expectedErr string, expectProvider bool) {
+	actualConfig, actualErr := browserutil.ConvertConfig(jsConfig)
+	actualErrString := ""
+	if actualErr != nil {
+		actualErrString = actualErr.Error()
+	}
+
+	// Test the config
+	rpcClient := actualConfig.EthereumRPCClient
+	actualConfig.EthereumRPCClient = nil
+	prettyPrintTest(fmt.Sprintf("(convertConfig | %s | config): ", description), expectedConfig, actualConfig)
+	actualConfig.EthereumRPCClient = rpcClient
+	// NOTE(jalextowle): This is not a robust validation on the Web3Provider. In the event that provider
+	// conversions appear to be causing issues, this validation may need to be improved.
+	if expectProvider {
+		fmt.Printf("(convertConfig | %s | web3Provider): %t\n", description, actualConfig.EthereumRPCClient != nil)
+	} else {
+		fmt.Printf("(convertConfig | %s | web3Provider): %t\n", description, actualConfig.EthereumRPCClient == nil)
+	}
+
+	// Test the err
+	prettyPrintTest(fmt.Sprintf("(convertConfig | %s | err): ", description), expectedErr, actualErrString)
+}
+
+func prettyPrintTest(testHeader string, expected, actual interface{}) {
+	if !reflect.DeepEqual(expected, actual) {
+		fmt.Printf(testHeader+"\"%+v\" is not equal to \"%+v\"\n", expected, actual)
+	} else {
+		fmt.Println(testHeader + "true")
+	}
 }
 
 // triggerLoadEvent triggers the global load event to indicate that the Wasm is

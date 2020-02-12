@@ -2,6 +2,9 @@ const path = require('path');
 
 module.exports = {
     entry: './conversion-tests/conversion_test.ts',
+    node: {
+      fs: 'empty'
+    },
     module: {
         rules: [
             {

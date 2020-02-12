@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,16 @@ import (
 
 var testCases []string
 
+var browserConversionTestsEnabled bool
+
+// The test `TestBrowserConversions` has a non-standard timeout, so it needs to be
+// run seperately from other go tests.
+func init() {
+	flag.BoolVar(&browserConversionTestsEnabled, "enable-browser-conversion-tests", false, "enable browser conversion tests")
+	testing.Init()
+	flag.Parse()
+}
+
 // This test is the entry-point to the Browser Conversion Tests. The other relevant
 // files are "../../conversion-test/conversion_test.ts" and "./main.go."
 //
@@ -33,15 +44,19 @@ var testCases []string
 // failures, unexpected tests, and missing tests are all failure conditions for this
 // test.
 func TestBrowserConversions(t *testing.T) {
+	if !browserConversionTestsEnabled {
+		t.Skip("Browser conversion tests are disabled. You can enable them with the --enable-browser-conversion-tests flag")
+	}
+
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 
 	buildForTests(t, ctx)
 
-	// Register the test cases that should be logged.
+	// Register the Go --> Typescript test cases that should be logged.
 	registerContractEventTest()
 	registerGetOrdersResponseTest("EmptyOrderInfo", 0)
 	registerGetOrdersResponseTest("OneOrderInfo", 1)
@@ -55,6 +70,13 @@ func TestBrowserConversions(t *testing.T) {
 	registerValidationResultsTest("OneAcceptedResult", 1, 0)
 	registerValidationResultsTest("OneRejectedResult", 0, 1)
 	registerValidationResultsTest("RealisticValidationResults", 2, 1)
+
+	// Register the Typescript --> Go test cases that should be logged.
+	registerConvertConfigTest("NullConfig")
+	registerConvertConfigTest("UndefinedConfig")
+	registerConvertConfigTest("EmptyConfig")
+	registerConvertConfigTest("MinimalConfig")
+	registerConvertConfigTest("FullConfig")
 
 	// Start a simple HTTP server to serve the web page for the browser node.
 	ts := httptest.NewServer(http.FileServer(http.Dir("../../dist")))
@@ -206,6 +228,16 @@ func registerContractEventParams(description string, param string) {
 
 func registerContractEventField(description string, field string) {
 	registerTest(fmt.Sprintf("(contractEvent | %s | %s)", description, field))
+}
+
+func registerConvertConfigTest(description string) {
+	registerConvertConfigField(description, "config")
+	registerConvertConfigField(description, "web3Provider")
+	registerConvertConfigField(description, "err")
+}
+
+func registerConvertConfigField(description string, field string) {
+	registerTest(fmt.Sprintf("(convertConfig | %s | %s)", description, field))
 }
 
 func registerGetOrdersResponseTest(description string, orderInfoLength int) {
@@ -411,8 +443,8 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 						if count == testLength {
 							done <- struct{}{}
 						}
-					} else {
-						t.Errorf("Unexpected test results: %s", arg.Value)
+					} else if len(string(arg.Value)) > 1 {
+						t.Errorf("Unexpected test results: %s\n", string(arg.Value))
 					}
 				}
 			case runtime.APITypeError:
