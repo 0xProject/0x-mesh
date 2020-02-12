@@ -35,7 +35,7 @@ var testCases []string
 func TestBrowserConversions(t *testing.T) {
 	// Declare a context that will be used for all child processes, servers, and
 	// other goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 175*time.Second)
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 

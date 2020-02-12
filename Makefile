@@ -42,7 +42,7 @@ test-go: test-go-parallel test-go-serial
 
 .PHONY: test-go-parallel
 test-go-parallel:
-	go test ./... -race -timeout 30s
+	go test ./... -race -timeout 180s
 
 .PHONY: test-go-serial
 test-go-serial:
