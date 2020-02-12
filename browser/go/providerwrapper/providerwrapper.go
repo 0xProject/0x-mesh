@@ -119,6 +119,7 @@ func (c *RPCClient) CallContext(ctx context.Context, result interface{}, method 
 		return err
 	case jsResult := <-resultChan:
 		if rpcErr := jsResult.Get("error"); !jsutil.IsNullOrUndefined(rpcErr) {
+			log.WithField("response", jsutil.InefficientlyConvertFromJS(jsResult)).Error("providerwrapper: ethereum rpc response error")
 			return jsErrorToRPCError(rpcErr)
 		}
 		if result == nil {
