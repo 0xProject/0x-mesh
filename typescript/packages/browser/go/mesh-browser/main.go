@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/orderfilter"
+	"github.com/0xProject/0x-mesh/typescript/packages/browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/typescript/packages/browser/go/jsutil"
-	"github.com/0xProject/0x-mesh/typescript/packages/browser/go/providerwrapper"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/event"
 )

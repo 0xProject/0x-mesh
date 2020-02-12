@@ -13,7 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/orderfilter"
-	"github.com/0xProject/0x-mesh/typescript/packges/mesh-browser/go/browserutil"
+	"github.com/0xProject/0x-mesh/typescript/packages/browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"

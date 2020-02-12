@@ -7,7 +7,7 @@
     "scripts": {
         "lerna": "lerna",
         "wsrun": "wsrun",
-        "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit  --exclude-missing build $PKG ",
+        "build": "lerna link && lerna bootstrap && wsrun --stages --fast-exit --exclude-missing build $PKG ",
         "build:ts": "tsc -b",
         "watch:ts": "tsc -b -w",
         "lint": "wsrun lint $PKG",
