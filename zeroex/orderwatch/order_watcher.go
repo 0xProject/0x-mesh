@@ -1419,10 +1419,19 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 
 	if len(allOrderEvents) > 0 {
 		// NOTE(albrow): Send can block if the subscriber(s) are slow. Blocking here can cause problems when Mesh is
-		// shutting down, so to prevent that, we call Send in a goroutine.
+		// shutting down, so to prevent that, we call Send in a goroutine and return immediately if the context
+		// is done.
+		done := make(chan interface{})
 		go func() {
 			w.orderFeed.Send(allOrderEvents)
+			done <- struct{}{}
 		}()
+		select {
+		case <-done:
+			return results, nil
+		case <-ctx.Done():
+			return results, nil
+		}
 	}
 
 	return results, nil
