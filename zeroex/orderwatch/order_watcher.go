@@ -95,7 +95,7 @@ type Watcher struct {
 	maxExpirationTime          *big.Int
 	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
-	handleBlockEventsMu        sync.Mutex
+	handleBlockEventsMu        sync.RWMutex
 	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
 	// block. Validation of orders should block until this has completed
 	atLeastOneBlockProcessed   chan struct{}
@@ -823,8 +823,8 @@ func (w *Watcher) handleBlockEvents(
 // `lastUpdatedBuffer` time to make sure all orders are still up-to-date
 func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) error {
 	// Pause block event processing until we finished cleaning up at current block height
-	w.handleBlockEventsMu.Lock()
-	defer w.handleBlockEventsMu.Unlock()
+	w.handleBlockEventsMu.RLock()
+	defer w.handleBlockEventsMu.RUnlock()
 
 	ordersColTxn := w.meshDB.Orders.OpenTransaction()
 	defer func() {
@@ -1378,8 +1378,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	}
 
 	// Lock down the processing of additional block events until we've validated and added these new orders
-	w.handleBlockEventsMu.Lock()
-	defer w.handleBlockEventsMu.Unlock()
+	w.handleBlockEventsMu.RLock()
+	defer w.handleBlockEventsMu.RUnlock()
 
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
 	if err != nil {
