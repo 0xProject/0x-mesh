@@ -10,13 +10,19 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 )
 
+// Ensure that FilteredPaginationSubProtocol implements the Subprotocol interface.
 var _ ordersync.Subprotocol = (*FilteredPaginationSubProtocol)(nil)
 
+// FilteredPaginationSubProtocol is an ordersync subprotocol which returns all orders by
+// paginating through them. It involves sending multiple requests until pagination is
+// finished and all orders have been returned.
 type FilteredPaginationSubProtocol struct {
 	app     *App
 	perPage int
 }
 
+// NewFilteredPaginationSubprotocol creates and returns a new FilteredPaginationSubprotocol
+// which will respond with perPage orders for each individual request/response.
 func NewFilteredPaginationSubprotocol(app *App, perPage int) *FilteredPaginationSubProtocol {
 	return &FilteredPaginationSubProtocol{
 		app:     app,
@@ -24,20 +30,29 @@ func NewFilteredPaginationSubprotocol(app *App, perPage int) *FilteredPagination
 	}
 }
 
+// FilteredPaginationRequestMetadata is the request metadata for the
+// FilteredPaginationSubProtocol. It keeps track of the current page and SnapshotID,
+// which is expected to be an empty string on the first request.
 type FilteredPaginationRequestMetadata struct {
 	Page       int    `json:"page"`
 	SnapshotID string `json:"snapshotID"`
 }
 
+// FilteredPaginationResponseMetadata is the response metadata for the
+// FilteredPaginationSubProtocol. It keeps track of the current page and SnapshotID.
 type FilteredPaginationResponseMetadata struct {
 	Page       int    `json:"page"`
 	SnapshotID string `json:"snapshotID"`
 }
 
+// Name reutrns the name of the FilteredPaginationSubProtocol
 func (p *FilteredPaginationSubProtocol) Name() string {
 	return "/pagination-with-filter/version/0"
 }
 
+// GetOrders returns the orders for one page, based on the page number
+// and snapshotID in the corresponding to the given request. This is
+// the implementation for the "provider" side of the subprotocol.
 func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
 	var metadata *FilteredPaginationRequestMetadata
 	if req.Metadata == nil {
@@ -73,6 +88,9 @@ func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *orde
 	}, nil
 }
 
+// HandleOrders handles the orders for one page by validating them, storing them in the database,
+// and firing the appropriate events. It also returns the next request to be sent. This is the
+// implementation for the "requester" side of the subprotocol.
 func (p *FilteredPaginationSubProtocol) HandleOrders(ctx context.Context, res *ordersync.Response) (*ordersync.Request, error) {
 	if res.Metadata == nil {
 		return nil, errors.New("FilteredPaginationSubProtocol received response with nil metadata")

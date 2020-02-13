@@ -1,3 +1,8 @@
+// Package ordersync contains the ordersync protocol, which is
+// used for sharing existing orders between two peers, typically
+// during initialization. The protocol consists of a requester
+// (the peer requesting orders) and a provider (the peer providing
+// them).
 package ordersync
 
 import (
@@ -20,11 +25,15 @@ import (
 )
 
 const (
-	TypeRequest  = "Request"
+	// TypeRequest is used to identify a JSON message as an ordersync request.
+	TypeRequest = "Request"
+	// TypeResponse is used to identify a JSON message as an ordersync response.
 	TypeResponse = "Response"
+	// requestResponseTimeout is the amount of time to wait for a response/request
+	// from the other side of the connection. It is used for both waiting for a request
+	// on a newly opened stream and waiting for a response after sending a request.
+	requestResponseTimeout = 30 * time.Second
 )
-
-const requestResponseTimeout = 30 * time.Second
 
 var (
 	// retryBackoff defines how long to wait before trying again if we didn't get
@@ -34,10 +43,9 @@ var (
 		Max:    1 * time.Minute,        // Longest back-off length
 		Factor: 2,                      // Factor to multiple each successive back-off
 	}
+	// backoffMut is a mutex around retryBackoff, which otherwise appears to not
+	// be goroutine-safe.
 	backoffMut = &sync.Mutex{}
-)
-
-var (
 	// ErrNoOrders is returned whenever the orders we are looking for cannot be
 	// found anywhere on the network. This can mean that we aren't connected to any
 	// peers on the same topic, that there are no orders for the topic throughout
@@ -46,6 +54,8 @@ var (
 	ErrNoOrders = errors.New("no orders where received from any known peers")
 )
 
+// NoMatchingSubprotocolsError is returned whenever two peers attempting to use
+// the ordersync protocol cannot agree on a subprotocol to use.
 type NoMatchingSubprotocolsError struct {
 	Requested []string
 	Supported []string
@@ -59,28 +69,41 @@ const (
 	// ID is the ID for the ordersync protocol.
 	ID = protocol.ID("/0x-mesh/order-sync/version/0")
 
-	providerErrorDelay      = 10 * time.Second
-	scoreTag                = "/0x-mesh/order-sync"
+	// scoreTag is the tag to use for adjusting peer scores as it relates to
+	// the ordersync protocol.
+	scoreTag = "/0x-mesh/ordersync"
+	// invalidMessageScoreDiff is the diff to apply to a peer's score when
+	// they send an invalid message.
 	inavlidMessageScoreDiff = -10
-	validMessageScoreDiff   = 1
+	// invalidMessageScoreDiff is the diff to apply to a peer's score when
+	// they send a valid message.
+	validMessageScoreDiff = 1
 )
 
+// Request represents a high-level ordersync request. It abstracts away some
+// of the details of subprotocol negotiation and encoding/decoding.
 type Request struct {
 	Metadata interface{} `json:"metadata"`
 }
 
+// rawRequest contains all the details we need at the lowest level to encode/decode
+// the request and perform subprotocol negoatiation.
 type rawRequest struct {
 	Type         string          `json:"type"`
 	Subprotocols []string        `json:"subprotocols"`
 	Metadata     json.RawMessage `json:"metadata"`
 }
 
+// Response represents a high-level ordersync response. It abstracts away some
+// of the details of subprotocol negotiation and encoding/decoding.
 type Response struct {
 	Orders   []*zeroex.SignedOrder `json:"orders"`
 	Complete bool                  `json:"complete"`
 	Metadata interface{}           `json:"metadata"`
 }
 
+// rawResponse contains all the details we need at the lowest level to encode/decode
+// the response, perform subprotocol negoatiation, and more.
 type rawResponse struct {
 	Type        string                `json:"type"`
 	Subprotocol string                `json:"subprotocol"`
@@ -97,6 +120,7 @@ type Service struct {
 	subprotocols map[string]Subprotocol
 }
 
+// SupportedSubprotocols returns the subprotocols that are supported by the service.
 func (s *Service) SupportedSubprotocols() []string {
 	sids := []string{}
 	for sid := range s.subprotocols {
@@ -105,14 +129,36 @@ func (s *Service) SupportedSubprotocols() []string {
 	return sids
 }
 
+// Subprotocol is a lower-level protocol which defines the details for the
+// request/response metadata. While the ordersync protocol supports sending
+// requests and responses in order to synchronize orders between two peers
+// in general, a subprotocol defines exactly what those requests and responses
+// should look like and how each peer is expected to respond to them.
 type Subprotocol interface {
+	// Name is the name of the subprotocol. Must be unique.
 	Name() string
+	// GetOrders returns a Response based on the given Request. It is the
+	// implementation for the "provider" side of the subprotocol.
 	GetOrders(context.Context, *Request) (*Response, error)
-	HandleOrders(context.Context, *Response) (*Request, error)
+	// HandleOrders handles a response (e.g. typically by saving orders to
+	// the database) and if needed creates and returns the next request that
+	// shoudl be sent. If nextRequest is nil, the ordersync protocol is
+	// considered finished. HandleOrders is the implementation for the
+	// "requester" side of the subprotocol.
+	HandleOrders(context.Context, *Response) (nextRequest *Request, err error)
+	// ParseRequestMetadata converts raw request metadata into a concrete type
+	// that the subprotocol expects.
 	ParseRequestMetadata(metadata json.RawMessage) (interface{}, error)
+	// ParseResponseMetadata converts raw response metadata into a concrete type
+	// that the subprotocol expects.
 	ParseResponseMetadata(metadata json.RawMessage) (interface{}, error)
 }
 
+// New creates and returns a new ordersync service, which is used for both
+// requesting orders from other peers and providing orders to peers who request
+// them. New expects an array of subprotocols which the service will support, in the
+// order of preference. The service will automatically pick the most preferred protocol
+// that is supported by both peers for each request/response.
 func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Service {
 	supportedSubprotocols := map[string]Subprotocol{}
 	for _, subp := range subprotocols {
@@ -127,6 +173,8 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 	return s
 }
 
+// GetMatchingSubprotocol returns the most preferred subprotocol to use
+// based on the given request.
 func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error) {
 	for _, protoID := range rawReq.Subprotocols {
 		subprotocol, found := s.subprotocols[protoID]
@@ -142,6 +190,7 @@ func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error
 	return nil, err
 }
 
+// HandleStream is a stream handler that is used to handle incoming ordersync requests.
 func (s *Service) HandleStream(stream network.Stream) {
 	log.WithFields(log.Fields{
 		"requester": stream.Conn().RemotePeer().Pretty(),
@@ -198,6 +247,10 @@ func (s *Service) HandleStream(stream network.Stream) {
 	}
 }
 
+// GetOrders iterates through every peer the node is currently connected to
+// and attempts to perform the ordersync protocol. It keeps trying until
+// ordersync has been completed with minPeers, using an exponential backoff
+// strategy between retries.
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	successfullySyncedPeers := stringset.New()
 
@@ -359,6 +412,7 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 	}
 }
 
+// shufflePeers randomizes the order of the given list of peers.
 func shufflePeers(peers []peer.ID) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(peers), func(i, j int) { peers[i], peers[j] = peers[j], peers[i] })
