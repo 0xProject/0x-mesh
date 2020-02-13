@@ -85,11 +85,12 @@ provider.start();
     });
 
     // Start Mesh *after* we set up the handlers.
-    console.log(JSON.stringify({ message: 'calling startAsync' }));
     await mesh.startAsync();
-    console.log(JSON.stringify({ message: 'startAsync returned' }));
 
-    // HACK(albrow): Wait for GossipSub to initialize
+    // HACK(albrow): Wait for GossipSub to initialize. We could remove this if we adjust
+    // how we are waiting for the order (what log message we look for). As the test is
+    // currently written it only passes when the order is received through GossipSub and
+    // fails if it was received through ordersync.
     await sleepAsync(5000);
 
     // Send an order to the network. In the integration tests we will check that
