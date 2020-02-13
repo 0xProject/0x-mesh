@@ -265,6 +265,9 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
 		for _, peerID := range currentNeighbors {
+			if len(successfullySyncedPeers) >= minPeers {
+				return nil
+			}
 			if successfullySyncedPeers.Contains(peerID.Pretty()) {
 				continue
 			}
