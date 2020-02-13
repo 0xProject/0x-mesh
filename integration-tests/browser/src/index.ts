@@ -89,6 +89,9 @@ provider.start();
     await mesh.startAsync();
     console.log(JSON.stringify({ message: 'startAsync returned' }));
 
+    // HACK(albrow): Wait for GossipSub to initialize
+    await sleepAsync(5000);
+
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
     const result = await mesh.addOrdersAsync([signedOrder as any]);
@@ -119,3 +122,7 @@ provider.start();
         console.error(err.toString());
     }
 });
+
+async function sleepAsync(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

@@ -230,6 +230,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					"error":    err.Error(),
 					"provider": peerID.Pretty(),
 				}).Warn("could not get orders from peer via ordersync")
+				continue
 			} else {
 				// TODO(albrow): Handle case where no orders were returned from this
 				// peer. We need to not try them again, but also not count them toward
