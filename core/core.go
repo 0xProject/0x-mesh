@@ -13,10 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/core/ordersync"
-
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"

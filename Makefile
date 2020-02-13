@@ -56,7 +56,7 @@ test-browser-integration:
 
 .PHONY: test-browser-conversion
 test-browser-conversion:
-	go test ./browser/go/conversion-test -timeout 120s --enable-browser-conversion-tests -run BrowserConversions
+	go test ./browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
 
 .PHONY: test-wasm-node
 test-wasm-node:

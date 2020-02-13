@@ -145,8 +145,7 @@ func TestOrderSync(t *testing.T) {
 	defer orderEventsSub.Unsubscribe()
 
 	// Connect the two nodes *after* adding orders to one of them. This should
-	// trigger the ordersync
-	// protocol.
+	// trigger the ordersync protocol.
 	err = originalNode.AddPeer(peer.AddrInfo{
 		ID:    newNode.node.ID(),
 		Addrs: newNode.node.Multiaddrs(),
