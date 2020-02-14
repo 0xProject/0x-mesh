@@ -51,7 +51,7 @@ func (p *FilteredPaginationSubProtocol) Name() string {
 }
 
 // GetOrders returns the orders for one page, based on the page number
-// and snapshotID in the corresponding to the given request. This is
+// and snapshotID corresponding to the given request. This is
 // the implementation for the "provider" side of the subprotocol.
 func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
 	var metadata *FilteredPaginationRequestMetadata
