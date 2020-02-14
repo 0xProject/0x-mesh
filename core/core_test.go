@@ -138,7 +138,7 @@ func TestOrderSync(t *testing.T) {
 
 	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
-	require.NotEmpty(t, results.Accepted, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent)
 	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)
