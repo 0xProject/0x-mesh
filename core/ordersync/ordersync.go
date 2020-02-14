@@ -141,7 +141,7 @@ type Subprotocol interface {
 	GetOrders(context.Context, *Request) (*Response, error)
 	// HandleOrders handles a response (e.g. typically by saving orders to
 	// the database) and if needed creates and returns the next request that
-	// shoudl be sent. If nextRequest is nil, the ordersync protocol is
+	// should be sent. If nextRequest is nil, the ordersync protocol is
 	// considered finished. HandleOrders is the implementation for the
 	// "requester" side of the subprotocol.
 	HandleOrders(context.Context, *Response) (nextRequest *Request, err error)
