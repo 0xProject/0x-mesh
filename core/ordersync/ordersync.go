@@ -22,6 +22,7 @@ import (
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	peer "github.com/libp2p/go-libp2p-peer"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -33,6 +34,11 @@ const (
 	// from the other side of the connection. It is used for both waiting for a request
 	// on a newly opened stream and waiting for a response after sending a request.
 	requestResponseTimeout = 30 * time.Second
+	// maxRequestsPerSecond is the maximum number of ordersync requests to allow per
+	// second. If this limit is exceeded, requests will be dropped.
+	maxRequestsPerSecond = 30
+	// requestsBurst is the maximum number of requests to allow at once.
+	requestsBurst = 10
 )
 
 var (
@@ -118,6 +124,9 @@ type Service struct {
 	ctx          context.Context
 	node         *p2p.Node
 	subprotocols map[string]Subprotocol
+	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
+	// shared between all peers.
+	requestRateLimiter *rate.Limiter
 }
 
 // SupportedSubprotocols returns the subprotocols that are supported by the service.
@@ -165,9 +174,10 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
-		ctx:          ctx,
-		node:         node,
-		subprotocols: supportedSubprotocols,
+		ctx:                ctx,
+		node:               node,
+		subprotocols:       supportedSubprotocols,
+		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
 	}
 	s.node.SetStreamHandler(ID, s.HandleStream)
 	return s
@@ -192,6 +202,14 @@ func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error
 
 // HandleStream is a stream handler that is used to handle incoming ordersync requests.
 func (s *Service) HandleStream(stream network.Stream) {
+	if !s.requestRateLimiter.Allow() {
+		// Pre-emptively close the stream if we can't accept anymore requests.
+		log.WithFields(log.Fields{
+			"requester": stream.Conn().RemotePeer().Pretty(),
+		}).Warn("closing ordersync stream because rate limiter is backed up")
+		_ = stream.Reset()
+		return
+	}
 	log.WithFields(log.Fields{
 		"requester": stream.Conn().RemotePeer().Pretty(),
 	}).Trace("handling ordersync stream")
@@ -199,7 +217,14 @@ func (s *Service) HandleStream(stream network.Stream) {
 		_ = stream.Close()
 	}()
 	remotePeerID := stream.Conn().RemotePeer()
+
 	for {
+		if err := s.requestRateLimiter.Wait(s.ctx); err != nil {
+			log.WithFields(log.Fields{
+				"requester": stream.Conn().RemotePeer().Pretty(),
+			}).Warn("ordersync rate limiter returned error")
+			return
+		}
 		rawReq, err := waitForRequest(s.ctx, stream)
 		if err != nil {
 			log.WithError(err).Warn("waitForRequest returned error")
