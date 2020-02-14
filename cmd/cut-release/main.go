@@ -97,10 +97,31 @@ func generateTypescriptBrowserLiteDocs() {
 
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
+	// Update `typescript/packages/rpc-client/package.json`
+	tsClientPackageJSONPath := "typescript/packages/rpc-client/package.json"
+	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
+	regex := `"version": "(.*)"`
+	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
+
+	// Update `typescript/packages/browser-lite/package.json`
+	browserLitePackageJSONPath := "typescript/packages/browser-lite/package.json"
+	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
+	regex = `"version": "(.*)"`
+	updateFileWithRegex(browserLitePackageJSONPath, regex, newVersionString)
+
+	// Update `typescript/packages/browser/package.json`
+	browserPackageJSONPath := "typescript/packages/browser/package.json"
+	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
+	regex = `"version": "(.*)"`
+	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
+	newBrowserLiteDependencyString := fmt.Sprintf(`"@0x/mesh-browser-lite": "^%s"`, version)
+	regex = `"@0x/mesh-browser-lite": "(.*)"`
+	updateFileWithRegex(browserPackageJSONPath, regex, newBrowserLiteDependencyString)
+
 	// Update `core.go`
 	corePath := "core/core.go"
-	newVersionString := fmt.Sprintf(`version$1= "%s"`, version)
-	regex := `version(.*)= "(.*)"`
+	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
+	regex = `version(.*)= "(.*)"`
 	updateFileWithRegex(corePath, regex, newVersionString)
 
 	// Update `docs/deployment_with_telemetry.md`
