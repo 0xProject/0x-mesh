@@ -45,7 +45,7 @@ type FilteredPaginationResponseMetadata struct {
 	SnapshotID string `json:"snapshotID"`
 }
 
-// Name reutrns the name of the FilteredPaginationSubProtocol
+// Name returns the name of the FilteredPaginationSubProtocol
 func (p *FilteredPaginationSubProtocol) Name() string {
 	return "/pagination-with-filter/version/0"
 }
