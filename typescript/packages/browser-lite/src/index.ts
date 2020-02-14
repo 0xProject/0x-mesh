@@ -1,4 +1,4 @@
-export * from '@0x/mesh-browser-lib';
+export * from './mesh';
 
 // Start compiling the WebAssembly as soon as the script is loaded. This lets
 // us initialize as quickly as possible.

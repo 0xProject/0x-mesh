@@ -21,7 +21,6 @@
     "include": [],
     "references": [
         { "path": "./packages/browser" },
-        { "path": "./packages/browser-lib" },
         { "path": "./packages/browser-lite" },
         { "path": "./packages/webpack-example" },
         { "path": "./packages/rpc-client" },

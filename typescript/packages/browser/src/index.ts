@@ -1,4 +1,4 @@
-export * from '@0x/mesh-browser-lib';
+export * from '@0x/mesh-browser-lite/lib/mesh';
 
 import { wasmBuffer } from './generated/wasm_buffer';
 
