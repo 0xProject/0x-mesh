@@ -74,16 +74,6 @@ func (e NoMatchingSubprotocolsError) Error() string {
 const (
 	// ID is the ID for the ordersync protocol.
 	ID = protocol.ID("/0x-mesh/order-sync/version/0")
-
-	// scoreTag is the tag to use for adjusting peer scores as it relates to
-	// the ordersync protocol.
-	scoreTag = "/0x-mesh/ordersync"
-	// invalidMessageScoreDiff is the diff to apply to a peer's score when
-	// they send an invalid message.
-	inavlidMessageScoreDiff = -10
-	// invalidMessageScoreDiff is the diff to apply to a peer's score when
-	// they send a valid message.
-	validMessageScoreDiff = 1
 )
 
 // Request represents a high-level ordersync request. It abstracts away some
