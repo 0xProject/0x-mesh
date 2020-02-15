@@ -50,10 +50,10 @@ func (p *FilteredPaginationSubProtocol) Name() string {
 	return "/pagination-with-filter/version/0"
 }
 
-// GetOrders returns the orders for one page, based on the page number
+// HandleOrderSyncRequest returns the orders for one page, based on the page number
 // and snapshotID corresponding to the given request. This is
 // the implementation for the "provider" side of the subprotocol.
-func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
+func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
 	var metadata *FilteredPaginationRequestMetadata
 	if req.Metadata == nil {
 		// Default metadata for the first request.
@@ -88,10 +88,10 @@ func (p *FilteredPaginationSubProtocol) GetOrders(ctx context.Context, req *orde
 	}, nil
 }
 
-// HandleOrders handles the orders for one page by validating them, storing them in the database,
-// and firing the appropriate events. It also returns the next request to be sent. This is the
-// implementation for the "requester" side of the subprotocol.
-func (p *FilteredPaginationSubProtocol) HandleOrders(ctx context.Context, res *ordersync.Response) (*ordersync.Request, error) {
+// HandleOrderSyncResponse handles the orders for one page by validating them, storing them
+// in the database, and firing the appropriate events. It also returns the next request to
+// be sent. This is the implementation for the "requester" side of the subprotocol.
+func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, error) {
 	if res.Metadata == nil {
 		return nil, errors.New("FilteredPaginationSubProtocol received response with nil metadata")
 	}

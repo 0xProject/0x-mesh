@@ -136,15 +136,15 @@ func (s *Service) SupportedSubprotocols() []string {
 type Subprotocol interface {
 	// Name is the name of the subprotocol. Must be unique.
 	Name() string
-	// GetOrders returns a Response based on the given Request. It is the
+	// HandleOrderSyncRequest returns a Response based on the given Request. It is the
 	// implementation for the "provider" side of the subprotocol.
-	GetOrders(context.Context, *Request) (*Response, error)
-	// HandleOrders handles a response (e.g. typically by saving orders to
+	HandleOrderSyncRequest(context.Context, *Request) (*Response, error)
+	// HandleOrderSyncResponse handles a response (e.g. typically by saving orders to
 	// the database) and if needed creates and returns the next request that
 	// should be sent. If nextRequest is nil, the ordersync protocol is
-	// considered finished. HandleOrders is the implementation for the
+	// considered finished. HandleOrderSyncResponse is the implementation for the
 	// "requester" side of the subprotocol.
-	HandleOrders(context.Context, *Response) (nextRequest *Request, err error)
+	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, err error)
 	// ParseRequestMetadata converts raw request metadata into a concrete type
 	// that the subprotocol expects.
 	ParseRequestMetadata(metadata json.RawMessage) (interface{}, error)
@@ -341,7 +341,7 @@ func handleRequestWithSubprotocol(ctx context.Context, subprotocol Subprotocol, 
 	if err != nil {
 		return nil, err
 	}
-	return subprotocol.GetOrders(ctx, req)
+	return subprotocol.HandleOrderSyncRequest(ctx, req)
 }
 
 func parseRequestWithSubprotocol(subprotocol Subprotocol, rawReq *rawRequest) (*Request, error) {
@@ -428,7 +428,7 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return err
 		}
 
-		nextReq, err = subprotocol.HandleOrders(ctx, res)
+		nextReq, err = subprotocol.HandleOrderSyncResponse(ctx, res)
 		if err != nil {
 			return err
 		}

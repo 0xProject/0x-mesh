@@ -165,7 +165,7 @@ OrderEventLoop:
 					receivedAddedEvents = append(receivedAddedEvents, orderEvent)
 				}
 			}
-			if len(receivedAddedEvents) >= 10 {
+			if len(receivedAddedEvents) >= len(originalOrders) {
 				break OrderEventLoop
 			}
 		}
