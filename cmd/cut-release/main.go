@@ -27,7 +27,7 @@ func main() {
 
 	// Run `yarn install` to make sure `TypeDoc` dep is installed
 	cmd := exec.Command("yarn", "install", "--frozen-lockfile")
-	cmd.Dir = "typescript"
+	cmd.Dir = "."
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -65,7 +65,7 @@ func createReleaseChangelog(version string) {
 func generateTypescriptClientDocs() {
 	// Run `yarn docs:md` to generate MD docs
 	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/rpc-client"
+	cmd.Dir = "packages/rpc-client"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -76,7 +76,7 @@ func generateTypescriptClientDocs() {
 func generateTypescriptBrowserDocs() {
 	// Run `yarn docs:md` to generate MD docs
 	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/browser"
+	cmd.Dir = "packages/browser"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -87,7 +87,7 @@ func generateTypescriptBrowserDocs() {
 func generateTypescriptBrowserLiteDocs() {
 	// Run `yarn docs:md` to generate MD docs
 	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "typescript/packages/browser-lite"
+	cmd.Dir = "packages/browser-lite"
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Print(string(stdoutStderr))
@@ -97,20 +97,20 @@ func generateTypescriptBrowserLiteDocs() {
 
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
-	// Update `typescript/packages/rpc-client/package.json`
-	tsClientPackageJSONPath := "typescript/packages/rpc-client/package.json"
+	// Update `packages/rpc-client/package.json`
+	tsClientPackageJSONPath := "packages/rpc-client/package.json"
 	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
 	regex := `"version": "(.*)"`
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
-	// Update `typescript/packages/browser-lite/package.json`
-	browserLitePackageJSONPath := "typescript/packages/browser-lite/package.json"
+	// Update `packages/browser-lite/package.json`
+	browserLitePackageJSONPath := "packages/browser-lite/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(browserLitePackageJSONPath, regex, newVersionString)
 
-	// Update `typescript/packages/browser/package.json`
-	browserPackageJSONPath := "typescript/packages/browser/package.json"
+	// Update `packages/browser/package.json`
+	browserPackageJSONPath := "packages/browser/package.json"
 	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)

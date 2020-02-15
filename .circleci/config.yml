@@ -39,10 +39,10 @@ jobs:
           command: make lint
       - run:
           name: Build the typescript monorepo
-          command: cd typescript && yarn install --force && yarn build
+          command: yarn install --force && yarn build
       - run:
           name: Run TS RPC client tests
-          command: cd typescript/packages/rpc-client && yarn test
+          command: cd packages/rpc-client && yarn test
       - run:
           name: Run Go tests
           command: make test-go

@@ -118,25 +118,25 @@ func buildForTests(t *testing.T, ctx context.Context) {
 
 	fmt.Println("Clear yarn cache...")
 	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
-	cmd.Dir = "../typescript"
+	cmd.Dir = "../"
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
 
 	fmt.Println("Installing dependencies for TypeScript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
-	cmd.Dir = "../typescript"
+	cmd.Dir = "../"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
 
 	fmt.Println("Running postinstall for browser node...")
 	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
-	cmd.Dir = "../typescript/packages/integration-tests"
+	cmd.Dir = "../packages/integration-tests"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
 
 	fmt.Println("Building TypeScript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../typescript"
+	cmd.Dir = "../"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
 	fmt.Println("Done building everything")

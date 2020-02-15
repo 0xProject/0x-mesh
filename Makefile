@@ -5,7 +5,6 @@ deps: deps-ts wasmbrowsertest
 .PHONY: deps-ts
 deps-ts:
 	yarn install
-	cd typescript/ && yarn install
 
 
 # gobin allows us to install specific versions of binary tools written in Go.
@@ -28,7 +27,6 @@ deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
 .PHONY: deps-ts-no-lockfile
 deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
-	cd typescript/ && yarn install --frozen-lockfile
 
 
 .PHONY: test-all
@@ -54,7 +52,7 @@ test-browser-integration:
 
 .PHONY: test-browser-conversion
 test-browser-conversion:
-	go test ./typescript/packages/browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
+	go test ./packages/browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
 
 .PHONY: test-wasm-node
 test-wasm-node:
@@ -77,7 +75,7 @@ lint-go:
 
 .PHONY: lint-ts
 lint-ts:
-	cd typescript/ && yarn lint
+	yarn lint
 
 
 .PHONY: mesh
