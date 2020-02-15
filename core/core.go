@@ -64,7 +64,7 @@ const (
 	version          = "development"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
-	ordersyncMinPeers            = 3
+	ordersyncMinPeers            = 5
 	paginationSubprotocolPerPage = 500
 )
 
