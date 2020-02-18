@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
+	log "github.com/sirupsen/logrus"
 )
 
 // Ensure that FilteredPaginationSubProtocol implements the Subprotocol interface.
@@ -130,10 +131,24 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	_, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, res.Orders, false, p.app.chainID)
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, res.Orders, false, p.app.chainID)
 	if err != nil {
 		return nil, err
 	}
+	for _, acceptedOrderInfo := range validationResults.Accepted {
+		if acceptedOrderInfo.IsNew {
+			log.WithFields(map[string]interface{}{
+				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
+				"from":      res.ProviderID.Pretty(),
+			}).Info("received new valid order from peer via ordersync")
+			log.WithFields(map[string]interface{}{
+				"order":     acceptedOrderInfo.SignedOrder,
+				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
+				"from":      res.ProviderID.Pretty(),
+			}).Trace("all fields for new valid order received from peer via ordersync")
+		}
+	}
+
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadata{
 			Page:       metadata.Page + 1,
