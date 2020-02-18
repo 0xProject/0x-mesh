@@ -282,7 +282,8 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
-		// TODO(albrow): Do this for loop partly in parallel.
+		// TODO(albrow): As a performance optimization, do this for loop
+		// partly in parallel.
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
 		for _, peerID := range currentNeighbors {
@@ -310,8 +311,9 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				continue
 			} else {
 				// TODO(albrow): Handle case where no orders were returned from this
-				// peer. We need to not try them again, but also not count them toward
-				// the number of peers we have successfully synced with.
+				// peer. This could be considered a valid response, depending on the implementation
+				// details of the subprotocol. We need to not try them again, but also not count
+				// them toward the number of peers we have successfully synced with.
 				log.WithFields(log.Fields{
 					"provider": peerID.Pretty(),
 				}).Trace("succesfully got orders from peer via ordersync")
