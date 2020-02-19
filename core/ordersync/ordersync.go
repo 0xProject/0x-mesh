@@ -456,6 +456,7 @@ func waitForRequest(parentCtx context.Context, stream network.Stream) (*rawReque
 	ctx, cancel := context.WithTimeout(parentCtx, requestResponseTimeout)
 	defer cancel()
 	reqChan := make(chan *rawRequest, 1)
+	errChan := make(chan error, 1)
 	go func() {
 		var rawReq rawRequest
 		if err := json.NewDecoder(stream).Decode(&rawReq); err != nil {
@@ -463,6 +464,8 @@ func waitForRequest(parentCtx context.Context, stream network.Stream) (*rawReque
 				"error":     err.Error(),
 				"requester": stream.Conn().RemotePeer().Pretty(),
 			}).Warn("could not encode ordersync request")
+			errChan <- err
+			return
 		}
 		reqChan <- &rawReq
 	}()
@@ -474,6 +477,8 @@ func waitForRequest(parentCtx context.Context, stream network.Stream) (*rawReque
 			"requester": stream.Conn().RemotePeer().Pretty(),
 		}).Warn("timed out waiting for ordersync request")
 		return nil, ctx.Err()
+	case err := <-errChan:
+		return nil, err
 	case rawReq := <-reqChan:
 		return rawReq, nil
 	}
@@ -483,6 +488,7 @@ func waitForResponse(parentCtx context.Context, stream network.Stream) (*rawResp
 	ctx, cancel := context.WithTimeout(parentCtx, requestResponseTimeout)
 	defer cancel()
 	resChan := make(chan *rawResponse, 1)
+	errChan := make(chan error, 1)
 	go func() {
 		var rawRes rawResponse
 		if err := json.NewDecoder(stream).Decode(&rawRes); err != nil {
@@ -490,6 +496,8 @@ func waitForResponse(parentCtx context.Context, stream network.Stream) (*rawResp
 				"error":    err.Error(),
 				"provider": stream.Conn().RemotePeer().Pretty(),
 			}).Warn("could not encode ordersync response")
+			errChan <- err
+			return
 		}
 		resChan <- &rawRes
 	}()
@@ -501,6 +509,8 @@ func waitForResponse(parentCtx context.Context, stream network.Stream) (*rawResp
 			"provider": stream.Conn().RemotePeer().Pretty(),
 		}).Warn("timed out waiting for ordersync response")
 		return nil, ctx.Err()
+	case err := <-errChan:
+		return nil, err
 	case rawRes := <-resChan:
 		return rawRes, nil
 	}
