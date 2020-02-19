@@ -141,7 +141,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 				"from":      res.ProviderID.Pretty(),
 				"protocol":  "ordersync",
-			}).Info("received new valid order from pee")
+			}).Info("received new valid order from peer")
 			log.WithFields(map[string]interface{}{
 				"order":     acceptedOrderInfo.SignedOrder,
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
