@@ -138,6 +138,26 @@ type Config struct {
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
 	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
+	// CustomOrderFilter is a stringified JSON Schema which will be used for
+	// validating incoming orders. If provided, Mesh will only receive orders from
+	// other peers in the network with the same filter.
+	//
+	// Here is an example filter which will only allow orders with a specific
+	// makerAssetData:
+	//
+	//    {
+	//        "properties": {
+	//            "makerAssetData": {
+	//                "const": "0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
+	//            }
+	//        }
+	//    }
+	//
+	// Note that you only need to include the requirements for your specific
+	// application in the filter. The default requirements for a valid order (e.g.
+	// all the required fields) are automatically included. For more information
+	// on JSON Schemas, see https://json-schema.org/
+	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
 }
 ```
 
@@ -146,8 +166,10 @@ Mesh executable](../cmd/mesh/main.go):
 
 ```go
 type standaloneConfig struct {
-	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
 	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
-}
+	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
+	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
+	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
+	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`}
 ```

@@ -11,13 +11,5 @@ then
 	exit 1
 fi
 
-SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do
-	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-	SOURCE="$(readlink "$SOURCE")"
-	[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-done
-DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-
 # We changed this line to require our node_shim.js.
 exec node --require=$ZEROEX_MESH_ROOT_DIR/test-wasm/node_shim.js "$(go env GOROOT)/misc/wasm/wasm_exec.js" "$@"

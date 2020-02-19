@@ -9,10 +9,12 @@ import (
 const (
 	ethereumRPCURL  = "http://localhost:8545"
 	ethereumChainID = 1337
-	rpcPort         = 60501
+	wsRPCPort       = 60501
+	httpRPCPort     = 60701
 
 	standaloneDataDirPrefix                    = "./data/standalone-"
-	standaloneRPCEndpointPrefix                = "ws://localhost:"
+	standaloneWSRPCEndpointPrefix              = "ws://localhost:"
+	standaloneHTTPRPCEndpointPrefix            = "http://localhost:"
 	standaloneRPCAddrPrefix                    = "localhost:"
 	standaloneBlockPollingInterval             = "200ms"
 	standaloneEthereumRPCMaxRequestsPer24HrUtc = "550000"

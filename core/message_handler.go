@@ -5,7 +5,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/encoding"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -16,92 +15,11 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
-type orderSelector struct {
-	nextOffset int
-	db         *meshdb.MeshDB
-}
-
 func min(a int, b int) int {
 	if a < b {
 		return a
 	}
 	return b
-}
-
-func (app *App) GetMessagesToShare(max int) ([][]byte, error) {
-	return app.orderSelector.GetMessagesToShare(max)
-}
-
-func (orderSelector *orderSelector) GetMessagesToShare(max int) ([][]byte, error) {
-	// For now, we use a round robin strategy to select a set of orders to share.
-	// We might return less than max even if there are max or greater orders
-	// currently stored.
-	// Use a snapshot to make sure state doesn't change between our two queries.
-	ordersSnapshot, err := orderSelector.db.Orders.GetSnapshot()
-	if err != nil {
-		return nil, err
-	}
-	defer ordersSnapshot.Release()
-	notRemovedFilter := orderSelector.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	count, err := ordersSnapshot.NewQuery(notRemovedFilter).Count()
-	if err != nil {
-		return nil, err
-	}
-	if count == 0 {
-		return nil, nil
-	}
-
-	// Select up to the maximum number of orders starting at the offset that was
-	// calculated the last time this was called with `app`.
-	offset := min(orderSelector.nextOffset, count)
-	var selectedOrders []*meshdb.Order
-	if offset < count {
-		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(offset).Max(max).Run(&selectedOrders)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// If more orders can be shared than were selected, append the maximum amount of
-	// unique (in this round) orders that can be added to the selected orders without
-	// exceeding the maximum number to share.
-	overflow := min(max-len(selectedOrders), offset)
-	if overflow > 0 {
-		var overflowSelectedOrders []*meshdb.Order
-		err = ordersSnapshot.NewQuery(notRemovedFilter).Offset(0).Max(overflow).Run(&overflowSelectedOrders)
-		if err != nil {
-			return nil, err
-		}
-		selectedOrders = append(selectedOrders, overflowSelectedOrders...)
-		orderSelector.nextOffset = overflow
-	} else {
-		// Calculate the next offset and wrap back to 0 if the next offset is larger
-		// than or equal to count.
-		orderSelector.nextOffset += max
-		if orderSelector.nextOffset >= count {
-			orderSelector.nextOffset = 0
-		}
-	}
-
-	log.WithFields(map[string]interface{}{
-		"maxNumberToShare":    max,
-		"actualNumberToShare": len(selectedOrders),
-	}).Trace("preparing to share orders with peers")
-
-	// After we have selected all the orders to share, we need to encode them to
-	// the message data format.
-	messageData := make([][]byte, len(selectedOrders))
-	for i, order := range selectedOrders {
-		log.WithFields(map[string]interface{}{
-			"order": order,
-		}).Trace("selected order to share")
-		encoded, err := encoding.OrderToRawMessage(order.SignedOrder)
-		if err != nil {
-			return nil, err
-		}
-		messageData[i] = encoded
-	}
-	return messageData, nil
 }
 
 func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
@@ -117,28 +35,6 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 				"maxMessageSizeInBytes": constants.MaxMessageSizeInBytes,
 				"actualSizeInBytes":     len(msg.Data),
 			}).Trace("received message that exceeds maximum size")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-
-		result, err := app.schemaValidateMeshMessage(msg.Data)
-		if err != nil {
-			log.WithFields(map[string]interface{}{
-				"error": err,
-				"from":  msg.From,
-			}).Trace("could not schema validate message")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-		if !result.Valid() {
-			formattedErrors := make([]string, len(result.Errors()))
-			for i, resultError := range result.Errors() {
-				formattedErrors[i] = resultError.String()
-			}
-			log.WithFields(map[string]interface{}{
-				"errors": formattedErrors,
-				"from":   msg.From,
-			}).Trace("order schema validation failed for message")
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}
@@ -185,11 +81,13 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 		log.WithFields(map[string]interface{}{
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
+			"protocol":  "GossipSub",
 		}).Info("received new valid order from peer")
 		log.WithFields(map[string]interface{}{
 			"order":     acceptedOrderInfo.SignedOrder,
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
+			"protocol":  "GossipSub",
 		}).Trace("all fields for new valid order received from peer")
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
@@ -210,6 +108,13 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 			// For other status types, we need to update the peer's score
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 		}
+	}
+	return nil
+}
+
+func validateMessageSize(message *p2p.Message) error {
+	if len(message.Data) > constants.MaxMessageSizeInBytes {
+		return constants.ErrMaxMessageSize
 	}
 	return nil
 }

@@ -6,9 +6,15 @@
 # 0x Mesh
 
 0x Mesh is a peer-to-peer network for sharing orders that adhere to the
-[0x order message format](https://0x.org/docs/guides/v2-specification#order-message-format).
+[0x order message format](https://0x.org/docs/guides/v3-specification#orders).
 
-WARNING: This project is still under active development. Expect breaking changes before the official release.
+## Project status
+
+We have reached the point where Mesh is being used by some teams in production. We feel that for many use cases, Mesh is stable enough for production. However, we caution that there are some issues and shortcomings in its current state, which generally fall into two categories:
+
+- Order sharing: Mesh uses a significant amount of bandwidth for it's current order sharing algorithm and we intend on improving its efficiency by an order of magnitude. Until then, we advise you host your node on [Digital Ocean](https://www.digitalocean.com/) where it's hosting costs are cheaper (~$25 mo). We also know that orders are not propagating through the network as quickly as we would like. We have a lot of ideas for how to optimize order propagation speed in the future and there should be major improvements coming soon. See [#594](https://github.com/0xProject/0x-mesh/issues/594), [#551](https://github.com/0xProject/0x-mesh/issues/551), and [#638](https://github.com/0xProject/0x-mesh/issues/638).
+- Browser usage: Mesh can run directly in the browser via the [@0x/mesh-browser](https://www.npmjs.com/package/@0x/mesh-browser) package. We have supported this for a while and have examples and integration tests in this repository. While the basic functionality is working, there are still some [important missing features and issues to address](https://github.com/0xProject/0x-mesh/issues?q=is%3Aopen+is%3Aissue+label%3Abrowser) before `@0x/mesh-browser` is feasible for most production use cases.
+
 
 ## Overview
 
@@ -18,14 +24,14 @@ WARNING: This project is still under active development. Expect breaking changes
   from market makers. This allows them to increase the depth of their order
   books and provide a better user experience.
 - Market makers can use Mesh to reach a broader audience. Their orders will be
-  sent throughout the network and are more likely to be filled.
+  sent throughout the network and picked up by many trading venues and are therefore more likely to be filled.
 - Mesh allows for a new type of relayer called a "serverless relayer". In the
   serverless relayer model, each user runs Mesh in their browser and there is
   no backend server or database. Instead, peers share orders directly with one
   another. (There are pros and cons to this approach and it is probably not
   suitable for all markets).
 
-Both Relayers and Market makers can use Mesh to watch a set of orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
+Both Relayers and Market makers can use Mesh to watch a set of 0x orders for changes in fillability (e.g., cancellations, fills, expirations, etc...).
 
 0x Mesh is intended to be entirely automatic. It takes care of all the work of
 receiving, sharing, and validating orders so that you can focus on building your

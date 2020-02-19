@@ -7,18 +7,7 @@ import (
 	"syscall/js"
 )
 
-func (s *Stats) JSValue() js.Value {
-	// TODO(albrow): Optimize this. Remove other uses of the JSON
-	// encoding/decoding hack.
-	encodedStats, err := json.Marshal(s)
-	if err != nil {
-		panic(err)
-	}
-	statsJS := js.Global().Get("JSON").Call("parse", string(encodedStats))
-	return statsJS
-}
-
-func (r *GetOrdersResponse) JSValue() js.Value {
+func (r GetOrdersResponse) JSValue() js.Value {
 	// TODO(albrow): Optimize this. Remove other uses of the JSON
 	// encoding/decoding hack.
 	encodedResponse, err := json.Marshal(r)
@@ -27,4 +16,30 @@ func (r *GetOrdersResponse) JSValue() js.Value {
 	}
 	responseJS := js.Global().Get("JSON").Call("parse", string(encodedResponse))
 	return responseJS
+}
+
+func (l LatestBlock) JSValue() js.Value {
+	return js.ValueOf(map[string]interface{}{
+		"number": l.Number,
+		"hash":   l.Hash.String(),
+	})
+}
+
+func (s Stats) JSValue() js.Value {
+	return js.ValueOf(map[string]interface{}{
+		"version":                           s.Version,
+		"pubSubTopic":                       s.PubSubTopic,
+		"rendezvous":                        s.Rendezvous,
+		"peerID":                            s.PeerID,
+		"ethereumChainID":                   s.EthereumChainID,
+		"latestBlock":                       s.LatestBlock.JSValue(),
+		"numPeers":                          s.NumPeers,
+		"numOrders":                         s.NumOrders,
+		"numOrdersIncludingRemoved":         s.NumOrdersIncludingRemoved,
+		"numPinnedOrders":                   s.NumPinnedOrders,
+		"maxExpirationTime":                 s.MaxExpirationTime,
+		"startOfCurrentUTCDay":              s.StartOfCurrentUTCDay.String(),
+		"ethRPCRequestsSentInCurrentUTCDay": s.EthRPCRequestsSentInCurrentUTCDay,
+		"ethRPCRateLimitExpiredRequests":    s.EthRPCRateLimitExpiredRequests,
+	})
 }

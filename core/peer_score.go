@@ -1,7 +1,7 @@
 package core
 
 import (
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -11,6 +11,7 @@ const (
 	psInvalidMessage peerScoreEvent = iota
 	psValidMessage
 	psOrderStored
+	psReceivedOrderDoesNotMatchFilter
 )
 
 func (app *App) handlePeerScoreEvent(id peer.ID, event peerScoreEvent) {
@@ -26,6 +27,8 @@ func (app *App) handlePeerScoreEvent(id peer.ID, event peerScoreEvent) {
 		app.node.SetPeerScore(id, "valid-message", 5)
 	case psOrderStored:
 		app.node.SetPeerScore(id, "order-stored", 10)
+	case psReceivedOrderDoesNotMatchFilter:
+		app.node.SetPeerScore(id, "received-order-does-not-match-filter", -10)
 	default:
 		log.WithField("event", event).Error("unknown peerScoreEvent")
 	}

@@ -2,6 +2,7 @@ package orderwatch
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
-	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
@@ -62,6 +62,10 @@ const (
 	// increase the max expiration time.
 	maxExpirationTimeCheckInterval = 30 * time.Second
 
+	// maxBlockEventsToHandle is the max number of block events we want to process in a single
+	// call to `handleBlockEvents`
+	maxBlockEventsToHandle = 500
+
 	// configuration options for the SlowCounter used for increasing max
 	// expiration time. Effectively, we will increase every 5 minutes as long as
 	// there is enough space in the database for orders. The first increase will
@@ -91,7 +95,7 @@ type Watcher struct {
 	maxExpirationTime          *big.Int
 	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
-	handleBlockEventsMu        sync.Mutex
+	handleBlockEventsMu        sync.RWMutex
 	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
 	// block. Validation of orders should block until this has completed
 	atLeastOneBlockProcessed   chan struct{}
@@ -278,6 +282,10 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 				"error": err.Error(),
 			}).Error("block subscription error encountered")
 		case events := <-w.blockEventsChan:
+			// Instead of simply processing the first array of events in the blockEventsChan,
+			// we might as well process _all_ events in the channel.
+			drainedEvents := drainBlockEventsChan(w.blockEventsChan, maxBlockEventsToHandle)
+			events = append(events, drainedEvents...)
 			w.handleBlockEventsMu.Lock()
 			if err := w.handleBlockEvents(ctx, events); err != nil {
 				w.handleBlockEventsMu.Unlock()
@@ -288,19 +296,36 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 	}
 }
 
+func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event, max int) []*blockwatch.Event {
+	allEvents := []*blockwatch.Event{}
+Loop:
+	for {
+		select {
+		case moreEvents := <-blockEventsChan:
+			allEvents = append(allEvents, moreEvents...)
+			if len(allEvents) >= max {
+				break Loop
+			}
+		default:
+			break Loop
+		}
+	}
+	return allEvents
+}
+
 func (w *Watcher) cleanupLoop(ctx context.Context) error {
 	start := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-time.After(minCleanupInterval - time.Since(start)):
+			// Wait minCleanupInterval before calling cleanup again. Since
+			// we only start sleeping _after_ cleanup completes, we will never
+			// have multiple calls to cleanup running in parallel
+			break
 		}
 
-		// Wait minCleanupInterval before calling cleanup again. Since
-		// we only start sleeping _after_ cleanup completes, we will never
-		// have multiple calls to cleanup running in parallel
-		time.Sleep(minCleanupInterval - time.Since(start))
 		start = time.Now()
 		if err := w.Cleanup(ctx, defaultLastUpdatedBuffer); err != nil {
 			return err
@@ -798,8 +823,8 @@ func (w *Watcher) handleBlockEvents(
 // `lastUpdatedBuffer` time to make sure all orders are still up-to-date
 func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) error {
 	// Pause block event processing until we finished cleaning up at current block height
-	w.handleBlockEventsMu.Lock()
-	defer w.handleBlockEventsMu.Unlock()
+	w.handleBlockEventsMu.RLock()
+	defer w.handleBlockEventsMu.RUnlock()
 
 	ordersColTxn := w.meshDB.Orders.OpenTransaction()
 	defer func() {
@@ -1353,8 +1378,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	}
 
 	// Lock down the processing of additional block events until we've validated and added these new orders
-	w.handleBlockEventsMu.Lock()
-	defer w.handleBlockEventsMu.Unlock()
+	w.handleBlockEventsMu.RLock()
+	defer w.handleBlockEventsMu.RUnlock()
 
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
 	if err != nil {
@@ -1392,7 +1417,22 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		allOrderEvents = append(allOrderEvents, orderEvents...)
 	}
 
-	w.orderFeed.Send(allOrderEvents)
+	if len(allOrderEvents) > 0 {
+		// NOTE(albrow): Send can block if the subscriber(s) are slow. Blocking here can cause problems when Mesh is
+		// shutting down, so to prevent that, we call Send in a goroutine and return immediately if the context
+		// is done.
+		done := make(chan interface{})
+		go func() {
+			w.orderFeed.Send(allOrderEvents)
+			done <- struct{}{}
+		}()
+		select {
+		case <-done:
+			return results, nil
+		case <-ctx.Done():
+			return results, nil
+		}
+	}
 
 	return results, nil
 }
@@ -1480,6 +1520,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				continue
 			}
 		}
+
 		if err := validateOrderSize(order); err != nil {
 			if err == constants.ErrMaxOrderSize {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
@@ -1540,7 +1581,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
-	encoded, err := encoding.OrderToRawMessage(order)
+	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}

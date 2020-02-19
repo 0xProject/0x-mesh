@@ -14,7 +14,7 @@ import (
 
 type clientEnvVars struct {
 	// RPCAddress is the address of the 0x Mesh node to communicate with.
-	RPCAddress string `envvar:"RPC_ADDRESS"`
+	WSRPCAddress string `envvar:"WS_RPC_ADDR"`
 }
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 		panic(err)
 	}
 
-	client, err := rpc.NewClient(env.RPCAddress)
+	client, err := rpc.NewClient(env.WSRPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}

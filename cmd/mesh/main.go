@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,9 +19,12 @@ import (
 // standaloneConfig contains configuration options specific to running 0x Mesh
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
-	// RPCAddr is the interface and port to use for the JSON-RPC API over
+	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
 	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	RPCAddr string `envvar:"RPC_ADDR" default:"localhost:60557"`
+	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
+	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
+	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
+	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`
 }
 
 func main() {
@@ -56,14 +60,27 @@ func main() {
 		}
 	}()
 
-	// Start RPC server.
-	rpcErrChan := make(chan error, 1)
+	// Start WS RPC server.
+	wsRPCErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.WithField("rpc_addr", config.RPCAddr).Info("starting RPC server")
-		if err := listenRPC(ctx, app, config); err != nil {
-			rpcErrChan <- err
+		log.WithField("ws_rpc_addr", config.WSRPCAddr).Info("starting WS RPC server")
+		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr)
+		if err := rpcServer.Listen(ctx, rpc.WSHandler); err != nil {
+			wsRPCErrChan <- err
+		}
+	}()
+
+	// Start HTTP RPC server.
+	httpRPCErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
+		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr)
+		if err := rpcServer.Listen(ctx, rpc.HTTPHandler); err != nil {
+			httpRPCErrChan <- err
 		}
 	}()
 
@@ -77,9 +94,12 @@ func main() {
 	case err := <-coreErrChan:
 		cancel()
 		log.WithField("error", err.Error()).Error("core app exited with error")
-	case err := <-rpcErrChan:
+	case err := <-wsRPCErrChan:
 		cancel()
-		log.WithField("error", err.Error()).Error("RPC server returned error")
+		log.WithField("error", err.Error()).Error("WS RPC server returned error")
+	case err := <-httpRPCErrChan:
+		cancel()
+		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
 	}
 
 	// If we reached here it means there was an error. Wait for all goroutines

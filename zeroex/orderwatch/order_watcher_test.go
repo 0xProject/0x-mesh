@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,7 @@ var serialTestsEnabled bool
 
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
+	testing.Init()
 	flag.Parse()
 }
 
@@ -78,7 +80,11 @@ func init() {
 		panic(err)
 	}
 	rateLimiter := ratelimit.NewUnlimited()
-	ethRPCClient, err = ethrpcclient.New(constants.GanacheEndpoint, ethereumRPCRequestTimeout, rateLimiter)
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	ethRPCClient, err = ethrpcclient.New(rpcClient, ethereumRPCRequestTimeout, rateLimiter)
 	if err != nil {
 		panic(err)
 	}
@@ -1441,6 +1447,51 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderTwo)
 	require.NoError(t, err)
 	assert.Equal(t, false, orderTwo.IsRemoved)
+}
+
+func TestDrainAllBlockEventsChan(t *testing.T) {
+	blockEventsChan := make(chan []*blockwatch.Event, 100)
+	ts := time.Now().Add(1 * time.Hour)
+	blockEventsOne := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    common.HexToHash("0x0"),
+				Hash:      common.HexToHash("0x1"),
+				Number:    big.NewInt(1),
+				Timestamp: ts,
+			},
+		},
+	}
+	blockEventsChan <- blockEventsOne
+
+	blockEventsTwo := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type: blockwatch.Added,
+			BlockHeader: &miniheader.MiniHeader{
+				Parent:    common.HexToHash("0x1"),
+				Hash:      common.HexToHash("0x2"),
+				Number:    big.NewInt(2),
+				Timestamp: ts.Add(1 * time.Second),
+			},
+		},
+	}
+	blockEventsChan <- blockEventsTwo
+
+	max := 2 // enough
+	allEvents := drainBlockEventsChan(blockEventsChan, max)
+	assert.Len(t, allEvents, 2, "Two events should be drained from the channel")
+	require.Equal(t, allEvents[0], blockEventsOne[0])
+	require.Equal(t, allEvents[1], blockEventsTwo[0])
+
+	// Test case where more than max events in channel
+	blockEventsChan <- blockEventsOne
+	blockEventsChan <- blockEventsTwo
+
+	max = 1
+	allEvents = drainBlockEventsChan(blockEventsChan, max)
+	assert.Len(t, allEvents, 1, "Only max number of events should be drained from the channel, even if more than max events are present")
+	require.Equal(t, allEvents[0], blockEventsOne[0])
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
