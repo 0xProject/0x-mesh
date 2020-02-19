@@ -171,7 +171,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			// return an error.
 			return err
 		}
-		log.WithError(err).Error("blockwatch.Watcher error encountered")
+		log.WithError(err).Warn("blockwatch.Watcher error encountered")
 	}
 
 	ticker := time.NewTicker(w.pollingInterval)
@@ -198,7 +198,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 					ticker.Stop()
 					return err
 				}
-				log.WithError(err).Error("blockwatch.Watcher error encountered")
+				log.WithError(err).Warn("blockwatch.Watcher error encountered")
 			}
 		}
 	}
