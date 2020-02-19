@@ -6,6 +6,7 @@
     "private": true,
     "scripts": {
         "build": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
+        "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce webpack bundle sizes since they do not affect the build",
         "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts",
         "lint": "tslint --format stylish --project ."
     },
