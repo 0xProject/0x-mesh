@@ -81,11 +81,13 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 		log.WithFields(map[string]interface{}{
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
+			"protocol":  "GossipSub",
 		}).Info("received new valid order from peer")
 		log.WithFields(map[string]interface{}{
 			"order":     acceptedOrderInfo.SignedOrder,
 			"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 			"from":      msg.From.String(),
+			"protocol":  "GossipSub",
 		}).Trace("all fields for new valid order received from peer")
 		app.handlePeerScoreEvent(msg.From, psOrderStored)
 	}
