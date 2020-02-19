@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Breaking changes 🛠
 
 - As a result of implementing custom order filters, some of the code Mesh uses under the hood to share orders with peers has changed. As a result this version of Mesh cannot share orders with any older versions and vice versa ([#630](https://github.com/0xProject/0x-mesh/pull/630)).
+- Implemented a new protocol for sharing existing orders with peers. This will drastically reduce bandwidth and CPU usage and increase the speed at which _new_ orders are propagated. ([#692](https://github.com/0xProject/0x-mesh/pull/692)).
 - Rename `RPC_ADDR` to `WS_RPC_ADDR` since we now support both WS and HTTP JSON-RPC endpoints. ([#658](https://github.com/0xProject/0x-mesh/pull/658))
 
 ### Features ✅

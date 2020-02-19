@@ -197,6 +197,17 @@ func (v *Filter) generateTopic() string {
 	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, v.chainID, base64EncodedSchema)
 }
 
+// MatchOrder returns true if the order passes the filter. It only returns an
+// error if there was a problem with validation. For details about
+// orders that do not pass the filter, use ValidateOrder.
+func (f *Filter) MatchOrder(order *zeroex.SignedOrder) (bool, error) {
+	result, err := f.ValidateOrder(order)
+	if err != nil {
+		return false, err
+	}
+	return result.Valid(), nil
+}
+
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	result, err := f.messageSchema.Validate(jsonschema.NewBytesLoader(messageJSON))
 	if err != nil {

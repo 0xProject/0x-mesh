@@ -178,7 +178,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOr
 	cmd := exec.CommandContext(ctx, "mesh")
 	cmd.Env = append(
 		os.Environ(),
-		"VERBOSITY=5",
+		"VERBOSITY=6",
 		"DATA_DIR="+standaloneDataDirPrefix+strconv.Itoa(nodeID),
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,

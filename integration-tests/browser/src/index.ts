@@ -46,7 +46,7 @@ provider.start();
     // Configure Mesh to use our local Ganache instance and local bootstrap
     // node.
     const mesh = new Mesh({
-        verbosity: Verbosity.Debug,
+        verbosity: Verbosity.Trace,
         ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
         customOrderFilter: {
@@ -87,6 +87,12 @@ provider.start();
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
 
+    // HACK(albrow): Wait for GossipSub to initialize. We could remove this if we adjust
+    // how we are waiting for the order (what log message we look for). As the test is
+    // currently written it only passes when the order is received through GossipSub and
+    // fails if it was received through ordersync.
+    await sleepAsync(5000);
+
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
     const result = await mesh.addOrdersAsync([signedOrder as any]);
@@ -117,3 +123,7 @@ provider.start();
         console.error(err.toString());
     }
 });
+
+async function sleepAsync(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

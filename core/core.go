@@ -15,6 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -61,6 +62,10 @@ const (
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
 	version          = "development"
+	// ordersyncMinPeers is the minimum amount of peers to receive orders from
+	// before considering the ordersync process finished.
+	ordersyncMinPeers            = 5
+	paginationSubprotocolPerPage = 500
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -193,8 +198,8 @@ type App struct {
 	idToSnapshotInfo          map[string]snapshotInfo
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
-	orderSelector             *orderSelector
 	db                        *meshdb.MeshDB
+	ordersyncService          *ordersync.Service
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -348,11 +353,6 @@ func New(config Config) (*App, error) {
 
 	// Initialize remaining fields.
 	snapshotExpirationWatcher := expirationwatch.New()
-	orderSelector := &orderSelector{
-		topic:      orderFilter.Topic(),
-		nextOffset: 0,
-		db:         meshDB,
-	}
 
 	app := &App{
 		started:                   make(chan struct{}),
@@ -366,7 +366,6 @@ func New(config Config) (*App, error) {
 		orderFilter:               orderFilter,
 		snapshotExpirationWatcher: snapshotExpirationWatcher,
 		idToSnapshotInfo:          map[string]snapshotInfo{},
-		orderSelector:             orderSelector,
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
 		db:                        meshDB,
@@ -476,6 +475,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing app.db")
+		}()
 		<-innerCtx.Done()
 		app.db.Close()
 	}()
@@ -485,6 +487,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing eth RPC rate limiter")
+		}()
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
 
@@ -492,6 +497,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing snapshot expiration watcher")
+		}()
 		ticker := time.NewTicker(expirationPollingInterval)
 		for {
 			select {
@@ -513,6 +521,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing order watcher")
+		}()
 		log.Info("starting order watcher")
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
@@ -528,6 +539,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing block watcher")
+		}()
 		log.Info("starting block watcher")
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
@@ -580,11 +594,31 @@ func (app *App) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Register and start ordersync service.
+	ordersyncSubprotocols := []ordersync.Subprotocol{
+		NewFilteredPaginationSubprotocol(app, paginationSubprotocolPerPage),
+	}
+	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
+	orderSyncErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing ordersync service")
+		}()
+		if err := app.ordersyncService.GetOrders(innerCtx, ordersyncMinPeers); err != nil {
+			orderSyncErrChan <- err
+		}
+	}()
+
 	// Start the p2p node.
 	p2pErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing p2p node")
+		}()
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
@@ -594,6 +628,9 @@ func (app *App) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				log.Debug("closing new addrs checker")
+			}()
 			app.periodicallyCheckForNewAddrs(innerCtx, addrs)
 		}()
 
@@ -604,6 +641,9 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			log.Debug("closing periodic stats logger")
+		}()
 		app.periodicallyLogStats(innerCtx)
 	}()
 
@@ -628,14 +668,20 @@ func (app *App) Start(ctx context.Context) error {
 			return err
 		}
 	case err := <-blockWatcherErrChan:
-		log.WithError(err).Error("block watcher exited with error")
 		if err != nil {
+			log.WithError(err).Error("block watcher exited with error")
 			cancel()
 			return err
 		}
 	case err := <-ethRPCRateLimiterErrChan:
-		log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
 		if err != nil {
+			log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
+			cancel()
+			return err
+		}
+	case err := <-orderSyncErrChan:
+		if err != nil {
+			log.WithError(err).Error("ordersync service exited with error")
 			cancel()
 			return err
 		}
@@ -644,6 +690,7 @@ func (app *App) Start(ctx context.Context) error {
 	// Wait for all goroutines to exit. If we reached here it means we are done
 	// and there are no errors.
 	wg.Wait()
+	log.Debug("app successfully closed")
 	return nil
 }
 
