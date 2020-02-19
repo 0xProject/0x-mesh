@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Client defines the methods needed to satisfy the subsdet of ETH JSON-RPC client
@@ -30,7 +29,10 @@ type Client interface {
 // client is a Client through which _all_ Ethereum JSON-RPC requests should be routed through. It
 // enforces a max requestTimeout and also rate-limits requests
 type client struct {
-	rpcClient      *rpc.Client
+	// rpcClient is the underlying RPC client or provider
+	rpcClient ethclient.RPCClient
+	// client is the higher level Ethereum RPC client with lots of helper methods
+	// for converting Go types to JSON and vice versa.
 	client         *ethclient.Client
 	requestTimeout time.Duration
 	rateLimiter    ratelimit.RateLimiter
@@ -40,15 +42,8 @@ type client struct {
 }
 
 // New returns a new instance of client
-func New(rpcURL string, requestTimeout time.Duration, rateLimiter ratelimit.RateLimiter) (Client, error) {
-	ethClient, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	rpcClient, err := rpc.Dial(rpcURL)
-	if err != nil {
-		return nil, err
-	}
+func New(rpcClient ethclient.RPCClient, requestTimeout time.Duration, rateLimiter ratelimit.RateLimiter) (Client, error) {
+	ethClient := ethclient.NewClient(rpcClient)
 	return &client{
 		client:         ethClient,
 		rpcClient:      rpcClient,

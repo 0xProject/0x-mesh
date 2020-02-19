@@ -1,21 +1,21 @@
-import {getContractAddressesForChainOrThrow} from '@0x/contract-addresses';
-import {DummyERC20TokenContract} from '@0x/contracts-erc20';
-import {ExchangeContract} from '@0x/contracts-exchange';
-import {blockchainTests, constants, expect, OrderFactory, orderHashUtils} from '@0x/contracts-test-utils';
-import {callbackErrorReporter, Web3Config, web3Factory} from '@0x/dev-utils';
-import {assetDataUtils} from '@0x/order-utils';
-import {Web3ProviderEngine} from '@0x/subproviders';
-import {DoneCallback, SignedOrder} from '@0x/types';
-import {BigNumber, hexUtils} from '@0x/utils';
+import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
+import { DummyERC20TokenContract } from '@0x/contracts-erc20';
+import { ExchangeContract } from '@0x/contracts-exchange';
+import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
+import { callbackErrorReporter, Web3Config, web3Factory } from '@0x/dev-utils';
+import { assetDataUtils } from '@0x/order-utils';
+import { Web3ProviderEngine } from '@0x/subproviders';
+import { DoneCallback, SignedOrder } from '@0x/types';
+import { BigNumber, hexUtils } from '@0x/utils';
 import 'mocha';
 import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
-import {OrderEvent, OrderEventEndState, WSClient} from '../src/index';
-import {ContractEventKind, ExchangeCancelEvent, RejectedKind, WSMessage} from '../src/types';
+import { OrderEvent, OrderEventEndState, WSClient } from '../src/index';
+import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
-import {SERVER_PORT, setupServerAsync, stopServer} from './utils/mock_ws_server';
-import {MeshDeployment, startServerAndClientAsync} from './utils/ws_server';
+import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
+import { MeshDeployment, startServerAndClientAsync } from './utils/ws_server';
 
 blockchainTests.resets('WSClient', env => {
     describe('integration tests', () => {
@@ -62,10 +62,10 @@ blockchainTests.resets('WSClient', env => {
             await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({from: makerAddress});
             await makerToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
-                .awaitTransactionSuccessAsync({from: makerAddress});
+                .awaitTransactionSuccessAsync({ from: makerAddress });
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
-                .awaitTransactionSuccessAsync({from: makerAddress});
+                .awaitTransactionSuccessAsync({ from: makerAddress });
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
                 ...constants.STATIC_ORDER_PARAMS,
                 feeRecipientAddress: constants.NULL_ADDRESS,
@@ -140,7 +140,7 @@ blockchainTests.resets('WSClient', env => {
                 )}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
                     version: '',
-                    pubSubTopic: '/0x-orders/network/1337/version/2',
+                    pubSubTopic: '/0x-orders/version/3/chain/1337/schema/e30=',
                     rendezvous: '/0x-mesh/network/1337/version/2',
                     peerID: deployment.peerID,
                     ethereumChainID: 1337,
@@ -177,25 +177,54 @@ blockchainTests.resets('WSClient', env => {
                 // timestamp is approximately equal (within 1 second) because the server
                 // will receive the request slightly after it is sent.
                 const now = new Date(Date.now()).getTime();
-                const perPage = 10;
+                const perPage = ordersLength / 2;
                 const response = await deployment.client.getOrdersAsync(perPage);
                 assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
+                // Verify that snapshot ID in the response meets the expected schema.
+                expect(uuidValidate(response.snapshotID)).to.be.true();
 
                 // Verify that all of the orders that were added to the mesh node
-                // were returned in the `getOrders` rpc response, and that the
-                // ganache snapshot ID in the response meets the expected schema.
-                expect(uuidValidate(response.snapshotID)).to.be.true();
-                for (const order of orders) {
-                    let hasSeenMatch = false;
-                    for (const responseOrder of response.ordersInfos) {
-                        if (orderHashUtils.getOrderHashHex(order) === responseOrder.orderHash) {
-                            hasSeenMatch = true;
-                            expect(order).to.be.deep.eq(responseOrder.signedOrder);
-                            break;
-                        }
-                    }
-                    expect(hasSeenMatch).to.be.true();
+                // were returned in the `getOrders` rpc response
+                expectContainsOrders(orders, response.ordersInfos);
+            });
+        });
+
+        describe('#getOrdersForPageAsync', async () => {
+            it('properly makes paginated request and returns signedOrders', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({});
                 }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // NOTE(jalextowle): The time returned by Date uses milliseconds, but
+                // the mesh timestamp only uses second. Multiplying the seconds timestamp
+                // by 1000 gives us a comparable value. We only try to ensure that this
+                // timestamp is approximately equal (within 1 second) because the server
+                // will receive the request slightly after it is sent.
+                const now = new Date(Date.now()).getTime();
+                let page = 0;
+                const perPage = 5;
+                // First request for page index 0
+                let response = await deployment.client.getOrdersForPageAsync(page, perPage);
+                assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
+                expect(uuidValidate(response.snapshotID)).to.be.true();
+
+                let responseOrders = response.ordersInfos;
+
+                // Second request for page index 1
+                page = 1;
+                response = await deployment.client.getOrdersForPageAsync(page, perPage, response.snapshotID);
+                expect(uuidValidate(response.snapshotID)).to.be.true();
+
+                // Combine orders found in first and second paginated requests
+                responseOrders = [...responseOrders, ...response.ordersInfos];
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the two `getOrders` rpc response
+                expectContainsOrders(orders, responseOrders);
             });
         });
 
@@ -203,11 +232,12 @@ blockchainTests.resets('WSClient', env => {
             it('should receive subscription updates', (done: DoneCallback) => {
                 (async () => {
                     const expectToBeCalledOnce = true;
-                    const callback = callbackErrorReporter.reportNoErrorCallbackErrors(done, expectToBeCalledOnce)(
-                        async (ack: string) => {
-                            expect(ack).to.be.equal('tick');
-                        },
-                    );
+                    const callback = callbackErrorReporter.reportNoErrorCallbackErrors(
+                        done,
+                        expectToBeCalledOnce,
+                    )(async (ack: string) => {
+                        expect(ack).to.be.equal('tick');
+                    });
                     await (deployment.client as any)._subscribeToHeartbeatAsync(callback);
                 })().catch(done);
             });
@@ -383,7 +413,7 @@ blockchainTests.resets('WSClient', env => {
                         }) as any);
                     });
 
-                    const client = new WSClient(`ws://localhost:${SERVER_PORT}`, {reconnectDelay: 100});
+                    const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
                     client.onReconnected(async () => {
                         // We need to add a sleep here so that we leave time for the client
                         // to get connected before destroying it.
@@ -401,12 +431,11 @@ blockchainTests.resets('WSClient', env => {
                 // tslint:disable-next-line:no-floating-promises
                 (async () => {
                     const wsServer = await setupServerAsync();
-                    let numMessages = 0;
+                    let hasReceivedUnsubscribeMessage = false;
                     wsServer.on('connect', ((connection: WebSocket.connection) => {
                         connection.on('message', (async (message: WSMessage) => {
                             const jsonRpcRequest = JSON.parse(message.utf8Data);
-                            if (numMessages === 0) {
-                                expect(jsonRpcRequest.method).to.be.equal('mesh_subscribe');
+                            if (jsonRpcRequest.method === 'mesh_subscribe') {
                                 const response = `
                                     {
                                         "id": "${jsonRpcRequest.id}",
@@ -415,16 +444,15 @@ blockchainTests.resets('WSClient', env => {
                                     }
                                 `;
                                 connection.sendUTF(response);
-                                numMessages++;
-                                return;
+                            } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
+                                hasReceivedUnsubscribeMessage = true;
                             }
-                            numMessages++;
                         }) as any);
                     }) as any);
 
                     const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
                     client.onClose(() => {
-                        expect(numMessages).to.be.equal(2);
+                        expect(hasReceivedUnsubscribeMessage).to.be.equal(true);
                         done();
                     });
                     // We need to add a sleep here so that we leave time for the client
@@ -453,5 +481,21 @@ function secondsToMs(seconds: number): number {
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
     return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
+}
+
+// Verify that all of the orders that were added to the mesh node
+// were returned in the `getOrders` rpc response
+function expectContainsOrders(expectedOrders: SignedOrder[], ordersInfos: OrderInfo[]): void {
+    for (const order of expectedOrders) {
+        let hasSeenMatch = false;
+        for (const responseOrder of ordersInfos) {
+            if (orderHashUtils.getOrderHashHex(order) === responseOrder.orderHash) {
+                hasSeenMatch = true;
+                expect(order).to.be.deep.eq(responseOrder.signedOrder);
+                break;
+            }
+        }
+        expect(hasSeenMatch).to.be.true();
+    }
 }
 // tslint:disable-line:max-file-line-count

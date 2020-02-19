@@ -5,6 +5,7 @@ import { signatureUtils, Order, orderHashUtils } from '@0x/order-utils';
 
 const ethereumRPCURL = 'http://localhost:8545';
 
+// Set up a Web3 Provider that uses the RPC endpoint
 const provider = new Web3ProviderEngine();
 provider.addProvider(new RPCSubprovider(ethereumRPCURL));
 provider.start();
@@ -45,10 +46,13 @@ provider.start();
     // Configure Mesh to use our local Ganache instance and local bootstrap
     // node.
     const mesh = new Mesh({
-        verbosity: Verbosity.Debug,
-        ethereumRPCURL,
+        verbosity: Verbosity.Trace,
         ethereumChainID: 1337,
         bootstrapList: ['/ip4/127.0.0.1/tcp/60500/ws/ipfs/16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7'],
+        customOrderFilter: {
+            properties: { makerAddress: { const: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb' } },
+        },
+        web3Provider: provider,
     });
 
     // This handler will be called whenver there is a critical error.
@@ -83,6 +87,12 @@ provider.start();
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
 
+    // HACK(albrow): Wait for GossipSub to initialize. We could remove this if we adjust
+    // how we are waiting for the order (what log message we look for). As the test is
+    // currently written it only passes when the order is received through GossipSub and
+    // fails if it was received through ordersync.
+    await sleepAsync(5000);
+
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
     const result = await mesh.addOrdersAsync([signedOrder as any]);
@@ -100,10 +110,12 @@ provider.start();
     console.log(JSON.stringify(stats));
 
     // This special #jsFinished div is used to signal the headless Chrome driver
-    // that the JavaScript code is done running.
+    // that the JavaScript code is done running. This is not a native Javascript
+    // concept. Rather, it is our way of letting the Go program that serves this
+    // Javascript know whether or not the test has completed.
     const finishedDiv = document.createElement('div');
     finishedDiv.setAttribute('id', 'jsFinished');
-    document.querySelector('body')!.appendChild(finishedDiv);
+    document.body.appendChild(finishedDiv);
 })().catch(err => {
     if (err instanceof Error) {
         console.error(err.name + ': ' + err.message);
@@ -111,3 +123,7 @@ provider.start();
         console.error(err.toString());
     }
 });
+
+async function sleepAsync(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

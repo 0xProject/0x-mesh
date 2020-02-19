@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/plaid/go-envvar/envvar"
 )
 
-const (
-	inputPath  = "./wasm/main.wasm"
-	outputPath = "./ts/generated/wasm_buffer.ts"
-)
+type EnvVars struct {
+	InputPath  string `envvar:"INPUT_PATH"`
+	OutputPath string `envvar:"OUTPUT_PATH"`
+}
 
 var (
 	prefix = []byte("import * as base64 from 'base64-arraybuffer';\nexport const wasmBuffer = base64.decode('")
@@ -19,7 +21,12 @@ var (
 )
 
 func main() {
-	wasmBytcode, err := ioutil.ReadFile(inputPath)
+	env := EnvVars{}
+	if err := envvar.Parse(&env); err != nil {
+		panic(err)
+	}
+
+	wasmBytcode, err := ioutil.ReadFile(env.InputPath)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +35,7 @@ func main() {
 	encodedWasmBytcode := make([]byte, encodedLen)
 	base64.StdEncoding.Encode(encodedWasmBytcode, wasmBytcode)
 
-	outputDir := filepath.Dir(outputPath)
+	outputDir := filepath.Dir(env.OutputPath)
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		panic(err)
 	}
@@ -37,7 +44,7 @@ func main() {
 	// encoded as a base64 string. This is the most reliable way to load Wasm such
 	// that users just see a TypeScript/JavaScript package and without relying on
 	// a third-party server.
-	outputFile, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	outputFile, err := os.OpenFile(env.OutputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}

@@ -15,13 +15,17 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
+	"github.com/0xProject/0x-mesh/p2p/validatorset"
+	"github.com/albrow/stringset"
 	lru "github.com/hashicorp/golang-lru"
 	libp2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -96,9 +100,13 @@ type Node struct {
 
 // Config contains configuration options for a Node.
 type Config struct {
-	// Topic is a unique string representing the pubsub topic. Only Nodes which
-	// have the same topic will share messages with one another.
-	Topic string
+	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
+	// that are published on this topic will be received and processed.
+	SubscribeTopic string
+	// PublishTopics are the topics to publish messages to. Messages may be
+	// published to more than one topic (e.g. a topic for all orders and a topic
+	// for orders with a specific asset).
+	PublishTopics []string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
@@ -144,6 +152,11 @@ type Config struct {
 	// is allowed to send at once through the GossipSub network. Any additional
 	// messages will be dropped.
 	PerPeerPubSubMessageBurst int
+	// CustomMessageValidator is a custom validator for GossipSub messages. All
+	// incoming and outgoing messages will be dropped unless they are valid
+	// according to this custom validator, which will be run in addition to the
+	// default validators.
+	CustomMessageValidator pubsub.Validator
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -240,18 +253,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
-		MyPeerID:       basicHost.ID(),
-		GlobalLimit:    config.GlobalPubSubMessageLimit,
-		GlobalBurst:    config.GlobalPubSubMessageBurst,
-		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
-		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
-		MaxMessageSize: constants.MaxMessageSizeInBytes,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := ps.RegisterTopicValidator(config.Topic, rateValidator.Validate, pubsub.WithValidatorInline(true)); err != nil {
+	if err := registerValidators(ctx, basicHost, config, ps); err != nil {
 		return nil, err
 	}
 
@@ -278,6 +280,53 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 
 	return node, nil
+}
+
+// registerValidators registers all the validators we use for incoming and
+// outgoing GossipSub messages.
+func registerValidators(ctx context.Context, basicHost host.Host, config Config, ps *pubsub.PubSub) error {
+	validators := validatorset.New()
+
+	// Add the rate limiting validator.
+	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
+		MyPeerID:       basicHost.ID(),
+		GlobalLimit:    config.GlobalPubSubMessageLimit,
+		GlobalBurst:    config.GlobalPubSubMessageBurst,
+		PerPeerLimit:   config.PerPeerPubSubMessageLimit,
+		PerPeerBurst:   config.PerPeerPubSubMessageBurst,
+		MaxMessageSize: constants.MaxOrderSizeInBytes,
+	})
+	if err != nil {
+		return err
+	}
+	validators.Add("message rate limiting", rateValidator.Validate)
+
+	// Add the custom validator if there is one.
+	if config.CustomMessageValidator != nil {
+		validators.Add("custom", config.CustomMessageValidator)
+	}
+
+	// Register the set of validators for all topics that we publish and/or
+	// subscribe to.
+	//
+	// Note(albrow) In some cases we will technically be doing some
+	// redundant work to validate messages again, since they were already
+	// validated in core.App.AddOrders. Luckily, using JSON Schemas in an inline
+	// validator has little to no performance impact.
+	//
+	// The reason we add the validators to publish topics as well as the subscribe
+	// topic is that not every order that we will share through GossipSub went
+	// through core.App.AddOrders. For example, there could be some older orders
+	// in the database that don't match the current filter. In most cases, the
+	// subscribe topic will be one of the publish topics so it doesn't matter much
+	// in practice in the current implementation.
+	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopic))
+	for topic := range allTopics {
+		if err := ps.RegisterTopicValidator(topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getPrivateKey(path string) (p2pcrypto.PrivKey, error) {
@@ -374,6 +423,21 @@ func (n *Node) GetNumPeers() int {
 	return n.connManager.GetInfo().ConnCount
 }
 
+// SetStreamHandler registers a handler for a custom protocol.
+func (n *Node) SetStreamHandler(pid protocol.ID, handler network.StreamHandler) {
+	n.host.SetStreamHandler(pid, handler)
+}
+
+func (n *Node) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (network.Stream, error) {
+	return n.host.NewStream(ctx, p, pids...)
+}
+
+// Neighbors returns a list of peer IDs that this node is currently connected
+// to.
+func (n *Node) Neighbors() []peer.ID {
+	return n.host.Network().Peers()
+}
+
 // Connect ensures there is a connection between this host and the peer with
 // given peerInfo. If there is not an active connection, Connect will dial the
 // peer, and block until a connection is open, timeout is exceeded, or an error
@@ -421,10 +485,6 @@ func (n *Node) runOnce() error {
 		n.banner.CheckBandwidthUsage()
 	}
 
-	// Send up to maxSendBatch messages.
-	if err := n.shareBatch(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -530,25 +590,19 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 	}
 }
 
-// shareBatch shares up to maxShareBatch messages (selected via the
-// MessageHandler) with all connected peers.
-func (n *Node) shareBatch() error {
-	// TODO(albrow): This will need to change when we switch to WeijieSub.
-	outgoing, err := n.messageHandler.GetMessagesToShare(maxShareBatch)
-	if err != nil {
-		return err
-	}
-	for _, data := range outgoing {
-		if err := n.Send(data); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Send sends a message continaing the given data to all connected peers.
 func (n *Node) Send(data []byte) error {
-	return n.pubsub.Publish(n.config.Topic, data)
+	// Note: If there is an error, we still try to publish to any remaining
+	// topics. We always return the first error that was encountered (if any),
+	// which is assigned to firstErr.
+	var firstErr error
+	for _, topic := range n.config.PublishTopics {
+		err := n.pubsub.Publish(topic, data)
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // receive returns the next pending message. It blocks if no messages are
@@ -556,7 +610,7 @@ func (n *Node) Send(data []byte) error {
 func (n *Node) receive(ctx context.Context) (*Message, error) {
 	if n.sub == nil {
 		var err error
-		n.sub, err = n.pubsub.Subscribe(n.config.Topic)
+		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic)
 		if err != nil {
 			return nil, err
 		}

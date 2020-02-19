@@ -63,12 +63,13 @@
     lodash.values "^4.3.0"
 
 "@0x/mesh-browser@./../../browser/":
-  version "8.0.0-beta-0xv3"
+  version "1.0.0"
   dependencies:
     "@0x/order-utils" "^10.0.1"
-    "@0x/utils" "^5.1.1"
+    "@0x/utils" "^5.1.2"
     base64-arraybuffer "^0.2.0"
     browserfs "^1.4.3"
+    ethereum-types "^3.0.0"
 
 "@0x/order-utils@^10.0.1":
   version "10.0.1"
@@ -136,6 +137,25 @@
   version "5.1.1"
   resolved "https://registry.yarnpkg.com/@0x/utils/-/utils-5.1.1.tgz#1895529b5ec313f7056819458c8f55fbb19256cb"
   integrity sha512-DRNKtAqZR0vFA1XdUhBwaIz2qEjWS1xqdvzQl/Dn8OLJH+1sxb+1UmtG6fOlbu7pTLbF+CWoaYf2+pvQfcF//g==
+  dependencies:
+    "@0x/types" "^3.1.1"
+    "@0x/typescript-typings" "^5.0.1"
+    "@types/node" "*"
+    abortcontroller-polyfill "^1.1.9"
+    bignumber.js "~9.0.0"
+    chalk "^2.3.0"
+    detect-node "2.0.3"
+    ethereum-types "^3.0.0"
+    ethereumjs-util "^5.1.1"
+    ethers "~4.0.4"
+    isomorphic-fetch "2.2.1"
+    js-sha3 "^0.7.0"
+    lodash "^4.17.11"
+
+"@0x/utils@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@0x/utils/-/utils-5.1.2.tgz#defc545a42343729c9bf7252f0b7413d7ba47694"
+  integrity sha512-p5BZxs3krXwkjBY8hrmGLkLp4BziVQ6z4tRFIcWSR8C4ptAlZ4QfFL1zqK6O6/rbOsGj+JSIpqRRrxJr2Is6LQ==
   dependencies:
     "@0x/types" "^3.1.1"
     "@0x/typescript-typings" "^5.0.1"

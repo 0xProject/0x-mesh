@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/karlseguin/ccache"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"

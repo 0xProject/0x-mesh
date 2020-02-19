@@ -54,12 +54,13 @@ func TestBrowserIntegration(t *testing.T) {
 	// goroutines to block.
 	standaloneLogMessages := make(chan string, 1024)
 	count := int(atomic.AddInt32(&nodeCount, 1))
+	customOrderFilter := `{"properties": { "makerAddress": { "const": "0x6ecbe1db9ef729cbe972c83fb886247691fb6beb" }}}`
 
 	// Start the standalone node in a goroutine.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, standaloneLogMessages)
+		startStandaloneNode(t, ctx, count, customOrderFilter, standaloneLogMessages)
 	}()
 
 	// standaloneOrder is an order that will be sent to the network by the
@@ -83,7 +84,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the RPC server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started RPC server")
 		require.NoError(t, err, "RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneRPCEndpointPrefix + strconv.Itoa(rpcPort+count))
+		rpcClient, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 		require.NoError(t, err)
 		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)
