@@ -312,7 +312,7 @@ func New(config Config) (*App, error) {
 	// Remove any old mini headers that might be lingering in the database.
 	// HACK(albrow): This is a workaround for an issue where miniheaders are
 	// not removed from the database. This issue has been fixed and this hack
-	// should be removed in the next release.
+	// should be removed after the next release.
 	if totalMiniHeaders, err := meshDB.MiniHeaders.Count(); err != nil {
 		return nil, err
 	} else if totalMiniHeaders > miniHeaderRetentionLimit {

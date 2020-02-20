@@ -1380,7 +1380,6 @@ func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
 		Timestamp: time.Now().UTC(),
 	}
 
-	// Simulate a block found with a timestamp past expirationTime
 	blockEvents := []*blockwatch.Event{
 		&blockwatch.Event{
 			Type:        blockwatch.Added,
