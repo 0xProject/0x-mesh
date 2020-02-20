@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	miniHeadersMaxPerPage = 10000
+	// The maximum MiniHeaders to query per page when deleting MiniHeaders
+	miniHeadersMaxPerPage = 5000
 )
 
 var ErrDBFilledWithPinnedOrders = errors.New("the database is full of pinned orders; no orders can be removed in order to make space")
@@ -339,17 +340,25 @@ func (m *MeshDB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
 }
 
 func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
-	txn := m.MiniHeaders.OpenTransaction()
-	defer func() {
-		_ = txn.Discard()
-	}()
 	for page := 0; ; page++ {
-		log.WithField("page", page).Warn("removing old mini headers")
+		txn := m.MiniHeaders.OpenTransaction()
+		defer func() {
+			_ = txn.Discard()
+		}()
+		log.WithFields(log.Fields{
+			"page":    page,
+			"perPage": miniHeadersMaxPerPage,
+		}).Trace("Removing MiniHeaders")
 		offset := page * miniHeadersMaxPerPage
 		var miniHeaders []*miniheader.MiniHeader
 		if err := m.MiniHeaders.NewQuery(filter).Offset(offset).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
 			return err
 		}
+		log.WithFields(log.Fields{
+			"page":    page,
+			"perPage": miniHeadersMaxPerPage,
+			"count":   len(miniHeaders),
+		}).Trace("Found MiniHeaders to remove")
 		if len(miniHeaders) == 0 {
 			break
 		}
@@ -358,8 +367,11 @@ func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
 				return err
 			}
 		}
+		if err := txn.Commit(); err != nil {
+			return err
+		}
 	}
-	return txn.Commit()
+	return nil
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address

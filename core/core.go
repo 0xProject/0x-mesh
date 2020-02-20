@@ -313,18 +313,22 @@ func New(config Config) (*App, error) {
 	// HACK(albrow): This is a workaround for an issue where miniheaders are
 	// not removed from the database. It could be optimized or potentially
 	// removed in the future.
-	latestMiniHeader, err := meshDB.FindLatestMiniHeader()
-	if err != nil {
-		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); !ok {
-			// Unexpected error. Return it.
+	if totalMiniHeaders, err := meshDB.MiniHeaders.Count(); err != nil {
+		return nil, err
+	} else if totalMiniHeaders > blockWatcherRetentionLimit {
+		miniHeadersToRemove := totalMiniHeaders - blockWatcherRetentionLimit
+		log.WithFields(log.Fields{
+			"numHeadersToRemove": miniHeadersToRemove,
+			"totalHeadersStored": totalMiniHeaders,
+		}).Warn("Removing outdated block headers in database (this can take a while)")
+		latestMiniHeader, err := meshDB.FindLatestMiniHeader()
+		if err != nil {
 			return nil, err
-		}
-		// Otherwise error is expected. It just means there aren't any MiniHeaders
-		// in the databse. We can continue as normal.
-	} else if latestMiniHeader != nil {
-		minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(blockWatcherRetentionLimit))
-		if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
-			return nil, err
+		} else if latestMiniHeader != nil {
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(blockWatcherRetentionLimit))
+			if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
+				return nil, err
+			}
 		}
 	}
 
