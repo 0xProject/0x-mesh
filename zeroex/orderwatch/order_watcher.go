@@ -104,13 +104,12 @@ type Watcher struct {
 }
 
 type Config struct {
-	MeshDB                   *meshdb.MeshDB
-	BlockWatcher             *blockwatch.Watcher
-	OrderValidator           *ordervalidator.OrderValidator
-	ChainID                  int
-	MaxOrders                int
-	MaxExpirationTime        *big.Int
-	MiniHeaderRetentionLimit int
+	MeshDB            *meshdb.MeshDB
+	BlockWatcher      *blockwatch.Watcher
+	OrderValidator    *ordervalidator.OrderValidator
+	ChainID           int
+	MaxOrders         int
+	MaxExpirationTime *big.Int
 }
 
 // New instantiates a new order watcher

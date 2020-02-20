@@ -343,13 +343,12 @@ func New(config Config) (*App, error) {
 
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:                   meshDB,
-		BlockWatcher:             blockWatcher,
-		OrderValidator:           orderValidator,
-		ChainID:                  config.EthereumChainID,
-		MaxOrders:                config.MaxOrdersInStorage,
-		MaxExpirationTime:        metadata.MaxExpirationTime,
-		MiniHeaderRetentionLimit: miniHeaderRetentionLimit,
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		ChainID:           config.EthereumChainID,
+		MaxOrders:         config.MaxOrdersInStorage,
+		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
