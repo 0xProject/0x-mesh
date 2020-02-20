@@ -828,7 +828,7 @@ func (w *Watcher) handleBlockEvents(
 		if err != nil {
 			return err
 		} else if latestMiniHeader != nil {
-			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(int64(w.miniHeaderRetentionLimit)))
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(int64(w.miniHeaderRetentionLimit-1)))
 			if err := w.meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
 				return err
 			}

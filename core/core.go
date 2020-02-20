@@ -325,7 +325,7 @@ func New(config Config) (*App, error) {
 		if err != nil {
 			return nil, err
 		} else if latestMiniHeader != nil {
-			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(miniHeaderRetentionLimit))
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(miniHeaderRetentionLimit-1))
 			if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
 				return nil, err
 			}
