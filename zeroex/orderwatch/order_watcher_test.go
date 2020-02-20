@@ -1352,7 +1352,8 @@ func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
 	defer teardownSubTest(t)
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
-	meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
+	err = meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
 		cancel()
