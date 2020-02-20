@@ -40,7 +40,7 @@
         "@0x/assert": "^3.0.2",
         "@0x/types": "^3.1.1",
         "@0x/typescript-typings": "^5.0.1",
-        "@0x/utils": "^5.1.1",
+        "@0x/utils": "^5.4.0",
         "uuid": "^3.3.2",
         "web3-providers": "^2.0.0-alpha.1",
         "websocket": "^1.0.29"
@@ -55,6 +55,7 @@
         "@0x/subproviders": "^6.0.2",
         "@0x/ts-doc-gen": "^0.0.13",
         "@0x/tslint-config": "^4.0.0",
+        "@0x/web3-wrapper": "^7.0.6",
         "@types/jsonstream": "^0.8.30",
         "@types/mocha": "^2.2.42",
         "@types/rimraf": "^2.0.3",
