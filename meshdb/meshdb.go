@@ -16,6 +16,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	miniHeadersMaxPerPage = 10000
+)
+
 var ErrDBFilledWithPinnedOrders = errors.New("the database is full of pinned orders; no orders can be removed in order to make space")
 
 // Order is the database representation a 0x order along with some relevant metadata
@@ -281,7 +285,8 @@ func (e MiniHeaderCollectionEmptyError) Error() string {
 }
 
 // FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
-// largest block number), or nil if there are none in the database.
+// largest block number). It returns nil, MiniHeaderCollectionEmptyError if there
+// are no MiniHeaders in the database.
 func (m *MeshDB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
 	miniHeaders := []*miniheader.MiniHeader{}
 	query := m.MiniHeaders.NewQuery(m.MiniHeaders.numberIndex.All()).Reverse().Max(1)
@@ -320,24 +325,41 @@ func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.
 
 // ClearAllMiniHeaders removes all stored MiniHeaders from the database.
 func (m *MeshDB) ClearAllMiniHeaders() error {
+	return m.clearMiniHeadersWithFilter(m.MiniHeaders.numberIndex.All())
+}
+
+// ClearOldMiniHeaders removes all stored MiniHeaders with a block number less then
+// the given minBlockNumber.
+func (m *MeshDB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
+	filter := m.MiniHeaders.numberIndex.RangeFilter(
+		uint256ToConstantLengthBytes(big.NewInt(0)),
+		uint256ToConstantLengthBytes(minBlockNumber),
+	)
+	return m.clearMiniHeadersWithFilter(filter)
+}
+
+func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
 	txn := m.MiniHeaders.OpenTransaction()
 	defer func() {
 		_ = txn.Discard()
 	}()
-	var storedHeaders []*miniheader.MiniHeader
-	if err := m.MiniHeaders.FindAll(&storedHeaders); err != nil {
-		return err
-	}
-	for _, header := range storedHeaders {
-		if err := txn.Delete(header.ID()); err != nil {
+	for page := 0; ; page++ {
+		log.WithField("page", page).Warn("removing old mini headers")
+		offset := page * miniHeadersMaxPerPage
+		var miniHeaders []*miniheader.MiniHeader
+		if err := m.MiniHeaders.NewQuery(filter).Offset(offset).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
 			return err
 		}
+		if len(miniHeaders) == 0 {
+			break
+		}
+		for _, miniHeader := range miniHeaders {
+			if err := txn.Delete(miniHeader.ID()); err != nil {
+				return err
+			}
+		}
 	}
-
-	if err := txn.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return txn.Commit()
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address

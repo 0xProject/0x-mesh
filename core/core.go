@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -307,6 +308,26 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Remove any old mini headers that might be lingering in the database.
+	// HACK(albrow): This is a workaround for an issue where miniheaders are
+	// not removed from the database. It could be optimized or potentially
+	// removed in the future.
+	latestMiniHeader, err := meshDB.FindLatestMiniHeader()
+	if err != nil {
+		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); !ok {
+			// Unexpected error. Return it.
+			return nil, err
+		}
+		// Otherwise error is expected. It just means there aren't any MiniHeaders
+		// in the databse. We can continue as normal.
+	} else if latestMiniHeader != nil {
+		minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(blockWatcherRetentionLimit))
+		if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
+			return nil, err
+		}
+	}
+
 	topics := orderwatch.GetRelevantTopics()
 	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
