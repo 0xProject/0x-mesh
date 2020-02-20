@@ -8,6 +8,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -478,4 +479,32 @@ func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, is
 		require.NoError(t, meshDB.Orders.Insert(order))
 	}
 	return results
+}
+
+func TestPruneMiniHeadersAboveRetentionLimit(t *testing.T) {
+	t.Parallel()
+
+	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	defer meshDB.Close()
+
+	txn := meshDB.MiniHeaders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+
+	miniHeadersToAdd := miniHeadersMaxPerPage*2 + defaultMiniHeaderRetentionLimit + 1
+	for i := 0; i < miniHeadersToAdd; i++ {
+		miniHeader := &miniheader.MiniHeader{
+			Hash:      common.BigToHash(big.NewInt(int64(i))),
+			Number:    big.NewInt(int64(i)),
+			Timestamp: time.Now().Add(time.Duration(i)*time.Second - 5*time.Hour),
+		}
+		require.NoError(t, txn.Insert(miniHeader))
+	}
+	require.NoError(t, txn.Commit())
+
+	require.NoError(t, meshDB.PruneMiniHeadersAboveRetentionLimit())
+	remainingMiniHeaders, err := meshDB.MiniHeaders.Count()
+	assert.Equal(t, defaultMiniHeaderRetentionLimit, remainingMiniHeaders, "wrong number of MiniHeaders remaining")
 }
