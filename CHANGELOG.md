@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v9.0.1
+
+### Bug fixes 🐞
+
+- Fix bug where we weren't enforcing that we never store more than `miniHeaderRetentionLimit` block headers in the DB. This caused [issue #667](https://github.com/0xProject/0x-mesh/issues/667) and also caused the Mesh node's DB storage to continuously grow over time. ([#716](https://github.com/0xProject/0x-mesh/pull/716))
+
 ## v9.0.0
 
 ### Breaking changes 🛠
