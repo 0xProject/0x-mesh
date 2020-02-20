@@ -341,37 +341,46 @@ func (m *MeshDB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
 
 func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
 	for page := 0; ; page++ {
-		txn := m.MiniHeaders.OpenTransaction()
-		defer func() {
-			_ = txn.Discard()
-		}()
-		log.WithFields(log.Fields{
-			"page":    page,
-			"perPage": miniHeadersMaxPerPage,
-		}).Trace("Removing MiniHeaders")
-		offset := page * miniHeadersMaxPerPage
-		var miniHeaders []*miniheader.MiniHeader
-		if err := m.MiniHeaders.NewQuery(filter).Offset(offset).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
+		removed, err := m.clearMiniHeadersForPage(filter, page)
+		if err != nil {
 			return err
 		}
-		log.WithFields(log.Fields{
-			"page":    page,
-			"perPage": miniHeadersMaxPerPage,
-			"count":   len(miniHeaders),
-		}).Trace("Found MiniHeaders to remove")
-		if len(miniHeaders) == 0 {
+		if removed == 0 {
 			break
-		}
-		for _, miniHeader := range miniHeaders {
-			if err := txn.Delete(miniHeader.ID()); err != nil {
-				return err
-			}
-		}
-		if err := txn.Commit(); err != nil {
-			return err
 		}
 	}
 	return nil
+}
+
+func (m *MeshDB) clearMiniHeadersForPage(filter *db.Filter, page int) (removed int, err error) {
+	txn := m.MiniHeaders.OpenTransaction()
+	defer func() {
+		_ = txn.Discard()
+	}()
+	log.WithFields(log.Fields{
+		"page":    page,
+		"perPage": miniHeadersMaxPerPage,
+	}).Trace("Removing MiniHeaders")
+	offset := page * miniHeadersMaxPerPage
+	var miniHeaders []*miniheader.MiniHeader
+	if err := m.MiniHeaders.NewQuery(filter).Offset(offset).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
+		return 0, err
+	}
+	log.WithFields(log.Fields{
+		"page":    page,
+		"perPage": miniHeadersMaxPerPage,
+		"count":   len(miniHeaders),
+	}).Trace("Found MiniHeaders to remove")
+
+	for _, miniHeader := range miniHeaders {
+		if err := txn.Delete(miniHeader.ID()); err != nil {
+			return 0, err
+		}
+	}
+	if err := txn.Commit(); err != nil {
+		return 0, err
+	}
+	return len(miniHeaders), nil
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address
