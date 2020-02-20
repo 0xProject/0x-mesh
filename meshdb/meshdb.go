@@ -374,8 +374,8 @@ func (m *MeshDB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
 }
 
 func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
-	for page := 0; ; page++ {
-		removed, err := m.clearMiniHeadersForPage(filter, page)
+	for {
+		removed, err := m.clearMiniHeadersOnce(filter)
 		if err != nil {
 			return err
 		}
@@ -386,25 +386,21 @@ func (m *MeshDB) clearMiniHeadersWithFilter(filter *db.Filter) error {
 	return nil
 }
 
-func (m *MeshDB) clearMiniHeadersForPage(filter *db.Filter, page int) (removed int, err error) {
+// clearMiniHeadersOnce removes up to miniHeadersMaxPerPage MiniHeaders from the
+// database that match the given filter. It returns the number of MiniHeaders removed.
+func (m *MeshDB) clearMiniHeadersOnce(filter *db.Filter) (removed int, err error) {
 	txn := m.MiniHeaders.OpenTransaction()
 	defer func() {
 		_ = txn.Discard()
 	}()
-	log.WithFields(log.Fields{
-		"page":    page,
-		"perPage": miniHeadersMaxPerPage,
-	}).Trace("Removing MiniHeaders")
-	offset := page * miniHeadersMaxPerPage
 	var miniHeaders []*miniheader.MiniHeader
-	if err := m.MiniHeaders.NewQuery(filter).Offset(offset).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
+	if err := m.MiniHeaders.NewQuery(filter).Max(miniHeadersMaxPerPage).Run(&miniHeaders); err != nil {
 		return 0, err
 	}
 	log.WithFields(log.Fields{
-		"page":    page,
-		"perPage": miniHeadersMaxPerPage,
-		"count":   len(miniHeaders),
-	}).Trace("Found MiniHeaders to remove")
+		"maxPerPage":     miniHeadersMaxPerPage,
+		"numberToRemove": len(miniHeaders),
+	}).Trace("Removing outdated MiniHeaders from database")
 
 	for _, miniHeader := range miniHeaders {
 		if err := txn.Delete(miniHeader.ID()); err != nil {
