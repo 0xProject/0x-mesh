@@ -1352,6 +1352,7 @@ func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
 	defer teardownSubTest(t)
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
 	require.NoError(t, err)
+	meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
 		cancel()
@@ -1403,7 +1404,7 @@ func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
 
 	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
 	require.NoError(t, err)
-	assert.Equal(t, miniHeaderRetentionLimit, totalMiniHeaders)
+	assert.Equal(t, meshDB.MiniHeaderRetentionLimit, totalMiniHeaders)
 }
 
 // Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
@@ -1584,7 +1585,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
-	stack := simplestack.New(miniHeaderRetentionLimit, []*miniheader.MiniHeader{})
+	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, []*miniheader.MiniHeader{})
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: blockPollingInterval,
@@ -1596,13 +1597,12 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
-		MeshDB:                   meshDB,
-		BlockWatcher:             blockWatcher,
-		OrderValidator:           orderValidator,
-		ChainID:                  constants.TestChainID,
-		MaxExpirationTime:        constants.UnlimitedExpirationTime,
-		MaxOrders:                1000,
-		MiniHeaderRetentionLimit: miniHeaderRetentionLimit,
+		MeshDB:            meshDB,
+		BlockWatcher:      blockWatcher,
+		OrderValidator:    orderValidator,
+		ChainID:           constants.TestChainID,
+		MaxExpirationTime: constants.UnlimitedExpirationTime,
+		MaxOrders:         1000,
 	})
 	require.NoError(t, err)
 

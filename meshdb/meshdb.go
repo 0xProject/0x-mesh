@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	// The default miniHeaderRetentionLimit used by Mesh. This default only gets overwritten in tests.
+	defaultMiniHeaderRetentionLimit = 20
 	// The maximum MiniHeaders to query per page when deleting MiniHeaders
 	miniHeadersMaxPerPage = 5000
 )
@@ -61,10 +63,11 @@ func (m Metadata) ID() []byte {
 
 // MeshDB instantiates the DB connection and creates all the collections used by the application
 type MeshDB struct {
-	database    *db.DB
-	metadata    *MetadataCollection
-	MiniHeaders *MiniHeadersCollection
-	Orders      *OrdersCollection
+	database                 *db.DB
+	metadata                 *MetadataCollection
+	MiniHeaders              *MiniHeadersCollection
+	Orders                   *OrdersCollection
+	MiniHeaderRetentionLimit int
 }
 
 // MiniHeadersCollection represents a DB collection of mini Ethereum block headers
@@ -112,10 +115,11 @@ func New(path string) (*MeshDB, error) {
 	}
 
 	return &MeshDB{
-		database:    database,
-		metadata:    metadata,
-		MiniHeaders: miniHeaders,
-		Orders:      orders,
+		database:                 database,
+		metadata:                 metadata,
+		MiniHeaders:              miniHeaders,
+		Orders:                   orders,
+		MiniHeaderRetentionLimit: defaultMiniHeaderRetentionLimit,
 	}, nil
 }
 
@@ -322,6 +326,36 @@ func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.
 		return nil, MiniHeaderNotFoundError{blockNumber: blockNumber.Int64()}
 	}
 	return miniHeaders[0], nil
+}
+
+// UpdateMiniHeaderRetentionLimit updates the MiniHeaderRetentionLimit. This is only used by tests to
+// returns the retention limit to a manageable size
+func (m *MeshDB) UpdateMiniHeaderRetentionLimit(limit int) error {
+	m.MiniHeaderRetentionLimit = limit
+	return m.PruneMiniHeadersAboveRetentionLimit()
+}
+
+// PruneMiniHeadersAboveRetentionLimit prunes miniHeaders from the DB that are above the retention limit
+func (m *MeshDB) PruneMiniHeadersAboveRetentionLimit() error {
+	if totalMiniHeaders, err := m.MiniHeaders.Count(); err != nil {
+		return err
+	} else if totalMiniHeaders > m.MiniHeaderRetentionLimit {
+		miniHeadersToRemove := totalMiniHeaders - m.MiniHeaderRetentionLimit
+		log.WithFields(log.Fields{
+			"numHeadersToRemove": miniHeadersToRemove,
+			"totalHeadersStored": totalMiniHeaders,
+		}).Warn("Removing outdated block headers in database (this can take a while)")
+		latestMiniHeader, err := m.FindLatestMiniHeader()
+		if err != nil {
+			return err
+		} else if latestMiniHeader != nil {
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(int64(m.MiniHeaderRetentionLimit)-1))
+			if err := m.ClearOldMiniHeaders(minBlockNumber); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // ClearAllMiniHeaders removes all stored MiniHeaders from the database.

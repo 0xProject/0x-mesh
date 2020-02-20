@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,7 +47,6 @@ import (
 )
 
 const (
-	miniHeaderRetentionLimit      = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
@@ -313,23 +311,9 @@ func New(config Config) (*App, error) {
 	// HACK(albrow): This is a workaround for an issue where miniheaders are
 	// not removed from the database. This issue has been fixed and this hack
 	// should be removed after the next release.
-	if totalMiniHeaders, err := meshDB.MiniHeaders.Count(); err != nil {
+	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
+	if err != nil {
 		return nil, err
-	} else if totalMiniHeaders > miniHeaderRetentionLimit {
-		miniHeadersToRemove := totalMiniHeaders - miniHeaderRetentionLimit
-		log.WithFields(log.Fields{
-			"numHeadersToRemove": miniHeadersToRemove,
-			"totalHeadersStored": totalMiniHeaders,
-		}).Warn("Removing outdated block headers in database (this can take a while)")
-		latestMiniHeader, err := meshDB.FindLatestMiniHeader()
-		if err != nil {
-			return nil, err
-		} else if latestMiniHeader != nil {
-			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(miniHeaderRetentionLimit-1))
-			if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	topics := orderwatch.GetRelevantTopics()
@@ -337,7 +321,7 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	stack := simplestack.New(miniHeaderRetentionLimit, miniHeaders)
+	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
