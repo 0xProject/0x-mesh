@@ -2,11 +2,12 @@ import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { DummyERC20TokenContract } from '@0x/contracts-erc20';
 import { ExchangeContract } from '@0x/contracts-exchange';
 import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
-import { callbackErrorReporter, Web3Config, web3Factory } from '@0x/dev-utils';
+import { BlockchainLifecycle, callbackErrorReporter, Web3Config, web3Factory } from '@0x/dev-utils';
 import { assetDataUtils } from '@0x/order-utils';
 import { Web3ProviderEngine } from '@0x/subproviders';
 import { DoneCallback, SignedOrder } from '@0x/types';
 import { BigNumber, hexUtils } from '@0x/utils';
+import { Web3Wrapper } from '@0x/web3-wrapper';
 import 'mocha';
 import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
@@ -48,6 +49,13 @@ blockchainTests.resets('WSClient', env => {
                 unlocked_accounts: [makerAddress],
             };
             provider = web3Factory.getRpcProvider(providerConfigs);
+
+            // HACK(jalextowle): We can't currently specify an out of process provider for a blockchainTests
+            // suit, so we need to update env.blockchainLifecycle so that the resets suite works as expected.
+            // Additionally, `env.blockchainLifecycle.startAsync` will have already been called at this point,
+            // so we call `startAsync` here to avoid an unbalanced snapshot stack.
+            env.blockchainLifecycle = new BlockchainLifecycle(new Web3Wrapper(provider));
+            await env.blockchainLifecycle.startAsync();
 
             exchangeAddress = getContractAddressesForChainOrThrow(chainId).exchange;
             exchange = new ExchangeContract(exchangeAddress, provider);
