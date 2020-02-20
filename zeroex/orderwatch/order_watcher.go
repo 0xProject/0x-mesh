@@ -101,15 +101,17 @@ type Watcher struct {
 	atLeastOneBlockProcessed   chan struct{}
 	atLeastOneBlockProcessedMu sync.Mutex
 	didProcessABlock           bool
+	miniHeaderRetentionLimit   int
 }
 
 type Config struct {
-	MeshDB            *meshdb.MeshDB
-	BlockWatcher      *blockwatch.Watcher
-	OrderValidator    *ordervalidator.OrderValidator
-	ChainID           int
-	MaxOrders         int
-	MaxExpirationTime *big.Int
+	MeshDB                   *meshdb.MeshDB
+	BlockWatcher             *blockwatch.Watcher
+	OrderValidator           *ordervalidator.OrderValidator
+	ChainID                  int
+	MaxOrders                int
+	MaxExpirationTime        *big.Int
+	MiniHeaderRetentionLimit int
 }
 
 // New instantiates a new order watcher
@@ -162,6 +164,7 @@ func New(config Config) (*Watcher, error) {
 		blockEventsChan:            make(chan []*blockwatch.Event, 100),
 		atLeastOneBlockProcessed:   make(chan struct{}),
 		didProcessABlock:           false,
+		miniHeaderRetentionLimit:   config.MiniHeaderRetentionLimit,
 	}
 
 	// Check if any orders need to be removed right away due to high expiration
@@ -815,6 +818,22 @@ func (w *Watcher) handleBlockEvents(
 		close(w.atLeastOneBlockProcessed)
 	}
 	w.atLeastOneBlockProcessedMu.Unlock()
+
+	// Since we might have added MiniHeaders to the DB, we need to now remove any excess MiniHeaders stored
+	// in the DB
+	if totalMiniHeaders, err := w.meshDB.MiniHeaders.Count(); err != nil {
+		return err
+	} else if totalMiniHeaders > w.miniHeaderRetentionLimit {
+		latestMiniHeader, err := w.meshDB.FindLatestMiniHeader()
+		if err != nil {
+			return err
+		} else if latestMiniHeader != nil {
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(int64(w.miniHeaderRetentionLimit)))
+			if err := w.meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

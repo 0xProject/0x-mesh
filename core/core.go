@@ -48,7 +48,7 @@ import (
 )
 
 const (
-	blockWatcherRetentionLimit    = 20
+	miniHeaderRetentionLimit      = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
@@ -311,12 +311,12 @@ func New(config Config) (*App, error) {
 
 	// Remove any old mini headers that might be lingering in the database.
 	// HACK(albrow): This is a workaround for an issue where miniheaders are
-	// not removed from the database. It could be optimized or potentially
-	// removed in the future.
+	// not removed from the database. This issue has been fixed and this hack
+	// should be removed in the next release.
 	if totalMiniHeaders, err := meshDB.MiniHeaders.Count(); err != nil {
 		return nil, err
-	} else if totalMiniHeaders > blockWatcherRetentionLimit {
-		miniHeadersToRemove := totalMiniHeaders - blockWatcherRetentionLimit
+	} else if totalMiniHeaders > miniHeaderRetentionLimit {
+		miniHeadersToRemove := totalMiniHeaders - miniHeaderRetentionLimit
 		log.WithFields(log.Fields{
 			"numHeadersToRemove": miniHeadersToRemove,
 			"totalHeadersStored": totalMiniHeaders,
@@ -325,7 +325,7 @@ func New(config Config) (*App, error) {
 		if err != nil {
 			return nil, err
 		} else if latestMiniHeader != nil {
-			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(blockWatcherRetentionLimit))
+			minBlockNumber := big.NewInt(0).Sub(latestMiniHeader.Number, big.NewInt(miniHeaderRetentionLimit))
 			if err := meshDB.ClearOldMiniHeaders(minBlockNumber); err != nil {
 				return nil, err
 			}
@@ -337,7 +337,7 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
+	stack := simplestack.New(miniHeaderRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,
@@ -359,12 +359,13 @@ func New(config Config) (*App, error) {
 
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:            meshDB,
-		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
-		ChainID:           config.EthereumChainID,
-		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
+		MeshDB:                   meshDB,
+		BlockWatcher:             blockWatcher,
+		OrderValidator:           orderValidator,
+		ChainID:                  config.EthereumChainID,
+		MaxOrders:                config.MaxOrdersInStorage,
+		MaxExpirationTime:        metadata.MaxExpirationTime,
+		MiniHeaderRetentionLimit: miniHeaderRetentionLimit,
 	})
 	if err != nil {
 		return nil, err
