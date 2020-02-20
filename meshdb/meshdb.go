@@ -328,8 +328,8 @@ func (m *MeshDB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.
 	return miniHeaders[0], nil
 }
 
-// UpdateMiniHeaderRetentionLimit updates the MiniHeaderRetentionLimit. This is only used by tests to
-// returns the retention limit to a manageable size
+// UpdateMiniHeaderRetentionLimit updates the MiniHeaderRetentionLimit. This is only used by tests in order
+// to set the retention limit to a smaller size, making the tests shorter in length
 func (m *MeshDB) UpdateMiniHeaderRetentionLimit(limit int) error {
 	m.MiniHeaderRetentionLimit = limit
 	return m.PruneMiniHeadersAboveRetentionLimit()
