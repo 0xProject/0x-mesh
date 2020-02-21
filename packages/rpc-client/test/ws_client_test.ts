@@ -51,11 +51,8 @@ blockchainTests.resets('WSClient', env => {
             provider = web3Factory.getRpcProvider(providerConfigs);
 
             // HACK(jalextowle): We can't currently specify an out of process provider for a blockchainTests
-            // suit, so we need to update env.blockchainLifecycle so that the resets suite works as expected.
-            // Additionally, `env.blockchainLifecycle.startAsync` will have already been called at this point,
-            // so we call `startAsync` here to avoid an unbalanced snapshot stack.
+            // suite, so we need to update env.blockchainLifecycle so that the resets suite works as expected.
             env.blockchainLifecycle = new BlockchainLifecycle(new Web3Wrapper(provider));
-            await env.blockchainLifecycle.startAsync();
 
             exchangeAddress = getContractAddressesForChainOrThrow(chainId).exchange;
             exchange = new ExchangeContract(exchangeAddress, provider);
