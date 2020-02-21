@@ -92,7 +92,8 @@ provider.start();
     // how we are waiting for the order (what log message we look for). As the test is
     // currently written it only passes when the order is received through GossipSub and
     // fails if it was received through ordersync.
-    await sleepAsync(5000);
+    const fiveSeconds = 5000;
+    await sleepAsync(fiveSeconds);
 
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
