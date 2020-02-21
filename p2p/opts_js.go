@@ -19,11 +19,11 @@ const (
 	// maxShareBatch is the maximum number of messages to share at once.
 	maxShareBatch = 50
 	// peerCountLow is the target number of peers to connect to at any given time.
-	peerCountLow = 10
+	peerCountLow = 50
 	// peerCountHigh is the maximum number of peers to be connected to. If the
 	// number of connections exceeds this number, we will prune connections until
 	// we reach peerCountLow.
-	peerCountHigh = 12
+	peerCountHigh = 60
 )
 
 func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error) {
