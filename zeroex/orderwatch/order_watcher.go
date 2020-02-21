@@ -816,6 +816,13 @@ func (w *Watcher) handleBlockEvents(
 	}
 	w.atLeastOneBlockProcessedMu.Unlock()
 
+	// Since we might have added MiniHeaders to the DB, we need to prune any excess MiniHeaders stored
+	// in the DB
+	err = w.meshDB.PruneMiniHeadersAboveRetentionLimit()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

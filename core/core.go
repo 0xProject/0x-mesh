@@ -47,7 +47,6 @@ import (
 )
 
 const (
-	blockWatcherRetentionLimit    = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
@@ -307,12 +306,26 @@ func New(config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Remove any old mini headers that might be lingering in the database.
+	// See https://github.com/0xProject/0x-mesh/issues/667 and https://github.com/0xProject/0x-mesh/pull/716
+	// We need to leave this in place becuase:
+	//
+	// 1. It is still necessary for anyone upgrading from older versions to >= 9.0.1 in the future.
+	// 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
+	//    unexpected shut down).
+	//
+	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
+	if err != nil {
+		return nil, err
+	}
+
 	topics := orderwatch.GetRelevantTopics()
 	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
 	if err != nil {
 		return nil, err
 	}
-	stack := simplestack.New(blockWatcherRetentionLimit, miniHeaders)
+	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: config.BlockPollingInterval,

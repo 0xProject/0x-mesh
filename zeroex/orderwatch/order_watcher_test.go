@@ -34,7 +34,7 @@ import (
 
 const (
 	ethereumRPCRequestTimeout   = 30 * time.Second
-	blockWatcherRetentionLimit  = 20
+	miniHeaderRetentionLimit    = 2
 	blockPollingInterval        = 1000 * time.Millisecond
 	ethereumRPCMaxContentLength = 524288
 	maxEthRPCRequestsPer24HrUTC = 1000000
@@ -1342,6 +1342,72 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	assert.Equal(t, false, orderTwo.IsRemoved)
 }
 
+func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	require.NoError(t, err)
+	err = meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer func() {
+		cancel()
+	}()
+	_, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+
+	latestMiniHeader, err := meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+
+	headerOne := &miniheader.MiniHeader{
+		Number:    big.NewInt(0).Add(latestMiniHeader.Number, big.NewInt(1)),
+		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
+		Timestamp: time.Now().UTC(),
+	}
+	headerTwo := &miniheader.MiniHeader{
+		Number:    big.NewInt(0).Add(headerOne.Number, big.NewInt(1)),
+		Hash:      common.HexToHash("0x72ca9481b09b8c00b2c38575e5652f2de1077f1676c6b868cf575229fcb06a96"),
+		Parent:    common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
+		Timestamp: time.Now().UTC(),
+	}
+	headerThree := &miniheader.MiniHeader{
+		Number:    big.NewInt(0).Add(headerTwo.Number, big.NewInt(1)),
+		Hash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		Parent:    common.HexToHash("0x72ca9481b09b8c00b2c38575e5652f2de1077f1676c6b868cf575229fcb06a96"),
+		Timestamp: time.Now().UTC(),
+	}
+
+	blockEvents := []*blockwatch.Event{
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: headerOne,
+		},
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: headerTwo,
+		},
+		&blockwatch.Event{
+			Type:        blockwatch.Added,
+			BlockHeader: headerThree,
+		},
+	}
+	err = orderWatcher.handleBlockEvents(ctx, blockEvents)
+	require.NoError(t, err)
+
+	latestMiniHeader, err = meshDB.FindLatestMiniHeader()
+	require.NoError(t, err)
+	assert.Equal(t, headerThree.Hash, latestMiniHeader.Hash)
+
+	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
+	require.NoError(t, err)
+	assert.Equal(t, meshDB.MiniHeaderRetentionLimit, totalMiniHeaders)
+}
+
 // Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
 // `convertValidationResultsIntoOrderEvents` since we cannot properly time-travel using Ganache.
 // Source: https://github.com/trufflesuite/ganache-cli/issues/708
@@ -1520,7 +1586,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
-	stack := simplestack.New(blockWatcherRetentionLimit, []*miniheader.MiniHeader{})
+	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, []*miniheader.MiniHeader{})
 	blockWatcherConfig := blockwatch.Config{
 		Stack:           stack,
 		PollingInterval: blockPollingInterval,
