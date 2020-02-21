@@ -4,12 +4,12 @@
 #
 
 # mesh-builder produces a statically linked binary
-FROM golang:1.12.13-alpine3.9 as mesh-builder
+FROM golang:1.13.4-alpine3.10 as mesh-builder
 
 
 RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
 
-WORKDIR /go/src/github.com/0xProject/0x-mesh
+WORKDIR /0x-mesh
 
 ADD . ./
 
@@ -22,7 +22,7 @@ RUN apk update && apk add ca-certificates --no-cache
 
 WORKDIR /usr/mesh
 
-COPY --from=mesh-builder /go/src/github.com/0xProject/0x-mesh/mesh_bridge /usr/mesh/mesh_bridge
+COPY --from=mesh-builder /0x-mesh/mesh_bridge /usr/mesh/mesh_bridge
 
 RUN chmod +x ./mesh_bridge
 
