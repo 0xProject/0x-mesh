@@ -30,7 +30,7 @@ func main() {
 
 	log.SetLevel(log.Level(env.Verbosity))
 
-	firstClient, err := rpc.NewClient(env.SecondWSRPCAddress)
+	firstClient, err := rpc.NewClient(env.FirstWSRPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}
@@ -40,7 +40,7 @@ func main() {
 	}
 	log.WithField("stats", stats).Info("Spun up first client")
 
-	secondClient, err := rpc.NewClient(env.FirstWSRPCAddress)
+	secondClient, err := rpc.NewClient(env.SecondWSRPCAddress)
 	if err != nil {
 		log.WithError(err).Fatal("could not create client")
 	}
