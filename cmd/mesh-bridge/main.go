@@ -16,6 +16,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	firstWSRPCAddressLabel  = "FirstWSRPCAddress"
+	secondWSRPCAddressLabel = "SecondWSRPCAddress"
+)
+
 type clientEnvVars struct {
 	FirstWSRPCAddress  string `envvar:"FIRST_WS_RPC_ADDRESS"`
 	SecondWSRPCAddress string `envvar:"SECOND_WS_RPC_ADDRESS"`
@@ -54,12 +59,12 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pipeOrders(secondClient, firstClient, "v8", "v9")
+		pipeOrders(secondClient, firstClient, secondWSRPCAddressLabel, firstWSRPCAddressLabel)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		go pipeOrders(firstClient, secondClient, "v9", "v8")
+		go pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
 	}()
 
 	wg.Wait()
