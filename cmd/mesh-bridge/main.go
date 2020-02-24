@@ -8,9 +8,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,6 +20,8 @@ import (
 const (
 	firstWSRPCAddressLabel  = "FirstWSRPCAddress"
 	secondWSRPCAddressLabel = "SecondWSRPCAddress"
+	maxReceiveBatch         = 10
+	receiveTimeout          = 10 * time.Second
 )
 
 type clientEnvVars struct {
@@ -69,28 +73,39 @@ func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
 	}
 	defer clientSubscription.Unsubscribe()
-	signedOrdersCache := []*zeroex.SignedOrder{}
 	for {
+		incomingSignedOrders, err := receiveBatch(orderEventsChan, clientSubscription, inLabel, outLabel)
+		if err != nil {
+			log.Fatal(err)
+		}
+		validationResults, err := outClient.AddOrders(incomingSignedOrders)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Info(fmt.Sprintf("Sent %d orders from %s -> %s. Accepted: %d Rejected: %d", len(incomingSignedOrders), inLabel, outLabel, len(validationResults.Accepted), len(validationResults.Rejected)))
+	}
+}
+
+func receiveBatch(inChan chan []*zeroex.OrderEvent, subscription *ethrpc.ClientSubscription, inLabel, outLabel string) ([]*zeroex.SignedOrder, error) {
+	signedOrdersCache := []*zeroex.SignedOrder{}
+	ticker := time.NewTicker(receiveTimeout)
+	defer ticker.Stop()
+	for {
+		if len(signedOrdersCache) >= maxReceiveBatch {
+			return signedOrdersCache, nil
+		}
 		select {
-		case orderEvents := <-orderEventsChan:
+		case <-ticker.C:
+			return signedOrdersCache, nil
+		case orderEvents := <-inChan:
 			for _, orderEvent := range orderEvents {
 				if orderEvent.EndState != zeroex.ESOrderAdded {
 					continue
 				}
 				log.WithField("orderHash", orderEvent.OrderHash.Hex()).Info(fmt.Sprintf("Found new order %s -> %s", inLabel, outLabel))
 				signedOrdersCache = append(signedOrdersCache, orderEvent.SignedOrder)
-				// If more than 10 orders discovered, pipe them to the outClient
-				if len(signedOrdersCache) >= 10 {
-					validationResults, err := outClient.AddOrders(signedOrdersCache)
-					if err != nil {
-						log.Fatal(err)
-					}
-					log.Info(fmt.Sprintf("Sent %d orders from %s -> %s. Accepted: %d Rejected: %d", len(signedOrdersCache), inLabel, outLabel, len(validationResults.Accepted), len(validationResults.Rejected)))
-					// Clear orders from cache
-					signedOrdersCache = []*zeroex.SignedOrder{}
-				}
 			}
-		case err := <-clientSubscription.Err():
+		case err := <-subscription.Err():
 			log.Fatal(err)
 		}
 	}
