@@ -18,7 +18,7 @@ use a lot of the same code from `go-ethereum`.
 
 Some key differences:
 
--   It is **only accessible via a WebSocket connection**
+-   It is only accessible via HTTP and WebSocket transports (IPC not supported)
 -   uint256 amounts should not be hex encoded, but rather sent as numerical strings
 
 Since the API adheres to the [JSON-RPC 2.0 spec](https://www.jsonrpc.org/specification),
