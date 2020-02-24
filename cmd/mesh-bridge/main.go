@@ -64,7 +64,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		go pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
+		pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
 	}()
 
 	wg.Wait()
