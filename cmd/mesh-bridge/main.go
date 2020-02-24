@@ -1,6 +1,6 @@
 // +build !js
 
-// mesh_bridge is a short program that bridges two Mesh nodes. This is useful in cases where
+// mesh-bridge is a short program that bridges two Mesh nodes. This is useful in cases where
 // we introduce a network-level breaking change but still want the liquidity from one network
 //to flow to another
 package main

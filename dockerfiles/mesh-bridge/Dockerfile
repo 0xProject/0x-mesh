@@ -1,6 +1,6 @@
 # Note: this must be built from the root of the project with:
 #
-#     docker build . -f ./cmd/mesh_bridge/Dockerfile
+#     docker build . -f ./cmd/mesh-bridge/Dockerfile
 #
 
 # mesh-builder produces a statically linked binary
@@ -13,7 +13,7 @@ WORKDIR /0x-mesh
 
 ADD . ./
 
-RUN go build ./cmd/mesh_bridge
+RUN go build ./cmd/mesh-bridge
 
 # Final Image
 FROM alpine:3.9
@@ -22,8 +22,8 @@ RUN apk update && apk add ca-certificates --no-cache
 
 WORKDIR /usr/mesh
 
-COPY --from=mesh-builder /0x-mesh/mesh_bridge /usr/mesh/mesh_bridge
+COPY --from=mesh-builder /0x-mesh/mesh-bridge /usr/mesh/mesh-bridge
 
-RUN chmod +x ./mesh_bridge
+RUN chmod +x ./mesh-bridge
 
-ENTRYPOINT ./mesh_bridge
+ENTRYPOINT ./mesh-bridge
