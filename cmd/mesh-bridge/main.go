@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -55,19 +54,10 @@ func main() {
 	}
 	log.WithField("stats", stats).Info("Spun up second client")
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		pipeOrders(secondClient, firstClient, secondWSRPCAddressLabel, firstWSRPCAddressLabel)
 	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
-	}()
-
-	wg.Wait()
+	pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
 }
 
 func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
