@@ -19,7 +19,7 @@ import (
 type clientEnvVars struct {
 	FirstWSRPCAddress  string `envvar:"FIRST_WS_RPC_ADDRESS"`
 	SecondWSRPCAddress string `envvar:"SECOND_WS_RPC_ADDRESS"`
-	Verbose            bool   `envvar:"VERBOSE"`
+	Verbosity          int    `envvar:"VERBOSE"`
 }
 
 func main() {
@@ -28,11 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	if env.Verbose {
-		log.SetLevel(log.Level(4))
-	} else {
-		log.SetLevel(log.Level(0))
-	}
+	log.SetLevel(log.Level(env.Verbosity))
 
 	firstClient, err := rpc.NewClient(env.SecondWSRPCAddress)
 	if err != nil {
