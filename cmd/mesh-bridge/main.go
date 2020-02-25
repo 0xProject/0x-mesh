@@ -22,6 +22,7 @@ const (
 	secondWSRPCAddressLabel = "SecondWSRPCAddress"
 	maxReceiveBatch         = 100
 	receiveTimeout          = 1 * time.Second
+	tenThousand             = 10000
 )
 
 type clientEnvVars struct {
@@ -67,7 +68,7 @@ func main() {
 func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	orderEventsChan := make(chan []*zeroex.OrderEvent, 8000)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, tenThousand)
 	clientSubscription, err := inClient.SubscribeToOrders(ctx, orderEventsChan)
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't set up OrderStream subscription")
