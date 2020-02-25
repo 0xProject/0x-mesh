@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/0xProject/0x-mesh/rpc"
@@ -83,7 +82,13 @@ func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Info(fmt.Sprintf("Sent %d orders from %s -> %s. Accepted: %d Rejected: %d", len(incomingSignedOrders), inLabel, outLabel, len(validationResults.Accepted), len(validationResults.Rejected)))
+		log.WithFields(log.Fields{
+			"from":        inLabel,
+			"to":          outLabel,
+			"numSent":     len(incomingSignedOrders),
+			"numAccepted": len(validationResults.Accepted),
+			"numRejected": len(validationResults.Rejected),
+		}).Info("Finished bridging orders")
 	}
 }
 
@@ -102,7 +107,11 @@ func receiveBatch(inChan chan []*zeroex.OrderEvent, subscription *ethrpc.ClientS
 				if orderEvent.EndState != zeroex.ESOrderAdded {
 					continue
 				}
-				log.WithField("orderHash", orderEvent.OrderHash.Hex()).Info(fmt.Sprintf("Found new order %s -> %s", inLabel, outLabel))
+				log.WithFields(log.Fields{
+					"from":      inLabel,
+					"to":        outLabel,
+					"orderHash": orderEvent.OrderHash.Hex(),
+				}).Info("Found new order over bridge")
 				signedOrders = append(signedOrders, orderEvent.SignedOrder)
 			}
 		case err := <-subscription.Err():
