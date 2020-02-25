@@ -16,7 +16,7 @@ ADD . ./
 RUN go build ./cmd/mesh-bridge
 
 # Final Image
-FROM alpine:3.9
+FROM alpine:3.10
 
 RUN apk update && apk add ca-certificates --no-cache
 
