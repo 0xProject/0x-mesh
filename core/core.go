@@ -183,23 +183,22 @@ type snapshotInfo struct {
 }
 
 type App struct {
-	config                    Config
-	peerID                    peer.ID
-	privKey                   p2pcrypto.PrivKey
-	node                      *p2p.Node
-	chainID                   int
-	blockWatcher              *blockwatch.Watcher
-	orderWatcher              *orderwatch.Watcher
-	orderValidator            *ordervalidator.OrderValidator
-	orderFilter               *orderfilter.Filter
-	snapshotExpirationWatcher *expirationwatch.Watcher
-	muIdToSnapshotInfo        sync.Mutex
-	idToSnapshotInfo          map[string]snapshotInfo
-	ethRPCRateLimiter         ratelimit.RateLimiter
-	ethRPCClient              ethrpcclient.Client
-	db                        *meshdb.MeshDB
-	ordersyncService          *ordersync.Service
-	// FIXME(jalextowle): Maybe this should just be contractAddresses?
+	config                     Config
+	peerID                     peer.ID
+	privKey                    p2pcrypto.PrivKey
+	node                       *p2p.Node
+	chainID                    int
+	blockWatcher               *blockwatch.Watcher
+	orderWatcher               *orderwatch.Watcher
+	orderValidator             *ordervalidator.OrderValidator
+	orderFilter                *orderfilter.Filter
+	snapshotExpirationWatcher  *expirationwatch.Watcher
+	muIdToSnapshotInfo         sync.Mutex
+	idToSnapshotInfo           map[string]snapshotInfo
+	ethRPCRateLimiter          ratelimit.RateLimiter
+	ethRPCClient               ethrpcclient.Client
+	db                         *meshdb.MeshDB
+	ordersyncService           *ordersync.Service
 	chainIDToContractAddresses map[int]ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
