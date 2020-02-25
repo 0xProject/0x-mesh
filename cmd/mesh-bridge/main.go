@@ -78,6 +78,9 @@ func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if len(incomingSignedOrders) == 0 {
+			continue
+		}
 		validationResults, err := outClient.AddOrders(incomingSignedOrders)
 		if err != nil {
 			log.Fatal(err)
