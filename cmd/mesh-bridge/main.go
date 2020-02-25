@@ -88,22 +88,22 @@ func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 }
 
 func receiveBatch(inChan chan []*zeroex.OrderEvent, subscription *ethrpc.ClientSubscription, inLabel, outLabel string) ([]*zeroex.SignedOrder, error) {
-	signedOrdersCache := []*zeroex.SignedOrder{}
+	signedOrders := []*zeroex.SignedOrder{}
 	timeoutChan := time.After(receiveTimeout)
 	for {
-		if len(signedOrdersCache) >= maxReceiveBatch {
-			return signedOrdersCache, nil
+		if len(signedOrders) >= maxReceiveBatch {
+			return signedOrders, nil
 		}
 		select {
 		case <-timeoutChan:
-			return signedOrdersCache, nil
+			return signedOrders, nil
 		case orderEvents := <-inChan:
 			for _, orderEvent := range orderEvents {
 				if orderEvent.EndState != zeroex.ESOrderAdded {
 					continue
 				}
 				log.WithField("orderHash", orderEvent.OrderHash.Hex()).Info(fmt.Sprintf("Found new order %s -> %s", inLabel, outLabel))
-				signedOrdersCache = append(signedOrdersCache, orderEvent.SignedOrder)
+				signedOrders = append(signedOrders, orderEvent.SignedOrder)
 			}
 		case err := <-subscription.Err():
 			log.Fatal(err)
