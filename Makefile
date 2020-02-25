@@ -128,3 +128,7 @@ docker-mesh-bootstrap:
 .PHONY: docker-mesh-fluent-bit
 docker-mesh-fluent-bit:
 	docker build ./dockerfiles/mesh-fluent-bit -t 0xorg/mesh-fluent-bit -f ./dockerfiles/mesh-fluent-bit/Dockerfile
+
+.PHONY: docker-mesh-bridge
+docker-mesh-bridge:
+	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
