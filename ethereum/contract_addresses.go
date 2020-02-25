@@ -3,7 +3,6 @@ package ethereum
 import (
 	"fmt"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,33 +13,6 @@ func GetContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 		return contractAddresses, nil
 	}
 	return ContractAddresses{}, fmt.Errorf("invalid chain: %d", chainID)
-}
-
-func AddContractAddressesForChainID(chainID int, addresses ContractAddresses) error {
-	if chainID == 1 {
-		return fmt.Errorf("cannot add contract addresses for chainID 1: addresses for mainnet are hard-coded and cannot be changed")
-	}
-	if addresses.Exchange == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
-	}
-	if addresses.DevUtils == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtils address is required", chainID)
-	}
-	if addresses.ERC20Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC20Proxy address is required", chainID)
-	}
-	if addresses.ERC721Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC721Proxy address is required", chainID)
-	}
-	if addresses.ERC1155Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC1155Proxy address is required", chainID)
-	}
-	// TODO(albrow): Uncomment this if we re-add coordinator support.
-	// if addresses.CoordinatorRegistry == constants.NullAddress {
-	// 	return fmt.Errorf("cannot add contract addresses for chain ID %d: CoordinatorRegistry address is required", chainID)
-	// }
-	ChainIDToContractAddresses[chainID] = addresses
-	return nil
 }
 
 // ContractAddresses maps a contract's name to it's Ethereum address

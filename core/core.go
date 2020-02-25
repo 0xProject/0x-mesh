@@ -199,6 +199,8 @@ type App struct {
 	ethRPCClient              ethrpcclient.Client
 	db                        *meshdb.MeshDB
 	ordersyncService          *ordersync.Service
+	// FIXME(jalextowle): Maybe this should just be contractAddresses?
+	chainIDToContractAddresses map[int]ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -217,8 +219,9 @@ func New(config Config) (*App, error) {
 	})
 
 	// Add custom contract addresses if needed.
+	var chainIDToContractAddresses map[int]ethereum.ContractAddresses
 	if config.CustomContractAddresses != "" {
-		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses); err != nil {
+		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, chainIDToContractAddresses, config.CustomContractAddresses); err != nil {
 			return nil, err
 		}
 	}
@@ -368,20 +371,21 @@ func New(config Config) (*App, error) {
 	snapshotExpirationWatcher := expirationwatch.New()
 
 	app := &App{
-		started:                   make(chan struct{}),
-		config:                    config,
-		privKey:                   privKey,
-		peerID:                    peerID,
-		chainID:                   config.EthereumChainID,
-		blockWatcher:              blockWatcher,
-		orderWatcher:              orderWatcher,
-		orderValidator:            orderValidator,
-		orderFilter:               orderFilter,
-		snapshotExpirationWatcher: snapshotExpirationWatcher,
-		idToSnapshotInfo:          map[string]snapshotInfo{},
-		ethRPCRateLimiter:         ethRPCRateLimiter,
-		ethRPCClient:              ethClient,
-		db:                        meshDB,
+		started:                    make(chan struct{}),
+		config:                     config,
+		privKey:                    privKey,
+		peerID:                     peerID,
+		chainID:                    config.EthereumChainID,
+		blockWatcher:               blockWatcher,
+		orderWatcher:               orderWatcher,
+		orderValidator:             orderValidator,
+		orderFilter:                orderFilter,
+		snapshotExpirationWatcher:  snapshotExpirationWatcher,
+		idToSnapshotInfo:           map[string]snapshotInfo{},
+		ethRPCRateLimiter:          ethRPCRateLimiter,
+		ethRPCClient:               ethClient,
+		db:                         meshDB,
+		chainIDToContractAddresses: chainIDToContractAddresses,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -1063,13 +1067,40 @@ func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
 	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
-func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {
+func parseAndAddCustomContractAddresses(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses, encodedContractAddresses string) error {
 	customAddresses := ethereum.ContractAddresses{}
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	if err := ethereum.AddContractAddressesForChainID(chainID, customAddresses); err != nil {
+	if err := addContractAddressesForChainID(chainID, chainIDToContractAddresses, customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
+	return nil
+}
+
+func addContractAddressesForChainID(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses, addresses ethereum.ContractAddresses) error {
+	if chainID == 1 {
+		return fmt.Errorf("cannot add contract addresses for chainID 1: addresses for mainnet are hard-coded and cannot be changed")
+	}
+	if addresses.Exchange == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
+	}
+	if addresses.DevUtils == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtils address is required", chainID)
+	}
+	if addresses.ERC20Proxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC20Proxy address is required", chainID)
+	}
+	if addresses.ERC721Proxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC721Proxy address is required", chainID)
+	}
+	if addresses.ERC1155Proxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC1155Proxy address is required", chainID)
+	}
+	// TODO(albrow): Uncomment this if we re-add coordinator support.
+	// if addresses.CoordinatorRegistry == constants.NullAddress {
+	// 	return fmt.Errorf("cannot add contract addresses for chain ID %d: CoordinatorRegistry address is required", chainID)
+	// }
+	chainIDToContractAddresses[chainID] = addresses
 	return nil
 }
