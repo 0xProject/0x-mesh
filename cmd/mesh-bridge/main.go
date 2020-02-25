@@ -20,7 +20,7 @@ const (
 	firstWSRPCAddressLabel  = "FirstWSRPCAddress"
 	secondWSRPCAddressLabel = "SecondWSRPCAddress"
 	maxReceiveBatch         = 100
-	receiveTimeout          = 1 * time.Second
+	receiveTimeout          = 2 * time.Second
 	tenThousand             = 10000
 )
 
