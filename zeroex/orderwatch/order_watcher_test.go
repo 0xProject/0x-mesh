@@ -67,6 +67,8 @@ var (
 // the normal testing process. They will only be run if the "--serial" flag is used.
 var serialTestsEnabled bool
 
+var chainIDToContractAddresses = ethereum.NewChainIDToContractAddresses()
+
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
 	testing.Init()
@@ -93,7 +95,7 @@ func init() {
 		panic(err)
 	}
 	ethClient = ethclient.NewClient(rpcClient)
-	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
+	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 	zrx, err = wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	if err != nil {
 		panic(err)
@@ -124,7 +126,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -166,7 +168,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
@@ -208,7 +210,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
@@ -250,7 +252,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
@@ -263,7 +265,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
+	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
@@ -293,7 +295,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
@@ -306,7 +308,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 		From:   makerAddress,
 		Signer: scenario.GetTestSignerFn(makerAddress),
 	}
-	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
+	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 	txn, err := erc1155Mintable.SetApprovalForAll(opts, ganacheAddresses.ERC1155Proxy, false)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
@@ -336,7 +338,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
@@ -378,10 +380,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
-	ganacheAddresses := ethereum.ChainIDToContractAddresses[constants.TestChainID]
+	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
@@ -421,7 +423,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -489,7 +491,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -534,7 +536,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -604,7 +606,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -647,7 +649,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -690,7 +692,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -734,7 +736,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
@@ -778,7 +780,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
@@ -878,7 +880,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	// Set up test and orderWatcher. Manually change maxOrders.
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	// Store metadata entry in DB
@@ -946,7 +948,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
@@ -991,7 +993,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
@@ -1034,7 +1036,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 }
 
 func TestOrderWatcherUpdateBlockHeadersStoredInDBHeaderExists(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	headerOne := &miniheader.MiniHeader{
@@ -1196,7 +1198,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
@@ -1258,7 +1260,7 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
@@ -1350,7 +1352,7 @@ func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 	err = meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
 	require.NoError(t, err)
@@ -1419,7 +1421,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), chainIDToContractAddresses)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer func() {
@@ -1595,15 +1597,16 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 		Client:          blockWatcherClient,
 	}
 	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength)
+	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
-		MeshDB:            meshDB,
-		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
-		ChainID:           constants.TestChainID,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
-		MaxOrders:         1000,
+		MeshDB:                     meshDB,
+		BlockWatcher:               blockWatcher,
+		OrderValidator:             orderValidator,
+		ChainID:                    constants.TestChainID,
+		ChainIDToContractAddresses: chainIDToContractAddresses,
+		MaxExpirationTime:          constants.UnlimitedExpirationTime,
+		MaxOrders:                  1000,
 	})
 	require.NoError(t, err)
 

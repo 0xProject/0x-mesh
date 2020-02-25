@@ -88,6 +88,7 @@ type Watcher struct {
 	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
+	chainIDToContractAddresses map[int]ethereum.ContractAddresses
 	contractAddressToSeenCount map[common.Address]uint
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
@@ -104,12 +105,13 @@ type Watcher struct {
 }
 
 type Config struct {
-	MeshDB            *meshdb.MeshDB
-	BlockWatcher      *blockwatch.Watcher
-	OrderValidator    *ordervalidator.OrderValidator
-	ChainID           int
-	MaxOrders         int
-	MaxExpirationTime *big.Int
+	MeshDB                     *meshdb.MeshDB
+	BlockWatcher               *blockwatch.Watcher
+	OrderValidator             *ordervalidator.OrderValidator
+	ChainID                    int
+	ChainIDToContractAddresses map[int]ethereum.ContractAddresses
+	MaxOrders                  int
+	MaxExpirationTime          *big.Int
 }
 
 // New instantiates a new order watcher
@@ -119,7 +121,7 @@ func New(config Config) (*Watcher, error) {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(config.ChainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(config.ChainID, config.ChainIDToContractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -1511,7 +1513,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID, w.chainIDToContractAddresses)
 		if err == nil {
 			// Only check the ExchangeAddress if we know the expected address for the
 			// given chainID/networkID. If we don't know it, the order could still be

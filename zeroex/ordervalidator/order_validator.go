@@ -240,11 +240,12 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
+	chainIDToContractAddresses   map[int]ethereum.ContractAddresses
 }
 
 // New instantiates a new order validator
-func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*OrderValidator, error) {
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID, chainIDToContractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +272,7 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
+		chainIDToContractAddresses:   chainIDToContractAddresses,
 	}, nil
 }
 
@@ -675,7 +677,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(o.chainID)
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(o.chainID, o.chainIDToContractAddresses)
 		if err != nil {
 			log.WithError(err).WithField("chainID", o.chainID).Panic("Couldn't find contract addresses for chainID")
 		}

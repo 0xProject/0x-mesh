@@ -93,7 +93,7 @@ type MetadataCollection struct {
 }
 
 // New instantiates a new MeshDB instance
-func New(path string) (*MeshDB, error) {
+func New(path string, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func New(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
-	orders, err := setupOrders(database)
+	orders, err := setupOrders(database, chainIDToContractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func New(path string) (*MeshDB, error) {
 	}, nil
 }
 
-func setupOrders(database *db.DB) (*OrdersCollection, error) {
+func setupOrders(database *db.DB, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*OrdersCollection, error) {
 	col, err := database.NewCollection("order", &Order{})
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 	// here is compute time for storage space.
 	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()), chainIDToContractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -181,7 +181,7 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 			}
 		}
 
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
+		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()), chainIDToContractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),

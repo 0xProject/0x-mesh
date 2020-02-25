@@ -17,11 +17,11 @@ import (
 )
 
 func TestOrderCRUDOperations(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
@@ -100,7 +100,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 
 	// ERC20 AssetData
@@ -145,12 +145,12 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func TestTrimOrdersByExpirationTime(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
 	// TODO(albrow): Move these to top of file.
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	makerAddress := constants.GanacheAccount0
 
@@ -311,11 +311,11 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 }
 
 func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID)
+	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
@@ -484,7 +484,7 @@ func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, is
 func TestPruneMiniHeadersAboveRetentionLimit(t *testing.T) {
 	t.Parallel()
 
-	meshDB, err := New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	defer meshDB.Close()
 

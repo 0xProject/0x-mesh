@@ -18,7 +18,7 @@ import (
 
 var testOrder = &Order{
 	ChainID:               big.NewInt(constants.TestChainID),
-	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
+	ExchangeAddress:       ethereum.NewChainIDToContractAddresses()[constants.TestChainID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,

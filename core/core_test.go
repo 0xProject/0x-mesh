@@ -33,7 +33,7 @@ const (
 )
 
 func TestEthereumChainDetection(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
 	require.NoError(t, err)
 	defer meshDB.Close()
 

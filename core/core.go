@@ -219,7 +219,7 @@ func New(config Config) (*App, error) {
 	})
 
 	// Add custom contract addresses if needed.
-	var chainIDToContractAddresses map[int]ethereum.ContractAddresses
+	chainIDToContractAddresses := ethereum.NewChainIDToContractAddresses()
 	if config.CustomContractAddresses != "" {
 		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, chainIDToContractAddresses, config.CustomContractAddresses); err != nil {
 			return nil, err
@@ -259,7 +259,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath)
+	meshDB, err := meshdb.New(databasePath, chainIDToContractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -343,6 +343,7 @@ func New(config Config) (*App, error) {
 		ethClient,
 		config.EthereumChainID,
 		config.EthereumRPCMaxContentLength,
+		chainIDToContractAddresses,
 	)
 	if err != nil {
 		return nil, err
@@ -350,19 +351,20 @@ func New(config Config) (*App, error) {
 
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:            meshDB,
-		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
-		ChainID:           config.EthereumChainID,
-		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
+		MeshDB:                     meshDB,
+		BlockWatcher:               blockWatcher,
+		OrderValidator:             orderValidator,
+		ChainID:                    config.EthereumChainID,
+		ChainIDToContractAddresses: chainIDToContractAddresses,
+		MaxOrders:                  config.MaxOrdersInStorage,
+		MaxExpirationTime:          metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize the order filter
-	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter)
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, chainIDToContractAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
@@ -407,8 +409,8 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, error) {
-	defaultTopic, err := orderfilter.GetDefaultTopic(chainID)
+func getPublishTopics(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopic(chainID, chainIDToContractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +475,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 
 func (app *App) Start(ctx context.Context) error {
 	// Get the publish topics depending on our custom order filter.
-	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
+	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.chainIDToContractAddresses, app.orderFilter)
 	if err != nil {
 		return err
 	}
@@ -1072,35 +1074,8 @@ func parseAndAddCustomContractAddresses(chainID int, chainIDToContractAddresses 
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	if err := addContractAddressesForChainID(chainID, chainIDToContractAddresses, customAddresses); err != nil {
+	if err := ethereum.AddContractAddressesForChainID(chainID, chainIDToContractAddresses, customAddresses); err != nil {
 		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	return nil
-}
-
-func addContractAddressesForChainID(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses, addresses ethereum.ContractAddresses) error {
-	if chainID == 1 {
-		return fmt.Errorf("cannot add contract addresses for chainID 1: addresses for mainnet are hard-coded and cannot be changed")
-	}
-	if addresses.Exchange == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
-	}
-	if addresses.DevUtils == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtils address is required", chainID)
-	}
-	if addresses.ERC20Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC20Proxy address is required", chainID)
-	}
-	if addresses.ERC721Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC721Proxy address is required", chainID)
-	}
-	if addresses.ERC1155Proxy == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC1155Proxy address is required", chainID)
-	}
-	// TODO(albrow): Uncomment this if we re-add coordinator support.
-	// if addresses.CoordinatorRegistry == constants.NullAddress {
-	// 	return fmt.Errorf("cannot add contract addresses for chain ID %d: CoordinatorRegistry address is required", chainID)
-	// }
-	chainIDToContractAddresses[chainID] = addresses
 	return nil
 }

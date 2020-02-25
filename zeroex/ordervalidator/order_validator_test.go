@@ -48,10 +48,11 @@ var (
 	wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
 	zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
 
-	unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
-	malformedAssetData   = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
-	malformedSignature   = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
-	multiAssetAssetData  = common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	unsupportedAssetData       = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
+	malformedAssetData         = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
+	malformedSignature         = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
+	multiAssetAssetData        = common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000204a7cb5fb70000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000003e90000000000000000000000000000000000000000000000000000000000002711000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000c800000000000000000000000000000000000000000000000000000000000007d10000000000000000000000000000000000000000000000000000000000004e210000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c4800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+	chainIDToContractAddresses = ethereum.NewChainIDToContractAddresses()
 )
 
 // Since these tests must be run sequentially, we don't want them to run as part of
@@ -81,7 +82,7 @@ var testSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
 	},
 }
 
@@ -161,7 +162,7 @@ func TestBatchValidateOffChainCases(t *testing.T) {
 			&testCase.SignedOrder,
 		}
 
-		orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength)
+		orderValidator, err := New(ethClient, constants.TestChainID, constants.TestMaxContentLength, chainIDToContractAddresses)
 		require.NoError(t, err)
 
 		offchainValidOrders, rejectedOrderInfos := orderValidator.BatchOffchainValidation(signedOrders)
@@ -194,7 +195,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -226,7 +227,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -242,7 +243,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
-	signedOrder.SenderAddress = ethereum.ChainIDToContractAddresses[constants.TestChainID].Coordinator
+	signedOrder.SenderAddress = chainIDToContractAddresses[constants.TestChainID].Coordinator
 	// Address for which there is no entry in the Coordinator registry
 	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
 
@@ -259,7 +260,7 @@ func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -282,7 +283,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	signedOrder, err := zeroex.SignTestOrder(&testSignedOrder.Order)
 	require.NoError(t, err)
-	signedOrder.SenderAddress = ethereum.ChainIDToContractAddresses[constants.TestChainID].Coordinator
+	signedOrder.SenderAddress = chainIDToContractAddresses[constants.TestChainID].Coordinator
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	signedOrders := []*zeroex.SignedOrder{
@@ -295,7 +296,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
 
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	// generate a test server so we can capture and inspect the request
@@ -323,7 +324,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 
 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
-	coordinatorRegistryAddress := ethereum.ChainIDToContractAddresses[constants.TestChainID].CoordinatorRegistry
+	coordinatorRegistryAddress := chainIDToContractAddresses[constants.TestChainID].CoordinatorRegistry
 	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
 	require.NoError(t, err)
 	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
@@ -352,7 +353,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize - 10
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder}
@@ -372,7 +373,7 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
@@ -398,7 +399,7 @@ var testMultiAssetSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
 	},
 }
 
@@ -415,7 +416,7 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	maxContentLength := singleOrderPayloadSize * 3
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, chainIDToContractAddresses)
 	require.NoError(t, err)
 
 	signedOrders := []*zeroex.SignedOrder{signedMultiAssetOrder, signedOrder, signedOrder, signedOrder, signedOrder}
