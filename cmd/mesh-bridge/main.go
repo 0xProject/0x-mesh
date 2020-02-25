@@ -89,14 +89,13 @@ func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 
 func receiveBatch(inChan chan []*zeroex.OrderEvent, subscription *ethrpc.ClientSubscription, inLabel, outLabel string) ([]*zeroex.SignedOrder, error) {
 	signedOrdersCache := []*zeroex.SignedOrder{}
-	ticker := time.NewTicker(receiveTimeout)
-	defer ticker.Stop()
+	timeoutChan := time.After(receiveTimeout)
 	for {
 		if len(signedOrdersCache) >= maxReceiveBatch {
 			return signedOrdersCache, nil
 		}
 		select {
-		case <-ticker.C:
+		case <-timeoutChan:
 			return signedOrdersCache, nil
 		case orderEvents := <-inChan:
 			for _, orderEvent := range orderEvents {
