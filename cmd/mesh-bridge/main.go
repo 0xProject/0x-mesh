@@ -27,7 +27,7 @@ const (
 type clientEnvVars struct {
 	FirstWSRPCAddress  string `envvar:"FIRST_WS_RPC_ADDRESS"`
 	SecondWSRPCAddress string `envvar:"SECOND_WS_RPC_ADDRESS"`
-	Verbosity          int    `envvar:"VERBOSE"`
+	Verbosity          int    `envvar:"VERBOSITY"`
 }
 
 func main() {
