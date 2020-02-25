@@ -20,8 +20,8 @@ import (
 const (
 	firstWSRPCAddressLabel  = "FirstWSRPCAddress"
 	secondWSRPCAddressLabel = "SecondWSRPCAddress"
-	maxReceiveBatch         = 10
-	receiveTimeout          = 10 * time.Second
+	maxReceiveBatch         = 100
+	receiveTimeout          = 1 * time.Second
 )
 
 type clientEnvVars struct {
