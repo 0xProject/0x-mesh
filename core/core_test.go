@@ -101,6 +101,33 @@ func init() {
 	}
 }
 
+func TestIdempotentAppInitialization(t *testing.T) {
+	dataDir := "/tmp/test_node/" + uuid.New().String()
+	config := Config{
+		Verbosity:                        2,
+		DataDir:                          dataDir,
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		EthereumRPCURL:                   constants.GanacheEndpoint,
+		EthereumChainID:                  constants.TestChainID,
+		UseBootstrapList:                 false,
+		BootstrapList:                    "",
+		BlockPollingInterval:             250 * time.Millisecond,
+		EthereumRPCMaxContentLength:      524288,
+		EnableEthereumRPCRateLimiting:    false,
+		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
+		EthereumRPCMaxRequestsPerSecond:  99999999999999,
+		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                "{}",
+		CustomContractAddresses:          `{"exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788","devUtils":"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1","erc20Proxy":"0x1dc4c1cefef38a777b15aa20260a54e584b16c48","erc721Proxy":"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401","erc1155Proxy":"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"}`,
+	}
+	app, err := New(config)
+	require.NoError(t, err)
+	app.db.Close()
+	_, err = New(config)
+	require.NoError(t, err)
+}
+
 func TestOrderSync(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
