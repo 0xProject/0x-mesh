@@ -38,11 +38,11 @@ jobs:
           name: Run linters
           command: make lint
       - run:
-          name: Build browser package
-          command: cd browser && yarn install && yarn build
+          name: Build the typescript monorepo
+          command: yarn install && yarn build
       - run:
-          name: Build examples/browser
-          command: cd examples/browser && yarn install --force && yarn build
+          name: Run TS RPC client tests
+          command: cd packages/rpc-client && yarn test
       - run:
           name: Run Go tests
           command: make test-go
@@ -58,12 +58,6 @@ jobs:
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...
-      - run:
-          name: Build TS RPC client
-          command: cd rpc/clients/typescript && yarn build
-      - run:
-          name: Run TS RPC client tests
-          command: cd rpc/clients/typescript && yarn test
       - run:
           name: Run cut-release script to test it still works
           command: VERSION=100.0.0 make cut-release
