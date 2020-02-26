@@ -340,11 +340,6 @@ func (m *MeshDB) PruneMiniHeadersAboveRetentionLimit() error {
 	if totalMiniHeaders, err := m.MiniHeaders.Count(); err != nil {
 		return err
 	} else if totalMiniHeaders > m.MiniHeaderRetentionLimit {
-		miniHeadersToRemove := totalMiniHeaders - m.MiniHeaderRetentionLimit
-		log.WithFields(log.Fields{
-			"numHeadersToRemove": miniHeadersToRemove,
-			"totalHeadersStored": totalMiniHeaders,
-		}).Warn("Removing outdated block headers in database (this can take a while)")
 		latestMiniHeader, err := m.FindLatestMiniHeader()
 		if err != nil {
 			return err

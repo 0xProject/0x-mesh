@@ -315,6 +315,17 @@ func New(config Config) (*App, error) {
 	// 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
 	//    unexpected shut down).
 	//
+	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
+	if err != nil {
+		return nil, err
+	}
+	miniHeadersToRemove := totalMiniHeaders - meshDB.MiniHeaderRetentionLimit
+	if miniHeadersToRemove > 0 {
+		log.WithFields(log.Fields{
+			"numHeadersToRemove": miniHeadersToRemove,
+			"totalHeadersStored": totalMiniHeaders,
+		}).Warn("Removing outdated block headers in database (this can take a while)")
+	}
 	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
 	if err != nil {
 		return nil, err
