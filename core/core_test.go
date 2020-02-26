@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"math/big"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -53,7 +54,7 @@ func TestEthereumChainDetection(t *testing.T) {
 func newTestApp(t *testing.T) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
-		Verbosity:                        2,
+		Verbosity:                        5,
 		DataDir:                          dataDir,
 		P2PTCPPort:                       0,
 		P2PWebSocketsPort:                0,
@@ -99,6 +100,15 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func TestNewGoRoutineLeak(t *testing.T) {
+	beforeGoRoutineCount := runtime.NumGoroutine()
+	app := newTestApp(t)
+	app.db.Close()
+	time.Sleep(5 * time.Second)
+	afterGoRoutineCount := runtime.NumGoroutine()
+	require.Equal(t, beforeGoRoutineCount, afterGoRoutineCount)
 }
 
 func TestOrderSync(t *testing.T) {
