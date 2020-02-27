@@ -30,7 +30,7 @@ deps-ts-no-lockfile:
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-node test-wasm-browser
+test-all: test-go test-wasm-node test-wasm-browser test-ts
 
 
 .PHONY: test-go
@@ -62,6 +62,11 @@ test-wasm-node:
 .PHONY: test-wasm-browser
 test-wasm-browser:
 	GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+
+
+.PHONY: test-ts
+test-ts:
+	yarn test
 
 
 .PHONY: lint
