@@ -180,10 +180,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			// return an error.
 			return err
 		}
+		logMessage := "blockwatch.Watcher error encountered"
 		if isWarning(err) {
-			log.WithError(err).Warn("blockwatch.Watcher error encountered")
+			log.WithError(err).Warn(logMessage)
 		} else {
-			log.WithError(err).Error("blockwatch.Watcher error encountered")
+			log.WithError(err).Error(logMessage)
 		}
 	}
 
@@ -211,10 +212,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 					ticker.Stop()
 					return err
 				}
+				logMessage := "blockwatch.Watcher error encountered"
 				if isWarning(err) {
-					log.WithError(err).Warn("blockwatch.Watcher error encountered")
+					log.WithError(err).Warn(logMessage)
 				} else {
-					log.WithError(err).Error("blockwatch.Watcher error encountered")
+					log.WithError(err).Error(logMessage)
 				}
 			}
 		}
