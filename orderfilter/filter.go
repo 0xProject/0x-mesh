@@ -20,6 +20,8 @@ const (
 	topicVersionFormat          = "/0x-orders/version/%d%s"
 	topicChainIDAndSchemaFormat = "/chain/%d/schema/%s"
 	fullTopicFormat             = "/0x-orders/version/%d/chain/%d/schema/%s"
+	rendezvousVersion           = 1
+	fullRendezvousFormat        = "/0x-custom-filter-rendezvous/version/%d/chain/%d/schema/%s"
 )
 
 type WrongTopicVersionError struct {
@@ -71,7 +73,7 @@ func GetDefaultTopic(chainID int) (string, error) {
 }
 
 type Filter struct {
-	topic                string
+	encodedSchema        string
 	version              int
 	chainID              int
 	rawCustomOrderSchema string
@@ -164,13 +166,20 @@ func NewFromTopic(topic string) (*Filter, error) {
 }
 
 func (f *Filter) Topic() string {
-	if f.topic == "" {
-		f.topic = f.generateTopic()
+	if f.encodedSchema == "" {
+		f.encodedSchema = f.generateEncodedSchema()
 	}
-	return f.topic
+	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, f.chainID, f.encodedSchema)
 }
 
-func (v *Filter) generateTopic() string {
+func (f *Filter) Rendezvous() string {
+	if f.encodedSchema == "" {
+		f.encodedSchema = f.generateEncodedSchema()
+	}
+	return fmt.Sprintf(fullRendezvousFormat, rendezvousVersion, f.chainID, f.encodedSchema)
+}
+
+func (f *Filter) generateEncodedSchema() string {
 	// Note(albrow): We use canonicaljson to elminate any differences in spacing,
 	// formatting, and the order of field names. This ensures that two filters
 	// that are semantically the same JSON object always encode to exactly the
@@ -191,10 +200,9 @@ func (v *Filter) generateTopic() string {
 	//     }
 	//
 	var holder interface{} = struct{}{}
-	_ = canonicaljson.Unmarshal([]byte(v.rawCustomOrderSchema), &holder)
+	_ = canonicaljson.Unmarshal([]byte(f.rawCustomOrderSchema), &holder)
 	canonicalOrderSchemaJSON, _ := canonicaljson.Marshal(holder)
-	base64EncodedSchema := base64.URLEncoding.EncodeToString(canonicalOrderSchemaJSON)
-	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, v.chainID, base64EncodedSchema)
+	return base64.URLEncoding.EncodeToString(canonicalOrderSchemaJSON)
 }
 
 // MatchOrder returns true if the order passes the filter. It only returns an

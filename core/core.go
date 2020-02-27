@@ -434,7 +434,7 @@ func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, 
 	}
 }
 
-func getRendezvous(chainID int) string {
+func getDefaultRendezvous(chainID int) string {
 	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
 }
 
@@ -599,6 +599,10 @@ func (app *App) Start(ctx context.Context) error {
 	if app.config.BootstrapList != "" {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
+	rendezvousPoints := []string{
+		app.orderFilter.Rendezvous(),
+		getDefaultRendezvous(app.config.EthereumChainID),
+	}
 	nodeConfig := p2p.Config{
 		SubscribeTopic:         app.orderFilter.Topic(),
 		PublishTopics:          publishTopics,
@@ -607,7 +611,7 @@ func (app *App) Start(ctx context.Context) error {
 		Insecure:               false,
 		PrivateKey:             app.privKey,
 		MessageHandler:         app,
-		RendezvousString:       getRendezvous(app.config.EthereumChainID),
+		RendezvousPoints:       rendezvousPoints,
 		UseBootstrapList:       app.config.UseBootstrapList,
 		BootstrapList:          bootstrapList,
 		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
@@ -993,7 +997,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 	response := &types.Stats{
 		Version:                           version,
 		PubSubTopic:                       app.orderFilter.Topic(),
-		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
+		Rendezvous:                        getDefaultRendezvous(app.config.EthereumChainID),
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
