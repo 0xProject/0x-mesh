@@ -334,6 +334,7 @@ func registerStatsTest(description string) {
 	registerStatsField(description, "version")
 	registerStatsField(description, "pubSubTopic")
 	registerStatsField(description, "rendezvous")
+	registerStatsField(description, "secondaryRendezvous")
 	registerStatsField(description, "peerID")
 	registerStatsField(description, "ethereumChainID")
 	registerStatsField(description, "latestBlock | hash")
@@ -443,8 +444,10 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 						if count == testLength {
 							done <- struct{}{}
 						}
-					} else if len(string(arg.Value)) > 1 {
-						t.Errorf("Unexpected test results: %s\n", string(arg.Value))
+					} else if arg.Type == runtime.TypeString && len(string(arg.Value)) > 1 {
+						t.Errorf("Unexpected extra test results: %s\n", string(arg.Value))
+					} else {
+						t.Errorf("Unexpected non-string output: %s %s\n", arg.Type, arg.Value)
 					}
 				}
 			case runtime.APITypeError:

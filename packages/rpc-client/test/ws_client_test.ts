@@ -147,6 +147,7 @@ blockchainTests.resets('WSClient', env => {
                     version: '',
                     pubSubTopic: '/0x-orders/version/3/chain/1337/schema/e30=',
                     rendezvous: '/0x-mesh/network/1337/version/2',
+                    secondaryRendezvous: [],
                     peerID: deployment.peerID,
                     ethereumChainID: 1337,
                     latestBlock: {
@@ -345,13 +346,13 @@ blockchainTests.resets('WSClient', env => {
         describe('#unsubscribeAsync', async () => {
             it('should unsubscribe successfully', async () => {
                 // tslint:disable-next-line:no-empty
-                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => { });
                 await deployment.client.unsubscribeAsync(subscriptionID);
             });
 
             it('should throw an error after unsubscribing redundantly', async () => {
                 // tslint:disable-next-line:no-empty
-                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => { });
                 await deployment.client.unsubscribeAsync(subscriptionID);
                 let thrownError: Error = new Error('');
                 try {

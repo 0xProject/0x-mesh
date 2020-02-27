@@ -264,6 +264,7 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 	// Ensure that the correct response was logged by "GetStats"
 	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic)
 	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous)
+	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous)
 	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
 	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
 	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock)

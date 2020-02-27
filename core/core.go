@@ -1014,10 +1014,10 @@ func (app *App) GetStats() (*types.Stats, error) {
 	}
 
 	response := &types.Stats{
-		Version:     version,
-		PubSubTopic: app.orderFilter.Topic(),
-		// TOOD(albrow): Include all rendezvous points.
+		Version:                           version,
+		PubSubTopic:                       app.orderFilter.Topic(),
 		Rendezvous:                        rendezvousPoints[0],
+		SecondaryRendezvous:               rendezvousPoints[1:],
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
