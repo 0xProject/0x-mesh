@@ -434,8 +434,23 @@ func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, 
 	}
 }
 
-func getDefaultRendezvous(chainID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
+func (app *App) getRendezvousPoints() ([]string, error) {
+	defaultRendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
+	defaultTopic, err := orderfilter.GetDefaultTopic(app.chainID)
+	if err != nil {
+		return nil, err
+	}
+	customTopic := app.orderFilter.Topic()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to use multiple
+		// rendezvous points.
+		return []string{defaultRendezvousPoint}, nil
+	} else {
+		// If we are using a custom order filter, use *both* the default
+		// rendezvous point and a separate one specific to the filter. The
+		// filter-specific rendezvous point takes priority.
+		return []string{app.orderFilter.Rendezvous(), defaultRendezvousPoint}, nil
+	}
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
@@ -599,9 +614,9 @@ func (app *App) Start(ctx context.Context) error {
 	if app.config.BootstrapList != "" {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
-	rendezvousPoints := []string{
-		app.orderFilter.Rendezvous(),
-		getDefaultRendezvous(app.config.EthereumChainID),
+	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return err
 	}
 	nodeConfig := p2p.Config{
 		SubscribeTopic:         app.orderFilter.Topic(),
@@ -993,11 +1008,16 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &types.Stats{
-		Version:                           version,
-		PubSubTopic:                       app.orderFilter.Topic(),
-		Rendezvous:                        getDefaultRendezvous(app.config.EthereumChainID),
+		Version:     version,
+		PubSubTopic: app.orderFilter.Topic(),
+		// TOOD(albrow): Include all rendezvous points.
+		Rendezvous:                        rendezvousPoints[0],
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
