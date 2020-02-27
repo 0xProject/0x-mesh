@@ -17,12 +17,11 @@ import (
 )
 
 func TestOrderCRUDOperations(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	require.NoError(t, err)
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
-
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
-	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
 	salt := big.NewInt(1548619145450)
@@ -100,7 +99,7 @@ func TestOrderCRUDOperations(t *testing.T) {
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
 	require.NoError(t, err)
 
 	// ERC20 AssetData
@@ -145,13 +144,13 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func TestTrimOrdersByExpirationTime(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	require.NoError(t, err)
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
 	// TODO(albrow): Move these to top of file.
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
-	require.NoError(t, err)
 	makerAddress := constants.GanacheAccount0
 
 	// Note: most of the fields in these orders are the same. For the purposes of
@@ -311,12 +310,11 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 }
 
 func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
-	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	require.NoError(t, err)
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
-
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(constants.TestChainID, ethereum.NewChainIDToContractAddresses())
-	require.NoError(t, err)
 
 	makerAddress := constants.GanacheAccount0
 	nextSalt := big.NewInt(1548619145450)
@@ -484,7 +482,9 @@ func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, is
 func TestPruneMiniHeadersAboveRetentionLimit(t *testing.T) {
 	t.Parallel()
 
-	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	require.NoError(t, err)
+	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 

@@ -7,10 +7,25 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func NewChainIDToContractAddresses() map[int]ContractAddresses {
-	return map[int]ContractAddresses{
-		// Mainnet
-		1: ContractAddresses{
+// ContractAddresses maps a contract's name to it's Ethereum address
+type ContractAddresses struct {
+	ERC20Proxy          common.Address `json:"erc20Proxy"`
+	ERC721Proxy         common.Address `json:"erc721Proxy"`
+	ERC1155Proxy        common.Address `json:"erc1155Proxy"`
+	Exchange            common.Address `json:"exchange"`
+	Coordinator         common.Address `json:"coordinator"`
+	CoordinatorRegistry common.Address `json:"coordinatorRegistry"`
+	DevUtils            common.Address `json:"devUtils"`
+	WETH9               common.Address `json:"weth9"`
+	ZRXToken            common.Address `json:"zrxToken"`
+	ChaiBridge          common.Address `json:"chaiBridge"`
+	ChaiToken           common.Address `json:"chaiToken"`
+}
+
+func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
+	switch chainID {
+	case 1:
+		return ContractAddresses{
 			ERC20Proxy:          common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
 			ERC721Proxy:         common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
 			Exchange:            common.HexToAddress("0x61935cbdd02287b511119ddb11aeb42f1593b7ef"),
@@ -22,9 +37,9 @@ func NewChainIDToContractAddresses() map[int]ContractAddresses {
 			ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 			ChaiBridge:          common.HexToAddress("0x77c31eba23043b9a72d13470f3a3a311344d7438"),
 			ChaiToken:           common.HexToAddress("0x06af07097c9eeb7fd685c692751d5c66db49c215"),
-		},
-		// Ropsten
-		3: ContractAddresses{
+		}, nil
+	case 3:
+		return ContractAddresses{
 			ERC20Proxy:          common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
 			ERC721Proxy:         common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
 			Exchange:            common.HexToAddress("0xfb2dd2a1366de37f7241c83d47da58fd503e2c64"),
@@ -36,9 +51,9 @@ func NewChainIDToContractAddresses() map[int]ContractAddresses {
 			ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		},
-		// Rinkeby
-		4: ContractAddresses{
+		}, nil
+	case 4:
+		return ContractAddresses{
 			ERC20Proxy:          common.HexToAddress("0x2f5ae4f6106e89b4147651688a92256885c5f410"),
 			ERC721Proxy:         common.HexToAddress("0x7656d773e11ff7383a14dcf09a9c50990481cd10"),
 			ERC1155Proxy:        common.HexToAddress("0x19bb6caa3bc34d39e5a23cedfa3e6c7e7f3c931d"),
@@ -50,9 +65,9 @@ func NewChainIDToContractAddresses() map[int]ContractAddresses {
 			ZRXToken:            common.HexToAddress("0x8080c7e4b81ecf23aa6f877cfbfd9b0c228c6ffa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		},
-		// Kovan
-		42: ContractAddresses{
+		}, nil
+	case 42:
+		return ContractAddresses{
 			ERC20Proxy:          common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 			ERC721Proxy:         common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
 			Exchange:            common.HexToAddress("0x4eacd0af335451709e1e7b570b8ea68edec8bc97"),
@@ -64,9 +79,9 @@ func NewChainIDToContractAddresses() map[int]ContractAddresses {
 			ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		},
-		// Ganache snapshot
-		1337: ContractAddresses{
+		}, nil
+	case 1337:
+		return ContractAddresses{
 			ERC20Proxy:          common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 			ERC721Proxy:         common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
 			ERC1155Proxy:        common.HexToAddress("0x6a4a62e5a7ed13c361b176a5f62c2ee620ac0df8"),
@@ -78,11 +93,13 @@ func NewChainIDToContractAddresses() map[int]ContractAddresses {
 			ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		},
+		}, nil
+	default:
+		return ContractAddresses{}, fmt.Errorf("Cannot create contract addresses for non-standard chainID")
 	}
 }
 
-func AddContractAddressesForChainID(chainID int, chainIDToContractAddresses map[int]ContractAddresses, addresses ContractAddresses) error {
+func ValidateContractAddressesForChainID(chainID int, addresses ContractAddresses) error {
 	if chainID == 1 {
 		return fmt.Errorf("cannot add contract addresses for chainID 1: addresses for mainnet are hard-coded and cannot be changed")
 	}
@@ -105,30 +122,5 @@ func AddContractAddressesForChainID(chainID int, chainIDToContractAddresses map[
 	// if addresses.CoordinatorRegistry == constants.NullAddress {
 	// 	return fmt.Errorf("cannot add contract addresses for chain ID %d: CoordinatorRegistry address is required", chainID)
 	// }
-	chainIDToContractAddresses[chainID] = addresses
 	return nil
-}
-
-// GetContractAddressesForChainID returns the contract name mapping for the
-// given chain. It returns an error if the chain doesn't exist.
-func GetContractAddressesForChainID(chainID int, chainIDToContractAddresses map[int]ContractAddresses) (ContractAddresses, error) {
-	if contractAddresses, ok := chainIDToContractAddresses[chainID]; ok {
-		return contractAddresses, nil
-	}
-	return ContractAddresses{}, fmt.Errorf("invalid chain: %d", chainID)
-}
-
-// ContractAddresses maps a contract's name to it's Ethereum address
-type ContractAddresses struct {
-	ERC20Proxy          common.Address `json:"erc20Proxy"`
-	ERC721Proxy         common.Address `json:"erc721Proxy"`
-	ERC1155Proxy        common.Address `json:"erc1155Proxy"`
-	Exchange            common.Address `json:"exchange"`
-	Coordinator         common.Address `json:"coordinator"`
-	CoordinatorRegistry common.Address `json:"coordinatorRegistry"`
-	DevUtils            common.Address `json:"devUtils"`
-	WETH9               common.Address `json:"weth9"`
-	ZRXToken            common.Address `json:"zrxToken"`
-	ChaiBridge          common.Address `json:"chaiBridge"`
-	ChaiToken           common.Address `json:"chaiToken"`
 }

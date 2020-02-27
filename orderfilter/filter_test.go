@@ -148,7 +148,9 @@ func TestFilterValidateOrder(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		filter, err := New(tc.chainID, tc.customOrderSchema, ethereum.NewChainIDToContractAddresses())
+		contractAddresses, err := ethereum.NewContractAddressesForChainID(tc.chainID)
+		require.NoError(t, err)
+		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		signedOrder, err := zeroex.SignTestOrder(tc.order)
 		require.NoError(t, err)
@@ -235,7 +237,9 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		filter, err := New(tc.chainID, tc.customOrderSchema, ethereum.NewChainIDToContractAddresses())
+		contractAddresses, err := ethereum.NewContractAddressesForChainID(tc.chainID)
+		require.NoError(t, err)
+		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tc.customOrderSchema)
@@ -325,7 +329,9 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		filter, err := New(tc.chainID, tc.customOrderSchema, ethereum.NewChainIDToContractAddresses())
+		contractAddresses, err := ethereum.NewContractAddressesForChainID(tc.chainID)
+		require.NoError(t, err)
+		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.MatchOrderMessageJSON(tc.orderMessageJSON)
 		require.NoError(t, err, tc.customOrderSchema)
@@ -365,13 +371,15 @@ func TestFilterTopic(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		originalFilter, err := New(tc.chainID, tc.customOrderSchema, ethereum.NewChainIDToContractAddresses())
+		contractAddresses, err := ethereum.NewContractAddressesForChainID(tc.chainID)
+		require.NoError(t, err)
+		originalFilter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		result, err := originalFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
 		assert.Empty(t, result.Errors(), "original filter should validate the given order\n"+tcInfo)
 		assert.Equal(t, tc.expectedTopic, originalFilter.Topic(), tcInfo)
-		newFilter, err := NewFromTopic(originalFilter.Topic(), ethereum.NewChainIDToContractAddresses())
+		newFilter, err := NewFromTopic(originalFilter.Topic(), contractAddresses)
 		require.NoError(t, err, tcInfo)
 		assert.Equal(t, tc.expectedTopic, newFilter.Topic(), tcInfo)
 		result, err = newFilter.ValidateOrderJSON(tc.orderJSON)
@@ -381,7 +389,10 @@ func TestFilterTopic(t *testing.T) {
 }
 
 func TestDefaultOrderSchemaTopic(t *testing.T) {
-	defaultTopic, err := GetDefaultTopic(1337, ethereum.NewChainIDToContractAddresses())
+	chainID := 1337
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(chainID)
+	require.NoError(t, err)
+	defaultTopic, err := GetDefaultTopic(chainID, contractAddresses)
 	require.NoError(t, err)
 	expectedTopic := "/0x-orders/version/3/chain/1337/schema/e30="
 	assert.Equal(t, expectedTopic, defaultTopic, "the topic for the default filter should not change")

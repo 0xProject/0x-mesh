@@ -33,7 +33,9 @@ const (
 )
 
 func TestEthereumChainDetection(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), ethereum.NewChainIDToContractAddresses())
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	require.NoError(t, err)
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -101,7 +103,7 @@ func init() {
 	}
 }
 
-func TestIdempotentAppInitialization(t *testing.T) {
+func TestRepeatedAppInitialization(t *testing.T) {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,

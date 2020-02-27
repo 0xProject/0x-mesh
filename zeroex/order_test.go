@@ -18,7 +18,6 @@ import (
 
 var testOrder = &Order{
 	ChainID:               big.NewInt(constants.TestChainID),
-	ExchangeAddress:       ethereum.NewChainIDToContractAddresses()[constants.TestChainID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -52,6 +51,15 @@ var testHashOrder = &Order{
 	MakerAssetAmount:      big.NewInt(0),
 	TakerAssetAmount:      big.NewInt(0),
 	ExpirationTimeSeconds: big.NewInt(0),
+}
+
+func init() {
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+
+	testOrder.ExchangeAddress = contractAddresses.Exchange
 }
 
 func TestGenerateOrderHash(t *testing.T) {

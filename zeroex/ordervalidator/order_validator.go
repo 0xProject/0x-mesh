@@ -240,15 +240,10 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
-	chainIDToContractAddresses   map[int]ethereum.ContractAddresses
 }
 
 // New instantiates a new order validator
-func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*OrderValidator, error) {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID, chainIDToContractAddresses)
-	if err != nil {
-		return nil, err
-	}
+func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, contractAddresses ethereum.ContractAddresses) (*OrderValidator, error) {
 	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
 	if err != nil {
 		return nil, err
@@ -272,7 +267,6 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
-		chainIDToContractAddresses:   chainIDToContractAddresses,
 	}, nil
 }
 
@@ -677,12 +671,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(o.chainID, o.chainIDToContractAddresses)
-		if err != nil {
-			log.WithError(err).WithField("chainID", o.chainID).Panic("Couldn't find contract addresses for chainID")
-		}
-
-		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData, contractAddresses)
+		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -692,7 +681,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			})
 			continue
 		}
-		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData, contractAddresses)
+		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
 		if !isTakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -704,7 +693,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 		}
 
 		if len(signedOrder.MakerFeeAssetData) != 0 {
-			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData, contractAddresses)
+			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData)
 			if !isMakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
@@ -716,7 +705,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			}
 		}
 		if len(signedOrder.TakerFeeAssetData) != 0 {
-			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData, contractAddresses)
+			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
 			if !isTakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
@@ -745,7 +734,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 	return offchainValidSignedOrders, rejectedOrderInfos
 }
 
-func (o *OrderValidator) isSupportedAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) bool {
+func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 	assetDataName, err := o.assetDataDecoder.GetName(assetData)
 	if err != nil {
 		return false
@@ -784,7 +773,7 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte, contractAddresse
 		// We currently restrict ERC20Bridge orders to those referencing the
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
-		if contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != contractAddresses.ChaiBridge {
+		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
 			return false
 		}
 	default:

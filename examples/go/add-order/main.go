@@ -42,7 +42,15 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(1000),
 	TakerAssetAmount:      big.NewInt(2000),
 	ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-	ExchangeAddress:       ethereum.NewChainIDToContractAddresses()[constants.TestChainID].Exchange,
+}
+
+func init() {
+	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+
+	testOrder.ExchangeAddress = contractAddresses.Exchange
 }
 
 func main() {

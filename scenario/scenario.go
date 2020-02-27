@@ -19,7 +19,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var chainIDToContractAddresses = ethereum.NewChainIDToContractAddresses()
+var ganacheAddresses ethereum.ContractAddresses
+
+func init() {
+	var err error
+	ganacheAddresses, err = ethereum.NewContractAddressesForChainID(constants.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+}
 
 // CreateZRXForWETHSignedTestOrder creates a valid 0x orders where the maker wishes to trade ZRX for WETH
 func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {
@@ -46,7 +54,7 @@ func createZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      zrxAmount,
 		TakerAssetAmount:      wethAmount,
 		ExpirationTimeSeconds: big.NewInt(expirationTime.Unix()),
-		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       ganacheAddresses.Exchange,
 	}
 
 	// Sign Order
@@ -60,8 +68,6 @@ func createZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	if makerAddress == zrxCoinbase {
 		t.Errorf("makerAddress cannot be set to the ZRX coinbase address (e.g., the address with the 1 billion ZRX at Genesis)")
 	}
-
-	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -133,7 +139,7 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 		MakerAssetAmount:      wethAmount,
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       ganacheAddresses.Exchange,
 	}
 
 	// Sign Order
@@ -147,8 +153,6 @@ func CreateWETHForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, 
 	if takerAddress == zrxCoinbase {
 		t.Errorf("takerAddress cannot be set to the ZRX coinbase address (e.g., the address with the 1 billion ZRX at Genesis)")
 	}
-
-	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
@@ -231,7 +235,7 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       ganacheAddresses.Exchange,
 	}
 
 	// Sign Order
@@ -239,8 +243,6 @@ func CreateNFTForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Client, m
 	require.NoError(t, err, "could not sign order")
 
 	// Set up balances/allowances
-
-	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 
 	// SET NFT allowance
 	txn, err = dummyERC721Token.SetApprovalForAll(makerOpts, ganacheAddresses.ERC721Proxy, true)
@@ -299,7 +301,7 @@ func CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t *testing.T, ethClient *eth
 	// Create order
 	testOrder := &zeroex.Order{
 		ChainID:               big.NewInt(constants.TestChainID),
-		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       ganacheAddresses.Exchange,
 		MakerAddress:          makerAddress,
 		TakerAddress:          constants.NullAddress,
 		SenderAddress:         constants.NullAddress,
@@ -321,8 +323,6 @@ func CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t *testing.T, ethClient *eth
 	require.NoError(t, err, "could not sign order")
 
 	// Set up balances/allowances
-
-	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
 
 	// SET NFT allowance
 	txn, err = dummyERC721Token.SetApprovalForAll(makerOpts, ganacheAddresses.ERC721Proxy, true)
@@ -404,8 +404,6 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	ganacheAddresses := chainIDToContractAddresses[constants.TestChainID]
-
 	devUtils, err := wrappers.NewDevUtils(ganacheAddresses.DevUtils, ethClient)
 	require.NoError(t, err)
 
@@ -438,7 +436,7 @@ func CreateERC1155ForZRXSignedTestOrder(t *testing.T, ethClient *ethclient.Clien
 		MakerAssetAmount:      big.NewInt(1),
 		TakerAssetAmount:      zrxAmount,
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       chainIDToContractAddresses[constants.TestChainID].Exchange,
+		ExchangeAddress:       ganacheAddresses.Exchange,
 	}
 
 	// Sign Order

@@ -58,12 +58,12 @@ var builtInSchemas = []jsonschema.JSONLoader{
 	signedOrderSchemaLoader,
 }
 
-func GetDefaultFilter(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*Filter, error) {
-	return New(chainID, DefaultCustomOrderSchema, chainIDToContractAddresses)
+func GetDefaultFilter(chainID int, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+	return New(chainID, DefaultCustomOrderSchema, contractAddresses)
 }
 
-func GetDefaultTopic(chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (string, error) {
-	defaultFilter, err := GetDefaultFilter(chainID, chainIDToContractAddresses)
+func GetDefaultTopic(chainID int, contractAddresses ethereum.ContractAddresses) (string, error) {
+	defaultFilter, err := GetDefaultFilter(chainID, contractAddresses)
 	if err != nil {
 		return "", err
 	}
@@ -79,8 +79,8 @@ type Filter struct {
 	messageSchema        *jsonschema.Schema
 }
 
-func New(chainID int, customOrderSchema string, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*Filter, error) {
-	orderLoader, err := newLoader(chainID, customOrderSchema, chainIDToContractAddresses)
+func New(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+	orderLoader, err := newLoader(chainID, customOrderSchema, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func New(chainID int, customOrderSchema string, chainIDToContractAddresses map[i
 		return nil, err
 	}
 
-	messageLoader, err := newLoader(chainID, customOrderSchema, chainIDToContractAddresses)
+	messageLoader, err := newLoader(chainID, customOrderSchema, contractAddresses)
 	if err := messageLoader.AddSchemas(rootOrderSchemaLoader); err != nil {
 		return nil, err
 	}
@@ -105,11 +105,7 @@ func New(chainID int, customOrderSchema string, chainIDToContractAddresses map[i
 	}, nil
 }
 
-func loadExchangeAddress(loader *jsonschema.SchemaLoader, chainID int, chainIDToContractAddresses map[int]ethereum.ContractAddresses) error {
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID, chainIDToContractAddresses)
-	if err != nil {
-		return err
-	}
+func loadExchangeAddress(loader *jsonschema.SchemaLoader, chainID int, contractAddresses ethereum.ContractAddresses) error {
 	// Note that exchangeAddressSchema accepts both checksummed and
 	// non-checksummed (i.e. all lowercase) addresses.
 	exchangeAddressSchema := fmt.Sprintf(`{"enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
@@ -121,12 +117,12 @@ func loadChainID(loader *jsonschema.SchemaLoader, chainID int) error {
 	return loader.AddSchema("/chainId", jsonschema.NewStringLoader(chainIDSchema))
 }
 
-func newLoader(chainID int, customOrderSchema string, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*jsonschema.SchemaLoader, error) {
+func newLoader(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*jsonschema.SchemaLoader, error) {
 	loader := jsonschema.NewSchemaLoader()
 	if err := loadChainID(loader, chainID); err != nil {
 		return nil, err
 	}
-	if err := loadExchangeAddress(loader, chainID, chainIDToContractAddresses); err != nil {
+	if err := loadExchangeAddress(loader, chainID, contractAddresses); err != nil {
 		return nil, err
 	}
 	if err := loader.AddSchemas(builtInSchemas...); err != nil {
@@ -138,7 +134,7 @@ func newLoader(chainID int, customOrderSchema string, chainIDToContractAddresses
 	return loader, nil
 }
 
-func NewFromTopic(topic string, chainIDToContractAddresses map[int]ethereum.ContractAddresses) (*Filter, error) {
+func NewFromTopic(topic string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	// TODO(albrow): Use a cache for topic -> filter
 	var version int
 	var chainIDAndSchema string
@@ -160,7 +156,7 @@ func NewFromTopic(topic string, chainIDToContractAddresses map[int]ethereum.Cont
 	if err != nil {
 		return nil, fmt.Errorf("could not base64-decode order schema: %q", base64EncodedSchema)
 	}
-	return New(chainID, string(customOrderSchema), chainIDToContractAddresses)
+	return New(chainID, string(customOrderSchema), contractAddresses)
 }
 
 func (f *Filter) Topic() string {
