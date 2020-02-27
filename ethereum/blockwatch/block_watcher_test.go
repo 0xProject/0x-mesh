@@ -534,6 +534,19 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	}
 }
 
+func TestIsWarning(t *testing.T) {
+	errs := map[error]bool{
+		errors.New("not found"):     true,
+		errors.New("unknown block"): true,
+		errors.New("Post https://eth-mainnet.alchemyapi.io/jsonrpc: context deadline exceeded"): true,
+		errors.New("couldn't parse parameters: blockhash"):                                      false,
+	}
+
+	for err, expected := range errs {
+		assert.Equal(t, expected, isWarning(err))
+	}
+}
+
 func aRange(from, to int) string {
 	r := fmt.Sprintf("%d-%d", from, to)
 	return r

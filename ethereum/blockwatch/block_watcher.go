@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,14 @@ import (
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
 // the number of logs returned so Infura is by far the limiting factor.
 var maxBlocksInGetLogsQuery = 60
+
+// warningLevelErrorMessages are certain blockwatch.Watch errors that we want to report as warnings
+// because they do not represent a bug or issue with Mesh and are expected to happen from time to time
+var warningLevelErrorMessages = []string{
+	"unknown block",
+	"not found",
+	"context deadline exceeded",
+}
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
 // and added to our representation of the chain. During a block re-org, a block previously stored
@@ -171,7 +180,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			// return an error.
 			return err
 		}
-		log.WithError(err).Warn("blockwatch.Watcher error encountered")
+		if isWarning(err) {
+			log.WithError(err).Warn("blockwatch.Watcher error encountered")
+		} else {
+			log.WithError(err).Error("blockwatch.Watcher error encountered")
+		}
 	}
 
 	ticker := time.NewTicker(w.pollingInterval)
@@ -198,7 +211,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 					ticker.Stop()
 					return err
 				}
-				log.WithError(err).Warn("blockwatch.Watcher error encountered")
+				if isWarning(err) {
+					log.WithError(err).Warn("blockwatch.Watcher error encountered")
+				} else {
+					log.WithError(err).Error("blockwatch.Watcher error encountered")
+				}
 			}
 		}
 	}
@@ -668,4 +685,14 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 // getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
 func (w *Watcher) getAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
 	return w.stack.PeekAll()
+}
+
+func isWarning(err error) bool {
+	message := err.Error()
+	for _, warningLevelErrorMessage := range warningLevelErrorMessages {
+		if strings.Contains(message, warningLevelErrorMessage) {
+			return true
+		}
+	}
+	return false
 }
