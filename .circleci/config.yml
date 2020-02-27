@@ -38,11 +38,11 @@ jobs:
           name: Run linters
           command: make lint
       - run:
-          name: Build the typescript monorepo
-          command: yarn install && yarn build
+          name: Build the TypeScript monorepo
+          command: yarn build
       - run:
-          name: Run TS RPC client tests
-          command: cd packages/rpc-client && yarn test
+          name: Run TypeScript tests
+          command: yarn test
       - run:
           name: Run Go tests
           command: make test-go
