@@ -46,6 +46,9 @@ const (
 	peerGraceDuration = 10 * time.Second
 	// peerDiscoveryInterval is how frequently to try to connect to new peers.
 	peerDiscoveryInterval = 5 * time.Second
+	// advertiseDelay is the amount of time to wait during startup before advertising
+	// ourselves on the DHT.
+	advertiseDelay = 3 * time.Second
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
 	defaultNetworkTimeout = 10 * time.Second
@@ -394,10 +397,15 @@ func (n *Node) Start() error {
 		}
 	}
 
-	// Advertise ourselves for the purposes of peer discovery.
-	for _, rendezvousPoint := range n.config.RendezvousPoints {
-		discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL))
-	}
+	// Immediately attempt to connect to some peers at the rendezvous points.
+	go func() {
+		if err := n.findNewPeers(n.ctx); err != nil {
+			// Note(albrow): we can just log this error. The peer discovery loop
+			// will keep working in the background so we will automatically try
+			// again.
+			log.WithError(err).Error("initial peer discovery failed")
+		}
+	}()
 
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
@@ -408,6 +416,29 @@ func (n *Node) Start() error {
 	// channels to communicate errors and a waitgroup to wait for all goroutines
 	// to exit.
 	wg := &sync.WaitGroup{}
+
+	// Start advertising after a delay.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		select {
+		case <-innerCtx.Done():
+			// If the context was canceled, return immediately. Don't bother
+			// advertising ourselves.
+			return
+		case <-time.After(advertiseDelay):
+			// Otherwise, advertise ourselves on the DHT after a delay.
+			// The delay allows us to prioritize connecting to peers with a matching
+			// rendezvous point in order of preference.
+			//
+			// Note(albrow): Advertise doesn't return an error, so we have no
+			// choice but to assume it worked.
+			for _, rendezvousPoint := range n.config.RendezvousPoints {
+				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL))
+			}
+		}
+	}()
 
 	// Start message handler loop.
 	messageHandlerErrChan := make(chan error, 1)
