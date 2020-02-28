@@ -486,11 +486,12 @@ func setGlobals() {
 		"stats": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return []interface{}{
 				types.Stats{
-					Version:         "development",
-					PubSubTopic:     "someTopic",
-					Rendezvous:      "/0x-mesh/network/1337/version/2",
-					PeerID:          "16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7",
-					EthereumChainID: 1337,
+					Version:             "development",
+					PubSubTopic:         "someTopic",
+					Rendezvous:          "/0x-mesh/network/1337/version/2",
+					SecondaryRendezvous: []string{"/0x-custom-filter-rendezvous/version/2/chain/1337/schema/someTopic"},
+					PeerID:              "16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7",
+					EthereumChainID:     1337,
 					LatestBlock: types.LatestBlock{
 						Hash:   common.HexToHash("0x1"),
 						Number: 1500,

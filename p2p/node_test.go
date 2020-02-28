@@ -21,15 +21,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Counter used for config.RandSeed. Atomically incremented each time a new Node
-// is created.
-var counter int64 = -1
-
 const (
 	testTopic             = "0x-mesh-testing"
-	testRendezvousString  = "0x-mesh-testing-rendezvous"
 	testConnectionTimeout = 1 * time.Second
 	testStreamTimeout     = 10 * time.Second
+)
+
+var (
+	// Counter used for config.RandSeed. Atomically incremented each time a new Node
+	// is created.
+	counter              int64 = -1
+	testRendezvousPoints       = []string{"0x-mesh-testing-rendezvous"}
 )
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
@@ -84,7 +86,7 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 		PublishTopics:    []string{testTopic},
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
-		RendezvousString: testRendezvousString,
+		RendezvousPoints: testRendezvousPoints,
 		UseBootstrapList: false,
 		DataDir:          "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 	}
@@ -404,7 +406,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:         testRendezvousString,
+		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
 		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		GlobalPubSubMessageLimit: 1,
@@ -416,7 +418,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:         testRendezvousString,
+		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
 		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		GlobalPubSubMessageLimit: 1,
@@ -428,7 +430,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:         testRendezvousString,
+		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
 		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		GlobalPubSubMessageLimit: 1,
@@ -450,8 +452,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
 
-	require.NoError(t, node1.runOnce())
-	require.NoError(t, node2.runOnce())
+	require.NoError(t, node1.receiveAndHandleMessages(ctx))
+	require.NoError(t, node2.receiveAndHandleMessages(ctx))
 
 	// node0 sends config.GlobalPubSubMessageBurst*2 messages to node1.
 	for i := 0; i < node0.config.GlobalPubSubMessageBurst*2; i++ {
@@ -462,8 +464,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub messages to fully propagate.
 	time.Sleep(1 * time.Second)
 
-	require.NoError(t, node1.runOnce())
-	require.NoError(t, node2.runOnce())
+	require.NoError(t, node1.receiveAndHandleMessages(ctx))
+	require.NoError(t, node2.receiveAndHandleMessages(ctx))
 
 	// node1 and node2 should only have config.GlobalPubSubMessageBurst messages.
 	// The others are expected to have been dropped.
@@ -491,7 +493,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:          testRendezvousString,
+		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
 		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		PerPeerPubSubMessageLimit: 1,
@@ -503,7 +505,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:          testRendezvousString,
+		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
 		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		PerPeerPubSubMessageLimit: 1,
@@ -515,7 +517,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
-		RendezvousString:          testRendezvousString,
+		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
 		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
 		PerPeerPubSubMessageLimit: 1,
@@ -536,9 +538,9 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub to finish initializing.
 	time.Sleep(2 * time.Second)
 
-	require.NoError(t, node0.receiveAndHandleMessages())
-	require.NoError(t, node1.receiveAndHandleMessages())
-	require.NoError(t, node2.receiveAndHandleMessages())
+	require.NoError(t, node0.receiveAndHandleMessages(ctx))
+	require.NoError(t, node1.receiveAndHandleMessages(ctx))
+	require.NoError(t, node2.receiveAndHandleMessages(ctx))
 
 	// node0 sends config.PeerPeerPubSubMessageBurst*2 messages to node2.
 	for i := 0; i < node0.config.PerPeerPubSubMessageBurst*2; i++ {
@@ -554,9 +556,9 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	// HACK(albrow): Wait for GossipSub messages to fully propagate.
 	time.Sleep(1 * time.Second)
 
-	require.NoError(t, node0.receiveAndHandleMessages())
-	require.NoError(t, node1.receiveAndHandleMessages())
-	require.NoError(t, node2.receiveAndHandleMessages())
+	require.NoError(t, node0.receiveAndHandleMessages(ctx))
+	require.NoError(t, node1.receiveAndHandleMessages(ctx))
+	require.NoError(t, node2.receiveAndHandleMessages(ctx))
 
 	// node2 should only have config.PerPeerPubSubMessageBurst*2 messages.
 	// The others are expected to have been dropped.
