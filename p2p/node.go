@@ -561,8 +561,6 @@ func (n *Node) startMessageHandler(ctx context.Context) error {
 		if mathrand.Float64() <= chanceToCheckBandwidthUsage {
 			n.banner.CheckBandwidthUsage()
 		}
-
-		return nil
 	}
 }
 
