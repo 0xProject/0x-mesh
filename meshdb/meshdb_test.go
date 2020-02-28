@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var contractAddresses = ethereum.GanacheAddresses()
+
 func TestOrderCRUDOperations(t *testing.T) {
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	require.NoError(t, err)
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
@@ -99,9 +99,6 @@ func TestOrderCRUDOperations(t *testing.T) {
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	require.NoError(t, err)
-
 	// ERC20 AssetData
 	erc20AssetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
 	singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(erc20AssetData, contractAddresses)
@@ -144,8 +141,6 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func TestTrimOrdersByExpirationTime(t *testing.T) {
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	require.NoError(t, err)
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
@@ -310,8 +305,6 @@ func TestTrimOrdersByExpirationTime(t *testing.T) {
 }
 
 func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	require.NoError(t, err)
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
@@ -482,8 +475,6 @@ func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, is
 func TestPruneMiniHeadersAboveRetentionLimit(t *testing.T) {
 	t.Parallel()
 
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	require.NoError(t, err)
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()

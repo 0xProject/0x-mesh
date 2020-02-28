@@ -19,15 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var ganacheAddresses ethereum.ContractAddresses
-
-func init() {
-	var err error
-	ganacheAddresses, err = ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	if err != nil {
-		panic(err)
-	}
-}
+var ganacheAddresses = ethereum.GanacheAddresses()
 
 // CreateZRXForWETHSignedTestOrder creates a valid 0x orders where the maker wishes to trade ZRX for WETH
 func CreateZRXForWETHSignedTestOrder(t *testing.T, ethClient *ethclient.Client, makerAddress, takerAddress common.Address, wethAmount *big.Int, zrxAmount *big.Int) *zeroex.SignedOrder {

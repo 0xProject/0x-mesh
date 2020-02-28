@@ -58,19 +58,12 @@ var (
 // the normal testing process. They will only be run if the "--serial" flag is used.
 var serialTestsEnabled bool
 
-var ganacheAddresses ethereum.ContractAddresses
+var ganacheAddresses = ethereum.GanacheAddresses()
 
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
 	testing.Init()
 	flag.Parse()
-
-	var err error
-	ganacheAddresses, err = ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	if err != nil {
-		panic(err)
-	}
-	testSignedOrder.ExchangeAddress = ganacheAddresses.Exchange
 }
 
 var testSignedOrder = zeroex.SignedOrder{
@@ -90,6 +83,7 @@ var testSignedOrder = zeroex.SignedOrder{
 		MakerAssetAmount:      big.NewInt(1000),
 		TakerAssetAmount:      big.NewInt(2000),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
+		ExchangeAddress:       ganacheAddresses.Exchange,
 	},
 }
 
