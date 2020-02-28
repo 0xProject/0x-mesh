@@ -22,6 +22,22 @@ type ContractAddresses struct {
 	ChaiToken           common.Address `json:"chaiToken"`
 }
 
+func GanacheAddresses() ContractAddresses {
+	return ContractAddresses{
+		ERC20Proxy:          common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+		ERC721Proxy:         common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
+		ERC1155Proxy:        common.HexToAddress("0x6a4a62e5a7ed13c361b176a5f62c2ee620ac0df8"),
+		Exchange:            common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
+		Coordinator:         common.HexToAddress("0x4d3d5c850dd5bd9d6f4adda3dd039a3c8054ca29"),
+		CoordinatorRegistry: common.HexToAddress("0xaa86dda78e9434aca114b6676fc742a18d15a1cc"),
+		DevUtils:            common.HexToAddress("0xa31e64ea55b9b6bbb9d6a676738e9a5b23149f84"),
+		WETH9:               common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),
+		ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+		ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+	}
+}
+
 func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 	switch chainID {
 	case 1:

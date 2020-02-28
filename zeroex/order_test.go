@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var contractAddresses = ethereum.GanacheAddresses()
+
 var testOrder = &Order{
 	ChainID:               big.NewInt(constants.TestChainID),
 	MakerAddress:          constants.GanacheAccount0,
@@ -32,6 +34,7 @@ var testOrder = &Order{
 	MakerAssetAmount:      big.NewInt(203),
 	TakerAssetAmount:      big.NewInt(204),
 	ExpirationTimeSeconds: big.NewInt(205),
+	ExchangeAddress:       contractAddresses.Exchange,
 }
 
 var testHashOrder = &Order{
@@ -51,15 +54,6 @@ var testHashOrder = &Order{
 	MakerAssetAmount:      big.NewInt(0),
 	TakerAssetAmount:      big.NewInt(0),
 	ExpirationTimeSeconds: big.NewInt(0),
-}
-
-func init() {
-	contractAddresses, err := ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	if err != nil {
-		panic(err)
-	}
-
-	testOrder.ExchangeAddress = contractAddresses.Exchange
 }
 
 func TestGenerateOrderHash(t *testing.T) {

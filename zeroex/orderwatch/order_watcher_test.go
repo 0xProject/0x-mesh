@@ -67,7 +67,7 @@ var (
 // the normal testing process. They will only be run if the "--serial" flag is used.
 var serialTestsEnabled bool
 
-var ganacheAddresses ethereum.ContractAddresses
+var ganacheAddresses = ethereum.GanacheAddresses()
 
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
@@ -95,10 +95,6 @@ func init() {
 		panic(err)
 	}
 	ethClient = ethclient.NewClient(rpcClient)
-	ganacheAddresses, err = ethereum.NewContractAddressesForChainID(constants.TestChainID)
-	if err != nil {
-		panic(err)
-	}
 	zrx, err = wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	if err != nil {
 		panic(err)
