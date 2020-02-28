@@ -27,7 +27,7 @@ const (
 	grantTimingTolerance = 50 * time.Millisecond
 )
 
-var contractAddresses = ethereum.GanacheAddresses()
+var contractAddresses = ethereum.GanacheAddresses
 
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
 // granted based on the per second limiter.

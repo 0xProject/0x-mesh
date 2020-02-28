@@ -32,7 +32,7 @@ const (
 	ordersyncWaitTime = 2 * time.Second
 )
 
-var contractAddresses = ethereum.GanacheAddresses()
+var contractAddresses = ethereum.GanacheAddresses
 
 func TestEthereumChainDetection(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)

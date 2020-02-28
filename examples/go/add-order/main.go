@@ -26,7 +26,7 @@ type clientEnvVars struct {
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
 }
 
-var contractAddresses = ethereum.GanacheAddresses()
+var contractAddresses = ethereum.GanacheAddresses
 
 var testOrder = &zeroex.Order{
 	ChainID:               big.NewInt(constants.TestChainID),

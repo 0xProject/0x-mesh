@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var contractAddresses = ethereum.GanacheAddresses()
+var contractAddresses = ethereum.GanacheAddresses
 
 var testOrder = &Order{
 	ChainID:               big.NewInt(constants.TestChainID),

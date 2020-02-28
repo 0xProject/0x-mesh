@@ -58,7 +58,7 @@ var (
 // the normal testing process. They will only be run if the "--serial" flag is used.
 var serialTestsEnabled bool
 
-var ganacheAddresses = ethereum.GanacheAddresses()
+var ganacheAddresses = ethereum.GanacheAddresses
 
 func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")

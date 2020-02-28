@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var contractAddresses = ethereum.GanacheAddresses()
+var contractAddresses = ethereum.GanacheAddresses
 
 func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
