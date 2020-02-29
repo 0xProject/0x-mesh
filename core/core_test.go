@@ -84,7 +84,9 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.Error(t, app.Start(ctx))
+		err := app.Start(ctx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "ChainID mismatch")
 	}()
 
 	// Wait for nodes to exit without error.

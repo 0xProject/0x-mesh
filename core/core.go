@@ -580,32 +580,36 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
-	// Ensure that ETHEREUM_CHAIN_ID matches chain id of the RPCClient
+	// Ensure that RPC client is on the same ChainID as is configured with ETHEREUM_CHAIN_ID
+	chainIdCheckerWg := &sync.WaitGroup{}
 	chainIdMismatchErrChan := make(chan error, 1)
 	wg.Add(1)
+	chainIdCheckerWg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer chainIdCheckerWg.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), ethereumRPCRequestTimeout)
 		defer cancel()
 
-		var chainID string
+		var chainIDRaw string
 
-		err := app.ethRPCClient.CallContext(ctx, &chainID, "eth_chainId")
+		err := app.ethRPCClient.CallContext(ctx, &chainIDRaw, "eth_chainId")
 		if err != nil {
 			chainIdMismatchErrChan <- err
 			return
 		}
 
-		cleanedChainId := strings.Replace(chainID, "0x", "", -1)
-		chainIDDecimal, err := strconv.ParseInt(cleanedChainId, 16, 64)
+		// Value in RPC response is a string in hexadecimal form e.g. "0x539"
+		// Need to remove the "0x" prefix before parsing
+		rpcChainID, err := strconv.ParseInt(strings.Replace(chainIDRaw, "0x", "", -1), 16, 64)
 		if err != nil {
 			chainIdMismatchErrChan <- err
 			return
 		}
 
 		configChainID := app.config.EthereumChainID
-		if configChainID != int(chainIDDecimal) {
-			chainIdMismatchErrChan <- errors.New("Chain id mismatch: ETHEREUM_CHAIN_ID")
+		if configChainID != int(rpcChainID) {
+			chainIdMismatchErrChan <- fmt.Errorf("ChainID mismatch between RPC client (chainID: %d) and configured environment variable ETHEREUM_CHAIN_ID: %d", rpcChainID, configChainID)
 			return
 		}
 	}()
@@ -777,12 +781,14 @@ func (app *App) Start(ctx context.Context) error {
 			cancel()
 			return err
 		}
-	case err := <-chainIdMismatchErrChan:
-		if err != nil {
-			log.WithError(err).Error("ETHEREUM_CHAIN_ID and RPC matcher exited with error")
-			cancel()
-			return err
-		}
+	}
+
+	// Need to wait for the async ETH RPC call to finish before we know if the chain id is correctly configured
+	chainIdCheckerWg.Wait()
+	if err := <-chainIdMismatchErrChan; err != nil {
+		log.WithError(err).Error("ETH chain id matcher exited with error")
+		cancel()
+		return err
 	}
 
 	// Wait for all goroutines to exit. If we reached here it means we are done
