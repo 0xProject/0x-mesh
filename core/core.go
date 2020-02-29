@@ -580,6 +580,36 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
+	// Ensure that ETHEREUM_CHAIN_ID matches chain id of the RPCClient
+	chainIdMismatchErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), ethereumRPCRequestTimeout)
+		defer cancel()
+
+		var chainID string
+
+		err := app.ethRPCClient.CallContext(ctx, &chainID, "eth_chainId")
+		if err != nil {
+			chainIdMismatchErrChan <- err
+			return
+		}
+
+		cleanedChainId := strings.Replace(chainID, "0x", "", -1)
+		chainIDDecimal, err := strconv.ParseInt(cleanedChainId, 16, 64)
+		if err != nil {
+			chainIdMismatchErrChan <- err
+			return
+		}
+
+		configChainID := app.config.EthereumChainID
+		if configChainID != int(chainIDDecimal) {
+			chainIdMismatchErrChan <- errors.New("Chain id mismatch: ETHEREUM_CHAIN_ID")
+			return
+		}
+	}()
+
 	// Note: this is a blocking call so we won't continue set up until its finished.
 	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
@@ -744,6 +774,12 @@ func (app *App) Start(ctx context.Context) error {
 	case err := <-orderSyncErrChan:
 		if err != nil {
 			log.WithError(err).Error("ordersync service exited with error")
+			cancel()
+			return err
+		}
+	case err := <-chainIdMismatchErrChan:
+		if err != nil {
+			log.WithError(err).Error("ETHEREUM_CHAIN_ID and RPC matcher exited with error")
 			cancel()
 			return err
 		}
