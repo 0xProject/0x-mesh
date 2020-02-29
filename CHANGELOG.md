@@ -8,6 +8,10 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 - Improved speed and efficiency of peer discovery, especially when using custom order filters [#729](https://github.com/0xProject/0x-mesh/pull/729).
 
+### Bug fixes 🐞
+
+- Fixed an issue where incoming orders could sometimes be dropped by peers [#732](https://github.com/0xProject/0x-mesh/pull/732).
+
 
 ## v9.0.1
 
