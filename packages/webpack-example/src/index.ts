@@ -9,13 +9,13 @@ import { BigNumber, Mesh, OrderEvent, SignedOrder, SupportedProvider } from '@0x
         web3Provider: (window as any).web3.currentProvider as SupportedProvider,
     });
 
-    // This handler will be called whenver there is a critical error.
+    // This handler will be called whenever there is a critical error.
     mesh.onError((err: Error) => {
         console.error(err);
     });
 
     // This handler will be called whenever an order is added, expired,
-    // canceled, or filled.
+    // cancelled, or filled.
     mesh.onOrderEvents((events: OrderEvent[]) => {
         for (const event of events) {
             console.log(event);
