@@ -23,6 +23,7 @@
         { "path": "./packages/browser" },
         { "path": "./packages/browser-lite" },
         { "path": "./packages/webpack-example" },
+        { "path": "./packages/webpack-example-lite" },
         { "path": "./packages/rpc-client" },
         { "path": "./packages/integration-tests" }
     ]

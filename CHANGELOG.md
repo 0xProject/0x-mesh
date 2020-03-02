@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Features ✅
 
 - Improved speed and efficiency of peer discovery, especially when using custom order filters [#729](https://github.com/0xProject/0x-mesh/pull/729).
+- Added a lightweight package to use for loading Mesh's Wasm binary in a streaming manner [#707](https://github.com/0xProject/0x-mesh/pull/707).
 
 ### Bug fixes 🐞
 
