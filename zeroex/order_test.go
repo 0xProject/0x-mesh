@@ -16,9 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var contractAddresses = ethereum.GanacheAddresses
+
 var testOrder = &Order{
 	ChainID:               big.NewInt(constants.TestChainID),
-	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
 	SenderAddress:         constants.NullAddress,
@@ -33,6 +34,7 @@ var testOrder = &Order{
 	MakerAssetAmount:      big.NewInt(203),
 	TakerAssetAmount:      big.NewInt(204),
 	ExpirationTimeSeconds: big.NewInt(205),
+	ExchangeAddress:       contractAddresses.Exchange,
 }
 
 var testHashOrder = &Order{

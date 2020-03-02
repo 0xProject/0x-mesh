@@ -199,6 +199,7 @@ type App struct {
 	ethRPCClient              ethrpcclient.Client
 	db                        *meshdb.MeshDB
 	ordersyncService          *ordersync.Service
+	contractAddresses         *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -217,10 +218,15 @@ func New(config Config) (*App, error) {
 	})
 
 	// Add custom contract addresses if needed.
+	var contractAddresses ethereum.ContractAddresses
+	var err error
 	if config.CustomContractAddresses != "" {
-		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses); err != nil {
-			return nil, err
-		}
+		contractAddresses, err = parseAndValidateCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses)
+	} else {
+		contractAddresses, err = ethereum.NewContractAddressesForChainID(config.EthereumChainID)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Load private key and add peer ID hook.
@@ -256,7 +262,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath)
+	meshDB, err := meshdb.New(databasePath, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -351,6 +357,7 @@ func New(config Config) (*App, error) {
 		ethClient,
 		config.EthereumChainID,
 		config.EthereumRPCMaxContentLength,
+		contractAddresses,
 	)
 	if err != nil {
 		return nil, err
@@ -362,6 +369,7 @@ func New(config Config) (*App, error) {
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
 		ChainID:           config.EthereumChainID,
+		ContractAddresses: contractAddresses,
 		MaxOrders:         config.MaxOrdersInStorage,
 		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
@@ -370,7 +378,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the order filter
-	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter)
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, contractAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
@@ -393,6 +401,7 @@ func New(config Config) (*App, error) {
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
 		db:                        meshDB,
+		contractAddresses:         &contractAddresses,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -414,8 +423,8 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, error) {
-	defaultTopic, err := orderfilter.GetDefaultTopic(chainID)
+func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopic(chainID, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -495,7 +504,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 
 func (app *App) Start(ctx context.Context) error {
 	// Get the publish topics depending on our custom order filter.
-	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
+	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
 		return err
 	}
@@ -1098,13 +1107,13 @@ func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
 	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
-func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {
+func parseAndValidateCustomContractAddresses(chainID int, encodedContractAddresses string) (ethereum.ContractAddresses, error) {
 	customAddresses := ethereum.ContractAddresses{}
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
-		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
+		return ethereum.ContractAddresses{}, fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	if err := ethereum.AddContractAddressesForChainID(chainID, customAddresses); err != nil {
-		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
+	if err := ethereum.ValidateContractAddressesForChainID(chainID, customAddresses); err != nil {
+		return ethereum.ContractAddresses{}, fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	return nil
+	return customAddresses, nil
 }

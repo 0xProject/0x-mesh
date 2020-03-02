@@ -93,7 +93,7 @@ type MetadataCollection struct {
 }
 
 // New instantiates a new MeshDB instance
-func New(path string) (*MeshDB, error) {
+func New(path string, contractAddresses ethereum.ContractAddresses) (*MeshDB, error) {
 	database, err := db.Open(path)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func New(path string) (*MeshDB, error) {
 		return nil, err
 	}
 
-	orders, err := setupOrders(database)
+	orders, err := setupOrders(database, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func New(path string) (*MeshDB, error) {
 	}, nil
 }
 
-func setupOrders(database *db.DB) (*OrdersCollection, error) {
+func setupOrders(database *db.DB, contractAddresses ethereum.ContractAddresses) (*OrdersCollection, error) {
 	col, err := database.NewCollection("order", &Order{})
 	if err != nil {
 		return nil, err
@@ -146,19 +146,12 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 	// here is compute time for storage space.
 	makerAddressTokenAddressTokenIDIndex := col.AddMultiIndex("makerAddressTokenAddressTokenId", func(m db.Model) [][]byte {
 		order := m.(*Order)
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Panic("Failed to retrieve contractAddresses for chainID")
-		}
 		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerAssetData, contractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Panic("Parsing assetData failed")
 		}
-
 		indexValues := make([][]byte, len(singleAssetDatas))
 		for i, singleAssetData := range singleAssetDatas {
 			indexValue := []byte(order.SignedOrder.MakerAddress.Hex() + "|" + singleAssetData.Address.Hex() + "|")
@@ -171,7 +164,6 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 	})
 	makerAddressMakerFeeAssetAddressTokenIDIndex := col.AddMultiIndex("makerAddressMakerFeeAssetAddressTokenID", func(m db.Model) [][]byte {
 		order := m.(*Order)
-
 		if bytes.Equal(order.SignedOrder.MakerFeeAssetData, constants.NullBytes) {
 			// MakerFeeAssetData is optional and the lack of a maker fee is indicated
 			// by null bytes ("0x0"). We still want to index this value so we can look
@@ -180,14 +172,6 @@ func setupOrders(database *db.DB) (*OrdersCollection, error) {
 				[]byte(order.SignedOrder.MakerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|"),
 			}
 		}
-
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(int(order.SignedOrder.ChainID.Int64()))
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Panic("Failed to retrieve contractAddresses for chainID")
-		}
-
 		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerFeeAssetData, contractAddresses)
 		if err != nil {
 			log.WithFields(log.Fields{
