@@ -4,9 +4,10 @@
     "engines": {
         "node": ">=11"
     },
-    "workspaces": [
-        "packages/*"
-    ],
+    "workspaces": {
+        "packages": ["packages/*"],
+        "nohoist": ["typedoc"]
+    },
     "scripts": {
         "wsrun": "wsrun",
         "build": "wsrun --stages --fast-exit --exclude-missing build $PKG ",
