@@ -1,6 +1,6 @@
 import {
     BigNumber,
-    loadMeshStreamingWithURL,
+    loadMeshStreamingWithURLAsync,
     Mesh,
     OrderEvent,
     SignedOrder,
@@ -10,7 +10,9 @@ import {
 // tslint:disable:no-console
 (async () => {
     // Load the WebAssembly bytecode.
-    loadMeshStreamingWithURL('main.wasm');
+    // NOTE(jalextowle): We can't "await" this function or else it will block
+    // the rest of the function's execution.
+    loadMeshStreamingWithURLAsync('main.wasm');
 
     // Configure Mesh to use web3.currentProvider (e.g. provided by MetaMask).
     const mesh = new Mesh({

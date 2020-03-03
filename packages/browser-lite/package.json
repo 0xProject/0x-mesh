@@ -11,7 +11,7 @@
         "lint": "tslint --format stylish --project ."
     },
     "config": {
-        "docsPath": "../../docs/browser-lite"
+        "docsPath": "../../docs/browser-bindings/browser-lite"
     },
     "dependencies": {
         "@0x/order-utils": "^10.2.0",

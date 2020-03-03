@@ -1,6 +1,13 @@
+# @0x/mesh-browser - v1.0.0
+
 ## @0x/mesh-browser
 
-TypeScript and JavaScript bindings for running Mesh directly in the browser.
+This package provides an easy way to run a browser-based Mesh node. Specifically, it
+provides Typescript and Javascript bindings that can be used to interact with a Mesh
+node that is running in the browser and handles the process of loading the mesh node
+on the webpage. Because of the fact that this package handles Wasm loading, it is
+considerably heavier-weight and may take longer to load than the @0x/mesh-browser-lite
+package.
 
 ## Installation
 
