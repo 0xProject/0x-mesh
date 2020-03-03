@@ -13,12 +13,7 @@ export async function loadMeshStreamingWithURLAsync(url: string): Promise<void> 
  * @param response The Wasm response that supplies the Wasm binary.
  */
 export async function loadMeshStreamingAsync(response: Response | Promise<Response>): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const go = new Go();
-        WebAssembly.instantiateStreaming(response, go.importObject)
-            .then(module => {
-                resolve(go.run(module.instance));
-            })
-            .catch(reject);
-    });
+    const go = new Go();
+    const module = await WebAssembly.instantiateStreaming(response, go.importObject);
+    return go.run(module.instance);
 }
