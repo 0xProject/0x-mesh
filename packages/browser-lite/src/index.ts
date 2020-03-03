@@ -15,5 +15,7 @@ export async function loadMeshStreamingWithURLAsync(url: string): Promise<void> 
 export async function loadMeshStreamingAsync(response: Response | Promise<Response>): Promise<void> {
     const go = new Go();
     const module = await WebAssembly.instantiateStreaming(response, go.importObject);
-    return go.run(module.instance);
+    setImmediate(() => {
+        go.run(module.instance);
+    });
 }

@@ -10,9 +10,7 @@ import {
 // tslint:disable:no-console
 (async () => {
     // Load the WebAssembly bytecode.
-    // NOTE(jalextowle): We can't "await" this function or else it will block
-    // the rest of the function's execution.
-    loadMeshStreamingWithURLAsync('main.wasm');
+    await loadMeshStreamingWithURLAsync('main.wasm');
 
     // Configure Mesh to use web3.currentProvider (e.g. provided by MetaMask).
     const mesh = new Mesh({
