@@ -22,6 +22,7 @@
     },
     "devDependencies": {
         "@0x/ts-doc-gen": "^0.0.16",
+        "typedoc": "^0.15.0",
         "typescript": "^3.5.3"
     }
 }

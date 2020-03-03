@@ -4,17 +4,16 @@
     "engines": {
         "node": ">=11"
     },
-    "workspaces": {
-        "packages": ["packages/*"],
-        "nohoist": ["typedoc"]
-    },
+    "workspaces": [ 
+        "packages/*" 
+    ], 
     "scripts": {
         "wsrun": "wsrun",
-        "build": "wsrun --stages --fast-exit --exclude-missing build $PKG ",
+        "build": "wsrun --stages --fast-exit --exclude-missing build $PKG",
         "build:ts": "tsc -b",
         "watch:ts": "tsc -b -w",
+        "docs:md": "wsrun --fast-exit --exclude-missing docs:md $PKG",
         "lint": "wsrun lint $PKG",
-        "docs:md": "wsrun docs:md --fast-exit --exclude-missing $PKG",
         "test": "wsrun --fast-exit --exclude-missing test $PKG "
     },
     "description": "A peer-to-peer network for sharing orders",
