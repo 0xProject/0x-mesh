@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync"
@@ -468,21 +469,37 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 }
 
 func (app *App) Start(ctx context.Context) error {
+	fmt.Println("app.Start pprof 1")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Get the publish topics depending on our custom order filter.
 	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("app.Start pprof 2")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	fmt.Println("app.Start pprof 3")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Below, we will start several independent goroutines. We use separate
 	// channels to communicate errors and a waitgroup to wait for all goroutines
 	// to exit.
 	wg := &sync.WaitGroup{}
+
+	fmt.Println("app.Start pprof 4")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Close the database when the context is canceled.
 	wg.Add(1)
@@ -495,6 +512,10 @@ func (app *App) Start(ctx context.Context) error {
 		app.db.Close()
 	}()
 
+	fmt.Println("app.Start pprof 5")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Start rateLimiter
 	ethRPCRateLimiterErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -505,6 +526,10 @@ func (app *App) Start(ctx context.Context) error {
 		}()
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
 	}()
+
+	fmt.Println("app.Start pprof 6")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Set up the snapshot expiration watcher pruning logic
 	wg.Add(1)
@@ -529,6 +554,10 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	}()
 
+	fmt.Println("app.Start pprof 7")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Start the order watcher.
 	orderWatcherErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -541,11 +570,19 @@ func (app *App) Start(ctx context.Context) error {
 		orderWatcherErrChan <- app.orderWatcher.Watch(innerCtx)
 	}()
 
+	fmt.Println("app.Start pprof 8")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Note: this is a blocking call so we won't continue set up until its finished.
 	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("app.Start pprof 9")
+	fmt.Println("=================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Start the block watcher.
 	blockWatcherErrChan := make(chan error, 1)
@@ -559,6 +596,10 @@ func (app *App) Start(ctx context.Context) error {
 		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
 	}()
 
+	fmt.Println("app.Start pprof 10")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// If Mesh is not caught up with the latest block found via Ethereum RPC, ensure orderWatcher
 	// has processed at least one recent block before starting the P2P node and completing app start,
 	// so that Mesh does not validate any orders at outdated block heights
@@ -569,6 +610,10 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	}
 
+	fmt.Println("app.Start pprof 11")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	if blocksElapsed >= constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("More than 128 blocks have elapsed since last boot. Re-validating all orders stored (this can take a while)...")
 		// Re-validate all orders since too many blocks have elapsed to fast-sync events
@@ -576,6 +621,10 @@ func (app *App) Start(ctx context.Context) error {
 			return err
 		}
 	}
+
+	fmt.Println("app.Start pprof 12")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Initialize the p2p node.
 	// Note(albrow): The main reason that we need to use a `started` channel in
@@ -602,16 +651,30 @@ func (app *App) Start(ctx context.Context) error {
 		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
 		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
 	}
+
+	fmt.Println("app.Start pprof 13")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("app.Start pprof 14")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Register and start ordersync service.
 	ordersyncSubprotocols := []ordersync.Subprotocol{
 		NewFilteredPaginationSubprotocol(app, paginationSubprotocolPerPage),
 	}
 	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
+
+	fmt.Println("app.Start pprof 15")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	orderSyncErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
@@ -623,6 +686,10 @@ func (app *App) Start(ctx context.Context) error {
 			orderSyncErrChan <- err
 		}
 	}()
+
+	fmt.Println("app.Start pprof 16")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// Start the p2p node.
 	p2pErrChan := make(chan error, 1)
@@ -650,6 +717,10 @@ func (app *App) Start(ctx context.Context) error {
 		p2pErrChan <- app.node.Start()
 	}()
 
+	fmt.Println("app.Start pprof 17")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Start loop for periodically logging stats.
 	wg.Add(1)
 	go func() {
@@ -660,9 +731,17 @@ func (app *App) Start(ctx context.Context) error {
 		app.periodicallyLogStats(innerCtx)
 	}()
 
+	fmt.Println("app.Start pprof 18")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+
 	// Signal that the app has been started.
 	log.Info("core.App was started")
 	close(app.started)
+
+	fmt.Println("app.Start pprof 18")
+	fmt.Println("==================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error

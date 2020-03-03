@@ -5,8 +5,12 @@ package core
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
+	"os"
 	"runtime"
+	"runtime/debug"
+	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
@@ -108,6 +112,48 @@ func TestNewGoRoutineLeak(t *testing.T) {
 	app.db.Close()
 	time.Sleep(5 * time.Second)
 	afterGoRoutineCount := runtime.NumGoroutine()
+	require.Equal(t, beforeGoRoutineCount, afterGoRoutineCount)
+}
+
+func TestStartGoRoutineLeak(t *testing.T) {
+	beforeGoRoutineCount := runtime.NumGoroutine()
+	fmt.Printf("before pprof analysis %d\n", beforeGoRoutineCount)
+	fmt.Println("====================")
+	debug.PrintStack()
+	fmt.Println("====================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+	app := newTestApp(t)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	errChan := make(chan error, 1)
+	go func() {
+		defer wg.Done()
+		errChan <- app.Start(ctx)
+	}()
+
+	time.Sleep(10 * time.Second)
+	cancel()
+	wg.Wait()
+	app.db.Close()
+	time.Sleep(10 * time.Second)
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			require.Equal(t, err.Error(), "could not get public IP address: Get https://ifconfig.me/ip: context canceled")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out of StartGoRoutineLeak")
+	}
+
+	afterGoRoutineCount := runtime.NumGoroutine()
+	fmt.Printf("after pprof analysis %d\n", afterGoRoutineCount)
+	fmt.Println("====================")
+	debug.PrintStack()
+	fmt.Println("====================")
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
 	require.Equal(t, beforeGoRoutineCount, afterGoRoutineCount)
 }
 
