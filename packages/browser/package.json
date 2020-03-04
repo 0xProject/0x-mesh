@@ -17,7 +17,7 @@
         "lint": "tslint --format stylish --project ."
     },
     "config": {
-        "docsPath": "../../docs/browser"
+        "docsPath": "../../docs/browser-bindings/browser"
     },
     "dependencies": {
         "@0x/mesh-browser-lite": "file:../browser-lite",
@@ -34,8 +34,8 @@
         "prettier": "^1.19.1",
         "ts-loader": "^6.2.1",
         "tslint": "5.11.0",
-        "typescript": "^3.5.3",
         "typedoc": "^0.15.0",
+        "typescript": "^3.5.3",
         "webpack": "^4.41.5",
         "webpack-cli": "^3.3.10"
     }

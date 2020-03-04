@@ -1,6 +1,9 @@
-## 0x Mesh Browser Example
+## 0x Mesh Browser Lite Example
 
-This directory contains an example of how to run Mesh in the browser.
+This directory contains an example of how to run Mesh in the browser by serving
+raw WebAssembly bytecode directly. This manner of serving Mesh to the browser
+can have performance benefits and allow the bundle size of an application to remain
+much smaller.
 
 ### Running the Example
 
@@ -26,4 +29,4 @@ or Firefox are recommended).
 ### More Information
 
 - [Browser Guide](https://0x-org.gitbook.io/mesh/getting-started/browser)
-- [Browser API Documentation](https://0x-org.gitbook.io/mesh/getting-started/browser/reference)
+- [Browser Lite API Documentation](https://0x-org.gitbook.io/mesh/getting-started/browser-lite/reference)

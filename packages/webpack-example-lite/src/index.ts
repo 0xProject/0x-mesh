@@ -1,7 +1,17 @@
-import { BigNumber, Mesh, OrderEvent, SignedOrder, SupportedProvider } from '@0x/mesh-browser';
+import {
+    BigNumber,
+    loadMeshStreamingWithURLAsync,
+    Mesh,
+    OrderEvent,
+    SignedOrder,
+    SupportedProvider,
+} from '@0x/mesh-browser-lite';
 
 // tslint:disable:no-console
 (async () => {
+    // Load the WebAssembly bytecode.
+    await loadMeshStreamingWithURLAsync('main.wasm');
+
     // Configure Mesh to use web3.currentProvider (e.g. provided by MetaMask).
     const mesh = new Mesh({
         verbosity: 4,
