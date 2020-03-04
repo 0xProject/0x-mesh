@@ -88,7 +88,6 @@ type Watcher struct {
 	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
-	chainIDToContractAddresses map[int]ethereum.ContractAddresses
 	contractAddressToSeenCount map[common.Address]uint
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
