@@ -119,7 +119,7 @@ Within the context of this endpoint:
 
 Some _rejected_ reasons warrant attempting to add the order again. Currently, the only reason we recommend re-trying adding the order is for the `NetworkRequestFailed` status code. Make sure to leave some time between attempts.
 
-See the [AcceptedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#AcceptedOrderInfo) and [RejectedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#RejectedOrderInfo) type definitions as well as all the possible [RejectedOrderStatus](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-variables) types that could be returned.
+See the [AcceptedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroex/ordervalidator#AcceptedOrderInfo) and [RejectedOrderInfo](https://godoc.org/github.com/0xProject/0x-mesh/zeroex/ordervalidator#RejectedOrderInfo) type definitions as well as all the possible [RejectedOrderStatus](https://godoc.org/github.com/0xProject/0x-mesh/zeroex/ordervalidator#pkg-variables) types that could be returned.
 
 **Note:** The `fillableTakerAssetAmount` takes into account the amount of the order that has already been filled AND the maker's balance/allowance. Thus, it represents the amount this order could _actually_ be filled for at this moment in time.
 
