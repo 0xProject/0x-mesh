@@ -593,7 +593,7 @@ func (app *App) Start(ctx context.Context) error {
 		}
 
 		configChainID := app.config.EthereumChainID
-		if configChainID != int(chainID) {
+		if int64(configChainID) != chainID.Int64() {
 			chainIDMismatchErrChan <- fmt.Errorf("ChainID mismatch between RPC client (chainID: %d) and configured environment variable ETHEREUM_CHAIN_ID: %d", chainID, configChainID)
 		}
 	}()

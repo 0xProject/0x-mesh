@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
-	"strconv"
-	"strings"
+	"errors"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common/math"
 )
 
-func (app *App) getEthRPCChainID(ctx context.Context) (int64, error) {
+func (app *App) getEthRPCChainID(ctx context.Context) (*big.Int, error) {
 	ctx, cancel := context.WithTimeout(ctx, ethereumRPCRequestTimeout)
 	defer cancel()
 
@@ -14,14 +16,12 @@ func (app *App) getEthRPCChainID(ctx context.Context) (int64, error) {
 
 	err := app.ethRPCClient.CallContext(ctx, &chainIDRaw, "eth_chainId")
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
-	// Value in RPC response is a string in hexadecimal form e.g. "0x539"
-	// Need to remove the "0x" prefix before parsing
-	rpcChainID, err := strconv.ParseInt(strings.Replace(chainIDRaw, "0x", "", -1), 16, 64)
-	if err != nil {
-		return -1, err
+	rpcChainID, ok := math.ParseBig256(chainIDRaw)
+	if !ok {
+		return nil, errors.New("Failed to parse big.Int value from hex-encoded chainID returned from eth_chainId")
 	}
 
 	return rpcChainID, nil
