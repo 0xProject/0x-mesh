@@ -66,7 +66,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.WithField("ws_rpc_addr", config.WSRPCAddr).Info("starting WS RPC server")
-		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr)
+		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr, "WS")
 		if err := rpcServer.Listen(ctx, rpc.WSHandler); err != nil {
 			wsRPCErrChan <- err
 		}
@@ -78,7 +78,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
-		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr)
+		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr, "HTTP")
 		if err := rpcServer.Listen(ctx, rpc.HTTPHandler); err != nil {
 			httpRPCErrChan <- err
 		}

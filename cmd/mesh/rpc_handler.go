@@ -33,7 +33,7 @@ type rpcHandler struct {
 }
 
 // instantiateServer instantiates a new RPC server with the rpcHandler.
-func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.Server {
+func instantiateServer(ctx context.Context, app *core.App, rpcAddr string, rpcServerType string) *rpc.Server {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
 	rpcHandler := &rpcHandler{
 		app: app,
@@ -53,7 +53,7 @@ func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
+		log.WithField("address", rpcServer.Addr().String()).Infof("started %s RPC server", rpcServerType)
 	}()
 	return rpcServer
 }
