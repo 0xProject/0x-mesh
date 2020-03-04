@@ -19,6 +19,7 @@ type Stats struct {
 	Version                           string      `json:"version"`
 	PubSubTopic                       string      `json:"pubSubTopic"`
 	Rendezvous                        string      `json:"rendezvous"`
+	SecondaryRendezvous               []string    `json:"secondaryRendezvous"`
 	PeerID                            string      `json:"peerID"`
 	EthereumChainID                   int         `json:"ethereumChainID"`
 	LatestBlock                       LatestBlock `json:"latestBlock"`

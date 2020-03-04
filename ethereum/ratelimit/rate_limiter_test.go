@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
@@ -26,10 +27,12 @@ const (
 	grantTimingTolerance = 50 * time.Millisecond
 )
 
+var contractAddresses = ethereum.GanacheAddresses
+
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 	initMetadata(t, meshDB)
@@ -66,7 +69,7 @@ func TestScenario1(t *testing.T) {
 // Scenario 2: Max requests per 24 hours used up. Subsequent calls to Wait
 // should return an error.
 func TestScenario2(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -123,7 +126,7 @@ func TestScenario2(t *testing.T) {
 // RateLimiter is instantiated. They then get updated after the checkpoint
 // interval elapses.
 func TestScenario3(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/" + uuid.New().String())
+	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 

@@ -26,10 +26,15 @@ func (l LatestBlock) JSValue() js.Value {
 }
 
 func (s Stats) JSValue() js.Value {
+	secondaryRendezvous := make([]interface{}, len(s.SecondaryRendezvous))
+	for i, rendezvousPoint := range s.SecondaryRendezvous {
+		secondaryRendezvous[i] = rendezvousPoint
+	}
 	return js.ValueOf(map[string]interface{}{
 		"version":                           s.Version,
 		"pubSubTopic":                       s.PubSubTopic,
 		"rendezvous":                        s.Rendezvous,
+		"secondaryRendezvous":               secondaryRendezvous,
 		"peerID":                            s.PeerID,
 		"ethereumChainID":                   s.EthereumChainID,
 		"latestBlock":                       s.LatestBlock.JSValue(),

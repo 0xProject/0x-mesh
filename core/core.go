@@ -199,6 +199,7 @@ type App struct {
 	ethRPCClient              ethrpcclient.Client
 	db                        *meshdb.MeshDB
 	ordersyncService          *ordersync.Service
+	contractAddresses         *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -217,10 +218,15 @@ func New(config Config) (*App, error) {
 	})
 
 	// Add custom contract addresses if needed.
+	var contractAddresses ethereum.ContractAddresses
+	var err error
 	if config.CustomContractAddresses != "" {
-		if err := parseAndAddCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses); err != nil {
-			return nil, err
-		}
+		contractAddresses, err = parseAndValidateCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses)
+	} else {
+		contractAddresses, err = ethereum.NewContractAddressesForChainID(config.EthereumChainID)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Load private key and add peer ID hook.
@@ -256,7 +262,7 @@ func New(config Config) (*App, error) {
 
 	// Initialize db
 	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath)
+	meshDB, err := meshdb.New(databasePath, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -315,6 +321,17 @@ func New(config Config) (*App, error) {
 	// 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
 	//    unexpected shut down).
 	//
+	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
+	if err != nil {
+		return nil, err
+	}
+	miniHeadersToRemove := totalMiniHeaders - meshDB.MiniHeaderRetentionLimit
+	if miniHeadersToRemove > 0 {
+		log.WithFields(log.Fields{
+			"numHeadersToRemove": miniHeadersToRemove,
+			"totalHeadersStored": totalMiniHeaders,
+		}).Warn("Removing outdated block headers in database (this can take a while)")
+	}
 	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
 	if err != nil {
 		return nil, err
@@ -340,6 +357,7 @@ func New(config Config) (*App, error) {
 		ethClient,
 		config.EthereumChainID,
 		config.EthereumRPCMaxContentLength,
+		contractAddresses,
 	)
 	if err != nil {
 		return nil, err
@@ -351,6 +369,7 @@ func New(config Config) (*App, error) {
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
 		ChainID:           config.EthereumChainID,
+		ContractAddresses: contractAddresses,
 		MaxOrders:         config.MaxOrdersInStorage,
 		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
@@ -359,7 +378,7 @@ func New(config Config) (*App, error) {
 	}
 
 	// Initialize the order filter
-	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter)
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, contractAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
@@ -382,6 +401,7 @@ func New(config Config) (*App, error) {
 		ethRPCRateLimiter:         ethRPCRateLimiter,
 		ethRPCClient:              ethClient,
 		db:                        meshDB,
+		contractAddresses:         &contractAddresses,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -403,8 +423,8 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, error) {
-	defaultTopic, err := orderfilter.GetDefaultTopic(chainID)
+func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopic(chainID, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -423,8 +443,23 @@ func getPublishTopics(chainID int, customFilter *orderfilter.Filter) ([]string, 
 	}
 }
 
-func getRendezvous(chainID int) string {
-	return fmt.Sprintf("/0x-mesh/network/%d/version/2", chainID)
+func (app *App) getRendezvousPoints() ([]string, error) {
+	defaultRendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
+	defaultTopic, err := orderfilter.GetDefaultTopic(app.chainID, *app.contractAddresses)
+	if err != nil {
+		return nil, err
+	}
+	customTopic := app.orderFilter.Topic()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to use multiple
+		// rendezvous points.
+		return []string{defaultRendezvousPoint}, nil
+	} else {
+		// If we are using a custom order filter, use *both* the default
+		// rendezvous point and a separate one specific to the filter. The
+		// filter-specific rendezvous point takes priority.
+		return []string{app.orderFilter.Rendezvous(), defaultRendezvousPoint}, nil
+	}
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
@@ -469,7 +504,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 
 func (app *App) Start(ctx context.Context) error {
 	// Get the publish topics depending on our custom order filter.
-	publishTopics, err := getPublishTopics(app.config.EthereumChainID, app.orderFilter)
+	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
 		return err
 	}
@@ -588,6 +623,10 @@ func (app *App) Start(ctx context.Context) error {
 	if app.config.BootstrapList != "" {
 		bootstrapList = strings.Split(app.config.BootstrapList, ",")
 	}
+	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return err
+	}
 	nodeConfig := p2p.Config{
 		SubscribeTopic:         app.orderFilter.Topic(),
 		PublishTopics:          publishTopics,
@@ -596,7 +635,7 @@ func (app *App) Start(ctx context.Context) error {
 		Insecure:               false,
 		PrivateKey:             app.privKey,
 		MessageHandler:         app,
-		RendezvousString:       getRendezvous(app.config.EthereumChainID),
+		RendezvousPoints:       rendezvousPoints,
 		UseBootstrapList:       app.config.UseBootstrapList,
 		BootstrapList:          bootstrapList,
 		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
@@ -978,11 +1017,16 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &types.Stats{
 		Version:                           version,
 		PubSubTopic:                       app.orderFilter.Topic(),
-		Rendezvous:                        getRendezvous(app.config.EthereumChainID),
+		Rendezvous:                        rendezvousPoints[0],
+		SecondaryRendezvous:               rendezvousPoints[1:],
 		PeerID:                            app.peerID.String(),
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
@@ -1063,13 +1107,13 @@ func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
 	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
-func parseAndAddCustomContractAddresses(chainID int, encodedContractAddresses string) error {
+func parseAndValidateCustomContractAddresses(chainID int, encodedContractAddresses string) (ethereum.ContractAddresses, error) {
 	customAddresses := ethereum.ContractAddresses{}
 	if err := json.Unmarshal([]byte(encodedContractAddresses), &customAddresses); err != nil {
-		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
+		return ethereum.ContractAddresses{}, fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	if err := ethereum.AddContractAddressesForChainID(chainID, customAddresses); err != nil {
-		return fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
+	if err := ethereum.ValidateContractAddressesForChainID(chainID, customAddresses); err != nil {
+		return ethereum.ContractAddresses{}, fmt.Errorf("config.CustomContractAddresses is invalid: %s", err.Error())
 	}
-	return nil
+	return customAddresses, nil
 }
