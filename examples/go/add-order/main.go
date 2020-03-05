@@ -26,6 +26,8 @@ type clientEnvVars struct {
 	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL"`
 }
 
+var contractAddresses = ethereum.GanacheAddresses
+
 var testOrder = &zeroex.Order{
 	ChainID:               big.NewInt(constants.TestChainID),
 	MakerAddress:          constants.GanacheAccount0,
@@ -42,7 +44,7 @@ var testOrder = &zeroex.Order{
 	MakerAssetAmount:      big.NewInt(1000),
 	TakerAssetAmount:      big.NewInt(2000),
 	ExpirationTimeSeconds: big.NewInt(time.Now().Add(48 * time.Hour).Unix()),
-	ExchangeAddress:       ethereum.ChainIDToContractAddresses[constants.TestChainID].Exchange,
+	ExchangeAddress:       contractAddresses.Exchange,
 }
 
 func main() {

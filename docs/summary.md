@@ -5,7 +5,8 @@
 * [Deployment guide](deployment.md)
 * [Deploying a Telemetry-Enabled Mesh Node](deployment_with_telemetry.md)
 * [JSON-RPC API documentation](rpc_api.md)
-* [Browser API documentation](browser/reference.md)
+* [Browser API documentation](browser-bindings/browser/reference.md)
+* [Browser-Lite API documentation](browser-bindings/browser-lite/reference.md)
 * [Browser guide](browser.md)
 
 ## Advanced topics

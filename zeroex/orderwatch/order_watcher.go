@@ -108,6 +108,7 @@ type Config struct {
 	BlockWatcher      *blockwatch.Watcher
 	OrderValidator    *ordervalidator.OrderValidator
 	ChainID           int
+	ContractAddresses ethereum.ContractAddresses
 	MaxOrders         int
 	MaxExpirationTime *big.Int
 }
@@ -119,10 +120,6 @@ func New(config Config) (*Watcher, error) {
 		return nil, err
 	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	contractAddresses, err := ethereum.GetContractAddressesForChainID(config.ChainID)
-	if err != nil {
-		return nil, err
-	}
 
 	// Validate config.
 	if config.MaxOrders == 0 {
@@ -155,7 +152,7 @@ func New(config Config) (*Watcher, error) {
 		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
-		contractAddresses:          contractAddresses,
+		contractAddresses:          config.ContractAddresses,
 		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
 		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
@@ -1511,12 +1508,11 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		contractAddresses, err := ethereum.GetContractAddressesForChainID(chainID)
 		if err == nil {
 			// Only check the ExchangeAddress if we know the expected address for the
 			// given chainID/networkID. If we don't know it, the order could still be
 			// valid.
-			expectedExchangeAddress := contractAddresses.Exchange
+			expectedExchangeAddress := w.contractAddresses.Exchange
 			if order.ExchangeAddress != expectedExchangeAddress {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 					OrderHash:   orderHash,

@@ -46,7 +46,7 @@ func openInMemoryDB() (*DB, error) {
 }
 
 func openBrowserFSDB(path string) (*DB, error) {
-	log.Info("BrowserFS deteceted. Using BrowserFS-backed databse.")
+	log.Info("BrowserFS detected. Using BrowserFS-backed databse.")
 	// Wait for browserFS to load.
 	//
 	// HACK(albrow): We do this by checking for the global browserFS
