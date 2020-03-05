@@ -758,6 +758,15 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		if err != nil {
 			return false
 		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+		// NOTE(jalextowle): There are no staticcalls that are currently
+		// supported.
+		return false
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
