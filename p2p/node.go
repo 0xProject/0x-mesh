@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	mathrand "math/rand"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
@@ -43,6 +44,11 @@ const (
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
+	// peerDiscoveryInterval is how frequently to try to connect to new peers.
+	peerDiscoveryInterval = 5 * time.Second
+	// advertiseDelay is the amount of time to wait during startup before advertising
+	// ourselves on the DHT.
+	advertiseDelay = 3 * time.Second
 	// defaultNetworkTimeout is the default timeout for network requests (e.g.
 	// connecting to a new peer).
 	defaultNetworkTimeout = 10 * time.Second
@@ -121,9 +127,10 @@ type Config struct {
 	// MessageHandler is an interface responsible for validating, storing, and
 	// finding new messages to share.
 	MessageHandler MessageHandler
-	// RendezvousString is a unique identifier for the rendezvous point. This node
-	// will attempt to find peers with the same Rendezvous string.
-	RendezvousString string
+	// RendezvousPoints is a unique identifier for one or more rendezvous points
+	// (in order of priority). This node will attempt to find peers with one or
+	// more matching rendezvous points.
+	RendezvousPoints []string
 	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool
@@ -172,8 +179,8 @@ func getDHTDir(datadir string) string {
 func New(ctx context.Context, config Config) (*Node, error) {
 	if config.MessageHandler == nil {
 		return nil, errors.New("config.MessageHandler is required")
-	} else if config.RendezvousString == "" {
-		return nil, errors.New("config.RendezvousString is required")
+	} else if len(config.RendezvousPoints) == 0 {
+		return nil, errors.New("config.RendezvousPoints is required")
 	}
 	if config.GlobalPubSubMessageLimit == 0 {
 		config.GlobalPubSubMessageLimit = defaultGlobalPubSubMessageLimit
@@ -390,10 +397,94 @@ func (n *Node) Start() error {
 		}
 	}
 
-	// Advertise ourselves for the purposes of peer discovery.
-	discovery.Advertise(n.ctx, n.routingDiscovery, n.config.RendezvousString, discovery.TTL(advertiseTTL))
+	// Immediately attempt to connect to some peers at the rendezvous points.
+	go func() {
+		if err := n.findNewPeers(n.ctx); err != nil {
+			// Note(albrow): we can just log this error. The peer discovery loop
+			// will keep working in the background so we will automatically try
+			// again.
+			log.WithError(err).Error("initial peer discovery failed")
+		}
+	}()
 
-	return n.mainLoop()
+	// Create a child context so that we can preemptively cancel if there is an
+	// error.
+	innerCtx, cancel := context.WithCancel(n.ctx)
+	defer cancel()
+
+	// Below, we will start several independent goroutines. We use separate
+	// channels to communicate errors and a waitgroup to wait for all goroutines
+	// to exit.
+	wg := &sync.WaitGroup{}
+
+	// Start advertising after a delay.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		select {
+		case <-innerCtx.Done():
+			// If the context was canceled, return immediately. Don't bother
+			// advertising ourselves.
+			return
+		case <-time.After(advertiseDelay):
+			// Otherwise, advertise ourselves on the DHT after a delay.
+			// The delay allows us to prioritize connecting to peers with a matching
+			// rendezvous point in order of preference.
+			//
+			// Note(albrow): Advertise doesn't return an error, so we have no
+			// choice but to assume it worked.
+			for _, rendezvousPoint := range n.config.RendezvousPoints {
+				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL))
+			}
+		}
+	}()
+
+	// Start message handler loop.
+	messageHandlerErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing p2p message handler loop")
+		}()
+		messageHandlerErrChan <- n.startMessageHandler(innerCtx)
+	}()
+
+	// Start peer discovery loop.
+	peerDiscoveryErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing p2p peer discovery loop")
+		}()
+		peerDiscoveryErrChan <- n.startPeerDiscovery(innerCtx)
+	}()
+
+	// If any error channel returns a non-nil error, we cancel the inner context
+	// and return the error. Note that this means we only return the first error
+	// that occurs.
+	select {
+	case err := <-messageHandlerErrChan:
+		if err != nil {
+			log.WithError(err).Error("message handler loop exited with error")
+			cancel()
+			return err
+		}
+	case err := <-peerDiscoveryErrChan:
+		if err != nil {
+			log.WithError(err).Error("peer discovery loop exited with error")
+			cancel()
+			return err
+		}
+	}
+
+	// Wait for all goroutines to exit. If we reached here it means we are done
+	// and there are no errors.
+	wg.Wait()
+	log.Debug("p2p node successfully closed")
+	return nil
 }
 
 // AddPeerScore adds diff to the current score for a given peer. Tag is a unique
@@ -452,80 +543,93 @@ func (n *Node) Connect(peerInfo peer.AddrInfo, timeout time.Duration) error {
 	return nil
 }
 
-// mainLoop is where the core logic for a Node is implemented. On each iteration
-// of the loop, the node receives new messages and sends messages to its peers.
-func (n *Node) mainLoop() error {
+// startMessageHandler continuously receives and processes incoming messages
+// until there is an error or the context is canceled. It also checks bandwidth
+// usage on some iterations.
+func (n *Node) startMessageHandler(ctx context.Context) error {
 	for {
 		select {
-		case <-n.ctx.Done():
+		case <-ctx.Done():
 			return nil
 		default:
 		}
-		if err := n.runOnce(); err != nil {
+		if err := n.receiveAndHandleMessages(ctx); err != nil {
 			return err
+		}
+
+		// Check bandwidth usage non-deterministically
+		if mathrand.Float64() <= chanceToCheckBandwidthUsage {
+			n.banner.CheckBandwidthUsage()
 		}
 	}
 }
 
-// runOnce runs a single iteration of the main loop.
-func (n *Node) runOnce() error {
-	peerCount := n.connManager.GetInfo().ConnCount
-	if peerCount < peerCountLow {
-		if err := n.findNewPeers(peerCountLow - peerCount); err != nil {
-			return err
-		}
-	}
-
-	if err := n.receiveAndHandleMessages(); err != nil {
-		return err
-	}
-
-	// Check bandwidth usage non-deterministically
-	if mathrand.Float64() <= chanceToCheckBandwidthUsage {
-		n.banner.CheckBandwidthUsage()
-	}
-
-	return nil
-}
-
-func (n *Node) receiveAndHandleMessages() error {
+func (n *Node) receiveAndHandleMessages(ctx context.Context) error {
 	// Receive up to maxReceiveBatch messages.
-	incoming, err := n.receiveBatch()
+	incoming, err := n.receiveBatch(ctx)
 	if err != nil {
 		return err
 	}
-	if err := n.messageHandler.HandleMessages(n.ctx, incoming); err != nil {
+	if err := n.messageHandler.HandleMessages(ctx, incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
 	return nil
 }
 
-func (n *Node) findNewPeers(max int) error {
-	log.WithFields(map[string]interface{}{
-		"max": max,
-	}).Trace("looking for new peers")
-	findPeersCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
-	defer cancel()
-	peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, n.config.RendezvousString, discovery.Limit(max))
-	if err != nil {
-		return err
+// startPeerDiscovery continuously finds new peers as needed until there is an
+// error or the context is canceled.
+func (n *Node) startPeerDiscovery(ctx context.Context) error {
+	ticker := time.NewTicker(peerDiscoveryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if err := n.findNewPeers(ctx); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (n *Node) findNewPeers(ctx context.Context) error {
+	for _, rendezvousPoint := range n.config.RendezvousPoints {
+		currentPeerCount := n.connManager.GetInfo().ConnCount
+		if currentPeerCount >= peerCountLow {
+			// We already have enough peers. Nothing to do.
+			return nil
+		}
+		maxNewPeers := peerCountLow - currentPeerCount
+		log.WithFields(map[string]interface{}{
+			"currentPeerCount": currentPeerCount,
+			"maxNewPeers":      maxNewPeers,
+			"rendezvousPoint":  rendezvousPoint,
+		}).Trace("looking for new peers")
+		findPeersCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
+		defer cancel()
+		peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousPoint, discovery.Limit(maxNewPeers))
+		if err != nil {
+			return err
+		}
+		connectCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
+		defer cancel()
+		for peer := range peerChan {
+			if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
+				continue
+			}
+			log.WithFields(map[string]interface{}{
+				"peerInfo":        peer,
+				"rendezvousPoint": rendezvousPoint,
+			}).Trace("found peer via rendezvous")
+			if err := n.host.Connect(connectCtx, peer); err != nil {
+				// We still want to try connecting to the other peers. Log the error and
+				// keep going.
+				logPeerConnectionError(peer, err)
+			}
+		}
 	}
 
-	connectCtx, cancel := context.WithTimeout(n.ctx, defaultNetworkTimeout)
-	defer cancel()
-	for peer := range peerChan {
-		if peer.ID == n.host.ID() || len(peer.Addrs) == 0 {
-			continue
-		}
-		log.WithFields(map[string]interface{}{
-			"peerInfo": peer,
-		}).Trace("found peer via rendezvous")
-		if err := n.host.Connect(connectCtx, peer); err != nil {
-			// We still want to try connecting to the other peers. Log the error and
-			// keep going.
-			logPeerConnectionError(peer, err)
-		}
-	}
 	return nil
 }
 
@@ -562,7 +666,7 @@ func logPeerConnectionError(peerInfo peer.AddrInfo, connectionErr error) {
 
 // receiveBatch returns up to maxReceiveBatch messages which are received from
 // peers. There is no guarantee that the messages are unique.
-func (n *Node) receiveBatch() ([]*Message, error) {
+func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 	messages := []*Message{}
 	for {
 		if len(messages) >= maxReceiveBatch {
@@ -570,7 +674,7 @@ func (n *Node) receiveBatch() ([]*Message, error) {
 		}
 		select {
 		// If the parent context was canceled, return.
-		case <-n.ctx.Done():
+		case <-ctx.Done():
 			return messages, nil
 		default:
 		}

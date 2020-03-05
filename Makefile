@@ -5,8 +5,6 @@ deps: deps-ts wasmbrowsertest
 .PHONY: deps-ts
 deps-ts:
 	yarn install
-	cd rpc/clients/typescript && yarn install
-	cd browser/ && yarn install
 
 
 # gobin allows us to install specific versions of binary tools written in Go.
@@ -29,12 +27,10 @@ deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
 .PHONY: deps-ts-no-lockfile
 deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
-	cd rpc/clients/typescript && yarn install --frozen-lockfile
-	cd browser/ && yarn install --frozen-lockfile
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-node test-wasm-browser
+test-all: test-go test-wasm-node test-wasm-browser test-ts
 
 
 .PHONY: test-go
@@ -56,7 +52,7 @@ test-browser-integration:
 
 .PHONY: test-browser-conversion
 test-browser-conversion:
-	go test ./browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
+	go test ./packages/browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
 
 .PHONY: test-wasm-node
 test-wasm-node:
@@ -66,6 +62,11 @@ test-wasm-node:
 .PHONY: test-wasm-browser
 test-wasm-browser:
 	GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+
+
+.PHONY: test-ts
+test-ts:
+	yarn test
 
 
 .PHONY: lint
@@ -79,8 +80,7 @@ lint-go:
 
 .PHONY: lint-ts
 lint-ts:
-	cd rpc/clients/typescript && yarn lint
-	cd browser/ && yarn lint
+	yarn lint
 
 
 .PHONY: mesh
@@ -128,3 +128,7 @@ docker-mesh-bootstrap:
 .PHONY: docker-mesh-fluent-bit
 docker-mesh-fluent-bit:
 	docker build ./dockerfiles/mesh-fluent-bit -t 0xorg/mesh-fluent-bit -f ./dockerfiles/mesh-fluent-bit/Dockerfile
+
+.PHONY: docker-mesh-bridge
+docker-mesh-bridge:
+	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile

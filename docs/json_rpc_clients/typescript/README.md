@@ -1,3 +1,5 @@
+# @0x/mesh-rpc-client - v9.1.0
+
 ## @0x/mesh-rpc-client
 
 A Javascript library for interacting with the Mesh JSON RPC API over WebSockets.
