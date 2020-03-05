@@ -764,9 +764,7 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		if err != nil {
 			return false
 		}
-		// NOTE(jalextowle): There are no staticcalls that are currently
-		// supported.
-		return false
+		return o.isSupportedStaticCallData(decodedAssetData)
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -783,6 +781,39 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
 		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
+			return false
+		}
+	default:
+		return false
+	}
+	return true
+}
+
+func (o *OrderValidator) isSupportedStaticCallData(staticCallAssetData zeroex.StaticCallAssetData) bool {
+	staticCallDataName, err := o.assetDataDecoder.GetName(staticCallAssetData.StaticCallData)
+	if err != nil {
+		return false
+	}
+	fmt.Println(staticCallDataName)
+	switch staticCallDataName {
+	case "CheckGasPriceDefault":
+		var decodedStaticCallData zeroex.CheckGasPriceDefaultStaticCallData
+		err := o.assetDataDecoder.Decode(staticCallAssetData.StaticCallData, &decodedStaticCallData)
+		if err != nil {
+			return false
+		}
+		// We currently restrict the `checkGasPrice` staticcall to the known MaxGasPrice contract.
+		if o.contractAddresses.MaxGasPrice == constants.NullAddress || staticCallAssetData.StaticCallTargetAddress != o.contractAddresses.MaxGasPrice {
+			return false
+		}
+	case "CheckGasPrice":
+		var decodedStaticCallData zeroex.CheckGasPriceStaticCallData
+		err := o.assetDataDecoder.Decode(staticCallAssetData.StaticCallData, &decodedStaticCallData)
+		if err != nil {
+			return false
+		}
+		// We currently restrict the `checkGasPrice` staticcall to the known MaxGasPrice contract.
+		if o.contractAddresses.MaxGasPrice == constants.NullAddress || staticCallAssetData.StaticCallTargetAddress != o.contractAddresses.MaxGasPrice {
 			return false
 		}
 	default:

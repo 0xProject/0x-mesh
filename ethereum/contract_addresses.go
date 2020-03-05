@@ -20,6 +20,7 @@ type ContractAddresses struct {
 	ZRXToken            common.Address `json:"zrxToken"`
 	ChaiBridge          common.Address `json:"chaiBridge"`
 	ChaiToken           common.Address `json:"chaiToken"`
+	MaxGasPrice         common.Address `json:"maxGasPrice"`
 }
 
 var GanacheAddresses = ContractAddresses{
@@ -34,6 +35,8 @@ var GanacheAddresses = ContractAddresses{
 	ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 	ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 	ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+	// FIXME(jalextowle): This is a fake address for testing.
+	MaxGasPrice: common.HexToAddress("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"),
 }
 
 func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
@@ -51,6 +54,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 			ChaiBridge:          common.HexToAddress("0x77c31eba23043b9a72d13470f3a3a311344d7438"),
 			ChaiToken:           common.HexToAddress("0x06af07097c9eeb7fd685c692751d5c66db49c215"),
+			MaxGasPrice:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		}, nil
 	case 3:
 		return ContractAddresses{
@@ -65,6 +69,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			MaxGasPrice:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		}, nil
 	case 4:
 		return ContractAddresses{
@@ -79,6 +84,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0x8080c7e4b81ecf23aa6f877cfbfd9b0c228c6ffa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			MaxGasPrice:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		}, nil
 	case 42:
 		return ContractAddresses{
@@ -93,6 +99,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			MaxGasPrice:         common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		}, nil
 	case 1337:
 		return ContractAddresses{
@@ -107,6 +114,8 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			// FIXME(jalextowle): This is a fake address for testing.
+			MaxGasPrice: common.HexToAddress("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"),
 		}, nil
 	default:
 		return ContractAddresses{}, fmt.Errorf("Cannot create contract addresses for non-standard chainID")

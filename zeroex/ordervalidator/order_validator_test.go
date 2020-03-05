@@ -210,6 +210,74 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
 }
 
+func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ethClient := ethclient.NewClient(rpcClient)
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
+	signedOrder = signedOrderWithCustomMakerFeeAssetData(t, signedOrder, common.Hex2Bytes("0xc339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000"))
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
+
+	rateLimiter := ratelimit.NewUnlimited()
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
+	require.NoError(t, err)
+
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+
+	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	assert.Len(t, accepted, 0)
+	require.Len(t, rejected, 1)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	actualOrderHash, err := rejected[0].SignedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, expectedOrderHash, actualOrderHash)
+}
+
+func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ethClient := ethclient.NewClient(rpcClient)
+	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder = signedOrderWithCustomMakerFeeAssetData(t, signedOrder, common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000024da5b166a000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000"))
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
+
+	rateLimiter := ratelimit.NewUnlimited()
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
+	require.NoError(t, err)
+
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+
+	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	fmt.Printf("%+v\n", rejected[0])
+	assert.Len(t, accepted, 1)
+	require.Len(t, rejected, 0)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	actualOrderHash, err := accepted[0].ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, expectedOrderHash, actualOrderHash)
+}
+
 func TestBatchValidateSignatureInvalid(t *testing.T) {
 	signedOrder := &testSignedOrder
 	// Add a correctly formatted signature that does not correspond to this order
@@ -452,6 +520,13 @@ func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder zeroex.Signed
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
+}
+
+func signedOrderWithCustomMakerFeeAssetData(t *testing.T, signedOrder *zeroex.SignedOrder, makerFeeAssetData []byte) *zeroex.SignedOrder {
+	signedOrder.MakerFeeAssetData = makerFeeAssetData
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
+	require.NoError(t, err)
+	return signedOrderWithSignature
 }
 
 func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder zeroex.SignedOrder, takerAssetData []byte) zeroex.SignedOrder {
