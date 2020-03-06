@@ -246,76 +246,6 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 
 var checkGasPriceDefaultStaticCallData = common.Hex2Bytes("c339d10a0000000000000000000000002c530e4ecc573f11bd72cf5fdf580d134d25f15f0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000004d728f5b700000000000000000000000000000000000000000000000000000000")
 
-func TestBatchOffchainValidateMaxGasPriceDefaultOrder(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	ethClient := ethclient.NewClient(rpcClient)
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, checkGasPriceDefaultStaticCallData)
-	signedOrders := []*zeroex.SignedOrder{
-		&testSignedOrder,
-	}
-
-	rateLimiter := ratelimit.NewUnlimited()
-	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
-	require.NoError(t, err)
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
-	assert.Len(t, accepted, 1)
-	require.Len(t, rejected, 0)
-	testSignedOrder.ResetHash()
-	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	actualOrderHash, err := accepted[0].ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, actualOrderHash)
-}
-
-func TestBatchValidateMaxGasPriceDefaultOrder(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	ethClient := ethclient.NewClient(rpcClient)
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, checkGasPriceDefaultStaticCallData)
-	signedOrders := []*zeroex.SignedOrder{
-		&testSignedOrder,
-	}
-
-	rateLimiter := ratelimit.NewUnlimited()
-	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-	require.NoError(t, err)
-	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
-	require.NoError(t, err)
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-	assert.Len(t, validationResults.Accepted, 1)
-	require.Len(t, validationResults.Rejected, 0)
-	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
-}
-
 var checkGasPriceStaticCallData = common.Hex2Bytes("c339d10a0000000000000000000000002c530e4ecc573f11bd72cf5fdf580d134d25f15f0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000024da5b166a000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000")
 
 func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
@@ -323,34 +253,42 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
 
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	ethClient := ethclient.NewClient(rpcClient)
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, checkGasPriceStaticCallData)
-	signedOrders := []*zeroex.SignedOrder{
-		&testSignedOrder,
-	}
-
 	rateLimiter := ratelimit.NewUnlimited()
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
-
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
-	assert.Len(t, accepted, 1)
-	require.Len(t, rejected, 0)
-	testSignedOrder.ResetHash()
-	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	actualOrderHash, err := accepted[0].ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, actualOrderHash)
+	for _, staticCallAssetData := range [][]byte{
+		checkGasPriceDefaultStaticCallData,
+		checkGasPriceStaticCallData,
+	} {
+		teardownSubTest := setupSubTest(t)
+
+		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
+		signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+		testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, staticCallAssetData)
+		signedOrders := []*zeroex.SignedOrder{
+			&testSignedOrder,
+		}
+
+		// Ensure that the order is accepted by offchain validation
+		accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+		assert.Len(t, accepted, 1)
+		require.Len(t, rejected, 0)
+		testSignedOrder.ResetHash()
+		expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		actualOrderHash, err := accepted[0].ComputeOrderHash()
+		require.NoError(t, err)
+		assert.Equal(t, expectedOrderHash, actualOrderHash)
+
+		teardownSubTest(t)
+	}
+
 }
 
 func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
@@ -358,34 +296,43 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
 
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	ethClient := ethclient.NewClient(rpcClient)
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, checkGasPriceStaticCallData)
-	signedOrders := []*zeroex.SignedOrder{
-		&testSignedOrder,
-	}
-
-	rateLimiter := ratelimit.NewUnlimited()
 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
 	require.NoError(t, err)
+	ethClient := ethclient.NewClient(rpcClient)
+	rateLimiter := ratelimit.NewUnlimited()
 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
 	require.NoError(t, err)
-
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	ctx := context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-	assert.Len(t, validationResults.Accepted, 1)
-	require.Len(t, validationResults.Rejected, 0)
-	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
+	for _, staticCallAssetData := range [][]byte{
+		checkGasPriceDefaultStaticCallData,
+		checkGasPriceStaticCallData,
+	} {
+
+		teardownSubTest := setupSubTest(t)
+
+		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
+		signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+		testSignedOrder := signedOrderWithCustomMakerFeeAssetData(t, *signedOrder, staticCallAssetData)
+		signedOrders := []*zeroex.SignedOrder{
+			&testSignedOrder,
+		}
+
+		// Ensure that the order is accepted by offchain validation
+		ctx := context.Background()
+		latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+		require.NoError(t, err)
+		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+		assert.Len(t, validationResults.Accepted, 1)
+		require.Len(t, validationResults.Rejected, 0)
+		expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
+
+		teardownSubTest(t)
+	}
+
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
