@@ -5,6 +5,7 @@ package integrationtests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"strconv"
 	"sync"
@@ -25,14 +26,14 @@ import (
 )
 
 func TestWSAddOrdersSuccess(t *testing.T) {
-	runAddOrdersSuccessTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+	runAddOrdersSuccessTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
 }
 
 func TestHTTPAddOrdersSuccess(t *testing.T) {
-	runAddOrdersSuccessTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+	runAddOrdersSuccessTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
 }
 
-func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
+func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -54,8 +55,8 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix string, rpcPort int
 
 	// Wait until the rpc server has been started, and then create an rpc client
 	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
+	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
+	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
 
@@ -91,18 +92,18 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix string, rpcPort int
 }
 
 func TestWSGetOrders(t *testing.T) {
-	runGetOrdersTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+	runGetOrdersTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
 }
 
 func TestHTTPGetOrders(t *testing.T) {
-	runGetOrdersTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+	runGetOrdersTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
 }
 
 // TODO(jalextowle): Since the uuid creation process is inherently random, we
 //                   can't meaningfully sanity check the returnedSnapshotID in
 //                   this test. Unit testing should be implemented to verify that
 //                   this logic is correct, if necessary.
-func runGetOrdersTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
+func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -122,8 +123,8 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 		startStandaloneNode(t, ctx, count, "", logMessages)
 	}()
 
-	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
+	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
+	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
 
 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
 	require.NoError(t, err)
@@ -211,14 +212,14 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 }
 
 func TestWSGetStats(t *testing.T) {
-	runGetStatsTest(t, standaloneWSRPCEndpointPrefix, wsRPCPort)
+	runGetStatsTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
 }
 
 func TestHTTPGetStats(t *testing.T) {
-	runGetStatsTest(t, standaloneHTTPRPCEndpointPrefix, httpRPCPort)
+	runGetStatsTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
 }
 
-func runGetStatsTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
+func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -243,8 +244,8 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix string, rpcPort int) {
 	var jsonLog struct {
 		PeerID string `json:"myPeerID"`
 	}
-	log, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
+	log, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
+	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
 	err = json.Unmarshal([]byte(log), &jsonLog)
 	require.NoError(t, err)
 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
@@ -298,8 +299,8 @@ func TestOrdersSubscription(t *testing.T) {
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client.
-	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
+	_, err := waitForLogSubstring(ctx, logMessages, "started WS RPC server")
+	require.NoError(t, err, "WS RPC server didn't start")
 	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 	require.NoError(t, err)
 
@@ -359,8 +360,8 @@ func TestHeartbeatSubscription(t *testing.T) {
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client
-	_, err := waitForLogSubstring(ctx, logMessages, "started RPC server")
-	require.NoError(t, err, "RPC server didn't start")
+	_, err := waitForLogSubstring(ctx, logMessages, "started WS RPC server")
+	require.NoError(t, err, "WS RPC server didn't start")
 	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
 	require.NoError(t, err)
 

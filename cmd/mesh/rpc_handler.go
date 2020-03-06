@@ -32,6 +32,19 @@ type rpcHandler struct {
 	ctx context.Context
 }
 
+// waitForSelectedAddress wait for the server to start listening and select an address.
+func waitForSelectedAddress(ctx context.Context, rpcServer *rpc.Server) (string, error) {
+	for rpcServer.Addr() == nil {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return rpcServer.Addr().String(), nil
+}
+
 // instantiateServer instantiates a new RPC server with the rpcHandler.
 func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.Server {
 	// Initialize the JSON RPC WebSocket server (but don't start it yet).
@@ -43,18 +56,6 @@ func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.
 	if err != nil {
 		return nil
 	}
-	go func() {
-		// Wait for the server to start listening and select an address.
-		for rpcServer.Addr() == nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		log.WithField("address", rpcServer.Addr().String()).Info("started RPC server")
-	}()
 	return rpcServer
 }
 
