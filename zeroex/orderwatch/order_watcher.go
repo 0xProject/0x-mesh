@@ -1736,8 +1736,8 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		if err != nil {
 			return err
 		}
-		// NOTE(jalextowle): Only one staticcall is receiving support right
-		// now, so we don't neeed to add any addresses to the event decoder
+		// NOTE(jalextowle): Only one staticcall is supported right now,
+		// so we don't neeed to add any addresses to the event decoder
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -1802,7 +1802,7 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 			return err
 		}
 		// NOTE(jalextowle): We aren't adding any contract addresses to the
-		// orderwatcher for currently support staticcalls, so we don't need
+		// orderwatcher for currently supported staticcalls, so we don't need
 		// to remove anything here.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
