@@ -78,8 +78,6 @@ type StaticCallAssetData struct {
 	ExpectedReturnHashData  [32]byte
 }
 
-type CheckGasPriceDefaultStaticCallData struct{}
-
 type CheckGasPriceStaticCallData struct {
 	MaxGasPrice *big.Int
 }
@@ -152,11 +150,11 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 			abi:  staticCallAssetDataABI,
 		},
 		CheckGasPriceDefaultID: assetDataInfo{
-			name: "CheckGasPriceDefault",
+			name: "checkGasPrice",
 			abi:  checkGasPriceDefaultStaticCallDataABI,
 		},
 		CheckGasPriceID: assetDataInfo{
-			name: "CheckGasPrice",
+			name: "checkGasPrice",
 			abi:  checkGasPriceStaticCallDataABI,
 		},
 		MultiAssetDataID: assetDataInfo{

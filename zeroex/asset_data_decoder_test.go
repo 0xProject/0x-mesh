@@ -66,11 +66,11 @@ func TestDecodeCheckGasPriceDefault(t *testing.T) {
 
 	d := NewAssetDataDecoder()
 
-	var actualDecodedAssetData CheckGasPriceDefaultStaticCallData
+	var actualDecodedAssetData CheckGasPriceStaticCallData
 	err := d.Decode(assetData, &actualDecodedAssetData)
 	require.NoError(t, err)
 
-	expectedDecodedAssetData := CheckGasPriceDefaultStaticCallData{}
+	expectedDecodedAssetData := CheckGasPriceStaticCallData{}
 	assert.Equal(t, expectedDecodedAssetData, actualDecodedAssetData, "CheckGasPriceDefault improperly decoded")
 }
 

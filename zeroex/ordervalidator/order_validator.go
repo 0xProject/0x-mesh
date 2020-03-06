@@ -794,19 +794,8 @@ func (o *OrderValidator) isSupportedStaticCallData(staticCallAssetData zeroex.St
 	if err != nil {
 		return false
 	}
-	fmt.Println(staticCallDataName)
 	switch staticCallDataName {
-	case "CheckGasPriceDefault":
-		var decodedStaticCallData zeroex.CheckGasPriceDefaultStaticCallData
-		err := o.assetDataDecoder.Decode(staticCallAssetData.StaticCallData, &decodedStaticCallData)
-		if err != nil {
-			return false
-		}
-		// We currently restrict the `checkGasPrice` staticcall to the known MaxGasPrice contract.
-		if o.contractAddresses.MaxGasPrice == constants.NullAddress || staticCallAssetData.StaticCallTargetAddress != o.contractAddresses.MaxGasPrice {
-			return false
-		}
-	case "CheckGasPrice":
+	case "checkGasPrice":
 		var decodedStaticCallData zeroex.CheckGasPriceStaticCallData
 		err := o.assetDataDecoder.Decode(staticCallAssetData.StaticCallData, &decodedStaticCallData)
 		if err != nil {
