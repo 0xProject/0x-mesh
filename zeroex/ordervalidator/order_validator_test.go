@@ -238,11 +238,10 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
 	assert.Len(t, accepted, 0)
 	require.Len(t, rejected, 1)
-	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	testSignedOrder.ResetHash()
+	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	actualOrderHash, err := rejected[0].SignedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, actualOrderHash)
+	assert.Equal(t, expectedOrderHash, rejected[0].OrderHash)
 }
 
 func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
@@ -272,7 +271,8 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
 	assert.Len(t, accepted, 1)
 	require.Len(t, rejected, 0)
-	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	testSignedOrder.ResetHash()
+	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	actualOrderHash, err := accepted[0].ComputeOrderHash()
 	require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
-	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
 }
@@ -539,6 +539,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 
 func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder zeroex.SignedOrder, makerAssetAmount *big.Int) zeroex.SignedOrder {
 	signedOrder.MakerAssetAmount = makerAssetAmount
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
@@ -546,6 +547,7 @@ func signedOrderWithCustomMakerAssetAmount(t *testing.T, signedOrder zeroex.Sign
 
 func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder zeroex.SignedOrder, takerAssetAmount *big.Int) zeroex.SignedOrder {
 	signedOrder.TakerAssetAmount = takerAssetAmount
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
@@ -553,6 +555,7 @@ func signedOrderWithCustomTakerAssetAmount(t *testing.T, signedOrder zeroex.Sign
 
 func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder zeroex.SignedOrder, makerAssetData []byte) zeroex.SignedOrder {
 	signedOrder.MakerAssetData = makerAssetData
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
@@ -560,6 +563,7 @@ func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder zeroex.Signed
 
 func signedOrderWithCustomMakerFeeAssetData(t *testing.T, signedOrder zeroex.SignedOrder, makerFeeAssetData []byte) zeroex.SignedOrder {
 	signedOrder.MakerFeeAssetData = makerFeeAssetData
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
@@ -567,6 +571,7 @@ func signedOrderWithCustomMakerFeeAssetData(t *testing.T, signedOrder zeroex.Sig
 
 func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder zeroex.SignedOrder, takerAssetData []byte) zeroex.SignedOrder {
 	signedOrder.TakerAssetData = takerAssetData
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
@@ -574,6 +579,7 @@ func signedOrderWithCustomTakerAssetData(t *testing.T, signedOrder zeroex.Signed
 
 func signedOrderWithCustomExpirationTimeSeconds(t *testing.T, signedOrder zeroex.SignedOrder, expirationTimeSeconds *big.Int) zeroex.SignedOrder {
 	signedOrder.ExpirationTimeSeconds = expirationTimeSeconds
+	signedOrder.ResetHash()
 	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
 	require.NoError(t, err)
 	return *signedOrderWithSignature
