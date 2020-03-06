@@ -34,9 +34,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	generateTypescriptClientDocs()
-	generateTypescriptBrowserDocs()
-	generateTypescriptBrowserLiteDocs()
+	// Generate documentation for the Typescript packages.
+	cmd = exec.Command("yarn", "docs:md")
+	cmd.Dir = "."
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
 
 	createReleaseChangelog(env.Version)
 }
@@ -62,39 +67,6 @@ func createReleaseChangelog(version string) {
 	}
 }
 
-func generateTypescriptClientDocs() {
-	// Run `yarn docs:md` to generate MD docs
-	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "packages/rpc-client"
-	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-}
-
-func generateTypescriptBrowserDocs() {
-	// Run `yarn docs:md` to generate MD docs
-	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "packages/browser"
-	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-}
-
-func generateTypescriptBrowserLiteDocs() {
-	// Run `yarn docs:md` to generate MD docs
-	cmd := exec.Command("yarn", "docs:md")
-	cmd.Dir = "packages/browser-lite"
-	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-}
-
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
 	// Update `packages/rpc-client/package.json`
@@ -115,6 +87,9 @@ func updateHardCodedVersions(version string) {
 	regex = `"version": "(.*)"`
 	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
 	newBrowserLiteDependencyString := fmt.Sprintf(`"@0x/mesh-browser-lite": "^%s"`, version)
+	// NOTE(jalextowle): `@0x/mesh-browser` uses the local version of `@0x/mesh-browser-lite`
+	// on the `development` branch. Once the `@0x/mesh-browser-lite` package has been published,
+	// we need to update dependency in `@0x/mesh-browser` to published version.
 	regex = `"@0x/mesh-browser-lite": "(.*)"`
 	updateFileWithRegex(browserPackageJSONPath, regex, newBrowserLiteDependencyString)
 
