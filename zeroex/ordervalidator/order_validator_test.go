@@ -242,6 +242,7 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	expectedOrderHash, err := testSignedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, rejected[0].OrderHash)
+	require.Equal(t, ROInvalidMakerFeeAssetData, rejected[0].Status)
 }
 
 var checkGasPriceDefaultStaticCallData = common.Hex2Bytes("c339d10a0000000000000000000000002c530e4ecc573f11bd72cf5fdf580d134d25f15f0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000004d728f5b700000000000000000000000000000000000000000000000000000000")

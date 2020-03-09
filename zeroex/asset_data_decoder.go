@@ -71,7 +71,6 @@ type ERC20BridgeAssetData struct {
 	BridgeData    []byte
 }
 
-// StaticCallAssetData represents a StaticCallAssetData
 type StaticCallAssetData struct {
 	StaticCallTargetAddress common.Address
 	StaticCallData          []byte
