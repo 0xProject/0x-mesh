@@ -5,6 +5,8 @@ import * as rimraf from 'rimraf';
 
 import { WSClient } from '../../src';
 
+const DEFAULT_TIMEOUT = 3000;
+
 async function buildBinaryAsync(): Promise<void> {
     const cwd = join(__dirname, '../../../../../').normalize();
     const build = spawn('make', ['mesh'], { cwd });
@@ -45,7 +47,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await buildBinaryAsync();
 
     const mesh = new MeshHarness();
-    const log = await mesh.waitForPatternAsync(/started WS RPC server/);
+    const log = await waitForMeshLogsAsync(mesh);
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`ws://localhost:${mesh.wsPort}`);
     return {
@@ -55,34 +57,43 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     };
 }
 
+// Wait for the `core.App was started` and the `started WS RPC server` logs.
+async function waitForMeshLogsAsync(harness: MeshHarness): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        let peerIdLog = '';
+        const stream = jsonstream.parse(true);
+        let didSeeWSLog = false;
+        let didAppStartedLog = false;
+        stream.on('data', data => {
+            const dataString = JSON.stringify(data);
+            if (/started WS RPC server/.test(dataString)) {
+                didSeeWSLog = true;
+                peerIdLog = dataString;
+            } else if (/core.App was started/.test(dataString)) {
+                didAppStartedLog = true;
+            }
+
+            if (didSeeWSLog && didAppStartedLog) {
+                resolve(peerIdLog);
+            }
+        });
+        harness.mesh.stderr.pipe(stream);
+        setTimeout(reject, DEFAULT_TIMEOUT);
+    });
+}
+
 export class MeshHarness {
-    public static readonly DEFAULT_TIMEOUT = 1000;
     protected static _serverPort = 64321;
 
     public readonly wsPort: number;
-    private readonly _mesh: ChildProcessWithoutNullStreams;
+    public readonly mesh: ChildProcessWithoutNullStreams;
     private _killed = false;
 
     /**
-     * Wait for a log on the mesh process's stderr that matches the given regex pattern.
-     * @param pattern The regex pattern to use when testing incoming logs.
-     * @param timeout An optional timeout parameter to schedule an end to waiting on the logs.
+     * Returns a value indicating whether the harness's mesh node has been stopped.
      */
-    public async waitForPatternAsync(pattern: RegExp, timeout?: number): Promise<string> {
-        if (this._killed) {
-            throw new Error('mesh instance has already been killed');
-        }
-        return new Promise<string>((resolve, reject) => {
-            const stream = jsonstream.parse(true);
-            stream.on('data', data => {
-                const dataString = JSON.stringify(data);
-                if (pattern.test(dataString)) {
-                    resolve(dataString);
-                }
-            });
-            this._mesh.stderr.pipe(stream);
-            setTimeout(reject, timeout || MeshHarness.DEFAULT_TIMEOUT);
-        });
+    public wasStopped(): boolean {
+        return this._killed;
     }
 
     /**
@@ -90,7 +101,7 @@ export class MeshHarness {
      */
     public stopMesh(): void {
         this._killed = true;
-        this._mesh.kill('SIGKILL');
+        this.mesh.kill('SIGKILL');
     }
 
     public constructor() {
@@ -100,8 +111,8 @@ export class MeshHarness {
         env.ETHEREUM_CHAIN_ID = '1337';
         env.VERBOSITY = '5';
         env.WS_RPC_ADDR = `localhost:${this.wsPort}`;
-        this._mesh = spawn('mesh', [], { env });
-        this._mesh.stderr.on('error', error => {
+        this.mesh = spawn('mesh', [], { env });
+        this.mesh.stderr.on('error', error => {
             throw new Error(`${error.name} - ${error.message}`);
         });
     }
