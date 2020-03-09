@@ -1736,8 +1736,10 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		if err != nil {
 			return err
 		}
-		// NOTE(jalextowle): Only one staticcall is supported right now,
-		// so we don't neeed to add any addresses to the event decoder
+		// NOTE(jalextowle): The only staticcall that is currently supported
+		// only relies on transaction gas price. This means that we do not need
+		// to monitor any new contract addresses because the only supported
+		// staticcall doesn't rely on any blockchain state state.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
