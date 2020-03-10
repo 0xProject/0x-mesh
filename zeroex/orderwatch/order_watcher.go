@@ -1730,6 +1730,16 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		}
 		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		// NOTE(jalextowle): The only staticcall that is currently supported
+		// only relies on transaction gas price. This means that we do not need
+		// to monitor any new contract addresses because the only supported
+		// staticcall doesn't rely on any blockchain state.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -1787,6 +1797,15 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
 			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
 		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		// NOTE(jalextowle): We aren't adding any contract addresses to the
+		// orderwatcher for currently supported staticcalls, so we don't need
+		// to remove anything here.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)

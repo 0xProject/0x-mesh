@@ -20,6 +20,16 @@ const ERC721AssetDataID = "02571792"
 // ERC1155AssetDataID is the assetDataId for ERC721 tokens
 const ERC1155AssetDataID = "a7cb5fb7"
 
+// StaticCallAssetDataID is the assetDataId for staticcalls
+const StaticCallAssetDataID = "c339d10a"
+
+// CheckGasDefaultID is the function selector for the `checkGas` function that does
+// not accept a gasPrice.
+const CheckGasPriceDefaultID = "d728f5b7"
+
+// CheckGasID is the function selector for the `checkGas` function that accepts a gasPrice.
+const CheckGasPriceID = "da5b166a"
+
 // MultiAssetDataID is the assetDataId for multiAsset tokens
 const MultiAssetDataID = "94cfcdd7"
 
@@ -29,8 +39,11 @@ const ERC20BridgeAssetDataID = "dc1600f3"
 const erc20AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"}],\"name\":\"ERC20Token\",\"type\":\"function\"}]"
 const erc721AssetDataAbi = "[{\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721Token\",\"type\":\"function\"}]"
 const erc1155AssetDataAbi = "[{\"constant\":false,\"inputs\":[{\"name\":\"address\",\"type\":\"address\"},{\"name\":\"ids\",\"type\":\"uint256[]\"},{\"name\":\"values\",\"type\":\"uint256[]\"},{\"name\":\"callbackData\",\"type\":\"bytes\"}],\"name\":\"ERC1155Assets\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+const staticCallAssetDataAbi = "[{\"inputs\":[{\"name\":\"staticCallTargetAddress\",\"type\":\"address\"},{\"name\":\"staticCallData\",\"type\":\"bytes\"},{\"name\":\"expectedReturnHashData\", \"type\":\"bytes32\"}],\"name\":\"StaticCall\",\"type\":\"function\"}]"
+const checkGasPriceDefaultStaticCallDataAbi = "[{\"inputs\":[],\"name\":\"checkGasPrice\",\"type\":\"function\"}]"
+const checkGasPriceStaticCallDataAbi = "[{\"inputs\":[{\"name\":\"maxGasPrice\",\"type\":\"uint256\"}],\"name\":\"checkGasPrice\",\"type\":\"function\"}]"
 const multiAssetDataAbi = "[{\"inputs\":[{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"nestedAssetData\",\"type\":\"bytes[]\"}],\"name\":\"MultiAsset\",\"type\":\"function\"}]"
-const erc20BridgeAssetDataAbi = "[{\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"name\":\"calldata\",\"type\":\"bytes\"}],\"name\":\"ERC20Bridge\",\"type\":\"function\"}]"
+const erc20BridgeAssetDataAbi = "[{\"inputs\":[{\"name\":\"tokenAddress\",\"type\":\"address\"},{\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"name\":\"bridgeData\",\"type\":\"bytes\"}],\"name\":\"ERC20Bridge\",\"type\":\"function\"}]"
 
 // ERC20AssetData represents an ERC20 assetData
 type ERC20AssetData struct {
@@ -55,10 +68,20 @@ type ERC1155AssetData struct {
 type ERC20BridgeAssetData struct {
 	TokenAddress  common.Address
 	BridgeAddress common.Address
-	Calldata      []byte
+	BridgeData    []byte
 }
 
-// MultiAssetData represents an MultiAssetData
+type StaticCallAssetData struct {
+	StaticCallTargetAddress common.Address
+	StaticCallData          []byte
+	ExpectedReturnHashData  [32]byte
+}
+
+type CheckGasPriceStaticCallData struct {
+	MaxGasPrice *big.Int
+}
+
+// MultiAssetData represents a MultiAssetData
 type MultiAssetData struct {
 	Amounts         []*big.Int
 	NestedAssetData [][]byte
@@ -88,6 +111,18 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 	if err != nil {
 		log.WithField("erc1155AssetDataAbi", erc1155AssetDataAbi).Panic("erc1155AssetDataAbi should be ABI parsable")
 	}
+	staticCallAssetDataABI, err := abi.JSON(strings.NewReader(staticCallAssetDataAbi))
+	if err != nil {
+		log.WithField("staticCallAssetDataAbi", staticCallAssetDataAbi).Panic("staticCallAssetDataAbi should be ABI parsable")
+	}
+	checkGasPriceDefaultStaticCallDataABI, err := abi.JSON(strings.NewReader(checkGasPriceDefaultStaticCallDataAbi))
+	if err != nil {
+		log.WithField("checkGasPriceDefaultStaticCallDataAbi", checkGasPriceDefaultStaticCallDataAbi).Panic("checkGasPriceDefaultStaticCallDataAbi should be ABI parsable")
+	}
+	checkGasPriceStaticCallDataABI, err := abi.JSON(strings.NewReader(checkGasPriceStaticCallDataAbi))
+	if err != nil {
+		log.WithField("checkGasPriceStaticCallDataAbi", checkGasPriceStaticCallDataAbi).Panic("checkGasStaticCallDataAbi should be ABI parsable")
+	}
 	multiAssetDataABI, err := abi.JSON(strings.NewReader(multiAssetDataAbi))
 	if err != nil {
 		log.WithField("multiAssetDataAbi", multiAssetDataAbi).Panic("multiAssetDataAbi should be ABI parsable")
@@ -108,6 +143,18 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 		ERC1155AssetDataID: assetDataInfo{
 			name: "ERC1155Assets",
 			abi:  erc1155AssetDataABI,
+		},
+		StaticCallAssetDataID: assetDataInfo{
+			name: "StaticCall",
+			abi:  staticCallAssetDataABI,
+		},
+		CheckGasPriceDefaultID: assetDataInfo{
+			name: "checkGasPrice",
+			abi:  checkGasPriceDefaultStaticCallDataABI,
+		},
+		CheckGasPriceID: assetDataInfo{
+			name: "checkGasPrice",
+			abi:  checkGasPriceStaticCallDataABI,
 		},
 		MultiAssetDataID: assetDataInfo{
 			name: "MultiAsset",
@@ -150,6 +197,10 @@ func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}
 		return errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
 	}
 
+	// This is necessary to prevent a nil pointer exception for ABIs with no inputs
+	if info.abi.Methods[info.name].Inputs.LengthNonIndexed() == 0 {
+		return nil
+	}
 	err := info.abi.Methods[info.name].Inputs.Unpack(decodedAssetData, assetData[4:])
 	if err != nil {
 		return err
