@@ -929,59 +929,57 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			IsRemoved:                false,
 			IsPinned:                 pinned,
 		}
-		err = txn.Insert(order)
-		if err != nil {
-			if _, ok := err.(db.AlreadyExistsError); ok {
-				// If we're already watching the order, that's fine in this case. Don't
-				// return an error.
-				return orderEvents, nil
+		// Final expiration time check before inserting the order. We might have just
+		// changed max expiration time above.
+		if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+			// HACK(albrow): This is technically not the ideal way to respond to this
+			// situation, but it is a lot easier to implement for the time being. In the
+			// future, we should return an error and then react to that error
+			// differently depending on whether the order was received via RPC or from a
+			// peer. In the former case, we should return an RPC error response
+			// indicating that the order was not in fact added. In the latter case, we
+			// should effectively no-op, neither penalizing the peer or emitting any
+			// order events. For now, we respond by emitting an ADDED event immediately
+			// followed by a STOPPED_WATCHING event. If this order was submitted via
+			// RPC, the RPC client will see a response that indicates the order was
+			// successfully added, and then it will look like we immediately stopped
+			// watching it. This is not too far off from what really happened but is
+			// slightly inefficient.
+			addedEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderInfo.OrderHash,
+				SignedOrder:              orderInfo.SignedOrder,
+				FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESOrderAdded,
 			}
-			if _, ok := err.(db.ConflictingOperationsError); ok {
-				logger.WithFields(logger.Fields{
-					"error": err.Error(),
-					"order": order,
-				}).Error("Failed to insert order into DB")
-				return orderEvents, nil
+			orderEvents = append(orderEvents, addedEvent)
+			stoppedWatchingEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderInfo.OrderHash,
+				SignedOrder:              orderInfo.SignedOrder,
+				FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESStoppedWatching,
 			}
-			return orderEvents, err
+			orderEvents = append(orderEvents, stoppedWatchingEvent)
+		} else {
+			err = txn.Insert(order)
+			if err != nil {
+				if _, ok := err.(db.AlreadyExistsError); ok {
+					// If we're already watching the order, that's fine in this case. Don't
+					// return an error.
+					return orderEvents, nil
+				}
+				if _, ok := err.(db.ConflictingOperationsError); ok {
+					logger.WithFields(logger.Fields{
+						"error": err.Error(),
+						"order": order,
+					}).Error("Failed to insert order into DB")
+					return orderEvents, nil
+				}
+				return orderEvents, err
+			}
 		}
 	}
-
-	// TODO(albrow): Add this back in.
-	// // Final expiration time check before inserting the order. We might have just
-	// // changed max expiration time above.
-	// if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
-	// 	// HACK(albrow): This is technically not the ideal way to respond to this
-	// 	// situation, but it is a lot easier to implement for the time being. In the
-	// 	// future, we should return an error and then react to that error
-	// 	// differently depending on whether the order was received via RPC or from a
-	// 	// peer. In the former case, we should return an RPC error response
-	// 	// indicating that the order was not in fact added. In the latter case, we
-	// 	// should effectively no-op, neither penalizing the peer or emitting any
-	// 	// order events. For now, we respond by emitting an ADDED event immediately
-	// 	// followed by a STOPPED_WATCHING event. If this order was submitted via
-	// 	// RPC, the RPC client will see a response that indicates the order was
-	// 	// successfully added, and then it will look like we immediately stopped
-	// 	// watching it. This is not too far off from what really happened but is
-	// 	// slightly inefficient.
-	// 	addedEvent := &zeroex.OrderEvent{
-	// 		Timestamp:                now,
-	// 		OrderHash:                orderInfo.OrderHash,
-	// 		SignedOrder:              orderInfo.SignedOrder,
-	// 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-	// 		EndState:                 zeroex.ESOrderAdded,
-	// 	}
-	// 	orderEvents = append(orderEvents, addedEvent)
-	// 	stoppedWatchingEvent := &zeroex.OrderEvent{
-	// 		Timestamp:                now,
-	// 		OrderHash:                orderInfo.OrderHash,
-	// 		SignedOrder:              orderInfo.SignedOrder,
-	// 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-	// 		EndState:                 zeroex.ESStoppedWatching,
-	// 	}
-	// 	orderEvents = append(orderEvents, stoppedWatchingEvent)
-	// 	return orderEvents, nil
-	// }
 
 	if err := txn.Commit(); err != nil {
 		return orderEvents, err
@@ -1413,21 +1411,6 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	allOrderEvents := []*zeroex.OrderEvent{}
 	orderEvents, err := w.add(newOrderInfos, validationBlock.Number, pinned)
 	if err != nil {
-		// TODO(albrow): redo this part
-		// if err == meshdb.ErrDBFilledWithPinnedOrders {
-		// 	// The order is valid but we don't have enough space in the database to store it. In this case,
-		// 	// we need to remove the order from `results.Accepted` and add it to `results.Rejected`.
-		// 	results.Accepted = append(results.Accepted[:i], results.Accepted[i+1:]...)
-		// 	results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-		// 		OrderHash:   acceptedOrderInfo.OrderHash,
-		// 		SignedOrder: acceptedOrderInfo.SignedOrder,
-		// 		Kind:        ordervalidator.MeshError,
-		// 		Status:      ordervalidator.RODatabaseFullOfOrders,
-		// 	})
-		// 	continue
-		// } else {
-		// 	return nil, err
-		// }
 		return nil, err
 	}
 	allOrderEvents = append(allOrderEvents, orderEvents...)
