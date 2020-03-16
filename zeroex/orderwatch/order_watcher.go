@@ -794,11 +794,13 @@ func (w *Watcher) handleBlockEvents(
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("Failed to commit orders collection transaction")
+		return err
 	}
 	if err := miniHeadersColTxn.Commit(); err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("Failed to commit miniheaders collection transaction")
+		return err
 	}
 
 	orderEvents := append(expirationOrderEvents, postValidationOrderEvents...)
