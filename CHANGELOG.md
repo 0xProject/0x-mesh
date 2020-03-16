@@ -7,6 +7,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Features ✅
 
 - Greatly reduced latency for propagating orders, especially for browser nodes [#756](https://github.com/0xProject/0x-mesh/pull/756).
+- Added support for `checkGasPrice` StaticCall asset data [#744](https://github.com/0xProject/0x-mesh/pull/744)
 
 
 ## v9.1.0
