@@ -1397,7 +1397,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
 	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
 
-	// Flter out only the new orders.
+	// Filter out only the new orders.
 	newOrderInfos := []*ordervalidator.AcceptedOrderInfo{}
 	for _, acceptedOrderInfo := range results.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher.
