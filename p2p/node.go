@@ -67,10 +67,9 @@ const (
 	// a bandwidth check.
 	chanceToCheckBandwidthUsage = 0.1
 	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
-	// peer is allowed to send before failing the bandwidth check.
-	// TODO(albrow): Reduce this limit once we have a better picture of what
-	// real world bandwidth should be.
-	defaultMaxBytesPerSecond = 104857600 // 100 MiB.
+	// peer is allowed to send before failing the bandwidth check. It's set to
+	// roughly 100x expected usage based on real world measurements.
+	defaultMaxBytesPerSecond = 1048576 // 1 MiB.
 	// defaultGlobalPubSubMessageLimit is the default value for
 	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
 	// case where 1000 peers are sending maxShareBatch messages per second. It may

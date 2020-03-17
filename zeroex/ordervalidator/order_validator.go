@@ -758,6 +758,13 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		if err != nil {
 			return false
 		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return false
+		}
+		return o.isSupportedStaticCallData(decodedAssetData)
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -774,6 +781,28 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
 		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
+			return false
+		}
+	default:
+		return false
+	}
+	return true
+}
+
+func (o *OrderValidator) isSupportedStaticCallData(staticCallAssetData zeroex.StaticCallAssetData) bool {
+	staticCallDataName, err := o.assetDataDecoder.GetName(staticCallAssetData.StaticCallData)
+	if err != nil {
+		return false
+	}
+	switch staticCallDataName {
+	case "checkGasPrice":
+		var decodedStaticCallData zeroex.CheckGasPriceStaticCallData
+		err := o.assetDataDecoder.Decode(staticCallAssetData.StaticCallData, &decodedStaticCallData)
+		if err != nil {
+			return false
+		}
+		// We currently restrict the `checkGasPrice` staticcall to the known MaximumGasPrice contract.
+		if o.contractAddresses.MaximumGasPrice == constants.NullAddress || staticCallAssetData.StaticCallTargetAddress != o.contractAddresses.MaximumGasPrice {
 			return false
 		}
 	default:

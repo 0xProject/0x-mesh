@@ -45,7 +45,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await buildBinaryAsync();
 
     const mesh = new MeshHarness();
-    const log = await mesh.waitForPatternAsync(/started RPC server/);
+    const log = await mesh.waitForPatternAsync(/started WS RPC server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
     const client = new WSClient(`ws://localhost:${mesh.wsPort}`);
     return {

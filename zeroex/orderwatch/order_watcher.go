@@ -794,11 +794,13 @@ func (w *Watcher) handleBlockEvents(
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("Failed to commit orders collection transaction")
+		return err
 	}
 	if err := miniHeadersColTxn.Commit(); err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("Failed to commit miniheaders collection transaction")
+		return err
 	}
 
 	orderEvents := append(expirationOrderEvents, postValidationOrderEvents...)
@@ -903,7 +905,7 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlockNumber *big.Int, pinned bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlockNumber *big.Int, pinned bool) ([]*zeroex.OrderEvent, error) {
 	orderEvents, err := w.decreaseMaxExpirationTimeIfNeeded()
 	if err != nil {
 		return orderEvents, err
@@ -919,82 +921,87 @@ func (w *Watcher) add(orderInfo *ordervalidator.AcceptedOrderInfo, validationBlo
 	}()
 
 	now := time.Now().UTC()
-	// Final expiration time check before inserting the order. We might have just
-	// changed max expiration time above.
-	if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
-		// HACK(albrow): This is technically not the ideal way to respond to this
-		// situation, but it is a lot easier to implement for the time being. In the
-		// future, we should return an error and then react to that error
-		// differently depending on whether the order was received via RPC or from a
-		// peer. In the former case, we should return an RPC error response
-		// indicating that the order was not in fact added. In the latter case, we
-		// should effectively no-op, neither penalizing the peer or emitting any
-		// order events. For now, we respond by emitting an ADDED event immediately
-		// followed by a STOPPED_WATCHING event. If this order was submitted via
-		// RPC, the RPC client will see a response that indicates the order was
-		// successfully added, and then it will look like we immediately stopped
-		// watching it. This is not too far off from what really happened but is
-		// slightly inefficient.
-		addedEvent := &zeroex.OrderEvent{
+
+	for _, orderInfo := range orderInfos {
+		order := &meshdb.Order{
+			Hash:                     orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			LastUpdated:              now,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			IsRemoved:                false,
+			IsPinned:                 pinned,
+		}
+		// Final expiration time check before inserting the order. We might have just
+		// changed max expiration time above.
+		if !pinned && orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(w.maxExpirationTime) == 1 {
+			// HACK(albrow): This is technically not the ideal way to respond to this
+			// situation, but it is a lot easier to implement for the time being. In the
+			// future, we should return an error and then react to that error
+			// differently depending on whether the order was received via RPC or from a
+			// peer. In the former case, we should return an RPC error response
+			// indicating that the order was not in fact added. In the latter case, we
+			// should effectively no-op, neither penalizing the peer or emitting any
+			// order events. For now, we respond by emitting an ADDED event immediately
+			// followed by a STOPPED_WATCHING event. If this order was submitted via
+			// RPC, the RPC client will see a response that indicates the order was
+			// successfully added, and then it will look like we immediately stopped
+			// watching it. This is not too far off from what really happened but is
+			// slightly inefficient.
+			addedEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderInfo.OrderHash,
+				SignedOrder:              orderInfo.SignedOrder,
+				FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESOrderAdded,
+			}
+			orderEvents = append(orderEvents, addedEvent)
+			stoppedWatchingEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderInfo.OrderHash,
+				SignedOrder:              orderInfo.SignedOrder,
+				FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESStoppedWatching,
+			}
+			orderEvents = append(orderEvents, stoppedWatchingEvent)
+		} else {
+			err = txn.Insert(order)
+			if err != nil {
+				if _, ok := err.(db.AlreadyExistsError); ok {
+					// If we're already watching the order, that's fine in this case. Don't
+					// return an error.
+					return orderEvents, nil
+				}
+				if _, ok := err.(db.ConflictingOperationsError); ok {
+					logger.WithFields(logger.Fields{
+						"error": err.Error(),
+						"order": order,
+					}).Error("Failed to insert order into DB")
+					return orderEvents, nil
+				}
+				return orderEvents, err
+			}
+		}
+	}
+
+	if err := txn.Commit(); err != nil {
+		return orderEvents, err
+	}
+
+	for _, orderInfo := range orderInfos {
+		err = w.setupInMemoryOrderState(orderInfo.SignedOrder)
+		if err != nil {
+			return orderEvents, err
+		}
+
+		addedOrderEvent := &zeroex.OrderEvent{
 			Timestamp:                now,
 			OrderHash:                orderInfo.OrderHash,
 			SignedOrder:              orderInfo.SignedOrder,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESOrderAdded,
 		}
-		orderEvents = append(orderEvents, addedEvent)
-		stoppedWatchingEvent := &zeroex.OrderEvent{
-			Timestamp:                now,
-			OrderHash:                orderInfo.OrderHash,
-			SignedOrder:              orderInfo.SignedOrder,
-			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-			EndState:                 zeroex.ESStoppedWatching,
-		}
-		orderEvents = append(orderEvents, stoppedWatchingEvent)
-		return orderEvents, nil
+		orderEvents = append(orderEvents, addedOrderEvent)
 	}
-
-	order := &meshdb.Order{
-		Hash:                     orderInfo.OrderHash,
-		SignedOrder:              orderInfo.SignedOrder,
-		LastUpdated:              now,
-		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-		IsRemoved:                false,
-		IsPinned:                 pinned,
-	}
-	err = txn.Insert(order)
-	if err != nil {
-		if _, ok := err.(db.AlreadyExistsError); ok {
-			// If we're already watching the order, that's fine in this case. Don't
-			// return an error.
-			return orderEvents, nil
-		}
-		if _, ok := err.(db.ConflictingOperationsError); ok {
-			logger.WithFields(logger.Fields{
-				"error": err.Error(),
-				"order": order,
-			}).Error("Failed to insert order into DB")
-			return orderEvents, nil
-		}
-		return orderEvents, err
-	}
-	if err := txn.Commit(); err != nil {
-		return orderEvents, err
-	}
-
-	err = w.setupInMemoryOrderState(orderInfo.SignedOrder)
-	if err != nil {
-		return orderEvents, err
-	}
-
-	addedOrderEvent := &zeroex.OrderEvent{
-		Timestamp:                now,
-		OrderHash:                orderInfo.OrderHash,
-		SignedOrder:              orderInfo.SignedOrder,
-		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
-		EndState:                 zeroex.ESOrderAdded,
-	}
-	orderEvents = append(orderEvents, addedOrderEvent)
 
 	return orderEvents, nil
 }
@@ -1392,34 +1399,23 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
 	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
 
-	// Store valid orders
-	allOrderEvents := []*zeroex.OrderEvent{}
-	for i, acceptedOrderInfo := range results.Accepted {
+	// Filter out only the new orders.
+	newOrderInfos := []*ordervalidator.AcceptedOrderInfo{}
+	for _, acceptedOrderInfo := range results.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher.
-		if !acceptedOrderInfo.IsNew {
-			continue
+		if acceptedOrderInfo.IsNew {
+			newOrderInfos = append(newOrderInfos, acceptedOrderInfo)
 		}
-		// Add the order to the OrderWatcher. This also saves the order in the
-		// database.
-		orderEvents, err := w.add(acceptedOrderInfo, validationBlock.Number, pinned)
-		if err != nil {
-			if err == meshdb.ErrDBFilledWithPinnedOrders {
-				// The order is valid but we don't have enough space in the database to store it. In this case,
-				// we need to remove the order from `results.Accepted` and add it to `results.Rejected`.
-				results.Accepted = append(results.Accepted[:i], results.Accepted[i+1:]...)
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   acceptedOrderInfo.OrderHash,
-					SignedOrder: acceptedOrderInfo.SignedOrder,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.RODatabaseFullOfOrders,
-				})
-				continue
-			} else {
-				return nil, err
-			}
-		}
-		allOrderEvents = append(allOrderEvents, orderEvents...)
 	}
+
+	// Add the order to the OrderWatcher. This also saves the order in the
+	// database.
+	allOrderEvents := []*zeroex.OrderEvent{}
+	orderEvents, err := w.add(newOrderInfos, validationBlock.Number, pinned)
+	if err != nil {
+		return nil, err
+	}
+	allOrderEvents = append(allOrderEvents, orderEvents...)
 
 	if len(allOrderEvents) > 0 {
 		// NOTE(albrow): Send can block if the subscriber(s) are slow. Blocking here can cause problems when Mesh is
@@ -1730,6 +1726,16 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		}
 		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		// NOTE(jalextowle): The only staticcall that is currently supported
+		// only relies on transaction gas price. This means that we do not need
+		// to monitor any new contract addresses because the only supported
+		// staticcall doesn't rely on any blockchain state.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -1787,6 +1793,15 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
 			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
 		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		// NOTE(jalextowle): We aren't adding any contract addresses to the
+		// orderwatcher for currently supported staticcalls, so we don't need
+		// to remove anything here.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
