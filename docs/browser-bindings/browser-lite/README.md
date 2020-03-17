@@ -1,10 +1,12 @@
-# @0x/mesh-browser-lite - v9.1.0
+# @0x/mesh-browser-lite - v9.2.0
 
 ## @0x/mesh-browser-lite
 
-This packages provides a set of Typescript and Javascript bindings for running a 0x-mesh node in the browser.
-The browser node's Wasm binary is not bundled in this package and is instead expected to be served by the
-consumer of the package. This package is lighter-weight than the `@0x/mesh-browser` package and may have faster load times.
+This packages provides a set of Typescript and Javascript bindings for running a
+0x-mesh node in the browser. The browser node's Wasm binary is not bundled in
+this package and is instead expected to be served by the consumer of the package.
+This package has a smaller bundle size than the `@0x/mesh-browser` package and
+may have faster load times.
 
 ## Installation
 

@@ -60,7 +60,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "9.1.0"
+	version          = "9.2.0"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers            = 5

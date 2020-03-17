@@ -568,6 +568,15 @@ func parseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 			}
 			singleAssetDatas = append(singleAssetDatas, a)
 		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		// NOTE(jalextowle): As of right now, none of the supported staticcalls
+		// have important information in the StaticCallData. We choose not to add
+		// `singleAssetData` because it would not be used.
 	case "MultiAsset":
 		var decodedAssetData zeroex.MultiAssetData
 		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
