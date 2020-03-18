@@ -72,13 +72,19 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 			return nil, fmt.Errorf("FilteredPaginationSubProtocol received request with wrong metadata type (got %T)", req.Metadata)
 		}
 	}
+
 	// It's possible that none of the orders in the current page match the filter.
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
 	filteredOrders := []*zeroex.SignedOrder{}
 	var snapshotID string
-	var currentPage int
-	for currentPage = metadata.Page; len(filteredOrders) == 0; currentPage += 1 {
+	currentPage := metadata.Page
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		// Get the orders for this page.
 		ordersResp, err := p.app.GetOrders(currentPage, p.perPage, metadata.SnapshotID)
 		if err != nil {
@@ -89,14 +95,21 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 			// No more orders left.
 			break
 		}
-		// Filter the orders for this page. If none of them match the filter, we continue
-		// on to the next page.
+		// Filter the orders for this page.
 		for _, orderInfo := range ordersResp.OrdersInfos {
 			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
 				return nil, err
 			} else if matches {
 				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
 			}
+		}
+		if len(filteredOrders) == 0 {
+			// If none of the orders for this page match the filter, we continue
+			// on to the next page.
+			currentPage += 1
+			continue
+		} else {
+			break
 		}
 	}
 
