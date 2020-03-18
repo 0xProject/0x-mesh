@@ -340,6 +340,29 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	return nil
 }
 
+// PeriodicallyGetOrders periodically calls GetOrders. It waits a minimum of
+// minDelay between each call. It will block until there is a critical error or
+// the given context is canceled.
+func (s *Service) PeriodicallyGetOrders(ctx context.Context, minPeers int, minDelay time.Duration) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if err := s.GetOrders(ctx, minPeers); err != nil {
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(minDelay):
+		}
+	}
+}
+
 func handleRequestWithSubprotocol(ctx context.Context, subprotocol Subprotocol, requesterID peer.ID, rawReq *rawRequest) (*Response, error) {
 	req, err := parseRequestWithSubprotocol(subprotocol, requesterID, rawReq)
 	if err != nil {
