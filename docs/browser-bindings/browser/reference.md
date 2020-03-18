@@ -2045,36 +2045,3 @@ ___
 
 
 <hr />
-
-# Functions
-
-## loadMeshStreamingForURLAsync
-▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): *Promise‹`void`›*
-
-*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/aa55bae/packages/browser-lite/src/index.ts#L7)*
-
-Loads the Wasm module that is provided by fetching a url.
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`url` | `string` | The URL to query for the Wasm binary |
-
-<hr />
-
-## loadMeshStreamingAsync
-
-▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): *Promise‹`void`›*
-
-*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/aa55bae/packages/browser-lite/src/index.ts#L15)*
-
-Loads the Wasm module that is provided by a response.
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`response` | `Response or Promise<Response>` | The Wasm response that supplies the Wasm binary |
-
-<hr />
