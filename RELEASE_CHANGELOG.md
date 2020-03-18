@@ -1,12 +1,11 @@
 - [Docker image](https://hub.docker.com/r/0xorg/mesh/tags)
-- [README](https://github.com/0xProject/0x-mesh/blob/v9.2.0/README.md)
+- [README](https://github.com/0xProject/0x-mesh/blob/v9.2.1/README.md)
 
 ## Summary
 
-### Features ✅
+### Bug fixes 🐞
 
-- Greatly reduced latency for propagating orders, especially for browser nodes [#756](https://github.com/0xProject/0x-mesh/pull/756).
-- Added support for `checkGasPrice` StaticCall asset data [#744](https://github.com/0xProject/0x-mesh/pull/744)
+- Fixed a critical bug in the ordersync protocol which resulted in only 50% of existing orders being shared when a new peer joins the network. New orders are shared separately and were unaffected. [#760](https://github.com/0xProject/0x-mesh/pull/760).
 
 
 
