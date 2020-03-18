@@ -2,6 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v9.2.1
+
+### Bug fixes 🐞
+
+- Fixed a critical bug in the ordersync protocol which resulted in only 50% of existing orders being shared when a new peer joins the network. New orders are shared separately and were unaffected. [#760](https://github.com/0xProject/0x-mesh/pull/760).
+
+
 ## v9.2.0
 
 ### Features ✅
