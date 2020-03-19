@@ -64,10 +64,10 @@ const (
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
-	// ordersyncMinDelay is the amount of time to wait between each run of the
-	// ordersync protocol (as a requester). We always request orders immediately
-	// on startup. This delay only applies to subsequent runs.
-	ordersyncMinDelay            = 5 * time.Minute
+	// ordersyncApproxDelay is the approximate amount of time to wait between each
+	// run of the ordersync protocol (as a requester). We always request orders
+	// immediately on startup. This delay only applies to subsequent runs.
+	ordersyncApproxDelay         = 5 * time.Minute
 	paginationSubprotocolPerPage = 500
 )
 
@@ -662,7 +662,7 @@ func (app *App) Start(ctx context.Context) error {
 		defer func() {
 			log.Debug("closing ordersync service")
 		}()
-		if err := app.ordersyncService.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncMinDelay); err != nil {
+		if err := app.ordersyncService.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
 			orderSyncErrChan <- err
 		}
 	}()
