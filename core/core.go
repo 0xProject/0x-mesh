@@ -662,6 +662,12 @@ func (app *App) Start(ctx context.Context) error {
 		defer func() {
 			log.Debug("closing ordersync service")
 		}()
+		log.WithFields(map[string]interface{}{
+			"approxDelay":  ordersyncApproxDelay,
+			"perPage":      paginationSubprotocolPerPage,
+			"subprotocols": []string{"FilteredPaginationSubProtocol"},
+		}).Info("starting ordersync service")
+
 		if err := app.ordersyncService.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
 			orderSyncErrChan <- err
 		}
