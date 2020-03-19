@@ -67,7 +67,7 @@ const (
 	// ordersyncApproxDelay is the approximate amount of time to wait between each
 	// run of the ordersync protocol (as a requester). We always request orders
 	// immediately on startup. This delay only applies to subsequent runs.
-	ordersyncApproxDelay         = 5 * time.Minute
+	ordersyncApproxDelay         = 1 * time.Hour
 	paginationSubprotocolPerPage = 500
 )
 
