@@ -42,7 +42,7 @@ const (
 	// ordersyncJitterAmount is the amount of random jitter to add to the delay before
 	// each run of ordersync in PeriodicallyGetOrders. It is bound by:
 	//
-	//    (approxDelay - approxDelay * jitter) <= actualDelay <= (approxDelay + approxDelay * jitter)
+	//    approxDelay * (1 - jitter) <= actualDelay < approxDelay * (1 + jitter)
 	//
 	ordersyncJitterAmount = 0.1
 )
