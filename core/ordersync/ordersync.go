@@ -39,6 +39,12 @@ const (
 	maxRequestsPerSecond = 30
 	// requestsBurst is the maximum number of requests to allow at once.
 	requestsBurst = 10
+	// ordersyncJitterAmount is the amount of random jitter to add to the delay before
+	// each run of ordersync in PeriodicallyGetOrders. It is bound by:
+	//
+	//    approxDelay * (1 - jitter) <= actualDelay < approxDelay * (1 + jitter)
+	//
+	ordersyncJitterAmount = 0.1
 )
 
 var (
@@ -338,6 +344,39 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	}
 
 	return nil
+}
+
+// PeriodicallyGetOrders periodically calls GetOrders. It waits a minimum of
+// approxDelay (with some random jitter) between each call. It will block until
+// there is a critical error or the given context is canceled.
+func (s *Service) PeriodicallyGetOrders(ctx context.Context, minPeers int, approxDelay time.Duration) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if err := s.GetOrders(ctx, minPeers); err != nil {
+			return err
+		}
+
+		// Note(albrow): The random jitter here helps smooth out the frequency of ordersync
+		// requests and helps prevent a situation where a large number of nodes are requesting
+		// orders at the same time.
+		delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+}
+
+func calculateDelayWithJitter(approxDelay time.Duration, jitterAmount float64) time.Duration {
+	jitterBounds := int(float64(approxDelay) * jitterAmount * 2)
+	delta := rand.Intn(jitterBounds) - jitterBounds/2
+	return approxDelay + time.Duration(delta)
 }
 
 func handleRequestWithSubprotocol(ctx context.Context, subprotocol Subprotocol, requesterID peer.ID, rawReq *rawRequest) (*Response, error) {
