@@ -20,6 +20,7 @@ type ContractAddresses struct {
 	ZRXToken            common.Address `json:"zrxToken"`
 	ChaiBridge          common.Address `json:"chaiBridge"`
 	ChaiToken           common.Address `json:"chaiToken"`
+	DyDxBridge          common.Address `json:"dydxBridge"`
 	MaximumGasPrice     common.Address `json:"maximumGasPrice"`
 }
 
@@ -42,6 +43,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 			ChaiBridge:          common.HexToAddress("0x77c31eba23043b9a72d13470f3a3a311344d7438"),
 			ChaiToken:           common.HexToAddress("0x06af07097c9eeb7fd685c692751d5c66db49c215"),
+			DyDxBridge:          common.HexToAddress("0x871299bed3ea54577a3e3a43136f7fbb5e377114"),
 			MaximumGasPrice:     common.HexToAddress("0xe2bfd35306495d11e3c9db0d8de390cda24563cf"),
 		}, nil
 	case 3:
@@ -57,6 +59,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0xff67881f8d12f372d91baae9752eb3631ff0ed00"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			DyDxBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			MaximumGasPrice:     common.HexToAddress("0x407b4128e9ecad8769b2332312a9f655cb9f5f3a"),
 		}, nil
 	case 4:
@@ -72,6 +75,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0x8080c7e4b81ecf23aa6f877cfbfd9b0c228c6ffa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			DyDxBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			MaximumGasPrice:     common.HexToAddress("0x47697b44bd89051e93b4d5857ba8e024800a74ac"),
 		}, nil
 	case 42:
@@ -87,6 +91,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ZRXToken:            common.HexToAddress("0x2002d3812f58e35f0ea1ffbf80a75a38c32175fa"),
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			DyDxBridge:          common.HexToAddress("0x080e183c0193b4765d504e402db2f5621d4567e4"),
 			MaximumGasPrice:     common.HexToAddress("0x67a094cf028221ffdd93fc658f963151d05e2a74"),
 		}, nil
 	case 1337:
@@ -137,6 +142,7 @@ func ganacheAddresses() ContractAddresses {
 		ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		DyDxBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		MaximumGasPrice:     common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
 	}
 }

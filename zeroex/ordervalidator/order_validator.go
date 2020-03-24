@@ -778,9 +778,13 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 			return false
 		}
 		// We currently restrict ERC20Bridge orders to those referencing the
-		// Chai bridge. If the ChaiBridge is not deployed on the selected network
-		// we also reject the ERC20Bridge asset.
-		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
+		// Chai bridge or the dYdX bridge. If the bridge that the order type
+		// uses is not deployed on the selected network we also reject the ERC20Bridge asset.
+		if decodedAssetData.BridgeAddress == o.contractAddresses.ChaiBridge && o.contractAddresses.ChaiBridge == constants.NullAddress {
+			return false
+		} else if decodedAssetData.BridgeAddress == o.contractAddresses.DyDxBridge && o.contractAddresses.DyDxBridge == constants.NullAddress {
+			return false
+		} else if decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge && decodedAssetData.BridgeAddress != o.contractAddresses.DyDxBridge {
 			return false
 		}
 	default:

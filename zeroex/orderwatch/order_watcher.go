@@ -1747,6 +1747,13 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 				return err
 			}
 		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		if err := w.assetDataDecoder.Decode(assetData, &decodedAssetData); err != nil {
+			return err
+		}
+		// NOTE(jalextowle): We are not currently watching events for the dYdX bridge
+		// orders, but we will in the event that it recieves full support.
 	default:
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
