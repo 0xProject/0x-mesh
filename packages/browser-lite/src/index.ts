@@ -2,9 +2,9 @@ export * from './mesh';
 
 // If needed, add a polyfill for instantiateStreaming
 if (!WebAssembly.instantiateStreaming) {
-    WebAssembly.instantiateStreaming = async (resp, importObject) => {
+    WebAssembly.instantiateStreaming = async (resp: any, importObject: any) => {
         const source = await (await resp).arrayBuffer();
-        return await WebAssembly.instantiate(source, importObject);
+        return WebAssembly.instantiate(source, importObject);
     };
 }
 
