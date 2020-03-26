@@ -62,7 +62,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
-		Verbosity:                        2,
+		Verbosity:                        5,
 		DataDir:                          dataDir,
 		P2PTCPPort:                       0,
 		P2PWebSocketsPort:                0,
@@ -188,13 +188,19 @@ func TestOrderSync(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, originalNode.Start(ctx))
+		if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
 	}()
 	newNode := newTestApp(t)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, newNode.Start(ctx))
+		if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
 	}()
 
 	// Manually add some orders to originalNode.

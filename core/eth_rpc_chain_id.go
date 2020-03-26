@@ -13,7 +13,6 @@ func (app *App) getEthRPCChainID(ctx context.Context) (*big.Int, error) {
 	defer cancel()
 
 	var chainIDRaw string
-
 	err := app.ethRPCClient.CallContext(ctx, &chainIDRaw, "eth_chainId")
 	if err != nil {
 		return nil, err

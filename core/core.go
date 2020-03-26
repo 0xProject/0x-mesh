@@ -585,8 +585,11 @@ func (app *App) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		chainID, err := app.getEthRPCChainID(innerCtx)
+		defer func() {
+			log.Debug("closing chainID checker")
+		}()
 
+		chainID, err := app.getEthRPCChainID(innerCtx)
 		if err != nil {
 			chainIDMismatchErrChan <- err
 			return
@@ -731,53 +734,60 @@ func (app *App) Start(ctx context.Context) error {
 	log.Info("core.App was started")
 	close(app.started)
 
+	// Wait for all other goroutines to close.
+	appClosed := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(appClosed)
+	}()
+
 	// If any error channel returns a non-nil error, we cancel the inner context
 	// and return the error. Note that this means we only return the first error
 	// that occurs.
-	select {
-	case err := <-p2pErrChan:
-		if err != nil {
-			log.WithError(err).Error("p2p node exited with error")
-			cancel()
-			return err
-		}
-	case err := <-orderWatcherErrChan:
-		if err != nil {
-			log.WithError(err).Error("order watcher exited with error")
-			cancel()
-			return err
-		}
-	case err := <-blockWatcherErrChan:
-		if err != nil {
-			log.WithError(err).Error("block watcher exited with error")
-			cancel()
-			return err
-		}
-	case err := <-ethRPCRateLimiterErrChan:
-		if err != nil {
-			log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
-			cancel()
-			return err
-		}
-	case err := <-orderSyncErrChan:
-		if err != nil {
-			log.WithError(err).Error("ordersync service exited with error")
-			cancel()
-			return err
-		}
-	case err := <-chainIDMismatchErrChan:
-		if err != nil {
-			log.WithError(err).Error("ETH chain id matcher exited with error")
-			cancel()
-			return err
+	for {
+		select {
+		case err := <-p2pErrChan:
+			if err != nil {
+				log.WithError(err).Error("p2p node exited with error")
+				cancel()
+				return err
+			}
+		case err := <-orderWatcherErrChan:
+			if err != nil {
+				log.WithError(err).Error("order watcher exited with error")
+				cancel()
+				return err
+			}
+		case err := <-blockWatcherErrChan:
+			if err != nil {
+				log.WithError(err).Error("block watcher exited with error")
+				cancel()
+				return err
+			}
+		case err := <-ethRPCRateLimiterErrChan:
+			if err != nil {
+				log.WithError(err).Error("ETH JSON-RPC ratelimiter exited with error")
+				cancel()
+				return err
+			}
+		case err := <-orderSyncErrChan:
+			if err != nil {
+				log.WithError(err).Error("ordersync service exited with error")
+				cancel()
+				return err
+			}
+		case err := <-chainIDMismatchErrChan:
+			if err != nil {
+				log.WithError(err).Error("ETH chain id matcher exited with error")
+				cancel()
+				return err
+			}
+		case <-appClosed:
+			// If we reached here it means we are done and there are no errors.
+			log.Debug("app successfully closed")
+			return nil
 		}
 	}
-
-	// Wait for all goroutines to exit. If we reached here it means we are done
-	// and there are no errors.
-	wg.Wait()
-	log.Debug("app successfully closed")
-	return nil
 }
 
 func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs []ma.Multiaddr) {
