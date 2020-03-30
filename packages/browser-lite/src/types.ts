@@ -6,6 +6,7 @@ export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
 
+/** @ignore */
 export interface WrapperGetOrdersResponse {
     snapshotID: string;
     snapshotTimestamp: string;
@@ -18,6 +19,7 @@ export interface GetOrdersResponse {
     ordersInfos: OrderInfo[];
 }
 
+/** @ignore */
 export interface WrapperOrderInfo {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
@@ -210,14 +212,20 @@ export enum Verbosity {
     Trace = 6,
 }
 
-// The global entrypoint for creating a new MeshWrapper.
+/**
+ * The global entrypoint for creating a new MeshWrapper.
+ * @ignore
+ */
 export interface ZeroExMesh {
     newWrapperAsync(config: WrapperConfig): Promise<MeshWrapper>;
 }
 
-// A direct translation of the MeshWrapper type in Go. Its API exposes only
-// simple JavaScript types like number and string, some of which will be
-// converted. For example, we will convert some strings to BigNumbers.
+/**
+ * A direct translation of the MeshWrapper type in Go. Its API exposes only
+ * simple JavaScript types like number and string, some of which will be
+ * converted. For example, we will convert some strings to BigNumbers.
+ * @ignore
+ */
 export interface MeshWrapper {
     startAsync(): Promise<void>;
     onError(handler: (err: Error) => void): void;
@@ -227,7 +235,10 @@ export interface MeshWrapper {
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
-// The type for configuration exposed by MeshWrapper.
+/**
+ * The type for configuration exposed by MeshWrapper.
+ * @ignore
+ */
 export interface WrapperConfig {
     verbosity?: number;
     ethereumRPCURL?: string;
@@ -245,9 +256,12 @@ export interface WrapperConfig {
     web3Provider?: ZeroExProvider; // Standardized ZeroExProvider instead the more permissive SupportedProvider interface
 }
 
-// The type for signed orders exposed by MeshWrapper. Unlike other types, the
-// analog isn't defined here. Instead we re-use the definition in
-// @0x/order-utils.
+/**
+ * The type for signed orders exposed by MeshWrapper. Unlike other types, the
+ * analog isn't defined here. Instead we re-use the definition in
+ * @0x/order-utils.
+ * @ignore
+ */
 export interface WrapperSignedOrder {
     makerAddress: string;
     makerAssetData: string;
@@ -274,6 +288,7 @@ export interface ERC20TransferEvent {
     value: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperERC20TransferEvent {
     from: string;
     to: string;
@@ -286,6 +301,7 @@ export interface ERC20ApprovalEvent {
     value: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperERC20ApprovalEvent {
     owner: string;
     spender: string;
@@ -298,6 +314,7 @@ export interface ERC721TransferEvent {
     tokenId: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperERC721TransferEvent {
     from: string;
     to: string;
@@ -310,6 +327,7 @@ export interface ERC721ApprovalEvent {
     tokenId: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperERC721ApprovalEvent {
     owner: string;
     approved: string;
@@ -330,6 +348,7 @@ export interface ERC1155TransferSingleEvent {
     value: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperERC1155TransferSingleEvent {
     operator: string;
     from: string;
@@ -346,6 +365,7 @@ export interface ERC1155TransferBatchEvent {
     values: BigNumber[];
 }
 
+/** @ignore */
 export interface WrapperERC1155TransferBatchEvent {
     operator: string;
     from: string;
@@ -377,6 +397,7 @@ export interface ExchangeFillEvent {
     takerFeeAssetData: string;
 }
 
+/** @ignore */
 export interface WrapperExchangeFillEvent {
     makerAddress: string;
     takerAddress: string;
@@ -409,6 +430,7 @@ export interface ExchangeCancelUpToEvent {
     orderEpoch: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperExchangeCancelUpToEvent {
     makerAddress: string;
     orderSenderAddress: string;
@@ -420,6 +442,7 @@ export interface WethWithdrawalEvent {
     value: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperWethWithdrawalEvent {
     owner: string;
     value: string;
@@ -430,6 +453,7 @@ export interface WethDepositEvent {
     value: BigNumber;
 }
 
+/** @ignore */
 export interface WrapperWethDepositEvent {
     owner: string;
     value: string;
@@ -451,6 +475,7 @@ export enum ContractEventKind {
     WethWithdrawalEvent = 'WethWithdrawalEvent',
 }
 
+/** @ignore */
 export type WrapperContractEventParameters =
     | WrapperERC20TransferEvent
     | WrapperERC20ApprovalEvent
@@ -466,6 +491,7 @@ export type WrapperContractEventParameters =
     | WrapperERC1155TransferBatchEvent
     | ERC1155ApprovalForAllEvent;
 
+/** @ignore */
 export type ContractEventParameters =
     | ERC20TransferEvent
     | ERC20ApprovalEvent
@@ -492,7 +518,10 @@ export interface ContractEvent {
     parameters: ContractEventParameters;
 }
 
-// The type for order events exposed by MeshWrapper.
+/**
+ * The type for order events exposed by MeshWrapper.
+ * @ignore
+ */
 export interface WrapperContractEvent {
     blockHash: string;
     txHash: string;
@@ -517,6 +546,7 @@ export enum OrderEventEndState {
     StoppedWatching = 'STOPPED_WATCHING',
 }
 
+/** @ignore */
 export interface WrapperOrderEvent {
     timestamp: string;
     orderHash: string;
@@ -539,13 +569,13 @@ export interface OrderEvent {
     contractEvents: ContractEvent[];
 }
 
-// The type for validation results exposed by MeshWrapper.
+/** @ignore */
 export interface WrapperValidationResults {
     accepted: WrapperAcceptedOrderInfo[];
     rejected: WrapperRejectedOrderInfo[];
 }
 
-// The type for accepted orders exposed by MeshWrapper.
+/** @ignore */
 export interface WrapperAcceptedOrderInfo {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
@@ -553,7 +583,7 @@ export interface WrapperAcceptedOrderInfo {
     isNew: boolean;
 }
 
-// The type for rejected orders exposed by MeshWrapper.
+/** @ignore */
 export interface WrapperRejectedOrderInfo {
     orderHash: string;
     signedOrder: WrapperSignedOrder;
@@ -613,6 +643,7 @@ export interface LatestBlock {
     hash: string;
 }
 
+/** @ignore */
 export interface WrapperStats {
     version: string;
     pubSubTopic: string;

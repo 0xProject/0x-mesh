@@ -1,3 +1,11 @@
+/**
+ * @hidden
+ */
+
+/**
+ * NOTE(jalextowle): This comment must be here so that typedoc knows that the above
+ * comment is a module comment
+ */
 import { SignedOrder } from '@0x/order-utils';
 import { BigNumber, providerUtils } from '@0x/utils';
 
