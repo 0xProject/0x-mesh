@@ -2,7 +2,7 @@
 
 Mesh supports the creation of separate sub-networks where 0x orders that adhere to a specific schema are shared. Each sub-network is built around a custom order filter. The custom filter defines which orders are allowed to be shared within a sub-network. For example:
 
-- All orders for a specific asset pair (e.g., ETH/DAI)
+- All orders for a specific asset pair (e.g., WETH/DAI)
 - All orders for non-fungibles (i.e., ERC721, ERC1155)
 - All orders used by a specific DApp
 
@@ -56,3 +56,76 @@ This can easily be tweaked to filter orders by asset type, maker/taker address, 
 Nodes that are spun up with a custom filter will share all their orders with nodes that are either using the exact same filter or the default "all" filter (i.e., "{}"). They will _not_ share orders with nodes using different custom filters (even if a given order matches both filters) because each filter results in a separate sub-network. Therefore, custom filters are most useful for applications where users care about a distinct subset of 0x orders.
 
 If you wanted to connect two sub-networks with overlapping valid orders, you could spin up a Mesh node for each sub-network and additionally run a [bridge script](https://github.com/0xProject/0x-mesh/blob/master/cmd/mesh-bridge/main.go) to send orders from one sub-network to the other. Longer term, we hope to add support for cross-topic forwarding, which will allow Mesh nodes to do this under-the-hood.
+
+### Examples
+
+##### WETH <-> DAI orders:
+```json
+{
+    "oneOf": [
+        {
+            "properties": {
+                "makerAssetData": {
+                    "pattern": "0xf47261b00000000000000000000000006b175474e89094c44da98b954eedeac495271d0f",
+                    "type": "string"
+                },
+                "takerAssetData": {
+                    "pattern": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "type": "string"
+                }
+            }
+        },
+        {
+            "properties": {
+                "makerAssetData": {
+                    "pattern": "0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "type": "string"
+                },
+                "takerAssetData": {
+                    "pattern": "0xf47261b00000000000000000000000006b175474e89094c44da98b954eedeac495271d0f",
+                    "type": "string"
+                }
+            }
+        }
+    ]
+}
+```
+
+##### Any ERC721 order:
+
+```json
+{
+    "oneOf": [
+        {
+            "properties": {
+                "makerAssetData": {
+                    "pattern": "0x02571792.*",
+                    "type": "string"
+                }
+            }
+        },
+        {
+            "properties": {
+                "takerAssetData": {
+                    "pattern": "0x02571792.*",
+                    "type": "string"
+                }
+            }
+        }
+    ]
+}
+```
+
+##### Augur V2 orders:
+
+```json
+{
+    "properties": {
+        "makerAssetData": {
+            "pattern": ".*${AUGUR_ERC1155_CONTRACT_ADDRESS}.*"
+        }
+    }
+}
+```
+
+Where `${AUGUR_ERC1155_CONTRACT_ADDRESS}` needs to be replaced with the Augur ERC1155 token used to represent the outcomes of their various prediction markets.
