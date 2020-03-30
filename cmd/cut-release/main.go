@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/plaid/go-envvar/envvar"
 )
+
+var functionDocsTemplate = "\n# Functions\n\n## loadMeshStreamingForURLAsync\n▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): *Promise‹`void`›*\n\n*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L7)*\n\nLoads the Wasm module that is provided by fetching a url.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`url` | `string` | The URL to query for the Wasm binary |\n\n<hr />\n\n## loadMeshStreamingAsync\n\n▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): *Promise‹`void`›*\n\n*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L15)*\n\nLoads the Wasm module that is provided by a response.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |\n\n<hr />"
 
 type envVars struct {
 	// Version is the new release version to use
@@ -34,15 +37,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Generate documentation for the Typescript packages.
-	cmd = exec.Command("yarn", "docs:md")
-	cmd.Dir = "."
-	stdoutStderr, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Print(string(stdoutStderr))
-		log.Fatal(err)
-	}
-
+	generateTypescriptDocs()
 	createReleaseChangelog(env.Version)
 }
 
@@ -63,6 +58,49 @@ func createReleaseChangelog(version string) {
 
 	err = ioutil.WriteFile("RELEASE_CHANGELOG.md", []byte(releaseChangelog), 0644)
 	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func generateTypescriptDocs() {
+	// Generate the initial docs for the Typescript packages. These docs will
+	// be used to create the final set of docs.
+	cmd := exec.Command("yarn", "docs:md")
+	cmd.Dir = "."
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+	commitHash, err := getDocsCommitHash("docs/browser-bindings/browser-lite/reference.md")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Copy the browser-lite docs to the `@0x/mesh-browser` packages's `reference.md`
+	// file. These docs are the correct docs for the `@0x/mesh-browser` package.
+	cmd = exec.Command(
+		"cp",
+		"docs/browser-bindings/browser-lite/reference.md",
+		"docs/browser-bindings/browser/reference.md",
+	)
+	cmd.Dir = "."
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
+
+	// Create the documentation for the `loadMeshStreamingAsync` and the `loadMeshStreamingWithURLAsync`
+	// functions. Append these docs to the end of the existing browser-lite docs.
+	functionDocs := fmt.Sprintf(functionDocsTemplate, commitHash, commitHash)
+	f, err := os.OpenFile("docs/browser-bindings/browser-lite/reference.md",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(functionDocs); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -132,6 +170,22 @@ func updateFileWithRegex(filePath string, regex string, replacement string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getDocsCommitHash(docsPath string) (string, error) {
+	dat, err := ioutil.ReadFile(docsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	regex := "https://github.com/0xProject/0x-mesh/blob/([a-f0-9]+)/"
+	var re = regexp.MustCompile(regex)
+	matches := re.FindStringSubmatch(string(dat))
+
+	if len(matches) < 2 {
+		return "", errors.New("No contents found")
+	}
+	return matches[1], nil
 }
 
 func getFileContentsWithRegex(filePath string, regex string) (string, error) {
