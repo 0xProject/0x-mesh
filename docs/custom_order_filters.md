@@ -53,6 +53,6 @@ This can easily be tweaked to filter orders by asset type, maker/taker address, 
 
 ### Limitations
 
-Nodes that are spun up with a custom filter will share all their orders with nodes that are either using the same filter or the default "all" filter (i.e., "{}"). They will not share orders with nodes using other custom filters since each filter results in a separate sub-network. Therefore, custom filters are most useful for applications where users care about a distinct subset of 0x orders. 
+Nodes that are spun up with a custom filter will share all their orders with nodes that are either using the exact same filter or the default "all" filter (i.e., "{}"). They will _not_ share orders with nodes using different custom filters (even if a given order matches both filters) because each filter results in a separate sub-network. Therefore, custom filters are most useful for applications where users care about a distinct subset of 0x orders.
 
 If you wanted to connect two sub-networks with overlapping valid orders, you could spin up a Mesh node for each sub-network and additionally run a [bridge script](https://github.com/0xProject/0x-mesh/blob/master/cmd/mesh-bridge/main.go) to send orders from one sub-network to the other. Longer term, we hope to add support for cross-topic forwarding, which will allow Mesh nodes to do this under-the-hood.
