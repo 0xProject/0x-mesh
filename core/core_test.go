@@ -52,6 +52,47 @@ func TestEthereumChainDetection(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	wg := &sync.WaitGroup{}
+	dataDir := "/tmp/test_node/" + uuid.New().String()
+	config := Config{
+		Verbosity:                        5,
+		DataDir:                          dataDir,
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		EthereumRPCURL:                   constants.GanacheEndpoint,
+		EthereumChainID:                  42, // RPC has chain id 1337
+		UseBootstrapList:                 false,
+		BootstrapList:                    "",
+		BlockPollingInterval:             250 * time.Millisecond,
+		EthereumRPCMaxContentLength:      524288,
+		EnableEthereumRPCRateLimiting:    false,
+		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
+		EthereumRPCMaxRequestsPerSecond:  99999999999999,
+		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                "{}",
+	}
+	app, err := New(config)
+	require.NoError(t, err)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := app.Start(ctx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "ChainID mismatch")
+	}()
+
+	// Wait for nodes to exit without error.
+	wg.Wait()
+}
+
 func newTestApp(t *testing.T) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
@@ -147,13 +188,19 @@ func TestOrderSync(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, originalNode.Start(ctx))
+		if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
 	}()
 	newNode := newTestApp(t)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, newNode.Start(ctx))
+		if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
 	}()
 
 	// Manually add some orders to originalNode.
