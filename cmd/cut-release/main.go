@@ -13,39 +13,7 @@ import (
 	"github.com/plaid/go-envvar/envvar"
 )
 
-var functionDocsTemplate = `
-# Functions
-
-## loadMeshStreamingWithURLAsync
-▸ **loadMeshStreamingWithURLAsync**(` + "`" + `url` + "`" + `: ` + "`" + `string` + "`" + `): *Promise‹` + "`" + `void` + "`" + `›*
-
-*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L7)*
-
-Loads the Wasm module that is provided by fetching a url.
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-` + "`" + `url` + "`" + ` | ` + "`" + `string` + "`" + ` | The URL to query for the Wasm binary |
-
-<hr />
-
-## loadMeshStreamingAsync
-
-▸ **loadMeshStreamingAsync**(` + "`" + `response` + "`" + `: ` + "`" + `Response | Promise<Response>` + "`" + `): *Promise‹` + "`" + `void` + "`" + `›*
-
-*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L15)*
-
-Loads the Wasm module that is provided by a response.
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-` + "`" + `response` + "`" + ` | ` + "`" + `Response &#124; Promise<Response>` + "`" + ` | The Wasm response that supplies the Wasm binary |
-
-<hr />`
+var functionDocsTemplate = "\n# Functions\n\n## loadMeshStreamingForURLAsync\n▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): *Promise‹`void`›*\n\n*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L7)*\n\nLoads the Wasm module that is provided by fetching a url.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`url` | `string` | The URL to query for the Wasm binary |\n\n<hr />\n\n## loadMeshStreamingAsync\n\n▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): *Promise‹`void`›*\n\n*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L15)*\n\nLoads the Wasm module that is provided by a response.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |\n\n<hr />"
 
 type envVars struct {
 	// Version is the new release version to use
