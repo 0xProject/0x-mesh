@@ -11,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,7 +26,7 @@ var (
 	WETHAssetData    = common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082")
 )
 
-func NewTestOrder() *zeroex.Order {
+func defaultTestOrder() *zeroex.Order {
 	return &zeroex.Order{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
@@ -46,17 +47,42 @@ func NewTestOrder() *zeroex.Order {
 	}
 }
 
-func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client) *zeroex.SignedOrder {
-	order := NewTestOrder()
-	signedOrder, err := zeroex.SignTestOrder(order)
-	require.NoError(t, err, "could not sign order")
-	return signedOrder
+func defaultConfig() *orderopts.Config {
+	return &orderopts.Config{
+		Order:             defaultTestOrder(),
+		SetupMakerState:   false,
+		SetupTakerAddress: constants.NullAddress,
+	}
 }
 
-func NewSignedTestOrderWithState(t *testing.T, ethClient *ethclient.Client) *zeroex.SignedOrder {
-	order := NewSignedTestOrder(t, ethClient)
-	setupMakerState(t, ethClient, order)
-	return order
+func NewTestOrder(opts ...orderopts.Option) *zeroex.Order {
+	cfg := defaultConfig()
+	// No Option returns an error right now. If that changes, we
+	// need to update this code.
+	_ = cfg.Apply(opts...)
+	return newTestOrder(cfg)
+}
+
+func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
+	return cfg.Order
+}
+
+func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...orderopts.Option) *zeroex.SignedOrder {
+	cfg := defaultConfig()
+	// No Option returns an error right now. If that changes, we
+	// need to update this code.
+	_ = cfg.Apply(opts...)
+
+	order := newTestOrder(cfg)
+	signedOrder, err := zeroex.SignTestOrder(order)
+	require.NoError(t, err, "could not sign order")
+
+	if cfg.SetupMakerState {
+		setupMakerState(t, ethClient, signedOrder)
+	}
+	// TOOD(albrow): Implement setting up taker state.
+
+	return signedOrder
 }
 
 // setupMakerState sets up all the on-chain state in order to make the order fillable. This includes
@@ -73,7 +99,7 @@ func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.Si
 		} else if bytes.Equal(order.MakerAssetData, WETHAssetData) {
 			setWETHBalanceAndAllowance(t, ethClient, order.MakerAddress, order.MakerAssetAmount)
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", order.MakerAssetData)
+			t.Errorf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(order.MakerAssetData))
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
@@ -81,7 +107,7 @@ func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.Si
 		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC721TokenAddress.Hex() {
 			setDummyERC721BalanceAndAllowance(t, ethClient, order.MakerAddress, decodedAssetData.TokenId)
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", order.MakerAssetData)
+			t.Errorf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", common.Bytes2Hex(order.MakerAssetData))
 		}
 	case "ERC1155Assets":
 		var decodedAssetData zeroex.ERC1155AssetData
@@ -89,10 +115,10 @@ func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.Si
 		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC1155MintableAddress.Hex() {
 			setDummyERC1155BalanceAndAllowance(t, ethClient, order.MakerAddress, decodedAssetData.Ids, decodedAssetData.Values)
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", order.MakerAssetData)
+			t.Errorf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(order.MakerAssetData))
 		}
 	default:
-		t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", order.MakerAssetData)
+		t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", common.Bytes2Hex(order.MakerAssetData))
 	}
 
 }
@@ -209,18 +235,6 @@ func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Clien
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 }
-
-// TODO(albrow): Create a way to supply the following options:
-//
-//    - makerAsset
-//    - makerAssetAmount
-//    - takerAsset
-//    - takerAssetAmount
-//    - expirationTime
-//    - makerFeeAsset and makerFeeAssetAmount
-//
-// Maybe with chaining like in libp2p?
-//
 
 // GetTestSignerFn returns a test signer function that can be used to sign Ethereum transactions
 func GetTestSignerFn(signerAddress common.Address) func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
