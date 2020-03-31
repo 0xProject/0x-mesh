@@ -20,10 +20,13 @@ import (
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var chaiBridgeAssetData = common.Hex2Bytes("")
 
 func TestWSAddOrdersSuccess(t *testing.T) {
 	runAddOrdersSuccessTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
@@ -69,14 +72,22 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
 	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
 	time.Sleep(500 * time.Millisecond)
+	signedChaiTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedChaiTestOrder = signedOrderWithCustomMakerAssetData(t, signedChaiTestOrder, chaiBridgeAssetData)
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 
 	// Send the "AddOrders" request to the rpc server.
-	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder, signedChaiTestOrder})
 	require.NoError(t, err)
 
 	// Ensure that the validation results contain only the order that was
 	// sent to the rpc server and that the order was marked as valid.
-	require.Len(t, validationResponse.Accepted, 1)
+	require.Len(t, validationResponse.Accepted, 2)
 	assert.Len(t, validationResponse.Rejected, 0)
 	acceptedOrderInfo := validationResponse.Accepted[0]
 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
@@ -86,6 +97,8 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
+
+	// FIXME(jalextowle): Ensure that the ChaiBridgeOrder is validated correctly.
 
 	cancel()
 	wg.Wait()
@@ -376,4 +389,12 @@ func TestHeartbeatSubscription(t *testing.T) {
 	// Ensure that a valid heartbeat was received
 	heartbeat := <-heartbeatChan
 	assert.Equal(t, "tick", heartbeat)
+}
+
+func signedOrderWithCustomMakerAssetData(t *testing.T, signedOrder *zeroex.SignedOrder, makerAssetData []byte) *zeroex.SignedOrder {
+	signedOrder.MakerAssetData = makerAssetData
+	signedOrder.ResetHash()
+	signedOrderWithSignature, err := zeroex.SignTestOrder(&signedOrder.Order)
+	require.NoError(t, err)
+	return signedOrderWithSignature
 }

@@ -135,7 +135,7 @@ func ganacheAddresses() ContractAddresses {
 		DevUtils:            common.HexToAddress("0xb23672f74749bf7916ba6827c64111a4d6de7f11"),
 		WETH9:               common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
-		ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		ChaiBridge:          common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
 		ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		MaximumGasPrice:     common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
 	}
