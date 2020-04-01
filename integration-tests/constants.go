@@ -32,6 +32,8 @@ var (
 	makerAddress                = constants.GanacheAccount1
 	takerAddress                = constants.GanacheAccount2
 	eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-	zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+	wethAmount                  = new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
+	zrxAmount                   = new(big.Int).Mul(big.NewInt(10), eighteenDecimalsInBaseUnits)
+	// FIXME(jalextowle): Why is this so much lower than the amount that I minted?
+	chaiAmount, _ = new(big.Int).SetString("5000000000000000000", 0)
 )

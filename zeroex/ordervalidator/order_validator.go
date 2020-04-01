@@ -391,6 +391,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 				for j, orderInfo := range results.OrdersInfo {
 					isValidSignature := results.IsValidSignature[j]
 					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
+					log.WithField("fillableTakerAssetAmount", fillableTakerAssetAmount).Info("FillableTakerAsset amount from order validation")
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[j]
 					orderStatus := zeroex.OrderStatus(orderInfo.OrderStatus)
@@ -673,6 +674,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 
 		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
+			log.Info("Unsupported")
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
@@ -735,30 +737,36 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 }
 
 func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
+	log.Info("Got here")
 	assetDataName, err := o.assetDataDecoder.GetName(assetData)
 	if err != nil {
+		log.Info(1)
 		return false
 	}
 	switch assetDataName {
 	case "ERC20Token":
+		log.Info("Got here: ERC20")
 		var decodedAssetData zeroex.ERC20AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "ERC721Token":
+		log.Info("Got here: ERC721")
 		var decodedAssetData zeroex.ERC721AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "ERC1155Assets":
+		log.Info("Got here: ERC1155")
 		var decodedAssetData zeroex.ERC1155AssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "StaticCall":
+		log.Info("Got here: StaticCall")
 		var decodedAssetData zeroex.StaticCallAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
@@ -766,26 +774,33 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		}
 		return o.isSupportedStaticCallData(decodedAssetData)
 	case "MultiAsset":
+		log.Info("Got here: MultiAsset")
 		var decodedAssetData zeroex.MultiAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
 			return false
 		}
 	case "ERC20Bridge":
+		log.Info("Got here: ERC20Bridge")
 		var decodedAssetData zeroex.ERC20BridgeAssetData
 		err := o.assetDataDecoder.Decode(assetData, &decodedAssetData)
 		if err != nil {
+			log.Info(2)
 			return false
 		}
 		// We currently restrict ERC20Bridge orders to those referencing the
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
 		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
+			log.Info(3)
 			return false
 		}
 	default:
+		log.Info("Got here: Default")
+		log.Info(4)
 		return false
 	}
+	log.Info(5)
 	return true
 }
 

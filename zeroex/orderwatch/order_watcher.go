@@ -1726,6 +1726,18 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 		}
 		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		if decodedAssetData.BridgeAddress == w.contractAddresses.ChaiBridge {
+			w.eventDecoder.AddKnownERC20(w.contractAddresses.ChaiToken)
+			w.contractAddressToSeenCount[w.contractAddresses.ChaiToken] = w.contractAddressToSeenCount[w.contractAddresses.ChaiToken] + 1
+		} else {
+			return fmt.Errorf("unsupported erc20BridgeAssetData found that targets the following bridge: %s", decodedAssetData.BridgeData)
+		}
 	case "StaticCall":
 		var decodedAssetData zeroex.StaticCallAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -1792,6 +1804,20 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
 		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
 			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
+		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		if decodedAssetData.BridgeAddress == w.contractAddresses.ChaiBridge {
+			w.contractAddressToSeenCount[w.contractAddresses.ChaiToken] = w.contractAddressToSeenCount[w.contractAddresses.ChaiToken] - 1
+			if w.contractAddressToSeenCount[w.contractAddresses.ChaiToken] == 0 {
+				w.eventDecoder.RemoveKnownERC20(w.contractAddresses.ChaiToken)
+			}
+		} else {
+			return fmt.Errorf("unsupported erc20BridgeAssetData found that targets the following bridge: %s", decodedAssetData.BridgeData)
 		}
 	case "StaticCall":
 		var decodedAssetData zeroex.StaticCallAssetData

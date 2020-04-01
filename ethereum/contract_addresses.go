@@ -136,7 +136,10 @@ func ganacheAddresses() ContractAddresses {
 		WETH9:               common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		ZRXToken:            common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
 		ChaiBridge:          common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
-		ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		MaximumGasPrice:     common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
+		// NOTE(jalextowle): This is deployed by the `TestChaiBridge` contract, but the address
+		// is deterministic because it is always the first (and only contract) deployed by the
+		// `TestChaiBridge` contract, which will always have the same address in our snapshot.
+		ChaiToken:       common.HexToAddress("0x33fcfda585cddae7992d2149b98a6f91c5b77148"),
+		MaximumGasPrice: common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
 	}
 }
