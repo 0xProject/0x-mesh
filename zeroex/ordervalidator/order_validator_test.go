@@ -7,7 +7,10 @@ package ordervalidator
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -15,10 +18,14 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
+	"github.com/0xProject/0x-mesh/ethereum/signer"
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -251,7 +258,6 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 
 		teardownSubTest(t)
 	}
-
 }
 
 // TODO(albrow): Support setting up maker state for MultiAsset assetData
@@ -312,103 +318,89 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
-// TODO(albrow): Support setting FeeReceipientAddress
-// func TestBatchValidateUnregisteredCoordinatorSoftCancels(t *testing.T) {
-// 	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
-// 	signedOrder.SenderAddress = ganacheAddresses.Coordinator
-// 	// Address for which there is no entry in the Coordinator registry
-// 	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
+func TestBatchValidateUnregisteredCoordinator(t *testing.T) {
+	// FeeRecipientAddress is an address for which there is no entry in the Coordinator registry
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SenderAddress(ganacheAddresses.Coordinator), orderopts.FeeRecipientAddress(constants.GanacheAccount4))
+	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
 
-// 	orderHash, err := signedOrder.ComputeOrderHash()
-// 	require.NoError(t, err)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
 
-// 	signedOrders := []*zeroex.SignedOrder{
-// 		signedOrder,
-// 	}
+	ctx := context.Background()
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+	assert.Len(t, validationResults.Accepted, 0)
+	require.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
+	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
 
-// 	rateLimiter := ratelimit.NewUnlimited()
-// 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
-// 	require.NoError(t, err)
-// 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-// 	require.NoError(t, err)
+func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// 	ctx := context.Background()
-// 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-// 	require.NoError(t, err)
-// 	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-// 	assert.Len(t, validationResults.Accepted, 0)
-// 	require.Len(t, validationResults.Rejected, 1)
-// 	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
-// 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-// }
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// 	// TODO(albrow): Support setting SenderAddress
-// func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
-// 	if !serialTestsEnabled {
-// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-// 	}
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SenderAddress(ganacheAddresses.Coordinator),
+		orderopts.SetupMakerState(true),
+		orderopts.FeeRecipientAddress(constants.GanacheAccount3),
+	)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	signedOrders := []*zeroex.SignedOrder{
+		signedOrder,
+	}
 
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
 
-// 	rateLimiter := ratelimit.NewUnlimited()
-// 	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
-// 	require.NoError(t, err)
-// 	ethClient := ethclient.NewClient(rpcClient)
-// 	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
-// 	require.NoError(t, err)
+	// generate a test server so we can capture and inspect the request
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(200)
+		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
+		require.NoError(t, err)
+	}))
+	defer testServer.Close()
 
-// 	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
-// 	signedOrder.SenderAddress = ganacheAddresses.Coordinator
-// 	orderHash, err := signedOrder.ComputeOrderHash()
-// 	require.NoError(t, err)
-// 	signedOrders := []*zeroex.SignedOrder{
-// 		signedOrder,
-// 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	opts := &bind.TransactOpts{
+		From:    signedOrder.FeeRecipientAddress,
+		Context: ctx,
+		Signer: func(s types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			testSigner := signer.NewTestSigner()
+			signature, err := testSigner.(*signer.TestSigner).SignTx(s.Hash(tx).Bytes(), address)
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(s, signature)
+		},
+	}
 
-// 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-// 	require.NoError(t, err)
+	coordinatorRegistryAddress := ganacheAddresses.CoordinatorRegistry
+	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
+	require.NoError(t, err)
+	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
+	require.NoError(t, err)
 
-// 	// generate a test server so we can capture and inspect the request
-// 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-// 		res.WriteHeader(200)
-// 		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
-// 		require.NoError(t, err)
-// 	}))
-// 	defer testServer.Close()
-
-// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 	defer cancel()
-// 	opts := &bind.TransactOpts{
-// 		From:    signedOrder.FeeRecipientAddress,
-// 		Context: ctx,
-// 		Signer: func(s types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-// 			testSigner := signer.NewTestSigner()
-// 			signature, err := testSigner.(*signer.TestSigner).SignTx(s.Hash(tx).Bytes(), address)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			return tx.WithSignature(s, signature)
-// 		},
-// 	}
-
-// 	ethClient, err := ethclient.Dial(constants.GanacheEndpoint)
-// 	require.NoError(t, err)
-// 	coordinatorRegistryAddress := ganacheAddresses.CoordinatorRegistry
-// 	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
-// 	require.NoError(t, err)
-// 	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
-// 	require.NoError(t, err)
-
-// 	ctx = context.Background()
-// 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-// 	require.NoError(t, err)
-// 	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-// 	assert.Len(t, validationResults.Accepted, 0)
-// 	require.Len(t, validationResults.Rejected, 1)
-// 	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
-// 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-// }
+	ctx = context.Background()
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	require.NoError(t, err)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+	assert.Len(t, validationResults.Accepted, 0)
+	require.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
+	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+}
 
 const singleOrderPayloadSize = 2236
 

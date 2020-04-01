@@ -90,6 +90,20 @@ func MakerFee(amount *big.Int) Option {
 	}
 }
 
+func SenderAddress(address common.Address) Option {
+	return func(cfg *Config) error {
+		cfg.Order.SenderAddress = address
+		return nil
+	}
+}
+
+func FeeRecipientAddress(address common.Address) Option {
+	return func(cfg *Config) error {
+		cfg.Order.FeeRecipientAddress = address
+		return nil
+	}
+}
+
 func SetupMakerState(b bool) Option {
 	return func(cfg *Config) error {
 		cfg.SetupMakerState = b
