@@ -12,7 +12,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞
 
 - Fixed a compatibility issue in `@0x/mesh-browser-lite` for Safari and some other browsers [#770](https://github.com/0xProject/0x-mesh/pull/770).
-
+- Fix bug causing orders expiring at _exactly_ the next block timestamp from not being pruned until the next block is mined [#777](https://github.com/0xProject/0x-mesh/pull/777).
 
 ## v9.2.1
 
