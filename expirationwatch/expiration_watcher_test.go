@@ -57,6 +57,21 @@ func TestPrunesTwoExpiredItemsWithSameExpiration(t *testing.T) {
 	}
 }
 
+func TestPrunesBarelyExpiredItem(t *testing.T) {
+	watcher := New()
+
+	current := time.Now().Truncate(time.Second)
+	expiryEntryOne := ExpiredItem{
+		ExpirationTimestamp: current,
+		ID:                  "0x8e209dda7e515025d0c34aa61a0d1156a631248a4318576a2ce0fb408d97385e",
+	}
+	watcher.Add(expiryEntryOne.ExpirationTimestamp, expiryEntryOne.ID)
+
+	pruned := watcher.Prune(current)
+	assert.Len(t, pruned, 1, "one expired item should get pruned")
+	assert.Equal(t, expiryEntryOne, pruned[0])
+}
+
 func TestKeepsUnexpiredItem(t *testing.T) {
 	watcher := New()
 
