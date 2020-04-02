@@ -12,7 +12,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 ### Bug fixes 🐞
 
 - Fixed a compatibility issue in `@0x/mesh-browser-lite` for Safari and some other browsers [#770](https://github.com/0xProject/0x-mesh/pull/770).
-- Fixes an issue that would allow expired orders to be returned in `GetOrders` [TBD](http://github.com/0xProject/0x-mesh/pull/tbd)
+- Fixes an issue that would allow expired orders to be returned in `GetOrders` [773](http://github.com/0xProject/0x-mesh/pull/773)
 
 
 ## v9.2.1
