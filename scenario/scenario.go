@@ -232,7 +232,16 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 		} else {
 			t.Fatalf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(assetData))
 		}
-		// TODO(albrow): Support multiassetdata here via recursion.
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		require.NoError(t, assetDataDecoder.Decode(assetData, &decodedAssetData))
+		staticCallDataName, err := assetDataDecoder.GetName(decodedAssetData.StaticCallData)
+		require.NoError(t, err)
+		if staticCallDataName != "checkGasPrice" {
+			t.Fatalf("scneario: cannot setup on-chain state for StaticCall assetdata (only checkGasPrice is supported): (%s) %s", staticCallDataName, common.Bytes2Hex(assetData))
+		}
+		// Note(albrow): So far there is no additional state required for the types of StaticCall asset data that we support.
+		return balances
 	}
 
 	t.Fatalf("scenario: cannot setup on-chain state for unsupported assetdata: (%s) %s", assetDataName, common.Bytes2Hex(assetData))

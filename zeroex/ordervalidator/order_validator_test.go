@@ -260,42 +260,41 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 	}
 }
 
-// TODO(albrow): Support setting up maker state for MultiAsset assetData
-// func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
-// 	if !serialTestsEnabled {
-// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-// 	}
+func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-// 	require.NoError(t, err)
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
 
-// 	for _, staticCallAssetData := range [][]byte{
-// 		checkGasPriceDefaultStaticCallData,
-// 		checkGasPriceStaticCallData,
-// 	} {
+	for _, staticCallAssetData := range [][]byte{
+		checkGasPriceDefaultStaticCallData,
+		checkGasPriceStaticCallData,
+	} {
 
-// 		teardownSubTest := setupSubTest(t)
+		teardownSubTest := setupSubTest(t)
 
-// 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-// 		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true), orderopts.MakerAssetData(staticCallAssetData))
-// 		signedOrders := []*zeroex.SignedOrder{
-// 			signedOrder,
-// 		}
+		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
+		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrders := []*zeroex.SignedOrder{
+			signedOrder,
+		}
 
-// 		// Ensure that the order is accepted by offchain validation
-// 		ctx := context.Background()
-// 		latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-// 		require.NoError(t, err)
-// 		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-// 		assert.Len(t, validationResults.Accepted, 1)
-// 		require.Len(t, validationResults.Rejected, 0)
-// 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
-// 		require.NoError(t, err)
-// 		assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
+		// Ensure that the order is accepted by offchain validation
+		ctx := context.Background()
+		latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+		require.NoError(t, err)
+		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+		assert.Len(t, validationResults.Accepted, 1)
+		require.Len(t, validationResults.Rejected, 0)
+		expectedOrderHash, err := signedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
 
-// 		teardownSubTest(t)
-// 	}
-// }
+		teardownSubTest(t)
+	}
+}
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
 	signedOrder := signedOrderWithCustomSignature(t, ethClient, malformedSignature)
