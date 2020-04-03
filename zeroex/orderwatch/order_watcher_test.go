@@ -726,96 +726,102 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
-// TODO(albrow): Support setting up taker state
-// func TestOrderWatcherERC20Filled(t *testing.T) {
-// 	if !serialTestsEnabled {
-// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-// 	}
+func TestOrderWatcherERC20Filled(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-// 	require.NoError(t, err)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	require.NoError(t, err)
 
-// 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-// 	ctx, cancelFn := context.WithCancel(context.Background())
-// 	defer cancelFn()
-// 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	takerAddress := constants.GanacheAccount3
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.SetupTakerAddress(takerAddress),
+	)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-// 	// Fill order
-// 	opts := &bind.TransactOpts{
-// 		From:   takerAddress,
-// 		Signer: scenario.GetTestSignerFn(takerAddress),
-// 		Value:  big.NewInt(100000000000000000),
-// 	}
-// 	trimmedOrder := signedOrder.Trim()
-// 	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
-// 	require.NoError(t, err)
-// 	waitTxnSuccessfullyMined(t, ethClient, txn)
+	// Fill order
+	opts := &bind.TransactOpts{
+		From:   takerAddress,
+		Signer: scenario.GetTestSignerFn(takerAddress),
+		Value:  big.NewInt(100000000000000000),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.FillOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-// 	err = blockWatcher.SyncToLatestBlock()
-// 	require.NoError(t, err)
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
 
-// 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
-// 	require.Len(t, orderEvents, 1)
-// 	orderEvent := orderEvents[0]
-// 	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
 
-// 	var orders []*meshdb.Order
-// 	err = meshDB.Orders.FindAll(&orders)
-// 	require.NoError(t, err)
-// 	require.Len(t, orders, 1)
-// 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-// 	assert.Equal(t, true, orders[0].IsRemoved)
-// 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
-// }
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, true, orders[0].IsRemoved)
+	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+}
 
-// TODO(albrow): Support setting up taker state
-// func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
-// 	if !serialTestsEnabled {
-// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-// 	}
+func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-// 	require.NoError(t, err)
+	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	require.NoError(t, err)
 
-// 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-// 	ctx, cancelFn := context.WithCancel(context.Background())
-// 	defer cancelFn()
-// 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	takerAddress := constants.GanacheAccount3
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.SetupTakerAddress(takerAddress),
+	)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-// 	// Partially fill order
-// 	opts := &bind.TransactOpts{
-// 		From:   takerAddress,
-// 		Signer: scenario.GetTestSignerFn(takerAddress),
-// 		Value:  big.NewInt(100000000000000000),
-// 	}
-// 	trimmedOrder := signedOrder.Trim()
-// 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
-// 	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
-// 	require.NoError(t, err)
-// 	waitTxnSuccessfullyMined(t, ethClient, txn)
+	// Partially fill order
+	opts := &bind.TransactOpts{
+		From:   takerAddress,
+		Signer: scenario.GetTestSignerFn(takerAddress),
+		Value:  big.NewInt(100000000000000000),
+	}
+	trimmedOrder := signedOrder.Trim()
+	halfAmount := new(big.Int).Div(signedOrder.TakerAssetAmount, big.NewInt(2))
+	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-// 	err = blockWatcher.SyncToLatestBlock()
-// 	require.NoError(t, err)
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
 
-// 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
-// 	require.Len(t, orderEvents, 1)
-// 	orderEvent := orderEvents[0]
-// 	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	require.Len(t, orderEvents, 1)
+	orderEvent := orderEvents[0]
+	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
 
-// 	var orders []*meshdb.Order
-// 	err = meshDB.Orders.FindAll(&orders)
-// 	require.NoError(t, err)
-// 	require.Len(t, orders, 1)
-// 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-// 	assert.Equal(t, false, orders[0].IsRemoved)
-// 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
-// }
+	var orders []*meshdb.Order
+	err = meshDB.Orders.FindAll(&orders)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+	assert.Equal(t, false, orders[0].IsRemoved)
+	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
+}
 func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")

@@ -83,7 +83,9 @@ func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...order
 	if cfg.SetupMakerState {
 		setupMakerState(t, ethClient, signedOrder)
 	}
-	// TOOD(albrow): Implement setting up taker state.
+	if cfg.SetupTakerAddress != constants.NullAddress {
+		setupTakerState(t, ethClient, signedOrder, cfg.SetupTakerAddress)
+	}
 
 	return signedOrder
 }
@@ -140,20 +142,30 @@ func isZero(x *big.Int) bool {
 // setting allowances and transferring the required balances.
 func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder) {
 	requiredMakerBalances := requiredMakerBalances(t, order)
+	setupBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances)
+}
 
-	if !isZero(requiredMakerBalances.zrx) {
-		setZRXBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.zrx)
+// setupTakerState sets up all the on-chain state needed by taker in order to fill the order.
+// This includes setting allowances and transferring the required balances.
+func setupTakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder, taker common.Address) {
+	requiredTakerBalances := requiredTakerBalances(t, order)
+	setupBalanceAndAllowance(t, ethClient, taker, requiredTakerBalances)
+}
+
+func setupBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, requiredBalances *tokenBalances) {
+	if !isZero(requiredBalances.zrx) {
+		setZRXBalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.zrx)
 	}
-	if !isZero(requiredMakerBalances.weth) {
-		setWETHBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.weth)
+	if !isZero(requiredBalances.weth) {
+		setWETHBalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.weth)
 	}
-	if len(requiredMakerBalances.erc721Tokens) != 0 {
-		for _, tokenId := range requiredMakerBalances.erc721Tokens {
-			setDummyERC721BalanceAndAllowance(t, ethClient, order.MakerAddress, tokenId)
+	if len(requiredBalances.erc721Tokens) != 0 {
+		for _, tokenId := range requiredBalances.erc721Tokens {
+			setDummyERC721BalanceAndAllowance(t, ethClient, traderAddress, tokenId)
 		}
 	}
-	if len(requiredMakerBalances.erc1155Tokens) != 0 {
-		setDummyERC1155BalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.erc1155Tokens)
+	if len(requiredBalances.erc1155Tokens) != 0 {
+		setDummyERC1155BalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.erc1155Tokens)
 	}
 }
 
@@ -162,6 +174,15 @@ func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalanc
 	balances.add(requiredBalancesForAssetData(t, order.MakerAssetData, order.MakerAssetAmount))
 	if len(order.MakerFeeAssetData) != 0 {
 		balances.add(requiredBalancesForAssetData(t, order.MakerFeeAssetData, order.MakerFee))
+	}
+	return balances
+}
+
+func requiredTakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
+	balances := newTokenBalances()
+	balances.add(requiredBalancesForAssetData(t, order.TakerAssetData, order.TakerAssetAmount))
+	if len(order.TakerFeeAssetData) != 0 {
+		balances.add(requiredBalancesForAssetData(t, order.TakerFeeAssetData, order.TakerFee))
 	}
 	return balances
 }
@@ -217,20 +238,6 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 	t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", common.Bytes2Hex(assetData))
 	return nil
 }
-
-// TODO(albrow): Implement setting up taker state.
-// // setupTakerState sets up all the on-chain state in order to make the order fillable. This includes
-// // setting allowances and transferring the required balances.
-// func setupTakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder, takerAddress common.Address) {
-// 	// Set maker allowance
-// 	opts = &bind.TransactOpts{
-// 		From:   order.MakerAddress,
-// 		Signer: GetTestSignerFn(order.MakerAddress),
-// 	}
-// 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, order.MakerAssetAmount)
-// 	require.NoError(t, err)
-// 	waitTxnSuccessfullyMined(t, ethClient, txn)
-// }
 
 // setWETHBalanceAndAllowance unwraps amount WETH for traderAddress. In other words, the given amount
 // will be added to traderAddress's WETH balance.
