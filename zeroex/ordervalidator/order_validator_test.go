@@ -240,7 +240,7 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 
 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerFeeAssetData(staticCallAssetData))
 		signedOrders := []*zeroex.SignedOrder{
 			signedOrder,
 		}

@@ -5,7 +5,6 @@ package core
 import (
 	"context"
 	"flag"
-	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -206,7 +206,7 @@ func TestOrderSync(t *testing.T) {
 	// Manually add some orders to originalNode.
 	originalOrders := make([]*zeroex.SignedOrder, 10)
 	for i := range originalOrders {
-		originalOrders[i] = scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, constants.GanacheAccount1, constants.GanacheAccount2, big.NewInt(20), big.NewInt(5))
+		originalOrders[i] = scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	}
 
 	// We have to wait for latest block to be processed by the Mesh node.

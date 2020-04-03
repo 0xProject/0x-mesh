@@ -201,7 +201,7 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 			balances.weth = assetAmount
 			return balances
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(assetData))
+			t.Fatalf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(assetData))
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
@@ -210,14 +210,14 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 			balances.erc721Tokens = []*big.Int{decodedAssetData.TokenId}
 			return balances
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", common.Bytes2Hex(assetData))
+			t.Fatalf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", common.Bytes2Hex(assetData))
 		}
 	case "ERC1155Assets":
 		var decodedAssetData zeroex.ERC1155AssetData
 		require.NoError(t, assetDataDecoder.Decode(assetData, &decodedAssetData))
 
 		if len(decodedAssetData.Ids) != len(decodedAssetData.Values) {
-			t.Errorf("scenario: tokenIDs and amounts are not the same length (%d and %d respectively)", len(decodedAssetData.Ids), len(decodedAssetData.Values))
+			t.Fatalf("scenario: tokenIDs and amounts are not the same length (%d and %d respectively)", len(decodedAssetData.Ids), len(decodedAssetData.Values))
 		}
 
 		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC1155MintableAddress.Hex() {
@@ -230,12 +230,12 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 			}
 			return balances
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(assetData))
+			t.Fatalf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(assetData))
 		}
 		// TODO(albrow): Support multiassetdata here via recursion.
 	}
 
-	t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", common.Bytes2Hex(assetData))
+	t.Fatalf("scenario: cannot setup on-chain state for unsupported assetdata: (%s) %s", assetDataName, common.Bytes2Hex(assetData))
 	return nil
 }
 

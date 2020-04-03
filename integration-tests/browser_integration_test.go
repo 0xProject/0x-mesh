@@ -17,6 +17,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/chromedp"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -66,7 +67,7 @@ func TestBrowserIntegration(t *testing.T) {
 	// standaloneOrder is an order that will be sent to the network by the
 	// standalone node.
 	ethClient := ethclient.NewClient(ethRPCClient)
-	standaloneOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	standaloneOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
