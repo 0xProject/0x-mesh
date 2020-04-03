@@ -19,8 +19,10 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -42,13 +44,13 @@ const (
 )
 
 var (
-	makerAddress                = constants.GanacheAccount1
-	takerAddress                = constants.GanacheAccount2
+	// makerAddress                = constants.GanacheAccount1
+	// takerAddress                = constants.GanacheAccount2
 	eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-	zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-	erc1155FungibleAmount       = big.NewInt(100)
-	tokenID                     = big.NewInt(1)
+	// wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
+	// zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
+	// erc1155FungibleAmount       = big.NewInt(100)
+	// tokenID                     = big.NewInt(1)
 )
 
 var (
@@ -73,9 +75,7 @@ func init() {
 	flag.BoolVar(&serialTestsEnabled, "serial", false, "enable serial tests")
 	testing.Init()
 	flag.Parse()
-}
 
-func init() {
 	var err error
 	rpcClient, err = ethrpc.Dial(constants.GanacheEndpoint)
 	if err != nil {
@@ -128,17 +128,17 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
-	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
+	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAssetAmount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -170,16 +170,23 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
+	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
 	wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
-	signedOrder := scenario.CreateNFTForZRXWithWETHMakerFeeSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, wethFeeAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(makerAssetData),
+		orderopts.MakerAssetAmount(big.NewInt(1)),
+		orderopts.MakerFeeAssetData(scenario.WETHAssetData),
+		orderopts.MakerFee(wethFeeAmount),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	txn, err := weth.Transfer(opts, constants.GanacheAccount4, wethFeeAmount)
 	require.NoError(t, err)
@@ -212,17 +219,23 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
+	tokenID := big.NewInt(1)
+	makerAssetData := scenario.GetDummyERC721AssetData(tokenID)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetAmount(big.NewInt(1)),
+		orderopts.MakerAssetData(makerAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
-	txn, err := dummyERC721Token.TransferFrom(opts, makerAddress, constants.GanacheAccount4, tokenID)
+	txn, err := dummyERC721Token.TransferFrom(opts, signedOrder.MakerAddress, constants.GanacheAccount4, tokenID)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -254,15 +267,20 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateNFTForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount)
+	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetAmount(big.NewInt(1)),
+		orderopts.MakerAssetData(makerAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
 	require.NoError(t, err)
@@ -296,15 +314,20 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
+	makerAssetData := scenario.GetDummyERC1155AssetData(t, ethClient, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetAmount(big.NewInt(1)),
+		orderopts.MakerAssetData(makerAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's ERC1155 approval to ERC1155Proxy
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	txn, err := erc1155Mintable.SetApprovalForAll(opts, ganacheAddresses.ERC1155Proxy, false)
 	require.NoError(t, err)
@@ -338,17 +361,24 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateERC1155ForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, tokenID, zrxAmount, erc1155FungibleAmount)
+	tokenID := big.NewInt(1)
+	tokenAmount := big.NewInt(100)
+	makerAssetData := scenario.GetDummyERC1155AssetData(t, ethClient, []*big.Int{tokenID}, []*big.Int{tokenAmount})
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetAmount(big.NewInt(1)),
+		orderopts.MakerAssetData(makerAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Reduce Maker's ERC1155 balance
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
-	txn, err := erc1155Mintable.SafeTransferFrom(opts, makerAddress, constants.GanacheAccount4, tokenID, erc1155FungibleAmount, []byte{})
+	txn, err := erc1155Mintable.SafeTransferFrom(opts, signedOrder.MakerAddress, constants.GanacheAccount4, tokenID, tokenAmount, []byte{})
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -380,15 +410,18 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	txn, err := zrx.Approve(opts, ganacheAddresses.ERC20Proxy, big.NewInt(0))
 	require.NoError(t, err)
@@ -422,17 +455,21 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+		orderopts.TakerAssetData(scenario.WETHAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
-	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, zrxAmount)
+	txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAssetAmount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -458,7 +495,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 		From:   zrxCoinbase,
 		Signer: scenario.GetTestSignerFn(zrxCoinbase),
 	}
-	txn, err = zrx.Transfer(opts, makerAddress, zrxAmount)
+	txn, err = zrx.Transfer(opts, signedOrder.MakerAddress, signedOrder.MakerAssetAmount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -490,7 +527,11 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+		orderopts.TakerAssetData(scenario.WETHAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
@@ -508,7 +549,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 		From:   zrxCoinbase,
 		Signer: scenario.GetTestSignerFn(zrxCoinbase),
 	}
-	txn, err := zrx.Transfer(opts, makerAddress, zrxAmount)
+	txn, err := zrx.Transfer(opts, signedOrder.MakerAddress, signedOrder.MakerAssetAmount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -535,21 +576,25 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.WETHAssetData),
+		orderopts.TakerAssetData(scenario.ZRXAssetData),
+	)
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-	// Withdraw maker's WETH
+	// Withdraw maker's WETH (i.e. decrease WETH balance)
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
 	// estimated gas amount
 	gasLimit := uint64(50000)
 	opts := &bind.TransactOpts{
-		From:     makerAddress,
-		Signer:   scenario.GetTestSignerFn(makerAddress),
+		From:     signedOrder.MakerAddress,
+		Signer:   scenario.GetTestSignerFn(signedOrder.MakerAddress),
 		GasLimit: gasLimit,
 	}
-	txn, err := weth.Withdraw(opts, wethAmount)
+	txn, err := weth.Withdraw(opts, signedOrder.MakerAssetAmount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -568,10 +613,11 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
 	assert.Equal(t, true, orders[0].IsRemoved)
 
+	// Deposit maker's ETH (i.e. increase WETH balance)
 	opts = &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
-		Value:  wethAmount,
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+		Value:  signedOrder.MakerAssetAmount,
 	}
 	txn, err = weth.Deposit(opts)
 	require.NoError(t, err)
@@ -605,15 +651,15 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Cancel order
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	trimmedOrder := signedOrder.Trim()
 	txn, err := exchange.CancelOrder(opts, trimmedOrder)
@@ -648,15 +694,15 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Cancel order with epoch
 	opts := &bind.TransactOpts{
-		From:   makerAddress,
-		Signer: scenario.GetTestSignerFn(makerAddress),
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
 	targetOrderEpoch := signedOrder.Salt
 	txn, err := exchange.CancelOrdersUpTo(opts, targetOrderEpoch)
@@ -680,94 +726,96 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
 }
 
-func TestOrderWatcherERC20Filled(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
+// TODO(albrow): Support setting up taker state
+// func TestOrderWatcherERC20Filled(t *testing.T) {
+// 	if !serialTestsEnabled {
+// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+// 	}
 
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
+// 	teardownSubTest := setupSubTest(t)
+// 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
+// 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+// 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+// 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+// 	ctx, cancelFn := context.WithCancel(context.Background())
+// 	defer cancelFn()
+// 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-	// Fill order
-	opts := &bind.TransactOpts{
-		From:   takerAddress,
-		Signer: scenario.GetTestSignerFn(takerAddress),
-		Value:  big.NewInt(100000000000000000),
-	}
-	trimmedOrder := signedOrder.Trim()
-	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
-	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+// 	// Fill order
+// 	opts := &bind.TransactOpts{
+// 		From:   takerAddress,
+// 		Signer: scenario.GetTestSignerFn(takerAddress),
+// 		Value:  big.NewInt(100000000000000000),
+// 	}
+// 	trimmedOrder := signedOrder.Trim()
+// 	txn, err := exchange.FillOrder(opts, trimmedOrder, wethAmount, signedOrder.Signature)
+// 	require.NoError(t, err)
+// 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	err = blockWatcher.SyncToLatestBlock()
-	require.NoError(t, err)
+// 	err = blockWatcher.SyncToLatestBlock()
+// 	require.NoError(t, err)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
-	require.Len(t, orderEvents, 1)
-	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
+// 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+// 	require.Len(t, orderEvents, 1)
+// 	orderEvent := orderEvents[0]
+// 	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
-	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
-}
+// 	var orders []*meshdb.Order
+// 	err = meshDB.Orders.FindAll(&orders)
+// 	require.NoError(t, err)
+// 	require.Len(t, orders, 1)
+// 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+// 	assert.Equal(t, true, orders[0].IsRemoved)
+// 	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+// }
 
-func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
+// TODO(albrow): Support setting up taker state
+// func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
+// 	if !serialTestsEnabled {
+// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+// 	}
 
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
+// 	teardownSubTest := setupSubTest(t)
+// 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
+// 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+// 	require.NoError(t, err)
 
-	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+// 	signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+// 	ctx, cancelFn := context.WithCancel(context.Background())
+// 	defer cancelFn()
+// 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-	// Partially fill order
-	opts := &bind.TransactOpts{
-		From:   takerAddress,
-		Signer: scenario.GetTestSignerFn(takerAddress),
-		Value:  big.NewInt(100000000000000000),
-	}
-	trimmedOrder := signedOrder.Trim()
-	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
-	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
-	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+// 	// Partially fill order
+// 	opts := &bind.TransactOpts{
+// 		From:   takerAddress,
+// 		Signer: scenario.GetTestSignerFn(takerAddress),
+// 		Value:  big.NewInt(100000000000000000),
+// 	}
+// 	trimmedOrder := signedOrder.Trim()
+// 	halfAmount := new(big.Int).Div(wethAmount, big.NewInt(2))
+// 	txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
+// 	require.NoError(t, err)
+// 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
-	err = blockWatcher.SyncToLatestBlock()
-	require.NoError(t, err)
+// 	err = blockWatcher.SyncToLatestBlock()
+// 	require.NoError(t, err)
 
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
-	require.Len(t, orderEvents, 1)
-	orderEvent := orderEvents[0]
-	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
+// 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+// 	require.Len(t, orderEvents, 1)
+// 	orderEvent := orderEvents[0]
+// 	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
-	require.NoError(t, err)
-	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, false, orders[0].IsRemoved)
-	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
-}
+// 	var orders []*meshdb.Order
+// 	err = meshDB.Orders.FindAll(&orders)
+// 	require.NoError(t, err)
+// 	require.Len(t, orders, 1)
+// 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
+// 	assert.Equal(t, false, orders[0].IsRemoved)
+// 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
+// }
 func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -785,7 +833,11 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
-	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
 
@@ -895,8 +947,14 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	orderWatcher.maxOrders = 20
 
 	// create and watch maxOrders orders
+	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	for i := 0; i < orderWatcher.maxOrders; i++ {
-		signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+time.Duration(i)*time.Minute))
+		expirationTime := time.Now().Add(10*time.Minute + time.Duration(i)*time.Minute)
+		expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+		signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+			orderopts.SetupMakerState(true),
+			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+		)
 		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	}
 
@@ -907,7 +965,12 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 
 	// The next order should cause some orders to be removed and the appropriate
 	// events to fire.
-	signedOrder := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, time.Now().Add(10*time.Minute+1*time.Second))
+	expirationTime := time.Now().Add(10*time.Minute + 1*time.Second)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
@@ -956,9 +1019,10 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
 	orderWatcher.Subscribe(orderEventsChan)
 
+	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	signedOrders := []*zeroex.SignedOrder{}
 	for i := 0; i < 2; i++ {
-		signedOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, big.NewInt(1000), big.NewInt(1000))
+		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 		// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 		// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 		// in order for the order validation run at order submission to occur at a block number equal or higher then
@@ -1003,10 +1067,10 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
 	// Create and add two orders to OrderWatcher
-	amount := big.NewInt(10000)
-	signedOrderOne := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, amount, amount)
+	// TODO(albrow): Create orders in a single batch when scenario supports it.
+	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
-	signedOrderTwo := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, amount, amount)
+	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
@@ -1208,9 +1272,17 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	}()
 
 	// Create and add an order (which will later become expired) to OrderWatcher
+	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
-	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
-	signedOrderTwo := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
+	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
@@ -1270,9 +1342,17 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	}()
 
 	// Create and add an order (which will later become expired) to OrderWatcher
+	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
-	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
-	signedOrderTwo := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
+	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
@@ -1432,9 +1512,13 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
-	signedOrderOne := scenario.CreateSignedTestOrderWithExpirationTime(t, ethClient, makerAddress, takerAddress, expirationTime)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -1462,10 +1546,10 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	assert.Equal(t, zeroex.ESOrderExpired, orderEvents[0].EndState)
 
-	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
+	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	var orderOne meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	err = meshDB.Orders.FindByID(orderHash.Bytes(), &orderOne)
 	require.NoError(t, err)
 
 	ordersColTxn := meshDB.Orders.OpenTransaction()
@@ -1476,20 +1560,20 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	validationResults := ordervalidator.ValidationResults{
 		Accepted: []*ordervalidator.AcceptedOrderInfo{
 			&ordervalidator.AcceptedOrderInfo{
-				OrderHash:                signedOrderOneHash,
-				SignedOrder:              signedOrderOne,
-				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrderOne.TakerAssetAmount, big.NewInt(2)),
+				OrderHash:                orderHash,
+				SignedOrder:              signedOrder,
+				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrder.TakerAssetAmount, big.NewInt(2)),
 				IsNew:                    false,
 			},
 		},
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
 	orderHashToDBOrder := map[common.Hash]*meshdb.Order{
-		signedOrderOneHash: &orderOne,
+		orderHash: &orderOne,
 	}
 	exchangeFillEvent := "ExchangeFillEvent"
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{
-		signedOrderOneHash: []*zeroex.ContractEvent{
+		orderHash: []*zeroex.ContractEvent{
 			&zeroex.ContractEvent{
 				Kind: exchangeFillEvent,
 			},
@@ -1501,11 +1585,11 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 
 	require.Len(t, orderEvents, 2)
 	orderEventTwo := orderEvents[0]
-	assert.Equal(t, signedOrderOneHash, orderEventTwo.OrderHash)
+	assert.Equal(t, orderHash, orderEventTwo.OrderHash)
 	assert.Equal(t, zeroex.ESOrderUnexpired, orderEventTwo.EndState)
 	assert.Len(t, orderEventTwo.ContractEvents, 0)
 	orderEventOne := orderEvents[1]
-	assert.Equal(t, signedOrderOneHash, orderEventOne.OrderHash)
+	assert.Equal(t, orderHash, orderEventOne.OrderHash)
 	assert.Equal(t, zeroex.ESOrderFilled, orderEventOne.EndState)
 	assert.Len(t, orderEventOne.ContractEvents, 1)
 	assert.Equal(t, orderEventOne.ContractEvents[0].Kind, exchangeFillEvent)
@@ -1513,10 +1597,10 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	err = ordersColTxn.Commit()
 	require.NoError(t, err)
 
-	var orderTwo meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderTwo)
+	var existingOrder meshdb.Order
+	err = meshDB.Orders.FindByID(orderHash.Bytes(), &existingOrder)
 	require.NoError(t, err)
-	assert.Equal(t, false, orderTwo.IsRemoved)
+	assert.Equal(t, false, existingOrder.IsRemoved)
 }
 
 func TestDrainAllBlockEventsChan(t *testing.T) {
@@ -1583,6 +1667,9 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 
 	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
 	require.NoError(t, err)
+	if len(validationResults.Rejected) != 0 {
+		spew.Dump(validationResults.Rejected)
+	}
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 

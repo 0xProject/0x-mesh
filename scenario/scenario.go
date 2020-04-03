@@ -3,6 +3,7 @@ package scenario
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -67,6 +68,8 @@ func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
 	return cfg.Order
 }
 
+// TODO(albrow): If we never change ethClient, just remove it as a parameter and assume
+// we're talking to Ganache.
 func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...orderopts.Option) *zeroex.SignedOrder {
 	cfg := defaultConfig()
 	// No Option returns an error right now. If that changes, we
@@ -85,42 +88,134 @@ func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...order
 	return signedOrder
 }
 
+type tokenBalances struct {
+	zrx           *big.Int
+	weth          *big.Int
+	erc721Tokens  []*big.Int
+	erc1155Tokens []erc1155TokenAmount
+}
+
+type erc1155TokenAmount struct {
+	tokenID *big.Int
+	amount  *big.Int
+}
+
+func newTokenBalances() *tokenBalances {
+	return &tokenBalances{
+		zrx:           big.NewInt(0),
+		weth:          big.NewInt(0),
+		erc721Tokens:  []*big.Int{},
+		erc1155Tokens: []erc1155TokenAmount{},
+	}
+}
+
+func (x *tokenBalances) add(y *tokenBalances) {
+	x.zrx.Add(x.zrx, y.zrx)
+	x.weth.Add(x.weth, y.weth)
+	x.erc721Tokens = append(x.erc721Tokens, y.erc721Tokens...)
+	for _, yToken := range y.erc1155Tokens {
+		found := false
+		for xIndex, xToken := range x.erc1155Tokens {
+			if xToken.tokenID.Cmp(yToken.tokenID) == 0 {
+				found = true
+				x.erc1155Tokens[xIndex] = erc1155TokenAmount{
+					tokenID: xToken.tokenID,
+					amount:  xToken.amount.Add(xToken.amount, yToken.amount),
+				}
+			}
+		}
+		if !found {
+			x.erc1155Tokens = append(x.erc1155Tokens, yToken)
+		}
+	}
+}
+
+var zero = big.NewInt(0)
+
+func isZero(x *big.Int) bool {
+	return x.Cmp(zero) == 0
+}
+
 // setupMakerState sets up all the on-chain state in order to make the order fillable. This includes
 // setting allowances and transferring the required balances.
 func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder) {
-	assetDataDecoder := zeroex.NewAssetDataDecoder()
-	assetDataName, err := assetDataDecoder.GetName(order.MakerAssetData)
-	require.NoError(t, err)
+	requiredMakerBalances := requiredMakerBalances(t, order)
 
+	if !isZero(requiredMakerBalances.zrx) {
+		setZRXBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.zrx)
+	}
+	if !isZero(requiredMakerBalances.weth) {
+		setWETHBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.weth)
+	}
+	if len(requiredMakerBalances.erc721Tokens) != 0 {
+		for _, tokenId := range requiredMakerBalances.erc721Tokens {
+			setDummyERC721BalanceAndAllowance(t, ethClient, order.MakerAddress, tokenId)
+		}
+	}
+	if len(requiredMakerBalances.erc1155Tokens) != 0 {
+		setDummyERC1155BalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances.erc1155Tokens)
+	}
+}
+
+func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
+	balances := newTokenBalances()
+	balances.add(requiredBalancesForAssetData(t, order.MakerAssetData, order.MakerAssetAmount))
+	if len(order.MakerFeeAssetData) != 0 {
+		balances.add(requiredBalancesForAssetData(t, order.MakerFeeAssetData, order.MakerFee))
+	}
+	return balances
+}
+
+func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *big.Int) *tokenBalances {
+	balances := newTokenBalances()
+	assetDataDecoder := zeroex.NewAssetDataDecoder()
+	assetDataName, err := assetDataDecoder.GetName(assetData)
+	require.NoError(t, err)
 	switch assetDataName {
 	case "ERC20Token":
-		if bytes.Equal(order.MakerAssetData, ZRXAssetData) {
-			setZRXBalanceAndAllowance(t, ethClient, order.MakerAddress, order.MakerAssetAmount)
-		} else if bytes.Equal(order.MakerAssetData, WETHAssetData) {
-			setWETHBalanceAndAllowance(t, ethClient, order.MakerAddress, order.MakerAssetAmount)
+		if bytes.Equal(assetData, ZRXAssetData) {
+			balances.zrx = assetAmount
+			return balances
+		} else if bytes.Equal(assetData, WETHAssetData) {
+			balances.weth = assetAmount
+			return balances
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(order.MakerAssetData))
+			t.Errorf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(assetData))
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
-		require.NoError(t, assetDataDecoder.Decode(order.MakerAssetData, &decodedAssetData))
+		require.NoError(t, assetDataDecoder.Decode(assetData, &decodedAssetData))
 		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC721TokenAddress.Hex() {
-			setDummyERC721BalanceAndAllowance(t, ethClient, order.MakerAddress, decodedAssetData.TokenId)
+			balances.erc721Tokens = []*big.Int{decodedAssetData.TokenId}
+			return balances
 		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", common.Bytes2Hex(order.MakerAssetData))
+			t.Errorf("scneario: cannot setup on-chain state for ERC721 assetdata (only DummyERC721Token is supported): %s", common.Bytes2Hex(assetData))
 		}
 	case "ERC1155Assets":
 		var decodedAssetData zeroex.ERC1155AssetData
-		require.NoError(t, assetDataDecoder.Decode(order.MakerAssetData, &decodedAssetData))
-		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC1155MintableAddress.Hex() {
-			setDummyERC1155BalanceAndAllowance(t, ethClient, order.MakerAddress, decodedAssetData.Ids, decodedAssetData.Values)
-		} else {
-			t.Errorf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(order.MakerAssetData))
+		require.NoError(t, assetDataDecoder.Decode(assetData, &decodedAssetData))
+
+		if len(decodedAssetData.Ids) != len(decodedAssetData.Values) {
+			t.Errorf("scenario: tokenIDs and amounts are not the same length (%d and %d respectively)", len(decodedAssetData.Ids), len(decodedAssetData.Values))
 		}
-	default:
-		t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", common.Bytes2Hex(order.MakerAssetData))
+
+		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC1155MintableAddress.Hex() {
+			balances.erc1155Tokens = make([]erc1155TokenAmount, len(decodedAssetData.Ids))
+			for i, tokenID := range decodedAssetData.Ids {
+				balances.erc1155Tokens[i] = erc1155TokenAmount{
+					tokenID: tokenID,
+					amount:  decodedAssetData.Values[i],
+				}
+			}
+			return balances
+		} else {
+			t.Errorf("scneario: cannot setup on-chain state for ERC1155 assetdata (only DummyERC1155Mintable is supported): %s", common.Bytes2Hex(assetData))
+		}
+		// TODO(albrow): Support multiassetdata here via recursion.
 	}
 
+	t.Errorf("scenario: cannot setup on-chain state for unsupported assetdata: %s", common.Bytes2Hex(assetData))
+	return nil
 }
 
 // TODO(albrow): Implement setting up taker state.
@@ -150,6 +245,15 @@ func setWETHBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, trade
 		Signer: GetTestSignerFn(traderAddress),
 	}
 	txn, err := weth9.Deposit(opts)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	// Set WETH allowance
+	opts = &bind.TransactOpts{
+		From:   traderAddress,
+		Signer: GetTestSignerFn(traderAddress),
+	}
+	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 }
@@ -193,19 +297,17 @@ func setDummyERC721BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// Set allowance
-	txn, err = dummyERC721Token.Approve(opts, ganacheAddresses.ERC721Proxy, tokenID)
+	// HACK(albrow): Our tests rely on unapproving/unsetting the allowance. You can't do
+	// that for individual tokens, so we use SetApprovalForAll here.
+	txn, err = dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, true)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 }
 
-func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, tokenIDs []*big.Int, amounts []*big.Int) {
+func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, tokenAmounts []erc1155TokenAmount) {
 	// Mint the necessary ERC1155 tokens
 	erc1155Mintable, err := wrappers.NewERC1155Mintable(constants.GanacheDummyERC1155MintableAddress, ethClient)
 	require.NoError(t, err)
-
-	if len(tokenIDs) != len(amounts) {
-		t.Errorf("scenario: tokenIDs and amounts are not the same length (%d and %d respectively)", len(tokenIDs), len(amounts))
-	}
 
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
 	// estimated gas amount
@@ -216,15 +318,13 @@ func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Clien
 		GasLimit: gasLimit,
 	}
 
-	for i, tokenID := range tokenIDs {
-		amount := amounts[i]
-
+	for _, tokenAmount := range tokenAmounts {
 		uri := ""
-		txn, err := erc1155Mintable.CreateWithType(opts, tokenID, uri)
+		txn, err := erc1155Mintable.CreateWithType(opts, tokenAmount.tokenID, uri)
 		require.NoError(t, err)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
-		txn, err = erc1155Mintable.MintFungible(opts, tokenID, []common.Address{traderAddress}, []*big.Int{amount})
+		txn, err = erc1155Mintable.MintFungible(opts, tokenAmount.tokenID, []common.Address{traderAddress}, []*big.Int{tokenAmount.amount})
 		require.NoError(t, err)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 	}
@@ -246,6 +346,29 @@ func GetTestSignerFn(signerAddress common.Address) func(signer types.Signer, add
 		}
 		return tx.WithSignature(s, signature)
 	}
+}
+
+func GetDummyERC721AssetData(tokenID *big.Int) []byte {
+	makerAssetDataHex := fmt.Sprintf("%s000000000000000000000000%s000000000000000000000000000000000000000000000000000000000000000%s", zeroex.ERC721AssetDataID, constants.GanacheDummyERC721TokenAddress.Hex()[2:], tokenID)
+	return common.Hex2Bytes(makerAssetDataHex)
+}
+
+func GetDummyERC1155AssetData(t *testing.T, ethClient *ethclient.Client, tokenIDs []*big.Int, amounts []*big.Int) []byte {
+	devUtils, err := wrappers.NewDevUtils(ganacheAddresses.DevUtils, ethClient)
+	require.NoError(t, err)
+
+	callOpts := &bind.CallOpts{
+		From: constants.GanacheAccount1,
+	}
+	assetData, err := devUtils.EncodeERC1155AssetData(
+		callOpts,
+		constants.GanacheDummyERC1155MintableAddress,
+		tokenIDs,
+		amounts,
+		[]byte{},
+	)
+	require.NoError(t, err)
+	return assetData
 }
 
 func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
