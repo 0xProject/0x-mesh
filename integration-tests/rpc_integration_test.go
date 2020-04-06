@@ -19,7 +19,6 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,8 +59,7 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	require.NoError(t, err)
 
 	// Create a new valid order.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	signedTestOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
@@ -130,11 +128,10 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 
 	// Create 10 new valid orders.
 	// TODO(albrow): Update this when scenario supports creating orders in a batch.
-	ethClient := ethclient.NewClient(ethRPCClient)
 	numOrders := 10
 	signedTestOrders := make([]*zeroex.SignedOrder, numOrders)
 	for i := 0; i < numOrders; i++ {
-		signedTestOrders[i] = scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+		signedTestOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	}
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
@@ -308,8 +305,7 @@ func TestOrdersSubscription(t *testing.T) {
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
 	// Create a valid order and send it to the rpc client's "AddOrders" endpoint.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	signedTestOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then

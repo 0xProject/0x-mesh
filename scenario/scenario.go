@@ -1,3 +1,5 @@
+// Package scenario allows creating orders for testing purposes with a variety of options.
+// It also supports setting up the necessary on-chain state for both the taker and maker.
 package scenario
 
 import (
@@ -18,14 +20,24 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 )
 
 var (
+	ethClient        *ethclient.Client
 	ganacheAddresses = ethereum.GanacheAddresses
 	ZRXAssetData     = common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c")
 	WETHAssetData    = common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082")
 )
+
+func init() {
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	if err != nil {
+		panic(err)
+	}
+	ethClient = ethclient.NewClient(rpcClient)
+}
 
 func defaultTestOrder() *zeroex.Order {
 	return &zeroex.Order{
@@ -68,9 +80,7 @@ func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
 	return cfg.Order
 }
 
-// TODO(albrow): If we never change ethClient, just remove it as a parameter and assume
-// we're talking to Ganache.
-func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...orderopts.Option) *zeroex.SignedOrder {
+func NewSignedTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOrder {
 	cfg := defaultConfig()
 	// No Option returns an error right now. If that changes, we
 	// need to update this code.
@@ -81,10 +91,10 @@ func NewSignedTestOrder(t *testing.T, ethClient *ethclient.Client, opts ...order
 	require.NoError(t, err, "could not sign order")
 
 	if cfg.SetupMakerState {
-		setupMakerState(t, ethClient, signedOrder)
+		setupMakerState(t, signedOrder)
 	}
 	if cfg.SetupTakerAddress != constants.NullAddress {
-		setupTakerState(t, ethClient, signedOrder, cfg.SetupTakerAddress)
+		setupTakerState(t, signedOrder, cfg.SetupTakerAddress)
 	}
 
 	return signedOrder
@@ -140,32 +150,32 @@ func isZero(x *big.Int) bool {
 
 // setupMakerState sets up all the on-chain state in order to make the order fillable. This includes
 // setting allowances and transferring the required balances.
-func setupMakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder) {
+func setupMakerState(t *testing.T, order *zeroex.SignedOrder) {
 	requiredMakerBalances := requiredMakerBalances(t, order)
-	setupBalanceAndAllowance(t, ethClient, order.MakerAddress, requiredMakerBalances)
+	setupBalanceAndAllowance(t, order.MakerAddress, requiredMakerBalances)
 }
 
 // setupTakerState sets up all the on-chain state needed by taker in order to fill the order.
 // This includes setting allowances and transferring the required balances.
-func setupTakerState(t *testing.T, ethClient *ethclient.Client, order *zeroex.SignedOrder, taker common.Address) {
+func setupTakerState(t *testing.T, order *zeroex.SignedOrder, taker common.Address) {
 	requiredTakerBalances := requiredTakerBalances(t, order)
-	setupBalanceAndAllowance(t, ethClient, taker, requiredTakerBalances)
+	setupBalanceAndAllowance(t, taker, requiredTakerBalances)
 }
 
-func setupBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, requiredBalances *tokenBalances) {
+func setupBalanceAndAllowance(t *testing.T, traderAddress common.Address, requiredBalances *tokenBalances) {
 	if !isZero(requiredBalances.zrx) {
-		setZRXBalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.zrx)
+		setZRXBalanceAndAllowance(t, traderAddress, requiredBalances.zrx)
 	}
 	if !isZero(requiredBalances.weth) {
-		setWETHBalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.weth)
+		setWETHBalanceAndAllowance(t, traderAddress, requiredBalances.weth)
 	}
 	if len(requiredBalances.erc721Tokens) != 0 {
 		for _, tokenId := range requiredBalances.erc721Tokens {
-			setDummyERC721BalanceAndAllowance(t, ethClient, traderAddress, tokenId)
+			setDummyERC721BalanceAndAllowance(t, traderAddress, tokenId)
 		}
 	}
 	if len(requiredBalances.erc1155Tokens) != 0 {
-		setDummyERC1155BalanceAndAllowance(t, ethClient, traderAddress, requiredBalances.erc1155Tokens)
+		setDummyERC1155BalanceAndAllowance(t, traderAddress, requiredBalances.erc1155Tokens)
 	}
 }
 
@@ -250,7 +260,7 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 
 // setWETHBalanceAndAllowance unwraps amount WETH for traderAddress. In other words, the given amount
 // will be added to traderAddress's WETH balance.
-func setWETHBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, amount *big.Int) {
+func setWETHBalanceAndAllowance(t *testing.T, traderAddress common.Address, amount *big.Int) {
 	weth9, err := wrappers.NewWETH9(ganacheAddresses.WETH9, ethClient)
 	require.NoError(t, err)
 
@@ -262,7 +272,7 @@ func setWETHBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, trade
 	}
 	txn, err := weth9.Deposit(opts)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 
 	// Set WETH allowance
 	opts = &bind.TransactOpts{
@@ -271,11 +281,11 @@ func setWETHBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, trade
 	}
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 }
 
 // setZRXBalanceAndAllowance transfers amount ZRX to traderAddress and sets the appropriate allowance.
-func setZRXBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, amount *big.Int) {
+func setZRXBalanceAndAllowance(t *testing.T, traderAddress common.Address, amount *big.Int) {
 	zrx, err := wrappers.NewZRXToken(ganacheAddresses.ZRXToken, ethClient)
 	require.NoError(t, err)
 
@@ -287,7 +297,7 @@ func setZRXBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, trader
 	}
 	txn, err := zrx.Transfer(opts, traderAddress, amount)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 
 	// Set ZRX allowance
 	opts = &bind.TransactOpts{
@@ -296,10 +306,10 @@ func setZRXBalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, trader
 	}
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 }
 
-func setDummyERC721BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, tokenID *big.Int) {
+func setDummyERC721BalanceAndAllowance(t *testing.T, traderAddress common.Address, tokenID *big.Int) {
 	// Transfer NFT to traderAddress
 	dummyERC721Token, err := wrappers.NewDummyERC721Token(constants.GanacheDummyERC721TokenAddress, ethClient)
 	require.NoError(t, err)
@@ -310,17 +320,17 @@ func setDummyERC721BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client
 	}
 	txn, err := dummyERC721Token.Mint(opts, traderAddress, tokenID)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 
 	// Set allowance
 	// HACK(albrow): Our tests rely on unapproving/unsetting the allowance. You can't do
 	// that for individual tokens, so we use SetApprovalForAll here.
 	txn, err = dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, true)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 }
 
-func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Client, traderAddress common.Address, tokenAmounts []erc1155TokenAmount) {
+func setDummyERC1155BalanceAndAllowance(t *testing.T, traderAddress common.Address, tokenAmounts []erc1155TokenAmount) {
 	// Mint the necessary ERC1155 tokens
 	erc1155Mintable, err := wrappers.NewERC1155Mintable(constants.GanacheDummyERC1155MintableAddress, ethClient)
 	require.NoError(t, err)
@@ -338,18 +348,18 @@ func setDummyERC1155BalanceAndAllowance(t *testing.T, ethClient *ethclient.Clien
 		uri := ""
 		txn, err := erc1155Mintable.CreateWithType(opts, tokenAmount.tokenID, uri)
 		require.NoError(t, err)
-		waitTxnSuccessfullyMined(t, ethClient, txn)
+		waitTxnSuccessfullyMined(t, txn)
 
 		txn, err = erc1155Mintable.MintFungible(opts, tokenAmount.tokenID, []common.Address{traderAddress}, []*big.Int{tokenAmount.amount})
 		require.NoError(t, err)
-		waitTxnSuccessfullyMined(t, ethClient, txn)
+		waitTxnSuccessfullyMined(t, txn)
 	}
 
 	// Set ERC1155 allowance
 	// HACK(albrow): erc1155Mintable does not allow setting allowance per token id.
 	txn, err := erc1155Mintable.SetApprovalForAll(opts, ganacheAddresses.ERC1155Proxy, true)
 	require.NoError(t, err)
-	waitTxnSuccessfullyMined(t, ethClient, txn)
+	waitTxnSuccessfullyMined(t, txn)
 }
 
 // GetTestSignerFn returns a test signer function that can be used to sign Ethereum transactions
@@ -369,7 +379,7 @@ func GetDummyERC721AssetData(tokenID *big.Int) []byte {
 	return common.Hex2Bytes(makerAssetDataHex)
 }
 
-func GetDummyERC1155AssetData(t *testing.T, ethClient *ethclient.Client, tokenIDs []*big.Int, amounts []*big.Int) []byte {
+func GetDummyERC1155AssetData(t *testing.T, tokenIDs []*big.Int, amounts []*big.Int) []byte {
 	devUtils, err := wrappers.NewDevUtils(ganacheAddresses.DevUtils, ethClient)
 	require.NoError(t, err)
 
@@ -387,7 +397,7 @@ func GetDummyERC1155AssetData(t *testing.T, ethClient *ethclient.Client, tokenID
 	return assetData
 }
 
-func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
+func waitTxnSuccessfullyMined(t *testing.T, txn *types.Transaction) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancelFn()
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)

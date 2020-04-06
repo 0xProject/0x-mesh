@@ -22,7 +22,6 @@ import (
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/chromedp"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,13 +67,12 @@ func TestBrowserIntegration(t *testing.T) {
 
 	// standaloneOrder is an order that will be sent to the network by the
 	// standalone node.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	standaloneOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	standaloneOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 
 	// We also need to set up the maker state for the order that will be created in the browser (we don't care
 	// if this order exactly matches the one created in the browser, we just care about makerAddress,
 	// makerAssetData, and makerAssetAmount).
-	scenario.NewSignedTestOrder(t, ethClient,
+	scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAddress(constants.GanacheAccount1),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),

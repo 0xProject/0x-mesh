@@ -16,7 +16,6 @@ import (
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -119,7 +118,6 @@ func newTestApp(t *testing.T) *App {
 
 var (
 	rpcClient           *ethrpc.Client
-	ethClient           *ethclient.Client
 	blockchainLifecycle *ethereum.BlockchainLifecycle
 )
 
@@ -137,7 +135,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	ethClient = ethclient.NewClient(rpcClient)
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
 	if err != nil {
 		panic(err)
@@ -206,7 +203,7 @@ func TestOrderSync(t *testing.T) {
 	// Manually add some orders to originalNode.
 	originalOrders := make([]*zeroex.SignedOrder, 10)
 	for i := range originalOrders {
-		originalOrders[i] = scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+		originalOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	}
 
 	// We have to wait for latest block to be processed by the Mesh node.

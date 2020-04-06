@@ -99,41 +99,41 @@ func init() {
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerAssetAmount(big.NewInt(0))),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.TakerAssetAmount(big.NewInt(0))),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
 		testCase{
-			SignedOrder: scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerAssetData(multiAssetAssetData)),
+			SignedOrder: scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(multiAssetAssetData)),
 			IsValid:     true,
 		},
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerAssetData(malformedAssetData)),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.TakerAssetData(malformedAssetData)),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerAssetData(unsupportedAssetData)),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 scenario.NewSignedTestOrder(t, ethClient, orderopts.TakerAssetData(unsupportedAssetData)),
+			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		testCase{
-			SignedOrder:                 signedOrderWithCustomSignature(t, ethClient, malformedSignature),
+			SignedOrder:                 signedOrderWithCustomSignature(t, malformedSignature),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
 		},
@@ -163,7 +163,7 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
@@ -191,7 +191,7 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	defer teardownSubTest(t)
 	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
 	makerFeeAssetData := common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000")
-	signedTestOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
 	signedOrders := []*zeroex.SignedOrder{
 		signedTestOrder,
 	}
@@ -234,7 +234,7 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 
 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(staticCallAssetData))
 		signedOrders := []*zeroex.SignedOrder{
 			signedOrder,
 		}
@@ -270,7 +270,7 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 
 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
 		signedOrders := []*zeroex.SignedOrder{
 			signedOrder,
 		}
@@ -291,7 +291,7 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 }
 
 func TestBatchValidateSignatureInvalid(t *testing.T) {
-	signedOrder := signedOrderWithCustomSignature(t, ethClient, malformedSignature)
+	signedOrder := signedOrderWithCustomSignature(t, malformedSignature)
 	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
@@ -313,7 +313,7 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 
 func TestBatchValidateUnregisteredCoordinator(t *testing.T) {
 	// FeeRecipientAddress is an address for which there is no entry in the Coordinator registry
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SenderAddress(ganacheAddresses.Coordinator), orderopts.FeeRecipientAddress(constants.GanacheAccount4))
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SenderAddress(ganacheAddresses.Coordinator), orderopts.FeeRecipientAddress(constants.GanacheAccount4))
 	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
@@ -342,7 +342,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SenderAddress(ganacheAddresses.Coordinator),
 		orderopts.SetupMakerState(true),
 		orderopts.FeeRecipientAddress(constants.GanacheAccount3),
@@ -398,7 +398,7 @@ func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
 const singleOrderPayloadSize = 2236
 
 func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
+	signedOrder := scenario.NewSignedTestOrder(t)
 	maxContentLength := singleOrderPayloadSize - 10
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, ganacheAddresses)
 	require.NoError(t, err)
@@ -410,7 +410,7 @@ func TestComputeOptimalChunkSizesMaxContentLengthTooLow(t *testing.T) {
 }
 
 func TestComputeOptimalChunkSizes(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
+	signedOrder := scenario.NewSignedTestOrder(t)
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, ganacheAddresses)
 	require.NoError(t, err)
@@ -422,8 +422,8 @@ func TestComputeOptimalChunkSizes(t *testing.T) {
 }
 
 func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
-	signedMultiAssetOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.MakerAssetData(multiAssetAssetData))
+	signedOrder := scenario.NewSignedTestOrder(t)
+	signedMultiAssetOrder := scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(multiAssetAssetData))
 
 	maxContentLength := singleOrderPayloadSize * 3
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, ganacheAddresses)
@@ -442,8 +442,8 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	}
 }
 
-func signedOrderWithCustomSignature(t *testing.T, ethClient *ethclient.Client, signature []byte) *zeroex.SignedOrder {
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient)
+func signedOrderWithCustomSignature(t *testing.T, signature []byte) *zeroex.SignedOrder {
+	signedOrder := scenario.NewSignedTestOrder(t)
 	signedOrder.Signature = signature
 	return signedOrder
 }

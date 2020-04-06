@@ -122,7 +122,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
@@ -166,7 +166,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 
 	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
 	wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(makerAssetData),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
@@ -215,7 +215,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 
 	tokenID := big.NewInt(1)
 	makerAssetData := scenario.GetDummyERC721AssetData(tokenID)
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
@@ -262,7 +262,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	require.NoError(t, err)
 
 	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
@@ -308,8 +308,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	makerAssetData := scenario.GetDummyERC1155AssetData(t, ethClient, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
@@ -357,8 +357,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 
 	tokenID := big.NewInt(1)
 	tokenAmount := big.NewInt(100)
-	makerAssetData := scenario.GetDummyERC1155AssetData(t, ethClient, []*big.Int{tokenID}, []*big.Int{tokenAmount})
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{tokenID}, []*big.Int{tokenAmount})
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
@@ -404,7 +404,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 	)
@@ -449,7 +449,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
@@ -521,7 +521,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
@@ -570,7 +570,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.WETHAssetData),
 		orderopts.TakerAssetData(scenario.ZRXAssetData),
@@ -645,7 +645,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
@@ -688,7 +688,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
@@ -732,7 +732,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
@@ -780,7 +780,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
@@ -834,7 +834,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
@@ -951,7 +951,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	for i := 0; i < orderWatcher.maxOrders; i++ {
 		expirationTime := time.Now().Add(10*time.Minute + time.Duration(i)*time.Minute)
 		expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-		signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+		signedOrder := scenario.NewSignedTestOrder(t,
 			orderopts.SetupMakerState(true),
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		)
@@ -967,7 +967,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	// events to fire.
 	expirationTime := time.Now().Add(10*time.Minute + 1*time.Second)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
@@ -1022,7 +1022,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	signedOrders := []*zeroex.SignedOrder{}
 	for i := 0; i < 2; i++ {
-		signedOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 		// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 		// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 		// in order for the order validation run at order submission to occur at a block number equal or higher then
@@ -1068,9 +1068,9 @@ func TestOrderWatcherCleanup(t *testing.T) {
 
 	// Create and add two orders to OrderWatcher
 	// TODO(albrow): Create orders in a single batch when scenario supports it.
-	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrderOne := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
-	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+	signedOrderTwo := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
@@ -1275,11 +1275,11 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrderOne := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrderTwo := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
@@ -1345,11 +1345,11 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrderOne := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrderOne := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	signedOrderTwo := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrderTwo := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
@@ -1513,7 +1513,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t, ethClient,
+	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
