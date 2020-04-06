@@ -13,12 +13,11 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/scenario/orderopts"
-
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"

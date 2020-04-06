@@ -7,6 +7,7 @@ package integrationtests
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
@@ -68,6 +70,17 @@ func TestBrowserIntegration(t *testing.T) {
 	// standalone node.
 	ethClient := ethclient.NewClient(ethRPCClient)
 	standaloneOrder := scenario.NewSignedTestOrder(t, ethClient, orderopts.SetupMakerState(true))
+
+	// We also need to set up the maker state for the order that will be created in the browser (we don't care
+	// if this order exactly matches the one created in the browser, we just care about makerAddress,
+	// makerAssetData, and makerAssetAmount).
+	scenario.NewSignedTestOrder(t, ethClient,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAddress(constants.GanacheAccount1),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+		orderopts.MakerAssetAmount(big.NewInt(1000)),
+	)
+
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then

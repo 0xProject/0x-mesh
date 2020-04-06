@@ -44,13 +44,7 @@ const (
 )
 
 var (
-	// makerAddress                = constants.GanacheAccount1
-	// takerAddress                = constants.GanacheAccount2
 	eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	// wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-	// zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-	// erc1155FungibleAmount       = big.NewInt(100)
-	// tokenID                     = big.NewInt(1)
 )
 
 var (

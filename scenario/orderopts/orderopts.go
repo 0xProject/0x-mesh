@@ -7,18 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// TODO(albrow): Create a way to supply the following options:
-//
-//    - [x] makerAssetData
-//    - [x] makerAssetAmount
-//    - [x] takerAssetData
-//    - [x] takerAssetAmount
-//    - [x] expirationTime
-//    - [x] makerFeeAsset and makerFeeAssetAmount
-//
-// Maybe with chaining like in libp2p?
-//
-
 type Config struct {
 	Order             *zeroex.Order
 	SetupMakerState   bool
@@ -39,6 +27,13 @@ func (cfg *Config) Apply(opts ...Option) error {
 		}
 	}
 	return nil
+}
+
+func MakerAddress(address common.Address) Option {
+	return func(cfg *Config) error {
+		cfg.Order.MakerAddress = address
+		return nil
+	}
 }
 
 func MakerAssetData(assetData []byte) Option {

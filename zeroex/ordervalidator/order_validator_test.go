@@ -43,12 +43,6 @@ const (
 )
 
 var (
-	// makerAddress                = constants.GanacheAccount1
-	// takerAddress                = constants.GanacheAccount2
-	// eighteenDecimalsInBaseUnits = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	// wethAmount                  = new(big.Int).Mul(big.NewInt(50), eighteenDecimalsInBaseUnits)
-	// zrxAmount                   = new(big.Int).Mul(big.NewInt(100), eighteenDecimalsInBaseUnits)
-
 	unsupportedAssetData = common.Hex2Bytes("a2cb61b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064")
 	malformedAssetData   = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
 	malformedSignature   = []byte("9HJhsAAAAAAAAAAAAAAAAInSSmtMyxtvqiYl")
