@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -14,13 +13,12 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,8 +59,7 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	require.NoError(t, err)
 
 	// Create a new valid order.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
@@ -130,15 +127,11 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 	require.NoError(t, err)
 
 	// Create 10 new valid orders.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	// NOTE(jalextowle): The default balances are not sufficient to create 10 valid
-	//                   orders, so we modify the zrx and weth amounts for this test
+	// TODO(albrow): Update this when scenario supports creating orders in a batch.
 	numOrders := 10
-	newWethAmount := new(big.Int).Div(wethAmount, big.NewInt(int64(numOrders)))
-	newZrxAmount := new(big.Int).Div(zrxAmount, big.NewInt(int64(numOrders)))
 	signedTestOrders := make([]*zeroex.SignedOrder, numOrders)
 	for i := 0; i < numOrders; i++ {
-		signedTestOrders[i] = scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, newWethAmount, newZrxAmount)
+		signedTestOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	}
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
@@ -312,8 +305,7 @@ func TestOrdersSubscription(t *testing.T) {
 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
 
 	// Create a valid order and send it to the rpc client's "AddOrders" endpoint.
-	ethClient := ethclient.NewClient(ethRPCClient)
-	signedTestOrder := scenario.CreateZRXForWETHSignedTestOrder(t, ethClient, makerAddress, takerAddress, wethAmount, zrxAmount)
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
