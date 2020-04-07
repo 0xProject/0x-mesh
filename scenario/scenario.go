@@ -324,9 +324,7 @@ func setDummyERC721BalanceAndAllowance(t *testing.T, traderAddress common.Addres
 	waitTxnSuccessfullyMined(t, txn)
 
 	// Set allowance
-	// HACK(albrow): Our tests rely on unapproving/unsetting the allowance. You can't do
-	// that for individual tokens, so we use SetApprovalForAll here.
-	txn, err = dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, true)
+	txn, err = dummyERC721Token.Approve(opts, ganacheAddresses.ERC721Proxy, tokenID)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }

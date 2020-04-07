@@ -261,7 +261,8 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
 	require.NoError(t, err)
 
-	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
+	tokenID := big.NewInt(1)
+	makerAssetData := scenario.GetDummyERC721AssetData(tokenID)
 	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetAmount(big.NewInt(1)),
@@ -271,12 +272,13 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	defer cancelFn()
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
-	// Remove Maker's NFT approval to ERC721Proxy
+	// Remove Maker's NFT approval to ERC721Proxy. We do this by setting the
+	// operator/spender to the null address.
 	opts := &bind.TransactOpts{
 		From:   signedOrder.MakerAddress,
 		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
 	}
-	txn, err := dummyERC721Token.SetApprovalForAll(opts, ganacheAddresses.ERC721Proxy, false)
+	txn, err := dummyERC721Token.Approve(opts, constants.NullAddress, tokenID)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
