@@ -68,11 +68,11 @@ func defaultConfig() *orderopts.Config {
 	}
 }
 
-func NewTestOrder(opts ...orderopts.Option) *zeroex.Order {
+func NewTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.Order {
 	cfg := defaultConfig()
 	// No Option returns an error right now. If that changes, we
 	// need to update this code.
-	_ = cfg.Apply(opts...)
+	require.NoError(t, cfg.Apply(opts...))
 	return newTestOrder(cfg)
 }
 
@@ -82,9 +82,7 @@ func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
 
 func NewSignedTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOrder {
 	cfg := defaultConfig()
-	// No Option returns an error right now. If that changes, we
-	// need to update this code.
-	_ = cfg.Apply(opts...)
+	require.NoError(t, cfg.Apply(opts...))
 
 	order := newTestOrder(cfg)
 	signedOrder, err := zeroex.SignTestOrder(order)
@@ -182,7 +180,7 @@ func setupBalanceAndAllowance(t *testing.T, traderAddress common.Address, requir
 func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
 	balances := newTokenBalances()
 	balances.add(requiredBalancesForAssetData(t, order.MakerAssetData, order.MakerAssetAmount))
-	if len(order.MakerFeeAssetData) != 0 {
+	if len(order.MakerFeeAssetData) != 0 && !isZero(order.MakerFee) {
 		balances.add(requiredBalancesForAssetData(t, order.MakerFeeAssetData, order.MakerFee))
 	}
 	return balances
@@ -191,7 +189,7 @@ func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalanc
 func requiredTakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
 	balances := newTokenBalances()
 	balances.add(requiredBalancesForAssetData(t, order.TakerAssetData, order.TakerAssetAmount))
-	if len(order.TakerFeeAssetData) != 0 {
+	if len(order.TakerFeeAssetData) != 0 && !isZero(order.TakerFee) {
 		balances.add(requiredBalancesForAssetData(t, order.TakerFeeAssetData, order.TakerFee))
 	}
 	return balances
@@ -211,7 +209,7 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 			balances.weth = assetAmount
 			return balances
 		} else {
-			t.Fatalf("scneario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(assetData))
+			t.Fatalf("scenario: cannot setup on-chain state for ERC20 assetdata (unsupported token): %s", common.Bytes2Hex(assetData))
 		}
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
@@ -233,9 +231,10 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 		if decodedAssetData.Address.Hex() == constants.GanacheDummyERC1155MintableAddress.Hex() {
 			balances.erc1155Tokens = make([]erc1155TokenAmount, len(decodedAssetData.Ids))
 			for i, tokenID := range decodedAssetData.Ids {
+				totalAmount := big.NewInt(0).Mul(decodedAssetData.Values[i], assetAmount)
 				balances.erc1155Tokens[i] = erc1155TokenAmount{
 					tokenID: tokenID,
-					amount:  decodedAssetData.Values[i],
+					amount:  totalAmount,
 				}
 			}
 			return balances
@@ -253,6 +252,10 @@ func requiredBalancesForAssetData(t *testing.T, assetData []byte, assetAmount *b
 		// Note(albrow): So far there is no additional state required for the types of StaticCall asset data that we support.
 		return balances
 	}
+
+	// Note(albrow): We don't currently support setting balances and allowances for MAP orders. If needed in
+	// the future, we an support MAP orders by recursively calling requiredBalancesForAssetData and adding the
+	// result to balances.
 
 	t.Fatalf("scenario: cannot setup on-chain state for unsupported assetdata: (%s) %s", assetDataName, common.Bytes2Hex(assetData))
 	return nil
