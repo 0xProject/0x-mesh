@@ -7,4 +7,4 @@ package wrappers
 type TrimmedOrder = Struct0
 
 // OrderInfo contains the status and filled amount of an order.
-type OrderInfo = Struct1
+type OrderInfo = Struct6
