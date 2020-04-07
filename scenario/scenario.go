@@ -70,8 +70,6 @@ func defaultConfig() *orderopts.Config {
 
 func NewTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.Order {
 	cfg := defaultConfig()
-	// No Option returns an error right now. If that changes, we
-	// need to update this code.
 	require.NoError(t, cfg.Apply(opts...))
 	return newTestOrder(cfg)
 }
