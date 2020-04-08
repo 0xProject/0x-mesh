@@ -118,7 +118,7 @@ func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(
 			}
 		}
 
-		// Crate the order based on the cfg.
+		// Create the order based on the cfg.
 		order := newTestOrder(cfg)
 		signedOrder, err := zeroex.SignTestOrder(order)
 		require.NoError(t, err, "could not sign order")
@@ -145,7 +145,7 @@ func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(
 		}
 	}
 
-	// Setup all the rquired balances.
+	// Setup all the required balances.
 	for traderAddress, requiredBalances := range allRequiredBalances {
 		setupBalanceAndAllowance(t, traderAddress, requiredBalances)
 	}
