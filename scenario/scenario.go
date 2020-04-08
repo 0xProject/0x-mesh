@@ -96,6 +96,72 @@ func NewSignedTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOr
 	return signedOrder
 }
 
+// NewSignedTestOrdersBatch effeciently creates numOrders orders with independent options.
+// If the options require setting up maker or taker state, that state will be set up effeciently
+// with one transaction per address.
+//
+// optionsForIndex is a function which returns the options for creating the order at a specific
+// index (between 0 and numOrders). For example, you can create ERC721 orders which each have a unique
+// token ID. optionsForIndex can be nil to always use the default options. It can return nil to
+// use the default options for an order at a specific index.
+func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(index int) []orderopts.Option) []*zeroex.SignedOrder {
+	allRequiredBalances := map[common.Address]*tokenBalances{}
+
+	allOrders := make([]*zeroex.SignedOrder, numOrders)
+	for i := 0; i < numOrders; i++ {
+		// Apply the options (if any) for the order we will create at this index.
+		cfg := defaultConfig()
+		if optionsForIndex != nil {
+			opts := optionsForIndex(i)
+			if opts != nil {
+				require.NoError(t, cfg.Apply(opts...))
+			}
+		}
+
+		// Crate the order based on the cfg.
+		order := newTestOrder(cfg)
+		signedOrder, err := zeroex.SignTestOrder(order)
+		require.NoError(t, err, "could not sign order")
+		allOrders[i] = signedOrder
+
+		// Add maker and taker balances as needed to the set of required balances.
+		if cfg.SetupMakerState {
+			makerBalancesForThisOrder := requiredMakerBalances(t, signedOrder)
+			makerBalances, found := allRequiredBalances[signedOrder.MakerAddress]
+			if !found {
+				allRequiredBalances[order.MakerAddress] = makerBalancesForThisOrder
+			} else {
+				makerBalances.add(makerBalancesForThisOrder)
+			}
+		}
+		if cfg.SetupTakerAddress != constants.NullAddress {
+			takerBalancesForThisOrder := requiredTakerBalances(t, signedOrder)
+			takerBalances, found := allRequiredBalances[cfg.SetupTakerAddress]
+			if !found {
+				allRequiredBalances[cfg.SetupTakerAddress] = takerBalancesForThisOrder
+			} else {
+				takerBalances.add(takerBalancesForThisOrder)
+			}
+		}
+	}
+
+	// Setup all the rquired balances.
+	for traderAddress, requiredBalances := range allRequiredBalances {
+		setupBalanceAndAllowance(t, traderAddress, requiredBalances)
+	}
+
+	return allOrders
+}
+
+// OptionsForAll is a convenience function which can be used in combination with NewSignedTestOrdersBatch
+// when you want all orders to be created with the same options. It returns a function which can be used
+// as optionsForIndex which always returns the given options, regardless of the index.
+func OptionsForAll(opts ...orderopts.Option) func(_ int) []orderopts.Option {
+	return func(_ int) []orderopts.Option {
+		return opts
+	}
+}
+
 type tokenBalances struct {
 	zrx           *big.Int
 	weth          *big.Int

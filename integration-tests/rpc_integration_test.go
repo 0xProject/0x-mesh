@@ -127,12 +127,9 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 	require.NoError(t, err)
 
 	// Create 10 new valid orders.
-	// TODO(albrow): Update this when scenario supports creating orders in a batch.
 	numOrders := 10
-	signedTestOrders := make([]*zeroex.SignedOrder, numOrders)
-	for i := 0; i < numOrders; i++ {
-		signedTestOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	}
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	signedTestOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
