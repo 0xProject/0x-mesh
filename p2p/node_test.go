@@ -212,7 +212,7 @@ func TestPingPong(t *testing.T) {
 	// opened on both sides, the ping message might *still* not be received by the
 	// other peer. Waiting for 1 second gives each peer enough time to finish
 	// setting up GossipSub. I couldn't find any way to avoid this hack :(
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Send ping from node0 to node1
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
