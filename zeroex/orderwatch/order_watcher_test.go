@@ -948,15 +948,17 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	orderWatcher.maxOrders = 20
 
-	// create and watch maxOrders orders
-	// TODO(albrow): Create orders in a single batch when scenario supports it.
-	for i := 0; i < orderWatcher.maxOrders; i++ {
-		expirationTime := time.Now().Add(10*time.Minute + time.Duration(i)*time.Minute)
+	// Create and watch maxOrders orders. Each order has a different expiration time.
+	optionsForIndex := func(index int) []orderopts.Option {
+		expirationTime := time.Now().Add(10*time.Minute + time.Duration(index)*time.Minute)
 		expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-		signedOrder := scenario.NewSignedTestOrder(t,
+		return []orderopts.Option{
 			orderopts.SetupMakerState(true),
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
-		)
+		}
+	}
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, orderWatcher.maxOrders, optionsForIndex)
+	for _, signedOrder := range signedOrders {
 		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	}
 
@@ -1021,12 +1023,11 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
 	orderWatcher.Subscribe(orderEventsChan)
 
-	// TODO(albrow): Create orders in a single batch when scenario supports it.
-	signedOrders := []*zeroex.SignedOrder{}
-	for i := 0; i < 2; i++ {
-		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-		signedOrders = append(signedOrders, signedOrder)
-	}
+	// Create numOrders test orders in a batch.
+	numOrders := 2
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
+
 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
 	// in order for the order validation run at order submission to occur at a block number equal or higher then
@@ -1042,7 +1043,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	orderEvents := <-orderEventsChan
-	require.Len(t, orderEvents, 2)
+	require.Len(t, orderEvents, numOrders)
 	for _, orderEvent := range orderEvents {
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 	}
@@ -1050,7 +1051,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	var orders []*meshdb.Order
 	err = meshDB.Orders.FindAll(&orders)
 	require.NoError(t, err)
-	require.Len(t, orders, 2)
+	require.Len(t, orders, numOrders)
 }
 
 func TestOrderWatcherCleanup(t *testing.T) {
@@ -1069,10 +1070,11 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
 	// Create and add two orders to OrderWatcher
-	// TODO(albrow): Create orders in a single batch when scenario supports it.
-	signedOrderOne := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+	signedOrderOne := signedOrders[0]
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
-	signedOrderTwo := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedOrderTwo := signedOrders[1]
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
@@ -1274,17 +1276,15 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	}()
 
 	// Create and add an order (which will later become expired) to OrderWatcher
-	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrderOne := scenario.NewSignedTestOrder(t,
+	orderOptions := scenario.OptionsForAll(
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	signedOrderTwo := scenario.NewSignedTestOrder(t,
-		orderopts.SetupMakerState(true),
-		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
-	)
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+	signedOrderOne := signedOrders[0]
+	signedOrderTwo := signedOrders[1]
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
@@ -1344,17 +1344,15 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	}()
 
 	// Create and add an order (which will later become expired) to OrderWatcher
-	// TODO(albrow): Create orders in a single batch when scenario supports it.
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrderOne := scenario.NewSignedTestOrder(t,
+	orderOptions := scenario.OptionsForAll(
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	signedOrderTwo := scenario.NewSignedTestOrder(t,
-		orderopts.SetupMakerState(true),
-		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
-	)
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+	signedOrderOne := signedOrders[0]
+	signedOrderTwo := signedOrders[1]
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
