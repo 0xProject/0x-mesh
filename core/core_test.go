@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"flag"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -70,7 +71,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 		UseBootstrapList:                 false,
 		BootstrapList:                    "",
 		BlockPollingInterval:             250 * time.Millisecond,
-		EthereumRPCMaxContentLength:      524288,
+		EthereumRPCMaxContentLength:      65536,
 		EnableEthereumRPCRateLimiting:    false,
 		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
 		EthereumRPCMaxRequestsPerSecond:  99999999999999,
@@ -95,7 +96,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 func newTestApp(t *testing.T) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
-		Verbosity:                        2,
+		Verbosity:                        5,
 		DataDir:                          dataDir,
 		P2PTCPPort:                       0,
 		P2PWebSocketsPort:                0,
@@ -178,7 +179,7 @@ func TestOrderSync(t *testing.T) {
 
 	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
 	// the network without any orders.
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 	wg := &sync.WaitGroup{}
 	originalNode := newTestApp(t)
@@ -190,6 +191,35 @@ func TestOrderSync(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}()
+
+	// Manually add some orders to originalNode.
+	fmt.Println("creating orders")
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	originalOrders := scenario.NewSignedTestOrdersBatch(t, paginationSubprotocolPerPage*2+1, orderOptions)
+	fmt.Println("done creating orders")
+
+	// We have to wait for latest block to be processed by the Mesh node.
+	time.Sleep(blockProcessingWaitTime)
+
+	fmt.Println("validating and storing orders")
+	fmt.Println("num original orders:", len(originalOrders))
+	orderValidationBatchSize := 10
+	for i := 0; i <= len(originalOrders)/orderValidationBatchSize; i++ {
+		fmt.Println(i)
+		start := i * orderValidationBatchSize
+		end := start + orderValidationBatchSize
+		if end > len(originalOrders) {
+			end = len(originalOrders)
+		}
+		fmt.Println(start, ":", end)
+		subset := originalOrders[start:end]
+		fmt.Println("validating orders:", len(subset))
+		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, subset, true, constants.TestChainID)
+		require.NoError(t, err)
+		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+	}
+	fmt.Println("done validating and storing orders")
+
 	newNode := newTestApp(t)
 	wg.Add(1)
 	go func() {
@@ -199,27 +229,16 @@ func TestOrderSync(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}()
+	// Wait for new node to start.
+	<-newNode.started
 
-	// Manually add some orders to originalNode.
-	originalOrders := make([]*zeroex.SignedOrder, 10)
-	for i := range originalOrders {
-		originalOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	}
-
-	// We have to wait for latest block to be processed by the Mesh node.
-	time.Sleep(blockProcessingWaitTime)
-
-	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
-	require.NoError(t, err)
-	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
-
-	orderEventsChan := make(chan []*zeroex.OrderEvent)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, len(originalOrders))
 	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)
 	defer orderEventsSub.Unsubscribe()
 
 	// Connect the two nodes *after* adding orders to one of them. This should
 	// trigger the ordersync protocol.
-	err = originalNode.AddPeer(peer.AddrInfo{
+	err := originalNode.AddPeer(peer.AddrInfo{
 		ID:    newNode.node.ID(),
 		Addrs: newNode.node.Multiaddrs(),
 	})

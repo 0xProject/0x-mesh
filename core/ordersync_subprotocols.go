@@ -79,6 +79,9 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 	filteredOrders := []*zeroex.SignedOrder{}
 	var snapshotID string
 	currentPage := metadata.Page
+
+	fmt.Println("Handling ordersync request for page ", metadata.Page)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,6 +93,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("Unfiltered orders: ", len(ordersResp.OrdersInfos))
 		snapshotID = ordersResp.SnapshotID
 		if len(ordersResp.OrdersInfos) == 0 {
 			// No more orders left.
@@ -103,6 +107,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
 			}
 		}
+		fmt.Println("Filtered orders: ", len(ordersResp.OrdersInfos))
 		if len(filteredOrders) == 0 {
 			// If none of the orders for this page match the filter, we continue
 			// on to the next page.

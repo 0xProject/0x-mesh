@@ -1388,12 +1388,14 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	w.handleBlockEventsMu.RLock()
 	defer w.handleBlockEventsMu.RUnlock()
 
+	fmt.Println("starting on chain validation")
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
 	if err != nil {
 		return nil, err
 	}
 	results.Accepted = append(results.Accepted, zeroexResults.Accepted...)
 	results.Rejected = append(results.Rejected, zeroexResults.Rejected...)
+	fmt.Println("done with onchain order validation")
 
 	// Filter out only the new orders.
 	newOrderInfos := []*ordervalidator.AcceptedOrderInfo{}
@@ -1407,10 +1409,12 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
+	fmt.Println("calling w.add")
 	orderEvents, err := w.add(newOrderInfos, validationBlock.Number, pinned)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("w.add returned")
 	allOrderEvents = append(allOrderEvents, orderEvents...)
 
 	if len(allOrderEvents) > 0 {

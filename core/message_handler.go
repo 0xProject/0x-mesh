@@ -23,6 +23,11 @@ func min(a int, b int) int {
 }
 
 func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
+	// TODO(albrow): Move this to a separate PR.
+	if len(messages) == 0 {
+		return nil
+	}
+
 	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}

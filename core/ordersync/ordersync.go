@@ -48,13 +48,7 @@ const (
 )
 
 var (
-	// retryBackoff defines how long to wait before trying again if we didn't get
-	// orders from enough peers during the ordersync process.
-	retryBackoff = &backoff.Backoff{
-		Min:    250 * time.Millisecond, // First back-off length
-		Max:    1 * time.Minute,        // Longest back-off length
-		Factor: 2,                      // Factor to multiple each successive back-off
-	}
+
 	// backoffMut is a mutex around retryBackoff, which otherwise appears to not
 	// be goroutine-safe.
 	backoffMut = &sync.Mutex{}
@@ -279,6 +273,13 @@ func (s *Service) HandleStream(stream network.Stream) {
 // ordersync has been completed with minPeers, using an exponential backoff
 // strategy between retries.
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
+	// retryBackoff defines how long to wait before trying again if we didn't get
+	// orders from enough peers during the ordersync process.
+	retryBackoff := &backoff.Backoff{
+		Min:    250 * time.Millisecond, // First back-off length
+		Max:    1 * time.Minute,        // Longest back-off length
+		Factor: 2,                      // Factor to multiple each successive back-off
+	}
 	successfullySyncedPeers := stringset.New()
 
 	for len(successfullySyncedPeers) < minPeers {

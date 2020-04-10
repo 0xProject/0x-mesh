@@ -68,7 +68,7 @@ const (
 	// run of the ordersync protocol (as a requester). We always request orders
 	// immediately on startup. This delay only applies to subsequent runs.
 	ordersyncApproxDelay         = 1 * time.Hour
-	paginationSubprotocolPerPage = 500
+	paginationSubprotocolPerPage = 200
 )
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
@@ -842,6 +842,8 @@ func (e ErrPerPageZero) Error() string {
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
 	<-app.started
 
+	fmt.Printf("GetOrders(%d, %d, %s)\n", page, perPage, snapshotID)
+
 	if perPage <= 0 {
 		return nil, ErrPerPageZero{}
 	}
@@ -889,9 +891,15 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrder
 		app.muIdToSnapshotInfo.Unlock()
 	}
 
+	total, err := snapshot.Count()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("total orders:", total)
+
 	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
 	var selectedOrders []*meshdb.Order
-	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
+	err = snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
 	if err != nil {
 		return nil, err
 	}
