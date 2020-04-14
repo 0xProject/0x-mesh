@@ -93,27 +93,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 }
 
 func newTestApp(t *testing.T) *App {
-	dataDir := "/tmp/test_node/" + uuid.New().String()
-	config := Config{
-		Verbosity:                        2,
-		DataDir:                          dataDir,
-		P2PTCPPort:                       0,
-		P2PWebSocketsPort:                0,
-		EthereumRPCURL:                   constants.GanacheEndpoint,
-		EthereumChainID:                  constants.TestChainID,
-		UseBootstrapList:                 false,
-		BootstrapList:                    "",
-		BlockPollingInterval:             250 * time.Millisecond,
-		EthereumRPCMaxContentLength:      524288,
-		EnableEthereumRPCRateLimiting:    false,
-		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
-		EthereumRPCMaxRequestsPerSecond:  99999999999999,
-		MaxOrdersInStorage:               100000,
-		CustomOrderFilter:                "{}",
-	}
-	app, err := New(config)
-	require.NoError(t, err)
-	return app
+	return newTestAppWithPrivateConfig(t, defaultPrivateConfig())
 }
 
 func newTestAppWithPrivateConfig(t *testing.T, pConfig privateConfig) *App {
