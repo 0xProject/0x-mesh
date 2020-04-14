@@ -569,6 +569,9 @@ func (n *Node) receiveAndHandleMessages(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if len(incoming) == 0 {
+		return nil
+	}
 	if err := n.messageHandler.HandleMessages(ctx, incoming); err != nil {
 		return fmt.Errorf("could not validate or store messages: %s", err.Error())
 	}
