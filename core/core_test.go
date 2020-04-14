@@ -116,6 +116,30 @@ func newTestApp(t *testing.T) *App {
 	return app
 }
 
+func newTestAppWithPrivateConfig(t *testing.T, pConfig privateConfig) *App {
+	dataDir := "/tmp/test_node/" + uuid.New().String()
+	config := Config{
+		Verbosity:                        2,
+		DataDir:                          dataDir,
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		EthereumRPCURL:                   constants.GanacheEndpoint,
+		EthereumChainID:                  constants.TestChainID,
+		UseBootstrapList:                 false,
+		BootstrapList:                    "",
+		BlockPollingInterval:             250 * time.Millisecond,
+		EthereumRPCMaxContentLength:      524288,
+		EnableEthereumRPCRateLimiting:    false,
+		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
+		EthereumRPCMaxRequestsPerSecond:  99999999999999,
+		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                "{}",
+	}
+	app, err := newWithPrivateConfig(config, pConfig)
+	require.NoError(t, err)
+	return app
+}
+
 var (
 	rpcClient           *ethrpc.Client
 	blockchainLifecycle *ethereum.BlockchainLifecycle
@@ -181,7 +205,12 @@ func TestOrderSync(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	wg := &sync.WaitGroup{}
-	originalNode := newTestApp(t)
+
+	perPage := 10
+	pConfig := privateConfig{
+		paginationSubprotocolPerPage: perPage,
+	}
+	originalNode := newTestAppWithPrivateConfig(t, pConfig)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -190,6 +219,18 @@ func TestOrderSync(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}()
+
+	// Manually add some orders to originalNode.
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	originalOrders := scenario.NewSignedTestOrdersBatch(t, perPage*3+1, orderOptions)
+
+	// We have to wait for latest block to be processed by the Mesh node.
+	time.Sleep(blockProcessingWaitTime)
+
+	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+	require.NoError(t, err)
+	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+
 	newNode := newTestApp(t)
 	wg.Add(1)
 	go func() {
@@ -199,19 +240,7 @@ func TestOrderSync(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}()
-
-	// Manually add some orders to originalNode.
-	originalOrders := make([]*zeroex.SignedOrder, 10)
-	for i := range originalOrders {
-		originalOrders[i] = scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	}
-
-	// We have to wait for latest block to be processed by the Mesh node.
-	time.Sleep(blockProcessingWaitTime)
-
-	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
-	require.NoError(t, err)
-	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+	<-newNode.started
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent)
 	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)

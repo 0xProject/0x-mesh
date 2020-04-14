@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p"
@@ -48,16 +47,6 @@ const (
 )
 
 var (
-	// retryBackoff defines how long to wait before trying again if we didn't get
-	// orders from enough peers during the ordersync process.
-	retryBackoff = &backoff.Backoff{
-		Min:    250 * time.Millisecond, // First back-off length
-		Max:    1 * time.Minute,        // Longest back-off length
-		Factor: 2,                      // Factor to multiple each successive back-off
-	}
-	// backoffMut is a mutex around retryBackoff, which otherwise appears to not
-	// be goroutine-safe.
-	backoffMut = &sync.Mutex{}
 	// ErrNoOrders is returned whenever the orders we are looking for cannot be
 	// found anywhere on the network. This can mean that we aren't connected to any
 	// peers on the same topic, that there are no orders for the topic throughout
@@ -281,6 +270,14 @@ func (s *Service) HandleStream(stream network.Stream) {
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	successfullySyncedPeers := stringset.New()
 
+	// retryBackoff defines how long to wait before trying again if we didn't get
+	// orders from enough peers during the ordersync process.
+	retryBackoff := &backoff.Backoff{
+		Min:    250 * time.Millisecond, // First back-off length
+		Max:    1 * time.Minute,        // Longest back-off length
+		Factor: 2,                      // Factor to multiple each successive back-off
+	}
+
 	for len(successfullySyncedPeers) < minPeers {
 		select {
 		case <-ctx.Done():
@@ -327,9 +324,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			}
 		}
 
-		backoffMut.Lock()
 		delayBeforeNextRetry := retryBackoff.Duration()
-		backoffMut.Unlock()
 		log.WithFields(log.Fields{
 			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
 			"minPeers":                minPeers,
