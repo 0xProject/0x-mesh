@@ -67,9 +67,20 @@ const (
 	// ordersyncApproxDelay is the approximate amount of time to wait between each
 	// run of the ordersync protocol (as a requester). We always request orders
 	// immediately on startup. This delay only applies to subsequent runs.
-	ordersyncApproxDelay         = 1 * time.Hour
-	paginationSubprotocolPerPage = 500
+	ordersyncApproxDelay = 1 * time.Hour
 )
+
+// privateConfig contains some configuration options that can only be changed from
+// within the core package. Intended for testing purposes.
+type privateConfig struct {
+	paginationSubprotocolPerPage int
+}
+
+func defaultPrivateConfig() privateConfig {
+	return privateConfig{
+		paginationSubprotocolPerPage: 500,
+	}
+}
 
 // Note(albrow): The Config type is currently copied to browser/ts/index.ts. We
 // need to keep both definitions in sync, so if you change one you must also
@@ -188,6 +199,7 @@ type snapshotInfo struct {
 
 type App struct {
 	config                    Config
+	privateConfig             privateConfig
 	peerID                    peer.ID
 	privKey                   p2pcrypto.PrivKey
 	node                      *p2p.Node
@@ -213,6 +225,10 @@ type App struct {
 var setupLoggerOnce = &sync.Once{}
 
 func New(config Config) (*App, error) {
+	return newWithPrivateConfig(config, defaultPrivateConfig())
+}
+
+func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	setupLoggerOnce.Do(func() {
@@ -393,6 +409,7 @@ func New(config Config) (*App, error) {
 	app := &App{
 		started:                   make(chan struct{}),
 		config:                    config,
+		privateConfig:             pConfig,
 		privKey:                   privKey,
 		peerID:                    peerID,
 		chainID:                   config.EthereumChainID,
@@ -673,7 +690,7 @@ func (app *App) Start(ctx context.Context) error {
 
 	// Register and start ordersync service.
 	ordersyncSubprotocols := []ordersync.Subprotocol{
-		NewFilteredPaginationSubprotocol(app, paginationSubprotocolPerPage),
+		NewFilteredPaginationSubprotocol(app, app.privateConfig.paginationSubprotocolPerPage),
 	}
 	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
 	orderSyncErrChan := make(chan error, 1)
@@ -685,7 +702,7 @@ func (app *App) Start(ctx context.Context) error {
 		}()
 		log.WithFields(map[string]interface{}{
 			"approxDelay":  ordersyncApproxDelay,
-			"perPage":      paginationSubprotocolPerPage,
+			"perPage":      app.privateConfig.paginationSubprotocolPerPage,
 			"subprotocols": []string{"FilteredPaginationSubProtocol"},
 		}).Info("starting ordersync service")
 
