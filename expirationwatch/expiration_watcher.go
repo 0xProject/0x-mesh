@@ -72,7 +72,7 @@ func (w *Watcher) Remove(expirationTimestamp time.Time, id string) {
 	}
 }
 
-// Prune checks for any expired items given a timestamp and removes any expired 
+// Prune checks for any expired items given a timestamp and removes any expired
 // items from the expiration watcher and returns them to the caller
 func (w *Watcher) Prune(timestamp time.Time) []ExpiredItem {
 	pruned := []ExpiredItem{}
@@ -85,7 +85,7 @@ func (w *Watcher) Prune(timestamp time.Time) []ExpiredItem {
 		}
 		expirationTimeSeconds := int64(*key.(*rbt.Int64Key))
 		expirationTime := time.Unix(expirationTimeSeconds, 0)
-		if !timestamp.After(expirationTime) {
+		if timestamp.Before(expirationTime) {
 			break
 		}
 		ids := value.(stringset.Set)

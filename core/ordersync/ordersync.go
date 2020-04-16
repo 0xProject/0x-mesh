@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p"
@@ -39,19 +38,15 @@ const (
 	maxRequestsPerSecond = 30
 	// requestsBurst is the maximum number of requests to allow at once.
 	requestsBurst = 10
+	// ordersyncJitterAmount is the amount of random jitter to add to the delay before
+	// each run of ordersync in PeriodicallyGetOrders. It is bound by:
+	//
+	//    approxDelay * (1 - jitter) <= actualDelay < approxDelay * (1 + jitter)
+	//
+	ordersyncJitterAmount = 0.1
 )
 
 var (
-	// retryBackoff defines how long to wait before trying again if we didn't get
-	// orders from enough peers during the ordersync process.
-	retryBackoff = &backoff.Backoff{
-		Min:    250 * time.Millisecond, // First back-off length
-		Max:    1 * time.Minute,        // Longest back-off length
-		Factor: 2,                      // Factor to multiple each successive back-off
-	}
-	// backoffMut is a mutex around retryBackoff, which otherwise appears to not
-	// be goroutine-safe.
-	backoffMut = &sync.Mutex{}
 	// ErrNoOrders is returned whenever the orders we are looking for cannot be
 	// found anywhere on the network. This can mean that we aren't connected to any
 	// peers on the same topic, that there are no orders for the topic throughout
@@ -275,6 +270,14 @@ func (s *Service) HandleStream(stream network.Stream) {
 func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	successfullySyncedPeers := stringset.New()
 
+	// retryBackoff defines how long to wait before trying again if we didn't get
+	// orders from enough peers during the ordersync process.
+	retryBackoff := &backoff.Backoff{
+		Min:    250 * time.Millisecond, // First back-off length
+		Max:    1 * time.Minute,        // Longest back-off length
+		Factor: 2,                      // Factor to multiple each successive back-off
+	}
+
 	for len(successfullySyncedPeers) < minPeers {
 		select {
 		case <-ctx.Done():
@@ -321,9 +324,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			}
 		}
 
-		backoffMut.Lock()
 		delayBeforeNextRetry := retryBackoff.Duration()
-		backoffMut.Unlock()
 		log.WithFields(log.Fields{
 			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
 			"minPeers":                minPeers,
@@ -338,6 +339,39 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	}
 
 	return nil
+}
+
+// PeriodicallyGetOrders periodically calls GetOrders. It waits a minimum of
+// approxDelay (with some random jitter) between each call. It will block until
+// there is a critical error or the given context is canceled.
+func (s *Service) PeriodicallyGetOrders(ctx context.Context, minPeers int, approxDelay time.Duration) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if err := s.GetOrders(ctx, minPeers); err != nil {
+			return err
+		}
+
+		// Note(albrow): The random jitter here helps smooth out the frequency of ordersync
+		// requests and helps prevent a situation where a large number of nodes are requesting
+		// orders at the same time.
+		delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+}
+
+func calculateDelayWithJitter(approxDelay time.Duration, jitterAmount float64) time.Duration {
+	jitterBounds := int(float64(approxDelay) * jitterAmount * 2)
+	delta := rand.Intn(jitterBounds) - jitterBounds/2
+	return approxDelay + time.Duration(delta)
 }
 
 func handleRequestWithSubprotocol(ctx context.Context, subprotocol Subprotocol, requesterID peer.ID, rawReq *rawRequest) (*Response, error) {

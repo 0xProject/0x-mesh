@@ -582,10 +582,6 @@ func (w *Watcher) handleBlockEvents(
 					}
 					return err
 				}
-				// Ignores approvals set to anyone except the AssetProxy
-				if approvalEvent.Approved != w.contractAddresses.ERC721Proxy {
-					continue
-				}
 				contractEvent.Parameters = approvalEvent
 				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
 				if err != nil {
