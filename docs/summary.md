@@ -11,6 +11,7 @@
 
 ## Advanced topics
 
+* [Custom order filters](custom_order_filters.md)
 * [Syncing an external DB with Mesh](db_syncing.md)
 
 ## JSON-RPC clients

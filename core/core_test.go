@@ -5,7 +5,6 @@ package core
 import (
 	"context"
 	"flag"
-	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -14,9 +13,9 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -52,7 +51,52 @@ func TestEthereumChainDetection(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	wg := &sync.WaitGroup{}
+	dataDir := "/tmp/test_node/" + uuid.New().String()
+	config := Config{
+		Verbosity:                        5,
+		DataDir:                          dataDir,
+		P2PTCPPort:                       0,
+		P2PWebSocketsPort:                0,
+		EthereumRPCURL:                   constants.GanacheEndpoint,
+		EthereumChainID:                  42, // RPC has chain id 1337
+		UseBootstrapList:                 false,
+		BootstrapList:                    "",
+		BlockPollingInterval:             250 * time.Millisecond,
+		EthereumRPCMaxContentLength:      524288,
+		EnableEthereumRPCRateLimiting:    false,
+		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
+		EthereumRPCMaxRequestsPerSecond:  99999999999999,
+		MaxOrdersInStorage:               100000,
+		CustomOrderFilter:                "{}",
+	}
+	app, err := New(config)
+	require.NoError(t, err)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := app.Start(ctx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "ChainID mismatch")
+	}()
+
+	// Wait for nodes to exit without error.
+	wg.Wait()
+}
+
 func newTestApp(t *testing.T) *App {
+	return newTestAppWithPrivateConfig(t, defaultPrivateConfig())
+}
+
+func newTestAppWithPrivateConfig(t *testing.T, pConfig privateConfig) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,
@@ -71,14 +115,13 @@ func newTestApp(t *testing.T) *App {
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                "{}",
 	}
-	app, err := New(config)
+	app, err := newWithPrivateConfig(config, pConfig)
 	require.NoError(t, err)
 	return app
 }
 
 var (
 	rpcClient           *ethrpc.Client
-	ethClient           *ethclient.Client
 	blockchainLifecycle *ethereum.BlockchainLifecycle
 )
 
@@ -96,7 +139,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	ethClient = ethclient.NewClient(rpcClient)
 	blockchainLifecycle, err = ethereum.NewBlockchainLifecycle(rpcClient)
 	if err != nil {
 		panic(err)
@@ -143,24 +185,24 @@ func TestOrderSync(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	wg := &sync.WaitGroup{}
-	originalNode := newTestApp(t)
+
+	perPage := 10
+	pConfig := privateConfig{
+		paginationSubprotocolPerPage: perPage,
+	}
+	originalNode := newTestAppWithPrivateConfig(t, pConfig)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, originalNode.Start(ctx))
-	}()
-	newNode := newTestApp(t)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		require.NoError(t, newNode.Start(ctx))
+		if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
 	}()
 
 	// Manually add some orders to originalNode.
-	originalOrders := make([]*zeroex.SignedOrder, 10)
-	for i := range originalOrders {
-		originalOrders[i] = scenario.CreateWETHForZRXSignedTestOrder(t, ethClient, constants.GanacheAccount1, constants.GanacheAccount2, big.NewInt(20), big.NewInt(5))
-	}
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	originalOrders := scenario.NewSignedTestOrdersBatch(t, perPage*3+1, orderOptions)
 
 	// We have to wait for latest block to be processed by the Mesh node.
 	time.Sleep(blockProcessingWaitTime)
@@ -168,6 +210,17 @@ func TestOrderSync(t *testing.T) {
 	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
 	require.NoError(t, err)
 	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+
+	newNode := newTestApp(t)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
+	}()
+	<-newNode.started
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent)
 	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)

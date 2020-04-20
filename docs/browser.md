@@ -44,7 +44,7 @@ Using this package is a bit more complicated than using the `@0x/mesh-browser` p
 WebAssembly binaries for each version of 0x-mesh that has an associated `@0x/mesh-browser-lite`
 package can be found in the [0x-mesh release notes](https://github.com/0xProject/0x-mesh/releases).
 The user will need to serve the appropriate binary on a server or CDN of their choice.
-The package gives users the option of providing a URL to the `loadMeshStreamingFromURLAsync`
+The package gives users the option of providing a URL to the `loadMeshStreamingWithURLAsync`
 function or a `Response` object to the `loadMeshStreamingAsync` function in their
 application. The URL or `Response` option should be chosen in such a way that they
 load the Mesh Binary that is being served.

@@ -1,4 +1,4 @@
-# @0x/mesh-rpc-client - v9.2.1
+# @0x/mesh-rpc-client - v9.3.0
 
 ## @0x/mesh-rpc-client
 
