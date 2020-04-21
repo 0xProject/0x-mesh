@@ -16,16 +16,13 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core/ordersync"
-	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
-	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
@@ -33,12 +30,9 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
-	"github.com/benbjohnson/clock"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -192,7 +186,7 @@ type Config struct {
 }
 
 type snapshotInfo struct {
-	Snapshot            *db.Snapshot
+	// Snapshot            *db.Snapshot
 	CreatedAt           time.Time
 	ExpirationTimestamp time.Time
 }
@@ -229,208 +223,209 @@ func New(config Config) (*App, error) {
 }
 
 func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
-	// Configure logger
-	// TODO(albrow): Don't use global variables for log settings.
-	setupLoggerOnce.Do(func() {
-		log.SetFormatter(&log.JSONFormatter{})
-		log.SetLevel(log.Level(config.Verbosity))
-		log.AddHook(loghooks.NewKeySuffixHook())
-	})
+	return nil, errors.New("Not yet implemented")
+	// // Configure logger
+	// // TODO(albrow): Don't use global variables for log settings.
+	// setupLoggerOnce.Do(func() {
+	// 	log.SetFormatter(&log.JSONFormatter{})
+	// 	log.SetLevel(log.Level(config.Verbosity))
+	// 	log.AddHook(loghooks.NewKeySuffixHook())
+	// })
 
-	// Add custom contract addresses if needed.
-	var contractAddresses ethereum.ContractAddresses
-	var err error
-	if config.CustomContractAddresses != "" {
-		contractAddresses, err = parseAndValidateCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses)
-	} else {
-		contractAddresses, err = ethereum.NewContractAddressesForChainID(config.EthereumChainID)
-	}
-	if err != nil {
-		return nil, err
-	}
+	// // Add custom contract addresses if needed.
+	// var contractAddresses ethereum.ContractAddresses
+	// var err error
+	// if config.CustomContractAddresses != "" {
+	// 	contractAddresses, err = parseAndValidateCustomContractAddresses(config.EthereumChainID, config.CustomContractAddresses)
+	// } else {
+	// 	contractAddresses, err = ethereum.NewContractAddressesForChainID(config.EthereumChainID)
+	// }
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Load private key and add peer ID hook.
-	privKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
-	privKey, err := initPrivateKey(privKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	peerID, err := peer.IDFromPrivateKey(privKey)
-	if err != nil {
-		return nil, err
-	}
-	log.AddHook(loghooks.NewPeerIDHook(peerID))
+	// // Load private key and add peer ID hook.
+	// privKeyPath := filepath.Join(config.DataDir, "keys", "privkey")
+	// privKey, err := initPrivateKey(privKeyPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// peerID, err := peer.IDFromPrivateKey(privKey)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.AddHook(loghooks.NewPeerIDHook(peerID))
 
-	if config.EthereumRPCMaxContentLength < constants.MaxOrderSizeInBytes {
-		return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", constants.MaxOrderSizeInBytes)
-	}
-	config = unquoteConfig(config)
+	// if config.EthereumRPCMaxContentLength < constants.MaxOrderSizeInBytes {
+	// 	return nil, fmt.Errorf("Cannot set `EthereumRPCMaxContentLength` to be less then MaxOrderSizeInBytes: %d", constants.MaxOrderSizeInBytes)
+	// }
+	// config = unquoteConfig(config)
 
-	if config.EnableEthereumRPCRateLimiting {
-		// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
-		per24HrPollingRequests := int((24 * time.Hour) / config.BlockPollingInterval)
-		minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + estimatedNonPollingEthereumRPCRequestsPer24Hrs
-		if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
-			return nil, fmt.Errorf(
-				"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
-				config.BlockPollingInterval,
-				minNumOfEthRPCRequestsIn24HrPeriod,
-				config.EthereumRPCMaxRequestsPer24HrUTC,
-			)
-		}
-	}
+	// if config.EnableEthereumRPCRateLimiting {
+	// 	// Ensure ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC is reasonably set given BLOCK_POLLING_INTERVAL
+	// 	per24HrPollingRequests := int((24 * time.Hour) / config.BlockPollingInterval)
+	// 	minNumOfEthRPCRequestsIn24HrPeriod := per24HrPollingRequests + estimatedNonPollingEthereumRPCRequestsPer24Hrs
+	// 	if minNumOfEthRPCRequestsIn24HrPeriod > config.EthereumRPCMaxRequestsPer24HrUTC {
+	// 		return nil, fmt.Errorf(
+	// 			"Given BLOCK_POLLING_INTERVAL (%s), there are insufficient remaining ETH RPC requests in a 24hr period for Mesh to function properly. Increase ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC to at least %d (currently configured to: %d)",
+	// 			config.BlockPollingInterval,
+	// 			minNumOfEthRPCRequestsIn24HrPeriod,
+	// 			config.EthereumRPCMaxRequestsPer24HrUTC,
+	// 		)
+	// 	}
+	// }
 
-	// Initialize db
-	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath, contractAddresses)
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize db
+	// databasePath := filepath.Join(config.DataDir, "db")
+	// meshDB, err := meshdb.New(databasePath, contractAddresses)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize metadata and check stored chain id (if any).
-	metadata, err := initMetadata(config.EthereumChainID, meshDB)
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize metadata and check stored chain id (if any).
+	// metadata, err := initMetadata(config.EthereumChainID, meshDB)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize ETH JSON-RPC RateLimiter
-	var ethRPCRateLimiter ratelimit.RateLimiter
-	if config.EnableEthereumRPCRateLimiting == false {
-		ethRPCRateLimiter = ratelimit.NewUnlimited()
-	} else {
-		clock := clock.New()
-		var err error
-		ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
-		if err != nil {
-			return nil, err
-		}
-	}
+	// // Initialize ETH JSON-RPC RateLimiter
+	// var ethRPCRateLimiter ratelimit.RateLimiter
+	// if config.EnableEthereumRPCRateLimiting == false {
+	// 	ethRPCRateLimiter = ratelimit.NewUnlimited()
+	// } else {
+	// 	clock := clock.New()
+	// 	var err error
+	// 	ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
-	// Initialize the ETH client, which will be used by various watchers.
-	var ethRPCClient ethclient.RPCClient
-	if config.EthereumRPCClient != nil {
-		if config.EthereumRPCURL != "" {
-			log.Warn("Ignoring EthereumRPCURL and using the provided EthereumRPCClient")
-		}
-		ethRPCClient = config.EthereumRPCClient
-	} else if config.EthereumRPCURL != "" {
-		ethRPCClient, err = rpc.Dial(config.EthereumRPCURL)
-		if err != nil {
-			log.WithError(err).Error("Could not dial EthereumRPCURL")
-			return nil, err
-		}
-	} else {
-		return nil, errors.New("cannot initialize core.App: neither EthereumRPCURL or EthereumRPCClient were provided")
-	}
-	ethClient, err := ethrpcclient.New(ethRPCClient, ethereumRPCRequestTimeout, ethRPCRateLimiter)
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize the ETH client, which will be used by various watchers.
+	// var ethRPCClient ethclient.RPCClient
+	// if config.EthereumRPCClient != nil {
+	// 	if config.EthereumRPCURL != "" {
+	// 		log.Warn("Ignoring EthereumRPCURL and using the provided EthereumRPCClient")
+	// 	}
+	// 	ethRPCClient = config.EthereumRPCClient
+	// } else if config.EthereumRPCURL != "" {
+	// 	ethRPCClient, err = rpc.Dial(config.EthereumRPCURL)
+	// 	if err != nil {
+	// 		log.WithError(err).Error("Could not dial EthereumRPCURL")
+	// 		return nil, err
+	// 	}
+	// } else {
+	// 	return nil, errors.New("cannot initialize core.App: neither EthereumRPCURL or EthereumRPCClient were provided")
+	// }
+	// ethClient, err := ethrpcclient.New(ethRPCClient, ethereumRPCRequestTimeout, ethRPCRateLimiter)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize block watcher (but don't start it yet).
+	// blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Remove any old mini headers that might be lingering in the database.
-	// See https://github.com/0xProject/0x-mesh/issues/667 and https://github.com/0xProject/0x-mesh/pull/716
-	// We need to leave this in place becuase:
-	//
-	// 1. It is still necessary for anyone upgrading from older versions to >= 9.0.1 in the future.
-	// 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
-	//    unexpected shut down).
-	//
-	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
-	if err != nil {
-		return nil, err
-	}
-	miniHeadersToRemove := totalMiniHeaders - meshDB.MiniHeaderRetentionLimit
-	if miniHeadersToRemove > 0 {
-		log.WithFields(log.Fields{
-			"numHeadersToRemove": miniHeadersToRemove,
-			"totalHeadersStored": totalMiniHeaders,
-		}).Warn("Removing outdated block headers in database (this can take a while)")
-	}
-	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
-	if err != nil {
-		return nil, err
-	}
+	// // Remove any old mini headers that might be lingering in the database.
+	// // See https://github.com/0xProject/0x-mesh/issues/667 and https://github.com/0xProject/0x-mesh/pull/716
+	// // We need to leave this in place becuase:
+	// //
+	// // 1. It is still necessary for anyone upgrading from older versions to >= 9.0.1 in the future.
+	// // 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
+	// //    unexpected shut down).
+	// //
+	// totalMiniHeaders, err := meshDB.MiniHeaders.Count()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// miniHeadersToRemove := totalMiniHeaders - meshDB.MiniHeaderRetentionLimit
+	// if miniHeadersToRemove > 0 {
+	// 	log.WithFields(log.Fields{
+	// 		"numHeadersToRemove": miniHeadersToRemove,
+	// 		"totalHeadersStored": totalMiniHeaders,
+	// 	}).Warn("Removing outdated block headers in database (this can take a while)")
+	// }
+	// err = meshDB.PruneMiniHeadersAboveRetentionLimit()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	topics := orderwatch.GetRelevantTopics()
-	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
-	if err != nil {
-		return nil, err
-	}
-	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, miniHeaders)
-	blockWatcherConfig := blockwatch.Config{
-		Stack:           stack,
-		PollingInterval: config.BlockPollingInterval,
-		WithLogs:        true,
-		Topics:          topics,
-		Client:          blockWatcherClient,
-	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	// topics := orderwatch.GetRelevantTopics()
+	// miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, miniHeaders)
+	// blockWatcherConfig := blockwatch.Config{
+	// 	Stack:           stack,
+	// 	PollingInterval: config.BlockPollingInterval,
+	// 	WithLogs:        true,
+	// 	Topics:          topics,
+	// 	Client:          blockWatcherClient,
+	// }
+	// blockWatcher := blockwatch.New(blockWatcherConfig)
 
-	// Initialize the order validator
-	orderValidator, err := ordervalidator.New(
-		ethClient,
-		config.EthereumChainID,
-		config.EthereumRPCMaxContentLength,
-		contractAddresses,
-	)
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize the order validator
+	// orderValidator, err := ordervalidator.New(
+	// 	ethClient,
+	// 	config.EthereumChainID,
+	// 	config.EthereumRPCMaxContentLength,
+	// 	contractAddresses,
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize order watcher (but don't start it yet).
-	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:            meshDB,
-		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
-		ChainID:           config.EthereumChainID,
-		ContractAddresses: contractAddresses,
-		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
-	})
-	if err != nil {
-		return nil, err
-	}
+	// // Initialize order watcher (but don't start it yet).
+	// orderWatcher, err := orderwatch.New(orderwatch.Config{
+	// 	MeshDB:            meshDB,
+	// 	BlockWatcher:      blockWatcher,
+	// 	OrderValidator:    orderValidator,
+	// 	ChainID:           config.EthereumChainID,
+	// 	ContractAddresses: contractAddresses,
+	// 	MaxOrders:         config.MaxOrdersInStorage,
+	// 	MaxExpirationTime: metadata.MaxExpirationTime,
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize the order filter
-	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, contractAddresses)
-	if err != nil {
-		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
-	}
+	// // Initialize the order filter
+	// orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, contractAddresses)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
+	// }
 
-	// Initialize remaining fields.
-	snapshotExpirationWatcher := expirationwatch.New()
+	// // Initialize remaining fields.
+	// snapshotExpirationWatcher := expirationwatch.New()
 
-	app := &App{
-		started:                   make(chan struct{}),
-		config:                    config,
-		privateConfig:             pConfig,
-		privKey:                   privKey,
-		peerID:                    peerID,
-		chainID:                   config.EthereumChainID,
-		blockWatcher:              blockWatcher,
-		orderWatcher:              orderWatcher,
-		orderValidator:            orderValidator,
-		orderFilter:               orderFilter,
-		snapshotExpirationWatcher: snapshotExpirationWatcher,
-		idToSnapshotInfo:          map[string]snapshotInfo{},
-		ethRPCRateLimiter:         ethRPCRateLimiter,
-		ethRPCClient:              ethClient,
-		db:                        meshDB,
-		contractAddresses:         &contractAddresses,
-	}
+	// app := &App{
+	// 	started:                   make(chan struct{}),
+	// 	config:                    config,
+	// 	privateConfig:             pConfig,
+	// 	privKey:                   privKey,
+	// 	peerID:                    peerID,
+	// 	chainID:                   config.EthereumChainID,
+	// 	blockWatcher:              blockWatcher,
+	// 	orderWatcher:              orderWatcher,
+	// 	orderValidator:            orderValidator,
+	// 	orderFilter:               orderFilter,
+	// 	snapshotExpirationWatcher: snapshotExpirationWatcher,
+	// 	idToSnapshotInfo:          map[string]snapshotInfo{},
+	// 	ethRPCRateLimiter:         ethRPCRateLimiter,
+	// 	ethRPCClient:              ethClient,
+	// 	db:                        meshDB,
+	// 	contractAddresses:         &contractAddresses,
+	// }
 
-	log.WithFields(map[string]interface{}{
-		"config":  config,
-		"version": version,
-	}).Info("finished initializing core.App")
+	// log.WithFields(map[string]interface{}{
+	// 	"config":  config,
+	// 	"version": version,
+	// }).Info("finished initializing core.App")
 
-	return app, nil
+	// return app, nil
 }
 
 // unquoteConfig removes quotes (if needed) from each string field in config.
@@ -498,29 +493,30 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 }
 
 func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
-	metadata, err := meshDB.GetMetadata()
-	if err != nil {
-		if _, ok := err.(db.NotFoundError); ok {
-			// No stored metadata found (first startup)
-			metadata = &meshdb.Metadata{
-				EthereumChainID:   chainID,
-				MaxExpirationTime: constants.UnlimitedExpirationTime,
-			}
-			if err := meshDB.SaveMetadata(metadata); err != nil {
-				return nil, err
-			}
-			return metadata, nil
-		}
-		return nil, err
-	}
+	return nil, errors.New("Not yet implemented")
+	// metadata, err := meshDB.GetMetadata()
+	// if err != nil {
+	// 	if _, ok := err.(db.NotFoundError); ok {
+	// 		// No stored metadata found (first startup)
+	// 		metadata = &meshdb.Metadata{
+	// 			EthereumChainID:   chainID,
+	// 			MaxExpirationTime: constants.UnlimitedExpirationTime,
+	// 		}
+	// 		if err := meshDB.SaveMetadata(metadata); err != nil {
+	// 			return nil, err
+	// 		}
+	// 		return metadata, nil
+	// 	}
+	// 	return nil, err
+	// }
 
-	// on subsequent startups, verify we are on the same chain
-	if metadata.EthereumChainID != chainID {
-		err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
-		log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
-		return nil, err
-	}
-	return metadata, nil
+	// // on subsequent startups, verify we are on the same chain
+	// if metadata.EthereumChainID != chainID {
+	// 	err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
+	// 	log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
+	// 	return nil, err
+	// }
+	// return metadata, nil
 }
 
 func (app *App) Start(ctx context.Context) error {
@@ -857,76 +853,77 @@ func (e ErrPerPageZero) Error() string {
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
 func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
-	<-app.started
+	return nil, errors.New("Not yet implemented")
+	// <-app.started
 
-	if perPage <= 0 {
-		return nil, ErrPerPageZero{}
-	}
+	// if perPage <= 0 {
+	// 	return nil, ErrPerPageZero{}
+	// }
 
-	ordersInfos := []*types.OrderInfo{}
-	var snapshot *db.Snapshot
-	var createdAt time.Time
-	if snapshotID == "" {
-		// Create a new snapshot
-		snapshotID = uuid.New().String()
-		var err error
-		snapshot, err = app.db.Orders.GetSnapshot()
-		if err != nil {
-			return nil, err
-		}
-		createdAt = time.Now().UTC()
-		expirationTimestamp := time.Now().Add(1 * time.Minute)
-		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-		app.muIdToSnapshotInfo.Lock()
-		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-			Snapshot:            snapshot,
-			CreatedAt:           createdAt,
-			ExpirationTimestamp: expirationTimestamp,
-		}
-		app.muIdToSnapshotInfo.Unlock()
-	} else {
-		// Try and find an existing snapshot
-		app.muIdToSnapshotInfo.Lock()
-		info, ok := app.idToSnapshotInfo[snapshotID]
-		if !ok {
-			app.muIdToSnapshotInfo.Unlock()
-			return nil, ErrSnapshotNotFound{id: snapshotID}
-		}
-		snapshot = info.Snapshot
-		createdAt = info.CreatedAt
-		// Reset the snapshot's expiry
-		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
-		expirationTimestamp := time.Now().Add(1 * time.Minute)
-		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-			Snapshot:            snapshot,
-			CreatedAt:           createdAt,
-			ExpirationTimestamp: expirationTimestamp,
-		}
-		app.muIdToSnapshotInfo.Unlock()
-	}
+	// ordersInfos := []*types.OrderInfo{}
+	// var snapshot *db.Snapshot
+	// var createdAt time.Time
+	// if snapshotID == "" {
+	// 	// Create a new snapshot
+	// 	snapshotID = uuid.New().String()
+	// 	var err error
+	// 	snapshot, err = app.db.Orders.GetSnapshot()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	createdAt = time.Now().UTC()
+	// 	expirationTimestamp := time.Now().Add(1 * time.Minute)
+	// 	app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
+	// 	app.muIdToSnapshotInfo.Lock()
+	// 	app.idToSnapshotInfo[snapshotID] = snapshotInfo{
+	// 		Snapshot:            snapshot,
+	// 		CreatedAt:           createdAt,
+	// 		ExpirationTimestamp: expirationTimestamp,
+	// 	}
+	// 	app.muIdToSnapshotInfo.Unlock()
+	// } else {
+	// 	// Try and find an existing snapshot
+	// 	app.muIdToSnapshotInfo.Lock()
+	// 	info, ok := app.idToSnapshotInfo[snapshotID]
+	// 	if !ok {
+	// 		app.muIdToSnapshotInfo.Unlock()
+	// 		return nil, ErrSnapshotNotFound{id: snapshotID}
+	// 	}
+	// 	snapshot = info.Snapshot
+	// 	createdAt = info.CreatedAt
+	// 	// Reset the snapshot's expiry
+	// 	app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
+	// 	expirationTimestamp := time.Now().Add(1 * time.Minute)
+	// 	app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
+	// 	app.idToSnapshotInfo[snapshotID] = snapshotInfo{
+	// 		Snapshot:            snapshot,
+	// 		CreatedAt:           createdAt,
+	// 		ExpirationTimestamp: expirationTimestamp,
+	// 	}
+	// 	app.muIdToSnapshotInfo.Unlock()
+	// }
 
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	var selectedOrders []*meshdb.Order
-	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
-	if err != nil {
-		return nil, err
-	}
-	for _, order := range selectedOrders {
-		ordersInfos = append(ordersInfos, &types.OrderInfo{
-			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder,
-			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-		})
-	}
+	// notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	// var selectedOrders []*meshdb.Order
+	// err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, order := range selectedOrders {
+	// 	ordersInfos = append(ordersInfos, &types.OrderInfo{
+	// 		OrderHash:                order.Hash,
+	// 		SignedOrder:              order.SignedOrder,
+	// 		FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+	// 	})
+	// }
 
-	getOrdersResponse := &types.GetOrdersResponse{
-		SnapshotID:        snapshotID,
-		SnapshotTimestamp: createdAt,
-		OrdersInfos:       ordersInfos,
-	}
+	// getOrdersResponse := &types.GetOrdersResponse{
+	// 	SnapshotID:        snapshotID,
+	// 	SnapshotTimestamp: createdAt,
+	// 	OrdersInfos:       ordersInfos,
+	// }
 
-	return getOrdersResponse, nil
+	// return getOrdersResponse, nil
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
@@ -1051,56 +1048,57 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*types.Stats, error) {
-	<-app.started
+	return nil, errors.New("Not yet implemented")
+	// <-app.started
 
-	latestBlockHeader, err := app.db.FindLatestMiniHeader()
-	if err != nil {
-		return nil, err
-	}
-	latestBlock := types.LatestBlock{
-		Number: int(latestBlockHeader.Number.Int64()),
-		Hash:   latestBlockHeader.Hash,
-	}
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
-	if err != nil {
-		return nil, err
-	}
-	numOrdersIncludingRemoved, err := app.db.Orders.Count()
-	if err != nil {
-		return nil, err
-	}
-	numPinnedOrders, err := app.db.CountPinnedOrders()
-	if err != nil {
-		return nil, err
-	}
-	metadata, err := app.db.GetMetadata()
-	if err != nil {
-		return nil, err
-	}
-	rendezvousPoints, err := app.getRendezvousPoints()
-	if err != nil {
-		return nil, err
-	}
+	// latestBlockHeader, err := app.db.FindLatestMiniHeader()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// latestBlock := types.LatestBlock{
+	// 	Number: int(latestBlockHeader.Number.Int64()),
+	// 	Hash:   latestBlockHeader.Hash,
+	// }
+	// notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
+	// numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// numOrdersIncludingRemoved, err := app.db.Orders.Count()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// numPinnedOrders, err := app.db.CountPinnedOrders()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// metadata, err := app.db.GetMetadata()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// rendezvousPoints, err := app.getRendezvousPoints()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	response := &types.Stats{
-		Version:                           version,
-		PubSubTopic:                       app.orderFilter.Topic(),
-		Rendezvous:                        rendezvousPoints[0],
-		SecondaryRendezvous:               rendezvousPoints[1:],
-		PeerID:                            app.peerID.String(),
-		EthereumChainID:                   app.config.EthereumChainID,
-		LatestBlock:                       latestBlock,
-		NumOrders:                         numOrders,
-		NumPeers:                          app.node.GetNumPeers(),
-		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
-		NumPinnedOrders:                   numPinnedOrders,
-		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
-		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
-		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
-		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
-	}
-	return response, nil
+	// response := &types.Stats{
+	// 	Version:                           version,
+	// 	PubSubTopic:                       app.orderFilter.Topic(),
+	// 	Rendezvous:                        rendezvousPoints[0],
+	// 	SecondaryRendezvous:               rendezvousPoints[1:],
+	// 	PeerID:                            app.peerID.String(),
+	// 	EthereumChainID:                   app.config.EthereumChainID,
+	// 	LatestBlock:                       latestBlock,
+	// 	NumOrders:                         numOrders,
+	// 	NumPeers:                          app.node.GetNumPeers(),
+	// 	NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+	// 	NumPinnedOrders:                   numPinnedOrders,
+	// 	MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+	// 	StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+	// 	EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+	// 	EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
+	// }
+	// return response, nil
 }
 
 func (app *App) periodicallyLogStats(ctx context.Context) {
@@ -1148,24 +1146,25 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 // IsCaughtUpToLatestBlock returns whether or not the latest block stored by Mesh corresponds
 // to the latest block retrieved from it's Ethereum RPC endpoint
 func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
-	latestBlockStored, err := app.db.FindLatestMiniHeader()
-	if err != nil {
-		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); ok {
-			return false
-		}
-		log.WithFields(map[string]interface{}{
-			"err": err.Error(),
-		}).Warn("failed to fetch the latest miniHeader from DB")
-		return false
-	}
-	latestBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
-	if err != nil {
-		log.WithFields(map[string]interface{}{
-			"err": err.Error(),
-		}).Warn("failed to fetch the latest block header via Ethereum RPC")
-		return false
-	}
-	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
+	panic(errors.New("Not yet implemented"))
+	// latestBlockStored, err := app.db.FindLatestMiniHeader()
+	// if err != nil {
+	// 	if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); ok {
+	// 		return false
+	// 	}
+	// 	log.WithFields(map[string]interface{}{
+	// 		"err": err.Error(),
+	// 	}).Warn("failed to fetch the latest miniHeader from DB")
+	// 	return false
+	// }
+	// latestBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
+	// if err != nil {
+	// 	log.WithFields(map[string]interface{}{
+	// 		"err": err.Error(),
+	// 	}).Warn("failed to fetch the latest block header via Ethereum RPC")
+	// 	return false
+	// }
+	// return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
 }
 
 func parseAndValidateCustomContractAddresses(chainID int, encodedContractAddresses string) (ethereum.ContractAddresses, error) {
