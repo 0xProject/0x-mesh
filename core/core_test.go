@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/meshdb"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ const (
 var contractAddresses = ethereum.GanacheAddresses
 
 func TestEthereumChainDetection(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	meshDB, err := db.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 

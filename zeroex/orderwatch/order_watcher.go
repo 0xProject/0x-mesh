@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/expirationwatch"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -77,7 +77,7 @@ const (
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	meshDB                     *meshdb.MeshDB
+	meshDB                     *db.DB
 	blockWatcher               *blockwatch.Watcher
 	eventDecoder               *decoder.Decoder
 	assetDataDecoder           *zeroex.AssetDataDecoder
@@ -103,7 +103,7 @@ type Watcher struct {
 }
 
 type Config struct {
-	MeshDB            *meshdb.MeshDB
+	MeshDB            *db.DB
 	BlockWatcher      *blockwatch.Watcher
 	OrderValidator    *ordervalidator.OrderValidator
 	ChainID           int
@@ -1157,7 +1157,7 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
-func (w *Watcher) findOrder(orderHash common.Hash) *meshdb.Order {
+func (w *Watcher) findOrder(orderHash common.Hash) *db.Order {
 	return nil
 	// order := meshdb.Order{}
 	// err := w.meshDB.Orders.FindByID(orderHash.Bytes(), &order)
@@ -1178,7 +1178,7 @@ func (w *Watcher) findOrder(orderHash common.Hash) *meshdb.Order {
 // findOrdersByTokenAddressAndTokenID finds and returns all orders that have
 // either a makerAsset or a makerFeeAsset matching the given tokenAddress and
 // tokenID.
-func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*meshdb.Order, error) {
+func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*db.Order, error) {
 	ordersWithAffectedMakerAsset, err := w.meshDB.FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress, tokenID)
 	if err != nil {
 		logger.WithFields(logger.Fields{
@@ -1597,7 +1597,7 @@ type orderUpdater interface {
 	// Update(model db.Model) error
 }
 
-func (w *Watcher) updateOrderDBEntry(u orderUpdater, order *meshdb.Order) {
+func (w *Watcher) updateOrderDBEntry(u orderUpdater, order *db.Order) {
 	panic(errors.New("Not yet implemented"))
 	// order.LastUpdated = time.Now().UTC()
 	// err := u.Update(order)
@@ -1609,7 +1609,7 @@ func (w *Watcher) updateOrderDBEntry(u orderUpdater, order *meshdb.Order) {
 	// }
 }
 
-func (w *Watcher) rewatchOrder(u orderUpdater, order *meshdb.Order, fillableTakerAssetAmount *big.Int) {
+func (w *Watcher) rewatchOrder(u orderUpdater, order *db.Order, fillableTakerAssetAmount *big.Int) {
 	panic(errors.New("Not yet implemented"))
 	// order.IsRemoved = false
 	// order.LastUpdated = time.Now().UTC()
@@ -1627,7 +1627,7 @@ func (w *Watcher) rewatchOrder(u orderUpdater, order *meshdb.Order, fillableTake
 	// w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
-func (w *Watcher) unwatchOrder(u orderUpdater, order *meshdb.Order, newFillableAmount *big.Int) {
+func (w *Watcher) unwatchOrder(u orderUpdater, order *db.Order, newFillableAmount *big.Int) {
 	panic(errors.New("Not yet implemented"))
 	// order.IsRemoved = true
 	// order.LastUpdated = time.Now().UTC()
@@ -1648,7 +1648,7 @@ type orderDeleter interface {
 	Delete(id []byte) error
 }
 
-func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *meshdb.Order) error {
+func (w *Watcher) permanentlyDeleteOrder(deleter orderDeleter, order *db.Order) error {
 	return errors.New("Not yet implemented")
 	// err := deleter.Delete(order.Hash.Bytes())
 	// if err != nil {
@@ -1860,7 +1860,7 @@ func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
 
 // saveMaxExpirationTime saves the new max expiration time in the database.
 func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
-	if err := w.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+	if err := w.meshDB.UpdateMetadata(func(metadata db.Metadata) db.Metadata {
 		metadata.MaxExpirationTime = maxExpirationTime
 		return metadata
 	}); err != nil {

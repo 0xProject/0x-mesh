@@ -1,4 +1,4 @@
-package meshdb
+package db
 
 // var contractAddresses = ethereum.GanacheAddresses
 

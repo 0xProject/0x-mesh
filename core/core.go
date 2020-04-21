@@ -16,6 +16,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core/ordersync"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
@@ -23,7 +24,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -207,7 +207,7 @@ type App struct {
 	idToSnapshotInfo          map[string]snapshotInfo
 	ethRPCRateLimiter         ratelimit.RateLimiter
 	ethRPCClient              ethrpcclient.Client
-	db                        *meshdb.MeshDB
+	db                        *db.DB
 	ordersyncService          *ordersync.Service
 	contractAddresses         *ethereum.ContractAddresses
 
@@ -492,7 +492,7 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
+func initMetadata(chainID int, meshDB *db.DB) (*db.Metadata, error) {
 	return nil, errors.New("Not yet implemented")
 	// metadata, err := meshDB.GetMetadata()
 	// if err != nil {
