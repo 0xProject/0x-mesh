@@ -29,7 +29,9 @@ const (
 var contractAddresses = ethereum.GanacheAddresses
 
 func TestEthereumChainDetection(t *testing.T) {
-	meshDB, err := db.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 

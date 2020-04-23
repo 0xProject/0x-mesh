@@ -32,7 +32,8 @@ var contractAddresses = ethereum.GanacheAddresses
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
-	meshDB, err := db.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 	initMetadata(t, meshDB)
@@ -47,7 +48,6 @@ func TestScenario1(t *testing.T) {
 
 	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -69,7 +69,8 @@ func TestScenario1(t *testing.T) {
 // Scenario 2: Max requests per 24 hours used up. Subsequent calls to Wait
 // should return an error.
 func TestScenario2(t *testing.T) {
-	meshDB, err := db.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -96,7 +97,6 @@ func TestScenario2(t *testing.T) {
 	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, meshDB, aClock)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -126,7 +126,8 @@ func TestScenario2(t *testing.T) {
 // RateLimiter is instantiated. They then get updated after the checkpoint
 // interval elapses.
 func TestScenario3(t *testing.T) {
-	meshDB, err := db.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -156,7 +157,6 @@ func TestScenario3(t *testing.T) {
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
 	// Start the rateLimiter
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {

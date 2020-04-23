@@ -1,6 +1,134 @@
 package db
 
-// var contractAddresses = ethereum.GanacheAddresses
+import (
+	"bytes"
+	"context"
+	"math/big"
+	"math/rand"
+	"path/filepath"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var contractAddresses = ethereum.GanacheAddresses
+
+// newTestOrder returns a new order with a random hash that is ready to insert
+// into the database. Some computed fields (e.g. hash, signature) may not be
+// correct, so the order will not pass 0x validation.
+func newTestOrder() *Order {
+	return &Order{
+		Hash:                     common.BigToHash(big.NewInt(int64(rand.Int()))),
+		ChainID:                  NewUint256(big.NewInt(constants.TestChainID)),
+		MakerAddress:             constants.GanacheAccount1,
+		TakerAddress:             constants.NullAddress,
+		SenderAddress:            constants.NullAddress,
+		FeeRecipientAddress:      constants.NullAddress,
+		MakerAssetData:           constants.ZRXAssetData,
+		MakerFeeAssetData:        constants.NullBytes,
+		TakerAssetData:           constants.WETHAssetData,
+		TakerFeeAssetData:        constants.NullBytes,
+		Salt:                     NewUint256(big.NewInt(int64(time.Now().Nanosecond()))),
+		MakerFee:                 NewUint256(big.NewInt(0)),
+		TakerFee:                 NewUint256(big.NewInt(0)),
+		MakerAssetAmount:         NewUint256(big.NewInt(100)),
+		TakerAssetAmount:         NewUint256(big.NewInt(42)),
+		ExpirationTimeSeconds:    NewUint256(big.NewInt(time.Now().Add(24 * time.Hour).Unix())),
+		ExchangeAddress:          contractAddresses.Exchange,
+		Signature:                []byte{1, 2, 255, 255},
+		LastUpdated:              time.Now(),
+		FillableTakerAssetAmount: NewUint256(big.NewInt(42)),
+		IsRemoved:                false,
+		IsPinned:                 false,
+	}
+}
+
+func newTestDB(t *testing.T, ctx context.Context) *DB {
+	db, err := New(ctx, filepath.Join("tmp", "db_testing", uuid.New().String()))
+	require.NoError(t, err)
+	require.NoError(t, db.migrate())
+	return db
+}
+
+func TestAddOrders(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numOrders := 10
+	orders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		orders = append(orders, newTestOrder())
+	}
+
+	{
+		added, removed, err := db.AddOrders(orders)
+		require.NoError(t, err)
+		assert.Len(t, removed, 0, "Expected no orders to be removed")
+		assertOrderSlicesAreEqual(t, orders, added)
+	}
+	{
+		added, removed, err := db.AddOrders(orders)
+		require.NoError(t, err)
+		assert.Len(t, removed, 0, "Expected no orders to be removed")
+		assert.Len(t, added, 0, "Expected no orders to be added (they should already exist)")
+	}
+}
+
+func TestFindOrder(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	added, _, err := db.AddOrders([]*Order{newTestOrder()})
+	require.NoError(t, err)
+	originalOrder := added[0]
+
+	foundOrder, err := db.FindOrder(originalOrder.Hash)
+	require.NoError(t, err)
+	assertOrdersAreEqual(t, originalOrder, foundOrder)
+}
+
+func sortOrders(orders []*Order) {
+	sort.SliceStable(orders, func(i, j int) bool {
+		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
+	})
+}
+
+func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
+	assert.Len(t, actual, len(expected), "wrong number of orders")
+	sortOrders(expected)
+	sortOrders(actual)
+	for i, expectedOrder := range expected {
+		if i >= len(actual) {
+			break
+		}
+		actualOrder := expected[i]
+		assertOrdersAreEqual(t, expectedOrder, actualOrder)
+	}
+}
+
+func assertOrdersAreEqual(t *testing.T, expected, actual *Order) {
+	if expected.LastUpdated.Equal(actual.LastUpdated) {
+		// HACK(albrow): In this case, the two values represent the same time.
+		// This is what we care about, but the assert package might consider
+		// them unequal if some internal fields are different (there are
+		// different ways of representing the same time). As a workaround,
+		// we manually set actual.LastUpdated.
+		actual.LastUpdated = expected.LastUpdated
+	} else {
+		assert.Equal(t, expected.LastUpdated, actual.LastUpdated, "order.LastUpdated was not equal")
+	}
+	// We can compare the rest of the fields normally.
+	assert.Equal(t, expected, actual)
+}
 
 // func TestOrderCRUDOperations(t *testing.T) {
 // 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
