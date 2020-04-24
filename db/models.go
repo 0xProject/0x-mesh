@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -55,11 +56,11 @@ type Metadata struct {
 
 // MiniHeader is a representation of a succinct Ethereum block headers
 type MiniHeader struct {
-	Hash      common.Hash
-	Parent    common.Hash
-	Number    *big.Int
-	Timestamp time.Time
-	Logs      []types.Log
+	Hash      common.Hash `db:"hash"`
+	Parent    common.Hash `db:"parent"`
+	Number    *Uint256    `db:"number"`
+	Timestamp time.Time   `db:"timestamp"`
+	Logs      *EventLogs  `db:"logs"`
 }
 
 type Uint256 struct {
@@ -98,4 +99,39 @@ func (u *Uint256) Scan(value interface{}) error {
 	}
 
 	return nil
+}
+
+type EventLogs struct {
+	Logs []types.Log
+}
+
+func NewEventLogs(logs []types.Log) *EventLogs {
+	eventLogs := EventLogs{Logs: logs}
+	return &eventLogs
+}
+
+func (e *EventLogs) Value() (driver.Value, error) {
+	if e == nil {
+		return nil, nil
+	}
+	logsJSON, err := json.Marshal(e.Logs)
+	if err != nil {
+		return nil, err
+	}
+	return logsJSON, err
+}
+
+func (e *EventLogs) Scan(value interface{}) error {
+	if value == nil {
+		e = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, &e.Logs)
+	case string:
+		return json.Unmarshal([]byte(v), &e.Logs)
+	default:
+		return fmt.Errorf("could not scan type %T into EventLogs", value)
+	}
 }

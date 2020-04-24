@@ -18,9 +18,9 @@ import (
 
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
-	ctx                      context.Context
-	sqldb                    *sqlx.DB
-	MiniHeaderRetentionLimit int
+	ctx   context.Context
+	sqldb *sqlx.DB
+	// MiniHeaderRetentionLimit int
 }
 
 // New creates a new connection to the database. The connection will be automatically closed
@@ -53,6 +53,7 @@ func New(ctx context.Context, path string) (*DB, error) {
 }
 
 // TODO(albrow): Use a proper migration tool.
+// TODO(albrow): Add indexes.
 const schema = `
 CREATE TABLE IF NOT EXISTS orders (
 	hash                     TEXT UNIQUE NOT NULL,
@@ -78,57 +79,79 @@ CREATE TABLE IF NOT EXISTS orders (
 	isRemoved                BOOLEAN NOT NULL,
 	isPinned                 BOOLEAN NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS miniHeaders (
+	hash      TEXT UNIQUE NOT NULL,
+	parent    TEXT NOT NULL,
+	number    NUMERIC(78, 0) NOT NULL,
+	timestamp DATETIME NOT NULL,
+	logs      TEXT NOT NULL
+);
 `
 
 // TODO(albrow): Used prepared statement for inserts.
-const insertQuery = `INSERT OR IGNORE INTO orders (
-		hash,
-		chainID,
-		exchangeAddress,
-		makerAddress,
-		makerAssetData,
-		makerFeeAssetData,
-		makerAssetAmount,
-		makerFee,
-		takerAddress,
-		takerAssetData,
-		takerFeeAssetData,
-		takerAssetAmount,
-		takerFee,
-		senderAddress,
-		feeRecipientAddress,
-		expirationTimeSeconds,
-		salt,
-		signature,
-		lastUpdated,
-		fillableTakerAssetAmount,
-		isRemoved,
-		isPinned
-	) VALUES (
-		:hash,
-		:chainID,
-		:exchangeAddress,
-		:makerAddress,
-		:makerAssetData,
-		:makerFeeAssetData,
-		:makerAssetAmount,
-		:makerFee,
-		:takerAddress,
-		:takerAssetData,
-		:takerFeeAssetData,
-		:takerAssetAmount,
-		:takerFee,
-		:senderAddress,
-		:feeRecipientAddress,
-		:expirationTimeSeconds,
-		:salt,
-		:signature,
-		:lastUpdated,
-		:fillableTakerAssetAmount,
-		:isRemoved,
-		:isPinned
-	)
+const insertOrderQuery = `INSERT OR IGNORE INTO orders (
+	hash,
+	chainID,
+	exchangeAddress,
+	makerAddress,
+	makerAssetData,
+	makerFeeAssetData,
+	makerAssetAmount,
+	makerFee,
+	takerAddress,
+	takerAssetData,
+	takerFeeAssetData,
+	takerAssetAmount,
+	takerFee,
+	senderAddress,
+	feeRecipientAddress,
+	expirationTimeSeconds,
+	salt,
+	signature,
+	lastUpdated,
+	fillableTakerAssetAmount,
+	isRemoved,
+	isPinned
+) VALUES (
+	:hash,
+	:chainID,
+	:exchangeAddress,
+	:makerAddress,
+	:makerAssetData,
+	:makerFeeAssetData,
+	:makerAssetAmount,
+	:makerFee,
+	:takerAddress,
+	:takerAssetData,
+	:takerFeeAssetData,
+	:takerAssetAmount,
+	:takerFee,
+	:senderAddress,
+	:feeRecipientAddress,
+	:expirationTimeSeconds,
+	:salt,
+	:signature,
+	:lastUpdated,
+	:fillableTakerAssetAmount,
+	:isRemoved,
+	:isPinned
+)
 `
+
+const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
+	hash,
+	parent,
+	"number",
+	timestamp,
+	logs
+) VALUES (
+	:hash,
+	:parent,
+	:number,
+	:timestamp,
+	:logs
+)`
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
@@ -149,7 +172,7 @@ func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err 
 	}()
 
 	for _, order := range orders {
-		result, err := txn.NamedExecContext(db.ctx, insertQuery, order)
+		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, order)
 		if err != nil {
 			fmt.Printf("%T %s\n", err, err)
 			spew.Dump(err)
@@ -172,7 +195,7 @@ func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err 
 	return added, nil, nil
 }
 
-func (db *DB) FindOrder(hash common.Hash) (*Order, error) {
+func (db *DB) GetOrder(hash common.Hash) (*Order, error) {
 	var order Order
 	if err := db.sqldb.GetContext(db.ctx, &order, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
 		// TODO(albrow): Specifically handle not found error.
@@ -180,6 +203,75 @@ func (db *DB) FindOrder(hash common.Hash) (*Order, error) {
 		return nil, err
 	}
 	return &order, nil
+}
+
+// TODO(albrow): Add options for filtering, sorting, limit, and offset.
+func (db *DB) FindOrders() ([]*Order, error) {
+	var orders []*Order
+	if err := db.sqldb.SelectContext(db.ctx, &orders, "SELECT * FROM orders"); err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+func (db *DB) UpdateOrder(updateFunc func(order *Order) (*Order, error)) error {
+	return errors.New("Not yet implemented")
+}
+
+func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, removed []*MiniHeader, err error) {
+	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	for _, miniHeader := range miniHeaders {
+		result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, miniHeader)
+		if err != nil {
+			fmt.Printf("%T %s\n", err, err)
+			spew.Dump(err)
+			return nil, nil, err
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return nil, nil, err
+		}
+		if affected > 0 {
+			added = append(added, miniHeader)
+		}
+	}
+	if err := txn.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	// TODO(albrow): Remove miniheaders to keep count low.
+	// TODO(albrow): Return appropriate values for added, removed.
+	return added, nil, nil
+}
+
+func (db *DB) GetMiniHeader(hash common.Hash) (*MiniHeader, error) {
+	var miniHeader MiniHeader
+	if err := db.sqldb.GetContext(db.ctx, &miniHeader, "SELECT * FROM miniHeaders WHERE hash = $1", hash); err != nil {
+		// TODO(albrow): Specifically handle not found error.
+		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		return nil, err
+	}
+	return &miniHeader, nil
+}
+
+// TODO(albrow): Add options for filtering, sorting, limit, and offset.
+func (db *DB) FindMiniHeaders() ([]*MiniHeader, error) {
+	var miniHeaders []*MiniHeader
+	if err := db.sqldb.SelectContext(db.ctx, &miniHeaders, "SELECT * FROM miniHeaders"); err != nil {
+		return nil, err
+	}
+	return miniHeaders, nil
+}
+
+func (db *DB) UpdateMiniHeader(updateFunc func(order *Order) (*Order, error)) error {
+	return errors.New("Not yet implemented")
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order
@@ -367,18 +459,6 @@ func (db *DB) UpdateMetadata(updater func(oldmetadata Metadata) (newMetadata Met
 // 	}
 // 	return singleAssetDatas, nil
 // }
-
-func uint256ToConstantLengthBytes(v *big.Int) []byte {
-	return []byte(fmt.Sprintf("%080s", v.String()))
-}
-
-// TrimOrdersByExpirationTime removes existing orders with the highest
-// expiration time until the number of remaining orders is <= targetMaxOrders.
-// It returns any orders that were removed and the new max expiration time that
-// can be used to eliminate incoming orders that expire too far in the future.
-func (db *DB) TrimOrdersByExpirationTime(targetMaxOrders int) (newMaxExpirationTime *big.Int, removedOrders []*Order, err error) {
-	return nil, nil, errors.New("Not yet implemented")
-}
 
 // CountPinnedOrders returns the number of pinned orders.
 func (db *DB) CountPinnedOrders() (int, error) {

@@ -26,12 +26,10 @@ const (
 	ordersyncWaitTime = 2 * time.Second
 )
 
-var contractAddresses = ethereum.GanacheAddresses
-
 func TestEthereumChainDetection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
