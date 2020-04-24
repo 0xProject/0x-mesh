@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -139,6 +138,31 @@ const insertOrderQuery = `INSERT OR IGNORE INTO orders (
 )
 `
 
+const updateOrderQuery = `UPDATE orders SET
+	chainID = :chainID,
+	exchangeAddress = :exchangeAddress,
+	makerAddress = :makerAddress,
+	makerAssetData = :makerAssetData,
+	makerFeeAssetData = :makerFeeAssetData,
+	makerAssetAmount = :makerAssetAmount,
+	makerFee = :makerFee,
+	takerAddress = :takerAddress,
+	takerAssetData = :takerAssetData,
+	takerFeeAssetData = :takerFeeAssetData,
+	takerAssetAmount = :takerAssetAmount,
+	takerFee = :takerFee,
+	senderAddress = :senderAddress,
+	feeRecipientAddress = :feeRecipientAddress,
+	expirationTimeSeconds = :expirationTimeSeconds,
+	salt = :salt,
+	signature = :signature,
+	lastUpdated = :lastUpdated,
+	fillableTakerAssetAmount = :fillableTakerAssetAmount,
+	isRemoved = :isRemoved,
+	isPinned = :isPinned
+WHERE orders.hash = :hash
+`
+
 const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
 	hash,
 	parent,
@@ -174,8 +198,6 @@ func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err 
 	for _, order := range orders {
 		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, order)
 		if err != nil {
-			fmt.Printf("%T %s\n", err, err)
-			spew.Dump(err)
 			return nil, nil, err
 		}
 		affected, err := result.RowsAffected()
@@ -214,8 +236,35 @@ func (db *DB) FindOrders() ([]*Order, error) {
 	return orders, nil
 }
 
-func (db *DB) UpdateOrder(updateFunc func(order *Order) (*Order, error)) error {
-	return errors.New("Not yet implemented")
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {
+	if updateFunc == nil {
+		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
+	}
+
+	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	var existingOrder Order
+	if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
+		// TODO(albrow): Specifically handle not found error.
+		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		return err
+	}
+
+	updatedOrder, err := updateFunc(&existingOrder)
+	if err != nil {
+		return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
+	}
+	_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, removed []*MiniHeader, err error) {
@@ -230,8 +279,6 @@ func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, re
 	for _, miniHeader := range miniHeaders {
 		result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, miniHeader)
 		if err != nil {
-			fmt.Printf("%T %s\n", err, err)
-			spew.Dump(err)
 			return nil, nil, err
 		}
 		affected, err := result.RowsAffected()
@@ -268,10 +315,6 @@ func (db *DB) FindMiniHeaders() ([]*MiniHeader, error) {
 		return nil, err
 	}
 	return miniHeaders, nil
-}
-
-func (db *DB) UpdateMiniHeader(updateFunc func(order *Order) (*Order, error)) error {
-	return errors.New("Not yet implemented")
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order

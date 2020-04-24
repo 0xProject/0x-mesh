@@ -78,6 +78,37 @@ func TestFindOrders(t *testing.T) {
 	assertOrderSlicesAreEqual(t, originalOrders, foundOrders)
 }
 
+func TestUpdateOrder(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Note(albrow): We create more than one order to make sure that
+	// UpdateOrder only updates one of them and does not affect the
+	// others.
+	numOrders := 3
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		originalOrders = append(originalOrders, newTestOrder())
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	orderToUpdate := originalOrders[0]
+	updatedFillableAmount := NewUint256(big.NewInt(12345))
+	err = db.UpdateOrder(orderToUpdate.Hash, func(existingOrder *Order) (*Order, error) {
+		updatedOrder := existingOrder
+		updatedOrder.FillableTakerAssetAmount = updatedFillableAmount
+		return updatedOrder, nil
+	})
+
+	expectedOrders := originalOrders
+	expectedOrders[0].FillableTakerAssetAmount = updatedFillableAmount
+	foundOrders, err := db.FindOrders()
+	require.NoError(t, err)
+	assertOrderSlicesAreEqual(t, expectedOrders, foundOrders)
+}
+
 func TestAddMiniHeaders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -231,7 +262,7 @@ func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
 		if i >= len(actual) {
 			break
 		}
-		actualOrder := expected[i]
+		actualOrder := actual[i]
 		assertOrdersAreEqual(t, expectedOrder, actualOrder)
 	}
 }
