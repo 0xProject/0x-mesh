@@ -11,6 +11,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -227,13 +228,89 @@ func (db *DB) GetOrder(hash common.Hash) (*Order, error) {
 	return &order, nil
 }
 
+type SortDirection string
+
+const (
+	ASC  SortDirection = "ASC"
+	DESC SortDirection = "DESC"
+)
+
+type OrderField string
+
+const (
+	Hash                     OrderField = "hash"
+	ChainID                  OrderField = "chainID"
+	ExchangeAddress          OrderField = "exchangeAddress"
+	MakerAddress             OrderField = "makerAddress"
+	MakerAssetData           OrderField = "makerAssetData"
+	MakerFeeAssetData        OrderField = "makerFeeAssetData"
+	MakerAssetAmount         OrderField = "makerAssetAmount"
+	MakerFee                 OrderField = "makerFee"
+	TakerAddress             OrderField = "takerAddress"
+	TakerAssetData           OrderField = "takerAssetData"
+	TakerFeeAssetData        OrderField = "takerFeeAssetData"
+	TakerAssetAmount         OrderField = "takerAssetAmount"
+	TakerFee                 OrderField = "takerFee"
+	SenderAddress            OrderField = "senderAddress"
+	FeeRecipientAddress      OrderField = "feeRecipientAddress"
+	ExpirationTimeSeconds    OrderField = "expirationTimeSeconds"
+	Salt                     OrderField = "salt"
+	Signature                OrderField = "signature"
+	LastUpdated              OrderField = "lastUpdated"
+	FillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
+	IsRemoved                OrderField = "isRemoved"
+	IsPinned                 OrderField = "isPinned"
+)
+
+type FindOrdersOpts struct {
+	Sort   []OrderSortOpts
+	Limit  uint
+	Offset uint
+}
+
+type OrderSortOpts struct {
+	Field     OrderField
+	Direction SortDirection
+}
+
 // TODO(albrow): Add options for filtering, sorting, limit, and offset.
-func (db *DB) FindOrders() ([]*Order, error) {
+func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
+	query := db.findOrdersQueryFromOpts(opts)
 	var orders []*Order
-	if err := db.sqldb.SelectContext(db.ctx, &orders, "SELECT * FROM orders"); err != nil {
+	rawQuery, _ := query.ToSQL(false)
+	fmt.Println(rawQuery)
+	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) *sqlz.SelectStmt {
+	query := sqlz.Newx(db.sqldb).Select("*").From("orders")
+	if opts == nil {
+		return query
+	}
+
+	ordering := orderingFromOrderSortOpts(opts.Sort)
+	if len(ordering) != 0 {
+		query.OrderBy(ordering...)
+	}
+
+	// TODO(albrow): LIMIT, OFFSET, WHERE
+
+	return query
+}
+
+func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {
+	ordering := []sqlz.SQLStmt{}
+	for _, sortOpt := range opts {
+		if sortOpt.Direction == ASC {
+			ordering = append(ordering, sqlz.Asc(string(sortOpt.Field)))
+		} else {
+			ordering = append(ordering, sqlz.Desc(string(sortOpt.Field)))
+		}
+	}
+	return ordering
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {

@@ -34,6 +34,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/ido50/sqlz v0.0.0-20200308174337-487b8faf612c
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-leveldb v0.4.0
 	github.com/jmoiron/sqlx v1.2.0
@@ -81,5 +82,6 @@ require (
 	github.com/xeipuuv/gojsonschema v1.1.0
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 )

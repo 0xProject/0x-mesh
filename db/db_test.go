@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"path/filepath"
@@ -36,7 +37,7 @@ func TestAddOrders(t *testing.T) {
 		added, removed, err := db.AddOrders(orders)
 		require.NoError(t, err)
 		assert.Len(t, removed, 0, "Expected no orders to be removed")
-		assertOrderSlicesAreEqual(t, orders, added)
+		assertOrderSlicesAreUnsortedEqual(t, orders, added)
 	}
 	{
 		added, removed, err := db.AddOrders(orders)
@@ -58,24 +59,6 @@ func TestGetOrder(t *testing.T) {
 	foundOrder, err := db.GetOrder(originalOrder.Hash)
 	require.NoError(t, err)
 	assertOrdersAreEqual(t, originalOrder, foundOrder)
-}
-
-func TestFindOrders(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	db := newTestDB(t, ctx)
-
-	numOrders := 10
-	originalOrders := []*Order{}
-	for i := 0; i < numOrders; i++ {
-		originalOrders = append(originalOrders, newTestOrder())
-	}
-	_, _, err := db.AddOrders(originalOrders)
-	require.NoError(t, err)
-
-	foundOrders, err := db.FindOrders()
-	require.NoError(t, err)
-	assertOrderSlicesAreEqual(t, originalOrders, foundOrders)
 }
 
 func TestUpdateOrder(t *testing.T) {
@@ -104,9 +87,123 @@ func TestUpdateOrder(t *testing.T) {
 
 	expectedOrders := originalOrders
 	expectedOrders[0].FillableTakerAssetAmount = updatedFillableAmount
-	foundOrders, err := db.FindOrders()
+	foundOrders, err := db.FindOrders(nil)
 	require.NoError(t, err)
-	assertOrderSlicesAreEqual(t, expectedOrders, foundOrders)
+	assertOrderSlicesAreUnsortedEqual(t, expectedOrders, foundOrders)
+}
+
+func TestFindOrders(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numOrders := 10
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		originalOrders = append(originalOrders, newTestOrder())
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	foundOrders, err := db.FindOrders(nil)
+	require.NoError(t, err)
+	assertOrderSlicesAreUnsortedEqual(t, originalOrders, foundOrders)
+}
+
+func TestFindOrdersSort(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test orders with carefully chosen MakerAssetAmount
+	// and TakerAssetAmount values for testing sorting.
+	numOrders := 5
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrder()
+		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		// It's important for some orders to have the same TakerAssetAmount
+		// so that we can test secondary sorts (sorting on more than one
+		// field).
+		if i%2 == 0 {
+			order.TakerAssetAmount = NewUint256(big.NewInt(100))
+		} else {
+			order.TakerAssetAmount = NewUint256(big.NewInt(200))
+		}
+		originalOrders = append(originalOrders, order)
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	testCases := []findOrdersSortTestCase{
+		{
+			sortOpts: []OrderSortOpts{
+				{
+					Field:     MakerAssetAmount,
+					Direction: ASC,
+				},
+			},
+			less: lessByMakerAssetAmountAsc,
+		},
+		{
+			sortOpts: []OrderSortOpts{
+				{
+					Field:     MakerAssetAmount,
+					Direction: DESC,
+				},
+			},
+			less: lessByMakerAssetAmountDesc,
+		},
+		{
+			sortOpts: []OrderSortOpts{
+				{
+					Field:     TakerAssetAmount,
+					Direction: ASC,
+				},
+				{
+					Field:     MakerAssetAmount,
+					Direction: ASC,
+				},
+			},
+			less: lessByTakerAssetAmountAscAndMakerAssetAmountAsc,
+		},
+		{
+			sortOpts: []OrderSortOpts{
+				{
+					Field:     TakerAssetAmount,
+					Direction: DESC,
+				},
+				{
+					Field:     MakerAssetAmount,
+					Direction: DESC,
+				},
+			},
+			less: lessByTakerAssetAmountDescAndMakerAssetAmountDesc,
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("test case %d", i)
+		t.Run(testCaseName, runFindOrderSortTestCase(t, db, originalOrders, testCase))
+	}
+}
+
+type findOrdersSortTestCase struct {
+	sortOpts []OrderSortOpts
+	less     func([]*Order) func(i, j int) bool
+}
+
+func runFindOrderSortTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersSortTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		expectedOrders := make([]*Order, len(originalOrders))
+		copy(expectedOrders, originalOrders)
+		sort.Slice(expectedOrders, testCase.less(expectedOrders))
+		findOpts := &FindOrdersOpts{
+			Sort: testCase.sortOpts,
+		}
+		foundOrders, err := db.FindOrders(findOpts)
+		require.NoError(t, err)
+		assertOrderSlicesAreEqual(t, expectedOrders, foundOrders)
+	}
 }
 
 func TestAddMiniHeaders(t *testing.T) {
@@ -254,10 +351,54 @@ func sortOrders(orders []*Order) {
 	})
 }
 
+func lessByMakerAssetAmountAsc(orders []*Order) func(i, j int) bool {
+	return func(i, j int) bool {
+		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == -1
+	}
+}
+
+func lessByMakerAssetAmountDesc(orders []*Order) func(i, j int) bool {
+	return func(i, j int) bool {
+		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == 1
+	}
+}
+
+func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*Order) func(i, j int) bool {
+	return func(i, j int) bool {
+		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount.Int) {
+		case -1:
+			// Less
+			return true
+		case 1:
+			// Greater
+			return false
+		default:
+			// Equal. In this case we use MakerAssetAmount as a secondary sort
+			// (i.e. a tie-breaker)
+			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == -1
+		}
+	}
+}
+
+func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*Order) func(i, j int) bool {
+	return func(i, j int) bool {
+		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount.Int) {
+		case -1:
+			// Less
+			return false
+		case 1:
+			// Greater
+			return true
+		default:
+			// Equal. In this case we use MakerAssetAmount as a secondary sort
+			// (i.e. a tie-breaker)
+			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == 1
+		}
+	}
+}
+
 func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
 	assert.Len(t, actual, len(expected), "wrong number of orders")
-	sortOrders(expected)
-	sortOrders(actual)
 	for i, expectedOrder := range expected {
 		if i >= len(actual) {
 			break
@@ -265,6 +406,13 @@ func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
 		actualOrder := actual[i]
 		assertOrdersAreEqual(t, expectedOrder, actualOrder)
 	}
+}
+
+func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*Order) {
+	assert.Len(t, actual, len(expected), "wrong number of orders")
+	sortOrders(expected)
+	sortOrders(actual)
+	assertOrderSlicesAreEqual(t, expected, actual)
 }
 
 func assertOrdersAreEqual(t *testing.T, expected, actual *Order) {
