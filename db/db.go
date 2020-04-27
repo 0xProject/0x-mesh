@@ -273,9 +273,11 @@ type OrderSortOpts struct {
 	Direction SortDirection
 }
 
-// TODO(albrow): Add options for filtering, sorting, limit, and offset.
 func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
-	query := db.findOrdersQueryFromOpts(opts)
+	query, err := db.findOrdersQueryFromOpts(opts)
+	if err != nil {
+		return nil, err
+	}
 	var orders []*Order
 	rawQuery, _ := query.ToSQL(false)
 	fmt.Println(rawQuery)
@@ -285,20 +287,29 @@ func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
 	return orders, nil
 }
 
-func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) *sqlz.SelectStmt {
+func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, error) {
 	query := sqlz.Newx(db.sqldb).Select("*").From("orders")
 	if opts == nil {
-		return query
+		return query, nil
 	}
 
 	ordering := orderingFromOrderSortOpts(opts.Sort)
 	if len(ordering) != 0 {
 		query.OrderBy(ordering...)
 	}
+	if opts.Limit != 0 {
+		query.Limit(int64(opts.Limit))
+	}
+	if opts.Offset != 0 {
+		if opts.Limit == 0 {
+			return nil, errors.New("db.FindOrders: can't use Offset without Limit")
+		}
+		query.Offset(int64(opts.Offset))
+	}
 
-	// TODO(albrow): LIMIT, OFFSET, WHERE
+	// TODO(albrow): WHERE
 
-	return query
+	return query, nil
 }
 
 func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {

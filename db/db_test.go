@@ -206,6 +206,89 @@ func runFindOrderSortTestCase(t *testing.T, db *DB, originalOrders []*Order, tes
 	}
 }
 
+func TestFindOrdersLimitAndOffset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numOrders := 10
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		originalOrders = append(originalOrders, newTestOrder())
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+	sortOrders(originalOrders)
+
+	testCases := []findOrdersLimitAndOffsetTestCase{
+		{
+			limit:          0,
+			offset:         0,
+			expectedOrders: originalOrders,
+		},
+		{
+			limit:          3,
+			offset:         0,
+			expectedOrders: originalOrders[:3],
+		},
+		{
+			limit:         0,
+			offset:        3,
+			expectedError: "can't use Offset without Limit",
+		},
+		{
+			limit:          10,
+			offset:         3,
+			expectedOrders: originalOrders[3:],
+		},
+		{
+			limit:          4,
+			offset:         3,
+			expectedOrders: originalOrders[3:7],
+		},
+		{
+			limit:          10,
+			offset:         10,
+			expectedOrders: []*Order{},
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("test case %d", i)
+		t.Run(testCaseName, runFindOrdersLimitAndOFfsetTestCase(t, db, originalOrders, testCase))
+	}
+}
+
+type findOrdersLimitAndOffsetTestCase struct {
+	limit          uint
+	offset         uint
+	expectedOrders []*Order
+	expectedError  string
+}
+
+func runFindOrdersLimitAndOFfsetTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		findOpts := &FindOrdersOpts{
+			Sort: []OrderSortOpts{
+				{
+					Field:     Hash,
+					Direction: ASC,
+				},
+			},
+			Limit:  testCase.limit,
+			Offset: testCase.offset,
+		}
+
+		foundOrders, err := db.FindOrders(findOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			assertOrderSlicesAreEqual(t, testCase.expectedOrders, foundOrders)
+		}
+	}
+}
+
 func TestAddMiniHeaders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
