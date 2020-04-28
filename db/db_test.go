@@ -141,7 +141,7 @@ func TestFindOrdersSort(t *testing.T) {
 
 	testCases := []findOrdersSortTestCase{
 		{
-			sortOpts: []OrderSortOpts{
+			sortOpts: []OrderSort{
 				{
 					Field:     MakerAssetAmount,
 					Direction: Ascending,
@@ -150,7 +150,7 @@ func TestFindOrdersSort(t *testing.T) {
 			less: lessByMakerAssetAmountAsc,
 		},
 		{
-			sortOpts: []OrderSortOpts{
+			sortOpts: []OrderSort{
 				{
 					Field:     MakerAssetAmount,
 					Direction: Descending,
@@ -159,7 +159,7 @@ func TestFindOrdersSort(t *testing.T) {
 			less: lessByMakerAssetAmountDesc,
 		},
 		{
-			sortOpts: []OrderSortOpts{
+			sortOpts: []OrderSort{
 				{
 					Field:     TakerAssetAmount,
 					Direction: Ascending,
@@ -172,7 +172,7 @@ func TestFindOrdersSort(t *testing.T) {
 			less: lessByTakerAssetAmountAscAndMakerAssetAmountAsc,
 		},
 		{
-			sortOpts: []OrderSortOpts{
+			sortOpts: []OrderSort{
 				{
 					Field:     TakerAssetAmount,
 					Direction: Descending,
@@ -192,7 +192,7 @@ func TestFindOrdersSort(t *testing.T) {
 }
 
 type findOrdersSortTestCase struct {
-	sortOpts []OrderSortOpts
+	sortOpts []OrderSort
 	less     func([]*Order) func(i, j int) bool
 }
 
@@ -272,7 +272,7 @@ type findOrdersLimitAndOffsetTestCase struct {
 func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &FindOrdersOpts{
-			Sort: []OrderSortOpts{
+			Sort: []OrderSort{
 				{
 					Field:     Hash,
 					Direction: Ascending,
@@ -329,14 +329,14 @@ func TestFindOrdersFilter(t *testing.T) {
 	testCases := []findOrdersFilterTestCase{
 		{
 			name:           "no filter",
-			filters:        []OrderFilterOpts{},
+			filters:        []OrderFilter{},
 			expectedOrders: originalOrders,
 		},
 
 		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
 		{
 			name: "MakerAssetAmount = 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  Equal,
@@ -347,7 +347,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount != 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  NotEqual,
@@ -358,7 +358,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount < 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  Less,
@@ -369,7 +369,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount > 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  Greater,
@@ -380,7 +380,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount <= 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  LessOrEqual,
@@ -391,7 +391,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount >= 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  GreaterOrEqual,
@@ -402,7 +402,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount < 10^76",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  Less,
@@ -415,7 +415,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		// Filter on MakerAssetData (type []byte/TEXT)
 		{
 			name: "MakerAssetData = f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  Equal,
@@ -426,7 +426,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetData != f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  NotEqual,
@@ -437,7 +437,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetData < f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  Less,
@@ -448,7 +448,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetData > f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  Greater,
@@ -459,7 +459,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetData <= f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  LessOrEqual,
@@ -470,7 +470,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetData >= f",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetData,
 					Kind:  GreaterOrEqual,
@@ -483,7 +483,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
 		{
 			name: "ParsedMakerAssetData CONTAINS query that matches all",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: ParsedMakerAssetData,
 					Kind:  Contains,
@@ -494,7 +494,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: ParsedMakerAssetData,
 					Kind:  Contains,
@@ -505,21 +505,21 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
 			},
 			expectedOrders: originalOrders,
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
 			},
 			expectedOrders: originalOrders[5:6],
 		},
 		{
 			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
 			},
 			expectedOrders: originalOrders,
@@ -528,7 +528,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		// Combining two or more filters
 		{
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  GreaterOrEqual,
@@ -544,7 +544,7 @@ func TestFindOrdersFilter(t *testing.T) {
 		},
 		{
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
-			filters: []OrderFilterOpts{
+			filters: []OrderFilter{
 				{
 					Field: MakerAssetAmount,
 					Kind:  GreaterOrEqual,
@@ -572,7 +572,7 @@ func TestFindOrdersFilter(t *testing.T) {
 
 type findOrdersFilterTestCase struct {
 	name           string
-	filters        []OrderFilterOpts
+	filters        []OrderFilter
 	expectedOrders []*Order
 	expectedError  string
 }

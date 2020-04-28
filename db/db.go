@@ -287,18 +287,18 @@ const (
 )
 
 type FindOrdersOpts struct {
-	Filters []OrderFilterOpts
-	Sort    []OrderSortOpts
+	Filters []OrderFilter
+	Sort    []OrderSort
 	Limit   uint
 	Offset  uint
 }
 
-type OrderSortOpts struct {
+type OrderSort struct {
 	Field     OrderField
 	Direction SortDirection
 }
 
-type OrderFilterOpts struct {
+type OrderFilter struct {
 	Field OrderField
 	Kind  FilterKind
 	Value interface{}
@@ -306,8 +306,8 @@ type OrderFilterOpts struct {
 
 // IncludesMakerAssetData is a helper method which returns a filter that will match orders
 // that include the given asset data in MakerAssetData.
-func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilterOpts {
-	return OrderFilterOpts{
+func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return OrderFilter{
 		Field: ParsedMakerAssetData,
 		Kind:  Contains,
 		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
@@ -316,8 +316,8 @@ func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) Order
 
 // IncludesMakerFeeAssetData is a helper method which returns a filter that will match orders
 // that include the given asset data in MakerFeeAssetData.
-func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilterOpts {
-	return OrderFilterOpts{
+func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return OrderFilter{
 		Field: ParsedMakerFeeAssetData,
 		Kind:  Contains,
 		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
@@ -368,7 +368,7 @@ func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, e
 	return query, nil
 }
 
-func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {
+func orderingFromOrderSortOpts(opts []OrderSort) []sqlz.SQLStmt {
 	ordering := []sqlz.SQLStmt{}
 	for _, sortOpt := range opts {
 		if sortOpt.Direction == Ascending {
@@ -380,7 +380,7 @@ func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {
 	return ordering
 }
 
-func whereConditionsFromOrderFilterOpts(opts []OrderFilterOpts) ([]sqlz.WhereCondition, error) {
+func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereCondition, error) {
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(opts))
 	for i, filterOpt := range opts {
