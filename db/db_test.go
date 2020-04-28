@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -300,6 +301,8 @@ func TestFindOrdersFilter(t *testing.T) {
 	// Create some test orders with very specific characteristics to make it easier to write tests.
 	// - Both MakerAssetAmount and TakerAssetAmount will e 0, 1, 2, etc.
 	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
+	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
 	numOrders := 10
 	originalOrders := []*Order{}
 	for i := 0; i < numOrders; i++ {
@@ -307,6 +310,17 @@ func TestFindOrdersFilter(t *testing.T) {
 		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
 		order.TakerAssetAmount = NewUint256(big.NewInt(int64(i)))
 		order.MakerAssetData = []byte{97 + byte(i)}
+		parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: NewUint256(big.NewInt(0)),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: NewUint256(big.NewInt(int64(i)*10 + 1)),
+			},
+		})
+		order.ParsedMakerAssetData = &parsedMakerAssetData
 		originalOrders = append(originalOrders, order)
 	}
 	_, _, err := db.AddOrders(originalOrders)
@@ -466,6 +480,30 @@ func TestFindOrdersFilter(t *testing.T) {
 			expectedOrders: originalOrders[5:],
 		},
 
+		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
+		{
+			name: "ParsedMakerAssetData CONTAINS query that matches all",
+			filters: []OrderFilterOpts{
+				{
+					Field: ParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedOrders: originalOrders,
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS query that matches one",
+			filters: []OrderFilterOpts{
+				{
+					Field: ParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+
 		// Combining two or more filters
 		{
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
@@ -505,9 +543,8 @@ func TestFindOrdersFilter(t *testing.T) {
 			expectedOrders: append(safeSubslice(originalOrders, 3, 5), safeSubslice(originalOrders, 6, 7)...),
 		},
 	}
-
 	for i, testCase := range testCases {
-		testCaseName := fmt.Sprintf("%s, (test case %d)", testCase.name, i)
+		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
 		t.Run(testCaseName, runFindOrdersFilterTestCase(t, db, testCase))
 	}
 }
@@ -601,7 +638,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	assert.Len(t, parsedAssetData, 1)
 	expectedAddress := common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32")
 	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
-	var expectedTokenID *big.Int
+	var expectedTokenID *Uint256 = nil
 	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
 
 	// ERC721 AssetData
@@ -611,7 +648,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	assert.Equal(t, 1, len(parsedAssetData))
 	expectedAddress = common.HexToAddress("0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48")
 	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
-	expectedTokenID = big.NewInt(1)
+	expectedTokenID = NewUint256(big.NewInt(1))
 	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
 
 	// Multi AssetData
@@ -625,7 +662,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 		},
 		{
 			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-			TokenID: big.NewInt(1),
+			TokenID: NewUint256(big.NewInt(1)),
 		},
 	}
 	for i, singleAssetData := range parsedAssetData {
@@ -649,21 +686,21 @@ func newTestOrder() *Order {
 	parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
 		{
 			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: big.NewInt(10),
+			TokenID: NewUint256(big.NewInt(10)),
 		},
 		{
 			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: big.NewInt(20),
+			TokenID: NewUint256(big.NewInt(20)),
 		},
 		{
 			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: big.NewInt(30),
+			TokenID: NewUint256(big.NewInt(30)),
 		},
 	})
 	parsedMakerFeeAssetData := ParsedAssetData([]SingleAssetData{
 		{
 			Address: constants.GanacheDummyERC1155MintableAddress,
-			TokenID: big.NewInt(567),
+			TokenID: NewUint256(big.NewInt(567)),
 		},
 	})
 	return &Order{

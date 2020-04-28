@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -46,9 +47,9 @@ type Order struct {
 	// IsPinned indicates whether or not the order is pinned. Pinned orders are
 	// not removed from the database unless they become unfillable.
 	IsPinned bool `db:"isPinned"`
-	// JSON-encoded list of asset datas contained in MakerAssetData. For non-MAP
+	// JSON-encoded list of assetdatas contained in MakerAssetData. For non-MAP
 	// orders, the list contains only one element which is equal to MakerAssetData.
-	// For MAP orders, it contains each component asset data.
+	// For MAP orders, it contains each component assetdata.
 	ParsedMakerAssetData *ParsedAssetData `db:"parsedMakerAssetData"`
 	// Same as ParsedMakerAssetData but for MakerFeeAssetData instead of MakerAssetData.
 	ParsedMakerFeeAssetData *ParsedAssetData `db:"parsedMakerFeeAssetData"`
@@ -109,6 +110,26 @@ func (u *Uint256) Scan(value interface{}) error {
 	return nil
 }
 
+func (u *Uint256) MarshalJSON() ([]byte, error) {
+	if u == nil || u.Int == nil {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(u.Int.String())
+}
+
+func (u *Uint256) UnmarshalJSON(data []byte) error {
+	unqouted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return fmt.Errorf("could not unmarshal JSON data into Uint256: %s", string(data))
+	}
+	bigInt, ok := math.ParseBig256(unqouted)
+	if !ok {
+		return fmt.Errorf("could not unmarshal JSON data into Uint256: %s", string(data))
+	}
+	u.Int = bigInt
+	return nil
+}
+
 type EventLogs struct {
 	Logs []types.Log
 }
@@ -148,7 +169,7 @@ type ParsedAssetData []SingleAssetData
 
 type SingleAssetData struct {
 	Address common.Address `json:"address"`
-	TokenID *big.Int       `json:"tokenID"`
+	TokenID *Uint256       `json:"tokenID"`
 }
 
 func (s *ParsedAssetData) Value() (driver.Value, error) {
@@ -200,7 +221,7 @@ func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 		}
 		a := SingleAssetData{
 			Address: decodedAssetData.Address,
-			TokenID: decodedAssetData.TokenId,
+			TokenID: NewUint256(decodedAssetData.TokenId),
 		}
 		singleAssetDatas = append(singleAssetDatas, a)
 	case "ERC1155Assets":
@@ -212,7 +233,7 @@ func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 		for _, id := range decodedAssetData.Ids {
 			a := SingleAssetData{
 				Address: decodedAssetData.Address,
-				TokenID: id,
+				TokenID: NewUint256(id),
 			}
 			singleAssetDatas = append(singleAssetDatas, a)
 		}

@@ -252,6 +252,7 @@ const (
 	Greater        FilterKind = ">"
 	LessOrEqual    FilterKind = "<="
 	GreaterOrEqual FilterKind = ">="
+	Contains       FilterKind = "CONTAINS"
 	// TODO(albrow): Starts with? Contains? Matches regex?
 )
 
@@ -280,6 +281,8 @@ const (
 	FillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
 	IsRemoved                OrderField = "isRemoved"
 	IsPinned                 OrderField = "isPinned"
+	ParsedMakerAssetData     OrderField = "parsedMakerAssetData"
+	ParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
 )
 
 type FindOrdersOpts struct {
@@ -333,7 +336,10 @@ func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, e
 		}
 		query.Offset(int64(opts.Offset))
 	}
-	whereConditions := whereConditionsFromOrderFilterOpts(opts.Filters)
+	whereConditions, err := whereConditionsFromOrderFilterOpts(opts.Filters)
+	if err != nil {
+		return nil, err
+	}
 	if len(whereConditions) != 0 {
 		query.Where(whereConditions...)
 	}
@@ -353,7 +359,8 @@ func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {
 	return ordering
 }
 
-func whereConditionsFromOrderFilterOpts(opts []OrderFilterOpts) []sqlz.WhereCondition {
+func whereConditionsFromOrderFilterOpts(opts []OrderFilterOpts) ([]sqlz.WhereCondition, error) {
+	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(opts))
 	for i, filterOpt := range opts {
 		switch filterOpt.Kind {
@@ -369,9 +376,15 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilterOpts) []sqlz.WhereCond
 			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), filterOpt.Value)
 		case GreaterOrEqual:
 			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), filterOpt.Value)
+		case Contains:
+			// TODO(albrow): Value cannot contain special characters like "%".
+			// TODO(albrow): Optimize this so it is easier to index.
+			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", filterOpt.Value))
+		default:
+			return nil, fmt.Errorf("db.FindOrder: unknown FilterOpt.Kind: %s", filterOpt.Kind)
 		}
 	}
-	return whereConditions
+	return whereConditions, nil
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {
