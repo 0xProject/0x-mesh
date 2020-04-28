@@ -593,6 +593,48 @@ func TestFindMiniHeaders(t *testing.T) {
 	assertMiniHeaderSlicesAreEqual(t, originalMiniHeaders, foundMiniHeaders)
 }
 
+func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
+	// ERC20 AssetData
+	erc20AssetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
+	parsedAssetData, err := ParseContractAddressesAndTokenIdsFromAssetData(erc20AssetData, contractAddresses)
+	require.NoError(t, err)
+	assert.Len(t, parsedAssetData, 1)
+	expectedAddress := common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32")
+	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
+	var expectedTokenID *big.Int
+	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
+
+	// ERC721 AssetData
+	erc721AssetData := common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001")
+	parsedAssetData, err = ParseContractAddressesAndTokenIdsFromAssetData(erc721AssetData, contractAddresses)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(parsedAssetData))
+	expectedAddress = common.HexToAddress("0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48")
+	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
+	expectedTokenID = big.NewInt(1)
+	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
+
+	// Multi AssetData
+	multiAssetData := common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000x94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000")
+	parsedAssetData, err = ParseContractAddressesAndTokenIdsFromAssetData(multiAssetData, contractAddresses)
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(parsedAssetData))
+	expectedParsedAssetData := []SingleAssetData{
+		{
+			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+		},
+		{
+			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
+			TokenID: big.NewInt(1),
+		},
+	}
+	for i, singleAssetData := range parsedAssetData {
+		expectedSingleAssetData := expectedParsedAssetData[i]
+		assert.Equal(t, expectedSingleAssetData.Address, singleAssetData.Address)
+		assert.Equal(t, expectedSingleAssetData.TokenID, singleAssetData.TokenID)
+	}
+}
+
 func newTestDB(t *testing.T, ctx context.Context) *DB {
 	db, err := New(ctx, filepath.Join("tmp", "db_testing", uuid.New().String()))
 	require.NoError(t, err)
@@ -604,6 +646,26 @@ func newTestDB(t *testing.T, ctx context.Context) *DB {
 // into the database. Some computed fields (e.g. hash, signature) may not be
 // correct, so the order will not pass 0x validation.
 func newTestOrder() *Order {
+	parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
+		{
+			Address: constants.GanacheDummyERC721TokenAddress,
+			TokenID: big.NewInt(10),
+		},
+		{
+			Address: constants.GanacheDummyERC721TokenAddress,
+			TokenID: big.NewInt(20),
+		},
+		{
+			Address: constants.GanacheDummyERC721TokenAddress,
+			TokenID: big.NewInt(30),
+		},
+	})
+	parsedMakerFeeAssetData := ParsedAssetData([]SingleAssetData{
+		{
+			Address: constants.GanacheDummyERC1155MintableAddress,
+			TokenID: big.NewInt(567),
+		},
+	})
 	return &Order{
 		Hash:                     common.BigToHash(big.NewInt(int64(rand.Int()))),
 		ChainID:                  NewUint256(big.NewInt(constants.TestChainID)),
@@ -626,7 +688,9 @@ func newTestOrder() *Order {
 		LastUpdated:              time.Now(),
 		FillableTakerAssetAmount: NewUint256(big.NewInt(42)),
 		IsRemoved:                false,
-		IsPinned:                 false,
+		IsPinned:                 true,
+		ParsedMakerAssetData:     &parsedMakerAssetData,
+		ParsedMakerFeeAssetData:  &parsedMakerFeeAssetData,
 	}
 }
 
@@ -817,292 +881,6 @@ func assertMiniHeadersAreEqual(t *testing.T, expected, actual *MiniHeader) {
 	// We can compare the rest of the fields normally.
 	assert.Equal(t, expected, actual)
 }
-
-// func TestOrderCRUDOperations(t *testing.T) {
-// 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
-// 	require.NoError(t, err)
-// 	defer meshDB.Close()
-
-// 	makerAddress := constants.GanacheAccount0
-// 	salt := big.NewInt(1548619145450)
-// 	o := &zeroex.Order{
-// 		ChainID:               big.NewInt(constants.TestChainID),
-// 		ExchangeAddress:       contractAddresses.Exchange,
-// 		MakerAddress:          makerAddress,
-// 		TakerAddress:          constants.NullAddress,
-// 		SenderAddress:         constants.NullAddress,
-// 		FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 		TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 		TakerFeeAssetData:     constants.NullBytes,
-// 		MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 		MakerFeeAssetData:     constants.NullBytes,
-// 		Salt:                  salt,
-// 		MakerFee:              big.NewInt(0),
-// 		TakerFee:              big.NewInt(0),
-// 		MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 		TakerAssetAmount:      big.NewInt(1),
-// 		ExpirationTimeSeconds: big.NewInt(1548619325),
-// 	}
-// 	signedOrder, err := zeroex.SignTestOrder(o)
-// 	require.NoError(t, err)
-
-// 	orderHash, err := o.ComputeOrderHash()
-// 	require.NoError(t, err)
-
-// 	currentTime := time.Now().UTC()
-// 	fiveMinutesFromNow := currentTime.Add(5 * time.Minute)
-
-// 	// Insert
-// 	order := &Order{
-// 		Hash:                     orderHash,
-// 		SignedOrder:              signedOrder,
-// 		FillableTakerAssetAmount: big.NewInt(1),
-// 		LastUpdated:              currentTime,
-// 		IsRemoved:                false,
-// 	}
-// 	require.NoError(t, meshDB.Orders.Insert(order))
-// 	// We need to call ResetHash so that unexported hash field is equal in later
-// 	// assertions.
-// 	signedOrder.ResetHash()
-
-// 	// Find
-// 	foundOrder := &Order{}
-// 	require.NoError(t, meshDB.Orders.FindByID(order.ID(), foundOrder))
-// 	assert.Equal(t, order, foundOrder)
-
-// 	// Check Indexes
-// 	orders, err := meshDB.FindOrdersByMakerAddressAndMaxSalt(makerAddress, salt)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, []*Order{order}, orders)
-
-// 	orders, err = meshDB.FindOrdersByMakerAddress(makerAddress)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, []*Order{order}, orders)
-
-// 	orders, err = meshDB.FindOrdersLastUpdatedBefore(fiveMinutesFromNow)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, []*Order{order}, orders)
-
-// 	// Update
-// 	modifiedOrder := foundOrder
-// 	modifiedOrder.FillableTakerAssetAmount = big.NewInt(0)
-// 	require.NoError(t, meshDB.Orders.Update(modifiedOrder))
-// 	foundModifiedOrder := &Order{}
-// 	require.NoError(t, meshDB.Orders.FindByID(modifiedOrder.ID(), foundModifiedOrder))
-// 	assert.Equal(t, modifiedOrder, foundModifiedOrder)
-
-// 	// Delete
-// 	require.NoError(t, meshDB.Orders.Delete(foundModifiedOrder.ID()))
-// 	nonExistentOrder := &Order{}
-// 	err = meshDB.Orders.FindByID(foundModifiedOrder.ID(), nonExistentOrder)
-// 	assert.IsType(t, db.NotFoundError{}, err)
-// }
-
-// func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
-// 	// ERC20 AssetData
-// 	erc20AssetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
-// 	singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(erc20AssetData, contractAddresses)
-// 	require.NoError(t, err)
-// 	assert.Len(t, singleAssetDatas, 1)
-// 	expectedAddress := common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32")
-// 	assert.Equal(t, expectedAddress, singleAssetDatas[0].Address)
-// 	var expectedTokenID *big.Int
-// 	assert.Equal(t, expectedTokenID, singleAssetDatas[0].TokenID)
-
-// 	// ERC721 AssetData
-// 	erc721AssetData := common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001")
-// 	singleAssetDatas, err = parseContractAddressesAndTokenIdsFromAssetData(erc721AssetData, contractAddresses)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, 1, len(singleAssetDatas))
-// 	expectedAddress = common.HexToAddress("0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48")
-// 	assert.Equal(t, expectedAddress, singleAssetDatas[0].Address)
-// 	expectedTokenID = big.NewInt(1)
-// 	assert.Equal(t, expectedTokenID, singleAssetDatas[0].TokenID)
-
-// 	// Multi AssetData
-// 	multiAssetData := common.Hex2Bytes("94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000x94cfcdd7000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000024f47261b00000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c48000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000")
-// 	singleAssetDatas, err = parseContractAddressesAndTokenIdsFromAssetData(multiAssetData, contractAddresses)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, 2, len(singleAssetDatas))
-// 	expectedSingleAssetDatas := []singleAssetData{
-// 		singleAssetData{
-// 			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-// 		},
-// 		singleAssetData{
-// 			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-// 			TokenID: big.NewInt(1),
-// 		},
-// 	}
-// 	for i, singleAssetData := range singleAssetDatas {
-// 		expectedSingleAssetData := expectedSingleAssetDatas[i]
-// 		assert.Equal(t, expectedSingleAssetData.Address, singleAssetData.Address)
-// 		assert.Equal(t, expectedSingleAssetData.TokenID, singleAssetData.TokenID)
-// 	}
-// }
-
-// func TestTrimOrdersByExpirationTime(t *testing.T) {
-// 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
-// 	require.NoError(t, err)
-// 	defer meshDB.Close()
-
-// 	// TODO(albrow): Move these to top of file.
-// 	makerAddress := constants.GanacheAccount0
-
-// 	// Note: most of the fields in these orders are the same. For the purposes of
-// 	// this test, the only thing that matters is the Salt and ExpirationTime.
-// 	rawUnpinnedOrders := []*zeroex.Order{
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(0),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(100),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(1),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(200),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(2),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(200),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(3),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(300),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 	}
-// 	rawPinnedOrders := []*zeroex.Order{
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(0),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(250),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 		{
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  big.NewInt(1),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(350),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 		},
-// 	}
-
-// 	insertRawOrders(t, meshDB, rawUnpinnedOrders, false)
-// 	pinnedOrders := insertRawOrders(t, meshDB, rawPinnedOrders, true)
-
-// 	// Call CalculateNewMaxExpirationTimeAndTrimDatabase and check the results.
-// 	targetMaxOrders := 4
-// 	gotExpirationTime, gotRemovedOrders, err := meshDB.TrimOrdersByExpirationTime(targetMaxOrders)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, "199", gotExpirationTime.String(), "newMaxExpirationTime")
-// 	assert.Len(t, gotRemovedOrders, 2, "wrong number of orders removed")
-
-// 	// Check that the expiration time of each removed order is >= the new max.
-// 	for _, removedOrder := range gotRemovedOrders {
-// 		expirationTimeOfRemovedOrder := removedOrder.SignedOrder.ExpirationTimeSeconds
-// 		assert.True(t, expirationTimeOfRemovedOrder.Cmp(gotExpirationTime) != -1, "an order was removed with expiration time (%s) less than the new max (%s)", expirationTimeOfRemovedOrder, gotExpirationTime)
-// 	}
-// 	var remainingOrders []*Order
-// 	require.NoError(t, meshDB.Orders.FindAll(&remainingOrders))
-// 	assert.Len(t, remainingOrders, 4, "wrong number of orders remaining")
-
-// 	// Check that the expiration time of each remaining order is <= the new max.
-// 	for _, remainingOrder := range remainingOrders {
-// 		if !remainingOrder.IsPinned {
-// 			// Unpinned orders should not have an expiration time greater than the
-// 			// new max.
-// 			expirationTimeOfRemainingOrder := remainingOrder.SignedOrder.ExpirationTimeSeconds
-// 			newMaxPlusOne := big.NewInt(0).Add(gotExpirationTime, big.NewInt(1))
-// 			assert.True(t, expirationTimeOfRemainingOrder.Cmp(newMaxPlusOne) != 1, "a remaining order had an expiration time (%s) greater than the new max + 1 (%s)", expirationTimeOfRemainingOrder, newMaxPlusOne)
-// 		}
-// 	}
-
-// 	// Check that the pinned orders are still in the database.
-// 	for _, pinnedOrder := range pinnedOrders {
-// 		require.NoError(t, meshDB.Orders.FindByID(pinnedOrder.Hash.Bytes(), &Order{}))
-// 	}
-
-// 	// Trying to trim orders when the database is full of pinned orders should
-// 	// return an error.
-// 	_, _, err = meshDB.TrimOrdersByExpirationTime(1)
-// 	assert.EqualError(t, err, ErrDBFilledWithPinnedOrders.Error(), "expected ErrFilledWithPinnedOrders when targetMaxOrders is less than the number of pinned orders")
-// }
 
 // func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
 // 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)

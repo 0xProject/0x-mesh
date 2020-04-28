@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,7 +46,12 @@ type Order struct {
 	// IsPinned indicates whether or not the order is pinned. Pinned orders are
 	// not removed from the database unless they become unfillable.
 	IsPinned bool `db:"isPinned"`
-	// TODO(albrow): Specific fields for decoded assetdata (especially MAP)?
+	// JSON-encoded list of asset datas contained in MakerAssetData. For non-MAP
+	// orders, the list contains only one element which is equal to MakerAssetData.
+	// For MAP orders, it contains each component asset data.
+	ParsedMakerAssetData *ParsedAssetData `db:"parsedMakerAssetData"`
+	// Same as ParsedMakerAssetData but for MakerFeeAssetData instead of MakerAssetData.
+	ParsedMakerFeeAssetData *ParsedAssetData `db:"parsedMakerFeeAssetData"`
 }
 
 // Metadata is the database representation of MeshDB instance metadata
@@ -135,4 +142,121 @@ func (e *EventLogs) Scan(value interface{}) error {
 	default:
 		return fmt.Errorf("could not scan type %T into EventLogs", value)
 	}
+}
+
+type ParsedAssetData []SingleAssetData
+
+type SingleAssetData struct {
+	Address common.Address `json:"address"`
+	TokenID *big.Int       `json:"tokenID"`
+}
+
+func (s *ParsedAssetData) Value() (driver.Value, error) {
+	if s == nil {
+		return nil, nil
+	}
+	return json.Marshal(s)
+}
+
+func (s *ParsedAssetData) Scan(value interface{}) error {
+	if value == nil {
+		s = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, s)
+	case string:
+		return json.Unmarshal([]byte(v), s)
+	default:
+		return fmt.Errorf("could not scan type %T into EventLogs", value)
+	}
+}
+
+func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) (ParsedAssetData, error) {
+	singleAssetDatas := []SingleAssetData{}
+	assetDataDecoder := zeroex.NewAssetDataDecoder()
+
+	assetDataName, err := assetDataDecoder.GetName(assetData)
+	if err != nil {
+		return nil, err
+	}
+	switch assetDataName {
+	case "ERC20Token":
+		var decodedAssetData zeroex.ERC20AssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		a := SingleAssetData{
+			Address: decodedAssetData.Address,
+		}
+		singleAssetDatas = append(singleAssetDatas, a)
+	case "ERC721Token":
+		var decodedAssetData zeroex.ERC721AssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		a := SingleAssetData{
+			Address: decodedAssetData.Address,
+			TokenID: decodedAssetData.TokenId,
+		}
+		singleAssetDatas = append(singleAssetDatas, a)
+	case "ERC1155Assets":
+		var decodedAssetData zeroex.ERC1155AssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range decodedAssetData.Ids {
+			a := SingleAssetData{
+				Address: decodedAssetData.Address,
+				TokenID: id,
+			}
+			singleAssetDatas = append(singleAssetDatas, a)
+		}
+	case "StaticCall":
+		var decodedAssetData zeroex.StaticCallAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		// NOTE(jalextowle): As of right now, none of the supported staticcalls
+		// have important information in the StaticCallData. We choose not to add
+		// `singleAssetData` because it would not be used.
+	case "MultiAsset":
+		var decodedAssetData zeroex.MultiAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		for _, assetData := range decodedAssetData.NestedAssetData {
+			as, err := ParseContractAddressesAndTokenIdsFromAssetData(assetData, contractAddresses)
+			if err != nil {
+				return nil, err
+			}
+			singleAssetDatas = append(singleAssetDatas, as...)
+		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return nil, err
+		}
+		tokenAddress := decodedAssetData.TokenAddress
+		// HACK(fabio): Despite Chai ERC20Bridge orders encoding the Dai address as
+		// the tokenAddress, we actually want to react to the Chai token's contract
+		// events, so we actually return it instead.
+		if decodedAssetData.BridgeAddress == contractAddresses.ChaiBridge {
+			tokenAddress = contractAddresses.ChaiToken
+		}
+		a := SingleAssetData{
+			Address: tokenAddress,
+		}
+		singleAssetDatas = append(singleAssetDatas, a)
+	default:
+		return nil, fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
+	}
+	return singleAssetDatas, nil
 }
