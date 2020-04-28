@@ -493,7 +493,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			expectedOrders: originalOrders,
 		},
 		{
-			name: "ParsedMakerAssetData CONTAINS query that matches one",
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
 			filters: []OrderFilterOpts{
 				{
 					Field: ParsedMakerAssetData,
@@ -502,6 +502,27 @@ func TestFindOrdersFilter(t *testing.T) {
 				},
 			},
 			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilterOpts{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
+			},
+			expectedOrders: originalOrders,
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilterOpts{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilterOpts{
+				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
+			},
+			expectedOrders: originalOrders,
 		},
 
 		// Combining two or more filters

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
@@ -301,6 +302,26 @@ type OrderFilterOpts struct {
 	Field OrderField
 	Kind  FilterKind
 	Value interface{}
+}
+
+// IncludesMakerAssetData is a helper method which returns a filter that will match orders
+// that include the given asset data in MakerAssetData.
+func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilterOpts {
+	return OrderFilterOpts{
+		Field: ParsedMakerAssetData,
+		Kind:  Contains,
+		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
+	}
+}
+
+// IncludesMakerFeeAssetData is a helper method which returns a filter that will match orders
+// that include the given asset data in MakerFeeAssetData.
+func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilterOpts {
+	return OrderFilterOpts{
+		Field: ParsedMakerFeeAssetData,
+		Kind:  Contains,
+		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
+	}
 }
 
 func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
