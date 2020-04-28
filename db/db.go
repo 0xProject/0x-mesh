@@ -231,8 +231,20 @@ func (db *DB) GetOrder(hash common.Hash) (*Order, error) {
 type SortDirection string
 
 const (
-	ASC  SortDirection = "ASC"
-	DESC SortDirection = "DESC"
+	Ascending  SortDirection = "ASC"
+	Descending SortDirection = "DESC"
+)
+
+type FilterKind string
+
+const (
+	Equal          FilterKind = "="
+	NotEqual       FilterKind = "!="
+	Less           FilterKind = "<"
+	Greater        FilterKind = ">"
+	LessOrEqual    FilterKind = "<="
+	GreaterOrEqual FilterKind = ">="
+	// TODO(albrow): Starts with? Contains? Matches regex?
 )
 
 type OrderField string
@@ -263,14 +275,21 @@ const (
 )
 
 type FindOrdersOpts struct {
-	Sort   []OrderSortOpts
-	Limit  uint
-	Offset uint
+	Filters []OrderFilterOpts
+	Sort    []OrderSortOpts
+	Limit   uint
+	Offset  uint
 }
 
 type OrderSortOpts struct {
 	Field     OrderField
 	Direction SortDirection
+}
+
+type OrderFilterOpts struct {
+	Field OrderField
+	Kind  FilterKind
+	Value interface{}
 }
 
 func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
@@ -279,8 +298,8 @@ func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
 		return nil, err
 	}
 	var orders []*Order
-	rawQuery, _ := query.ToSQL(false)
-	fmt.Println(rawQuery)
+	rawQuery, bindings := query.ToSQL(false)
+	fmt.Println(rawQuery, bindings)
 	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err
 	}
@@ -306,8 +325,10 @@ func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, e
 		}
 		query.Offset(int64(opts.Offset))
 	}
-
-	// TODO(albrow): WHERE
+	whereConditions := whereConditionsFromOrderFilterOpts(opts.Filters)
+	if len(whereConditions) != 0 {
+		query.Where(whereConditions...)
+	}
 
 	return query, nil
 }
@@ -315,13 +336,34 @@ func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, e
 func orderingFromOrderSortOpts(opts []OrderSortOpts) []sqlz.SQLStmt {
 	ordering := []sqlz.SQLStmt{}
 	for _, sortOpt := range opts {
-		if sortOpt.Direction == ASC {
+		if sortOpt.Direction == Ascending {
 			ordering = append(ordering, sqlz.Asc(string(sortOpt.Field)))
 		} else {
 			ordering = append(ordering, sqlz.Desc(string(sortOpt.Field)))
 		}
 	}
 	return ordering
+}
+
+func whereConditionsFromOrderFilterOpts(opts []OrderFilterOpts) []sqlz.WhereCondition {
+	whereConditions := make([]sqlz.WhereCondition, len(opts))
+	for i, filterOpt := range opts {
+		switch filterOpt.Kind {
+		case Equal:
+			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), filterOpt.Value)
+		case NotEqual:
+			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), filterOpt.Value))
+		case Less:
+			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), filterOpt.Value)
+		case Greater:
+			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), filterOpt.Value)
+		case LessOrEqual:
+			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), filterOpt.Value)
+		case GreaterOrEqual:
+			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), filterOpt.Value)
+		}
+	}
+	return whereConditions
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {

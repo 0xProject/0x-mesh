@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -14,6 +15,7 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +60,8 @@ func TestGetOrder(t *testing.T) {
 
 	foundOrder, err := db.GetOrder(originalOrder.Hash)
 	require.NoError(t, err)
-	assertOrdersAreEqual(t, originalOrder, foundOrder)
+	require.NotNil(t, foundOrder, "found order should not be nil")
+	assertOrdersAreEqual(t, *originalOrder, *foundOrder)
 }
 
 func TestUpdateOrder(t *testing.T) {
@@ -140,7 +143,7 @@ func TestFindOrdersSort(t *testing.T) {
 			sortOpts: []OrderSortOpts{
 				{
 					Field:     MakerAssetAmount,
-					Direction: ASC,
+					Direction: Ascending,
 				},
 			},
 			less: lessByMakerAssetAmountAsc,
@@ -149,7 +152,7 @@ func TestFindOrdersSort(t *testing.T) {
 			sortOpts: []OrderSortOpts{
 				{
 					Field:     MakerAssetAmount,
-					Direction: DESC,
+					Direction: Descending,
 				},
 			},
 			less: lessByMakerAssetAmountDesc,
@@ -158,11 +161,11 @@ func TestFindOrdersSort(t *testing.T) {
 			sortOpts: []OrderSortOpts{
 				{
 					Field:     TakerAssetAmount,
-					Direction: ASC,
+					Direction: Ascending,
 				},
 				{
 					Field:     MakerAssetAmount,
-					Direction: ASC,
+					Direction: Ascending,
 				},
 			},
 			less: lessByTakerAssetAmountAscAndMakerAssetAmountAsc,
@@ -171,11 +174,11 @@ func TestFindOrdersSort(t *testing.T) {
 			sortOpts: []OrderSortOpts{
 				{
 					Field:     TakerAssetAmount,
-					Direction: DESC,
+					Direction: Descending,
 				},
 				{
 					Field:     MakerAssetAmount,
-					Direction: DESC,
+					Direction: Descending,
 				},
 			},
 			less: lessByTakerAssetAmountDescAndMakerAssetAmountDesc,
@@ -254,7 +257,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("test case %d", i)
-		t.Run(testCaseName, runFindOrdersLimitAndOFfsetTestCase(t, db, originalOrders, testCase))
+		t.Run(testCaseName, runFindOrdersLimitAndOffsetTestCase(t, db, originalOrders, testCase))
 	}
 }
 
@@ -265,13 +268,13 @@ type findOrdersLimitAndOffsetTestCase struct {
 	expectedError  string
 }
 
-func runFindOrdersLimitAndOFfsetTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
+func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &FindOrdersOpts{
 			Sort: []OrderSortOpts{
 				{
 					Field:     Hash,
-					Direction: ASC,
+					Direction: Ascending,
 				},
 			},
 			Limit:  testCase.limit,
@@ -285,6 +288,250 @@ func runFindOrdersLimitAndOFfsetTestCase(t *testing.T, db *DB, originalOrders []
 		} else {
 			require.NoError(t, err)
 			assertOrderSlicesAreEqual(t, testCase.expectedOrders, foundOrders)
+		}
+	}
+}
+
+func TestFindOrdersFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test orders with very specific characteristics to make it easier to write tests.
+	// - Both MakerAssetAmount and TakerAssetAmount will e 0, 1, 2, etc.
+	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	numOrders := 10
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrder()
+		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.TakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.MakerAssetData = []byte{97 + byte(i)}
+		originalOrders = append(originalOrders, order)
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	testCases := []findOrdersFilterTestCase{
+		{
+			name:           "no filter",
+			filters:        []OrderFilterOpts{},
+			expectedOrders: originalOrders,
+		},
+
+		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		{
+			name: "MakerAssetAmount = 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  Equal,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "MakerAssetAmount != 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: append(safeSubslice(originalOrders, 0, 5), safeSubslice(originalOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetAmount < 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  Less,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[:5],
+		},
+		{
+			name: "MakerAssetAmount > 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  Greater,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[6:],
+		},
+		{
+			name: "MakerAssetAmount <= 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  LessOrEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[:6],
+		},
+		{
+			name: "MakerAssetAmount >= 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[5:],
+		},
+		{
+			name: "MakerAssetAmount < 10^76",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  Less,
+					Value: NewUint256(math.BigPow(10, 76)),
+				},
+			},
+			expectedOrders: originalOrders,
+		},
+
+		// Filter on MakerAssetData (type []byte/TEXT)
+		{
+			name: "MakerAssetData = f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  Equal,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "MakerAssetData != f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  NotEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: append(safeSubslice(originalOrders, 0, 5), safeSubslice(originalOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetData < f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  Less,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[:5],
+		},
+		{
+			name: "MakerAssetData > f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  Greater,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[6:],
+		},
+		{
+			name: "MakerAssetData <= f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  LessOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[:6],
+		},
+		{
+			name: "MakerAssetData >= f",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetData,
+					Kind:  GreaterOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[5:],
+		},
+
+		// Combining two or more filters
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+			},
+			expectedOrders: originalOrders[3:7],
+		},
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
+			filters: []OrderFilterOpts{
+				{
+					Field: MakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+				{
+					Field: TakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: append(safeSubslice(originalOrders, 3, 5), safeSubslice(originalOrders, 6, 7)...),
+		},
+	}
+
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("%s, (test case %d)", testCase.name, i)
+		t.Run(testCaseName, runFindOrdersFilterTestCase(t, db, testCase))
+	}
+}
+
+type findOrdersFilterTestCase struct {
+	name           string
+	filters        []OrderFilterOpts
+	expectedOrders []*Order
+	expectedError  string
+}
+
+func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilterTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		findOpts := &FindOrdersOpts{
+			Filters: testCase.filters,
+		}
+
+		foundOrders, err := db.FindOrders(findOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedOrders, foundOrders)
 		}
 	}
 }
@@ -428,6 +675,17 @@ func newTestEventLogs() *EventLogs {
 	})
 }
 
+// returns a (shallow) subslice of orders without modifying the original slice. Uses the
+// same semantics as slice expressions: low is inclusive, hi is exclusive. The returned
+// slice still contains pointers, it just doesn't use the same underlying array.
+func safeSubslice(orders []*Order, low, hi int) []*Order {
+	result := make([]*Order, hi-low)
+	for i := low; i < hi; i++ {
+		result[i-low] = orders[i]
+	}
+	return result
+}
+
 func sortOrders(orders []*Order) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
@@ -481,24 +739,37 @@ func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*Order) func(i, 
 }
 
 func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
-	assert.Len(t, actual, len(expected), "wrong number of orders")
+	assert.Equal(t, len(expected), len(actual), "wrong number of orders")
 	for i, expectedOrder := range expected {
 		if i >= len(actual) {
 			break
 		}
 		actualOrder := actual[i]
-		assertOrdersAreEqual(t, expectedOrder, actualOrder)
+		assertOrdersAreEqual(t, *expectedOrder, *actualOrder)
+	}
+	if t.Failed() {
+		expectedJSON, err := json.MarshalIndent(expected, "", "  ")
+		require.NoError(t, err)
+		actualJSON, err := json.MarshalIndent(actual, "", "  ")
+		require.NoError(t, err)
+		t.Logf("\nexpected:\n%s\n\n", string(expectedJSON))
+		t.Logf("\nactual:\n%s\n\n", string(actualJSON))
+		assert.Equal(t, string(expectedJSON), string(actualJSON))
 	}
 }
 
 func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*Order) {
-	assert.Len(t, actual, len(expected), "wrong number of orders")
-	sortOrders(expected)
-	sortOrders(actual)
-	assertOrderSlicesAreEqual(t, expected, actual)
+	// Make a copy of the given orders so we don't mess up the original when sorting them.
+	expectedCopy := make([]*Order, len(expected))
+	copy(expectedCopy, expected)
+	sortOrders(expectedCopy)
+	actualCopy := make([]*Order, len(actual))
+	copy(actualCopy, actual)
+	sortOrders(actualCopy)
+	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
 }
 
-func assertOrdersAreEqual(t *testing.T, expected, actual *Order) {
+func assertOrdersAreEqual(t *testing.T, expected, actual Order) {
 	if expected.LastUpdated.Equal(actual.LastUpdated) {
 		// HACK(albrow): In this case, the two values represent the same time.
 		// This is what we care about, but the assert package might consider

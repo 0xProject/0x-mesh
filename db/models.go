@@ -44,6 +44,7 @@ type Order struct {
 	// IsPinned indicates whether or not the order is pinned. Pinned orders are
 	// not removed from the database unless they become unfillable.
 	IsPinned bool `db:"isPinned"`
+	// TODO(albrow): Specific fields for decoded assetdata (especially MAP)?
 }
 
 // Metadata is the database representation of MeshDB instance metadata
