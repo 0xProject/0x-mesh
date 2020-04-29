@@ -254,36 +254,36 @@ const (
 	LessOrEqual    FilterKind = "<="
 	GreaterOrEqual FilterKind = ">="
 	Contains       FilterKind = "CONTAINS"
-	// TODO(albrow): Starts with? Contains? Matches regex?
+	// TODO(albrow): Starts with?
 )
 
 type OrderField string
 
 const (
-	Hash                     OrderField = "hash"
-	ChainID                  OrderField = "chainID"
-	ExchangeAddress          OrderField = "exchangeAddress"
-	MakerAddress             OrderField = "makerAddress"
-	MakerAssetData           OrderField = "makerAssetData"
-	MakerFeeAssetData        OrderField = "makerFeeAssetData"
-	MakerAssetAmount         OrderField = "makerAssetAmount"
-	MakerFee                 OrderField = "makerFee"
-	TakerAddress             OrderField = "takerAddress"
-	TakerAssetData           OrderField = "takerAssetData"
-	TakerFeeAssetData        OrderField = "takerFeeAssetData"
-	TakerAssetAmount         OrderField = "takerAssetAmount"
-	TakerFee                 OrderField = "takerFee"
-	SenderAddress            OrderField = "senderAddress"
-	FeeRecipientAddress      OrderField = "feeRecipientAddress"
-	ExpirationTimeSeconds    OrderField = "expirationTimeSeconds"
-	Salt                     OrderField = "salt"
-	Signature                OrderField = "signature"
-	LastUpdated              OrderField = "lastUpdated"
-	FillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
-	IsRemoved                OrderField = "isRemoved"
-	IsPinned                 OrderField = "isPinned"
-	ParsedMakerAssetData     OrderField = "parsedMakerAssetData"
-	ParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
+	OFHash                     OrderField = "hash"
+	OFChainID                  OrderField = "chainID"
+	OFExchangeAddress          OrderField = "exchangeAddress"
+	OFMakerAddress             OrderField = "makerAddress"
+	OFMakerAssetData           OrderField = "makerAssetData"
+	OFMakerFeeAssetData        OrderField = "makerFeeAssetData"
+	OFMakerAssetAmount         OrderField = "makerAssetAmount"
+	OFMakerFee                 OrderField = "makerFee"
+	OFTakerAddress             OrderField = "takerAddress"
+	OFTakerAssetData           OrderField = "takerAssetData"
+	OFTakerFeeAssetData        OrderField = "takerFeeAssetData"
+	OFTakerAssetAmount         OrderField = "takerAssetAmount"
+	OFTakerFee                 OrderField = "takerFee"
+	OFSenderAddress            OrderField = "senderAddress"
+	OFFeeRecipientAddress      OrderField = "feeRecipientAddress"
+	OFExpirationTimeSeconds    OrderField = "expirationTimeSeconds"
+	OFSalt                     OrderField = "salt"
+	OFSignature                OrderField = "signature"
+	OFLastUpdated              OrderField = "lastUpdated"
+	OFFillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
+	OFIsRemoved                OrderField = "isRemoved"
+	OFIsPinned                 OrderField = "isPinned"
+	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
+	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
 )
 
 type FindOrdersOpts struct {
@@ -308,7 +308,7 @@ type OrderFilter struct {
 // that include the given asset data in MakerAssetData.
 func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
 	return OrderFilter{
-		Field: ParsedMakerAssetData,
+		Field: OFParsedMakerAssetData,
 		Kind:  Contains,
 		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
 	}
@@ -318,7 +318,7 @@ func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) Order
 // that include the given asset data in MakerFeeAssetData.
 func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
 	return OrderFilter{
-		Field: ParsedMakerFeeAssetData,
+		Field: OFParsedMakerFeeAssetData,
 		Kind:  Contains,
 		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
 	}

@@ -143,7 +143,7 @@ func TestFindOrdersSort(t *testing.T) {
 		{
 			sortOpts: []OrderSort{
 				{
-					Field:     MakerAssetAmount,
+					Field:     OFMakerAssetAmount,
 					Direction: Ascending,
 				},
 			},
@@ -152,7 +152,7 @@ func TestFindOrdersSort(t *testing.T) {
 		{
 			sortOpts: []OrderSort{
 				{
-					Field:     MakerAssetAmount,
+					Field:     OFMakerAssetAmount,
 					Direction: Descending,
 				},
 			},
@@ -161,11 +161,11 @@ func TestFindOrdersSort(t *testing.T) {
 		{
 			sortOpts: []OrderSort{
 				{
-					Field:     TakerAssetAmount,
+					Field:     OFTakerAssetAmount,
 					Direction: Ascending,
 				},
 				{
-					Field:     MakerAssetAmount,
+					Field:     OFMakerAssetAmount,
 					Direction: Ascending,
 				},
 			},
@@ -174,11 +174,11 @@ func TestFindOrdersSort(t *testing.T) {
 		{
 			sortOpts: []OrderSort{
 				{
-					Field:     TakerAssetAmount,
+					Field:     OFTakerAssetAmount,
 					Direction: Descending,
 				},
 				{
-					Field:     MakerAssetAmount,
+					Field:     OFMakerAssetAmount,
 					Direction: Descending,
 				},
 			},
@@ -274,7 +274,7 @@ func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []
 		findOpts := &FindOrdersOpts{
 			Sort: []OrderSort{
 				{
-					Field:     Hash,
+					Field:     OFHash,
 					Direction: Ascending,
 				},
 			},
@@ -338,7 +338,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount = 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  Equal,
 					Value: 5,
 				},
@@ -349,7 +349,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount != 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  NotEqual,
 					Value: 5,
 				},
@@ -360,7 +360,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount < 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  Less,
 					Value: 5,
 				},
@@ -371,7 +371,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount > 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  Greater,
 					Value: 5,
 				},
@@ -382,7 +382,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount <= 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  LessOrEqual,
 					Value: 5,
 				},
@@ -393,7 +393,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount >= 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
 					Value: 5,
 				},
@@ -404,7 +404,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount < 10^76",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  Less,
 					Value: NewUint256(math.BigPow(10, 76)),
 				},
@@ -417,7 +417,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData = f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  Equal,
 					Value: []byte("f"),
 				},
@@ -428,7 +428,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData != f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  NotEqual,
 					Value: []byte("f"),
 				},
@@ -439,7 +439,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData < f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  Less,
 					Value: []byte("f"),
 				},
@@ -450,7 +450,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData > f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  Greater,
 					Value: []byte("f"),
 				},
@@ -461,7 +461,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData <= f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  LessOrEqual,
 					Value: []byte("f"),
 				},
@@ -472,7 +472,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetData >= f",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  GreaterOrEqual,
 					Value: []byte("f"),
 				},
@@ -485,7 +485,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "ParsedMakerAssetData CONTAINS query that matches all",
 			filters: []OrderFilter{
 				{
-					Field: ParsedMakerAssetData,
+					Field: OFParsedMakerAssetData,
 					Kind:  Contains,
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
@@ -496,7 +496,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
 			filters: []OrderFilter{
 				{
-					Field: ParsedMakerAssetData,
+					Field: OFParsedMakerAssetData,
 					Kind:  Contains,
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
@@ -530,12 +530,12 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
 					Value: 3,
 				},
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  Less,
 					Value: []byte("h"),
 				},
@@ -546,17 +546,17 @@ func TestFindOrdersFilter(t *testing.T) {
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
 			filters: []OrderFilter{
 				{
-					Field: MakerAssetAmount,
+					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
 					Value: 3,
 				},
 				{
-					Field: MakerAssetData,
+					Field: OFMakerAssetData,
 					Kind:  Less,
 					Value: []byte("h"),
 				},
 				{
-					Field: TakerAssetAmount,
+					Field: OFTakerAssetAmount,
 					Kind:  NotEqual,
 					Value: 5,
 				},
