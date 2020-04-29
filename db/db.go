@@ -480,13 +480,120 @@ func (db *DB) GetMiniHeader(hash common.Hash) (*MiniHeader, error) {
 	return &miniHeader, nil
 }
 
+type MiniHeaderField string
+
+const (
+	MFHash      MiniHeaderField = "hash"
+	MFParent    MiniHeaderField = "parent"
+	MFNumber    MiniHeaderField = "number"
+	MFTimestamp MiniHeaderField = "timestamp"
+	MFLogs      MiniHeaderField = "logs"
+)
+
+type FindMiniHeadersOpts struct {
+	Filters []MiniHeaderFilter
+	Sort    []MiniHeaderSort
+	Limit   uint
+	Offset  uint
+}
+
+type MiniHeaderSort struct {
+	Field     MiniHeaderField
+	Direction SortDirection
+}
+
+type MiniHeaderFilter struct {
+	Field MiniHeaderField
+	Kind  FilterKind
+	Value interface{}
+}
+
 // TODO(albrow): Add options for filtering, sorting, limit, and offset.
-func (db *DB) FindMiniHeaders() ([]*MiniHeader, error) {
+func (db *DB) FindMiniHeaders(opts *FindMiniHeadersOpts) ([]*MiniHeader, error) {
+	query, err := db.findMiniHeadersQueryFromOpts(opts)
+	if err != nil {
+		return nil, err
+	}
+	rawQuery, bindings := query.ToSQL(false)
+	fmt.Println(rawQuery, bindings)
 	var miniHeaders []*MiniHeader
-	if err := db.sqldb.SelectContext(db.ctx, &miniHeaders, "SELECT * FROM miniHeaders"); err != nil {
+	if err := query.GetAllContext(db.ctx, &miniHeaders); err != nil {
 		return nil, err
 	}
 	return miniHeaders, nil
+}
+
+// TODO(albrow): Can this be de-duped?
+func (db *DB) findMiniHeadersQueryFromOpts(opts *FindMiniHeadersOpts) (*sqlz.SelectStmt, error) {
+	query := sqlz.Newx(db.sqldb).Select("*").From("miniHeaders")
+	if opts == nil {
+		return query, nil
+	}
+
+	ordering := orderingFromMiniHeaderSortOpts(opts.Sort)
+	if len(ordering) != 0 {
+		query.OrderBy(ordering...)
+	}
+	if opts.Limit != 0 {
+		query.Limit(int64(opts.Limit))
+	}
+	if opts.Offset != 0 {
+		if opts.Limit == 0 {
+			return nil, errors.New("db.FindMiniHeaders: can't use Offset without Limit")
+		}
+		query.Offset(int64(opts.Offset))
+	}
+	whereConditions, err := whereConditionsFromMiniHeaderFilterOpts(opts.Filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(whereConditions) != 0 {
+		query.Where(whereConditions...)
+	}
+
+	return query, nil
+}
+
+// TODO(albrow): Can this be de-duped?
+func orderingFromMiniHeaderSortOpts(opts []MiniHeaderSort) []sqlz.SQLStmt {
+	ordering := []sqlz.SQLStmt{}
+	for _, sortOpt := range opts {
+		if sortOpt.Direction == Ascending {
+			ordering = append(ordering, sqlz.Asc(string(sortOpt.Field)))
+		} else {
+			ordering = append(ordering, sqlz.Desc(string(sortOpt.Field)))
+		}
+	}
+	return ordering
+}
+
+// TODO(albrow): Can this be de-duped?
+func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.WhereCondition, error) {
+	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
+	whereConditions := make([]sqlz.WhereCondition, len(opts))
+	for i, filterOpt := range opts {
+		switch filterOpt.Kind {
+		case Equal:
+			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), filterOpt.Value)
+		case NotEqual:
+			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), filterOpt.Value))
+		case Less:
+			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), filterOpt.Value)
+		case Greater:
+			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), filterOpt.Value)
+		case LessOrEqual:
+			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), filterOpt.Value)
+		case GreaterOrEqual:
+			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), filterOpt.Value)
+		case Contains:
+			// TODO(albrow): Value cannot contain special characters like "%".
+			// TODO(albrow): Optimize this so it is easier to index.
+			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", filterOpt.Value))
+		default:
+			return nil, fmt.Errorf("db.FindMiniHeaders: unknown FilterOpt.Kind: %s", filterOpt.Kind)
+		}
+	}
+	return whereConditions, nil
 }
 
 // FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order

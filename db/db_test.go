@@ -187,7 +187,7 @@ func TestFindOrdersSort(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("test case %d", i)
-		t.Run(testCaseName, runFindOrderSortTestCase(t, db, originalOrders, testCase))
+		t.Run(testCaseName, runFindOrdersSortTestCase(t, db, originalOrders, testCase))
 	}
 }
 
@@ -196,7 +196,7 @@ type findOrdersSortTestCase struct {
 	less     func([]*Order) func(i, j int) bool
 }
 
-func runFindOrderSortTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersSortTestCase) func(t *testing.T) {
+func runFindOrdersSortTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersSortTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		expectedOrders := make([]*Order, len(originalOrders))
 		copy(expectedOrders, originalOrders)
@@ -222,7 +222,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 	}
 	_, _, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
-	sortOrders(originalOrders)
+	sortOrdersByHash(originalOrders)
 
 	testCases := []findOrdersLimitAndOffsetTestCase{
 		{
@@ -299,7 +299,7 @@ func TestFindOrdersFilter(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	// Create some test orders with very specific characteristics to make it easier to write tests.
-	// - Both MakerAssetAmount and TakerAssetAmount will e 0, 1, 2, etc.
+	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
 	// - MakerAssetData will be 'a', 'b', 'c', etc.
 	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
 	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
@@ -354,7 +354,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: append(safeSubslice(originalOrders, 0, 5), safeSubslice(originalOrders, 6, 10)...),
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetAmount < 5",
@@ -433,7 +433,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: append(safeSubslice(originalOrders, 0, 5), safeSubslice(originalOrders, 6, 10)...),
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetData < f",
@@ -561,7 +561,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: append(safeSubslice(originalOrders, 3, 5), safeSubslice(originalOrders, 6, 7)...),
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 3, 5), safeSubsliceOrders(originalOrders, 6, 7)...),
 		},
 	}
 	for i, testCase := range testCases {
@@ -609,7 +609,7 @@ func TestAddMiniHeaders(t *testing.T) {
 		added, removed, err := db.AddMiniHeaders(miniHeaders)
 		require.NoError(t, err)
 		assert.Len(t, removed, 0, "Expected no miniHeaders to be removed")
-		assertMiniHeaderSlicesAreEqual(t, miniHeaders, added)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, miniHeaders, added)
 	}
 	{
 		added, removed, err := db.AddMiniHeaders(miniHeaders)
@@ -646,9 +646,459 @@ func TestFindMiniHeaders(t *testing.T) {
 	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
 	require.NoError(t, err)
 
-	foundMiniHeaders, err := db.FindMiniHeaders()
+	foundMiniHeaders, err := db.FindMiniHeaders(nil)
 	require.NoError(t, err)
-	assertMiniHeaderSlicesAreEqual(t, originalMiniHeaders, foundMiniHeaders)
+	assertMiniHeaderSlicesAreUnsortedEqual(t, originalMiniHeaders, foundMiniHeaders)
+}
+
+func TestFindMiniHeadersSort(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test miniHeaders with carefully chosen Number and Timestamp
+	// values for testing sorting.
+	numMiniHeaders := 5
+	originalMiniHeaders := []*MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = NewUint256(big.NewInt(int64(i)))
+		// It's important for some miniHeaders to have the same Timestamp
+		// so that we can test secondary sorts (sorting on more than one
+		// field).
+		if i%2 == 0 {
+			miniHeader.Timestamp = time.Unix(717793653, 0)
+		} else {
+			miniHeader.Timestamp = time.Unix(1588194484, 0)
+		}
+		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+	require.NoError(t, err)
+
+	// TODO(albrow): Add test cases.
+	testCases := []findMiniHeadersSortTestCase{
+		{
+			sortOpts: []MiniHeaderSort{
+				{
+					Field:     MFNumber,
+					Direction: Ascending,
+				},
+			},
+			less: lessByNumberAsc,
+		},
+		{
+			sortOpts: []MiniHeaderSort{
+				{
+					Field:     MFNumber,
+					Direction: Descending,
+				},
+			},
+			less: lessByNumberDesc,
+		},
+		{
+			sortOpts: []MiniHeaderSort{
+				{
+					Field:     MFTimestamp,
+					Direction: Ascending,
+				},
+				{
+					Field:     MFNumber,
+					Direction: Ascending,
+				},
+			},
+			less: lessByTimestampAscAndNumberAsc,
+		},
+		{
+			sortOpts: []MiniHeaderSort{
+				{
+					Field:     MFTimestamp,
+					Direction: Descending,
+				},
+				{
+					Field:     MFNumber,
+					Direction: Descending,
+				},
+			},
+			less: lessByTimestampDescAndNumberDesc,
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("test case %d", i)
+		t.Run(testCaseName, runFindMiniHeadersSortTestCase(t, db, originalMiniHeaders, testCase))
+	}
+}
+
+type findMiniHeadersSortTestCase struct {
+	sortOpts []MiniHeaderSort
+	less     func([]*MiniHeader) func(i, j int) bool
+}
+
+func runFindMiniHeadersSortTestCase(t *testing.T, db *DB, originalMiniHeaders []*MiniHeader, testCase findMiniHeadersSortTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		expectedMiniHeaders := make([]*MiniHeader, len(originalMiniHeaders))
+		copy(expectedMiniHeaders, originalMiniHeaders)
+		sort.Slice(expectedMiniHeaders, testCase.less(expectedMiniHeaders))
+		findOpts := &FindMiniHeadersOpts{
+			Sort: testCase.sortOpts,
+		}
+		foundMiniHeaders, err := db.FindMiniHeaders(findOpts)
+		require.NoError(t, err)
+		assertMiniHeaderSlicesAreEqual(t, expectedMiniHeaders, foundMiniHeaders)
+	}
+}
+
+func TestFindMiniHeadersLimitAndOffset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numMiniHeaders := 10
+	originalMiniHeaders := []*MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		originalMiniHeaders = append(originalMiniHeaders, newTestMiniHeader())
+	}
+	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+	require.NoError(t, err)
+	sortMiniHeadersByHash(originalMiniHeaders)
+
+	testCases := []findMiniHeadersLimitAndOffsetTestCase{
+		{
+			limit:               0,
+			offset:              0,
+			expectedMiniHeaders: originalMiniHeaders,
+		},
+		{
+			limit:               3,
+			offset:              0,
+			expectedMiniHeaders: originalMiniHeaders[:3],
+		},
+		{
+			limit:         0,
+			offset:        3,
+			expectedError: "can't use Offset without Limit",
+		},
+		{
+			limit:               10,
+			offset:              3,
+			expectedMiniHeaders: originalMiniHeaders[3:],
+		},
+		{
+			limit:               4,
+			offset:              3,
+			expectedMiniHeaders: originalMiniHeaders[3:7],
+		},
+		{
+			limit:               10,
+			offset:              10,
+			expectedMiniHeaders: []*MiniHeader{},
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("test case %d", i)
+		t.Run(testCaseName, runFindMiniHeadersLimitAndOffsetTestCase(t, db, originalMiniHeaders, testCase))
+	}
+}
+
+type findMiniHeadersLimitAndOffsetTestCase struct {
+	limit               uint
+	offset              uint
+	expectedMiniHeaders []*MiniHeader
+	expectedError       string
+}
+
+func runFindMiniHeadersLimitAndOffsetTestCase(t *testing.T, db *DB, originalMiniHeaders []*MiniHeader, testCase findMiniHeadersLimitAndOffsetTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		findOpts := &FindMiniHeadersOpts{
+			Sort: []MiniHeaderSort{
+				{
+					Field:     MFHash,
+					Direction: Ascending,
+				},
+			},
+			Limit:  testCase.limit,
+			Offset: testCase.offset,
+		}
+
+		foundMiniHeaders, err := db.FindMiniHeaders(findOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			assertMiniHeaderSlicesAreEqual(t, testCase.expectedMiniHeaders, foundMiniHeaders)
+		}
+	}
+}
+
+func TestFindMiniHeadersFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test miniheaders with very specific characteristics to make it easier to write tests.
+	// - Number will be 0, 1, 2, etc.
+	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
+	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
+	numMiniHeaders := 10
+	originalMiniHeaders := []*MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = NewUint256(big.NewInt(int64(i)))
+		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
+		for i := range miniHeader.Logs.Logs {
+			miniHeader.Logs.Logs[i].BlockNumber = miniHeader.Number.Uint64()
+		}
+		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+	require.NoError(t, err)
+
+	testCases := []findMiniHeadersFilterTestCase{
+		{
+			name:                "no filter",
+			filters:             []MiniHeaderFilter{},
+			expectedMiniHeaders: originalMiniHeaders,
+		},
+
+		// Filter on Number (type Uint256/NUMERIC)
+		{
+			name: "Number = 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Equal,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[5:6],
+		},
+		{
+			name: "Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Number < 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[:5],
+		},
+		{
+			name: "Number > 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Greater,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[6:],
+		},
+		{
+			name: "Number <= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  LessOrEqual,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[:6],
+		},
+		{
+			name: "Number >= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[5:],
+		},
+		{
+			name: "Number < 10^76",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: NewUint256(math.BigPow(10, 76)),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders,
+		},
+
+		// Filter on Timestamp (type time.Time/TIMESTAMP)
+		{
+			name: "Timestamp = 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Equal,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[5:6],
+		},
+		{
+			name: "Timestamp != 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  NotEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Timestamp < 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[:5],
+		},
+		{
+			name: "Timestamp > 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Greater,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[6:],
+		},
+		{
+			name: "Timestamp <= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  LessOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[:6],
+		},
+		{
+			name: "Timestamp >= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  GreaterOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[5:],
+		},
+
+		// Filter on Logs (type ParsedAssetData/TEXT)
+		{
+			name: "Logs CONTAINS query that matches all",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders,
+		},
+		{
+			name: "Logs CONTAINS query that matches one",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"blockNumber":"0x5"`,
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[5:6],
+		},
+
+		// Combining two or more filters
+		{
+			name: "Number >= 3 AND Timestamp < h",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+			},
+			expectedMiniHeaders: originalMiniHeaders[3:7],
+		},
+		{
+			name: "Number >= 3 AND Timestamp < 700 AND Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
+		t.Run(testCaseName, runFindMiniHeadersFilterTestCase(t, db, testCase))
+	}
+}
+
+type findMiniHeadersFilterTestCase struct {
+	name                string
+	filters             []MiniHeaderFilter
+	expectedMiniHeaders []*MiniHeader
+	expectedError       string
+}
+
+func runFindMiniHeadersFilterTestCase(t *testing.T, db *DB, testCase findMiniHeadersFilterTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		findOpts := &FindMiniHeadersOpts{
+			Filters: testCase.filters,
+		}
+
+		foundMiniHeaders, err := db.FindMiniHeaders(findOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMiniHeaders, foundMiniHeaders)
+		}
+	}
 }
 
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
@@ -797,10 +1247,11 @@ func newTestEventLogs() *EventLogs {
 	})
 }
 
-// returns a (shallow) subslice of orders without modifying the original slice. Uses the
-// same semantics as slice expressions: low is inclusive, hi is exclusive. The returned
-// slice still contains pointers, it just doesn't use the same underlying array.
-func safeSubslice(orders []*Order, low, hi int) []*Order {
+// safeSubsliceOrders returns a (shallow) subslice of orders without modifying
+// the original slice. Uses the same semantics as slice expressions: low is
+// inclusive, hi is exclusive. The returned slice still contains pointers, it
+// just doesn't use the same underlying array.
+func safeSubsliceOrders(orders []*Order, low, hi int) []*Order {
 	result := make([]*Order, hi-low)
 	for i := low; i < hi; i++ {
 		result[i-low] = orders[i]
@@ -808,7 +1259,7 @@ func safeSubslice(orders []*Order, low, hi int) []*Order {
 	return result
 }
 
-func sortOrders(orders []*Order) {
+func sortOrdersByHash(orders []*Order) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
 	})
@@ -884,10 +1335,10 @@ func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*Order) 
 	// Make a copy of the given orders so we don't mess up the original when sorting them.
 	expectedCopy := make([]*Order, len(expected))
 	copy(expectedCopy, expected)
-	sortOrders(expectedCopy)
+	sortOrdersByHash(expectedCopy)
 	actualCopy := make([]*Order, len(actual))
 	copy(actualCopy, actual)
-	sortOrders(actualCopy)
+	sortOrdersByHash(actualCopy)
 	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
 }
 
@@ -906,16 +1357,72 @@ func assertOrdersAreEqual(t *testing.T, expected, actual Order) {
 	assert.Equal(t, expected, actual)
 }
 
-func sortMiniHeaders(miniHeaders []*MiniHeader) {
+// safeSubsliceMiniHeaders returns a (shallow) subslice of mini headers without
+// modifying the original slice. Uses the same semantics as slice expressions:
+// low is inclusive, hi is exclusive. The returned slice still contains
+// pointers, it just doesn't use the same underlying array.
+func safeSubsliceMiniHeaders(miniHeaders []*MiniHeader, low, hi int) []*MiniHeader {
+	result := make([]*MiniHeader, hi-low)
+	for i := low; i < hi; i++ {
+		result[i-low] = miniHeaders[i]
+	}
+	return result
+}
+
+func sortMiniHeadersByHash(miniHeaders []*MiniHeader) {
 	sort.SliceStable(miniHeaders, func(i, j int) bool {
 		return bytes.Compare(miniHeaders[i].Hash.Bytes(), miniHeaders[j].Hash.Bytes()) == -1
 	})
 }
 
+func lessByNumberAsc(miniHeaders []*MiniHeader) func(i, j int) bool {
+	return func(i, j int) bool {
+		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == -1
+	}
+}
+
+func lessByNumberDesc(miniHeaders []*MiniHeader) func(i, j int) bool {
+	return func(i, j int) bool {
+		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == 1
+	}
+}
+
+func lessByTimestampAscAndNumberAsc(miniHeaders []*MiniHeader) func(i, j int) bool {
+	return func(i, j int) bool {
+		switch {
+		case miniHeaders[i].Timestamp.Before(miniHeaders[j].Timestamp):
+			// Less
+			return true
+		case miniHeaders[i].Timestamp.After(miniHeaders[j].Timestamp):
+			// Greater
+			return false
+		default:
+			// Equal. In this case we use Number as a secondary sort
+			// (i.e. a tie-breaker)
+			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == -1
+		}
+	}
+}
+
+func lessByTimestampDescAndNumberDesc(miniHeaders []*MiniHeader) func(i, j int) bool {
+	return func(i, j int) bool {
+		switch {
+		case miniHeaders[i].Timestamp.Before(miniHeaders[j].Timestamp):
+			// Less
+			return false
+		case miniHeaders[i].Timestamp.After(miniHeaders[j].Timestamp):
+			// Greater
+			return true
+		default:
+			// Equal. In this case we use Number as a secondary sort
+			// (i.e. a tie-breaker)
+			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == 1
+		}
+	}
+}
+
 func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*MiniHeader) {
 	assert.Len(t, actual, len(expected), "wrong number of miniheaders")
-	sortMiniHeaders(expected)
-	sortMiniHeaders(actual)
 	for i, expectedMiniHeader := range expected {
 		if i >= len(actual) {
 			break
@@ -923,6 +1430,26 @@ func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*MiniHeader
 		actualMiniHeader := expected[i]
 		assertMiniHeadersAreEqual(t, expectedMiniHeader, actualMiniHeader)
 	}
+	if t.Failed() {
+		expectedJSON, err := json.MarshalIndent(expected, "", "  ")
+		require.NoError(t, err)
+		actualJSON, err := json.MarshalIndent(actual, "", "  ")
+		require.NoError(t, err)
+		t.Logf("\nexpected:\n%s\n\n", string(expectedJSON))
+		t.Logf("\nactual:\n%s\n\n", string(actualJSON))
+		assert.Equal(t, string(expectedJSON), string(actualJSON))
+	}
+}
+
+func assertMiniHeaderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*MiniHeader) {
+	// Make a copy of the given mini headers so we don't mess up the original when sorting them.
+	expectedCopy := make([]*MiniHeader, len(expected))
+	copy(expectedCopy, expected)
+	sortMiniHeadersByHash(expectedCopy)
+	actualCopy := make([]*MiniHeader, len(actual))
+	copy(actualCopy, actual)
+	sortMiniHeadersByHash(actualCopy)
+	assertMiniHeaderSlicesAreEqual(t, expected, actual)
 }
 
 func assertMiniHeadersAreEqual(t *testing.T, expected, actual *MiniHeader) {
