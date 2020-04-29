@@ -176,7 +176,7 @@ WHERE orders.hash = :hash
 const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
 	hash,
 	parent,
-	"number",
+	number,
 	timestamp,
 	logs
 ) VALUES (
@@ -529,12 +529,14 @@ func (db *DB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
 }
 
 // FindOrdersByMakerAddress finds all orders belonging to a particular maker address
+// ✅
 func (db *DB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
 // address where makerAssetData encodes for a particular token contract and optionally a token ID
+// ✅
 func (db *DB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
@@ -543,23 +545,27 @@ func (db *DB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, token
 // a particular maker address where makerFeeAssetData encodes for a particular
 // token contract and optionally a token ID. To find orders without a maker fee,
 // use constants.NullAddress for makerFeeAssetAddress.
+// ✅
 func (db *DB) FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
 // also have a salt value less then or equal to X
+// ✅
 func (db *DB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // FindOrdersLastUpdatedBefore finds all orders where the LastUpdated time is less
 // than X
+// ✅
 func (db *DB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // FindRemovedOrders finds all orders that have been flagged for removal
+// ✅
 func (db *DB) FindRemovedOrders() ([]*Order, error) {
 	return nil, errors.New("Not yet implemented")
 }
