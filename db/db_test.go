@@ -594,6 +594,323 @@ func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilter
 	}
 }
 
+func TestDeleteOrdersFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test orders with very specific characteristics to make it easier to write tests.
+	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
+	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
+	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
+	numOrders := 10
+	originalOrders := []*Order{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrder()
+		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.TakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.MakerAssetData = []byte{97 + byte(i)}
+		parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: NewUint256(big.NewInt(0)),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: NewUint256(big.NewInt(int64(i)*10 + 1)),
+			},
+		})
+		order.ParsedMakerAssetData = &parsedMakerAssetData
+		originalOrders = append(originalOrders, order)
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	testCases := []findOrdersFilterTestCase{
+		{
+			name:           "no filter",
+			filters:        []OrderFilter{},
+			expectedOrders: []*Order{},
+		},
+
+		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		{
+			name: "MakerAssetAmount = 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Equal,
+					Value: 5,
+				},
+			},
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "MakerAssetAmount < 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[5:],
+		},
+		{
+			name: "MakerAssetAmount > 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Greater,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[:6],
+		},
+		{
+			name: "MakerAssetAmount <= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  LessOrEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[6:],
+		},
+		{
+			name: "MakerAssetAmount >= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: originalOrders[:5],
+		},
+		{
+			name: "MakerAssetAmount < 10^76",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: NewUint256(math.BigPow(10, 76)),
+				},
+			},
+			expectedOrders: []*Order{},
+		},
+
+		// Filter on MakerAssetData (type []byte/TEXT)
+		{
+			name: "MakerAssetData = f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Equal,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetData != f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  NotEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[5:6],
+		},
+		{
+			name: "MakerAssetData < f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[5:],
+		},
+		{
+			name: "MakerAssetData > f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Greater,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[:6],
+		},
+		{
+			name: "MakerAssetData <= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  LessOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[6:],
+		},
+		{
+			name: "MakerAssetData >= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  GreaterOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedOrders: originalOrders[:5],
+		},
+
+		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
+		{
+			name: "ParsedMakerAssetData CONTAINS query that matches all",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedOrders: []*Order{},
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
+			},
+			expectedOrders: []*Order{},
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
+			},
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+		},
+		{
+			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
+			},
+			expectedOrders: []*Order{},
+		},
+
+		// Combining two or more filters
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+			},
+			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 3), safeSubsliceOrders(originalOrders, 7, 10)...),
+		},
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+				{
+					Field: OFTakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedOrders: []*Order{
+				originalOrders[0],
+				originalOrders[1],
+				originalOrders[2],
+				originalOrders[5],
+				originalOrders[7],
+				originalOrders[8],
+				originalOrders[9],
+			},
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
+		t.Run(testCaseName, runDeleteOrdersFilterTestCase(t, db, originalOrders, testCase))
+	}
+}
+
+type deleteOrdersFilterTestCase struct {
+	name           string
+	filters        []OrderFilter
+	expectedOrders []*Order
+	expectedError  string
+}
+
+func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersFilterTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		defer func() {
+			// After each case, reset the state of the database by re-adding the original orders.
+			_, _, err := db.AddOrders(originalOrders)
+			require.NoError(t, err)
+		}()
+
+		deleteOpts := &DeleteOrdersOpts{
+			Filters: testCase.filters,
+		}
+
+		err := db.DeleteOrders(deleteOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			foundOrders, err := db.FindOrders(nil)
+			require.NoError(t, err)
+			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedOrders, foundOrders)
+		}
+	}
+}
+
 func TestAddMiniHeaders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1466,199 +1783,3 @@ func assertMiniHeadersAreEqual(t *testing.T, expected, actual *MiniHeader) {
 	// We can compare the rest of the fields normally.
 	assert.Equal(t, expected, actual)
 }
-
-// func TestFindOrdersByMakerAddressMakerFeeAssetAddressTokenID(t *testing.T) {
-// 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
-// 	require.NoError(t, err)
-// 	defer meshDB.Close()
-
-// 	makerAddress := constants.GanacheAccount0
-// 	nextSalt := big.NewInt(1548619145450)
-
-// 	zeroexOrders := []*zeroex.Order{
-// 		// No Maker fee
-// 		&zeroex.Order{
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			MakerFeeAssetData:     constants.NullBytes,
-// 			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(1548619325),
-// 		},
-// 		// ERC20 maker fee
-// 		&zeroex.Order{
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			MakerFeeAssetData:     common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32"),
-// 			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(1548619325),
-// 		},
-// 		// ERC721 maker fee with token id = 1
-// 		&zeroex.Order{
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			MakerFeeAssetData:     common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(1548619325),
-// 		},
-// 		// ERC721 maker fee with token id = 2
-// 		&zeroex.Order{
-// 			ChainID:               big.NewInt(constants.TestChainID),
-// 			ExchangeAddress:       contractAddresses.Exchange,
-// 			MakerAddress:          makerAddress,
-// 			TakerAddress:          constants.NullAddress,
-// 			SenderAddress:         constants.NullAddress,
-// 			FeeRecipientAddress:   common.HexToAddress("0xa258b39954cef5cb142fd567a46cddb31a670124"),
-// 			TakerAssetData:        common.Hex2Bytes("f47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064"),
-// 			TakerFeeAssetData:     constants.NullBytes,
-// 			MakerAssetData:        common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000001"),
-// 			MakerFeeAssetData:     common.Hex2Bytes("025717920000000000000000000000001dc4c1cefef38a777b15aa20260a54e584b16c480000000000000000000000000000000000000000000000000000000000000002"),
-// 			Salt:                  nextSalt.Add(nextSalt, big.NewInt(1)),
-// 			MakerFee:              big.NewInt(0),
-// 			TakerFee:              big.NewInt(0),
-// 			MakerAssetAmount:      big.NewInt(3551808554499581700),
-// 			TakerAssetAmount:      big.NewInt(1),
-// 			ExpirationTimeSeconds: big.NewInt(1548619325),
-// 		},
-// 	}
-// 	orders := make([]*Order, len(zeroexOrders))
-// 	for i, o := range zeroexOrders {
-// 		signedOrder, err := zeroex.SignTestOrder(o)
-// 		require.NoError(t, err)
-// 		orderHash, err := o.ComputeOrderHash()
-// 		require.NoError(t, err)
-
-// 		orders[i] = &Order{
-// 			Hash:                     orderHash,
-// 			SignedOrder:              signedOrder,
-// 			FillableTakerAssetAmount: big.NewInt(1),
-// 			LastUpdated:              time.Now().UTC(),
-// 			IsRemoved:                false,
-// 		}
-// 		require.NoError(t, meshDB.Orders.Insert(orders[i]))
-// 		// We need to call ResetHash so that unexported hash field is equal in later
-// 		// assertions.
-// 		signedOrder.ResetHash()
-// 	}
-
-// 	testCases := []struct {
-// 		makerFeeAssetAddress common.Address
-// 		makerFeeTokenID      *big.Int
-// 		expectedOrders       []*Order
-// 	}{
-// 		{
-// 			makerFeeAssetAddress: constants.NullAddress,
-// 			makerFeeTokenID:      nil,
-// 			expectedOrders:       orders[0:1],
-// 		},
-// 		{
-// 			makerFeeAssetAddress: common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32"),
-// 			makerFeeTokenID:      nil,
-// 			expectedOrders:       orders[1:2],
-// 		},
-// 		{
-// 			// Since no token id was specified, this query should match all token ids.
-// 			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-// 			makerFeeTokenID:      nil,
-// 			expectedOrders:       orders[2:4],
-// 		},
-// 		{
-// 			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-// 			makerFeeTokenID:      big.NewInt(1),
-// 			expectedOrders:       orders[2:3],
-// 		},
-// 		{
-// 			makerFeeAssetAddress: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-// 			makerFeeTokenID:      big.NewInt(2),
-// 			expectedOrders:       orders[3:4],
-// 		},
-// 	}
-// 	for i, tc := range testCases {
-// 		foundOrders, err := meshDB.FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, tc.makerFeeAssetAddress, tc.makerFeeTokenID)
-// 		require.NoError(t, err)
-// 		assert.Equal(t, tc.expectedOrders, foundOrders, "test case %d", i)
-// 	}
-// }
-
-// func insertRawOrders(t *testing.T, meshDB *MeshDB, rawOrders []*zeroex.Order, isPinned bool) []*Order {
-// 	results := make([]*Order, len(rawOrders))
-// 	for i, order := range rawOrders {
-// 		// Sign, compute order hash, and insert.
-// 		signedOrder, err := zeroex.SignTestOrder(order)
-// 		require.NoError(t, err)
-// 		orderHash, err := order.ComputeOrderHash()
-// 		require.NoError(t, err)
-
-// 		order := &Order{
-// 			Hash:                     orderHash,
-// 			SignedOrder:              signedOrder,
-// 			FillableTakerAssetAmount: big.NewInt(1),
-// 			LastUpdated:              time.Now(),
-// 			IsRemoved:                false,
-// 			IsPinned:                 isPinned,
-// 		}
-// 		results[i] = order
-// 		require.NoError(t, meshDB.Orders.Insert(order))
-// 	}
-// 	return results
-// }
-
-// func TestPruneMiniHeadersAboveRetentionLimit(t *testing.T) {
-// 	t.Parallel()
-
-// 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
-// 	require.NoError(t, err)
-// 	defer meshDB.Close()
-
-// 	txn := meshDB.MiniHeaders.OpenTransaction()
-// 	defer func() {
-// 		_ = txn.Discard()
-// 	}()
-
-// 	miniHeadersToAdd := miniHeadersMaxPerPage*2 + defaultMiniHeaderRetentionLimit + 1
-// 	for i := 0; i < miniHeadersToAdd; i++ {
-// 		miniHeader := &miniheader.MiniHeader{
-// 			Hash:      common.BigToHash(big.NewInt(int64(i))),
-// 			Number:    big.NewInt(int64(i)),
-// 			Timestamp: time.Now().Add(time.Duration(i)*time.Second - 5*time.Hour),
-// 		}
-// 		require.NoError(t, txn.Insert(miniHeader))
-// 	}
-// 	require.NoError(t, txn.Commit())
-
-// 	require.NoError(t, meshDB.PruneMiniHeadersAboveRetentionLimit())
-// 	remainingMiniHeaders, err := meshDB.MiniHeaders.Count()
-// 	assert.Equal(t, defaultMiniHeaderRetentionLimit, remainingMiniHeaders, "wrong number of MiniHeaders remaining")
-// }

@@ -8,9 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
@@ -408,6 +406,46 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereConditi
 	return whereConditions, nil
 }
 
+type DeleteOrdersOpts struct {
+	Filters []OrderFilter
+	// TODO(albrow): Delete should support ORDER BY, LIMIT, and OFFSET, but
+	// sqlz does not.
+	// Sort    []OrderSort
+	// Limit   uint
+	// Offset  uint
+}
+
+// TODO(albrow): Return orders that were deleted?
+func (db *DB) DeleteOrders(opts *DeleteOrdersOpts) error {
+	query, err := db.deleteOrdersQueryFromOpts(opts)
+	if err != nil {
+		return err
+	}
+	var orders []*Order
+	rawQuery, bindings := query.ToSQL(false)
+	fmt.Println(rawQuery, bindings)
+	if err := query.GetAllContext(db.ctx, &orders); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) deleteOrdersQueryFromOpts(opts *DeleteOrdersOpts) (*sqlz.DeleteStmt, error) {
+	query := sqlz.Newx(db.sqldb).DeleteFrom("orders")
+	if opts == nil {
+		return query, nil
+	}
+	whereConditions, err := whereConditionsFromOrderFilterOpts(opts.Filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(whereConditions) != 0 {
+		query.Where(whereConditions...)
+	}
+
+	return query, nil
+}
+
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {
 	if updateFunc == nil {
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
@@ -596,87 +634,6 @@ func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.Wh
 	return whereConditions, nil
 }
 
-// FindAllMiniHeadersSortedByNumber returns all MiniHeaders sorted in ascending block number order
-func (db *DB) FindAllMiniHeadersSortedByNumber() ([]*miniheader.MiniHeader, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindLatestMiniHeader returns the latest MiniHeader (i.e. the one with the
-// largest block number). It returns nil, MiniHeaderCollectionEmptyError if there
-// are no MiniHeaders in the database.
-func (db *DB) FindLatestMiniHeader() (*miniheader.MiniHeader, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindMiniHeaderByBlockNumber returns the MiniHeader with the specified block number
-func (db *DB) FindMiniHeaderByBlockNumber(blockNumber *big.Int) (*miniheader.MiniHeader, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// UpdateMiniHeaderRetentionLimit updates the MiniHeaderRetentionLimit. This is only used by tests in order
-// to set the retention limit to a smaller size, making the tests shorter in length
-func (db *DB) UpdateMiniHeaderRetentionLimit(limit int) error {
-	return errors.New("Not yet implemented")
-}
-
-// PruneMiniHeadersAboveRetentionLimit prunes miniHeaders from the DB that are above the retention limit
-func (db *DB) PruneMiniHeadersAboveRetentionLimit() error {
-	return errors.New("Not yet implemented")
-}
-
-// ClearAllMiniHeaders removes all stored MiniHeaders from the database.
-func (db *DB) ClearAllMiniHeaders() error {
-	return errors.New("Not yet implemented")
-}
-
-// ClearOldMiniHeaders removes all stored MiniHeaders with a block number less then
-// the given minBlockNumber.
-func (db *DB) ClearOldMiniHeaders(minBlockNumber *big.Int) error {
-	return errors.New("Not yet implemented")
-}
-
-// FindOrdersByMakerAddress finds all orders belonging to a particular maker address
-// ✅
-func (db *DB) FindOrdersByMakerAddress(makerAddress common.Address) ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindOrdersByMakerAddressTokenAddressAndTokenID finds all orders belonging to a particular maker
-// address where makerAssetData encodes for a particular token contract and optionally a token ID
-// ✅
-func (db *DB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindOrdersByMakerAddressMakerFeeAssetAddressTokenID finds all orders belonging to
-// a particular maker address where makerFeeAssetData encodes for a particular
-// token contract and optionally a token ID. To find orders without a maker fee,
-// use constants.NullAddress for makerFeeAssetAddress.
-// ✅
-func (db *DB) FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindOrdersByMakerAddressAndMaxSalt finds all orders belonging to a particular maker address that
-// also have a salt value less then or equal to X
-// ✅
-func (db *DB) FindOrdersByMakerAddressAndMaxSalt(makerAddress common.Address, salt *big.Int) ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindOrdersLastUpdatedBefore finds all orders where the LastUpdated time is less
-// than X
-// ✅
-func (db *DB) FindOrdersLastUpdatedBefore(lastUpdated time.Time) ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
-// FindRemovedOrders finds all orders that have been flagged for removal
-// ✅
-func (db *DB) FindRemovedOrders() ([]*Order, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
 func (db *DB) GetMetadata() (*Metadata, error) {
 	return nil, errors.New("Not yet implemented")
@@ -693,9 +650,4 @@ func (db *DB) SaveMetadata(metadata *Metadata) error {
 // should return the new metadata to save.
 func (db *DB) UpdateMetadata(updater func(oldmetadata Metadata) (newMetadata Metadata)) error {
 	return errors.New("Not yet implemented")
-}
-
-// CountPinnedOrders returns the number of pinned orders.
-func (db *DB) CountPinnedOrders() (int, error) {
-	return 0, errors.New("Not yet implemented")
 }
