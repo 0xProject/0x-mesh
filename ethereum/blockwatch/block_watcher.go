@@ -19,6 +19,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+var parityBlockNotFoundErrorMessage = "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found"
+
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
@@ -31,6 +33,7 @@ var warningLevelErrorMessages = []string{
 	"unknown block",
 	"not found",
 	"context deadline exceeded",
+	parityBlockNotFoundErrorMessage,
 }
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
