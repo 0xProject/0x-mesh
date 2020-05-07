@@ -19,7 +19,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-var parityBlockNotFoundErrorMessage = "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found"
+// go-ethereum client `ethereum.NotFound` error type message
+var rpcClientNotFoundError = "not found"
 
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
@@ -30,10 +31,10 @@ var maxBlocksInGetLogsQuery = 60
 // warningLevelErrorMessages are certain blockwatch.Watch errors that we want to report as warnings
 // because they do not represent a bug or issue with Mesh and are expected to happen from time to time
 var warningLevelErrorMessages = []string{
-	"unknown block",
-	"not found",
+	constants.GethFilterUnknownBlock,
+	rpcClientNotFoundError,
 	"context deadline exceeded",
-	parityBlockNotFoundErrorMessage,
+	constants.ParityFilterUnknownBlock,
 }
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered
@@ -393,17 +394,6 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	return events, nil
 }
 
-// FilterLogsBlockNotFoundError is the error returned from a Parity node if the block supplied
-// to a filter logs request is not found
-type FilterLogsBlockNotFoundError struct {
-	Message   string
-	BlockHash common.Hash
-}
-
-func (e FilterLogsBlockNotFoundError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Message, e.BlockHash)
-}
-
 func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
@@ -413,13 +403,6 @@ func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader
 		Topics:    [][]common.Hash{w.topics},
 	})
 	if err != nil {
-		// Add the BlockHash to the error so that it gets logged
-		if err.Error() == parityBlockNotFoundErrorMessage {
-			err = FilterLogsBlockNotFoundError{
-				Message:   err.Error(),
-				BlockHash: header.Hash,
-			}
-		}
 		return header, err
 	}
 	header.Logs = logs
