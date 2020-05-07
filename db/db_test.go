@@ -328,9 +328,9 @@ func TestFindOrdersFilter(t *testing.T) {
 
 	testCases := []findOrdersFilterTestCase{
 		{
-			name:           "no filter",
-			filters:        []OrderFilter{},
-			expectedOrders: originalOrders,
+			name:                    "no filter",
+			filters:                 []OrderFilter{},
+			expectedRemainingOrders: originalOrders,
 		},
 
 		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
@@ -343,7 +343,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "MakerAssetAmount != 5",
@@ -354,7 +354,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetAmount < 5",
@@ -365,7 +365,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[:5],
+			expectedRemainingOrders: originalOrders[:5],
 		},
 		{
 			name: "MakerAssetAmount > 5",
@@ -376,7 +376,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[6:],
+			expectedRemainingOrders: originalOrders[6:],
 		},
 		{
 			name: "MakerAssetAmount <= 5",
@@ -387,7 +387,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[:6],
+			expectedRemainingOrders: originalOrders[:6],
 		},
 		{
 			name: "MakerAssetAmount >= 5",
@@ -398,7 +398,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[5:],
+			expectedRemainingOrders: originalOrders[5:],
 		},
 		{
 			name: "MakerAssetAmount < 10^76",
@@ -409,7 +409,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: NewUint256(math.BigPow(10, 76)),
 				},
 			},
-			expectedOrders: originalOrders,
+			expectedRemainingOrders: originalOrders,
 		},
 
 		// Filter on MakerAssetData (type []byte/TEXT)
@@ -422,7 +422,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "MakerAssetData != f",
@@ -433,7 +433,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetData < f",
@@ -444,7 +444,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[:5],
+			expectedRemainingOrders: originalOrders[:5],
 		},
 		{
 			name: "MakerAssetData > f",
@@ -455,7 +455,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[6:],
+			expectedRemainingOrders: originalOrders[6:],
 		},
 		{
 			name: "MakerAssetData <= f",
@@ -466,7 +466,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[:6],
+			expectedRemainingOrders: originalOrders[:6],
 		},
 		{
 			name: "MakerAssetData >= f",
@@ -477,7 +477,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[5:],
+			expectedRemainingOrders: originalOrders[5:],
 		},
 
 		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
@@ -490,7 +490,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
 			},
-			expectedOrders: originalOrders,
+			expectedRemainingOrders: originalOrders,
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
@@ -501,28 +501,28 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
 			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
 			},
-			expectedOrders: originalOrders,
+			expectedRemainingOrders: originalOrders,
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
 			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
 			filters: []OrderFilter{
 				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
 			},
-			expectedOrders: originalOrders,
+			expectedRemainingOrders: originalOrders,
 		},
 
 		// Combining two or more filters
@@ -540,7 +540,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: []byte("h"),
 				},
 			},
-			expectedOrders: originalOrders[3:7],
+			expectedRemainingOrders: originalOrders[3:7],
 		},
 		{
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
@@ -561,7 +561,7 @@ func TestFindOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 3, 5), safeSubsliceOrders(originalOrders, 6, 7)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 3, 5), safeSubsliceOrders(originalOrders, 6, 7)...),
 		},
 	}
 	for i, testCase := range testCases {
@@ -571,10 +571,10 @@ func TestFindOrdersFilter(t *testing.T) {
 }
 
 type findOrdersFilterTestCase struct {
-	name           string
-	filters        []OrderFilter
-	expectedOrders []*Order
-	expectedError  string
+	name                    string
+	filters                 []OrderFilter
+	expectedRemainingOrders []*Order
+	expectedError           string
 }
 
 func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilterTestCase) func(t *testing.T) {
@@ -589,9 +589,24 @@ func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilter
 			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
 		} else {
 			require.NoError(t, err)
-			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedOrders, foundOrders)
+			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedRemainingOrders, foundOrders)
 		}
 	}
+}
+
+func TestDeleteOrder(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	added, _, err := db.AddOrders([]*Order{newTestOrder()})
+	require.NoError(t, err)
+	originalOrder := added[0]
+	require.NoError(t, db.DeleteOrder(originalOrder.Hash))
+
+	foundOrders, err := db.FindOrders(nil)
+	require.NoError(t, err)
+	assert.Empty(t, foundOrders, "expected no orders remaining in the database")
 }
 
 func TestDeleteOrdersFilter(t *testing.T) {
@@ -629,9 +644,9 @@ func TestDeleteOrdersFilter(t *testing.T) {
 
 	testCases := []findOrdersFilterTestCase{
 		{
-			name:           "no filter",
-			filters:        []OrderFilter{},
-			expectedOrders: []*Order{},
+			name:                    "no filter",
+			filters:                 []OrderFilter{},
+			expectedRemainingOrders: []*Order{},
 		},
 
 		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
@@ -644,7 +659,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetAmount != 5",
@@ -655,7 +670,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "MakerAssetAmount < 5",
@@ -666,7 +681,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[5:],
+			expectedRemainingOrders: originalOrders[5:],
 		},
 		{
 			name: "MakerAssetAmount > 5",
@@ -677,7 +692,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[:6],
+			expectedRemainingOrders: originalOrders[:6],
 		},
 		{
 			name: "MakerAssetAmount <= 5",
@@ -688,7 +703,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[6:],
+			expectedRemainingOrders: originalOrders[6:],
 		},
 		{
 			name: "MakerAssetAmount >= 5",
@@ -699,7 +714,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: originalOrders[:5],
+			expectedRemainingOrders: originalOrders[:5],
 		},
 		{
 			name: "MakerAssetAmount < 10^76",
@@ -710,7 +725,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: NewUint256(math.BigPow(10, 76)),
 				},
 			},
-			expectedOrders: []*Order{},
+			expectedRemainingOrders: []*Order{},
 		},
 
 		// Filter on MakerAssetData (type []byte/TEXT)
@@ -723,7 +738,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "MakerAssetData != f",
@@ -734,7 +749,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[5:6],
+			expectedRemainingOrders: originalOrders[5:6],
 		},
 		{
 			name: "MakerAssetData < f",
@@ -745,7 +760,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[5:],
+			expectedRemainingOrders: originalOrders[5:],
 		},
 		{
 			name: "MakerAssetData > f",
@@ -756,7 +771,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[:6],
+			expectedRemainingOrders: originalOrders[:6],
 		},
 		{
 			name: "MakerAssetData <= f",
@@ -767,7 +782,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[6:],
+			expectedRemainingOrders: originalOrders[6:],
 		},
 		{
 			name: "MakerAssetData >= f",
@@ -778,7 +793,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("f"),
 				},
 			},
-			expectedOrders: originalOrders[:5],
+			expectedRemainingOrders: originalOrders[:5],
 		},
 
 		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
@@ -791,7 +806,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
 			},
-			expectedOrders: []*Order{},
+			expectedRemainingOrders: []*Order{},
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
@@ -802,28 +817,28 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
 			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
 			},
-			expectedOrders: []*Order{},
+			expectedRemainingOrders: []*Order{},
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
 			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
 		},
 		{
 			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
 			filters: []OrderFilter{
 				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
 			},
-			expectedOrders: []*Order{},
+			expectedRemainingOrders: []*Order{},
 		},
 
 		// Combining two or more filters
@@ -841,7 +856,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: []byte("h"),
 				},
 			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 3), safeSubsliceOrders(originalOrders, 7, 10)...),
+			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 3), safeSubsliceOrders(originalOrders, 7, 10)...),
 		},
 		{
 			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
@@ -862,7 +877,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedOrders: []*Order{
+			expectedRemainingOrders: []*Order{
 				originalOrders[0],
 				originalOrders[1],
 				originalOrders[2],
@@ -906,7 +921,7 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*Order
 			require.NoError(t, err)
 			foundOrders, err := db.FindOrders(nil)
 			require.NoError(t, err)
-			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedOrders, foundOrders)
+			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedRemainingOrders, foundOrders)
 		}
 	}
 }

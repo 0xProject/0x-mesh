@@ -406,13 +406,17 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereConditi
 	return whereConditions, nil
 }
 
+func (db *DB) DeleteOrder(hash common.Hash) error {
+	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM orders WHERE hash = $1", hash); err != nil {
+		// TODO(albrow): Specifically handle not found error.
+		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		return err
+	}
+	return nil
+}
+
 type DeleteOrdersOpts struct {
 	Filters []OrderFilter
-	// TODO(albrow): Delete should support ORDER BY, LIMIT, and OFFSET, but
-	// sqlz does not.
-	// Sort    []OrderSort
-	// Limit   uint
-	// Offset  uint
 }
 
 // TODO(albrow): Return orders that were deleted?
@@ -446,6 +450,7 @@ func (db *DB) deleteOrdersQueryFromOpts(opts *DeleteOrdersOpts) (*sqlz.DeleteStm
 	return query, nil
 }
 
+// TODO(albrow): Consider automatically setting LastUpdated?
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {
 	if updateFunc == nil {
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
