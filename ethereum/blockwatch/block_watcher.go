@@ -393,6 +393,17 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	return events, nil
 }
 
+// FilterLogsBlockNotFoundError is the error returned from a Parity node if the block supplied
+// to a filter logs request is not found
+type FilterLogsBlockNotFoundError struct {
+	Message   string
+	BlockHash common.Hash
+}
+
+func (e FilterLogsBlockNotFoundError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Message, e.BlockHash)
+}
+
 func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
@@ -402,6 +413,13 @@ func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader
 		Topics:    [][]common.Hash{w.topics},
 	})
 	if err != nil {
+		// Add the BlockHash to the error so that it gets logged
+		if err.Error() == parityBlockNotFoundErrorMessage {
+			err = FilterLogsBlockNotFoundError{
+				Message:   err.Error(),
+				BlockHash: header.Hash,
+			}
+		}
 		return header, err
 	}
 	header.Logs = logs
