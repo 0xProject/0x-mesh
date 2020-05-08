@@ -18,3 +18,6 @@ packages/browser/src/generated
 !integration-tests/data/standalone-0/keys/privKey
 integration-tests/data/standalone-*/
 integration-tests/data/bootstrap-0/p2p/
+
+# Ignore Emacs Config files
+#*#
