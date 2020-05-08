@@ -11,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // Stats is the return value for core.GetStats. Also used in the browser and RPC
@@ -95,4 +96,54 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 		return errors.New("Invalid uint256 number encountered for FillableTakerAssetAmount")
 	}
 	return nil
+}
+
+type OrderWithMetadata struct {
+	Hash                     common.Hash    `json:"hash"`
+	ChainID                  *big.Int       `json:"chainID"`
+	ExchangeAddress          common.Address `json:"exchangeAddress"`
+	MakerAddress             common.Address `json:"makerAddress"`
+	MakerAssetData           []byte         `json:"makerAssetData"`
+	MakerFeeAssetData        []byte         `json:"makerFeeAssetData"`
+	MakerAssetAmount         *big.Int       `json:"makerAssetAmount"`
+	MakerFee                 *big.Int       `json:"makerFee"`
+	TakerAddress             common.Address `json:"takerAddress"`
+	TakerAssetData           []byte         `json:"takerAssetData"`
+	TakerFeeAssetData        []byte         `json:"takerFeeAssetData"`
+	TakerAssetAmount         *big.Int       `json:"takerAssetAmount"`
+	TakerFee                 *big.Int       `json:"takerFee"`
+	SenderAddress            common.Address `json:"senderAddress"`
+	FeeRecipientAddress      common.Address `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds    *big.Int       `json:"expirationTimeSeconds"`
+	Salt                     *big.Int       `json:"salt"`
+	Signature                []byte         `json:"signature"`
+	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
+	LastUpdated              time.Time      `json:"lastUpdated"`
+	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
+	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
+	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
+	// the order can be permanently deleted.
+	IsRemoved bool `json:"isRemoved"`
+	// IsPinned indicates whether or not the order is pinned. Pinned orders are
+	// not removed from the database unless they become unfillable.
+	IsPinned bool `json:"isPinned"`
+	// JSON-encoded list of assetdatas contained in MakerAssetData. For non-MAP
+	// orders, the list contains only one element which is equal to MakerAssetData.
+	// For MAP orders, it contains each component assetdata.
+	ParsedMakerAssetData []*SingleAssetData `json:"parsedMakerAssetData"`
+	// Same as ParsedMakerAssetData but for MakerFeeAssetData instead of MakerAssetData.
+	ParsedMakerFeeAssetData []*SingleAssetData `json:"parsedMakerFeeAssetData"`
+}
+
+type SingleAssetData struct {
+	Address common.Address `json:"address"`
+	TokenID *big.Int       `json:"tokenID"`
+}
+
+type MiniHeader struct {
+	Hash      common.Hash  `json:"hash"`
+	Parent    common.Hash  `json:"parent"`
+	Number    *big.Int     `json:"number"`
+	Timestamp time.Time    `json:"timestamp"`
+	Logs      []*types.Log `json:"logs"`
 }

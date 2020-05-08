@@ -13,11 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func TestAddOrders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
-	orders := []*Order{}
+	orders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		orders = append(orders, newTestOrder())
 	}
@@ -55,14 +56,14 @@ func TestGetOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	added, _, err := db.AddOrders([]*Order{newTestOrder()})
+	added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 
 	foundOrder, err := db.GetOrder(originalOrder.Hash)
 	require.NoError(t, err)
 	require.NotNil(t, foundOrder, "found order should not be nil")
-	assertOrdersAreEqual(t, *originalOrder, *foundOrder)
+	assertOrdersAreEqual(t, originalOrder, foundOrder)
 }
 
 func TestUpdateOrder(t *testing.T) {
@@ -74,7 +75,7 @@ func TestUpdateOrder(t *testing.T) {
 	// UpdateOrder only updates one of them and does not affect the
 	// others.
 	numOrders := 3
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -82,8 +83,8 @@ func TestUpdateOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	orderToUpdate := originalOrders[0]
-	updatedFillableAmount := NewUint256(big.NewInt(12345))
-	err = db.UpdateOrder(orderToUpdate.Hash, func(existingOrder *Order) (*Order, error) {
+	updatedFillableAmount := big.NewInt(12345)
+	err = db.UpdateOrder(orderToUpdate.Hash, func(existingOrder *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		updatedOrder := existingOrder
 		updatedOrder.FillableTakerAssetAmount = updatedFillableAmount
 		return updatedOrder, nil
@@ -102,7 +103,7 @@ func TestFindOrders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -122,17 +123,17 @@ func TestFindOrdersSort(t *testing.T) {
 	// Create some test orders with carefully chosen MakerAssetAmount
 	// and TakerAssetAmount values for testing sorting.
 	numOrders := 5
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
-		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.MakerAssetAmount = big.NewInt(int64(i))
 		// It's important for some orders to have the same TakerAssetAmount
 		// so that we can test secondary sorts (sorting on more than one
 		// field).
 		if i%2 == 0 {
-			order.TakerAssetAmount = NewUint256(big.NewInt(100))
+			order.TakerAssetAmount = big.NewInt(100)
 		} else {
-			order.TakerAssetAmount = NewUint256(big.NewInt(200))
+			order.TakerAssetAmount = big.NewInt(200)
 		}
 		originalOrders = append(originalOrders, order)
 	}
@@ -193,12 +194,12 @@ func TestFindOrdersSort(t *testing.T) {
 
 type findOrdersSortTestCase struct {
 	sortOpts []OrderSort
-	less     func([]*Order) func(i, j int) bool
+	less     func([]*types.OrderWithMetadata) func(i, j int) bool
 }
 
-func runFindOrdersSortTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersSortTestCase) func(t *testing.T) {
+func runFindOrdersSortTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase findOrdersSortTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		expectedOrders := make([]*Order, len(originalOrders))
+		expectedOrders := make([]*types.OrderWithMetadata, len(originalOrders))
 		copy(expectedOrders, originalOrders)
 		sort.Slice(expectedOrders, testCase.less(expectedOrders))
 		findOpts := &FindOrdersOpts{
@@ -216,7 +217,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -253,7 +254,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 		{
 			limit:          10,
 			offset:         10,
-			expectedOrders: []*Order{},
+			expectedOrders: []*types.OrderWithMetadata{},
 		},
 	}
 	for i, testCase := range testCases {
@@ -265,11 +266,11 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 type findOrdersLimitAndOffsetTestCase struct {
 	limit          uint
 	offset         uint
-	expectedOrders []*Order
+	expectedOrders []*types.OrderWithMetadata
 	expectedError  string
 }
 
-func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
+func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &FindOrdersOpts{
 			Sort: []OrderSort{
@@ -304,23 +305,23 @@ func TestFindOrdersFilter(t *testing.T) {
 	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
 	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
 	numOrders := 10
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
-		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
-		order.TakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.MakerAssetAmount = big.NewInt(int64(i))
+		order.TakerAssetAmount = big.NewInt(int64(i))
 		order.MakerAssetData = []byte{97 + byte(i)}
-		parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
+		parsedMakerAssetData := []*types.SingleAssetData{
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: NewUint256(big.NewInt(0)),
+				TokenID: big.NewInt(0),
 			},
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: NewUint256(big.NewInt(int64(i)*10 + 1)),
+				TokenID: big.NewInt(int64(i)*10 + 1),
 			},
-		})
-		order.ParsedMakerAssetData = &parsedMakerAssetData
+		}
+		order.ParsedMakerAssetData = parsedMakerAssetData
 		originalOrders = append(originalOrders, order)
 	}
 	_, _, err := db.AddOrders(originalOrders)
@@ -406,7 +407,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Less,
-					Value: NewUint256(math.BigPow(10, 76)),
+					Value: math.BigPow(10, 76),
 				},
 			},
 			expectedRemainingOrders: originalOrders,
@@ -573,7 +574,7 @@ func TestFindOrdersFilter(t *testing.T) {
 type findOrdersFilterTestCase struct {
 	name                    string
 	filters                 []OrderFilter
-	expectedRemainingOrders []*Order
+	expectedRemainingOrders []*types.OrderWithMetadata
 	expectedError           string
 }
 
@@ -599,7 +600,7 @@ func TestDeleteOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	added, _, err := db.AddOrders([]*Order{newTestOrder()})
+	added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 	require.NoError(t, db.DeleteOrder(originalOrder.Hash))
@@ -620,23 +621,22 @@ func TestDeleteOrdersFilter(t *testing.T) {
 	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
 	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
 	numOrders := 10
-	originalOrders := []*Order{}
+	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
-		order.MakerAssetAmount = NewUint256(big.NewInt(int64(i)))
-		order.TakerAssetAmount = NewUint256(big.NewInt(int64(i)))
+		order.MakerAssetAmount = big.NewInt(int64(i))
+		order.TakerAssetAmount = big.NewInt(int64(i))
 		order.MakerAssetData = []byte{97 + byte(i)}
-		parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
+		order.ParsedMakerAssetData = []*types.SingleAssetData{
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: NewUint256(big.NewInt(0)),
+				TokenID: big.NewInt(0),
 			},
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: NewUint256(big.NewInt(int64(i)*10 + 1)),
+				TokenID: big.NewInt(int64(i)*10 + 1),
 			},
-		})
-		order.ParsedMakerAssetData = &parsedMakerAssetData
+		}
 		originalOrders = append(originalOrders, order)
 	}
 	_, _, err := db.AddOrders(originalOrders)
@@ -646,7 +646,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 		{
 			name:                    "no filter",
 			filters:                 []OrderFilter{},
-			expectedRemainingOrders: []*Order{},
+			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 
 		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
@@ -722,10 +722,10 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Less,
-					Value: NewUint256(math.BigPow(10, 76)),
+					Value: math.BigPow(10, 76),
 				},
 			},
-			expectedRemainingOrders: []*Order{},
+			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 
 		// Filter on MakerAssetData (type []byte/TEXT)
@@ -806,7 +806,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
 				},
 			},
-			expectedRemainingOrders: []*Order{},
+			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
@@ -824,7 +824,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 			filters: []OrderFilter{
 				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
 			},
-			expectedRemainingOrders: []*Order{},
+			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 		{
 			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
@@ -838,7 +838,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 			filters: []OrderFilter{
 				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
 			},
-			expectedRemainingOrders: []*Order{},
+			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 
 		// Combining two or more filters
@@ -877,7 +877,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 					Value: 5,
 				},
 			},
-			expectedRemainingOrders: []*Order{
+			expectedRemainingOrders: []*types.OrderWithMetadata{
 				originalOrders[0],
 				originalOrders[1],
 				originalOrders[2],
@@ -887,6 +887,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				originalOrders[9],
 			},
 		},
+		// TODO(albrow): Need more test coverage for convertFilterValue?
 	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
@@ -897,11 +898,11 @@ func TestDeleteOrdersFilter(t *testing.T) {
 type deleteOrdersFilterTestCase struct {
 	name           string
 	filters        []OrderFilter
-	expectedOrders []*Order
+	expectedOrders []*types.OrderWithMetadata
 	expectedError  string
 }
 
-func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*Order, testCase findOrdersFilterTestCase) func(t *testing.T) {
+func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase findOrdersFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		defer func() {
 			// After each case, reset the state of the database by re-adding the original orders.
@@ -932,7 +933,7 @@ func TestAddMiniHeaders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numMiniHeaders := 10
-	miniHeaders := []*MiniHeader{}
+	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		miniHeaders = append(miniHeaders, newTestMiniHeader())
 	}
@@ -956,7 +957,7 @@ func TestGetMiniHeader(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	added, _, err := db.AddMiniHeaders([]*MiniHeader{newTestMiniHeader()})
+	added, _, err := db.AddMiniHeaders([]*types.MiniHeader{newTestMiniHeader()})
 	require.NoError(t, err)
 	originalMiniHeader := added[0]
 
@@ -971,7 +972,7 @@ func TestFindMiniHeaders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numMiniHeaders := 10
-	originalMiniHeaders := []*MiniHeader{}
+	originalMiniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		originalMiniHeaders = append(originalMiniHeaders, newTestMiniHeader())
 	}
@@ -991,10 +992,10 @@ func TestFindMiniHeadersSort(t *testing.T) {
 	// Create some test miniHeaders with carefully chosen Number and Timestamp
 	// values for testing sorting.
 	numMiniHeaders := 5
-	originalMiniHeaders := []*MiniHeader{}
+	originalMiniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		miniHeader := newTestMiniHeader()
-		miniHeader.Number = NewUint256(big.NewInt(int64(i)))
+		miniHeader.Number = big.NewInt(int64(i))
 		// It's important for some miniHeaders to have the same Timestamp
 		// so that we can test secondary sorts (sorting on more than one
 		// field).
@@ -1063,12 +1064,12 @@ func TestFindMiniHeadersSort(t *testing.T) {
 
 type findMiniHeadersSortTestCase struct {
 	sortOpts []MiniHeaderSort
-	less     func([]*MiniHeader) func(i, j int) bool
+	less     func([]*types.MiniHeader) func(i, j int) bool
 }
 
-func runFindMiniHeadersSortTestCase(t *testing.T, db *DB, originalMiniHeaders []*MiniHeader, testCase findMiniHeadersSortTestCase) func(t *testing.T) {
+func runFindMiniHeadersSortTestCase(t *testing.T, db *DB, originalMiniHeaders []*types.MiniHeader, testCase findMiniHeadersSortTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		expectedMiniHeaders := make([]*MiniHeader, len(originalMiniHeaders))
+		expectedMiniHeaders := make([]*types.MiniHeader, len(originalMiniHeaders))
 		copy(expectedMiniHeaders, originalMiniHeaders)
 		sort.Slice(expectedMiniHeaders, testCase.less(expectedMiniHeaders))
 		findOpts := &FindMiniHeadersOpts{
@@ -1086,7 +1087,7 @@ func TestFindMiniHeadersLimitAndOffset(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numMiniHeaders := 10
-	originalMiniHeaders := []*MiniHeader{}
+	originalMiniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		originalMiniHeaders = append(originalMiniHeaders, newTestMiniHeader())
 	}
@@ -1123,7 +1124,7 @@ func TestFindMiniHeadersLimitAndOffset(t *testing.T) {
 		{
 			limit:               10,
 			offset:              10,
-			expectedMiniHeaders: []*MiniHeader{},
+			expectedMiniHeaders: []*types.MiniHeader{},
 		},
 	}
 	for i, testCase := range testCases {
@@ -1135,11 +1136,11 @@ func TestFindMiniHeadersLimitAndOffset(t *testing.T) {
 type findMiniHeadersLimitAndOffsetTestCase struct {
 	limit               uint
 	offset              uint
-	expectedMiniHeaders []*MiniHeader
+	expectedMiniHeaders []*types.MiniHeader
 	expectedError       string
 }
 
-func runFindMiniHeadersLimitAndOffsetTestCase(t *testing.T, db *DB, originalMiniHeaders []*MiniHeader, testCase findMiniHeadersLimitAndOffsetTestCase) func(t *testing.T) {
+func runFindMiniHeadersLimitAndOffsetTestCase(t *testing.T, db *DB, originalMiniHeaders []*types.MiniHeader, testCase findMiniHeadersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &FindMiniHeadersOpts{
 			Sort: []MiniHeaderSort{
@@ -1173,13 +1174,13 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
 	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
 	numMiniHeaders := 10
-	originalMiniHeaders := []*MiniHeader{}
+	originalMiniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		miniHeader := newTestMiniHeader()
-		miniHeader.Number = NewUint256(big.NewInt(int64(i)))
+		miniHeader.Number = big.NewInt(int64(i))
 		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
-		for i := range miniHeader.Logs.Logs {
-			miniHeader.Logs.Logs[i].BlockNumber = miniHeader.Number.Uint64()
+		for i := range miniHeader.Logs {
+			miniHeader.Logs[i].BlockNumber = miniHeader.Number.Uint64()
 		}
 		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
 	}
@@ -1266,7 +1267,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Less,
-					Value: NewUint256(math.BigPow(10, 76)),
+					Value: math.BigPow(10, 76),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders,
@@ -1412,7 +1413,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 type findMiniHeadersFilterTestCase struct {
 	name                string
 	filters             []MiniHeaderFilter
-	expectedMiniHeaders []*MiniHeader
+	expectedMiniHeaders []*types.MiniHeader
 	expectedError       string
 }
 
@@ -1441,7 +1442,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	assert.Len(t, parsedAssetData, 1)
 	expectedAddress := common.HexToAddress("0x38ae374ecf4db50b0ff37125b591a04997106a32")
 	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
-	var expectedTokenID *Uint256 = nil
+	var expectedTokenID *big.Int = nil
 	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
 
 	// ERC721 AssetData
@@ -1451,7 +1452,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	assert.Equal(t, 1, len(parsedAssetData))
 	expectedAddress = common.HexToAddress("0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48")
 	assert.Equal(t, expectedAddress, parsedAssetData[0].Address)
-	expectedTokenID = NewUint256(big.NewInt(1))
+	expectedTokenID = big.NewInt(1)
 	assert.Equal(t, expectedTokenID, parsedAssetData[0].TokenID)
 
 	// Multi AssetData
@@ -1459,13 +1460,13 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	parsedAssetData, err = ParseContractAddressesAndTokenIdsFromAssetData(multiAssetData, contractAddresses)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(parsedAssetData))
-	expectedParsedAssetData := []SingleAssetData{
+	expectedParsedAssetData := []*types.SingleAssetData{
 		{
 			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 		},
 		{
 			Address: common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
-			TokenID: NewUint256(big.NewInt(1)),
+			TokenID: big.NewInt(1),
 		},
 	}
 	for i, singleAssetData := range parsedAssetData {
@@ -1476,39 +1477,18 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func newTestDB(t *testing.T, ctx context.Context) *DB {
-	db, err := New(ctx, filepath.Join("tmp", "db_testing", uuid.New().String()))
+	db, err := New(ctx, filepath.Join("/tmp", "db_testing", uuid.New().String()))
 	require.NoError(t, err)
-	require.NoError(t, db.migrate())
 	return db
 }
 
 // newTestOrder returns a new order with a random hash that is ready to insert
 // into the database. Some computed fields (e.g. hash, signature) may not be
 // correct, so the order will not pass 0x validation.
-func newTestOrder() *Order {
-	parsedMakerAssetData := ParsedAssetData([]SingleAssetData{
-		{
-			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: NewUint256(big.NewInt(10)),
-		},
-		{
-			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: NewUint256(big.NewInt(20)),
-		},
-		{
-			Address: constants.GanacheDummyERC721TokenAddress,
-			TokenID: NewUint256(big.NewInt(30)),
-		},
-	})
-	parsedMakerFeeAssetData := ParsedAssetData([]SingleAssetData{
-		{
-			Address: constants.GanacheDummyERC1155MintableAddress,
-			TokenID: NewUint256(big.NewInt(567)),
-		},
-	})
-	return &Order{
+func newTestOrder() *types.OrderWithMetadata {
+	return &types.OrderWithMetadata{
 		Hash:                     common.BigToHash(big.NewInt(int64(rand.Int()))),
-		ChainID:                  NewUint256(big.NewInt(constants.TestChainID)),
+		ChainID:                  big.NewInt(constants.TestChainID),
 		MakerAddress:             constants.GanacheAccount1,
 		TakerAddress:             constants.NullAddress,
 		SenderAddress:            constants.NullAddress,
@@ -1517,35 +1497,53 @@ func newTestOrder() *Order {
 		MakerFeeAssetData:        constants.NullBytes,
 		TakerAssetData:           constants.WETHAssetData,
 		TakerFeeAssetData:        constants.NullBytes,
-		Salt:                     NewUint256(big.NewInt(int64(time.Now().Nanosecond()))),
-		MakerFee:                 NewUint256(big.NewInt(0)),
-		TakerFee:                 NewUint256(big.NewInt(0)),
-		MakerAssetAmount:         NewUint256(big.NewInt(100)),
-		TakerAssetAmount:         NewUint256(big.NewInt(42)),
-		ExpirationTimeSeconds:    NewUint256(big.NewInt(time.Now().Add(24 * time.Hour).Unix())),
+		Salt:                     big.NewInt(int64(time.Now().Nanosecond())),
+		MakerFee:                 big.NewInt(0),
+		TakerFee:                 big.NewInt(0),
+		MakerAssetAmount:         big.NewInt(100),
+		TakerAssetAmount:         big.NewInt(42),
+		ExpirationTimeSeconds:    big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
 		ExchangeAddress:          contractAddresses.Exchange,
 		Signature:                []byte{1, 2, 255, 255},
 		LastUpdated:              time.Now(),
-		FillableTakerAssetAmount: NewUint256(big.NewInt(42)),
+		FillableTakerAssetAmount: big.NewInt(42),
 		IsRemoved:                false,
 		IsPinned:                 true,
-		ParsedMakerAssetData:     &parsedMakerAssetData,
-		ParsedMakerFeeAssetData:  &parsedMakerFeeAssetData,
+		ParsedMakerAssetData: []*types.SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(10),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(20),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(30),
+			},
+		},
+		ParsedMakerFeeAssetData: []*types.SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC1155MintableAddress,
+				TokenID: big.NewInt(567),
+			},
+		},
 	}
 }
 
-func newTestMiniHeader() *MiniHeader {
-	return &MiniHeader{
+func newTestMiniHeader() *types.MiniHeader {
+	return &types.MiniHeader{
 		Hash:      common.BigToHash(big.NewInt(int64(rand.Int()))),
 		Parent:    common.BigToHash(big.NewInt(int64(rand.Int()))),
-		Number:    NewUint256(big.NewInt(int64(rand.Int()))),
+		Number:    big.NewInt(int64(rand.Int())),
 		Timestamp: time.Now(),
 		Logs:      newTestEventLogs(),
 	}
 }
 
-func newTestEventLogs() *EventLogs {
-	return NewEventLogs([]types.Log{
+func newTestEventLogs() []*ethtypes.Log {
+	return []*ethtypes.Log{
 		{
 			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
 			Topics: []common.Hash{
@@ -1576,42 +1574,42 @@ func newTestEventLogs() *EventLogs {
 			Index:       2,
 			Removed:     true,
 		},
-	})
+	}
 }
 
 // safeSubsliceOrders returns a (shallow) subslice of orders without modifying
 // the original slice. Uses the same semantics as slice expressions: low is
 // inclusive, hi is exclusive. The returned slice still contains pointers, it
 // just doesn't use the same underlying array.
-func safeSubsliceOrders(orders []*Order, low, hi int) []*Order {
-	result := make([]*Order, hi-low)
+func safeSubsliceOrders(orders []*types.OrderWithMetadata, low, hi int) []*types.OrderWithMetadata {
+	result := make([]*types.OrderWithMetadata, hi-low)
 	for i := low; i < hi; i++ {
 		result[i-low] = orders[i]
 	}
 	return result
 }
 
-func sortOrdersByHash(orders []*Order) {
+func sortOrdersByHash(orders []*types.OrderWithMetadata) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
 	})
 }
 
-func lessByMakerAssetAmountAsc(orders []*Order) func(i, j int) bool {
+func lessByMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == -1
+		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == -1
 	}
 }
 
-func lessByMakerAssetAmountDesc(orders []*Order) func(i, j int) bool {
+func lessByMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == 1
+		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == 1
 	}
 }
 
-func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*Order) func(i, j int) bool {
+func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount.Int) {
+		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
 		case -1:
 			// Less
 			return true
@@ -1621,14 +1619,14 @@ func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*Order) func(i, j 
 		default:
 			// Equal. In this case we use MakerAssetAmount as a secondary sort
 			// (i.e. a tie-breaker)
-			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == -1
+			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == -1
 		}
 	}
 }
 
-func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*Order) func(i, j int) bool {
+func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount.Int) {
+		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
 		case -1:
 			// Less
 			return false
@@ -1638,19 +1636,19 @@ func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*Order) func(i, 
 		default:
 			// Equal. In this case we use MakerAssetAmount as a secondary sort
 			// (i.e. a tie-breaker)
-			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount.Int) == 1
+			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == 1
 		}
 	}
 }
 
-func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
+func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*types.OrderWithMetadata) {
 	assert.Equal(t, len(expected), len(actual), "wrong number of orders")
 	for i, expectedOrder := range expected {
 		if i >= len(actual) {
 			break
 		}
 		actualOrder := actual[i]
-		assertOrdersAreEqual(t, *expectedOrder, *actualOrder)
+		assertOrdersAreEqual(t, expectedOrder, actualOrder)
 	}
 	if t.Failed() {
 		expectedJSON, err := json.MarshalIndent(expected, "", "  ")
@@ -1663,18 +1661,18 @@ func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*Order) {
 	}
 }
 
-func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*Order) {
+func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*types.OrderWithMetadata) {
 	// Make a copy of the given orders so we don't mess up the original when sorting them.
-	expectedCopy := make([]*Order, len(expected))
+	expectedCopy := make([]*types.OrderWithMetadata, len(expected))
 	copy(expectedCopy, expected)
 	sortOrdersByHash(expectedCopy)
-	actualCopy := make([]*Order, len(actual))
+	actualCopy := make([]*types.OrderWithMetadata, len(actual))
 	copy(actualCopy, actual)
 	sortOrdersByHash(actualCopy)
 	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
 }
 
-func assertOrdersAreEqual(t *testing.T, expected, actual Order) {
+func assertOrdersAreEqual(t *testing.T, expected, actual *types.OrderWithMetadata) {
 	if expected.LastUpdated.Equal(actual.LastUpdated) {
 		// HACK(albrow): In this case, the two values represent the same time.
 		// This is what we care about, but the assert package might consider
@@ -1693,33 +1691,33 @@ func assertOrdersAreEqual(t *testing.T, expected, actual Order) {
 // modifying the original slice. Uses the same semantics as slice expressions:
 // low is inclusive, hi is exclusive. The returned slice still contains
 // pointers, it just doesn't use the same underlying array.
-func safeSubsliceMiniHeaders(miniHeaders []*MiniHeader, low, hi int) []*MiniHeader {
-	result := make([]*MiniHeader, hi-low)
+func safeSubsliceMiniHeaders(miniHeaders []*types.MiniHeader, low, hi int) []*types.MiniHeader {
+	result := make([]*types.MiniHeader, hi-low)
 	for i := low; i < hi; i++ {
 		result[i-low] = miniHeaders[i]
 	}
 	return result
 }
 
-func sortMiniHeadersByHash(miniHeaders []*MiniHeader) {
+func sortMiniHeadersByHash(miniHeaders []*types.MiniHeader) {
 	sort.SliceStable(miniHeaders, func(i, j int) bool {
 		return bytes.Compare(miniHeaders[i].Hash.Bytes(), miniHeaders[j].Hash.Bytes()) == -1
 	})
 }
 
-func lessByNumberAsc(miniHeaders []*MiniHeader) func(i, j int) bool {
+func lessByNumberAsc(miniHeaders []*types.MiniHeader) func(i, j int) bool {
 	return func(i, j int) bool {
-		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == -1
+		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number) == -1
 	}
 }
 
-func lessByNumberDesc(miniHeaders []*MiniHeader) func(i, j int) bool {
+func lessByNumberDesc(miniHeaders []*types.MiniHeader) func(i, j int) bool {
 	return func(i, j int) bool {
-		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == 1
+		return miniHeaders[i].Number.Cmp(miniHeaders[j].Number) == 1
 	}
 }
 
-func lessByTimestampAscAndNumberAsc(miniHeaders []*MiniHeader) func(i, j int) bool {
+func lessByTimestampAscAndNumberAsc(miniHeaders []*types.MiniHeader) func(i, j int) bool {
 	return func(i, j int) bool {
 		switch {
 		case miniHeaders[i].Timestamp.Before(miniHeaders[j].Timestamp):
@@ -1731,12 +1729,12 @@ func lessByTimestampAscAndNumberAsc(miniHeaders []*MiniHeader) func(i, j int) bo
 		default:
 			// Equal. In this case we use Number as a secondary sort
 			// (i.e. a tie-breaker)
-			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == -1
+			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number) == -1
 		}
 	}
 }
 
-func lessByTimestampDescAndNumberDesc(miniHeaders []*MiniHeader) func(i, j int) bool {
+func lessByTimestampDescAndNumberDesc(miniHeaders []*types.MiniHeader) func(i, j int) bool {
 	return func(i, j int) bool {
 		switch {
 		case miniHeaders[i].Timestamp.Before(miniHeaders[j].Timestamp):
@@ -1748,12 +1746,12 @@ func lessByTimestampDescAndNumberDesc(miniHeaders []*MiniHeader) func(i, j int) 
 		default:
 			// Equal. In this case we use Number as a secondary sort
 			// (i.e. a tie-breaker)
-			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number.Int) == 1
+			return miniHeaders[i].Number.Cmp(miniHeaders[j].Number) == 1
 		}
 	}
 }
 
-func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*MiniHeader) {
+func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*types.MiniHeader) {
 	assert.Len(t, actual, len(expected), "wrong number of miniheaders")
 	for i, expectedMiniHeader := range expected {
 		if i >= len(actual) {
@@ -1773,18 +1771,18 @@ func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*MiniHeader
 	}
 }
 
-func assertMiniHeaderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*MiniHeader) {
+func assertMiniHeaderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*types.MiniHeader) {
 	// Make a copy of the given mini headers so we don't mess up the original when sorting them.
-	expectedCopy := make([]*MiniHeader, len(expected))
+	expectedCopy := make([]*types.MiniHeader, len(expected))
 	copy(expectedCopy, expected)
 	sortMiniHeadersByHash(expectedCopy)
-	actualCopy := make([]*MiniHeader, len(actual))
+	actualCopy := make([]*types.MiniHeader, len(actual))
 	copy(actualCopy, actual)
 	sortMiniHeadersByHash(actualCopy)
 	assertMiniHeaderSlicesAreEqual(t, expected, actual)
 }
 
-func assertMiniHeadersAreEqual(t *testing.T, expected, actual *MiniHeader) {
+func assertMiniHeadersAreEqual(t *testing.T, expected, actual *types.MiniHeader) {
 	if expected.Timestamp.Equal(actual.Timestamp) {
 		// HACK(albrow): In this case, the two values represent the same time.
 		// This is what we care about, but the assert package might consider

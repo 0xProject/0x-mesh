@@ -1,3 +1,5 @@
+// +build !js
+
 package db
 
 import (
@@ -9,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
@@ -32,7 +36,7 @@ func New(ctx context.Context, path string) (*DB, error) {
 		return nil, err
 	}
 
-	db, err := sqlx.ConnectContext(connectCtx, "sqlite3", filepath.Join(path, "db.sqlite"))
+	sqldb, err := sqlx.ConnectContext(connectCtx, "sqlite3", filepath.Join(path, "db.sqlite"))
 	if err != nil {
 		return nil, err
 	}
@@ -41,14 +45,19 @@ func New(ctx context.Context, path string) (*DB, error) {
 	go func() {
 		select {
 		case <-ctx.Done():
-			_ = db.Close()
+			_ = sqldb.Close()
 		}
 	}()
 
-	return &DB{
+	db := &DB{
 		ctx:   ctx,
-		sqldb: db,
-	}, nil
+		sqldb: sqldb,
+	}
+	if err := db.migrate(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 // TODO(albrow): Use a proper migration tool.
@@ -194,7 +203,7 @@ func (db *DB) Close() error {
 	panic(errors.New("Not implemented. Cancel the context instead."))
 }
 
-func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
 	if err != nil {
 		return nil, nil, err
@@ -204,7 +213,7 @@ func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err 
 	}()
 
 	for _, order := range orders {
-		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, order)
+		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -225,14 +234,14 @@ func (db *DB) AddOrders(orders []*Order) (added []*Order, removed []*Order, err 
 	return added, nil, nil
 }
 
-func (db *DB) GetOrder(hash common.Hash) (*Order, error) {
-	var order Order
+func (db *DB) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
+	var order sqltypes.Order
 	if err := db.sqldb.GetContext(db.ctx, &order, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
 		// TODO(albrow): Specifically handle not found error.
 		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
 		return nil, err
 	}
-	return &order, nil
+	return sqltypes.OrderToCommonType(&order), nil
 }
 
 type SortDirection string
@@ -322,18 +331,18 @@ func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) Or
 	}
 }
 
-func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*Order, error) {
+func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*types.OrderWithMetadata, error) {
 	query, err := db.findOrdersQueryFromOpts(opts)
 	if err != nil {
 		return nil, err
 	}
-	var orders []*Order
+	var orders []*sqltypes.Order
 	rawQuery, bindings := query.ToSQL(false)
 	fmt.Println(rawQuery, bindings)
 	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err
 	}
-	return orders, nil
+	return sqltypes.OrdersToCommonType(orders), nil
 }
 
 func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, error) {
@@ -382,23 +391,24 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereConditi
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(opts))
 	for i, filterOpt := range opts {
+		value := convertFilterValue(filterOpt.Value)
 		switch filterOpt.Kind {
 		case Equal:
-			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), value)
 		case NotEqual:
-			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), filterOpt.Value))
+			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), value))
 		case Less:
-			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), value)
 		case Greater:
-			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), value)
 		case LessOrEqual:
-			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), value)
 		case GreaterOrEqual:
-			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), value)
 		case Contains:
 			// TODO(albrow): Value cannot contain special characters like "%".
 			// TODO(albrow): Optimize this so it is easier to index.
-			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", filterOpt.Value))
+			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", value))
 		default:
 			return nil, fmt.Errorf("db.FindOrder: unknown FilterOpt.Kind: %s", filterOpt.Kind)
 		}
@@ -425,10 +435,9 @@ func (db *DB) DeleteOrders(opts *DeleteOrdersOpts) error {
 	if err != nil {
 		return err
 	}
-	var orders []*Order
 	rawQuery, bindings := query.ToSQL(false)
 	fmt.Println(rawQuery, bindings)
-	if err := query.GetAllContext(db.ctx, &orders); err != nil {
+	if _, err := query.ExecContext(db.ctx); err != nil {
 		return err
 	}
 	return nil
@@ -451,7 +460,7 @@ func (db *DB) deleteOrdersQueryFromOpts(opts *DeleteOrdersOpts) (*sqlz.DeleteStm
 }
 
 // TODO(albrow): Consider automatically setting LastUpdated?
-func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order) (updatedOrder *Order, err error)) error {
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error {
 	if updateFunc == nil {
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
 	}
@@ -464,17 +473,19 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order
 		_ = txn.Rollback()
 	}()
 
-	var existingOrder Order
+	var existingOrder sqltypes.Order
 	if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
 		// TODO(albrow): Specifically handle not found error.
 		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
 		return err
 	}
 
-	updatedOrder, err := updateFunc(&existingOrder)
+	commonOrder := sqltypes.OrderToCommonType(&existingOrder)
+	commonUpdatedOrder, err := updateFunc(commonOrder)
 	if err != nil {
 		return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
 	}
+	updatedOrder := sqltypes.OrderFromCommonType(commonUpdatedOrder)
 	_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
 	if err != nil {
 		return err
@@ -482,7 +493,7 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *Order
 	return txn.Commit()
 }
 
-func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, removed []*MiniHeader, err error) {
+func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
 	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
 	if err != nil {
 		return nil, nil, err
@@ -492,7 +503,7 @@ func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, re
 	}()
 
 	for _, miniHeader := range miniHeaders {
-		result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, miniHeader)
+		result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -513,14 +524,14 @@ func (db *DB) AddMiniHeaders(miniHeaders []*MiniHeader) (added []*MiniHeader, re
 	return added, nil, nil
 }
 
-func (db *DB) GetMiniHeader(hash common.Hash) (*MiniHeader, error) {
-	var miniHeader MiniHeader
+func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
+	var miniHeader sqltypes.MiniHeader
 	if err := db.sqldb.GetContext(db.ctx, &miniHeader, "SELECT * FROM miniHeaders WHERE hash = $1", hash); err != nil {
 		// TODO(albrow): Specifically handle not found error.
 		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
 		return nil, err
 	}
-	return &miniHeader, nil
+	return sqltypes.MiniHeaderToCommonType(&miniHeader), nil
 }
 
 type MiniHeaderField string
@@ -552,18 +563,18 @@ type MiniHeaderFilter struct {
 }
 
 // TODO(albrow): Add options for filtering, sorting, limit, and offset.
-func (db *DB) FindMiniHeaders(opts *FindMiniHeadersOpts) ([]*MiniHeader, error) {
+func (db *DB) FindMiniHeaders(opts *FindMiniHeadersOpts) ([]*types.MiniHeader, error) {
 	query, err := db.findMiniHeadersQueryFromOpts(opts)
 	if err != nil {
 		return nil, err
 	}
 	rawQuery, bindings := query.ToSQL(false)
 	fmt.Println(rawQuery, bindings)
-	var miniHeaders []*MiniHeader
+	var miniHeaders []*sqltypes.MiniHeader
 	if err := query.GetAllContext(db.ctx, &miniHeaders); err != nil {
 		return nil, err
 	}
-	return miniHeaders, nil
+	return sqltypes.MiniHeadersToCommonType(miniHeaders), nil
 }
 
 // TODO(albrow): Can this be de-duped?
@@ -615,23 +626,24 @@ func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.Wh
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(opts))
 	for i, filterOpt := range opts {
+		value := convertFilterValue(filterOpt.Value)
 		switch filterOpt.Kind {
 		case Equal:
-			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Eq(string(filterOpt.Field), value)
 		case NotEqual:
-			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), filterOpt.Value))
+			whereConditions[i] = sqlz.Not(sqlz.Eq(string(filterOpt.Field), value))
 		case Less:
-			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Lt(string(filterOpt.Field), value)
 		case Greater:
-			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Gt(string(filterOpt.Field), value)
 		case LessOrEqual:
-			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Lte(string(filterOpt.Field), value)
 		case GreaterOrEqual:
-			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), filterOpt.Value)
+			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), value)
 		case Contains:
 			// TODO(albrow): Value cannot contain special characters like "%".
 			// TODO(albrow): Optimize this so it is easier to index.
-			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", filterOpt.Value))
+			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", value))
 		default:
 			return nil, fmt.Errorf("db.FindMiniHeaders: unknown FilterOpt.Kind: %s", filterOpt.Kind)
 		}
@@ -655,4 +667,12 @@ func (db *DB) SaveMetadata(metadata *Metadata) error {
 // should return the new metadata to save.
 func (db *DB) UpdateMetadata(updater func(oldmetadata Metadata) (newMetadata Metadata)) error {
 	return errors.New("Not yet implemented")
+}
+
+func convertFilterValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case *big.Int:
+		return sqltypes.NewBigInt(v)
+	}
+	return value
 }
