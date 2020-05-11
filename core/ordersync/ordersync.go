@@ -416,6 +416,9 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 		_ = stream.Close()
 	}()
 
+	reqChan := make(chan *Request)
+	errChan := make(chan error)
+
 	var nextReq *Request
 	var selectedSubprotocol Subprotocol
 	for {
@@ -468,9 +471,19 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return err
 		}
 
-		nextReq, err = subprotocol.HandleOrderSyncResponse(ctx, res)
-		if err != nil {
+		go func(response *Response) {
+			req, err := subprotocol.HandleOrderSyncResponse(ctx, response)
+			if err != nil {
+				errChan <- err
+			} else {
+				reqChan <- req
+			}
+		}(res)
+
+		select {
+		case err = <-errChan:
 			return err
+		case nextReq = <-reqChan:
 		}
 		s.handlePeerScoreEvent(providerID, receivedOrders)
 

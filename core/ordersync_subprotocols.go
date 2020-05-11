@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -134,20 +135,48 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 	if !ok {
 		return nil, fmt.Errorf("FilteredPaginationSubProtocol received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
-	for _, order := range res.Orders {
-		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
-			return nil, err
-		} else if matches {
-			filteredOrders = append(filteredOrders, order)
-		} else if !matches {
-			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
+
+	ordersChan := make(chan []*zeroex.SignedOrder)
+	errChan := make(chan error)
+	go func() {
+		filteredOrders := []*zeroex.SignedOrder{}
+		for _, order := range res.Orders {
+			if matches, err := p.orderFilter.MatchOrder(order); err != nil {
+				errChan <- err
+				return
+			} else if matches {
+				filteredOrders = append(filteredOrders, order)
+			} else if !matches {
+				p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
+			}
 		}
-	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
-	if err != nil {
+		ordersChan <- filteredOrders
+	}()
+
+	var filteredOrders []*zeroex.SignedOrder
+	select {
+	case err := <-errChan:
 		return nil, err
+	case filteredOrders = <-ordersChan:
 	}
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+
+	go func(orders []*zeroex.SignedOrder) {
+		validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, p.app.chainID)
+		if err != nil {
+			errChan <- err
+		}
+		validationResultsChan <- validationResults
+	}(filteredOrders)
+
+	var validationResults *ordervalidator.ValidationResults
+	select {
+	case err := <-errChan:
+		return nil, err
+	case validationResults = <-validationResultsChan:
+	}
+
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		if acceptedOrderInfo.IsNew {
 			log.WithFields(map[string]interface{}{
