@@ -22,7 +22,7 @@ import (
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
 	ctx   context.Context
-	sqldb *sqlx.DB
+	sqldb *sqlz.DB
 	// MiniHeaderRetentionLimit int
 }
 
@@ -51,7 +51,7 @@ func New(ctx context.Context, path string) (*DB, error) {
 
 	db := &DB{
 		ctx:   ctx,
-		sqldb: sqldb,
+		sqldb: sqlz.Newx(sqldb),
 	}
 	if err := db.migrate(); err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ const (
 	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
 )
 
-type FindOrdersOpts struct {
+type OrderQuery struct {
 	Filters []OrderFilter
 	Sort    []OrderSort
 	Limit   uint
@@ -331,8 +331,8 @@ func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) Or
 	}
 }
 
-func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*types.OrderWithMetadata, error) {
-	query, err := db.findOrdersQueryFromOpts(opts)
+func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+	query, err := findOrdersQueryFromOpts(db.sqldb, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +345,12 @@ func (db *DB) FindOrders(opts *FindOrdersOpts) ([]*types.OrderWithMetadata, erro
 	return sqltypes.OrdersToCommonType(orders), nil
 }
 
-func (db *DB) findOrdersQueryFromOpts(opts *FindOrdersOpts) (*sqlz.SelectStmt, error) {
-	query := sqlz.Newx(db.sqldb).Select("*").From("orders")
+type Selector interface {
+	Select(cols ...string) *sqlz.SelectStmt
+}
+
+func findOrdersQueryFromOpts(selector Selector, opts *OrderQuery) (*sqlz.SelectStmt, error) {
+	query := selector.Select("*").From("orders")
 	if opts == nil {
 		return query, nil
 	}
@@ -425,38 +429,32 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	return nil
 }
 
-type DeleteOrdersOpts struct {
-	Filters []OrderFilter
-}
-
-// TODO(albrow): Return orders that were deleted?
-func (db *DB) DeleteOrders(opts *DeleteOrdersOpts) error {
-	query, err := db.deleteOrdersQueryFromOpts(opts)
-	if err != nil {
-		return err
-	}
-	rawQuery, bindings := query.ToSQL(false)
-	fmt.Println(rawQuery, bindings)
-	if _, err := query.ExecContext(db.ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *DB) deleteOrdersQueryFromOpts(opts *DeleteOrdersOpts) (*sqlz.DeleteStmt, error) {
-	query := sqlz.Newx(db.sqldb).DeleteFrom("orders")
-	if opts == nil {
-		return query, nil
-	}
-	whereConditions, err := whereConditionsFromOrderFilterOpts(opts.Filters)
+// TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
+func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+	// for DELETE statements. It also doesn't support RETURNING. As a
+	// workaround, we do a SELECT and DELETE inside a transaction.
+	var ordersToDelete []*sqltypes.Order
+	err := db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
+		query, err := findOrdersQueryFromOpts(tx, opts)
+		if err != nil {
+			return err
+		}
+		if err := query.GetAllContext(db.ctx, &ordersToDelete); err != nil {
+			return err
+		}
+		for _, order := range ordersToDelete {
+			_, err := tx.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if len(whereConditions) != 0 {
-		query.Where(whereConditions...)
-	}
-
-	return query, nil
+	return sqltypes.OrdersToCommonType(ordersToDelete), nil
 }
 
 // TODO(albrow): Consider automatically setting LastUpdated?
@@ -544,7 +542,7 @@ const (
 	MFLogs      MiniHeaderField = "logs"
 )
 
-type FindMiniHeadersOpts struct {
+type MiniHeaderQuery struct {
 	Filters []MiniHeaderFilter
 	Sort    []MiniHeaderSort
 	Limit   uint
@@ -562,9 +560,8 @@ type MiniHeaderFilter struct {
 	Value interface{}
 }
 
-// TODO(albrow): Add options for filtering, sorting, limit, and offset.
-func (db *DB) FindMiniHeaders(opts *FindMiniHeadersOpts) ([]*types.MiniHeader, error) {
-	query, err := db.findMiniHeadersQueryFromOpts(opts)
+func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
+	query, err := findMiniHeadersQueryFromOpts(db.sqldb, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -578,8 +575,8 @@ func (db *DB) FindMiniHeaders(opts *FindMiniHeadersOpts) ([]*types.MiniHeader, e
 }
 
 // TODO(albrow): Can this be de-duped?
-func (db *DB) findMiniHeadersQueryFromOpts(opts *FindMiniHeadersOpts) (*sqlz.SelectStmt, error) {
-	query := sqlz.Newx(db.sqldb).Select("*").From("miniHeaders")
+func findMiniHeadersQueryFromOpts(selector Selector, opts *MiniHeaderQuery) (*sqlz.SelectStmt, error) {
+	query := selector.Select("*").From("miniHeaders")
 	if opts == nil {
 		return query, nil
 	}
@@ -649,6 +646,43 @@ func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.Wh
 		}
 	}
 	return whereConditions, nil
+}
+
+func (db *DB) DeleteMiniHeader(hash common.Hash) error {
+	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM miniHeaders WHERE hash = $1", hash); err != nil {
+		// TODO(albrow): Specifically handle not found error.
+		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		return err
+	}
+	return nil
+}
+
+// TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
+func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
+	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+	// for DELETE statements. It also doesn't support RETURNING. As a
+	// workaround, we do a SELECT and DELETE inside a transaction.
+	var miniHeadersToDelete []*sqltypes.MiniHeader
+	err := db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
+		query, err := findMiniHeadersQueryFromOpts(tx, opts)
+		if err != nil {
+			return err
+		}
+		if err := query.GetAllContext(db.ctx, &miniHeadersToDelete); err != nil {
+			return err
+		}
+		for _, miniHeader := range miniHeadersToDelete {
+			_, err := tx.DeleteFrom("miniHeaders").Where(sqlz.Eq(string(MFHash), miniHeader.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sqltypes.MiniHeadersToCommonType(miniHeadersToDelete), nil
 }
 
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).

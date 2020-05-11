@@ -202,7 +202,7 @@ func runFindOrdersSortTestCase(t *testing.T, db *DB, originalOrders []*types.Ord
 		expectedOrders := make([]*types.OrderWithMetadata, len(originalOrders))
 		copy(expectedOrders, originalOrders)
 		sort.Slice(expectedOrders, testCase.less(expectedOrders))
-		findOpts := &FindOrdersOpts{
+		findOpts := &OrderQuery{
 			Sort: testCase.sortOpts,
 		}
 		foundOrders, err := db.FindOrders(findOpts)
@@ -272,7 +272,7 @@ type findOrdersLimitAndOffsetTestCase struct {
 
 func runFindOrdersLimitAndOffsetTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase findOrdersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		findOpts := &FindOrdersOpts{
+		findOpts := &OrderQuery{
 			Sort: []OrderSort{
 				{
 					Field:     OFHash,
@@ -580,7 +580,7 @@ type findOrdersFilterTestCase struct {
 
 func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		findOpts := &FindOrdersOpts{
+		findOpts := &OrderQuery{
 			Filters: testCase.filters,
 		}
 
@@ -910,11 +910,10 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types
 			require.NoError(t, err)
 		}()
 
-		deleteOpts := &DeleteOrdersOpts{
+		deleteOpts := &OrderQuery{
 			Filters: testCase.filters,
 		}
-
-		err := db.DeleteOrders(deleteOpts)
+		deletedOrders, err := db.DeleteOrders(deleteOpts)
 		if testCase.expectedError != "" {
 			require.Error(t, err, "expected an error but got nil")
 			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
@@ -923,6 +922,27 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types
 			foundOrders, err := db.FindOrders(nil)
 			require.NoError(t, err)
 			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedRemainingOrders, foundOrders)
+
+			// Figure out which orders were supposed to be deleted and
+			// make sure that they were.
+			// TODO(albrow): Make this test use the same structure as deleteMiniHeadersFilter
+			// and make ecah test case include the expected *deleted* orders instead of
+			// expected remaining. Then we can potentially de-dupe the test cases with
+			// findOrdersFilter.
+			expectedDeletedOrders := []*types.OrderWithMetadata{}
+			for _, order := range originalOrders {
+				shouldBeDeleted := true
+				for _, remainingOrder := range testCase.expectedRemainingOrders {
+					if order.Hash.Hex() == remainingOrder.Hash.Hex() {
+						shouldBeDeleted = false
+						break
+					}
+				}
+				if shouldBeDeleted {
+					expectedDeletedOrders = append(expectedDeletedOrders, order)
+				}
+			}
+			assertOrderSlicesAreUnsortedEqual(t, expectedDeletedOrders, deletedOrders)
 		}
 	}
 }
@@ -1072,7 +1092,7 @@ func runFindMiniHeadersSortTestCase(t *testing.T, db *DB, originalMiniHeaders []
 		expectedMiniHeaders := make([]*types.MiniHeader, len(originalMiniHeaders))
 		copy(expectedMiniHeaders, originalMiniHeaders)
 		sort.Slice(expectedMiniHeaders, testCase.less(expectedMiniHeaders))
-		findOpts := &FindMiniHeadersOpts{
+		findOpts := &MiniHeaderQuery{
 			Sort: testCase.sortOpts,
 		}
 		foundMiniHeaders, err := db.FindMiniHeaders(findOpts)
@@ -1142,7 +1162,7 @@ type findMiniHeadersLimitAndOffsetTestCase struct {
 
 func runFindMiniHeadersLimitAndOffsetTestCase(t *testing.T, db *DB, originalMiniHeaders []*types.MiniHeader, testCase findMiniHeadersLimitAndOffsetTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		findOpts := &FindMiniHeadersOpts{
+		findOpts := &MiniHeaderQuery{
 			Sort: []MiniHeaderSort{
 				{
 					Field:     MFHash,
@@ -1419,7 +1439,7 @@ type findMiniHeadersFilterTestCase struct {
 
 func runFindMiniHeadersFilterTestCase(t *testing.T, db *DB, testCase findMiniHeadersFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		findOpts := &FindMiniHeadersOpts{
+		findOpts := &MiniHeaderQuery{
 			Filters: testCase.filters,
 		}
 
@@ -1430,6 +1450,319 @@ func runFindMiniHeadersFilterTestCase(t *testing.T, db *DB, testCase findMiniHea
 		} else {
 			require.NoError(t, err)
 			assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMiniHeaders, foundMiniHeaders)
+		}
+	}
+}
+
+func TestDeleteMiniHeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	added, _, err := db.AddMiniHeaders([]*types.MiniHeader{newTestMiniHeader()})
+	require.NoError(t, err)
+	originalMiniHeader := added[0]
+	require.NoError(t, db.DeleteMiniHeader(originalMiniHeader.Hash))
+
+	foundMiniHeaders, err := db.FindMiniHeaders(nil)
+	require.NoError(t, err)
+	assert.Empty(t, foundMiniHeaders, "expected no miniHeaders remaining in the database")
+}
+
+func TestDeleteMiniHeadersFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test miniheaders with very specific characteristics to make it easier to write tests.
+	// - Number will be 0, 1, 2, etc.
+	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
+	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
+	numMiniHeaders := 10
+	originalMiniHeaders := []*types.MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = big.NewInt(int64(i))
+		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
+		for i := range miniHeader.Logs {
+			miniHeader.Logs[i].BlockNumber = miniHeader.Number.Uint64()
+		}
+		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+	require.NoError(t, err)
+
+	// TODO(albrow): These test cases can potentially be de-duped with findMiniHeaders test cases.
+	// Same for orders.
+	testCases := []deleteMiniHeadersFilterTestCase{
+		{
+			name:                       "no filter",
+			filters:                    []MiniHeaderFilter{},
+			expectedDeletedMiniHeaders: originalMiniHeaders,
+		},
+
+		// Filter on Number (type Uint256/NUMERIC)
+		{
+			name: "Number = 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Equal,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
+		},
+		{
+			name: "Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Number < 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[:5],
+		},
+		{
+			name: "Number > 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Greater,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[6:],
+		},
+		{
+			name: "Number <= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  LessOrEqual,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[:6],
+		},
+		{
+			name: "Number >= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[5:],
+		},
+		{
+			name: "Number < 10^76",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: math.BigPow(10, 76),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders,
+		},
+
+		// Filter on Timestamp (type time.Time/TIMESTAMP)
+		{
+			name: "Timestamp = 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Equal,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
+		},
+		{
+			name: "Timestamp != 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  NotEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Timestamp < 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[:5],
+		},
+		{
+			name: "Timestamp > 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Greater,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[6:],
+		},
+		{
+			name: "Timestamp <= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  LessOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[:6],
+		},
+		{
+			name: "Timestamp >= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  GreaterOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[5:],
+		},
+
+		// Filter on Logs (type ParsedAssetData/TEXT)
+		{
+			name: "Logs CONTAINS query that matches all",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders,
+		},
+		{
+			name: "Logs CONTAINS query that matches one",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"blockNumber":"0x5"`,
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
+		},
+
+		// Combining two or more filters
+		{
+			name: "Number >= 3 AND Timestamp < h",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+			},
+			expectedDeletedMiniHeaders: originalMiniHeaders[3:7],
+		},
+		{
+			name: "Number >= 3 AND Timestamp < 700 AND Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
+		t.Run(testCaseName, runDeleteMiniHeadersFilterTestCase(t, db, originalMiniHeaders, testCase))
+	}
+}
+
+type deleteMiniHeadersFilterTestCase struct {
+	name                       string
+	filters                    []MiniHeaderFilter
+	expectedDeletedMiniHeaders []*types.MiniHeader
+	expectedError              string
+}
+
+func runDeleteMiniHeadersFilterTestCase(t *testing.T, db *DB, originalMiniHeaders []*types.MiniHeader, testCase deleteMiniHeadersFilterTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		defer func() {
+			// After each case, reset the state of the database by re-adding the original miniHeaders.
+			_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+			require.NoError(t, err)
+		}()
+
+		findOpts := &MiniHeaderQuery{
+			Filters: testCase.filters,
+		}
+
+		deletedMiniHeaders, err := db.DeleteMiniHeaders(findOpts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedDeletedMiniHeaders, deletedMiniHeaders)
+
+			// Calculate expected remanining miniheaders and make sure that each one is still
+			// in the database.
+			expectedRemainingMiniHeaders := []*types.MiniHeader{}
+			for _, miniHeader := range originalMiniHeaders {
+				shouldBeRemaining := true
+				for _, remainingMiniHeader := range testCase.expectedDeletedMiniHeaders {
+					if miniHeader.Hash.Hex() == remainingMiniHeader.Hash.Hex() {
+						shouldBeRemaining = false
+						break
+					}
+				}
+				if shouldBeRemaining {
+					expectedRemainingMiniHeaders = append(expectedRemainingMiniHeaders, miniHeader)
+				}
+			}
+
+			remainingMiniHeaders, err := db.FindMiniHeaders(nil)
+			require.NoError(t, err)
+			assertMiniHeaderSlicesAreUnsortedEqual(t, expectedRemainingMiniHeaders, remainingMiniHeaders)
 		}
 	}
 }
