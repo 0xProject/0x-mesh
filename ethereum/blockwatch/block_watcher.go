@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -50,19 +51,7 @@ const (
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	Type        EventType
-	BlockHeader *miniheader.MiniHeader
-}
-
-// Stack defines the interface a stack must implement in order to be used by
-// OrderWatcher for block header storage
-type Stack interface {
-	Pop() (*miniheader.MiniHeader, error)
-	Push(*miniheader.MiniHeader) error
-	Peek() (*miniheader.MiniHeader, error)
-	PeekAll() ([]*miniheader.MiniHeader, error)
-	Clear() error
-	Checkpoint() (int, error)
-	Reset(int) error
+	BlockHeader *types.MiniHeader
 }
 
 // TooMayBlocksBehindError is an error returned if the BlockWatcher has fallen too many blocks behind
@@ -78,7 +67,7 @@ func (e TooMayBlocksBehindError) Error() string {
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
-	Stack           Stack
+	DB              *db.DB
 	PollingInterval time.Duration
 	WithLogs        bool
 	Topics          []common.Hash
@@ -89,7 +78,7 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	stack               Stack
+	stack               *Stack
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -105,7 +94,7 @@ type Watcher struct {
 func New(config Config) *Watcher {
 	return &Watcher{
 		pollingInterval: config.PollingInterval,
-		stack:           config.Stack,
+		stack:           NewStack(config.DB),
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
@@ -241,7 +230,7 @@ func (w *Watcher) SyncToLatestBlock() error {
 	w.syncToLatestBlockMu.Lock()
 	defer w.syncToLatestBlockMu.Unlock()
 
-	checkpointID, err := w.stack.Checkpoint()
+	existingMiniHeaders, err := w.stack.PeekAll()
 	if err != nil {
 		return err
 	}
@@ -314,21 +303,21 @@ func (w *Watcher) SyncToLatestBlock() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		if err := w.stack.Reset(checkpointID); err != nil {
+		// TODO(albrow): Take another look at this. Maybe extract to method.
+		if err := w.stack.Clear(); err != nil {
+			return err
+		}
+		if _, _, err := w.stack.db.AddMiniHeaders(existingMiniHeaders); err != nil {
 			return err
 		}
 	} else {
-		_, err = w.stack.Checkpoint()
-		if err != nil {
-			return err
-		}
 		w.blockFeed.Send(allEvents)
 	}
 
 	return syncErr
 }
 
-func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, events []*Event) bool {
+func (w *Watcher) shouldRevertChanges(lastStoredHeader *types.MiniHeader, events []*Event) bool {
 	if len(events) == 0 || lastStoredHeader == nil {
 		return false
 	}
@@ -339,7 +328,7 @@ func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, e
 	return newLatestHeader.Number.Cmp(lastStoredHeader.Number) <= 0
 }
 
-func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
+func (w *Watcher) buildCanonicalChain(nextHeader *types.MiniHeader, events []*Event) ([]*Event, error) {
 	latestHeader, err := w.stack.Peek()
 	if err != nil {
 		return nil, err
@@ -394,7 +383,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	return events, nil
 }
 
-func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
+func (w *Watcher) addLogs(header *types.MiniHeader) (*types.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
 	}
@@ -443,7 +432,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 
 		// Create the block events from all the logs found by grouping
 		// them into blockHeaders
-		hashToBlockHeader := map[common.Hash]*miniheader.MiniHeader{}
+		hashToBlockHeader := map[common.Hash]*types.MiniHeader{}
 		for _, log := range logs {
 			blockHeader, ok := hashToBlockHeader[log.BlockHash]
 			if !ok {
@@ -452,16 +441,17 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 				if err != nil {
 					return events, err
 				}
-				blockHeader = &miniheader.MiniHeader{
+				blockHeader = &types.MiniHeader{
 					Hash:      log.BlockHash,
 					Parent:    header.Parent,
 					Number:    blockNumber,
-					Logs:      []types.Log{},
+					Logs:      []ethtypes.Log{},
 					Timestamp: header.Timestamp,
 				}
 				hashToBlockHeader[log.BlockHash] = blockHeader
 			}
-			blockHeader.Logs = append(blockHeader.Logs, log)
+			// TODO(albrow): How to write this?
+			// blockHeader.Logs = append(blockHeader.Logs, db.NewEventLogs(logs))
 		}
 		for _, blockHeader := range hashToBlockHeader {
 			events = append(events, &Event{
@@ -478,7 +468,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 type logRequestResult struct {
 	From int
 	To   int
-	Logs []types.Log
+	Logs []ethtypes.Log
 	Err  error
 }
 
@@ -490,7 +480,7 @@ const getLogsRequestChunkSize = 3
 // the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
 // batch requests are not sent. Instead, it returns all the logs it found up until the error was
 // encountered, along with the block number after which no further logs were retrieved.
-func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]types.Log, int) {
+func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]ethtypes.Log, int) {
 	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
 	numChunks := 0
@@ -512,7 +502,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 
 	didAPreviousRequestFail := false
 	furthestBlockProcessed := from - 1
-	allLogs := []types.Log{}
+	allLogs := []ethtypes.Log{}
 
 	for i := 0; i < numChunks; i++ {
 		// Add one to the semaphore chan. If it already has a value, the chunk blocks here until one frees up.
@@ -542,13 +532,13 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 						From: b.FromBlock,
 						To:   b.ToBlock,
 						Err:  errors.New("context was canceled"),
-						Logs: []types.Log{},
+						Logs: []ethtypes.Log{},
 					}
 					return
 				default:
 				}
 
-				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []types.Log{})
+				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []ethtypes.Log{})
 				if err != nil {
 					log.WithFields(map[string]interface{}{
 						"error":     err,
@@ -634,7 +624,7 @@ func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 
 const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
-func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]types.Log, error) {
+func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []ethtypes.Log) ([]ethtypes.Log, error) {
 	log.WithFields(map[string]interface{}{
 		"from": from,
 		"to":   to,
@@ -689,7 +679,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 }
 
 // getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
-func (w *Watcher) getAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
+func (w *Watcher) getAllRetainedBlocks() ([]*types.MiniHeader, error) {
 	return w.stack.PeekAll()
 }
 

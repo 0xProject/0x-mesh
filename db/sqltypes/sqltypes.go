@@ -148,10 +148,10 @@ type Order struct {
 // EventLogs is a wrapper around []*ethtypes.Log that implements the
 // sql.Valuer and sql.Scanner interfaces.
 type EventLogs struct {
-	Logs []*ethtypes.Log
+	Logs []ethtypes.Log
 }
 
-func NewEventLogs(logs []*ethtypes.Log) *EventLogs {
+func NewEventLogs(logs []ethtypes.Log) *EventLogs {
 	return &EventLogs{
 		Logs: logs,
 	}

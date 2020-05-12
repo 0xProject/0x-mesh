@@ -1875,8 +1875,8 @@ func newTestMiniHeader() *types.MiniHeader {
 	}
 }
 
-func newTestEventLogs() []*ethtypes.Log {
-	return []*ethtypes.Log{
+func newTestEventLogs() []ethtypes.Log {
+	return []ethtypes.Log{
 		{
 			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
 			Topics: []common.Hash{

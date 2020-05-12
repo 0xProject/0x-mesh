@@ -135,15 +135,39 @@ type OrderWithMetadata struct {
 	ParsedMakerFeeAssetData []*SingleAssetData `json:"parsedMakerFeeAssetData"`
 }
 
+func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
+	return &zeroex.SignedOrder{
+		Order: zeroex.Order{
+			ChainID:               order.ChainID,
+			ExchangeAddress:       order.ExchangeAddress,
+			MakerAddress:          order.MakerAddress,
+			MakerAssetData:        order.MakerAssetData,
+			MakerFeeAssetData:     order.MakerFeeAssetData,
+			MakerAssetAmount:      order.MakerAssetAmount,
+			MakerFee:              order.MakerFee,
+			TakerAddress:          order.TakerAddress,
+			TakerAssetData:        order.TakerAssetData,
+			TakerFeeAssetData:     order.TakerFeeAssetData,
+			TakerAssetAmount:      order.TakerAssetAmount,
+			TakerFee:              order.TakerFee,
+			SenderAddress:         order.SenderAddress,
+			FeeRecipientAddress:   order.FeeRecipientAddress,
+			ExpirationTimeSeconds: order.ExpirationTimeSeconds,
+			Salt:                  order.Salt,
+		},
+		Signature: order.Signature,
+	}
+}
+
 type SingleAssetData struct {
 	Address common.Address `json:"address"`
 	TokenID *big.Int       `json:"tokenID"`
 }
 
 type MiniHeader struct {
-	Hash      common.Hash  `json:"hash"`
-	Parent    common.Hash  `json:"parent"`
-	Number    *big.Int     `json:"number"`
-	Timestamp time.Time    `json:"timestamp"`
-	Logs      []*types.Log `json:"logs"`
+	Hash      common.Hash `json:"hash"`
+	Parent    common.Hash `json:"parent"`
+	Number    *big.Int    `json:"number"`
+	Timestamp time.Time   `json:"timestamp"`
+	Logs      []types.Log `json:"logs"`
 }

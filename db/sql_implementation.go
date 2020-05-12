@@ -92,8 +92,8 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS miniHeaders (
 	hash      TEXT UNIQUE NOT NULL,
+	number    NUMERIC(78, 0) UNIQUE NOT NULL,
 	parent    TEXT NOT NULL,
-	number    NUMERIC(78, 0) NOT NULL,
 	timestamp DATETIME NOT NULL,
 	logs      TEXT NOT NULL
 );
@@ -337,8 +337,6 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 		return nil, err
 	}
 	var orders []*sqltypes.Order
-	rawQuery, bindings := query.ToSQL(false)
-	fmt.Println(rawQuery, bindings)
 	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err
 	}
@@ -565,8 +563,6 @@ func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error
 	if err != nil {
 		return nil, err
 	}
-	rawQuery, bindings := query.ToSQL(false)
-	fmt.Println(rawQuery, bindings)
 	var miniHeaders []*sqltypes.MiniHeader
 	if err := query.GetAllContext(db.ctx, &miniHeaders); err != nil {
 		return nil, err
