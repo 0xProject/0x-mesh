@@ -15,7 +15,6 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,10 +29,17 @@ var (
 	basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
 )
 
+func dbOptions() *db.Options {
+	options := db.TestOptions()
+	// For the block watcher tests we set MaxMiniHeaders to 10.
+	options.MaxMiniHeaders = 10
+	return options
+}
+
 func TestWatcher(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient("testdata/fake_client_block_poller_fixtures.json")
 	require.NoError(t, err)
@@ -85,7 +91,7 @@ func TestWatcher(t *testing.T) {
 func TestWatcherStartStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
@@ -190,7 +196,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
@@ -207,7 +213,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	// Fixture will return block 132 as the tip of the chain (127 blocks from block 5)
 	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
@@ -242,7 +248,7 @@ func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	// Fixture will return block 133 as the tip of the chain (128 blocks from block 5)
 	fakeClient, err := newFakeClient("testdata/fake_client_reset_fixture.json")
@@ -276,7 +282,7 @@ func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 func TestFastSyncToLatestBlockNoneMissed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
 	// Fixture will return block 5 as the tip of the chain
 	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
@@ -426,7 +432,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+		database, err := db.New(ctx, dbOptions())
 		require.NoError(t, err)
 		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
 		require.NoError(t, err)
@@ -532,7 +538,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
+		database, err := db.New(ctx, dbOptions())
 		require.NoError(t, err)
 		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		require.NoError(t, err)

@@ -29,7 +29,7 @@ const (
 func TestEthereumChainDetection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
+	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	defer meshDB.Close()
 

@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -27,14 +28,16 @@ type DB struct {
 }
 
 type Options struct {
-	Path           string
+	DriverName     string
+	DataSourceName string
 	MaxOrders      int
 	MaxMiniHeaders int
 }
 
 func defaultOptions() *Options {
 	return &Options{
-		Path:           "0x_mesh/db",
+		DriverName:     "sqlite3",
+		DataSourceName: "0x_mesh/db/db.sqlite",
 		MaxOrders:      100000,
 		MaxMiniHeaders: 20,
 	}
@@ -45,8 +48,8 @@ func parseOptions(opts *Options) *Options {
 	if opts == nil {
 		return finalOpts
 	}
-	if opts.Path != "" {
-		finalOpts.Path = opts.Path
+	if opts.DataSourceName != "" {
+		finalOpts.DataSourceName = opts.DataSourceName
 	}
 	if opts.MaxOrders != 0 {
 		finalOpts.MaxOrders = opts.MaxOrders
@@ -57,6 +60,16 @@ func parseOptions(opts *Options) *Options {
 	return finalOpts
 }
 
+// TestOptions returns a set of options suitable for testing.
+func TestOptions() *Options {
+	return &Options{
+		DriverName:     "sqlite3",
+		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite"),
+		MaxOrders:      100,
+		MaxMiniHeaders: 20,
+	}
+}
+
 // New creates a new connection to the database. The connection will be automatically closed
 // when the given context is canceled.
 func New(ctx context.Context, opts *Options) (*DB, error) {
@@ -65,11 +78,11 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
-	if err := os.MkdirAll(opts.Path, os.ModePerm); err != nil && err != os.ErrExist {
+	if err := os.MkdirAll(filepath.Dir(opts.DataSourceName), os.ModePerm); err != nil && err != os.ErrExist {
 		return nil, err
 	}
 
-	sqldb, err := sqlx.ConnectContext(connectCtx, "sqlite3", filepath.Join(opts.Path, "db.sqlite"))
+	sqldb, err := sqlx.ConnectContext(connectCtx, opts.DriverName, opts.DataSourceName)
 	if err != nil {
 		return nil, err
 	}

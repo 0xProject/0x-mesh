@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -19,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1829,10 +1827,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func newTestDB(t *testing.T, ctx context.Context) *DB {
-	opts := &Options{
-		Path: filepath.Join("/tmp", "db_testing", uuid.New().String()),
-	}
-	db, err := New(ctx, opts)
+	db, err := New(ctx, TestOptions())
 	require.NoError(t, err)
 	return db
 }

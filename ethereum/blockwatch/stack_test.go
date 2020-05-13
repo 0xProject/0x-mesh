@@ -9,7 +9,6 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +29,7 @@ var (
 )
 
 func newTestStack(t *testing.T, ctx context.Context) *Stack {
-	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	return NewStack(database)
 }

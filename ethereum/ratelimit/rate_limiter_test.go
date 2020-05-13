@@ -10,7 +10,6 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +29,7 @@ const (
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
+	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	defer meshDB.Close()
 	initMetadata(t, meshDB)
@@ -67,7 +66,7 @@ func TestScenario1(t *testing.T) {
 // should return an error.
 func TestScenario2(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
+	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -124,7 +123,7 @@ func TestScenario2(t *testing.T) {
 // interval elapses.
 func TestScenario3(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
+	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	defer meshDB.Close()
 
