@@ -952,12 +952,15 @@ func TestAddMiniHeaders(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	numMiniHeaders := 10
+	numMiniHeaders := constants.MiniHeaderRetentionLimit
 	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
-		miniHeaders = append(miniHeaders, newTestMiniHeader())
+		// It's important to note that each miniHeader has a increasing
+		// blockNuber. Later will add more miniHeaders with higher numbers.
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = big.NewInt(int64(i))
+		miniHeaders = append(miniHeaders, miniHeader)
 	}
-
 	{
 		added, removed, err := db.AddMiniHeaders(miniHeaders)
 		require.NoError(t, err)
@@ -969,6 +972,22 @@ func TestAddMiniHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, removed, 0, "Expected no miniHeaders to be removed")
 		assert.Len(t, added, 0, "Expected no miniHeaders to be added (they should already exist)")
+	}
+
+	// Create 10 more mini headers with higher block numbers.
+	miniHeadersWithHigherBlockNumbers := []*types.MiniHeader{}
+	for i := constants.MiniHeaderRetentionLimit; i < constants.MiniHeaderRetentionLimit+10; i++ {
+		// It's important to note that each miniHeader has a increasing
+		// blockNuber. Later will add more miniHeaders with higher numbers.
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = big.NewInt(int64(i))
+		miniHeadersWithHigherBlockNumbers = append(miniHeadersWithHigherBlockNumbers, miniHeader)
+	}
+	{
+		added, removed, err := db.AddMiniHeaders(miniHeadersWithHigherBlockNumbers)
+		require.NoError(t, err)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, miniHeadersWithHigherBlockNumbers, added)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, miniHeaders[:10], removed)
 	}
 }
 

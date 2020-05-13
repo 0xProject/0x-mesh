@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ido50/sqlz"
@@ -193,6 +194,8 @@ const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
 	:timestamp,
 	:logs
 )`
+
+const trimMiniHeadersQuery = `DELETE FROM miniHeaders ORDER BY number ASC OFFSET 20 RETURNING *`
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
@@ -490,34 +493,42 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 }
 
 func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+	var miniHeadersToRemove []*sqltypes.MiniHeader
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		for _, miniHeader := range miniHeaders {
+			result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
+			if err != nil {
+				return err
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if affected > 0 {
+				added = append(added, miniHeader)
+			}
+		}
+
+		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+		// for DELETE statements. It also doesn't support RETURNING. As a
+		// workaround, we do a SELECT and DELETE inside a transaction.
+		trimQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(99999999999).Offset(constants.MiniHeaderRetentionLimit)
+		if err := trimQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
+			return err
+		}
+		for _, miniHeader := range miniHeadersToRemove {
+			_, err := txn.DeleteFrom("miniHeaders").Where(sqlz.Eq(string(MFHash), miniHeader.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
 
-	for _, miniHeader := range miniHeaders {
-		result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
-		if err != nil {
-			return nil, nil, err
-		}
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return nil, nil, err
-		}
-		if affected > 0 {
-			added = append(added, miniHeader)
-		}
-	}
-	if err := txn.Commit(); err != nil {
-		return nil, nil, err
-	}
-
-	// TODO(albrow): Remove miniheaders to keep count low.
-	// TODO(albrow): Return appropriate values for added, removed.
-	return added, nil, nil
+	return added, sqltypes.MiniHeadersToCommonType(miniHeadersToRemove), nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
