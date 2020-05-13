@@ -952,7 +952,7 @@ func TestAddMiniHeaders(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	numMiniHeaders := constants.MiniHeaderRetentionLimit
+	numMiniHeaders := db.opts.MaxMiniHeaders
 	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		// It's important to note that each miniHeader has a increasing
@@ -976,7 +976,7 @@ func TestAddMiniHeaders(t *testing.T) {
 
 	// Create 10 more mini headers with higher block numbers.
 	miniHeadersWithHigherBlockNumbers := []*types.MiniHeader{}
-	for i := constants.MiniHeaderRetentionLimit; i < constants.MiniHeaderRetentionLimit+10; i++ {
+	for i := db.opts.MaxMiniHeaders; i < db.opts.MaxMiniHeaders+10; i++ {
 		// It's important to note that each miniHeader has a increasing
 		// blockNuber. Later will add more miniHeaders with higher numbers.
 		miniHeader := newTestMiniHeader()
@@ -1829,7 +1829,10 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 }
 
 func newTestDB(t *testing.T, ctx context.Context) *DB {
-	db, err := New(ctx, filepath.Join("/tmp", "db_testing", uuid.New().String()))
+	opts := &Options{
+		Path: filepath.Join("/tmp", "db_testing", uuid.New().String()),
+	}
+	db, err := New(ctx, opts)
 	require.NoError(t, err)
 	return db
 }

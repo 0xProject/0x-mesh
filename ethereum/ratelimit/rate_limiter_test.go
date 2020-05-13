@@ -30,7 +30,7 @@ const (
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 	defer meshDB.Close()
 	initMetadata(t, meshDB)
@@ -67,7 +67,7 @@ func TestScenario1(t *testing.T) {
 // should return an error.
 func TestScenario2(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 	defer meshDB.Close()
 
@@ -124,7 +124,7 @@ func TestScenario2(t *testing.T) {
 // interval elapses.
 func TestScenario3(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, "/tmp/meshdb_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/meshdb_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 	defer meshDB.Close()
 

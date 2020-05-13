@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ido50/sqlz"
@@ -24,20 +23,53 @@ import (
 type DB struct {
 	ctx   context.Context
 	sqldb *sqlz.DB
-	// MiniHeaderRetentionLimit int
+	opts  *Options
+}
+
+type Options struct {
+	Path           string
+	MaxOrders      int
+	MaxMiniHeaders int
+}
+
+func defaultOptions() *Options {
+	return &Options{
+		Path:           "0x_mesh/db",
+		MaxOrders:      100000,
+		MaxMiniHeaders: 20,
+	}
+}
+
+func parseOptions(opts *Options) *Options {
+	finalOpts := defaultOptions()
+	if opts == nil {
+		return finalOpts
+	}
+	if opts.Path != "" {
+		finalOpts.Path = opts.Path
+	}
+	if opts.MaxOrders != 0 {
+		finalOpts.MaxOrders = opts.MaxOrders
+	}
+	if opts.MaxMiniHeaders != 0 {
+		finalOpts.MaxMiniHeaders = opts.MaxMiniHeaders
+	}
+	return finalOpts
 }
 
 // New creates a new connection to the database. The connection will be automatically closed
 // when the given context is canceled.
-func New(ctx context.Context, path string) (*DB, error) {
+func New(ctx context.Context, opts *Options) (*DB, error) {
+	opts = parseOptions(opts)
+
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
-	if err := os.MkdirAll(path, os.ModePerm); err != nil && err != os.ErrExist {
+	if err := os.MkdirAll(opts.Path, os.ModePerm); err != nil && err != os.ErrExist {
 		return nil, err
 	}
 
-	sqldb, err := sqlx.ConnectContext(connectCtx, "sqlite3", filepath.Join(path, "db.sqlite"))
+	sqldb, err := sqlx.ConnectContext(connectCtx, "sqlite3", filepath.Join(opts.Path, "db.sqlite"))
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +85,7 @@ func New(ctx context.Context, path string) (*DB, error) {
 	db := &DB{
 		ctx:   ctx,
 		sqldb: sqlz.Newx(sqldb),
+		opts:  opts,
 	}
 	if err := db.migrate(); err != nil {
 		return nil, err
@@ -194,8 +227,6 @@ const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
 	:timestamp,
 	:logs
 )`
-
-const trimMiniHeadersQuery = `DELETE FROM miniHeaders ORDER BY number ASC OFFSET 20 RETURNING *`
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
@@ -512,7 +543,7 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 		// for DELETE statements. It also doesn't support RETURNING. As a
 		// workaround, we do a SELECT and DELETE inside a transaction.
-		trimQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(99999999999).Offset(constants.MiniHeaderRetentionLimit)
+		trimQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(99999999999).Offset(int64(db.opts.MaxMiniHeaders))
 		if err := trimQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
 			return err
 		}

@@ -80,7 +80,7 @@ func (fc *fakeClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) 
 func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	// IMPLEMENTED WITH A CANNED RESPONSE. FOR MORE ELABORATE TESTING, SEE `fakeLogClient`
 	return []ethtypes.Log{
-		ethtypes.Log{
+		{
 			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
 			Topics: []common.Hash{
 				common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),

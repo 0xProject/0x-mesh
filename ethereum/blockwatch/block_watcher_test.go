@@ -31,7 +31,7 @@ var (
 func TestWatcher(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient("testdata/fake_client_block_poller_fixtures.json")
 	require.NoError(t, err)
@@ -59,13 +59,13 @@ func TestWatcher(t *testing.T) {
 		retainedBlocks, err := watcher.getAllRetainedBlocks()
 		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
-		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, scenarioLabel)
+		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, fmt.Sprintf("%s (timestep: %d)", scenarioLabel, i))
 
 		expectedEvents := fakeClient.GetEvents()
 		if len(expectedEvents) != 0 {
 			select {
 			case gotEvents := <-events:
-				assert.Equal(t, expectedEvents, gotEvents, scenarioLabel)
+				assert.Equal(t, expectedEvents, gotEvents, fmt.Sprintf("%s (timestep: %d)", scenarioLabel, i))
 
 			case <-time.After(3 * time.Second):
 				t.Fatal("Timed out waiting for Events channel to deliver expected events")
@@ -83,7 +83,7 @@ func TestWatcher(t *testing.T) {
 func TestWatcherStartStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	database, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String(), MaxMiniHeaders: 10})
 	require.NoError(t, err)
 	fakeClient, err := newFakeClient(basicFakeClientFixture)
 	require.NoError(t, err)

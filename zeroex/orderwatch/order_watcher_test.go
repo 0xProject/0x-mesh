@@ -120,7 +120,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
@@ -161,7 +161,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
@@ -209,7 +209,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -256,7 +256,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -304,7 +304,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
@@ -350,7 +350,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -398,7 +398,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -442,7 +442,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -512,7 +512,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -559,7 +559,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -632,7 +632,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
@@ -674,7 +674,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
@@ -716,7 +716,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
@@ -763,7 +763,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
@@ -812,7 +812,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 // 	defer teardownSubTest(t)
 // 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 // 	defer cancel()
-// 	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+// 	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/"+uuid.New().String()})
 // 	require.NoError(t, err)
 
 // 	// Create and add an order (which will later become expired) to OrderWatcher
@@ -912,7 +912,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer teardownSubTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	// Store metadata entry in DB
@@ -991,7 +991,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
@@ -1040,7 +1040,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
 
@@ -1083,7 +1083,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 // func TestOrderWatcherUpdateBlockHeadersStoredInDBHeaderExists(t *testing.T) {
 // 	ctx, cancel := context.WithCancel(context.Background())
 // 	defer cancel()
-// 	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+// 	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/"+uuid.New().String()})
 // 	require.NoError(t, err)
 
 // 	headerOne := &miniheader.MiniHeader{
@@ -1247,7 +1247,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	defer teardownSubTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	// Create and add an order (which will later become expired) to OrderWatcher
@@ -1304,7 +1304,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 // 	defer teardownSubTest(t)
 // 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 // 	defer cancel()
-// 	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+// 	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/"+uuid.New().String()})
 // 	require.NoError(t, err)
 
 // 	// Create and add an order (which will later become expired) to OrderWatcher
@@ -1404,7 +1404,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 // 	defer teardownSubTest(t)
 // 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 // 	defer cancel()
-// 	meshDB, err := db.New(ctx, "/tmp/orderwatcher_testing/"+uuid.New().String())
+// 	meshDB, err := db.New(ctx, &db.Options{Path: "/tmp/orderwatcher_testing/"+uuid.New().String()})
 // 	require.NoError(t, err)
 
 // 	// Create and add an order (which will later become expired) to OrderWatcher
