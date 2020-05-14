@@ -379,7 +379,7 @@ func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) Or
 }
 
 func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
-	query, err := findOrdersQueryFromOpts(db.sqldb, opts)
+	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("*").From("orders"), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -390,12 +390,23 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	return sqltypes.OrdersToCommonType(orders), nil
 }
 
+func (db *DB) CountOrders(opts *OrderQuery) (int, error) {
+	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("COUNT(*)").From("orders"), opts)
+	if err != nil {
+		return 0, err
+	}
+	count, err := query.GetCount()
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 type Selector interface {
 	Select(cols ...string) *sqlz.SelectStmt
 }
 
-func findOrdersQueryFromOpts(selector Selector, opts *OrderQuery) (*sqlz.SelectStmt, error) {
-	query := selector.Select("*").From("orders")
+func addOptsToSelectOrdersQuery(query *sqlz.SelectStmt, opts *OrderQuery) (*sqlz.SelectStmt, error) {
 	if opts == nil {
 		return query, nil
 	}
@@ -480,8 +491,8 @@ func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 	// for DELETE statements. It also doesn't support RETURNING. As a
 	// workaround, we do a SELECT and DELETE inside a transaction.
 	var ordersToDelete []*sqltypes.Order
-	err := db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
-		query, err := findOrdersQueryFromOpts(tx, opts)
+	err := db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		query, err := addOptsToSelectOrdersQuery(txn.Select("*").From("orders"), opts)
 		if err != nil {
 			return err
 		}
@@ -489,7 +500,7 @@ func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 			return err
 		}
 		for _, order := range ordersToDelete {
-			_, err := tx.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
+			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
 			if err != nil {
 				return err
 			}
@@ -572,6 +583,9 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 		return nil, nil, err
 	}
 
+	// TODO(albrow): Because of how the above code is written, a single
+	// miniHeader could exist in both added and removed sets. Should we
+	// remove such miniHeaders from both sets in this case?
 	return added, sqltypes.MiniHeadersToCommonType(miniHeadersToRemove), nil
 }
 

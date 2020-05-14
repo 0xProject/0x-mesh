@@ -593,6 +593,308 @@ func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilter
 	}
 }
 
+func TestCountOrdersFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some test orders with very specific characteristics to make it easier to write tests.
+	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
+	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
+	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
+	numOrders := 10
+	originalOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrder()
+		order.MakerAssetAmount = big.NewInt(int64(i))
+		order.TakerAssetAmount = big.NewInt(int64(i))
+		order.MakerAssetData = []byte{97 + byte(i)}
+		parsedMakerAssetData := []*types.SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(0),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(int64(i)*10 + 1),
+			},
+		}
+		order.ParsedMakerAssetData = parsedMakerAssetData
+		originalOrders = append(originalOrders, order)
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	// TODO(albrow): Can this be de-duped with the findOrders test cases?
+	testCases := []countOrdersFilterTestCase{
+		{
+			name:          "no filter",
+			filters:       []OrderFilter{},
+			expectedCount: len(originalOrders),
+		},
+
+		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		{
+			name: "MakerAssetAmount = 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Equal,
+					Value: 5,
+				},
+			},
+			expectedCount: 1,
+		},
+		{
+			name: "MakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedCount: len(originalOrders) - 1,
+		},
+		{
+			name: "MakerAssetAmount < 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: 5,
+				},
+			},
+			expectedCount: 5,
+		},
+		{
+			name: "MakerAssetAmount > 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Greater,
+					Value: 5,
+				},
+			},
+			expectedCount: 4,
+		},
+		{
+			name: "MakerAssetAmount <= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  LessOrEqual,
+					Value: 5,
+				},
+			},
+			expectedCount: 6,
+		},
+		{
+			name: "MakerAssetAmount >= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 5,
+				},
+			},
+			expectedCount: 5,
+		},
+		{
+			name: "MakerAssetAmount < 10^76",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: math.BigPow(10, 76),
+				},
+			},
+			expectedCount: len(originalOrders),
+		},
+
+		// Filter on MakerAssetData (type []byte/TEXT)
+		{
+			name: "MakerAssetData = f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Equal,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: 1,
+		},
+		{
+			name: "MakerAssetData != f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  NotEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: len(originalOrders) - 1,
+		},
+		{
+			name: "MakerAssetData < f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: 5,
+		},
+		{
+			name: "MakerAssetData > f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Greater,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: 4,
+		},
+		{
+			name: "MakerAssetData <= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  LessOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: 6,
+		},
+		{
+			name: "MakerAssetData >= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  GreaterOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedCount: 5,
+		},
+
+		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
+		{
+			name: "ParsedMakerAssetData CONTAINS query that matches all",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedCount: len(originalOrders),
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedCount: 1,
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
+			},
+			expectedCount: len(originalOrders),
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				IncludesMakerAssetData(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
+			},
+			expectedCount: 1,
+		},
+		{
+			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				IncludesMakerFeeAssetData(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
+			},
+			expectedCount: len(originalOrders),
+		},
+
+		// Combining two or more filters
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+			},
+			expectedCount: 4,
+		},
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: 3,
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+				{
+					Field: OFTakerAssetAmount,
+					Kind:  NotEqual,
+					Value: 5,
+				},
+			},
+			expectedCount: 3,
+		},
+	}
+	for i, testCase := range testCases {
+		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
+		t.Run(testCaseName, runCountOrdersFilterTestCase(t, db, testCase))
+	}
+}
+
+type countOrdersFilterTestCase struct {
+	name          string
+	filters       []OrderFilter
+	expectedCount int
+	expectedError string
+}
+
+func runCountOrdersFilterTestCase(t *testing.T, db *DB, testCase countOrdersFilterTestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		opts := &OrderQuery{
+			Filters: testCase.filters,
+		}
+
+		count, err := db.CountOrders(opts)
+		if testCase.expectedError != "" {
+			require.Error(t, err, "expected an error but got nil")
+			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, testCase.expectedCount, count, "wrong number of orders")
+		}
+	}
+}
+
 func TestDeleteOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
