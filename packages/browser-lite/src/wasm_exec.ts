@@ -3,7 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the GO_LICENSE file.
 
-/* tslint:disable */
 /**
  * @hidden
  */
@@ -12,6 +11,7 @@
  * NOTE(jalextowle): This comment must be here so that typedoc knows that the above
  * comment is a module comment
  */
+/* tslint:disable */
 (() => {
     // Map multiple JavaScript environments to a single common API,
     // preferring web standards over Node.js API.
@@ -559,3 +559,4 @@
     //         });
     // }
 })();
+/* tslint:enable */

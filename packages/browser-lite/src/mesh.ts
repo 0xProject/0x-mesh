@@ -1,4 +1,5 @@
 import { SignedOrder } from '@0x/order-utils';
+import * as ajv from 'ajv';
 import * as BrowserFS from 'browserfs';
 
 import './wasm_exec';
@@ -39,8 +40,6 @@ import {
     WethDepositEvent,
     WethWithdrawalEvent,
     WrapperOrderEvent,
-    WrapperStats,
-    WrapperValidationResults,
     ZeroExMesh,
 } from './types';
 import {
@@ -95,6 +94,12 @@ declare global {
 
     // Defined in ../go/main.go
     const zeroExMesh: ZeroExMesh;
+
+    // Defined in this file
+    const schemaValidator: {
+        messageValidator: ajv.ValidateFunction;
+        orderValidator: ajv.ValidateFunction;
+    };
 }
 
 // We use the global willLoadBrowserFS variable to signal that we are going to
@@ -129,6 +134,68 @@ window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
 
+const addressSchema = {
+    $id: '/address',
+    type: 'string',
+    pattern: '^0x[0-9a-fA-F]{40}$',
+};
+const wholeNumberSchema = { $id: '/wholeNumber', anyOf: [{ type: 'string', pattern: '^\\d+$' }, { type: 'integer' }] };
+const hexSchema = { $id: '/hex', type: 'string', pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$' };
+const orderSchema = {
+    $id: '/order',
+    properties: {
+        makerAddress: { $ref: '/address' },
+        takerAddress: { $ref: '/address' },
+        makerFee: { $ref: '/wholeNumber' },
+        takerFee: { $ref: '/wholeNumber' },
+        senderAddress: { $ref: '/address' },
+        makerAssetAmount: { $ref: '/wholeNumber' },
+        takerAssetAmount: { $ref: '/wholeNumber' },
+        makerAssetData: { $ref: '/hex' },
+        takerAssetData: { $ref: '/hex' },
+        makerFeeAssetData: { $ref: '/hex' },
+        takerFeeAssetData: { $ref: '/hex' },
+        salt: { $ref: '/wholeNumber' },
+        feeRecipientAddress: { $ref: '/address' },
+        expirationTimeSeconds: { $ref: '/wholeNumber' },
+        exchangeAddress: { $ref: '/exchangeAddress' },
+        chainId: { $ref: '/chainId' },
+    },
+    required: [
+        'makerAddress',
+        'takerAddress',
+        'makerFee',
+        'takerFee',
+        'senderAddress',
+        'makerAssetAmount',
+        'takerAssetAmount',
+        'makerAssetData',
+        'takerAssetData',
+        'makerFeeAssetData',
+        'takerFeeAssetData',
+        'salt',
+        'feeRecipientAddress',
+        'expirationTimeSeconds',
+        'exchangeAddress',
+        'chainId',
+    ],
+    type: 'object',
+};
+const signedOrderSchema = {
+    $id: '/signedOrder',
+    allOf: [{ $ref: '/order' }, { properties: { signature: { $ref: '/hex' } }, required: ['signature'] }],
+};
+const rootOrderSchema = { $id: '/rootOrder', allOf: [{ $ref: '/customOrder' }, { $ref: '/signedOrder' }] };
+const rootOrderMessageSchema = {
+    $id: '/rootOrderMessage',
+    properties: {
+        messageType: { type: 'string', pattern: 'order' },
+        order: { $ref: '/rootOrder' },
+        topics: { type: 'array', minItems: 1, items: { type: 'string' } },
+    },
+    required: ['messageType', 'order', 'topics'],
+};
+
 /**
  * The main class for this package. Has methods for receiving order events and
  * sending orders through the 0x Mesh network.
@@ -148,6 +215,49 @@ export class Mesh {
      */
     constructor(config: Config) {
         this._config = config;
+        const AJV = new ajv({
+            schemas: [
+                addressSchema,
+                wholeNumberSchema,
+                hexSchema,
+                orderSchema,
+                signedOrderSchema,
+                rootOrderSchema,
+                rootOrderMessageSchema,
+                {
+                    ...this._config.customOrderFilter,
+                    $id: '/customOrderFilter',
+                },
+            ],
+        });
+        // tslint:disable:no-non-null-assertion
+        const orderValidate = AJV.getSchema('/rootOrderSchema')!;
+        schemaValidator.orderValidator = (input: string) => {
+            const result: any = { success: false, errors: [] };
+            try {
+                result.success = orderValidate(JSON.parse(input));
+                if (orderValidate.errors) {
+                    result.errors = orderValidate.errors.map(error => JSON.stringify(error));
+                }
+            } catch (error) {
+                result.fatal = JSON.stringify(error);
+            }
+            return result;
+        };
+
+        const messageValidate = AJV.getSchema('/rootMessageSchema')!;
+        schemaValidator.messageValidator = (input: string) => {
+            const result: any = { success: false, errors: [] };
+            try {
+                result.success = messageValidate(JSON.parse(input));
+                if (messageValidate.errors) {
+                    result.errors = messageValidate.errors.map(error => JSON.stringify(error));
+                }
+            } catch (error) {
+                result.fatal = JSON.stringify(error);
+            }
+            return result;
+        };
     }
 
     /**
