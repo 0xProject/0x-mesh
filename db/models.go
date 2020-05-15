@@ -19,6 +19,9 @@ type Metadata struct {
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
+	if len(assetData) == 0 {
+		return []*types.SingleAssetData{}, nil
+	}
 	singleAssetDatas := []*types.SingleAssetData{}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
 

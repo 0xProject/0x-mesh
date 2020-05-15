@@ -462,6 +462,7 @@ func (w *Watcher) handleBlockEvents(
 	// 	_ = ordersColTxn.Discard()
 	// }()
 
+	// TODO(albrow): Use blockWatcher here instead of directly accessing DB?
 	var previousLatestBlockTimestamp time.Time
 	latestBlocks, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
 		Sort: []db.MiniHeaderSort{
@@ -479,12 +480,6 @@ func (w *Watcher) handleBlockEvents(
 		previousLatestBlockTimestamp = latestBlocks[0].Timestamp
 	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
-
-	// TODO(albrow): Implement this.
-	// err = updateBlockHeadersStoredInDB(miniHeadersColTxn, events)
-	// if err != nil {
-	// 	return err
-	// }
 
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
@@ -529,12 +524,12 @@ func (w *Watcher) handleBlockEvents(
 					return err
 				}
 				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, nil)
+				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 				if err != nil {
 					return err
 				}
 				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, nil)
+				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 				if err != nil {
 					return err
 				}
@@ -554,7 +549,7 @@ func (w *Watcher) handleBlockEvents(
 					continue
 				}
 				contractEvent.Parameters = approvalEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address)
 				if err != nil {
 					return err
 				}
@@ -609,7 +604,7 @@ func (w *Watcher) handleBlockEvents(
 					continue
 				}
 				contractEvent.Parameters = approvalForAllEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalForAllEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
 				if err != nil {
 					return err
 				}
@@ -631,12 +626,12 @@ func (w *Watcher) handleBlockEvents(
 				// further. In the future, we might want to special-case this broader approach for the Augur
 				// contract address specifically.
 				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, nil)
+				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 				if err != nil {
 					return err
 				}
 				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, nil)
+				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 				if err != nil {
 					return err
 				}
@@ -652,12 +647,12 @@ func (w *Watcher) handleBlockEvents(
 					return err
 				}
 				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, nil)
+				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 				if err != nil {
 					return err
 				}
 				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, nil)
+				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 				if err != nil {
 					return err
 				}
@@ -677,7 +672,7 @@ func (w *Watcher) handleBlockEvents(
 					continue
 				}
 				contractEvent.Parameters = approvalForAllEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalForAllEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
 				if err != nil {
 					return err
 				}
@@ -692,7 +687,7 @@ func (w *Watcher) handleBlockEvents(
 					return err
 				}
 				contractEvent.Parameters = withdrawalEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(withdrawalEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address)
 				if err != nil {
 					return err
 				}
@@ -707,7 +702,7 @@ func (w *Watcher) handleBlockEvents(
 					return err
 				}
 				contractEvent.Parameters = depositEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(depositEvent.Owner, log.Address, nil)
+				orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address)
 				if err != nil {
 					return err
 				}
@@ -831,14 +826,6 @@ func (w *Watcher) handleBlockEvents(
 		close(w.atLeastOneBlockProcessed)
 	}
 	w.atLeastOneBlockProcessedMu.Unlock()
-
-	// TODO(albrow): Remove this after implementing miniheader retention limit inside db package.
-	// Since we might have added MiniHeaders to the DB, we need to prune any excess MiniHeaders stored
-	// in the DB
-	// err = w.meshDB.PruneMiniHeadersAboveRetentionLimit()
-	// if err != nil {
-	// 	return err
-	// }
 
 	return nil
 }
@@ -1147,9 +1134,9 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 			{
 				Field: db.OFMakerAddress,
 				Kind:  db.Equal,
-				Value: tokenAddress,
+				Value: makerAddress,
 			},
-			db.IncludesMakerAssetData(tokenAddress, tokenID),
+			db.MakerAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID),
 		},
 	})
 	if err != nil {
@@ -1163,9 +1150,48 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 			{
 				Field: db.OFMakerAddress,
 				Kind:  db.Equal,
-				Value: tokenAddress,
+				Value: makerAddress,
 			},
-			db.IncludesMakerFeeAssetData(tokenAddress, tokenID)},
+			db.MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID)},
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("unexpected query error encountered")
+		return nil, err
+	}
+
+	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
+}
+
+// findOrdersByTokenAddress finds and returns all orders that have
+// either a makerAsset or a makerFeeAsset matching the given tokenAddress and
+// any tokenID (including null).
+func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Address) ([]*types.OrderWithMetadata, error) {
+	ordersWithAffectedMakerAsset, err := w.db.FindOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFMakerAddress,
+				Kind:  db.Equal,
+				Value: makerAddress,
+			},
+			db.MakerAssetIncludesTokenAddress(tokenAddress),
+		},
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("unexpected query error encountered")
+		return nil, err
+	}
+	ordersWithAffectedMakerFeeAsset, err := w.db.FindOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFMakerAddress,
+				Kind:  db.Equal,
+				Value: makerAddress,
+			},
+			db.MakerFeeAssetIncludesTokenAddress(tokenAddress)},
 	})
 	if err != nil {
 		logger.WithFields(logger.Fields{
@@ -1245,7 +1271,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					orderEvents = append(orderEvents, orderEvent)
 				} else {
 					// TODO(albrow): Do we need to do this in a transaction?
-
+					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount)
 				}
 				// Order was filled, emit event
 				orderEvent := &zeroex.OrderEvent{
@@ -1811,26 +1837,24 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-// TODO(albrow): Imlement CountOrders method
 func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
-	return errors.New("Not yet implemented")
-	// if orderCount, err := w.meshtypes.OrderWithMetadatas.Count(); err != nil {
-	// 	return err
-	// } else if orderCount < w.maxOrders {
-	// 	// We have enough space for new orders. Set the new max expiration time to the
-	// 	// value of slow counter.
-	// 	newMaxExpiration := w.maxExpirationCounter.Count()
-	// 	if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
-	// 		logger.WithFields(logger.Fields{
-	// 			"oldMaxExpirationTime": w.maxExpirationTime.String(),
-	// 			"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
-	// 		}).Debug("increasing max expiration time")
-	// 		w.maxExpirationTime.Set(newMaxExpiration)
-	// 		w.saveMaxExpirationTime(newMaxExpiration)
-	// 	}
-	// }
+	if orderCount, err := w.db.CountOrders(nil); err != nil {
+		return err
+	} else if orderCount < w.maxOrders {
+		// We have enough space for new orders. Set the new max expiration time to the
+		// value of slow counter.
+		newMaxExpiration := w.maxExpirationCounter.Count()
+		if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
+			logger.WithFields(logger.Fields{
+				"oldMaxExpirationTime": w.maxExpirationTime.String(),
+				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
+			}).Debug("increasing max expiration time")
+			w.maxExpirationTime.Set(newMaxExpiration)
+			w.saveMaxExpirationTime(newMaxExpiration)
+		}
+	}
 
-	// return nil
+	return nil
 }
 
 // saveMaxExpirationTime saves the new max expiration time in the database.

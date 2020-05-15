@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/gibson042/canonicaljson-go"
 )
 
 // BigInt is a wrapper around *big.Int that implements the sql.Valuer
@@ -68,9 +69,9 @@ func (i *BigInt) Scan(value interface{}) error {
 
 func (i *BigInt) MarshalJSON() ([]byte, error) {
 	if i == nil || i.Int == nil {
-		return json.Marshal(nil)
+		return canonicaljson.Marshal(nil)
 	}
-	return json.Marshal(i.Int.String())
+	return canonicaljson.Marshal(i.Int.String())
 }
 
 func (i *BigInt) UnmarshalJSON(data []byte) error {
@@ -99,7 +100,7 @@ func (s *ParsedAssetData) Value() (driver.Value, error) {
 	if s == nil {
 		return nil, nil
 	}
-	return json.Marshal(s)
+	return canonicaljson.Marshal(s)
 }
 
 func (s *ParsedAssetData) Scan(value interface{}) error {
@@ -161,7 +162,7 @@ func (e *EventLogs) Value() (driver.Value, error) {
 	if e == nil {
 		return nil, nil
 	}
-	logsJSON, err := json.Marshal(e.Logs)
+	logsJSON, err := canonicaljson.Marshal(e.Logs)
 	if err != nil {
 		return nil, err
 	}
@@ -270,9 +271,6 @@ func ParsedAssetDataToCommonType(parsedAssetData *ParsedAssetData) []*types.Sing
 }
 
 func ParsedAssetDataFromCommonType(parsedAssetData []*types.SingleAssetData) *ParsedAssetData {
-	if len(parsedAssetData) == 0 {
-		return nil
-	}
 	result := ParsedAssetData(make([]*SingleAssetData, len(parsedAssetData)))
 	for i, singleAssetData := range parsedAssetData {
 		result[i] = SingleAssetDataFromCommonType(singleAssetData)

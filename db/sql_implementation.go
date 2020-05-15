@@ -9,11 +9,11 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 `
 
 // TODO(albrow): Used prepared statement for inserts.
-const insertOrderQuery = `INSERT OR IGNORE INTO orders (
+const insertOrderQuery = `INSERT INTO orders (
 	hash,
 	chainID,
 	exchangeAddress,
@@ -197,7 +197,7 @@ const insertOrderQuery = `INSERT OR IGNORE INTO orders (
 	:isPinned,
 	:parsedMakerAssetData,
 	:parsedMakerFeeAssetData
-)
+) ON CONFLICT DO NOTHING
 `
 
 const updateOrderQuery = `UPDATE orders SET
@@ -227,7 +227,7 @@ const updateOrderQuery = `UPDATE orders SET
 WHERE orders.hash = :hash
 `
 
-const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
+const insertMiniHeaderQuery = `INSERT INTO miniHeaders (
 	hash,
 	parent,
 	number,
@@ -239,7 +239,7 @@ const insertMiniHeaderQuery = `INSERT OR IGNORE INTO miniHeaders (
 	:number,
 	:timestamp,
 	:logs
-)`
+) ON CONFLICT DO NOTHING`
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
@@ -358,23 +358,57 @@ type OrderFilter struct {
 	Value interface{}
 }
 
-// IncludesMakerAssetData is a helper method which returns a filter that will match orders
-// that include the given asset data in MakerAssetData.
-func IncludesMakerAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+// MakerAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
+// that include the token address and token ID in MakerAssetData.
+func MakerAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerAssetData, tokenAddress, tokenID)
+}
+
+// MakerFeeAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
+// that include the token address and token ID in MakerFeeAssetData.
+func MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerFeeAssetData, tokenAddress, tokenID)
+}
+
+func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	filterValueJSON, err := canonicaljson.Marshal(sqltypes.SingleAssetData{
+		Address: tokenAddress,
+		TokenID: sqltypes.NewBigInt(tokenID),
+	})
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
 	return OrderFilter{
-		Field: OFParsedMakerAssetData,
+		Field: field,
 		Kind:  Contains,
-		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
+		Value: string(filterValueJSON),
 	}
 }
 
-// IncludesMakerFeeAssetData is a helper method which returns a filter that will match orders
-// that include the given asset data in MakerFeeAssetData.
-func IncludesMakerFeeAssetData(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+// MakerAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
+// that include the token address (and any token id, including null) in MakerAssetData.
+func MakerAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
+	return assetDataIncludesTokenAddress(OFParsedMakerAssetData, tokenAddress)
+}
+
+// MakerFeeAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
+// that include the token address (and any token id, including null) in MakerFeeAssetData.
+func MakerFeeAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
+	return assetDataIncludesTokenAddress(OFParsedMakerFeeAssetData, tokenAddress)
+}
+
+func assetDataIncludesTokenAddress(field OrderField, tokenAddress common.Address) OrderFilter {
+	tokenAddressJSON, err := canonicaljson.Marshal(tokenAddress)
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
+	filterValue := fmt.Sprintf(`"address":%s`, tokenAddressJSON)
 	return OrderFilter{
-		Field: OFParsedMakerFeeAssetData,
+		Field: field,
 		Kind:  Contains,
-		Value: fmt.Sprintf(`{"address":"%s","tokenID":"%s"}`, strings.ToLower(tokenAddress.Hex()), tokenID.String()),
+		Value: filterValue,
 	}
 }
 
@@ -383,6 +417,7 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(query.ToSQL(false))
 	var orders []*sqltypes.Order
 	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err

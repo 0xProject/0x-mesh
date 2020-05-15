@@ -109,6 +109,7 @@ func init() {
 	}
 }
 
+// TODO(albrow): Figure out why this test is failing.
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -122,7 +123,10 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+	)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
 
 	// Transfer makerAsset out of maker address
@@ -902,6 +906,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 // }
 
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
+	t.Skip("Decreasing expiratin time is not yet implemented")
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
