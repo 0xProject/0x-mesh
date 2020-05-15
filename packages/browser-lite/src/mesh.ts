@@ -94,12 +94,6 @@ declare global {
 
     // Defined in ../go/main.go
     const zeroExMesh: ZeroExMesh;
-
-    // Defined in this file
-    const schemaValidator: {
-        messageValidator: ajv.ValidateFunction;
-        orderValidator: ajv.ValidateFunction;
-    };
 }
 
 // We use the global willLoadBrowserFS variable to signal that we are going to
@@ -232,7 +226,7 @@ export class Mesh {
         });
         // tslint:disable:no-non-null-assertion
         const orderValidate = AJV.getSchema('/rootOrderSchema')!;
-        schemaValidator.orderValidator = (input: string) => {
+        (window as any).orderValidator = (input: string) => {
             const result: any = { success: false, errors: [] };
             try {
                 result.success = orderValidate(JSON.parse(input));
@@ -246,7 +240,7 @@ export class Mesh {
         };
 
         const messageValidate = AJV.getSchema('/rootMessageSchema')!;
-        schemaValidator.messageValidator = (input: string) => {
+        (window as any).messageValidator = (input: string) => {
             const result: any = { success: false, errors: [] };
             try {
                 result.success = messageValidate(JSON.parse(input));

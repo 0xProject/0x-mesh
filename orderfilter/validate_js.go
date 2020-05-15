@@ -30,7 +30,7 @@ func (s *SchemaValidationResult) Errors() []error {
 // ValidateOrderJSON Validates a JSON encoded signed order using the AJV javascript library.
 // This libarary is used to increase the performance of Mesh nodes that run in the browser.
 func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, error) {
-	jsResult := js.Global().Get("schemaValidator").Call("orderValidator", js.ValueOf(string(orderJSON)))
+	jsResult := js.Global().Call("orderValidator", js.ValueOf(string(orderJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
 		return nil, fmt.Errorf("js error: %s", fatal.String())
@@ -57,7 +57,7 @@ func (f *Filter) MatchOrder(order *zeroex.SignedOrder) (bool, error) {
 
 // FIXME(jalextowle): Should I just change this type definition?
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
-	jsResult := js.Global().Get("schemaValidator").Call("messageValidator", js.ValueOf(string(messageJSON)))
+	jsResult := js.Global().Call("messageValidator", js.ValueOf(string(messageJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
 		return false, fmt.Errorf("js error: %s", fatal.String())
