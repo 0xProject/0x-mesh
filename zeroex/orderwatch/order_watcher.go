@@ -14,7 +14,6 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
-	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -86,7 +85,6 @@ type Watcher struct {
 	blockSubscription          event.Subscription
 	blockEventsChan            chan []*blockwatch.Event
 	contractAddresses          ethereum.ContractAddresses
-	expirationWatcher          *expirationwatch.Watcher
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
 	contractAddressToSeenCount map[common.Address]uint
@@ -148,7 +146,6 @@ func New(config Config) (*Watcher, error) {
 	w := &Watcher{
 		db:                         config.DB,
 		blockWatcher:               config.BlockWatcher,
-		expirationWatcher:          expirationwatch.New(),
 		contractAddressToSeenCount: map[common.Address]uint{},
 		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
@@ -364,79 +361,55 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 // latestBlockTimestamp is the latest block timestamp Mesh knows about
 // previousLatestBlockTimestamp is the previous latest block timestamp Mesh knew about
 // ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
-func (w *Watcher) handleOrderExpirations(latestBlockTimestamp, previousLatestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
-	var defaultTime time.Time
 
-	if previousLatestBlockTimestamp == defaultTime || previousLatestBlockTimestamp.Before(latestBlockTimestamp) {
-		expiredOrders := w.expirationWatcher.Prune(latestBlockTimestamp)
-		for _, expiredOrder := range expiredOrders {
-			orderHash := common.HexToHash(expiredOrder.ID)
-			// If we will re-validate this order, the revalidation process will discover that
-			// it's expired, and an appropriate event will already be emitted
-			if _, ok := ordersToRevalidate[orderHash]; ok {
-				continue
-			}
-			order, err := w.db.GetOrder(orderHash)
-			if err != nil {
-				logger.WithFields(logger.Fields{
-					"error":     err.Error(),
-					"orderHash": expiredOrder.ID,
-				}).Trace("Order expired that was no longer in DB")
-				continue
-			}
-			w.unwatchOrder(order, nil)
+	// Check for any orders that have now expired.
+	expiredOrders, err := w.findOrdersToExpire(latestBlockTimestamp)
+	if err != nil {
+		return orderEvents, err
+	}
+	for _, order := range expiredOrders {
+		// If we will re-validate this order, the revalidation process will discover that
+		// it's expired, and an appropriate event will already be emitted
+		if _, ok := ordersToRevalidate[order.Hash]; ok {
+			continue
+		}
+		w.unwatchOrder(order, nil)
+		orderEvent := &zeroex.OrderEvent{
+			Timestamp:                latestBlockTimestamp,
+			OrderHash:                order.Hash,
+			SignedOrder:              order.SignedOrder(),
+			FillableTakerAssetAmount: big.NewInt(0),
+			EndState:                 zeroex.ESOrderExpired,
+		}
+		orderEvents = append(orderEvents, orderEvent)
+	}
 
-			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                latestBlockTimestamp,
-				OrderHash:                common.HexToHash(expiredOrder.ID),
-				SignedOrder:              order.SignedOrder(),
-				FillableTakerAssetAmount: big.NewInt(0),
-				EndState:                 zeroex.ESOrderExpired,
-			}
-			orderEvents = append(orderEvents, orderEvent)
+	// Check for any orders which have now unexpired.
+	//
+	// A block re-org may have happened resulting in the latest block timestamp
+	// being lower than on the previous latest block. We need to "unexpire" any
+	// orders that have now become valid again as a result.
+	unexpiredOrders, err := w.findOrdersToUnexpire(latestBlockTimestamp)
+	if err != nil {
+		return orderEvents, err
+	}
+	for _, order := range unexpiredOrders {
+		// If we will re-validate this order, the revalidation process will discover that
+		// it's unexpired, and an appropriate event will already be emitted
+		if _, ok := ordersToRevalidate[order.Hash]; ok {
+			continue
 		}
-	} else if previousLatestBlockTimestamp.After(latestBlockTimestamp) {
-		// A block re-org happened resulting in the latest block timestamp being
-		// lower than on the previous latest block. We need to "unexpire" any orders
-		// that have now become valid again as a result.
-		removedOrders, err := w.db.FindOrders(&db.OrderQuery{
-			Filters: []db.OrderFilter{
-				{
-					Field: db.OFIsRemoved,
-					Kind:  db.Equal,
-					Value: true,
-				},
-			},
-		})
-		if err != nil {
-			return orderEvents, err
+		w.rewatchOrder(order, order.FillableTakerAssetAmount)
+		orderEvent := &zeroex.OrderEvent{
+			Timestamp:                latestBlockTimestamp,
+			OrderHash:                order.Hash,
+			SignedOrder:              order.SignedOrder(),
+			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderUnexpired,
 		}
-		for _, order := range removedOrders {
-			// Orders removed due to expiration have non-zero FillableTakerAssetAmounts
-			if order.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
-				continue
-			}
-			// If we will re-validate this order, the revalidation process will discover that
-			// it's unexpired, and an appropriate event will already be emitted
-			if _, ok := ordersToRevalidate[order.Hash]; ok {
-				continue
-			}
-			expiration := time.Unix(order.SignedOrder().ExpirationTimeSeconds.Int64(), 0)
-			if latestBlockTimestamp.Before(expiration) {
-				w.rewatchOrder(order, order.FillableTakerAssetAmount)
-				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                latestBlockTimestamp,
-					OrderHash:                order.Hash,
-					SignedOrder:              order.SignedOrder(),
-					FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-					EndState:                 zeroex.ESOrderUnexpired,
-				}
-				orderEvents = append(orderEvents, orderEvent)
-			}
-		}
-	} else {
-		// The block timestamp hasn't changed, noop
+		orderEvents = append(orderEvents, orderEvent)
 	}
 
 	return orderEvents, nil
@@ -462,25 +435,7 @@ func (w *Watcher) handleBlockEvents(
 	// 	_ = ordersColTxn.Discard()
 	// }()
 
-	// TODO(albrow): Use blockWatcher here instead of directly accessing DB?
-	var previousLatestBlockTimestamp time.Time
-	latestBlocks, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-		Limit: 1,
-	})
-	if err != nil {
-		return err
-	}
-	if len(latestBlocks) != 0 {
-		previousLatestBlockTimestamp = latestBlocks[0].Timestamp
-	}
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
-
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 	for _, event := range events {
@@ -788,7 +743,7 @@ func (w *Watcher) handleBlockEvents(
 		}
 	}
 
-	expirationOrderEvents, err := w.handleOrderExpirations(latestBlockTimestamp, previousLatestBlockTimestamp, orderHashToDBOrder)
+	expirationOrderEvents, err := w.handleOrderExpirations(latestBlockTimestamp, orderHashToDBOrder)
 	if err != nil {
 		return err
 	}
@@ -1093,9 +1048,6 @@ func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error 
 		}
 	}
 
-	expirationTimestamp := time.Unix(order.ExpirationTimeSeconds.Int64(), 0)
-	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
-
 	return nil
 }
 
@@ -1201,6 +1153,53 @@ func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Add
 	}
 
 	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
+}
+
+// findOrdersToExpire returns all orders with an expiration time less than or equal to the latest
+// block timestamp that have not already been removed.
+func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
+	return w.db.FindOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFExpirationTimeSeconds,
+				Kind:  db.LessOrEqual,
+				Value: latestBlockTimestamp.Unix(),
+			},
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+}
+
+// findOrdersToUnexpire returns all orders that:
+//
+//     1. have an expiration time greater than the latest block timestamp
+//     2. were previously removed
+//     3. have a non-zero FillableTakerAssetAmount
+//
+func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
+	return w.db.FindOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFExpirationTimeSeconds,
+				Kind:  db.Greater,
+				Value: latestBlockTimestamp.Unix(),
+			},
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OFFillableTakerAssetAmount,
+				Kind:  db.NotEqual,
+				Value: 0,
+			},
+		},
+	})
 }
 
 func (w *Watcher) convertValidationResultsIntoOrderEvents(
@@ -1638,11 +1637,6 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 			"order": order,
 		}).Error("Failed to update order")
 	}
-
-	// Re-add order to expiration watcher
-	// TODO(albrow): ExpirationTimeSeconds can overflow int64. This is probably a bug.
-	expirationTimestamp := time.Unix(order.SignedOrder().ExpirationTimeSeconds.Int64(), 0)
-	w.expirationWatcher.Add(expirationTimestamp, order.Hash.Hex())
 }
 
 // TODO(albrow): Do we need to do this in a transaction?
@@ -1661,9 +1655,6 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 			"order": order,
 		}).Error("Failed to update order")
 	}
-
-	expirationTimestamp := time.Unix(order.SignedOrder().ExpirationTimeSeconds.Int64(), 0)
-	w.expirationWatcher.Remove(expirationTimestamp, order.Hash.Hex())
 }
 
 type orderDeleter interface {
