@@ -133,8 +133,8 @@ CREATE TABLE IF NOT EXISTS orders (
 	fillableTakerAssetAmount NUMERIC(78, 0) NOT NULL,
 	isRemoved                BOOLEAN NOT NULL,
 	isPinned                 BOOLEAN NOT NULL,
-	parsedMakerAssetData    TEXT NOT NULL,
-	parsedMakerFeeAssetData TEXT NOT NULL
+	parsedMakerAssetData     TEXT NOT NULL,
+	parsedMakerFeeAssetData  TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS miniHeaders (
@@ -143,6 +143,14 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 	parent    TEXT NOT NULL,
 	timestamp DATETIME NOT NULL,
 	logs      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS metadata (
+	hiddenUniqueID                    TINYINT PRIMARY KEY DEFAULT 1,
+	ethereumChainID                   BIGINT NOT NULL,
+	maxExpirationTime                 NUMERIC(78, 0) NOT NULL,
+	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
+	startOfCurrentUTCDay              DATETIME NOT NULL
 );
 `
 
@@ -240,6 +248,25 @@ const insertMiniHeaderQuery = `INSERT INTO miniHeaders (
 	:timestamp,
 	:logs
 ) ON CONFLICT DO NOTHING`
+
+const insertMetadataQuery = `INSERT INTO metadata (
+	ethereumChainID,
+	maxExpirationTime,
+	ethRPCRequestsSentInCurrentUTCDay,
+	startOfCurrentUTCDay
+) VALUES (
+	:ethereumChainID,
+	:maxExpirationTime,
+	:ethRPCRequestsSentInCurrentUTCDay,
+	:startOfCurrentUTCDay
+)`
+
+const updateMetadataQuery = `UPDATE metadata SET
+	ethereumChainID = :ethereumChainID,
+	maxExpirationTime = :maxExpirationTime,
+	ethRPCRequestsSentInCurrentUTCDay = :ethRPCRequestsSentInCurrentUTCDay,
+	startOfCurrentUTCDay = :startOfCurrentUTCDay
+`
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
@@ -786,21 +813,52 @@ func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, err
 }
 
 // GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
-func (db *DB) GetMetadata() (*Metadata, error) {
-	return nil, errors.New("Not yet implemented")
+func (db *DB) GetMetadata() (*types.Metadata, error) {
+	var metadata sqltypes.Metadata
+	if err := db.sqldb.GetContext(db.ctx, &metadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
+		return nil, err
+	}
+	return sqltypes.MetadataToCommonType(&metadata), nil
 }
 
 // SaveMetadata inserts the metadata into the database, overwriting any existing
 // metadata.
-func (db *DB) SaveMetadata(metadata *Metadata) error {
-	return errors.New("Not yet implemented")
+func (db *DB) SaveMetadata(metadata *types.Metadata) error {
+	_, err := db.sqldb.NamedExecContext(db.ctx, insertMetadataQuery, sqltypes.MetadataFromCommonType(metadata))
+	return err
 }
 
 // UpdateMetadata updates the metadata in the database via a transaction. It
 // accepts a callback function which will be provided with the old metadata and
 // should return the new metadata to save.
-func (db *DB) UpdateMetadata(updater func(oldmetadata Metadata) (newMetadata Metadata)) error {
-	return errors.New("Not yet implemented")
+func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error {
+	if updateFunc == nil {
+		return errors.New("db.UpdateMetadata: updateFunc cannot be nil")
+	}
+
+	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	var existingMetadata sqltypes.Metadata
+	if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
+		// TODO(albrow): Specifically handle not found error.
+		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		return err
+	}
+
+	commonMetadata := sqltypes.MetadataToCommonType(&existingMetadata)
+	commonUpdatedMetadata := updateFunc(commonMetadata)
+	updatedMetadata := sqltypes.MetadataFromCommonType(commonUpdatedMetadata)
+	_, err = txn.NamedExecContext(db.ctx, updateMetadataQuery, updatedMetadata)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func convertFilterValue(value interface{}) interface{} {

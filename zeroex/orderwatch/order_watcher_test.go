@@ -934,7 +934,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	require.NoError(t, err)
 
 	// Store metadata entry in DB
-	metadata := &db.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:   1337,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 	}

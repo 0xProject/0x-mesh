@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
 	log "github.com/sirupsen/logrus"
@@ -53,7 +54,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *db.DB, a
 	if currentUTCCheckpoint != storedUTCCheckpoint {
 		storedUTCCheckpoint = currentUTCCheckpoint
 		storedGrantedInLast24HrsUTC = 0
-		if err := meshDB.UpdateMetadata(func(metadata db.Metadata) db.Metadata {
+		if err := meshDB.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 			metadata.StartOfCurrentUTCDay = storedUTCCheckpoint
 			metadata.EthRPCRequestsSentInCurrentUTCDay = storedGrantedInLast24HrsUTC
 			return metadata
@@ -125,7 +126,7 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		case <-ticker.C:
 			// Store grants issued and current UTC checkpoint to DB
 			r.mu.Lock()
-			err := r.meshDB.UpdateMetadata(func(metadata db.Metadata) db.Metadata {
+			err := r.meshDB.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 				metadata.StartOfCurrentUTCDay = r.currentUTCCheckpoint
 				metadata.EthRPCRequestsSentInCurrentUTCDay = r.grantedInLast24hrsUTC
 				return metadata

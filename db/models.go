@@ -2,21 +2,11 @@ package db
 
 import (
 	"fmt"
-	"math/big"
-	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 )
-
-// Metadata is the database representation of MeshDB instance metadata
-type Metadata struct {
-	EthereumChainID                   int
-	MaxExpirationTime                 *big.Int
-	EthRPCRequestsSentInCurrentUTCDay int
-	StartOfCurrentUTCDay              time.Time
-}
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
 	if len(assetData) == 0 {

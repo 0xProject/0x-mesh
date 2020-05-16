@@ -492,31 +492,31 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initMetadata(chainID int, meshDB *db.DB) (*db.Metadata, error) {
-	return nil, errors.New("Not yet implemented")
-	// metadata, err := meshDB.GetMetadata()
-	// if err != nil {
-	// 	if _, ok := err.(db.NotFoundError); ok {
-	// 		// No stored metadata found (first startup)
-	// 		metadata = &meshdb.Metadata{
-	// 			EthereumChainID:   chainID,
-	// 			MaxExpirationTime: constants.UnlimitedExpirationTime,
-	// 		}
-	// 		if err := meshDB.SaveMetadata(metadata); err != nil {
-	// 			return nil, err
-	// 		}
-	// 		return metadata, nil
-	// 	}
-	// 	return nil, err
-	// }
+func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
+	metadata, err := database.GetMetadata()
+	if err != nil {
+		// TODO(albrow): Handle not found error.
+		// if _, ok := err.(db.NotFoundError); ok {
+		// 	// No stored metadata found (first startup)
+		// 	metadata = &meshdb.Metadata{
+		// 		EthereumChainID:   chainID,
+		// 		MaxExpirationTime: constants.UnlimitedExpirationTime,
+		// 	}
+		// 	if err := meshDB.SaveMetadata(metadata); err != nil {
+		// 		return nil, err
+		// 	}
+		// 	return metadata, nil
+		// }
+		return nil, err
+	}
 
-	// // on subsequent startups, verify we are on the same chain
-	// if metadata.EthereumChainID != chainID {
-	// 	err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
-	// 	log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
-	// 	return nil, err
-	// }
-	// return metadata, nil
+	// on subsequent startups, verify we are on the same chain
+	if metadata.EthereumChainID != chainID {
+		err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
+		log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
+		return nil, err
+	}
+	return metadata, nil
 }
 
 func (app *App) Start(ctx context.Context) error {

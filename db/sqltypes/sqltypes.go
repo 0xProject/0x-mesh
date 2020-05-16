@@ -192,7 +192,19 @@ type MiniHeader struct {
 	Logs      *EventLogs  `db:"logs"`
 }
 
+type Metadata struct {
+	// HiddenUniqueID is only used to enforce that there is one row in the table.
+	HiddenUniqueID                    *int      `db:"hiddenUniqueID"`
+	EthereumChainID                   int       `db:"ethereumChainID"`
+	MaxExpirationTime                 *BigInt   `db:"maxExpirationTime"`
+	EthRPCRequestsSentInCurrentUTCDay int       `db:"ethRPCRequestsSentInCurrentUTCDay"`
+	StartOfCurrentUTCDay              time.Time `db:"startOfCurrentUTCDay"`
+}
+
 func OrderToCommonType(order *Order) *types.OrderWithMetadata {
+	if order == nil {
+		return nil
+	}
 	return &types.OrderWithMetadata{
 		Hash:                     order.Hash,
 		ChainID:                  order.ChainID.Int,
@@ -222,6 +234,9 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 }
 
 func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
+	if order == nil {
+		return nil
+	}
 	return &Order{
 		Hash:                     order.Hash,
 		ChainID:                  NewBigInt(order.ChainID),
@@ -279,6 +294,9 @@ func ParsedAssetDataFromCommonType(parsedAssetData []*types.SingleAssetData) *Pa
 }
 
 func SingleAssetDataToCommonType(singleAssetData *SingleAssetData) *types.SingleAssetData {
+	if singleAssetData == nil {
+		return nil
+	}
 	var tokenID *big.Int
 	if singleAssetData.TokenID != nil {
 		tokenID = singleAssetData.TokenID.Int
@@ -290,6 +308,9 @@ func SingleAssetDataToCommonType(singleAssetData *SingleAssetData) *types.Single
 }
 
 func SingleAssetDataFromCommonType(singleAssetData *types.SingleAssetData) *SingleAssetData {
+	if singleAssetData == nil {
+		return nil
+	}
 	var tokenID *BigInt
 	if singleAssetData.TokenID != nil {
 		tokenID = NewBigInt(singleAssetData.TokenID)
@@ -301,6 +322,9 @@ func SingleAssetDataFromCommonType(singleAssetData *types.SingleAssetData) *Sing
 }
 
 func MiniHeaderToCommonType(miniHeader *MiniHeader) *types.MiniHeader {
+	if miniHeader == nil {
+		return nil
+	}
 	return &types.MiniHeader{
 		Hash:      miniHeader.Hash,
 		Parent:    miniHeader.Parent,
@@ -311,6 +335,9 @@ func MiniHeaderToCommonType(miniHeader *MiniHeader) *types.MiniHeader {
 }
 
 func MiniHeaderFromCommonType(miniHeader *types.MiniHeader) *MiniHeader {
+	if miniHeader == nil {
+		return nil
+	}
 	return &MiniHeader{
 		Hash:      miniHeader.Hash,
 		Parent:    miniHeader.Parent,
@@ -326,4 +353,28 @@ func MiniHeadersToCommonType(miniHeaders []*MiniHeader) []*types.MiniHeader {
 		result[i] = MiniHeaderToCommonType(miniHeader)
 	}
 	return result
+}
+
+func MetadataToCommonType(metadata *Metadata) *types.Metadata {
+	if metadata == nil {
+		return nil
+	}
+	return &types.Metadata{
+		EthereumChainID:                   metadata.EthereumChainID,
+		MaxExpirationTime:                 metadata.MaxExpirationTime.Int,
+		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+	}
+}
+
+func MetadataFromCommonType(metadata *types.Metadata) *Metadata {
+	if metadata == nil {
+		return nil
+	}
+	return &Metadata{
+		EthereumChainID:                   metadata.EthereumChainID,
+		MaxExpirationTime:                 NewBigInt(metadata.MaxExpirationTime),
+		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+	}
 }

@@ -171,3 +171,10 @@ type MiniHeader struct {
 	Timestamp time.Time   `json:"timestamp"`
 	Logs      []types.Log `json:"logs"`
 }
+
+type Metadata struct {
+	EthereumChainID                   int
+	MaxExpirationTime                 *big.Int
+	EthRPCRequestsSentInCurrentUTCDay int
+	StartOfCurrentUTCDay              time.Time
+}

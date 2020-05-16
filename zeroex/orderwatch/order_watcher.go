@@ -1850,7 +1850,7 @@ func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
 
 // saveMaxExpirationTime saves the new max expiration time in the database.
 func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
-	if err := w.db.UpdateMetadata(func(metadata db.Metadata) db.Metadata {
+	if err := w.db.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 		metadata.MaxExpirationTime = maxExpirationTime
 		return metadata
 	}); err != nil {

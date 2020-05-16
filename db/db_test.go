@@ -2098,6 +2098,58 @@ func runDeleteMiniHeadersFilterTestCase(t *testing.T, db *DB, originalMiniHeader
 	}
 }
 
+func TestSaveMetadata(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	err := db.SaveMetadata(newTestMetadata())
+	require.NoError(t, err)
+
+	// TODO(albrow): Expect a specific error here?
+	// Attempting to save metadata when it already exists in the database should return an error.
+	err = db.SaveMetadata(newTestMetadata())
+	require.Error(t, err)
+}
+
+func TestGetMetadata(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	originalMetadata := newTestMetadata()
+	err := db.SaveMetadata(originalMetadata)
+	require.NoError(t, err)
+
+	foundMetadata, err := db.GetMetadata()
+	require.NoError(t, err)
+	require.NotNil(t, foundMetadata, "found order should not be nil")
+	assertMetadatasAreEqual(t, originalMetadata, foundMetadata)
+}
+
+func TestUpdateMetadata(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	originalMetadata := newTestMetadata()
+	err := db.SaveMetadata(originalMetadata)
+	require.NoError(t, err)
+
+	updatedMaxExpirationTime := originalMetadata.MaxExpirationTime.Add(originalMetadata.MaxExpirationTime, big.NewInt(500))
+	err = db.UpdateMetadata(func(existingMetadata *types.Metadata) *types.Metadata {
+		updatedMetadata := existingMetadata
+		updatedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+		return updatedMetadata
+	})
+
+	expectedMetadata := originalMetadata
+	expectedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+	foundMetadata, err := db.GetMetadata()
+	require.NoError(t, err)
+	assertMetadatasAreEqual(t, expectedMetadata, foundMetadata)
+}
+
 func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	// ERC20 AssetData
 	erc20AssetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
@@ -2238,6 +2290,15 @@ func newTestEventLogs() []ethtypes.Log {
 			Index:       2,
 			Removed:     true,
 		},
+	}
+}
+
+func newTestMetadata() *types.Metadata {
+	return &types.Metadata{
+		EthereumChainID:                   42,
+		MaxExpirationTime:                 big.NewInt(12345),
+		EthRPCRequestsSentInCurrentUTCDay: 1337,
+		StartOfCurrentUTCDay:              time.Date(1992, time.September, 29, 8, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -2456,6 +2517,21 @@ func assertMiniHeadersAreEqual(t *testing.T, expected, actual *types.MiniHeader)
 		actual.Timestamp = expected.Timestamp
 	} else {
 		assert.Equal(t, expected.Timestamp, actual.Timestamp, "miniHeader.Timestamp was not equal")
+	}
+	// We can compare the rest of the fields normally.
+	assert.Equal(t, expected, actual)
+}
+
+func assertMetadatasAreEqual(t *testing.T, expected, actual *types.Metadata) {
+	if expected.StartOfCurrentUTCDay.Equal(actual.StartOfCurrentUTCDay) {
+		// HACK(albrow): In this case, the two values represent the same time.
+		// This is what we care about, but the assert package might consider
+		// them unequal if some internal fields are different (there are
+		// different ways of representing the same time). As a workaround,
+		// we manually set actual.StartOfCurrentUTCDay.
+		actual.StartOfCurrentUTCDay = expected.StartOfCurrentUTCDay
+	} else {
+		assert.Equal(t, expected.StartOfCurrentUTCDay, actual.StartOfCurrentUTCDay, "metadata.StartOfCurrentUTCDay was not equal")
 	}
 	// We can compare the rest of the fields normally.
 	assert.Equal(t, expected, actual)

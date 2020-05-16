@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
@@ -29,10 +30,9 @@ const (
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, db.TestOptions())
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
-	initMetadata(t, meshDB)
+	initMetadata(t, database)
 
 	// Set up some constants for this test.
 	const maxRequestsPer24Hrs = 100000
@@ -42,7 +42,7 @@ func TestScenario1(t *testing.T) {
 	aClock := clock.NewMock()
 	aClock.Set(GetUTCMidnightOfDate(time.Now()))
 
-	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, database, aClock)
 	require.NoError(t, err)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -66,9 +66,8 @@ func TestScenario1(t *testing.T) {
 // should return an error.
 func TestScenario2(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, db.TestOptions())
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	now := time.Now()
 	startOfCurrentUTCDay := GetUTCMidnightOfDate(now)
@@ -76,13 +75,13 @@ func TestScenario2(t *testing.T) {
 	requestsSentInCurrentDay := defaultMaxRequestsPer24Hrs - requestsRemainingInCurrentDay
 
 	// Set metadata to just short of maximum requests per 24 hours.
-	metadata := &db.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
 		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              startOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: requestsSentInCurrentDay,
 	}
-	err = meshDB.SaveMetadata(metadata)
+	err = database.SaveMetadata(metadata)
 	require.NoError(t, err)
 
 	// Start a new rate limiter and set time to a few hours past midnight.
@@ -90,7 +89,7 @@ func TestScenario2(t *testing.T) {
 	// what we're trying to test.
 	aClock := clock.NewMock()
 	aClock.Set(startOfCurrentUTCDay.Add(3 * time.Hour))
-	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, database, aClock)
 	require.NoError(t, err)
 
 	wg := &sync.WaitGroup{}
@@ -123,9 +122,8 @@ func TestScenario2(t *testing.T) {
 // interval elapses.
 func TestScenario3(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	meshDB, err := db.New(ctx, db.TestOptions())
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
@@ -133,18 +131,18 @@ func TestScenario3(t *testing.T) {
 
 	// Set metadata to include an outdated `StartOfCurrentUTCDay` and an associated
 	// non-zero `EthRPCRequestsSentInCurrentUTCDay`
-	metadata := &db.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
 		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              yesterdayMidnightUTC,
 		EthRPCRequestsSentInCurrentUTCDay: 5000,
 	}
-	err = meshDB.SaveMetadata(metadata)
+	err = database.SaveMetadata(metadata)
 	require.NoError(t, err)
 
 	aClock := clock.NewMock()
 	aClock.Set(now)
-	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, database, aClock)
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
@@ -174,7 +172,7 @@ func TestScenario3(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Check metadata was stored in DB
-	metadata, err = meshDB.GetMetadata()
+	metadata, err = database.GetMetadata()
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedCurrentUTCCheckpoint, metadata.StartOfCurrentUTCDay)
@@ -185,7 +183,7 @@ func TestScenario3(t *testing.T) {
 }
 
 func initMetadata(t *testing.T, meshDB *db.DB) {
-	metadata := &db.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:   1337,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 	}
