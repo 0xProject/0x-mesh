@@ -4,6 +4,7 @@ package orderfilter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"syscall/js"
 	"time"
@@ -67,15 +68,15 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 	jsResult := js.Global().Get("schemaValidator").Call("orderValidator", js.ValueOf(string(orderJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
-		return nil, fmt.Errorf("js error: %s", fatal.String())
+		return nil, errors.New(fatal.String())
 	}
 	valid := jsResult.Get("success").Bool()
 	jsErrors := jsResult.Get("errors")
-	var errors []error
+	var convertedErrors []error
 	for i := 0; i < jsErrors.Length(); i++ {
-		errors = append(errors, fmt.Errorf("js error: %s", jsErrors.Get(fmt.Sprintf("%d", i)).String()))
+		convertedErrors = append(convertedErrors, errors.New(jsErrors.Get(fmt.Sprintf("%d", i)).String()))
 	}
-	return &SchemaValidationResult{valid: valid, errors: errors}, nil
+	return &SchemaValidationResult{valid: valid, errors: convertedErrors}, nil
 }
 
 // MatchOrder returns true if the order passes the filter. It only returns an
@@ -100,7 +101,7 @@ func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	jsResult := js.Global().Get("schemaValidator").Call("messageValidator", js.ValueOf(string(messageJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
-		return false, fmt.Errorf("js error: %s", fatal.String())
+		return false, errors.New(fatal.String())
 	}
 	return jsResult.Get("success").Bool(), nil
 }
