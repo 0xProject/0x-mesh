@@ -1,3 +1,4 @@
+import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { SignedOrder } from '@0x/order-utils';
 import * as ajv from 'ajv';
 import * as BrowserFS from 'browserfs';
@@ -129,31 +130,34 @@ window.addEventListener(loadEventName, () => {
 });
 
 const addressSchema = {
-    $id: '/address',
+    $id: 'http://example.com/address',
     type: 'string',
     pattern: '^0x[0-9a-fA-F]{40}$',
 };
-const wholeNumberSchema = { $id: '/wholeNumber', anyOf: [{ type: 'string', pattern: '^\\d+$' }, { type: 'integer' }] };
-const hexSchema = { $id: '/hex', type: 'string', pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$' };
+const wholeNumberSchema = {
+    $id: 'http://example.com/wholeNumber',
+    anyOf: [{ type: 'string', pattern: '^\\d+$' }, { type: 'integer' }],
+};
+const hexSchema = { $id: 'http://example.com/hex', type: 'string', pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$' };
 const orderSchema = {
-    $id: '/order',
+    $id: 'http://example.com/order',
     properties: {
-        makerAddress: { $ref: '/address' },
-        takerAddress: { $ref: '/address' },
-        makerFee: { $ref: '/wholeNumber' },
-        takerFee: { $ref: '/wholeNumber' },
-        senderAddress: { $ref: '/address' },
-        makerAssetAmount: { $ref: '/wholeNumber' },
-        takerAssetAmount: { $ref: '/wholeNumber' },
-        makerAssetData: { $ref: '/hex' },
-        takerAssetData: { $ref: '/hex' },
-        makerFeeAssetData: { $ref: '/hex' },
-        takerFeeAssetData: { $ref: '/hex' },
-        salt: { $ref: '/wholeNumber' },
-        feeRecipientAddress: { $ref: '/address' },
-        expirationTimeSeconds: { $ref: '/wholeNumber' },
-        exchangeAddress: { $ref: '/exchangeAddress' },
-        chainId: { $ref: '/chainId' },
+        makerAddress: { $ref: 'http://example.com/address' },
+        takerAddress: { $ref: 'http://example.com/address' },
+        makerFee: { $ref: 'http://example.com/wholeNumber' },
+        takerFee: { $ref: 'http://example.com/wholeNumber' },
+        senderAddress: { $ref: 'http://example.com/address' },
+        makerAssetAmount: { $ref: 'http://example.com/wholeNumber' },
+        takerAssetAmount: { $ref: 'http://example.com/wholeNumber' },
+        makerAssetData: { $ref: 'http://example.com/hex' },
+        takerAssetData: { $ref: 'http://example.com/hex' },
+        makerFeeAssetData: { $ref: 'http://example.com/hex' },
+        takerFeeAssetData: { $ref: 'http://example.com/hex' },
+        salt: { $ref: 'http://example.com/wholeNumber' },
+        feeRecipientAddress: { $ref: 'http://example.com/address' },
+        expirationTimeSeconds: { $ref: 'http://example.com/wholeNumber' },
+        exchangeAddress: { $ref: 'http://example.com/exchangeAddress' },
+        chainId: { $ref: 'http://example.com/chainId' },
     },
     required: [
         'makerAddress',
@@ -176,19 +180,29 @@ const orderSchema = {
     type: 'object',
 };
 const signedOrderSchema = {
-    $id: '/signedOrder',
-    allOf: [{ $ref: '/order' }, { properties: { signature: { $ref: '/hex' } }, required: ['signature'] }],
+    $id: 'http://example.com/signedOrder',
+    allOf: [
+        { $ref: 'http://example.com/order' },
+        { properties: { signature: { $ref: 'http://example.com/hex' } }, required: ['signature'] },
+    ],
 };
-const rootOrderSchema = { $id: '/rootOrder', allOf: [{ $ref: '/customOrder' }, { $ref: '/signedOrder' }] };
+const rootOrderSchema = {
+    $id: 'http://example.com/rootOrder',
+    allOf: [{ $ref: 'http://example.com/customOrder' }, { $ref: 'http://example.com/signedOrder' }],
+};
 const rootOrderMessageSchema = {
-    $id: '/rootOrderMessage',
+    $id: 'http://example.com/rootOrderMessage',
     properties: {
         messageType: { type: 'string', pattern: 'order' },
-        order: { $ref: '/rootOrder' },
+        order: { $ref: 'http://example.com/rootOrder' },
         topics: { type: 'array', minItems: 1, items: { type: 'string' } },
     },
     required: ['messageType', 'order', 'topics'],
 };
+
+(window as any).schemaValidator = {};
+
+const schemaValidator = (window as any).schemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
@@ -209,24 +223,51 @@ export class Mesh {
      */
     constructor(config: Config) {
         this._config = config;
+
+        const chainIdSchema = {
+            $id: 'http://example.com/chainId',
+            const: this._config.ethereumChainID,
+        };
+
+        // TODO(jalextowle): These addresses are already fully lowercased in Mesh. Verify
+        // that these schemas are not missing anything.
+        let exchangeAddressSchema: { $id: string; enum: [string] };
+        if (this._config.customContractAddresses && this._config.customContractAddresses.exchange) {
+            exchangeAddressSchema = {
+                $id: 'http://example.com/exchangeAddress',
+                enum: [this._config.customContractAddresses.exchange],
+            };
+        } else {
+            const contractAddresses = getContractAddressesForChainOrThrow(this._config.ethereumChainID);
+            exchangeAddressSchema = {
+                $id: 'http://example.com/exchangeAddress',
+                enum: [contractAddresses.exchange],
+            };
+        }
+
         const AJV = new ajv({
             schemas: [
+                {
+                    ...this._config.customOrderFilter,
+                    $id: 'http://example.com/customOrder',
+                },
                 addressSchema,
                 wholeNumberSchema,
                 hexSchema,
+                chainIdSchema,
+                exchangeAddressSchema,
                 orderSchema,
                 signedOrderSchema,
                 rootOrderSchema,
                 rootOrderMessageSchema,
-                {
-                    ...this._config.customOrderFilter,
-                    $id: '/customOrderFilter',
-                },
             ],
         });
         // tslint:disable:no-non-null-assertion
-        const orderValidate = AJV.getSchema('/rootOrderSchema')!;
-        (window as any).orderValidator = (input: string) => {
+        const orderValidate = AJV.getSchema('http://example.com/rootOrder');
+        if (orderValidate === undefined) {
+            throw new Error('Cannot find "/rootOrder" schema in AJV');
+        }
+        schemaValidator.orderValidator = (input: string) => {
             const result: any = { success: false, errors: [] };
             try {
                 result.success = orderValidate(JSON.parse(input));
@@ -239,8 +280,11 @@ export class Mesh {
             return result;
         };
 
-        const messageValidate = AJV.getSchema('/rootMessageSchema')!;
-        (window as any).messageValidator = (input: string) => {
+        const messageValidate = AJV.getSchema('http://example.com/rootOrderMessage');
+        if (messageValidate === undefined) {
+            throw new Error('Cannot find "rootOrderMessage" schema in AJV');
+        }
+        schemaValidator.messageValidator = (input: string) => {
             const result: any = { success: false, errors: [] };
             try {
                 result.success = messageValidate(JSON.parse(input));
@@ -252,6 +296,7 @@ export class Mesh {
             }
             return result;
         };
+        // tslint:enable:no-non-null-assertion
     }
 
     /**
