@@ -272,7 +272,7 @@ export class Mesh {
             try {
                 result.success = orderValidate(JSON.parse(input));
                 if (orderValidate.errors) {
-                    result.errors = orderValidate.errors.map(error => JSON.stringify(error));
+                    result.errors = orderValidate.errors.map(error => error.message);
                 }
             } catch (error) {
                 result.fatal = JSON.stringify(error);
@@ -289,7 +289,7 @@ export class Mesh {
             try {
                 result.success = messageValidate(JSON.parse(input));
                 if (messageValidate.errors) {
-                    result.errors = messageValidate.errors.map(error => JSON.stringify(error));
+                    result.errors = messageValidate.errors.map(error => error.message);
                 }
             } catch (error) {
                 result.fatal = JSON.stringify(error);

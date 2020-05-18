@@ -8,12 +8,14 @@ const wrtc = require("wrtc");
 
 global.window = {
     RTCPeerConnection: wrtc.RTCPeerConnection,
-    schemaValidator,
+    schemaValidator: {},
 };
 
 global.RTCPeerConnection = wrtc.RTCPeerConnection;
 
+// FIXME(jalextowle): DRY this up
 // Set up schemaValidator
+global.schemaValidator = {};
 const addressSchema = {
     $id: 'http://example.com/address',
     type: 'string',
@@ -84,7 +86,7 @@ const rootOrderMessageSchema = {
     },
     required: ['messageType', 'order', 'topics'],
 };
-const chainId = {
+const chainIdSchema = {
     $id: 'http://example.com/chainId',
     const: 1337,
 };
@@ -95,7 +97,7 @@ const exchangeAddressSchema = {
 const AJV = new ajv({
     schemas: [
         {
-            ...this._config.customOrderFilter,
+            // FIXME(jalextowle): I may need to add a shim for adding schemas for tests
             $id: 'http://example.com/customOrder',
         },
         addressSchema,
@@ -118,7 +120,7 @@ global.schemaValidator.orderValidator = (input) => {
     try {
         result.success = orderValidate(JSON.parse(input));
         if (orderValidate.errors) {
-            result.errors = orderValidate.errors.map(error => JSON.stringify(error));
+            result.errors = orderValidate.errors.map(error => error.message);
         }
     } catch (error) {
         result.fatal = JSON.stringify(error);
@@ -135,7 +137,7 @@ global.schemaValidator.messageValidator = (input) => {
     try {
         result.success = messageValidate(JSON.parse(input));
         if (messageValidate.errors) {
-            result.errors = messageValidate.errors.map(error => JSON.stringify(error));
+            result.errors = messageValidate.errors.map(error => error.message);
         }
     } catch (error) {
         result.fatal = JSON.stringify(error);
