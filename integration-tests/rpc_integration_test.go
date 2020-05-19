@@ -48,7 +48,7 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait until the rpc server has been started, and then create an rpc client
@@ -117,7 +117,7 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
@@ -226,7 +226,7 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcP
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and get the peer ID of the node. Start the
@@ -253,16 +253,16 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcP
 	getStatsResponse.LatestBlock = types.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
-	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic)
-	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous)
-	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous)
-	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
-	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
-	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock)
-	require.Equal(t, 0, getStatsResponse.NumOrders)
-	require.Equal(t, 0, getStatsResponse.NumPeers)
-	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime)
-	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay)
+	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic, "PubSubTopic")
+	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous, "Rendezvous")
+	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous, "SecondaryRendezvous")
+	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID, "PeerID")
+	require.Equal(t, 1337, getStatsResponse.EthereumChainID, "EthereumChainID")
+	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock, "LatestBlock")
+	require.Equal(t, 0, getStatsResponse.NumOrders, "NumOrders")
+	require.Equal(t, 0, getStatsResponse.NumPeers, "NumPeers")
+	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime, "MaxExpirationTime")
+	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay, "StartOfCurrentDay")
 
 	cancel()
 	wg.Wait()
@@ -285,7 +285,7 @@ func TestOrdersSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client.
@@ -345,7 +345,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client

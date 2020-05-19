@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -59,10 +60,13 @@ func TestBrowserIntegration(t *testing.T) {
 	customOrderFilter := `{"properties": { "makerAddress": { "const": "0x6ecbe1db9ef729cbe972c83fb886247691fb6beb" }}}`
 
 	// Start the standalone node in a goroutine.
+	// Note we need to use a specific data dir because we need to use the same private key for each test.
+	// The tests themselves are written in a way that depend on this.
+	dataDir := filepath.Join(standaloneDataDirPrefix, "standalone-0")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, customOrderFilter, standaloneLogMessages)
+		startStandaloneNode(t, ctx, count, dataDir, customOrderFilter, standaloneLogMessages)
 	}()
 
 	// standaloneOrder is an order that will be sent to the network by the

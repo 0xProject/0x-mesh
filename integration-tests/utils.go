@@ -21,6 +21,7 @@ import (
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,12 +154,16 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOrderFilter string, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, dataDir string, customOrderFilter string, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
+	if dataDir == "" {
+		// If dataDir is empty. Set a default data dir to a file in the /tmp directory
+		dataDir = filepath.Join("/tmp", "mesh_testing", uuid.New().String())
+	}
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=6",
-		"DATA_DIR="+standaloneDataDirPrefix+strconv.Itoa(nodeID),
+		"DATA_DIR="+dataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),

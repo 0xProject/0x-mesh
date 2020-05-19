@@ -1026,57 +1026,79 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 
 // GetStats retrieves stats about the Mesh node
 func (app *App) GetStats() (*types.Stats, error) {
-	return nil, errors.New("Not yet implemented")
-	// <-app.started
+	<-app.started
 
-	// latestBlockHeader, err := app.db.FindLatestMiniHeader()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// latestBlock := types.LatestBlock{
-	// 	Number: int(latestBlockHeader.Number.Int64()),
-	// 	Hash:   latestBlockHeader.Hash,
-	// }
-	// notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	// numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// numOrdersIncludingRemoved, err := app.db.Orders.Count()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// numPinnedOrders, err := app.db.CountPinnedOrders()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// metadata, err := app.db.GetMetadata()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// rendezvousPoints, err := app.getRendezvousPoints()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	latestMiniHeaders, err := app.db.FindMiniHeaders(&db.MiniHeaderQuery{
+		Sort: []db.MiniHeaderSort{
+			{
+				Field:     db.MFNumber,
+				Direction: db.Descending,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var latestBlock types.LatestBlock
+	if len(latestMiniHeaders) != 0 {
+		latestBlock.Number = int(latestMiniHeaders[0].Number.Int64())
+		latestBlock.Hash = latestMiniHeaders[0].Hash
+	}
+	numOrders, err := app.db.CountOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	numOrdersIncludingRemoved, err := app.db.CountOrders(nil)
+	if err != nil {
+		return nil, err
+	}
+	numPinnedOrders, err := app.db.CountOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsPinned,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := app.db.GetMetadata()
+	if err != nil {
+		return nil, err
+	}
+	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return nil, err
+	}
 
-	// response := &types.Stats{
-	// 	Version:                           version,
-	// 	PubSubTopic:                       app.orderFilter.Topic(),
-	// 	Rendezvous:                        rendezvousPoints[0],
-	// 	SecondaryRendezvous:               rendezvousPoints[1:],
-	// 	PeerID:                            app.peerID.String(),
-	// 	EthereumChainID:                   app.config.EthereumChainID,
-	// 	LatestBlock:                       latestBlock,
-	// 	NumOrders:                         numOrders,
-	// 	NumPeers:                          app.node.GetNumPeers(),
-	// 	NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
-	// 	NumPinnedOrders:                   numPinnedOrders,
-	// 	MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
-	// 	StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
-	// 	EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
-	// 	EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
-	// }
-	// return response, nil
+	response := &types.Stats{
+		Version:                           version,
+		PubSubTopic:                       app.orderFilter.Topic(),
+		Rendezvous:                        rendezvousPoints[0],
+		SecondaryRendezvous:               rendezvousPoints[1:],
+		PeerID:                            app.peerID.String(),
+		EthereumChainID:                   app.config.EthereumChainID,
+		LatestBlock:                       latestBlock,
+		NumOrders:                         numOrders,
+		NumPeers:                          app.node.GetNumPeers(),
+		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+		NumPinnedOrders:                   numPinnedOrders,
+		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
+		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
+		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
+	}
+	return response, nil
 }
 
 func (app *App) periodicallyLogStats(ctx context.Context) {
