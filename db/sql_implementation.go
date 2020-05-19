@@ -4,6 +4,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math/big"
@@ -19,8 +20,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
-
-var ErrMetadataAlreadyExists = errors.New("metadata already exists in the database (use UpdateMetadata instead?)")
 
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
@@ -817,6 +816,9 @@ func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, err
 func (db *DB) GetMetadata() (*types.Metadata, error) {
 	var metadata sqltypes.Metadata
 	if err := db.sqldb.GetContext(db.ctx, &metadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrMetadataNotFound
+		}
 		return nil, err
 	}
 	return sqltypes.MetadataToCommonType(&metadata), nil

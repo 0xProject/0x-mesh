@@ -29,20 +29,19 @@ const (
 func TestEthereumChainDetection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	meshDB, err := db.New(ctx, db.TestOptions())
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	// simulate starting up on mainnet
-	_, err = initMetadata(1, meshDB)
+	_, err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// simulate restart on same chain
-	_, err = initMetadata(1, meshDB)
+	_, err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// should error when attempting to start on different chain
-	_, err = initMetadata(2, meshDB)
+	_, err = initMetadata(2, database)
 	assert.Error(t, err)
 }
 
@@ -160,9 +159,8 @@ func TestRepeatedAppInitialization(t *testing.T) {
 		CustomOrderFilter:                "{}",
 		CustomContractAddresses:          `{"exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788","devUtils":"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1","erc20Proxy":"0x1dc4c1cefef38a777b15aa20260a54e584b16c48","erc721Proxy":"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401","erc1155Proxy":"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"}`,
 	}
-	app, err := New(config)
+	_, err := New(config)
 	require.NoError(t, err)
-	app.db.Close()
 	_, err = New(config)
 	require.NoError(t, err)
 }
