@@ -514,17 +514,6 @@ func (app *App) Start(ctx context.Context) error {
 	// to exit.
 	wg := &sync.WaitGroup{}
 
-	// Close the database when the context is canceled.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			log.Debug("closing app.db")
-		}()
-		<-innerCtx.Done()
-		app.db.Close()
-	}()
-
 	// Start rateLimiter
 	ethRPCRateLimiterErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -826,82 +815,59 @@ func (e ErrPerPageZero) Error() string {
 	return "perPage cannot be zero"
 }
 
+// TODO(albrow): Update this comment.
 // GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
 // string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
 // continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
 // received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
-func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
-	return nil, errors.New("Not yet implemented")
-	// <-app.started
+func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrdersResponse, error) {
+	<-app.started
 
-	// if perPage <= 0 {
-	// 	return nil, ErrPerPageZero{}
-	// }
+	if perPage <= 0 {
+		return nil, ErrPerPageZero{}
+	}
 
-	// ordersInfos := []*types.OrderInfo{}
-	// var snapshot *db.Snapshot
-	// var createdAt time.Time
-	// if snapshotID == "" {
-	// 	// Create a new snapshot
-	// 	snapshotID = uuid.New().String()
-	// 	var err error
-	// 	snapshot, err = app.db.Orders.GetSnapshot()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	createdAt = time.Now().UTC()
-	// 	expirationTimestamp := time.Now().Add(1 * time.Minute)
-	// 	app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-	// 	app.muIdToSnapshotInfo.Lock()
-	// 	app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-	// 		Snapshot:            snapshot,
-	// 		CreatedAt:           createdAt,
-	// 		ExpirationTimestamp: expirationTimestamp,
-	// 	}
-	// 	app.muIdToSnapshotInfo.Unlock()
-	// } else {
-	// 	// Try and find an existing snapshot
-	// 	app.muIdToSnapshotInfo.Lock()
-	// 	info, ok := app.idToSnapshotInfo[snapshotID]
-	// 	if !ok {
-	// 		app.muIdToSnapshotInfo.Unlock()
-	// 		return nil, ErrSnapshotNotFound{id: snapshotID}
-	// 	}
-	// 	snapshot = info.Snapshot
-	// 	createdAt = info.CreatedAt
-	// 	// Reset the snapshot's expiry
-	// 	app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
-	// 	expirationTimestamp := time.Now().Add(1 * time.Minute)
-	// 	app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-	// 	app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-	// 		Snapshot:            snapshot,
-	// 		CreatedAt:           createdAt,
-	// 		ExpirationTimestamp: expirationTimestamp,
-	// 	}
-	// 	app.muIdToSnapshotInfo.Unlock()
-	// }
+	ordersInfos := []*types.OrderInfo{}
+	query := &db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+			db.OrderFilter{
+				Field: db.OFHash,
+				Kind:  db.Greater,
+				Value: minOrderHash,
+			},
+		},
+		Sort: []db.OrderSort{
+			{
+				Field:     db.OFHash,
+				Direction: db.Ascending,
+			},
+		},
+		Limit: uint(perPage),
+	}
 
-	// notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	// var selectedOrders []*meshdb.Order
-	// err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// for _, order := range selectedOrders {
-	// 	ordersInfos = append(ordersInfos, &types.OrderInfo{
-	// 		OrderHash:                order.Hash,
-	// 		SignedOrder:              order.SignedOrder,
-	// 		FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-	// 	})
-	// }
+	orders, err := app.db.FindOrders(query)
+	if err != nil {
+		return nil, err
+	}
+	for _, order := range orders {
+		ordersInfos = append(ordersInfos, &types.OrderInfo{
+			OrderHash:                order.Hash,
+			SignedOrder:              order.SignedOrder(),
+			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+		})
+	}
 
-	// getOrdersResponse := &types.GetOrdersResponse{
-	// 	SnapshotID:        snapshotID,
-	// 	SnapshotTimestamp: createdAt,
-	// 	OrdersInfos:       ordersInfos,
-	// }
+	getOrdersResponse := &types.GetOrdersResponse{
+		Timestamp:   time.Now(),
+		OrdersInfos: ordersInfos,
+	}
 
-	// return getOrdersResponse, nil
+	return getOrdersResponse, nil
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders

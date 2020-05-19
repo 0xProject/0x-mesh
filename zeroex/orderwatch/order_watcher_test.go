@@ -118,8 +118,8 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	meshDB, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 

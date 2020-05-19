@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,23 +36,19 @@ func NewFilteredPaginationSubprotocol(app *App, perPage int) *FilteredPagination
 }
 
 // FilteredPaginationRequestMetadata is the request metadata for the
-// FilteredPaginationSubProtocol. It keeps track of the current page and SnapshotID,
+// FilteredPaginationSubProtocol. It keeps track of the current minOrderHash,
 // which is expected to be an empty string on the first request.
 type FilteredPaginationRequestMetadata struct {
-	Page       int    `json:"page"`
-	SnapshotID string `json:"snapshotID"`
+	MinOrderHash common.Hash `json:"minOrderHash"`
 }
 
 // FilteredPaginationResponseMetadata is the response metadata for the
-// FilteredPaginationSubProtocol. It keeps track of the current page and SnapshotID.
-type FilteredPaginationResponseMetadata struct {
-	Page       int    `json:"page"`
-	SnapshotID string `json:"snapshotID"`
-}
+// FilteredPaginationSubProtocol. It keeps track of the current minOrderHash.
+type FilteredPaginationResponseMetadata struct{}
 
 // Name returns the name of the FilteredPaginationSubProtocol
 func (p *FilteredPaginationSubProtocol) Name() string {
-	return "/pagination-with-filter/version/0"
+	return "/pagination-with-filter/version/1"
 }
 
 // HandleOrderSyncRequest returns the orders for one page, based on the page number
@@ -62,8 +59,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 	if req.Metadata == nil {
 		// Default metadata for the first request.
 		metadata = &FilteredPaginationRequestMetadata{
-			Page:       0,
-			SnapshotID: "",
+			MinOrderHash: common.Hash{},
 		}
 	} else {
 		var ok bool
@@ -77,8 +73,8 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
 	filteredOrders := []*zeroex.SignedOrder{}
-	var snapshotID string
-	currentPage := metadata.Page
+	currentMinOrderHash := metadata.MinOrderHash
+	nextMinOrderHash := common.Hash{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -86,15 +82,15 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 		default:
 		}
 		// Get the orders for this page.
-		ordersResp, err := p.app.GetOrders(currentPage, p.perPage, metadata.SnapshotID)
+		ordersResp, err := p.app.GetOrders(p.perPage, currentMinOrderHash)
 		if err != nil {
 			return nil, err
 		}
-		snapshotID = ordersResp.SnapshotID
 		if len(ordersResp.OrdersInfos) == 0 {
 			// No more orders left.
 			break
 		}
+		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
 		// Filter the orders for this page.
 		for _, orderInfo := range ordersResp.OrdersInfos {
 			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
@@ -106,7 +102,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 		if len(filteredOrders) == 0 {
 			// If none of the orders for this page match the filter, we continue
 			// on to the next page.
-			currentPage += 1
+			currentMinOrderHash = nextMinOrderHash
 			continue
 		} else {
 			break
@@ -116,10 +112,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 	return &ordersync.Response{
 		Orders:   filteredOrders,
 		Complete: len(filteredOrders) == 0,
-		Metadata: &FilteredPaginationResponseMetadata{
-			Page:       currentPage,
-			SnapshotID: snapshotID,
-		},
+		Metadata: &FilteredPaginationResponseMetadata{},
 	}, nil
 }
 
@@ -130,7 +123,7 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 	if res.Metadata == nil {
 		return nil, errors.New("FilteredPaginationSubProtocol received response with nil metadata")
 	}
-	metadata, ok := res.Metadata.(*FilteredPaginationResponseMetadata)
+	_, ok := res.Metadata.(*FilteredPaginationResponseMetadata)
 	if !ok {
 		return nil, fmt.Errorf("FilteredPaginationSubProtocol received response with wrong metadata type (got %T)", res.Metadata)
 	}
@@ -164,10 +157,19 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 		}
 	}
 
+	// Calculate the next min order hash to send in our next request.
+	// This is equal to the maximum order hash we have received so far.
+	var nextMinOrderHash common.Hash
+	if len(res.Orders) > 0 {
+		hash, err := res.Orders[len(res.Orders)-1].ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		nextMinOrderHash = hash
+	}
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadata{
-			Page:       metadata.Page + 1,
-			SnapshotID: metadata.SnapshotID,
+			MinOrderHash: nextMinOrderHash,
 		},
 	}, nil
 }
