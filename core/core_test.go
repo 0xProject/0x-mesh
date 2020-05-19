@@ -12,8 +12,14 @@ import (
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
+	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/common"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,106 +171,106 @@ func TestRepeatedAppInitialization(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// func TestOrderSync(t *testing.T) {
-// 	if !serialTestsEnabled {
-// 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-// 	}
+func TestOrderSync(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// 	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
-// 	// the network without any orders.
-// 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-// 	defer cancel()
-// 	wg := &sync.WaitGroup{}
+	// Set up two Mesh nodes. originalNode starts with some orders. newNode enters
+	// the network without any orders.
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	wg := &sync.WaitGroup{}
 
-// 	perPage := 10
-// 	pConfig := privateConfig{
-// 		paginationSubprotocolPerPage: perPage,
-// 	}
-// 	originalNode := newTestAppWithPrivateConfig(t, pConfig)
-// 	wg.Add(1)
-// 	go func() {
-// 		defer wg.Done()
-// 		if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
-// 			// context.Canceled is expected. For any other error, fail the test.
-// 			require.NoError(t, err)
-// 		}
-// 	}()
+	perPage := 10
+	pConfig := privateConfig{
+		paginationSubprotocolPerPage: perPage,
+	}
+	originalNode := newTestAppWithPrivateConfig(t, pConfig)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
+	}()
 
-// 	// Manually add some orders to originalNode.
-// 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
-// 	originalOrders := scenario.NewSignedTestOrdersBatch(t, perPage*3+1, orderOptions)
+	// Manually add some orders to originalNode.
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	originalOrders := scenario.NewSignedTestOrdersBatch(t, perPage*3+1, orderOptions)
 
-// 	// We have to wait for latest block to be processed by the Mesh node.
-// 	time.Sleep(blockProcessingWaitTime)
+	// We have to wait for latest block to be processed by the Mesh node.
+	time.Sleep(blockProcessingWaitTime)
 
-// 	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
-// 	require.NoError(t, err)
-// 	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
+	results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+	require.NoError(t, err)
+	require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
-// 	newNode := newTestApp(t)
-// 	wg.Add(1)
-// 	go func() {
-// 		defer wg.Done()
-// 		if err := newNode.Start(ctx); err != nil && err != context.Canceled {
-// 			// context.Canceled is expected. For any other error, fail the test.
-// 			require.NoError(t, err)
-// 		}
-// 	}()
-// 	<-newNode.started
+	newNode := newTestApp(t)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			// context.Canceled is expected. For any other error, fail the test.
+			require.NoError(t, err)
+		}
+	}()
+	<-newNode.started
 
-// 	orderEventsChan := make(chan []*zeroex.OrderEvent)
-// 	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)
-// 	defer orderEventsSub.Unsubscribe()
+	orderEventsChan := make(chan []*zeroex.OrderEvent)
+	orderEventsSub := newNode.SubscribeToOrderEvents(orderEventsChan)
+	defer orderEventsSub.Unsubscribe()
 
-// 	// Connect the two nodes *after* adding orders to one of them. This should
-// 	// trigger the ordersync protocol.
-// 	err = originalNode.AddPeer(peer.AddrInfo{
-// 		ID:    newNode.node.ID(),
-// 		Addrs: newNode.node.Multiaddrs(),
-// 	})
-// 	require.NoError(t, err)
+	// Connect the two nodes *after* adding orders to one of them. This should
+	// trigger the ordersync protocol.
+	err = originalNode.AddPeer(peer.AddrInfo{
+		ID:    newNode.node.ID(),
+		Addrs: newNode.node.Multiaddrs(),
+	})
+	require.NoError(t, err)
 
-// 	// Wait for newNode to get the orders via ordersync.
-// 	receivedAddedEvents := []*zeroex.OrderEvent{}
-// OrderEventLoop:
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			t.Fatalf("timed out waiting for %d order added events (received %d so far)", len(originalOrders), len(receivedAddedEvents))
-// 		case orderEvents := <-orderEventsChan:
-// 			for _, orderEvent := range orderEvents {
-// 				if orderEvent.EndState == zeroex.ESOrderAdded {
-// 					receivedAddedEvents = append(receivedAddedEvents, orderEvent)
-// 				}
-// 			}
-// 			if len(receivedAddedEvents) >= len(originalOrders) {
-// 				break OrderEventLoop
-// 			}
-// 		}
-// 	}
+	// Wait for newNode to get the orders via ordersync.
+	receivedAddedEvents := []*zeroex.OrderEvent{}
+OrderEventLoop:
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for %d order added events (received %d so far)", len(originalOrders), len(receivedAddedEvents))
+		case orderEvents := <-orderEventsChan:
+			for _, orderEvent := range orderEvents {
+				if orderEvent.EndState == zeroex.ESOrderAdded {
+					receivedAddedEvents = append(receivedAddedEvents, orderEvent)
+				}
+			}
+			if len(receivedAddedEvents) >= len(originalOrders) {
+				break OrderEventLoop
+			}
+		}
+	}
 
-// 	// Test that the orders are actually in the database and are returned by
-// 	// GetOrders.
-// 	newNodeOrdersResp, err := newNode.GetOrders(0, len(originalOrders), "")
-// 	require.NoError(t, err)
-// 	assert.Len(t, newNodeOrdersResp.OrdersInfos, len(originalOrders), "new node should have %d orders", len(originalOrders))
-// 	for _, expectedOrder := range originalOrders {
-// 		orderHash, err := expectedOrder.ComputeOrderHash()
-// 		require.NoError(t, err)
-// 		expectedOrder.ResetHash()
-// 		var dbOrder meshdb.Order
-// 		require.NoError(t, newNode.db.Orders.FindByID(orderHash.Bytes(), &dbOrder))
-// 		actualOrder := dbOrder.SignedOrder
-// 		assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
-// 	}
+	// Test that the orders are actually in the database and are returned by
+	// GetOrders.
+	newNodeOrdersResp, err := newNode.GetOrders(len(originalOrders), common.Hash{})
+	require.NoError(t, err)
+	assert.Len(t, newNodeOrdersResp.OrdersInfos, len(originalOrders), "new node should have %d orders", len(originalOrders))
+	for _, expectedOrder := range originalOrders {
+		orderHash, err := expectedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		expectedOrder.ResetHash()
+		dbOrder, err := newNode.db.GetOrder(orderHash)
+		require.NoError(t, err)
+		actualOrder := dbOrder.SignedOrder()
+		assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
+	}
 
-// 	// Wait for nodes to exit without error.
-// 	cancel()
-// 	wg.Wait()
-// }
+	// Wait for nodes to exit without error.
+	cancel()
+	wg.Wait()
+}
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
