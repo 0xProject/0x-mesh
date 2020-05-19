@@ -344,7 +344,7 @@ func TestFindOrdersFilter(t *testing.T) {
 			expectedOrders: originalOrders,
 		},
 
-		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
 		{
 			name: "MakerAssetAmount = 5",
 			filters: []OrderFilter{
@@ -646,7 +646,7 @@ func TestCountOrdersFilter(t *testing.T) {
 			expectedCount: len(originalOrders),
 		},
 
-		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
 		{
 			name: "MakerAssetAmount = 5",
 			filters: []OrderFilter{
@@ -961,7 +961,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 			expectedRemainingOrders: []*types.OrderWithMetadata{},
 		},
 
-		// Filter on MakerAssetAmount (type Uint256/NUMERIC)
+		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
 		{
 			name: "MakerAssetAmount = 5",
 			filters: []OrderFilter{
@@ -1545,7 +1545,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 			expectedMiniHeaders: originalMiniHeaders,
 		},
 
-		// Filter on Number (type Uint256/NUMERIC)
+		// Filter on Number (type BigInt/NUMERIC)
 		{
 			name: "Number = 5",
 			filters: []MiniHeaderFilter{
@@ -1832,7 +1832,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 			expectedDeletedMiniHeaders: originalMiniHeaders,
 		},
 
-		// Filter on Number (type Uint256/NUMERIC)
+		// Filter on Number (type BigInt/NUMERIC)
 		{
 			name: "Number = 5",
 			filters: []MiniHeaderFilter{
@@ -2106,10 +2106,9 @@ func TestSaveMetadata(t *testing.T) {
 	err := db.SaveMetadata(newTestMetadata())
 	require.NoError(t, err)
 
-	// TODO(albrow): Expect a specific error here?
 	// Attempting to save metadata when it already exists in the database should return an error.
 	err = db.SaveMetadata(newTestMetadata())
-	require.Error(t, err)
+	assert.EqualError(t, err, ErrMetadataAlreadyExists.Error())
 }
 
 func TestGetMetadata(t *testing.T) {

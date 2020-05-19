@@ -4,13 +4,14 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
+	ethmath "github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/gibson042/canonicaljson-go"
 )
@@ -28,7 +29,7 @@ func NewBigInt(v *big.Int) *BigInt {
 }
 
 func BigIntFromString(v string) (*BigInt, error) {
-	bigInt, ok := math.ParseBig256(v)
+	bigInt, ok := ethmath.ParseBig256(v)
 	if !ok {
 		return nil, fmt.Errorf("sqltypes: could not convert %q to BigInt", v)
 	}
@@ -54,14 +55,23 @@ func (i *BigInt) Scan(value interface{}) error {
 	switch v := value.(type) {
 	case int64:
 		i.Int = big.NewInt(v)
+	case float64:
+		if math.Trunc(v) != v {
+			// float64 may be used by the database driver to represent 0 or any other
+			// whole number. This is okay as long as v is a whole number, i.e. does not
+			// have anything after the decimal point. If this is not the case we return
+			// an error.
+			return fmt.Errorf("could not scan non-whole number float64 value %v into sqltypes.BigInt", value)
+		}
+		i.Int = big.NewInt(int64(v))
 	case string:
-		parsed, ok := math.ParseBig256(v)
+		parsed, ok := ethmath.ParseBig256(v)
 		if !ok {
-			return fmt.Errorf("could not scan string value %q into Uint256", v)
+			return fmt.Errorf("could not scan string value %q into sqltypes.BigInt", v)
 		}
 		i.Int = parsed
 	default:
-		return fmt.Errorf("could not scan type %T into Uint256", value)
+		return fmt.Errorf("could not scan type %T into sqltypes.BigInt", value)
 	}
 
 	return nil
@@ -77,11 +87,11 @@ func (i *BigInt) MarshalJSON() ([]byte, error) {
 func (i *BigInt) UnmarshalJSON(data []byte) error {
 	unqouted, err := strconv.Unquote(string(data))
 	if err != nil {
-		return fmt.Errorf("could not unmarshal JSON data into Uint256: %s", string(data))
+		return fmt.Errorf("could not unmarshal JSON data into sqltypes.BigInt: %s", string(data))
 	}
-	bigInt, ok := math.ParseBig256(unqouted)
+	bigInt, ok := ethmath.ParseBig256(unqouted)
 	if !ok {
-		return fmt.Errorf("could not unmarshal JSON data into Uint256: %s", string(data))
+		return fmt.Errorf("could not unmarshal JSON data into sqltypes.BigInt: %s", string(data))
 	}
 	i.Int = bigInt
 	return nil
@@ -193,8 +203,6 @@ type MiniHeader struct {
 }
 
 type Metadata struct {
-	// HiddenUniqueID is only used to enforce that there is one row in the table.
-	HiddenUniqueID                    *int      `db:"hiddenUniqueID"`
 	EthereumChainID                   int       `db:"ethereumChainID"`
 	MaxExpirationTime                 *BigInt   `db:"maxExpirationTime"`
 	EthRPCRequestsSentInCurrentUTCDay int       `db:"ethRPCRequestsSentInCurrentUTCDay"`

@@ -20,6 +20,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var ErrMetadataAlreadyExists = errors.New("metadata already exists in the database (use UpdateMetadata instead?)")
+
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
 	ctx   context.Context
@@ -146,7 +148,6 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 );
 
 CREATE TABLE IF NOT EXISTS metadata (
-	hiddenUniqueID                    TINYINT PRIMARY KEY DEFAULT 1,
 	ethereumChainID                   BIGINT NOT NULL,
 	maxExpirationTime                 NUMERIC(78, 0) NOT NULL,
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
@@ -444,7 +445,7 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(query.ToSQL(false))
+	// fmt.Println(query.ToSQL(false))
 	var orders []*sqltypes.Order
 	if err := query.GetAllContext(db.ctx, &orders); err != nil {
 		return nil, err
@@ -822,9 +823,21 @@ func (db *DB) GetMetadata() (*types.Metadata, error) {
 }
 
 // SaveMetadata inserts the metadata into the database, overwriting any existing
-// metadata.
+// metadata. It returns ErrMetadataAlreadyExists if the metadata has already been
+// saved in the database.
 func (db *DB) SaveMetadata(metadata *types.Metadata) error {
-	_, err := db.sqldb.NamedExecContext(db.ctx, insertMetadataQuery, sqltypes.MetadataFromCommonType(metadata))
+	err := db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		query := db.sqldb.Select("COUNT(*)").From("metadata")
+		count, err := query.GetCount()
+		if err != nil {
+			return err
+		}
+		if count != 0 {
+			return ErrMetadataAlreadyExists
+		}
+		_, err = db.sqldb.NamedExecContext(db.ctx, insertMetadataQuery, sqltypes.MetadataFromCommonType(metadata))
+		return err
+	})
 	return err
 }
 
