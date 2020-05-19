@@ -30,11 +30,11 @@ deps-ts-no-lockfile:
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-node test-wasm-browser test-ts
+test-all: test-go test-wasm-node test-wasm-browser test-ts test-browser-conversion test-browser-integration
 
 
 .PHONY: test-go
-test-go: test-go-parallel test-go-serial test-browser-conversion
+test-go: test-go-parallel test-go-serial
 
 
 .PHONY: test-go-parallel
