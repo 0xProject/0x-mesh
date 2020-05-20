@@ -1,6 +1,82 @@
-const ajv = require("ajv");
+import * as ajv from 'ajv';
 
-window.schemaValidator = {};
+import { JsonSchema } from './types';
+
+export interface SchemaValidationResult {
+    success: boolean;
+    errors: string[];
+    fatal?: string;
+}
+
+export interface SchemaValidator {
+    orderValidator: (input: string) => SchemaValidationResult;
+    messageValidator: (input: string) => SchemaValidationResult;
+}
+
+export function getSchemaValidator(
+    chainId: number,
+    exchangeAddress: string,
+    customOrderFilter?: JsonSchema,
+): SchemaValidator {
+    const chainIdSchema = {
+        $id: 'http://example.com/chainId',
+        const: chainId,
+    };
+
+    // FIXME(jalextowle): Add the checksummed address to this.
+    const exchangeAddressSchema = {
+        $id: 'http://example.com/exchangeAddress',
+        enum: [exchangeAddress],
+    };
+
+    const AJV = new ajv({
+        schemas: [
+            {
+                ...customOrderFilter,
+                $id: 'http://example.com/customOrder',
+            },
+            addressSchema,
+            wholeNumberSchema,
+            hexSchema,
+            chainIdSchema,
+            exchangeAddressSchema,
+            orderSchema,
+            signedOrderSchema,
+            rootOrderSchema,
+            rootOrderMessageSchema,
+        ],
+    });
+    const orderValidate = AJV.getSchema('http://example.com/rootOrder');
+    if (orderValidate === undefined) {
+        throw new Error('Cannot find "/rootOrder" schema in AJV');
+    }
+    const messageValidate = AJV.getSchema('http://example.com/rootOrderMessage');
+    if (messageValidate === undefined) {
+        throw new Error('Cannot find "rootOrderMessage" schema in AJV');
+    }
+    return {
+        orderValidator: constructValidationFunctionWrapper(orderValidate),
+        messageValidator: constructValidationFunctionWrapper(messageValidate),
+    };
+}
+
+function constructValidationFunctionWrapper(
+    validationFunction: ajv.ValidateFunction,
+): (input: string) => SchemaValidationResult {
+    return (input: string) => {
+        const result: any = { success: false, errors: [] };
+        try {
+            result.success = validationFunction(JSON.parse(input));
+            if (validationFunction.errors) {
+                result.errors = validationFunction.errors.map(error => JSON.stringify(error));
+            }
+        } catch (error) {
+            result.fatal = JSON.stringify(error);
+        }
+        return result;
+    };
+}
+
 const addressSchema = {
     $id: 'http://example.com/address',
     type: 'string',
@@ -70,62 +146,4 @@ const rootOrderMessageSchema = {
         topics: { type: 'array', minItems: 1, items: { type: 'string' } },
     },
     required: ['messageType', 'order', 'topics'],
-};
-const chainIdSchema = {
-    $id: 'http://example.com/chainId',
-    const: 1337,
-};
-const exchangeAddressSchema = {
-    $id: 'http://example.com/exchangeAddress',
-    enum: ['0x48bacb9266a570d521063ef5dd96e61686dbe788'],
-};
-const AJV = new ajv({
-    schemas: [
-        {
-            // FIXME(jalextowle): I may need to add a shim for adding schemas for tests
-            $id: 'http://example.com/customOrder',
-        },
-        addressSchema,
-        wholeNumberSchema,
-        hexSchema,
-        chainIdSchema,
-        exchangeAddressSchema,
-        orderSchema,
-        signedOrderSchema,
-        rootOrderSchema,
-        rootOrderMessageSchema,
-    ],
-});
-const orderValidate = AJV.getSchema('http://example.com/rootOrder');
-if (orderValidate === undefined) {
-    throw new Error('Cannot find "/rootOrder" schema in AJV');
-}
-window.schemaValidator.orderValidator = (input) => {
-    const result = { success: false, errors: [] };
-    try {
-        result.success = orderValidate(JSON.parse(input));
-        if (orderValidate.errors) {
-            result.errors = orderValidate.errors.map(error => error.message);
-        }
-    } catch (error) {
-        result.fatal = JSON.stringify(error);
-    }
-    return result;
-};
-
-const messageValidate = AJV.getSchema('http://example.com/rootOrderMessage');
-if (messageValidate === undefined) {
-    throw new Error('Cannot find "rootOrderMessage" schema in AJV');
-}
-window.schemaValidator.messageValidator = (input) => {
-    const result = { success: false, errors: [] };
-    try {
-        result.success = messageValidate(JSON.parse(input));
-        if (messageValidate.errors) {
-            result.errors = messageValidate.errors.map(error => error.message);
-        }
-    } catch (error) {
-        result.fatal = JSON.stringify(error);
-    }
-    return result;
 };

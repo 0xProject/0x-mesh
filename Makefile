@@ -13,6 +13,7 @@ gobin:
 	GO111MODULE=off go get -u github.com/myitcv/gobin
 
 
+# FIXME(jalextowle): This needs to be changed to our fork
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
 wasmbrowsertest: gobin

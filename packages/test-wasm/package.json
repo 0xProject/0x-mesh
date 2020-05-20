@@ -11,6 +11,7 @@
         "lint": "tslint --format stylish --project ."
     },
     "dependencies": {
+        "@0x/mesh-browser-lite": "file:../browser-lite",
         "shx": "^0.3.2",
         "typescript": "^3.9.3",
         "ts-loader": "^6.2.1",
