@@ -109,7 +109,6 @@ func init() {
 	}
 }
 
-// TODO(albrow): Figure out why this test is failing.
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -804,7 +803,6 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
 }
 
-// TODO(albrow): Needs more MiniHeader methods.
 func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -1437,7 +1435,6 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
-	// TODO(albrow): May need to be updated.
 	blockWatcherConfig := blockwatch.Config{
 		DB:              meshDB,
 		PollingInterval: blockPollingInterval,

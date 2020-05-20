@@ -458,8 +458,7 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
 	metadata, err := database.GetMetadata()
 	if err != nil {
-		// TODO(albrow): Handle not found error.
-		if err == db.ErrMetadataNotFound {
+		if err == db.ErrNotFound {
 			// No stored metadata found (first startup)
 			metadata = &types.Metadata{
 				EthereumChainID:   chainID,

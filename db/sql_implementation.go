@@ -311,8 +311,9 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 func (db *DB) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 	var order sqltypes.Order
 	if err := db.sqldb.GetContext(db.ctx, &order, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return sqltypes.OrderToCommonType(&order), nil
@@ -540,8 +541,6 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereConditi
 
 func (db *DB) DeleteOrder(hash common.Hash) error {
 	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM orders WHERE hash = $1", hash); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
 		return err
 	}
 	return nil
@@ -591,8 +590,9 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 
 	var existingOrder sqltypes.Order
 	if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
 		return err
 	}
 
@@ -654,8 +654,9 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
 	var miniHeader sqltypes.MiniHeader
 	if err := db.sqldb.GetContext(db.ctx, &miniHeader, "SELECT * FROM miniHeaders WHERE hash = $1", hash); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return sqltypes.MiniHeaderToCommonType(&miniHeader), nil
@@ -812,12 +813,12 @@ func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, err
 	return sqltypes.MiniHeadersToCommonType(miniHeadersToDelete), nil
 }
 
-// GetMetadata returns the metadata (or a db.NotFoundError if no metadata has been found).
+// GetMetadata returns the metadata (or db.ErrNotFound if no metadata has been saved).
 func (db *DB) GetMetadata() (*types.Metadata, error) {
 	var metadata sqltypes.Metadata
 	if err := db.sqldb.GetContext(db.ctx, &metadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrMetadataNotFound
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -861,8 +862,9 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 
 	var existingMetadata sqltypes.Metadata
 	if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
 		return err
 	}
 

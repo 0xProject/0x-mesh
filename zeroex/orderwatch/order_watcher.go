@@ -817,7 +817,6 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	// 	_ = ordersColTxn.Discard()
 	// }()
 	lastUpdatedCutOff := time.Now().Add(-lastUpdatedBuffer)
-	// orders, err := w.meshDB.FindOrdersLastUpdatedBefore(lastUpdatedCutOff)
 	orders, err := w.db.FindOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
 			{
@@ -1059,19 +1058,17 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 	return w.orderScope.Track(w.orderFeed.Subscribe(sink))
 }
 
-// TODO(albrow): Do we even still need this method?
 func (w *Watcher) findOrder(orderHash common.Hash) *types.OrderWithMetadata {
 	order, err := w.db.GetOrder(orderHash)
 	if err != nil {
-		// TODO(albrow): Implement NotFoundError
-		// if _, ok := err.(db.NotFoundError); ok {
-		// 	// short-circuit. We expect to receive events from orders we aren't actively tracking
-		// 	return nil
-		// }
+		if err == db.ErrNotFound {
+			// short-circuit. We expect to receive events from orders we aren't actively tracking
+			return nil
+		}
 		logger.WithFields(logger.Fields{
 			"error":     err.Error(),
 			"orderHash": orderHash,
-		}).Warning("Unexpected error using FindByID for order")
+		}).Warning("Unexpected error from db.GetOrder")
 		return nil
 	}
 	return order
@@ -1560,12 +1557,11 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		// Check if order is already stored in DB
 		dbOrder, err := w.db.GetOrder(orderHash)
 		if err != nil {
-			// TODO(albrow): Handle not found error.
-			// if _, ok := err.(db.NotFoundError); !ok {
-			// 	logger.WithField("error", err).Error("could not check if order was already stored")
-			// 	return nil, nil, err
-			// }
-			// If the error is a db.NotFoundError, it just means the order is not currently stored in
+			if err != db.ErrNotFound {
+				logger.WithField("error", err).Error("could not check if order was already stored")
+				return nil, nil, err
+			}
+			// If the error is db.ErrNotFound, it just means the order is not currently stored in
 			// the database. There's nothing else in the database to check, so we can continue.
 		} else {
 			// If stored but flagged for removal, reject it

@@ -62,12 +62,20 @@ func TestGetOrder(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, foundOrder, "found order should not be nil")
 	assertOrdersAreEqual(t, originalOrder, foundOrder)
+
+	_, err = db.GetOrder(common.Hash{})
+	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetOrder with a hash that doesn't exist should return ErrNotFound")
 }
 
 func TestUpdateOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	db := newTestDB(t, ctx)
+
+	err := db.UpdateOrder(common.Hash{}, func(existingOrder *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		return existingOrder, nil
+	})
+	assert.EqualError(t, err, ErrNotFound.Error(), "calling UpdateOrder with a hash that doesn't exist should return ErrNotFound")
 
 	// Note(albrow): We create more than one order to make sure that
 	// UpdateOrder only updates one of them and does not affect the
@@ -77,7 +85,7 @@ func TestUpdateOrder(t *testing.T) {
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
-	_, _, err := db.AddOrders(originalOrders)
+	_, _, err = db.AddOrders(originalOrders)
 	require.NoError(t, err)
 
 	orderToUpdate := originalOrders[0]
@@ -1315,6 +1323,9 @@ func TestGetMiniHeader(t *testing.T) {
 	foundMiniHeader, err := db.GetMiniHeader(originalMiniHeader.Hash)
 	require.NoError(t, err)
 	assertMiniHeadersAreEqual(t, originalMiniHeader, foundMiniHeader)
+
+	_, err = db.GetMiniHeader(common.Hash{})
+	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetMiniHeader with a hash that doesn't exist should return ErrNotFound")
 }
 
 func TestFindMiniHeaders(t *testing.T) {
@@ -2116,8 +2127,11 @@ func TestGetMetadata(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
+	_, err := db.GetMetadata()
+	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetMetadata when it hasn't been saved yet should return ErrNotFound")
+
 	originalMetadata := newTestMetadata()
-	err := db.SaveMetadata(originalMetadata)
+	err = db.SaveMetadata(originalMetadata)
 	require.NoError(t, err)
 
 	foundMetadata, err := db.GetMetadata()
@@ -2131,8 +2145,13 @@ func TestUpdateMetadata(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
+	err := db.UpdateMetadata(func(existingMetadata *types.Metadata) *types.Metadata {
+		return existingMetadata
+	})
+	assert.EqualError(t, err, ErrNotFound.Error(), "calling UpdateMetadata when it hasn't been saved yet should return ErrNotFound")
+
 	originalMetadata := newTestMetadata()
-	err := db.SaveMetadata(originalMetadata)
+	err = db.SaveMetadata(originalMetadata)
 	require.NoError(t, err)
 
 	updatedMaxExpirationTime := originalMetadata.MaxExpirationTime.Add(originalMetadata.MaxExpirationTime, big.NewInt(500))
