@@ -1,6 +1,7 @@
 package banner
 
 import (
+	"flag"
 	"net"
 	"testing"
 
@@ -8,6 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
+// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
+func init() {
+	_ = flag.String("initFile", "", "")
+}
 
 func TestIPNetFromMaddr(t *testing.T) {
 	testCases := []struct {

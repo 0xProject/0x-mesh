@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"context"
+	"flag"
 	"math"
 	"sync"
 	"testing"
@@ -28,6 +29,12 @@ const (
 )
 
 var contractAddresses = ethereum.GanacheAddresses
+
+// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
+// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
+func init() {
+	_ = flag.String("initFile", "", "")
+}
 
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
 // granted based on the per second limiter.

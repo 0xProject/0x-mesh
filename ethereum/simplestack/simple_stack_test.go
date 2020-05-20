@@ -1,6 +1,7 @@
 package simplestack
 
 import (
+	"flag"
 	"math/big"
 	"testing"
 	"time"
@@ -27,6 +28,12 @@ var (
 		Timestamp: time.Now().UTC(),
 	}
 )
+
+// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
+// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
+func init() {
+	_ = flag.String("initFile", "", "")
+}
 
 func TestSimpleStackPushPeekPop(t *testing.T) {
 	stack := New(10, []*miniheader.MiniHeader{})
