@@ -16,7 +16,7 @@ gobin:
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
 wasmbrowsertest: gobin
-	gobin github.com/agnivade/wasmbrowsertest@v0.3.0
+	gobin github.com/0xProject/wasmbrowsertest@mesh-fork
 
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
