@@ -22,7 +22,6 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/orderfilter"
@@ -188,31 +187,22 @@ type Config struct {
 	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
 }
 
-type snapshotInfo struct {
-	// Snapshot            *db.Snapshot
-	CreatedAt           time.Time
-	ExpirationTimestamp time.Time
-}
-
 type App struct {
-	config                    Config
-	privateConfig             privateConfig
-	peerID                    peer.ID
-	privKey                   p2pcrypto.PrivKey
-	node                      *p2p.Node
-	chainID                   int
-	blockWatcher              *blockwatch.Watcher
-	orderWatcher              *orderwatch.Watcher
-	orderValidator            *ordervalidator.OrderValidator
-	orderFilter               *orderfilter.Filter
-	snapshotExpirationWatcher *expirationwatch.Watcher
-	muIdToSnapshotInfo        sync.Mutex
-	idToSnapshotInfo          map[string]snapshotInfo
-	ethRPCRateLimiter         ratelimit.RateLimiter
-	ethRPCClient              ethrpcclient.Client
-	db                        *db.DB
-	ordersyncService          *ordersync.Service
-	contractAddresses         *ethereum.ContractAddresses
+	config            Config
+	privateConfig     privateConfig
+	peerID            peer.ID
+	privKey           p2pcrypto.PrivKey
+	node              *p2p.Node
+	chainID           int
+	blockWatcher      *blockwatch.Watcher
+	orderWatcher      *orderwatch.Watcher
+	orderValidator    *ordervalidator.OrderValidator
+	orderFilter       *orderfilter.Filter
+	ethRPCRateLimiter ratelimit.RateLimiter
+	ethRPCClient      ethrpcclient.Client
+	db                *db.DB
+	ordersyncService  *ordersync.Service
+	contractAddresses *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -376,26 +366,21 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
 
-	// Initialize remaining fields.
-	snapshotExpirationWatcher := expirationwatch.New()
-
 	app := &App{
-		started:                   make(chan struct{}),
-		config:                    config,
-		privateConfig:             pConfig,
-		privKey:                   privKey,
-		peerID:                    peerID,
-		chainID:                   config.EthereumChainID,
-		blockWatcher:              blockWatcher,
-		orderWatcher:              orderWatcher,
-		orderValidator:            orderValidator,
-		orderFilter:               orderFilter,
-		snapshotExpirationWatcher: snapshotExpirationWatcher,
-		idToSnapshotInfo:          map[string]snapshotInfo{},
-		ethRPCRateLimiter:         ethRPCRateLimiter,
-		ethRPCClient:              ethClient,
-		db:                        database,
-		contractAddresses:         &contractAddresses,
+		started:           make(chan struct{}),
+		config:            config,
+		privateConfig:     pConfig,
+		privKey:           privKey,
+		peerID:            peerID,
+		chainID:           config.EthereumChainID,
+		blockWatcher:      blockWatcher,
+		orderWatcher:      orderWatcher,
+		orderValidator:    orderValidator,
+		orderFilter:       orderFilter,
+		ethRPCRateLimiter: ethRPCRateLimiter,
+		ethRPCClient:      ethClient,
+		db:                database,
+		contractAddresses: &contractAddresses,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -523,29 +508,6 @@ func (app *App) Start(ctx context.Context) error {
 			log.Debug("closing eth RPC rate limiter")
 		}()
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
-	}()
-
-	// Set up the snapshot expiration watcher pruning logic
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			log.Debug("closing snapshot expiration watcher")
-		}()
-		ticker := time.NewTicker(expirationPollingInterval)
-		for {
-			select {
-			case <-innerCtx.Done():
-				return
-			case now := <-ticker.C:
-				expiredSnapshots := app.snapshotExpirationWatcher.Prune(now)
-				for _, expiredSnapshot := range expiredSnapshots {
-					app.muIdToSnapshotInfo.Lock()
-					delete(app.idToSnapshotInfo, expiredSnapshot.ID)
-					app.muIdToSnapshotInfo.Unlock()
-				}
-			}
-		}
 	}()
 
 	// Start the order watcher.
