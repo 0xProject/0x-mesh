@@ -1,7 +1,6 @@
 package zeroex
 
 import (
-	"flag"
 	"math/big"
 	"testing"
 
@@ -9,12 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
-// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
-func init() {
-	_ = flag.String("initFile", "", "")
-}
 
 func TestDecodeERC20AssetData(t *testing.T) {
 	assetData := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")

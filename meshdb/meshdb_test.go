@@ -1,7 +1,6 @@
 package meshdb
 
 import (
-	"flag"
 	"math/big"
 	"testing"
 	"time"
@@ -18,12 +17,6 @@ import (
 )
 
 var contractAddresses = ethereum.GanacheAddresses
-
-// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
-// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
-func init() {
-	_ = flag.String("initFile", "", "")
-}
 
 func TestOrderCRUDOperations(t *testing.T) {
 	meshDB, err := New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)

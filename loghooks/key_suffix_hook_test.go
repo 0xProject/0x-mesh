@@ -2,7 +2,6 @@ package loghooks
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"syscall"
 	"testing"
@@ -17,12 +16,6 @@ import (
 type myStruct struct {
 	myInt    int
 	myString string
-}
-
-// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
-// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
-func init() {
-	_ = flag.String("initFile", "", "")
 }
 
 func TestGetTypeForValue(t *testing.T) {

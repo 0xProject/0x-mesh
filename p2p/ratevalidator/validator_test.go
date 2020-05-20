@@ -2,7 +2,6 @@ package ratevalidator
 
 import (
 	"context"
-	"flag"
 	"testing"
 	"time"
 
@@ -21,12 +20,6 @@ var peerIDStrings = []string{
 }
 
 var peerIDs []peer.ID
-
-// NOTE(jalextowle): We must ignore this flag to prevent the flag package from
-// panicking when this flag is provided to `wasmbrowsertest` in the browser tests.
-func init() {
-	_ = flag.String("initFile", "", "")
-}
 
 func init() {
 	for _, peerIDString := range peerIDStrings {
