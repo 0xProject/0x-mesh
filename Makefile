@@ -60,7 +60,9 @@ test-browser-conversion:
 
 .PHONY: test-wasm-browser
 test-wasm-browser:
-	WASM_INIT_FILE="$$(pwd)/packages/test-wasm/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+	WASM_INIT_FILE="$$(pwd)/packages/test-wasm/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -v -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+	# FIXME(jalextowle): Use the command from below
+	# WASM_INIT_FILE="$$(pwd)/packages/test-wasm/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
 
 
 .PHONY: test-ts
