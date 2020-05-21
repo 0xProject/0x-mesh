@@ -14,7 +14,6 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,7 +162,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		actualResult, err := filter.ValidateOrder(signedOrder)
 		require.NoError(t, err, tc.customOrderSchema)
 		if len(tc.expectedErrors) == 0 {
-			assert.Len(t, actualResult.Errors(), 0, "expected no errors but received %d: %+v", len(actualResult.Errors()), actualResult.Errors())
+			require.Len(t, actualResult.Errors(), 0, "expected no errors but received %d: %+v", len(actualResult.Errors()), actualResult.Errors())
 		} else {
 		loop:
 			for _, expectedErr := range tc.expectedErrors {
@@ -175,7 +174,7 @@ func TestFilterValidateOrder(t *testing.T) {
 						continue loop
 					}
 				}
-				assert.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %v", expectedErr, actualResult.Errors()), tcInfo)
+				require.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %v", expectedErr, actualResult.Errors()), tcInfo)
 			}
 		}
 	}
@@ -254,7 +253,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 		actualResult, err := filter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tc.customOrderSchema)
 		if len(tc.expectedErrors) == 0 {
-			assert.Len(t, actualResult.Errors(), 0, "expected no errors but received %d: %+v", len(actualResult.Errors()), actualResult.Errors())
+			require.Len(t, actualResult.Errors(), 0, "expected no errors but received %d: %+v", len(actualResult.Errors()), actualResult.Errors())
 		} else {
 		loop:
 			for _, expectedErr := range tc.expectedErrors {
@@ -264,7 +263,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 						continue loop
 					}
 				}
-				assert.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %s", expectedErr, actualResult.Errors()), tcInfo)
+				require.Fail(t, fmt.Sprintf("missing expected error: %q\ngot errors: %s", expectedErr, actualResult.Errors()), tcInfo)
 			}
 		}
 	}
@@ -347,7 +346,7 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 		require.NoError(t, err)
 		actualResult, err := filter.MatchOrderMessageJSON(tc.orderMessageJSON)
 		require.NoError(t, err, tc.customOrderSchema)
-		assert.Equal(t, tc.expectedResult, actualResult, tcInfo)
+		require.Equal(t, tc.expectedResult, actualResult, tcInfo)
 	}
 }
 
@@ -390,14 +389,14 @@ func TestFilterTopic(t *testing.T) {
 		require.NoError(t, err, tcInfo)
 		result, err := originalFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
-		assert.Empty(t, result.Errors(), "original filter should validate the given order\n"+tcInfo)
-		assert.Equal(t, tc.expectedTopic, originalFilter.Topic(), tcInfo)
+		require.Empty(t, result.Errors(), "original filter should validate the given order\n"+tcInfo)
+		require.Equal(t, tc.expectedTopic, originalFilter.Topic(), tcInfo)
 		newFilter, err := NewFromTopic(originalFilter.Topic(), contractAddresses)
 		require.NoError(t, err, tcInfo)
-		assert.Equal(t, tc.expectedTopic, newFilter.Topic(), tcInfo)
+		require.Equal(t, tc.expectedTopic, newFilter.Topic(), tcInfo)
 		result, err = newFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
-		assert.Empty(t, result.Errors(), "filter generated from topic should validate the same order\n"+tcInfo)
+		require.Empty(t, result.Errors(), "filter generated from topic should validate the same order\n"+tcInfo)
 	}
 }
 
@@ -406,7 +405,7 @@ func TestDefaultOrderSchemaTopic(t *testing.T) {
 	defaultTopic, err := GetDefaultTopic(chainID, contractAddresses)
 	require.NoError(t, err)
 	expectedTopic := "/0x-orders/version/3/chain/1337/schema/e30="
-	assert.Equal(t, expectedTopic, defaultTopic, "the topic for the default filter should not change")
+	require.Equal(t, expectedTopic, defaultTopic, "the topic for the default filter should not change")
 }
 
 /**** Benchmarks ****/
