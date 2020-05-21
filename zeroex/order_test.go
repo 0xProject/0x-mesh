@@ -111,5 +111,7 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	signedOrder.ResetHash()
 
 	require.NoError(t, json.NewDecoder(buf).Decode(&decoded))
-	assert.Equal(t, orderEvent, decoded)
+	// TODO(jalextowle): An `assert` here will allow wasm browser tests to fail regardless
+	// of their actual result. Change this to use `assert` once this has been fixed in `testify`
+	require.Equal(t, orderEvent, decoded)
 }
