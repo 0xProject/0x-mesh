@@ -129,9 +129,8 @@ window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
 
-(window as any).schemaValidator = {};
-// tslint:disable-next-line:no-unused-variable
-let schemaValidator = (window as any).schemaValidator;
+const schemaValidator: any = {};
+(window as any).schemaValidator = schemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
@@ -163,11 +162,13 @@ export class Mesh {
             const contractAddresses = getContractAddressesForChainOrThrow(this._config.ethereumChainID);
             exchangeAddress = contractAddresses.exchange;
         }
-        schemaValidator = getSchemaValidator(
+        const constructedSchemaValidator = getSchemaValidator(
             this._config.ethereumChainID,
             exchangeAddress,
             this._config.customOrderFilter,
         );
+        schemaValidator.orderValidator = constructedSchemaValidator.orderValidator;
+        schemaValidator.messageValidator = constructedSchemaValidator.messageValidator;
     }
 
     /**
