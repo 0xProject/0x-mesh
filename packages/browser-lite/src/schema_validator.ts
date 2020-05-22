@@ -13,6 +13,13 @@ export interface SchemaValidator {
     messageValidator: (input: string) => SchemaValidationResult;
 }
 
+/**
+ * Constructs a `SchemaValidator` object that is compatible with the `orderfilter` package.
+ * @param chainId The chainId of the current ethereum network
+ * @param exchangeAddress The exchange address that Mesh should recognize on the current network
+ * @param customOrderFilter An extension of the order schema that adds specific requirements to
+ *        orders.
+ */
 export function getSchemaValidator(
     chainId: number,
     exchangeAddress: string,

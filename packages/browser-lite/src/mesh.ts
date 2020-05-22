@@ -1,6 +1,5 @@
 import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { SignedOrder } from '@0x/order-utils';
-import * as ajv from 'ajv';
 import * as BrowserFS from 'browserfs';
 
 import { getSchemaValidator } from './schema_validator';
@@ -131,6 +130,7 @@ window.addEventListener(loadEventName, () => {
 });
 
 (window as any).schemaValidator = {};
+// tslint:disable-next-line:no-unused-variable
 let schemaValidator = (window as any).schemaValidator;
 
 /**
