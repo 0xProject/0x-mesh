@@ -1270,9 +1270,11 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types
 func TestAddMiniHeaders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	db := newTestDB(t, ctx)
+	dbOpts := TestOptions()
+	db, err := New(ctx, dbOpts)
+	require.NoError(t, err)
 
-	numMiniHeaders := db.opts.MaxMiniHeaders
+	numMiniHeaders := dbOpts.MaxMiniHeaders
 	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		// It's important to note that each miniHeader has a increasing
@@ -1296,7 +1298,7 @@ func TestAddMiniHeaders(t *testing.T) {
 
 	// Create 10 more mini headers with higher block numbers.
 	miniHeadersWithHigherBlockNumbers := []*types.MiniHeader{}
-	for i := db.opts.MaxMiniHeaders; i < db.opts.MaxMiniHeaders+10; i++ {
+	for i := dbOpts.MaxMiniHeaders; i < dbOpts.MaxMiniHeaders+10; i++ {
 		// It's important to note that each miniHeader has a increasing
 		// blockNuber. Later will add more miniHeaders with higher numbers.
 		miniHeader := newTestMiniHeader()

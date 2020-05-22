@@ -14,25 +14,19 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var _ Database = (*DB)(nil)
+
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
 	ctx   context.Context
 	sqldb *sqlz.DB
 	opts  *Options
-}
-
-type Options struct {
-	DriverName     string
-	DataSourceName string
-	MaxOrders      int
-	MaxMiniHeaders int
 }
 
 func defaultOptions() *Options {
@@ -319,127 +313,6 @@ func (db *DB) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 	return sqltypes.OrderToCommonType(&order), nil
 }
 
-type SortDirection string
-
-const (
-	Ascending  SortDirection = "ASC"
-	Descending SortDirection = "DESC"
-)
-
-type FilterKind string
-
-const (
-	Equal          FilterKind = "="
-	NotEqual       FilterKind = "!="
-	Less           FilterKind = "<"
-	Greater        FilterKind = ">"
-	LessOrEqual    FilterKind = "<="
-	GreaterOrEqual FilterKind = ">="
-	Contains       FilterKind = "CONTAINS"
-	// TODO(albrow): Starts with?
-)
-
-type OrderField string
-
-const (
-	OFHash                     OrderField = "hash"
-	OFChainID                  OrderField = "chainID"
-	OFExchangeAddress          OrderField = "exchangeAddress"
-	OFMakerAddress             OrderField = "makerAddress"
-	OFMakerAssetData           OrderField = "makerAssetData"
-	OFMakerFeeAssetData        OrderField = "makerFeeAssetData"
-	OFMakerAssetAmount         OrderField = "makerAssetAmount"
-	OFMakerFee                 OrderField = "makerFee"
-	OFTakerAddress             OrderField = "takerAddress"
-	OFTakerAssetData           OrderField = "takerAssetData"
-	OFTakerFeeAssetData        OrderField = "takerFeeAssetData"
-	OFTakerAssetAmount         OrderField = "takerAssetAmount"
-	OFTakerFee                 OrderField = "takerFee"
-	OFSenderAddress            OrderField = "senderAddress"
-	OFFeeRecipientAddress      OrderField = "feeRecipientAddress"
-	OFExpirationTimeSeconds    OrderField = "expirationTimeSeconds"
-	OFSalt                     OrderField = "salt"
-	OFSignature                OrderField = "signature"
-	OFLastUpdated              OrderField = "lastUpdated"
-	OFFillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
-	OFIsRemoved                OrderField = "isRemoved"
-	OFIsPinned                 OrderField = "isPinned"
-	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
-	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
-)
-
-type OrderQuery struct {
-	Filters []OrderFilter
-	Sort    []OrderSort
-	Limit   uint
-	Offset  uint
-}
-
-type OrderSort struct {
-	Field     OrderField
-	Direction SortDirection
-}
-
-type OrderFilter struct {
-	Field OrderField
-	Kind  FilterKind
-	Value interface{}
-}
-
-// MakerAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
-// that include the token address and token ID in MakerAssetData.
-func MakerAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
-	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerAssetData, tokenAddress, tokenID)
-}
-
-// MakerFeeAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
-// that include the token address and token ID in MakerFeeAssetData.
-func MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
-	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerFeeAssetData, tokenAddress, tokenID)
-}
-
-func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
-	filterValueJSON, err := canonicaljson.Marshal(sqltypes.SingleAssetData{
-		Address: tokenAddress,
-		TokenID: sqltypes.NewBigInt(tokenID),
-	})
-	if err != nil {
-		// big.Int and common.Address types should never return an error when marshaling to JSON
-		panic(err)
-	}
-	return OrderFilter{
-		Field: field,
-		Kind:  Contains,
-		Value: string(filterValueJSON),
-	}
-}
-
-// MakerAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
-// that include the token address (and any token id, including null) in MakerAssetData.
-func MakerAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
-	return assetDataIncludesTokenAddress(OFParsedMakerAssetData, tokenAddress)
-}
-
-// MakerFeeAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
-// that include the token address (and any token id, including null) in MakerFeeAssetData.
-func MakerFeeAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
-	return assetDataIncludesTokenAddress(OFParsedMakerFeeAssetData, tokenAddress)
-}
-
-func assetDataIncludesTokenAddress(field OrderField, tokenAddress common.Address) OrderFilter {
-	tokenAddressJSON, err := canonicaljson.Marshal(tokenAddress)
-	if err != nil {
-		// big.Int and common.Address types should never return an error when marshaling to JSON
-		panic(err)
-	}
-	filterValue := fmt.Sprintf(`"address":%s`, tokenAddressJSON)
-	return OrderFilter{
-		Field: field,
-		Kind:  Contains,
-		Value: filterValue,
-	}
-}
-
 func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("*").From("orders"), opts)
 	if err != nil {
@@ -660,34 +533,6 @@ func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
 		return nil, err
 	}
 	return sqltypes.MiniHeaderToCommonType(&miniHeader), nil
-}
-
-type MiniHeaderField string
-
-const (
-	MFHash      MiniHeaderField = "hash"
-	MFParent    MiniHeaderField = "parent"
-	MFNumber    MiniHeaderField = "number"
-	MFTimestamp MiniHeaderField = "timestamp"
-	MFLogs      MiniHeaderField = "logs"
-)
-
-type MiniHeaderQuery struct {
-	Filters []MiniHeaderFilter
-	Sort    []MiniHeaderSort
-	Limit   uint
-	Offset  uint
-}
-
-type MiniHeaderSort struct {
-	Field     MiniHeaderField
-	Direction SortDirection
-}
-
-type MiniHeaderFilter struct {
-	Field MiniHeaderField
-	Kind  FilterKind
-	Value interface{}
 }
 
 func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {

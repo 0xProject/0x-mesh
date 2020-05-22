@@ -3,11 +3,15 @@ package db
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gibson042/canonicaljson-go"
 )
 
 const (
@@ -24,6 +28,180 @@ var (
 	ErrMetadataAlreadyExists    = errors.New("metadata already exists in the database (use UpdateMetadata instead?)")
 	ErrNotFound                 = errors.New("could not find existing model or row in database")
 )
+
+type Database interface {
+	AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
+	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
+	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
+	CountOrders(opts *OrderQuery) (int, error)
+	DeleteOrder(hash common.Hash) error
+	DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
+	UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error
+	AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
+	GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
+	FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
+	DeleteMiniHeader(hash common.Hash) error
+	DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
+	GetMetadata() (*types.Metadata, error)
+	SaveMetadata(metadata *types.Metadata) error
+	UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error
+}
+
+type Options struct {
+	DriverName     string
+	DataSourceName string
+	MaxOrders      int
+	MaxMiniHeaders int
+}
+
+type SortDirection string
+
+const (
+	Ascending  SortDirection = "ASC"
+	Descending SortDirection = "DESC"
+)
+
+type FilterKind string
+
+const (
+	Equal          FilterKind = "="
+	NotEqual       FilterKind = "!="
+	Less           FilterKind = "<"
+	Greater        FilterKind = ">"
+	LessOrEqual    FilterKind = "<="
+	GreaterOrEqual FilterKind = ">="
+	Contains       FilterKind = "CONTAINS"
+	// TODO(albrow): Starts with?
+)
+
+type OrderField string
+
+const (
+	OFHash                     OrderField = "hash"
+	OFChainID                  OrderField = "chainID"
+	OFExchangeAddress          OrderField = "exchangeAddress"
+	OFMakerAddress             OrderField = "makerAddress"
+	OFMakerAssetData           OrderField = "makerAssetData"
+	OFMakerFeeAssetData        OrderField = "makerFeeAssetData"
+	OFMakerAssetAmount         OrderField = "makerAssetAmount"
+	OFMakerFee                 OrderField = "makerFee"
+	OFTakerAddress             OrderField = "takerAddress"
+	OFTakerAssetData           OrderField = "takerAssetData"
+	OFTakerFeeAssetData        OrderField = "takerFeeAssetData"
+	OFTakerAssetAmount         OrderField = "takerAssetAmount"
+	OFTakerFee                 OrderField = "takerFee"
+	OFSenderAddress            OrderField = "senderAddress"
+	OFFeeRecipientAddress      OrderField = "feeRecipientAddress"
+	OFExpirationTimeSeconds    OrderField = "expirationTimeSeconds"
+	OFSalt                     OrderField = "salt"
+	OFSignature                OrderField = "signature"
+	OFLastUpdated              OrderField = "lastUpdated"
+	OFFillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
+	OFIsRemoved                OrderField = "isRemoved"
+	OFIsPinned                 OrderField = "isPinned"
+	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
+	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
+)
+
+type OrderQuery struct {
+	Filters []OrderFilter
+	Sort    []OrderSort
+	Limit   uint
+	Offset  uint
+}
+
+type OrderSort struct {
+	Field     OrderField
+	Direction SortDirection
+}
+
+type OrderFilter struct {
+	Field OrderField
+	Kind  FilterKind
+	Value interface{}
+}
+
+// MakerAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
+// that include the token address and token ID in MakerAssetData.
+func MakerAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerAssetData, tokenAddress, tokenID)
+}
+
+// MakerFeeAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
+// that include the token address and token ID in MakerFeeAssetData.
+func MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerFeeAssetData, tokenAddress, tokenID)
+}
+
+func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	filterValueJSON, err := canonicaljson.Marshal(sqltypes.SingleAssetData{
+		Address: tokenAddress,
+		TokenID: sqltypes.NewBigInt(tokenID),
+	})
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
+	return OrderFilter{
+		Field: field,
+		Kind:  Contains,
+		Value: string(filterValueJSON),
+	}
+}
+
+// MakerAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
+// that include the token address (and any token id, including null) in MakerAssetData.
+func MakerAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
+	return assetDataIncludesTokenAddress(OFParsedMakerAssetData, tokenAddress)
+}
+
+// MakerFeeAssetIncludesTokenAddress is a helper method which returns a filter that will match orders
+// that include the token address (and any token id, including null) in MakerFeeAssetData.
+func MakerFeeAssetIncludesTokenAddress(tokenAddress common.Address) OrderFilter {
+	return assetDataIncludesTokenAddress(OFParsedMakerFeeAssetData, tokenAddress)
+}
+
+func assetDataIncludesTokenAddress(field OrderField, tokenAddress common.Address) OrderFilter {
+	tokenAddressJSON, err := canonicaljson.Marshal(tokenAddress)
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
+	filterValue := fmt.Sprintf(`"address":%s`, tokenAddressJSON)
+	return OrderFilter{
+		Field: field,
+		Kind:  Contains,
+		Value: filterValue,
+	}
+}
+
+type MiniHeaderField string
+
+const (
+	MFHash      MiniHeaderField = "hash"
+	MFParent    MiniHeaderField = "parent"
+	MFNumber    MiniHeaderField = "number"
+	MFTimestamp MiniHeaderField = "timestamp"
+	MFLogs      MiniHeaderField = "logs"
+)
+
+type MiniHeaderQuery struct {
+	Filters []MiniHeaderFilter
+	Sort    []MiniHeaderSort
+	Limit   uint
+	Offset  uint
+}
+
+type MiniHeaderSort struct {
+	Field     MiniHeaderField
+	Direction SortDirection
+}
+
+type MiniHeaderFilter struct {
+	Field MiniHeaderField
+	Kind  FilterKind
+	Value interface{}
+}
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
 	if len(assetData) == 0 {
