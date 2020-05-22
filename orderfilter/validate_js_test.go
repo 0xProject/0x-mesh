@@ -59,7 +59,7 @@ func TestFilterValidateOrder(t *testing.T) {
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			expectedErrors: []string{
-				"exchangeAddress must be one of the following",
+				`{"keyword":"enum","dataPath":".exchangeAddress","schemaPath":"http://example.com/exchangeAddress/enum","params":{"allowedValues":["0x48bacb9266a570d521063ef5dd96e61686dbe788"]},"message":"should be equal to one of the allowed values"}`,
 			},
 			order: &zeroex.Order{
 				ChainID:               big.NewInt(constants.TestChainID),
@@ -83,7 +83,7 @@ func TestFilterValidateOrder(t *testing.T) {
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			expectedErrors: []string{
-				"chainId does not match",
+				`{"keyword":"const","dataPath":".chainId","schemaPath":"http://example.com/chainId/const","params":{"allowedValue":1337},"message":"should be equal to constant"}`,
 			},
 			order: &zeroex.Order{
 				ChainID:               big.NewInt(42),
@@ -128,7 +128,7 @@ func TestFilterValidateOrder(t *testing.T) {
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"const":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			expectedErrors: []string{
-				"senderAddress does not match",
+				`{"keyword":"const","dataPath":".senderAddress","schemaPath":"http://example.com/customOrder/properties/senderAddress/const","params":{"allowedValue":"0x00000000000000000000000000000000ba5eba11"},"message":"should be equal to constant"}`,
 			},
 			order: &zeroex.Order{
 				ChainID:               big.NewInt(constants.TestChainID),
@@ -151,8 +151,6 @@ func TestFilterValidateOrder(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		// NOTE(jalextowle): Update the `schemaValidator` that is being used to use `tc.customOrderSchema`
-		// FIXME(jalextowle): Our current implementation will not correctly handle checksummed addresses. This needs to be fixed
 		normalizedExchangeAddress := strings.ToLower(contractAddresses.Exchange.String())
 		js.Global().Call("setSchemaValidator", js.ValueOf(tc.chainID), js.ValueOf(normalizedExchangeAddress), js.ValueOf(tc.customOrderSchema))
 		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
@@ -166,10 +164,7 @@ func TestFilterValidateOrder(t *testing.T) {
 		} else {
 		loop:
 			for _, expectedErr := range tc.expectedErrors {
-				fmt.Printf("%+v\n", actualResult.Errors())
 				for _, actualErr := range actualResult.Errors() {
-					fmt.Printf("%+v\n", actualErr)
-					// FIXME(jalextowle): Verify that this is an okay deviation
 					if strings.Contains(actualErr.Error(), expectedErr) {
 						continue loop
 					}
@@ -229,7 +224,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e6168deadbeef","chainId":1337,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
-				`{"keyword":"enum","dataPath":".exchangeAddress","schemaPath":"http://example.com/exchangeAddress/enum","params":{"allowedValues":["0x48BaCB9266a570d521063EF5dD96e61686DbE788"]},"message":"should be equal to one of the allowed values"}`,
+				`{"keyword":"enum","dataPath":".exchangeAddress","schemaPath":"http://example.com/exchangeAddress/enum","params":{"allowedValues":["0x48bacb9266a570d521063ef5dd96e61686dbe788"]},"message":"should be equal to one of the allowed values"}`,
 			},
 		},
 		{
@@ -238,7 +233,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         []byte(`{"makerAddress":"0xa3ece5d5b6319fa785efc10d3112769a46c6e149","takerAddress":"0x0000000000000000000000000000000000000000","makerAssetAmount":"100000000000000000000","takerAssetAmount":"100000000000000000000000","expirationTimeSeconds":"1559856615025","makerFee":"0","takerFee":"0","feeRecipientAddress":"0x0000000000000000000000000000000000000000","senderAddress":"0x0000000000000000000000000000000000000000","salt":"46108882540880341679561755865076495033942060608820537332859096815711589201849","makerAssetData":"0xf47261b0000000000000000000000000e41d2489571d322189246dafa5ebde1f4699f498","takerAssetData":"0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","makerFeeAssetData":"0x","takerFeeAssetData":"0x","exchangeAddress":"0x48bacb9266a570d521063ef5dd96e61686dbe788","chainId":42,"signature":"0x1c52f75daa4bd2ad9e6e8a7c35adbd089d709e48ae86463f2abfafa3578747fafc264a04d02fa26227e90476d57bca94e24af32f1cc8da444bba21092ca56cd85603"}`),
 			expectedErrors: []string{
-				`{"keyword":"enum","dataPath":".exchangeAddress","schemaPath":"http://example.com/exchangeAddress/enum","params":{"allowedValues":["0x48BaCB9266a570d521063EF5dD96e61686DbE788"]},"message":"should be equal to one of the allowed values"}`,
+				`{"keyword":"const","dataPath":".chainId","schemaPath":"http://example.com/chainId/const","params":{"allowedValue":1337},"message":"should be equal to constant"}`,
 			},
 		},
 	}
@@ -258,7 +253,6 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 		loop:
 			for _, expectedErr := range tc.expectedErrors {
 				for _, actualErr := range actualResult.Errors() {
-					fmt.Printf("%+v\n", actualErr)
 					if strings.Contains(actualErr.Error(), expectedErr) {
 						continue loop
 					}

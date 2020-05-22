@@ -37,34 +37,9 @@ func (s *SchemaValidationResult) Errors() []error {
 	return s.errors
 }
 
-// func checkForOrderValidator() bool {
-// 	if js.Global().Get("schemaValidator").Get("orderValidator") != js.Undefined() && js.Global().Get("orderValidator") != js.Null() {
-// 		log.Info("Order Validator finished loading")
-// 		orderValidatorLoaded = true
-// 		return true
-// 	}
-// 	return false
-// }
-//
-// func checkForMessageValidator() bool {
-// 	if js.Global().Get("schemaValidator").Get("messageValidator") != js.Undefined() && js.Global().Get("messageValidator") != js.Null() {
-// 		log.Info("Message Validator finished loading")
-// 		messageValidatorLoaded = true
-// 		return true
-// 	}
-// 	return false
-// }
-
 // ValidateOrderJSON Validates a JSON encoded signed order using the AJV javascript library.
 // This libarary is used to increase the performance of Mesh nodes that run in the browser.
 func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, error) {
-	//	if !orderValidatorLoaded {
-	//		loaded := checkForOrderValidator()
-	//		if !loaded {
-	//			return nil, errors.New("order validator not loaded")
-	//		}
-	//	}
-
 	jsResult := js.Global().Get("schemaValidator").Call("orderValidator", js.ValueOf(string(orderJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
@@ -91,13 +66,6 @@ func (f *Filter) MatchOrder(order *zeroex.SignedOrder) (bool, error) {
 }
 
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
-	//	if !messageValidatorLoaded {
-	//		loaded := checkForMessageValidator()
-	//		if !loaded {
-	//			return false, errors.New("message validator not loaded")
-	//		}
-	//	}
-
 	jsResult := js.Global().Get("schemaValidator").Call("messageValidator", js.ValueOf(string(messageJSON)))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {

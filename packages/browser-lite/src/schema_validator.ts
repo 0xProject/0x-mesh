@@ -19,12 +19,15 @@ export function getSchemaValidator(
     customOrderFilter?: JsonSchema,
 ): SchemaValidator {
     const chainIdSchema = {
+        $async: false,
         $id: 'http://example.com/chainId',
         const: chainId,
     };
 
-    // FIXME(jalextowle): Add the checksummed address to this.
+    // NOTE(jalextowle): The current implementation of `zeroex.SignedOrder.MarhsalJSON`
+    // lowercases all addresses. This eliminates the need to add the checksummed address.
     const exchangeAddressSchema = {
+        $async: false,
         $id: 'http://example.com/exchangeAddress',
         enum: [exchangeAddress],
     };
@@ -33,6 +36,7 @@ export function getSchemaValidator(
         schemas: [
             {
                 ...customOrderFilter,
+                $async: false,
                 $id: 'http://example.com/customOrder',
             },
             addressSchema,
@@ -78,16 +82,24 @@ function constructValidationFunctionWrapper(
 }
 
 const addressSchema = {
+    $async: false,
     $id: 'http://example.com/address',
     type: 'string',
     pattern: '^0x[0-9a-fA-F]{40}$',
 };
 const wholeNumberSchema = {
+    $async: false,
     $id: 'http://example.com/wholeNumber',
     anyOf: [{ type: 'string', pattern: '^\\d+$' }, { type: 'integer' }],
 };
-const hexSchema = { $id: 'http://example.com/hex', type: 'string', pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$' };
+const hexSchema = {
+    $async: false,
+    $id: 'http://example.com/hex',
+    type: 'string',
+    pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$',
+};
 const orderSchema = {
+    $async: false,
     $id: 'http://example.com/order',
     properties: {
         makerAddress: { $ref: 'http://example.com/address' },
@@ -128,6 +140,7 @@ const orderSchema = {
     type: 'object',
 };
 const signedOrderSchema = {
+    $async: false,
     $id: 'http://example.com/signedOrder',
     allOf: [
         { $ref: 'http://example.com/order' },
@@ -135,10 +148,12 @@ const signedOrderSchema = {
     ],
 };
 const rootOrderSchema = {
+    $async: false,
     $id: 'http://example.com/rootOrder',
     allOf: [{ $ref: 'http://example.com/customOrder' }, { $ref: 'http://example.com/signedOrder' }],
 };
 const rootOrderMessageSchema = {
+    $async: false,
     $id: 'http://example.com/rootOrderMessage',
     properties: {
         messageType: { type: 'string', pattern: 'order' },
