@@ -52,6 +52,8 @@ import { BigNumber, Mesh, OrderEvent, SignedOrder, SupportedProvider } from '@0x
     // Add the order and log the result.
     const result = await mesh.addOrdersAsync([order]);
     console.log(result);
+
+    (window as any).getStatsAsync = mesh.getStatsAsync();
 })().catch(err => {
     console.error(err);
 });

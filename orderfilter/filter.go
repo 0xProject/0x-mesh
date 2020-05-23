@@ -68,6 +68,7 @@ func GetDefaultTopic(chainID int, contractAddresses ethereum.ContractAddresses) 
 }
 
 type Filter struct {
+	validatorLoaded      bool
 	encodedSchema        string
 	version              int
 	chainID              int

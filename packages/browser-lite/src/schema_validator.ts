@@ -27,7 +27,7 @@ export function getSchemaValidator(
 ): SchemaValidator {
     const chainIdSchema = {
         $async: false,
-        $id: 'http://example.com/chainId',
+        $id: '/chainId',
         const: chainId,
     };
 
@@ -35,33 +35,31 @@ export function getSchemaValidator(
     // lowercases all addresses. This eliminates the need to add the checksummed address.
     const exchangeAddressSchema = {
         $async: false,
-        $id: 'http://example.com/exchangeAddress',
+        $id: '/exchangeAddress',
         enum: [exchangeAddress],
     };
 
-    const AJV = new ajv({
-        schemas: [
-            {
-                ...customOrderFilter,
-                $async: false,
-                $id: 'http://example.com/customOrder',
-            },
-            addressSchema,
-            wholeNumberSchema,
-            hexSchema,
-            chainIdSchema,
-            exchangeAddressSchema,
-            orderSchema,
-            signedOrderSchema,
-            rootOrderSchema,
-            rootOrderMessageSchema,
-        ],
+    const AJV = new ajv();
+    AJV.addSchema(addressSchema);
+    AJV.addSchema(wholeNumberSchema);
+    AJV.addSchema(hexSchema);
+    AJV.addSchema(chainIdSchema);
+    AJV.addSchema(exchangeAddressSchema);
+    AJV.addSchema({
+        ...customOrderFilter,
+        $async: false,
+        $id: '/customOrder',
     });
-    const orderValidate = AJV.getSchema('http://example.com/rootOrder');
+    AJV.addSchema(orderSchema);
+    AJV.addSchema(signedOrderSchema);
+    AJV.addSchema(rootOrderSchema);
+    AJV.addSchema(rootOrderMessageSchema);
+
+    const orderValidate = AJV.getSchema('/rootOrder');
     if (orderValidate === undefined) {
         throw new Error('Cannot find "/rootOrder" schema in AJV');
     }
-    const messageValidate = AJV.getSchema('http://example.com/rootOrderMessage');
+    const messageValidate = AJV.getSchema('/rootOrderMessage');
     if (messageValidate === undefined) {
         throw new Error('Cannot find "rootOrderMessage" schema in AJV');
     }
@@ -90,41 +88,41 @@ function constructValidationFunctionWrapper(
 
 const addressSchema = {
     $async: false,
-    $id: 'http://example.com/address',
+    $id: '/address',
     type: 'string',
     pattern: '^0x[0-9a-fA-F]{40}$',
 };
 const wholeNumberSchema = {
     $async: false,
-    $id: 'http://example.com/wholeNumber',
+    $id: '/wholeNumber',
     anyOf: [{ type: 'string', pattern: '^\\d+$' }, { type: 'integer' }],
 };
 const hexSchema = {
     $async: false,
-    $id: 'http://example.com/hex',
+    $id: '/hex',
     type: 'string',
     pattern: '^0x(([0-9a-fA-F][0-9a-fA-F])+)?$',
 };
 const orderSchema = {
     $async: false,
-    $id: 'http://example.com/order',
+    $id: '/order',
     properties: {
-        makerAddress: { $ref: 'http://example.com/address' },
-        takerAddress: { $ref: 'http://example.com/address' },
-        makerFee: { $ref: 'http://example.com/wholeNumber' },
-        takerFee: { $ref: 'http://example.com/wholeNumber' },
-        senderAddress: { $ref: 'http://example.com/address' },
-        makerAssetAmount: { $ref: 'http://example.com/wholeNumber' },
-        takerAssetAmount: { $ref: 'http://example.com/wholeNumber' },
-        makerAssetData: { $ref: 'http://example.com/hex' },
-        takerAssetData: { $ref: 'http://example.com/hex' },
-        makerFeeAssetData: { $ref: 'http://example.com/hex' },
-        takerFeeAssetData: { $ref: 'http://example.com/hex' },
-        salt: { $ref: 'http://example.com/wholeNumber' },
-        feeRecipientAddress: { $ref: 'http://example.com/address' },
-        expirationTimeSeconds: { $ref: 'http://example.com/wholeNumber' },
-        exchangeAddress: { $ref: 'http://example.com/exchangeAddress' },
-        chainId: { $ref: 'http://example.com/chainId' },
+        makerAddress: { $ref: '/address' },
+        takerAddress: { $ref: '/address' },
+        makerFee: { $ref: '/wholeNumber' },
+        takerFee: { $ref: '/wholeNumber' },
+        senderAddress: { $ref: '/address' },
+        makerAssetAmount: { $ref: '/wholeNumber' },
+        takerAssetAmount: { $ref: '/wholeNumber' },
+        makerAssetData: { $ref: '/hex' },
+        takerAssetData: { $ref: '/hex' },
+        makerFeeAssetData: { $ref: '/hex' },
+        takerFeeAssetData: { $ref: '/hex' },
+        salt: { $ref: '/wholeNumber' },
+        feeRecipientAddress: { $ref: '/address' },
+        expirationTimeSeconds: { $ref: '/wholeNumber' },
+        exchangeAddress: { $ref: '/exchangeAddress' },
+        chainId: { $ref: '/chainId' },
     },
     required: [
         'makerAddress',
@@ -148,23 +146,20 @@ const orderSchema = {
 };
 const signedOrderSchema = {
     $async: false,
-    $id: 'http://example.com/signedOrder',
-    allOf: [
-        { $ref: 'http://example.com/order' },
-        { properties: { signature: { $ref: 'http://example.com/hex' } }, required: ['signature'] },
-    ],
+    $id: '/signedOrder',
+    allOf: [{ $ref: '/order' }, { properties: { signature: { $ref: '/hex' } }, required: ['signature'] }],
 };
 const rootOrderSchema = {
     $async: false,
-    $id: 'http://example.com/rootOrder',
-    allOf: [{ $ref: 'http://example.com/customOrder' }, { $ref: 'http://example.com/signedOrder' }],
+    $id: '/rootOrder',
+    allOf: [{ $ref: '/customOrder' }, { $ref: '/signedOrder' }],
 };
 const rootOrderMessageSchema = {
     $async: false,
-    $id: 'http://example.com/rootOrderMessage',
+    $id: '/rootOrderMessage',
     properties: {
         messageType: { type: 'string', pattern: 'order' },
-        order: { $ref: 'http://example.com/rootOrder' },
+        order: { $ref: '/rootOrder' },
         topics: { type: 'array', minItems: 1, items: { type: 'string' } },
     },
     required: ['messageType', 'order', 'topics'],

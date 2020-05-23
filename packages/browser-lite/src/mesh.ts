@@ -153,7 +153,7 @@ export class Mesh {
         this._config = config;
 
         // Set up a schema validator on the window object.
-        // NOTE(jalextowle): This is used in lieau of `gojsonschema` in the orderfilter
+        // NOTE(jalextowle): This is used in lieu of `gojsonschema` in the orderfilter
         // implementation as an optimization.
         let exchangeAddress: string;
         if (this._config.customContractAddresses && this._config.customContractAddresses.exchange) {
