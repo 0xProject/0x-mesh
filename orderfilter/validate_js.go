@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"syscall/js"
-	"time"
 
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -16,24 +15,24 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	orderValidatorLoaded   = false
-	messageValidatorLoaded = false
-	// validatorLoadCheckInterval is frequently to check whether the schema
-	// validators have been loaded.
-	validatorLoadCheckInterval = 50 * time.Millisecond
-)
+type SchemaValidationError struct {
+	err error
+}
+
+func (s *SchemaValidationError) String() string {
+	return s.err.Error()
+}
 
 type SchemaValidationResult struct {
 	valid  bool
-	errors []error
+	errors []*SchemaValidationError
 }
 
 func (s *SchemaValidationResult) Valid() bool {
 	return s.valid
 }
 
-func (s *SchemaValidationResult) Errors() []error {
+func (s *SchemaValidationResult) Errors() []*SchemaValidationError {
 	return s.errors
 }
 
@@ -62,9 +61,9 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 	}
 	valid := jsResult.Get("success").Bool()
 	jsErrors := jsResult.Get("errors")
-	var convertedErrors []error
+	var convertedErrors []*SchemaValidationError
 	for i := 0; i < jsErrors.Length(); i++ {
-		convertedErrors = append(convertedErrors, errors.New(jsErrors.Get(fmt.Sprintf("%d", i)).String()))
+		convertedErrors = append(convertedErrors, &SchemaValidationError{errors.New(jsErrors.Get(fmt.Sprintf("%d", i)).String())})
 	}
 	return &SchemaValidationResult{valid: valid, errors: convertedErrors}, nil
 }
