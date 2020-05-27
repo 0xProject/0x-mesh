@@ -1,7 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
 import * as BrowserFS from 'browserfs';
 
-import { setSchemaValidator } from './schema_validator';
+import { createSchemaValidator } from './schema_validator';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
@@ -128,7 +128,7 @@ window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
 
-(window as any).setSchemaValidator = setSchemaValidator;
+(window as any).createSchemaValidator = createSchemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and

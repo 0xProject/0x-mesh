@@ -4,7 +4,6 @@ package orderfilter
 
 import (
 	"errors"
-	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -31,25 +30,10 @@ func (s *SchemaValidationResult) Errors() []*SchemaValidationError {
 	return s.errors
 }
 
-func (f *Filter) checkForValidator() bool {
-	if f.validatorLoaded {
-		return true
-	}
-	if jsutil.IsNullOrUndefined(js.Global().Get("schemaValidator")) {
-		return false
-	}
-	f.validatorLoaded = true
-	return f.validatorLoaded
-
-}
-
 // ValidateOrderJSON Validates a JSON encoded signed order using the AJV javascript library.
 // This libarary is used to increase the performance of Mesh nodes that run in the browser.
 func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, error) {
-	if !f.checkForValidator() {
-		return nil, errors.New(`"schemaValidator" has not been set on the "window" object`)
-	}
-	jsResult := js.Global().Get("schemaValidator").Call("orderValidator", string(orderJSON))
+	jsResult := f.orderValidator.Invoke(string(orderJSON))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
 		return nil, errors.New(fatal.String())
@@ -64,10 +48,7 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 }
 
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
-	if !f.checkForValidator() {
-		return false, errors.New(`"schemaValidator" has not been set on the "window" object`)
-	}
-	jsResult := js.Global().Get("schemaValidator").Call("messageValidator", js.ValueOf(string(messageJSON)))
+	jsResult := f.messageValidator.Invoke(string(messageJSON))
 	fatal := jsResult.Get("fatal")
 	if !jsutil.IsNullOrUndefined(fatal) {
 		return false, errors.New(fatal.String())

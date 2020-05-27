@@ -18,14 +18,18 @@ export interface SchemaValidator {
 }
 
 /**
- * Sets up a schema validator on the window object.
+ * Creates a schema validator object for the provided schemas.
  * @param customOrderSchema The custom filter that will be used by the root
  *        schemas.
  * @param schemas These are all of the schemas that can be compiled before the
  *        customOrderSchema.
  * @param rootSchemas The root schemas. These must be compiled last.
  */
-export function setSchemaValidator(customOrderSchemaString: string, schemas: string[], rootSchemas: string[]): void {
+export function createSchemaValidator(
+    customOrderSchemaString: string,
+    schemas: string[],
+    rootSchemas: string[],
+): SchemaValidator {
     const AJV = new ajv();
     for (const schema of schemas) {
         AJV.addSchema(JSON.parse(schema));
@@ -51,7 +55,7 @@ export function setSchemaValidator(customOrderSchemaString: string, schemas: str
     if (messageValidate === undefined) {
         throw new Error('Cannot find "rootOrderMessage" schema in AJV');
     }
-    (window as any).schemaValidator = {
+    return {
         orderValidator: constructValidationFunctionWrapper(orderValidate as SynchronousValidationFunction),
         messageValidator: constructValidationFunctionWrapper(messageValidate as SynchronousValidationFunction),
     };

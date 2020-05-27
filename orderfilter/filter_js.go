@@ -3,15 +3,18 @@
 package orderfilter
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 )
 
 type Filter struct {
-	validatorLoaded      bool
+	orderValidator       js.Value
+	messageValidator     js.Value
 	encodedSchema        string
 	chainID              int
 	rawCustomOrderSchema string
@@ -20,10 +23,14 @@ type Filter struct {
 func New(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	chainIDSchema := fmt.Sprintf(`{"$id": "/chainId", "const":%d}`, chainID)
 	exchangeAddressSchema := fmt.Sprintf(`{"$id": "/exchangeAddress", "enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
+
+	if jsutil.IsNullOrUndefined(js.Global().Get("createSchemaValidator")) {
+		return nil, errors.New(`"createSchemaValidator" has not been set on the Javascript "global" object`)
+	}
 	// NOTE(jalextowle): The order of the schemas within the two arrays
 	// defines their order of compilation.
-	js.Global().Call(
-		"setSchemaValidator",
+	schemaValidator := js.Global().Call(
+		"createSchemaValidator",
 		customOrderSchema,
 		[]interface{}{
 			addressSchema,
@@ -38,8 +45,17 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 			rootOrderSchema,
 			rootOrderMessageSchema,
 		})
+	orderValidator := schemaValidator.Get("orderValidator")
+	if jsutil.IsNullOrUndefined(orderValidator) {
+		return nil, errors.New(`"orderValidator" has not been set on the provided "schemaValidator"`)
+	}
+	messageValidator := schemaValidator.Get("messageValidator")
+	if jsutil.IsNullOrUndefined(messageValidator) {
+		return nil, errors.New(`"messageValidator" has not been set on the provided "schemaValidator"`)
+	}
 	return &Filter{
-		validatorLoaded:      true,
+		orderValidator:       orderValidator,
+		messageValidator:     messageValidator,
 		chainID:              chainID,
 		rawCustomOrderSchema: customOrderSchema,
 	}, nil

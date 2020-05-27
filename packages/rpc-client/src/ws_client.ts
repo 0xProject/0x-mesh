@@ -40,14 +40,6 @@ import {
     WSOpts,
 } from './types';
 
-interface WSClientOpts {
-    clientConfig: {
-        fragmentOutgoingMessages: boolean;
-    };
-    timeout: number;
-    reconnectDelay: number;
-}
-
 const CLOSE_REASON_NO_HEARTBEAT = 3001;
 const CLOSE_DESCRIPTION_NO_HEARTBEAT = 'No heartbeat received';
 
