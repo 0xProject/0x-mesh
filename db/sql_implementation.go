@@ -38,23 +38,6 @@ func defaultOptions() *Options {
 	}
 }
 
-func parseOptions(opts *Options) *Options {
-	finalOpts := defaultOptions()
-	if opts == nil {
-		return finalOpts
-	}
-	if opts.DataSourceName != "" {
-		finalOpts.DataSourceName = opts.DataSourceName
-	}
-	if opts.MaxOrders != 0 {
-		finalOpts.MaxOrders = opts.MaxOrders
-	}
-	if opts.MaxMiniHeaders != 0 {
-		finalOpts.MaxMiniHeaders = opts.MaxMiniHeaders
-	}
-	return finalOpts
-}
-
 // TestOptions returns a set of options suitable for testing.
 func TestOptions() *Options {
 	return &Options{
@@ -420,6 +403,7 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 }
 
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
+// TODO(albrow): Test deleting all orders.
 func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 	// for DELETE statements. It also doesn't support RETURNING. As a

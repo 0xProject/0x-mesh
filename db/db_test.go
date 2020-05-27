@@ -95,6 +95,7 @@ func TestUpdateOrder(t *testing.T) {
 		updatedOrder.FillableTakerAssetAmount = updatedFillableAmount
 		return updatedOrder, nil
 	})
+	require.NoError(t, err)
 
 	expectedOrders := originalOrders
 	expectedOrders[0].FillableTakerAssetAmount = updatedFillableAmount

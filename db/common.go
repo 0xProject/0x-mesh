@@ -54,6 +54,23 @@ type Options struct {
 	MaxMiniHeaders int
 }
 
+func parseOptions(opts *Options) *Options {
+	finalOpts := defaultOptions()
+	if opts == nil {
+		return finalOpts
+	}
+	if opts.DataSourceName != "" {
+		finalOpts.DataSourceName = opts.DataSourceName
+	}
+	if opts.MaxOrders != 0 {
+		finalOpts.MaxOrders = opts.MaxOrders
+	}
+	if opts.MaxMiniHeaders != 0 {
+		finalOpts.MaxMiniHeaders = opts.MaxMiniHeaders
+	}
+	return finalOpts
+}
+
 type SortDirection string
 
 const (
@@ -104,21 +121,21 @@ const (
 )
 
 type OrderQuery struct {
-	Filters []OrderFilter
-	Sort    []OrderSort
-	Limit   uint
-	Offset  uint
+	Filters []OrderFilter `json:"filters"`
+	Sort    []OrderSort   `json:"sort"`
+	Limit   uint          `json:"limit"`
+	Offset  uint          `json:"offset"`
 }
 
 type OrderSort struct {
-	Field     OrderField
-	Direction SortDirection
+	Field     OrderField    `json:"field"`
+	Direction SortDirection `json:"direction"`
 }
 
 type OrderFilter struct {
-	Field OrderField
-	Kind  FilterKind
-	Value interface{}
+	Field OrderField  `json:"field"`
+	Kind  FilterKind  `json:"kind"`
+	Value interface{} `json:"value"`
 }
 
 // MakerAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders
