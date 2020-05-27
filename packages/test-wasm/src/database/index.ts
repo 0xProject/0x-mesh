@@ -241,7 +241,7 @@ export class Database {
             return this.orders.toCollection();
         }
         var col: Dexie.Collection;
-        if (query.filters !== undefined && query.filters.length > 0) {
+        if (query.filters !== undefined && query.filters !== null && query.filters.length > 0) {
             const firstFilter = query.filters[0];
             switch (query.filters[0].kind) {
                 case FilterKind.Equal:
@@ -271,7 +271,36 @@ export class Database {
                     break;
             }
             if (query.filters.length > 1) {
-                throw new Error('multiple filters not yet supported');
+                // TODO(albrow): Dexie.js does not support multiple where conditions. We have to
+                // use Collection.and which iterates through all orders in the collection so far
+                // and is very inefficient. Is there a way to optimize this?
+                query.filters.slice(1).forEach(filter => {
+                    switch (filter.kind) {
+                        case FilterKind.Equal:
+                            col.and(order => order[filter.field] === filter.value);
+                            break;
+                        case FilterKind.NotEqual:
+                            col.and(order => order[filter.field] !== filter.value);
+                            break;
+                        case FilterKind.Greater:
+                            col.and(order => order[filter.field] > filter.value);
+                            break;
+                        case FilterKind.GreaterOrEqual:
+                            col.and(order => order[filter.field] >= filter.value);
+                            break;
+                        case FilterKind.Less:
+                            col.and(order => order[filter.field] < filter.value);
+                            break;
+                        case FilterKind.LessOrEqual:
+                            col.and(order => order[filter.field] <= filter.value);
+                            break;
+                        case FilterKind.Contains:
+                            col.and(order => {
+                                return order[filter.field].toString().includes(filter.value);
+                            });
+                            break;
+                    }
+                });
             }
         } else {
             col = this.orders.toCollection();

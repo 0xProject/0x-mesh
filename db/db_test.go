@@ -854,7 +854,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -870,7 +870,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -1169,7 +1169,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -1185,7 +1185,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -1737,7 +1737,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: MFTimestamp,
@@ -1753,7 +1753,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: MFTimestamp,
@@ -2024,7 +2024,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: MFTimestamp,
@@ -2040,7 +2040,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: MFTimestamp,
