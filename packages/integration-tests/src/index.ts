@@ -97,7 +97,7 @@ provider.start();
 
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
-    const result = await mesh.addOrdersAsync([signedOrder as any]);
+    const result = await mesh.addOrdersAsync([signedOrder]);
     if (result.accepted.length !== 1) {
         console.log(JSON.stringify(result));
         throw new Error(`Expected exactly one order to be accepted but got: ${result.accepted.length}`);

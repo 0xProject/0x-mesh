@@ -1,2 +1,3 @@
-// NOTE(jalextowle): This has to be here for the webpack to create a bundle.
-// Replace this comment with code for the shim when needed
+import { createSchemaValidator } from '@0x/mesh-browser-lite/lib/schema_validator';
+
+(window as any).createSchemaValidator = createSchemaValidator;

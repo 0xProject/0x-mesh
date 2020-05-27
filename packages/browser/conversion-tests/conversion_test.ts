@@ -351,7 +351,7 @@ function testContractEvents(contractEvents: WrapperContractEvent[]): void {
     printer = prettyPrintTestCase('contractEvent', 'FooBarBazEvent');
     testContractEventPrelude(printer, contractEvents[13]);
     printer('kind', contractEvents[13].kind === 'FooBarBazEvent');
-    const fooBarBazParams = contractEvents[13].parameters as any;
+    const fooBarBazParams = contractEvents[13].parameters as WrapperERC20ApprovalEvent;
     printer('parameters.owner', fooBarBazParams.owner === hexUtils.leftPad('0x4', 20));
     printer('parameters.spender', fooBarBazParams.spender === hexUtils.leftPad('0x5', 20));
     printer('parameters.value', fooBarBazParams.value === '1');
@@ -404,7 +404,7 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.makerAssetData',
         getOrdersResponse[1].ordersInfos[0].signedOrder.makerAssetData ===
-        '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
     );
     printer(
         'orderInfo.signedOrder.makerAssetAmount',
@@ -413,13 +413,13 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.makerFeeAssetData',
         getOrdersResponse[1].ordersInfos[0].signedOrder.makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('orderInfo.signedOrder.makerFee', getOrdersResponse[1].ordersInfos[0].signedOrder.makerFee === '89');
     printer(
         'orderInfo.signedOrder.takerAssetData',
         getOrdersResponse[1].ordersInfos[0].signedOrder.takerAssetData ===
-        '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     );
     printer(
         'orderInfo.signedOrder.takerAssetAmount',
@@ -428,7 +428,7 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.takerFeeAssetData',
         getOrdersResponse[1].ordersInfos[0].signedOrder.takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('orderInfo.signedOrder.takerFee', getOrdersResponse[1].ordersInfos[0].signedOrder.takerFee === '12');
     printer(
@@ -524,7 +524,7 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.makerAssetData',
         getOrdersResponse[2].ordersInfos[1].signedOrder.makerAssetData ===
-        '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
     );
     printer(
         'orderInfo.signedOrder.makerAssetAmount',
@@ -533,13 +533,13 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.makerFeeAssetData',
         getOrdersResponse[2].ordersInfos[1].signedOrder.makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('orderInfo.signedOrder.makerFee', getOrdersResponse[2].ordersInfos[1].signedOrder.makerFee === '89');
     printer(
         'orderInfo.signedOrder.takerAssetData',
         getOrdersResponse[2].ordersInfos[1].signedOrder.takerAssetData ===
-        '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     );
     printer(
         'orderInfo.signedOrder.takerAssetAmount',
@@ -548,7 +548,7 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     printer(
         'orderInfo.signedOrder.takerFeeAssetData',
         getOrdersResponse[2].ordersInfos[1].signedOrder.takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('orderInfo.signedOrder.takerFee', getOrdersResponse[2].ordersInfos[1].signedOrder.takerFee === '12');
     printer(
@@ -606,25 +606,25 @@ function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     printer(
         'signedOrder.makerAssetData',
         orderEvents[1].signedOrder.makerAssetData ===
-        '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
     );
     printer('signedOrder.makerAssetAmount', orderEvents[1].signedOrder.makerAssetAmount === '123456789');
     printer(
         'signedOrder.makerFeeAssetData',
         orderEvents[1].signedOrder.makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('signedOrder.makerFee', orderEvents[1].signedOrder.makerFee === '89');
     printer(
         'signedOrder.takerAssetData',
         orderEvents[1].signedOrder.takerAssetData ===
-        '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     );
     printer('signedOrder.takerAssetAmount', orderEvents[1].signedOrder.takerAssetAmount === '987654321');
     printer(
         'signedOrder.takerFeeAssetData',
         orderEvents[1].signedOrder.takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('signedOrder.takerFee', orderEvents[1].signedOrder.takerFee === '12');
     printer('signedOrder.expirationTimeSeconds', orderEvents[1].signedOrder.expirationTimeSeconds === '10000000000');
@@ -674,7 +674,7 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
     printer(
         'makerFeeAssetData',
         signedOrders[1].makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('makerFee', signedOrders[1].makerFee === '89');
     printer(
@@ -685,7 +685,7 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
     printer(
         'takerFeeAssetData',
         signedOrders[1].takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('takerFee', signedOrders[1].takerFee === '12');
     printer('expirationTimeSeconds', signedOrders[1].expirationTimeSeconds === '10000000000');
@@ -701,7 +701,11 @@ function testStats(stats: WrapperStats[]): void {
     printer('version', stats[0].version === 'development');
     printer('pubSubTopic', stats[0].pubSubTopic === 'someTopic');
     printer('rendezvous', stats[0].rendezvous === '/0x-mesh/network/1337/version/2');
-    printer('secondaryRendezvous', stats[0].secondaryRendezvous.length == 1 && stats[0].secondaryRendezvous[0] === "/0x-custom-filter-rendezvous/version/2/chain/1337/schema/someTopic");
+    printer(
+        'secondaryRendezvous',
+        stats[0].secondaryRendezvous.length === 1 &&
+            stats[0].secondaryRendezvous[0] === '/0x-custom-filter-rendezvous/version/2/chain/1337/schema/someTopic',
+    );
     printer('peerID', stats[0].peerID === '16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7');
     printer('ethereumChainID', stats[0].ethereumChainID === 1337);
     printer('latestBlock | hash', stats[0].latestBlock.hash === hexUtils.leftPad('0x1', 32));
@@ -846,7 +850,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'rejected.status.message',
         validationResults[2].rejected[0].status.message ===
-        'order makerAssetData must encode a supported assetData type',
+            'order makerAssetData must encode a supported assetData type',
     );
 
     printer = prettyPrintTestCase('validationResults', 'RealisticValidationResults');
@@ -934,7 +938,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'accepted.signedOrder.makerAssetData',
         validationResults[3].accepted[1].signedOrder.makerAssetData ===
-        '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
     );
     printer(
         'accepted.signedOrder.makerAssetAmount',
@@ -943,13 +947,13 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'accepted.signedOrder.makerFeeAssetData',
         validationResults[3].accepted[1].signedOrder.makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('accepted.signedOrder.makerFee', validationResults[3].accepted[1].signedOrder.makerFee === '89');
     printer(
         'accepted.signedOrder.takerAssetData',
         validationResults[3].accepted[1].signedOrder.takerAssetData ===
-        '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     );
     printer(
         'accepted.signedOrder.takerAssetAmount',
@@ -958,7 +962,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'accepted.signedOrder.takerFeeAssetData',
         validationResults[3].accepted[1].signedOrder.takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('accepted.signedOrder.takerFee', validationResults[3].accepted[1].signedOrder.takerFee === '12');
     printer(
@@ -969,7 +973,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'accepted.signedOrder.signature',
         validationResults[3].accepted[1].signedOrder.signature ===
-        '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
+            '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
     );
     printer(
         'accepted.fillableTakerAssetAmount',
@@ -1003,7 +1007,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'rejected.signedOrder.makerAssetData',
         validationResults[3].rejected[0].signedOrder.makerAssetData ===
-        '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+            '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
     );
     printer(
         'rejected.signedOrder.makerAssetAmount',
@@ -1012,13 +1016,13 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'rejected.signedOrder.makerFeeAssetData',
         validationResults[3].rejected[0].signedOrder.makerFeeAssetData ===
-        '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
+            '0xf47261b000000000000000000000000034d402f14d58e001d8efbe6585051bf9706aa064',
     );
     printer('rejected.signedOrder.makerFee', validationResults[3].rejected[0].signedOrder.makerFee === '89');
     printer(
         'rejected.signedOrder.takerAssetData',
         validationResults[3].rejected[0].signedOrder.takerAssetData ===
-        '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '0xf47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     );
     printer(
         'rejected.signedOrder.takerAssetAmount',
@@ -1027,7 +1031,7 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'rejected.signedOrder.takerFeeAssetData',
         validationResults[3].rejected[0].signedOrder.takerFeeAssetData ===
-        '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
+            '0xf47261b000000000000000000000000025b8fe1de9daf8ba351890744ff28cf7dfa8f5e3',
     );
     printer('rejected.signedOrder.takerFee', validationResults[3].rejected[0].signedOrder.takerFee === '12');
     printer(
@@ -1038,14 +1042,14 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
     printer(
         'rejected.signedOrder.signature',
         validationResults[3].rejected[0].signedOrder.signature ===
-        '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
+            '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
     );
     printer('rejected.kind', validationResults[3].rejected[0].kind === 'MESH_ERROR');
     printer('rejected.status.code', validationResults[3].rejected[0].status.code === 'CoordinatorEndpointNotFound');
     printer(
         'rejected.status.message',
         validationResults[3].rejected[0].status.message ===
-        'corresponding coordinator endpoint not found in CoordinatorRegistry contract',
+            'corresponding coordinator endpoint not found in CoordinatorRegistry contract',
     );
 }
 

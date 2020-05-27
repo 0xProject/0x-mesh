@@ -1,6 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
 import * as BrowserFS from 'browserfs';
 
+import { createSchemaValidator } from './schema_validator';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
@@ -39,8 +40,6 @@ import {
     WethDepositEvent,
     WethWithdrawalEvent,
     WrapperOrderEvent,
-    WrapperStats,
-    WrapperValidationResults,
     ZeroExMesh,
 } from './types';
 import {
@@ -128,6 +127,8 @@ const loadEventName = '0xmeshload';
 window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
+
+(window as any).createSchemaValidator = createSchemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
