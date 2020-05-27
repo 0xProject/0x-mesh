@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-browser",
-    "version": "9.3.0",
+    "version": "9.4.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
     "license": "Apache-2.0",
@@ -21,7 +21,7 @@
         "docsPath": "../../docs/browser-bindings/browser"
     },
     "dependencies": {
-        "@0x/mesh-browser-lite": "^9.3.0",
+        "@0x/mesh-browser-lite": "^9.4.0",
         "base64-arraybuffer": "^0.2.0",
         "browserfs": "^1.4.3",
         "ethereum-types": "^3.0.0"
