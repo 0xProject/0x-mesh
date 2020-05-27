@@ -2,10 +2,6 @@
 
 package orderfilter
 
-import (
-	"github.com/0xProject/0x-mesh/ethereum"
-)
-
 var (
 	testFilterValidateOrderExpectedErrors = [][]string{
 		{},
@@ -39,7 +35,3 @@ var (
 		},
 	}
 )
-
-func setupTestCase(chainID int, contractAddresses ethereum.ContractAddresses, customOrderSchema string) {
-	// NOTE(jalextowle): Setup is only required in the WebAssembly tests
-}

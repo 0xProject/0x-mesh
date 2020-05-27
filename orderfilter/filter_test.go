@@ -145,7 +145,6 @@ func TestFilterValidateOrder(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		setupTestCase(tc.chainID, contractAddresses, tc.customOrderSchema)
 		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		signedOrder, err := zeroex.SignTestOrder(tc.order)
@@ -223,7 +222,6 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		setupTestCase(tc.chainID, contractAddresses, tc.customOrderSchema)
 		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.ValidateOrderJSON(tc.orderJSON)
@@ -314,7 +312,6 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		setupTestCase(tc.chainID, contractAddresses, tc.customOrderSchema)
 		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.MatchOrderMessageJSON(tc.orderMessageJSON)
@@ -355,7 +352,6 @@ func TestFilterTopic(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		setupTestCase(tc.chainID, contractAddresses, tc.customOrderSchema)
 		originalFilter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		result, err := originalFilter.ValidateOrderJSON(tc.orderJSON)

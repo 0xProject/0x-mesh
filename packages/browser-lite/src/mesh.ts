@@ -1,8 +1,7 @@
-import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { SignedOrder } from '@0x/order-utils';
 import * as BrowserFS from 'browserfs';
 
-import { getSchemaValidator } from './schema_validator';
+import { setSchemaValidator } from './schema_validator';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
@@ -129,8 +128,7 @@ window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
 
-const schemaValidator: any = {};
-(window as any).schemaValidator = schemaValidator;
+(window as any).setSchemaValidator = setSchemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
@@ -151,24 +149,6 @@ export class Mesh {
      */
     constructor(config: Config) {
         this._config = config;
-
-        // Set up a schema validator on the window object.
-        // NOTE(jalextowle): This is used in lieu of `gojsonschema` in the orderfilter
-        // implementation as an optimization.
-        let exchangeAddress: string;
-        if (this._config.customContractAddresses && this._config.customContractAddresses.exchange) {
-            exchangeAddress = this._config.customContractAddresses.exchange;
-        } else {
-            const contractAddresses = getContractAddressesForChainOrThrow(this._config.ethereumChainID);
-            exchangeAddress = contractAddresses.exchange;
-        }
-        const constructedSchemaValidator = getSchemaValidator(
-            this._config.ethereumChainID,
-            exchangeAddress,
-            this._config.customOrderFilter,
-        );
-        schemaValidator.orderValidator = constructedSchemaValidator.orderValidator;
-        schemaValidator.messageValidator = constructedSchemaValidator.messageValidator;
     }
 
     /**
