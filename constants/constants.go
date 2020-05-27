@@ -101,3 +101,7 @@ var (
 	// exceeds the max size.
 	ErrMaxOrderSize = fmt.Errorf("order exceeds maximum size of %d bytes", MaxOrderSizeInBytes)
 )
+
+const ParityFilterUnknownBlock = "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found"
+
+const GethFilterUnknownBlock = "unknown block"

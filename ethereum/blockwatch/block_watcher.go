@@ -19,6 +19,9 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+// go-ethereum client `ethereum.NotFound` error type message
+const rpcClientNotFoundError = "not found"
+
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
 // we need to try and stay below it. Parity, Geth and Alchemy all have much higher limits (if any) on
@@ -28,9 +31,10 @@ var maxBlocksInGetLogsQuery = 60
 // warningLevelErrorMessages are certain blockwatch.Watch errors that we want to report as warnings
 // because they do not represent a bug or issue with Mesh and are expected to happen from time to time
 var warningLevelErrorMessages = []string{
-	"unknown block",
-	"not found",
+	constants.GethFilterUnknownBlock,
+	rpcClientNotFoundError,
 	"context deadline exceeded",
+	constants.ParityFilterUnknownBlock,
 }
 
 // EventType describes the types of events emitted by blockwatch.Watcher. A block can be discovered

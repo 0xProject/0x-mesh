@@ -3,9 +3,11 @@ package blockwatch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
@@ -48,6 +50,17 @@ type GetBlockByNumberResponse struct {
 	Timestamp  string      `json:"timestamp"`
 }
 
+// UnknownBlockNumberError is the error returned from a filter logs RPC call when the block number
+// specified is not recognized
+type UnknownBlockNumberError struct {
+	Message     string
+	BlockNumber *big.Int
+}
+
+func (e UnknownBlockNumberError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Message, e.BlockNumber)
+}
+
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error) {
@@ -73,7 +86,11 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	}
 	// If it returned an empty struct
 	if header.Number == "" {
-		return nil, ethereum.NotFound
+		// Add blockHash to error so it gets logged
+		return nil, UnknownBlockNumberError{
+			Message:     ethereum.NotFound.Error(),
+			BlockNumber: number,
+		}
 	}
 
 	blockNum, ok := math.ParseBig256(header.Number)
@@ -93,6 +110,16 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	return miniHeader, nil
 }
 
+// UnknownBlockHashError is the error returned from a filter logs RPC call when the blockHash
+// specified is not recognized
+type UnknownBlockHashError struct {
+	BlockHash common.Hash
+}
+
+func (e UnknownBlockHashError) Error() string {
+	return fmt.Sprintf("%s: %s", ethereum.NotFound.Error(), e.BlockHash)
+}
+
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
 func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
@@ -100,6 +127,12 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 	defer cancel()
 	header, err := rc.ethRPCClient.HeaderByHash(ctx, hash)
 	if err != nil {
+		// Add blockHash to error so it gets logged
+		if err.Error() == ethereum.NotFound.Error() {
+			err = UnknownBlockHashError{
+				BlockHash: hash,
+			}
+		}
 		return nil, err
 	}
 	miniHeader := &miniheader.MiniHeader{
@@ -111,12 +144,30 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 	return miniHeader, nil
 }
 
+// FilterUnknownBlockError is the error returned from a filter logs RPC call when the blockHash
+// specified is not recognized
+type FilterUnknownBlockError struct {
+	Message     string
+	FilterQuery ethereum.FilterQuery
+}
+
+func (e FilterUnknownBlockError) Error() string {
+	return fmt.Sprintf("%s: %+v", e.Message, e.FilterQuery)
+}
+
 // FilterLogs returns the logs that satisfy the supplied filter query.
 func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	logs, err := rc.ethRPCClient.FilterLogs(ctx, q)
 	if err != nil {
+		// Add the query filter to the error so that it gets logged
+		if err.Error() == constants.ParityFilterUnknownBlock || err.Error() == constants.GethFilterUnknownBlock {
+			err = FilterUnknownBlockError{
+				Message:     err.Error(),
+				FilterQuery: q,
+			}
+		}
 		return nil, err
 	}
 	return logs, nil

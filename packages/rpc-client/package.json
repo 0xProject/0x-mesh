@@ -18,7 +18,7 @@
     "scripts": {
         "build": "tsc -b",
         "watch:ts": "tsc -b -w",
-        "clean": "shx rm -rf lib",
+        "clean": "shx rm -r ./lib && shx rm tsconfig.tsbuildinfo || exit 0",
         "lint": "tslint --format stylish --project .",
         "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --timeout 200000 --exit",
         "s3:sync": "aws s3 sync ${npm_package_config_docsPath} s3://docs-markdown/${npm_package_name}/v${npm_package_version} --profile 0xproject --region us-east-1 --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers",
@@ -70,7 +70,7 @@
         "make-promises-safe": "^1.1.0",
         "mocha": "^4.1.0",
         "rimraf": "^3.0.0",
-        "shx": "^0.2.2",
+        "shx": "^0.3.2",
         "tslint": "5.11.0",
         "typedoc": "^0.15.0",
         "typescript": "3.0.1",

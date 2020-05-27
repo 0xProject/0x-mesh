@@ -244,7 +244,13 @@ blockchainTests.resets('WSClient', env => {
                     )(async (ack: string) => {
                         expect(ack).to.be.equal('tick');
                     });
-                    await (deployment.client as any)._subscribeToHeartbeatAsync(callback);
+                    // NOTE(jalextowle): We use string literal access here to
+                    // avoid casting `deployment.client` to `any` (this method
+                    // preserves most types of type-checking) and to allow us to
+                    // access the private method `_subscribeToHeartbeatAsync`.
+                    // Source: https://stackoverflow.com/a/35991491
+                    // tslint:disable-next-line:no-string-literal
+                    await deployment.client['_subscribeToHeartbeatAsync'](callback);
                 })().catch(done);
             });
         });
@@ -346,13 +352,13 @@ blockchainTests.resets('WSClient', env => {
         describe('#unsubscribeAsync', async () => {
             it('should unsubscribe successfully', async () => {
                 // tslint:disable-next-line:no-empty
-                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => { });
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
                 await deployment.client.unsubscribeAsync(subscriptionID);
             });
 
             it('should throw an error after unsubscribing redundantly', async () => {
                 // tslint:disable-next-line:no-empty
-                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => { });
+                const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
                 await deployment.client.unsubscribeAsync(subscriptionID);
                 let thrownError: Error = new Error('');
                 try {
@@ -438,9 +444,10 @@ blockchainTests.resets('WSClient', env => {
                 (async () => {
                     const wsServer = await setupServerAsync();
                     let hasReceivedUnsubscribeMessage = false;
-                    wsServer.on('connect', ((connection: WebSocket.connection) => {
-                        connection.on('message', (async (message: WSMessage) => {
-                            const jsonRpcRequest = JSON.parse(message.utf8Data);
+                    wsServer.on('connect', (connection: WebSocket.connection) => {
+                        connection.on('message', async (message: WebSocket.IMessage) => {
+                            const wsMessage = message as WSMessage;
+                            const jsonRpcRequest = JSON.parse(wsMessage.utf8Data);
                             if (jsonRpcRequest.method === 'mesh_subscribe') {
                                 const response = `
                                     {
@@ -453,8 +460,8 @@ blockchainTests.resets('WSClient', env => {
                             } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
                                 hasReceivedUnsubscribeMessage = true;
                             }
-                        }) as any);
-                    }) as any);
+                        });
+                    });
 
                     const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
                     client.onClose(() => {

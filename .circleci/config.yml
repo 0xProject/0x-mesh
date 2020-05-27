@@ -41,20 +41,8 @@ jobs:
           name: Build the TypeScript monorepo
           command: yarn build
       - run:
-          name: Run TypeScript tests
-          command: yarn test
-      - run:
-          name: Run Go tests
-          command: make test-go
-      - run:
-          name: Run WebAssembly tests in Node.js
-          command: make test-wasm-node
-      - run:
-          name: Run WebAssembly tests in a headless browser
-          command: make test-wasm-browser
-      - run:
-          name: Run browser integration tests
-          command: make test-browser-integration
+          name: Run all tests
+          command: make test-all 
       - run:
           name: Test installing Mesh without CGO
           command: CGO_ENABLED=0 go install ./...

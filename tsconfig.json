@@ -25,6 +25,7 @@
         { "path": "./packages/webpack-example" },
         { "path": "./packages/webpack-example-lite" },
         { "path": "./packages/rpc-client" },
-        { "path": "./packages/integration-tests" }
+        { "path": "./packages/integration-tests" },
+        { "path": "./packages/test-wasm" }
     ]
 }
