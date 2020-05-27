@@ -51,10 +51,10 @@ export interface Order {
 export type OrderField = keyof Order;
 
 export interface OrderQuery {
-    filters: OrderFilter[];
-    sort: OrderSort[];
-    limit: number;
-    offset: number;
+    filters?: OrderFilter[];
+    sort?: OrderSort[];
+    limit?: number;
+    offset?: number;
 }
 
 export interface OrderSort {
@@ -108,7 +108,8 @@ export class Database {
 
         this.db.version(1).stores({
             // TODO(albrow): Add more indexes. https://dexie.org/docs/Version/Version.stores()
-            orders: '&hash',
+            orders:
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData',
             miniheaders: '&hash',
             metadata: '',
         });
@@ -240,16 +241,46 @@ export class Database {
             return this.orders.toCollection();
         }
         var col: Dexie.Collection;
-        if (query.filters !== null && query.filters !== undefined && query.filters.length > 0) {
-            throw new Error('find orders with filter not yet implemented');
+        if (query.filters !== undefined && query.filters.length > 0) {
+            const firstFilter = query.filters[0];
+            switch (query.filters[0].kind) {
+                case FilterKind.Equal:
+                    col = this.orders.where(firstFilter.field).equals(firstFilter.value);
+                    break;
+                case FilterKind.NotEqual:
+                    col = this.orders.where(firstFilter.field).notEqual(firstFilter.value);
+                    break;
+                case FilterKind.Greater:
+                    col = this.orders.where(firstFilter.field).above(firstFilter.value);
+                    break;
+                case FilterKind.GreaterOrEqual:
+                    col = this.orders.where(firstFilter.field).aboveOrEqual(firstFilter.value);
+                    break;
+                case FilterKind.Less:
+                    col = this.orders.where(firstFilter.field).below(firstFilter.value);
+                    break;
+                case FilterKind.LessOrEqual:
+                    col = this.orders.where(firstFilter.field).belowOrEqual(firstFilter.value);
+                    break;
+                case FilterKind.Contains:
+                    // TODO(albrow): This iterates through all orders and is very inefficient.
+                    // Is there a way to optimize this?
+                    col = this.orders.filter(order => {
+                        return order[firstFilter.field].toString().includes(firstFilter.value);
+                    });
+                    break;
+            }
+            if (query.filters.length > 1) {
+                throw new Error('multiple filters not yet supported');
+            }
         } else {
             col = this.orders.toCollection();
         }
-        if (query.offset !== null && query.offset !== undefined && query.offset !== 0) {
-            col = col.offset(query.offset);
+        if (query.offset !== undefined && query.offset !== 0) {
+            col.offset(query.offset);
         }
-        if (query.limit !== null && query.limit !== undefined && query.limit !== 0) {
-            col = col.limit(query.limit);
+        if (query.limit !== undefined && query.limit !== 0) {
+            col.limit(query.limit);
         }
         return col;
     }

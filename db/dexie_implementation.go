@@ -6,10 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"path/filepath"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/db/dexietypes"
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
@@ -68,7 +70,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 			err = recoverError(r)
 		}
 	}()
-	jsOrders, err := jsutil.InefficientlyConvertToJS(orders)
+	jsOrders, err := jsutil.InefficientlyConvertToJS(dexietypes.OrdersFromCommonType(orders))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -77,14 +79,16 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 		return nil, nil, convertJSError(err)
 	}
 	jsAdded := jsResult.Get("added")
-	if err := jsutil.InefficientlyConvertFromJS(jsAdded, &added); err != nil {
+	var dexieAdded []*dexietypes.Order
+	if err := jsutil.InefficientlyConvertFromJS(jsAdded, &dexieAdded); err != nil {
 		return nil, nil, err
 	}
 	jsRemoved := jsResult.Get("removed")
-	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &removed); err != nil {
+	var dexieRemoved []*dexietypes.Order
+	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &dexieRemoved); err != nil {
 		return nil, nil, err
 	}
-	return added, removed, nil
+	return dexietypes.OrdersToCommonType(dexieAdded), dexietypes.OrdersToCommonType(dexieRemoved), nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
@@ -97,11 +101,11 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	order = &types.OrderWithMetadata{}
-	if err := jsutil.InefficientlyConvertFromJS(jsOrder, order); err != nil {
+	var dexieOrder dexietypes.Order
+	if err := jsutil.InefficientlyConvertFromJS(jsOrder, &dexieOrder); err != nil {
 		return nil, err
 	}
-	return order, nil
+	return dexietypes.OrderToCommonType(&dexieOrder), nil
 }
 
 func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
@@ -110,14 +114,16 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 			err = recoverError(r)
 		}
 	}()
+	query = formatOrderQuery(query)
 	jsOrders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("findOrdersAsync", query))
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &orders); err != nil {
+	var dexieOrders []*dexietypes.Order
+	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &dexieOrders); err != nil {
 		return nil, err
 	}
-	return orders, nil
+	return dexietypes.OrdersToCommonType(dexieOrders), nil
 }
 
 func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
@@ -126,6 +132,7 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 			err = recoverError(r)
 		}
 	}()
+	query = formatOrderQuery(query)
 	jsCount, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("countOrdersAsync", query))
 	if err != nil {
 		return 0, convertJSError(err)
@@ -152,14 +159,16 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 			err = recoverError(r)
 		}
 	}()
+	query = formatOrderQuery(query)
 	jsOrders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteOrdersAsync", query))
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &deletedOrders); err != nil {
+	var dexieOrders []*dexietypes.Order
+	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &dexieOrders); err != nil {
 		return nil, err
 	}
-	return deletedOrders, nil
+	return dexietypes.OrdersToCommonType(dexieOrders), nil
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
@@ -170,15 +179,16 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 	}()
 	jsUpdateFunc := js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		jsExistingOrder := args[0]
-		var existingOrder types.OrderWithMetadata
-		if err := jsutil.InefficientlyConvertFromJS(jsExistingOrder, &existingOrder); err != nil {
+		var dexieExistingOrder dexietypes.Order
+		if err := jsutil.InefficientlyConvertFromJS(jsExistingOrder, &dexieExistingOrder); err != nil {
 			panic(err)
 		}
-		orderToUpdate, err := updateFunc(&existingOrder)
+		orderToUpdate, err := updateFunc(dexietypes.OrderToCommonType(&dexieExistingOrder))
 		if err != nil {
 			panic(err)
 		}
-		jsOrderToUpdate, err := jsutil.InefficientlyConvertToJS(orderToUpdate)
+		dexieOrderToUpdate := dexietypes.OrderFromCommonType(orderToUpdate)
+		jsOrderToUpdate, err := jsutil.InefficientlyConvertToJS(dexieOrderToUpdate)
 		if err != nil {
 			panic(err)
 		}
@@ -251,4 +261,22 @@ func convertJSError(e error) error {
 		}
 	}
 	return e
+}
+
+func formatOrderQuery(query *OrderQuery) *OrderQuery {
+	if query == nil {
+		return nil
+	}
+	for i, filter := range query.Filters {
+		query.Filters[i].Value = convertFilterValue(filter.Value)
+	}
+	return query
+}
+
+func convertFilterValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case *big.Int:
+		return dexietypes.NewSortedBigInt(v)
+	}
+	return value
 }

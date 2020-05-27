@@ -360,7 +360,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Equal,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: originalOrders[5:6],
@@ -371,7 +371,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
@@ -382,7 +382,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Less,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: originalOrders[:5],
@@ -393,7 +393,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Greater,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: originalOrders[6:],
@@ -404,7 +404,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  LessOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: originalOrders[:6],
@@ -415,7 +415,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: originalOrders[5:],
@@ -552,7 +552,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -568,7 +568,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 3,
+					Value: big.NewInt(3),
 				},
 				{
 					Field: OFMakerAssetData,
@@ -578,7 +578,7 @@ func TestFindOrdersFilter(t *testing.T) {
 				{
 					Field: OFTakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedOrders: append(safeSubsliceOrders(originalOrders, 3, 5), safeSubsliceOrders(originalOrders, 6, 7)...),
@@ -662,7 +662,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Equal,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 1,
@@ -673,7 +673,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: len(originalOrders) - 1,
@@ -684,7 +684,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Less,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 5,
@@ -695,7 +695,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Greater,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 4,
@@ -706,7 +706,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  LessOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 6,
@@ -717,7 +717,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 5,
@@ -880,7 +880,7 @@ func TestCountOrdersFilter(t *testing.T) {
 				{
 					Field: OFTakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedCount: 3,
@@ -977,7 +977,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Equal,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
@@ -988,7 +988,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: originalOrders[5:6],
@@ -999,7 +999,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Less,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: originalOrders[5:],
@@ -1010,7 +1010,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  Greater,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: originalOrders[:6],
@@ -1021,7 +1021,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  LessOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: originalOrders[6:],
@@ -1032,7 +1032,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFMakerAssetAmount,
 					Kind:  GreaterOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: originalOrders[:5],
@@ -1195,7 +1195,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 				{
 					Field: OFTakerAssetAmount,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedRemainingOrders: []*types.OrderWithMetadata{
@@ -1566,7 +1566,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Equal,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders[5:6],
@@ -1577,7 +1577,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
@@ -1588,7 +1588,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Less,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders[:5],
@@ -1599,7 +1599,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Greater,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders[6:],
@@ -1610,7 +1610,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  LessOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders[:6],
@@ -1621,7 +1621,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: originalMiniHeaders[5:],
@@ -1763,7 +1763,7 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
@@ -1853,7 +1853,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Equal,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
@@ -1864,7 +1864,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
@@ -1875,7 +1875,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Less,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: originalMiniHeaders[:5],
@@ -1886,7 +1886,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  Greater,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: originalMiniHeaders[6:],
@@ -1897,7 +1897,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  LessOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: originalMiniHeaders[:6],
@@ -1908,7 +1908,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  GreaterOrEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: originalMiniHeaders[5:],
@@ -2050,7 +2050,7 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 				{
 					Field: MFNumber,
 					Kind:  NotEqual,
-					Value: 5,
+					Value: big.NewInt(5),
 				},
 			},
 			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
@@ -2237,7 +2237,7 @@ func newTestOrder() *types.OrderWithMetadata {
 		Salt:                     big.NewInt(int64(time.Now().Nanosecond())),
 		MakerFee:                 big.NewInt(0),
 		TakerFee:                 big.NewInt(0),
-		MakerAssetAmount:         big.NewInt(100),
+		MakerAssetAmount:         math.MaxBig256,
 		TakerAssetAmount:         big.NewInt(42),
 		ExpirationTimeSeconds:    big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
 		ExchangeAddress:          contractAddresses.Exchange,
