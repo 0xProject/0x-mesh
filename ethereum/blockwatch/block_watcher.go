@@ -20,7 +20,7 @@ import (
 )
 
 // go-ethereum client `ethereum.NotFound` error type message
-var rpcClientNotFoundError = "not found"
+const rpcClientNotFoundError = "not found"
 
 // maxBlocksInGetLogsQuery is the max number of blocks to fetch logs for in a single query. There is
 // a hard limit of 10,000 logs returned by a single `eth_getLogs` query by Infura's Ethereum nodes so
