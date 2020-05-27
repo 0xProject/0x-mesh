@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v9.4.0
+
+### Features ✅
+
+- Improved the performance of validating order filters in the browser [#809](https://github.com/0xProject/0x-mesh/pull/809).
+
 
 ## v9.3.0
 
