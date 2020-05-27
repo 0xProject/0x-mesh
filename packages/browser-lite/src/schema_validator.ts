@@ -1,5 +1,11 @@
 import * as ajv from 'ajv';
 
+interface SynchronousValidationFunction {
+    (data: any): boolean;
+    schema?: object | boolean;
+    errors?: null | ajv.ErrorObject[];
+}
+
 export interface SchemaValidationResult {
     success: boolean;
     errors: string[];
@@ -20,8 +26,6 @@ export interface SchemaValidator {
  * @param rootSchemas The root schemas. These must be compiled last.
  */
 export function setSchemaValidator(customOrderSchemaString: string, schemas: string[], rootSchemas: string[]): void {
-    // NOTE(jalextowle): This causes `ajv` to look at `id` fields rather than
-    // `$id` fields.
     const AJV = new ajv();
     for (const schema of schemas) {
         AJV.addSchema(JSON.parse(schema));
@@ -36,6 +40,10 @@ export function setSchemaValidator(customOrderSchemaString: string, schemas: str
     }
 
     const orderValidate = AJV.getSchema('/rootOrder');
+    // tslint:disable-next-line:no-non-null-assertion
+    if (orderValidate === undefined) {
+        throw new Error('Cannot find "/rootOrder" schema in AJV');
+    }
     if (orderValidate === undefined) {
         throw new Error('Cannot find "/rootOrder" schema in AJV');
     }
@@ -44,16 +52,16 @@ export function setSchemaValidator(customOrderSchemaString: string, schemas: str
         throw new Error('Cannot find "rootOrderMessage" schema in AJV');
     }
     (window as any).schemaValidator = {
-        orderValidator: constructValidationFunctionWrapper(orderValidate),
-        messageValidator: constructValidationFunctionWrapper(messageValidate),
+        orderValidator: constructValidationFunctionWrapper(orderValidate as SynchronousValidationFunction),
+        messageValidator: constructValidationFunctionWrapper(messageValidate as SynchronousValidationFunction),
     };
 }
 
 function constructValidationFunctionWrapper(
-    validationFunction: ajv.ValidateFunction,
+    validationFunction: SynchronousValidationFunction,
 ): (input: string) => SchemaValidationResult {
     return (input: string) => {
-        const result: any = { success: false, errors: [] };
+        const result: SchemaValidationResult = { success: false, errors: [] };
         try {
             result.success = validationFunction(JSON.parse(input));
             if (validationFunction.errors) {
