@@ -29,6 +29,9 @@ var (
 			"makerAddress is required",
 		},
 		{
+			"takerAddress: Does not match pattern '^0x[0-9a-fA-F]{40}$",
+		},
+		{
 			"exchangeAddress must be one of the following",
 		},
 		{
