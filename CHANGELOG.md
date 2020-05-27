@@ -6,7 +6,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Features ✅
 
-- Improves the performance of validating order filters in the browser [#809](https://github.com/0xProject/0x-mesh/pull/809).
+- Improved the performance of validating order filters in the browser [#809](https://github.com/0xProject/0x-mesh/pull/809).
 
 
 ## v9.3.0
