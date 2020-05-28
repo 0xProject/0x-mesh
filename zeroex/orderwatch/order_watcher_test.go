@@ -1073,6 +1073,12 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
 	signedOrderTwo := signedOrders[1]
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
