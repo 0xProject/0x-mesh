@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
@@ -90,25 +91,25 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 const schema = `
 CREATE TABLE IF NOT EXISTS orders (
 	hash                     TEXT UNIQUE NOT NULL,
-	chainID                  NUMERIC(78, 0) NOT NULL,
+	chainID                  TEXT NOT NULL,
 	exchangeAddress          TEXT NOT NULL,
 	makerAddress             TEXT NOT NULL,
 	makerAssetData           TEXT NOT NULL,
 	makerFeeAssetData        TEXT NOT NULL,
-	makerAssetAmount         NUMERIC(78, 0) NOT NULL,
-	makerFee                 NUMERIC(78, 0) NOT NULL,
+	makerAssetAmount         TEXT NOT NULL,
+	makerFee                 TEXT NOT NULL,
 	takerAddress             TEXT NOT NULL,
 	takerAssetData           TEXT NOT NULL,
 	takerFeeAssetData        TEXT NOT NULL,
-	takerAssetAmount         NUMERIC(78, 0) NOT NULL,
-	takerFee                 NUMERIC(78, 0) NOT NULL,
+	takerAssetAmount         TEXT NOT NULL,
+	takerFee                 TEXT NOT NULL,
 	senderAddress            TEXT NOT NULL,
 	feeRecipientAddress      TEXT NOT NULL,
-	expirationTimeSeconds    NUMERIC(78, 0) NOT NULL,
-	salt                     NUMERIC(78, 0) NOT NULL,
+	expirationTimeSeconds    TEXT NOT NULL,
+	salt                     TEXT NOT NULL,
 	signature                TEXT NOT NULL,
 	lastUpdated              DATETIME NOT NULL,
-	fillableTakerAssetAmount NUMERIC(78, 0) NOT NULL,
+	fillableTakerAssetAmount TEXT NOT NULL,
 	isRemoved                BOOLEAN NOT NULL,
 	isPinned                 BOOLEAN NOT NULL,
 	parsedMakerAssetData     TEXT NOT NULL,
@@ -117,7 +118,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS miniHeaders (
 	hash      TEXT UNIQUE NOT NULL,
-	number    NUMERIC(78, 0) UNIQUE NOT NULL,
+	number    TEXT UNIQUE NOT NULL,
 	parent    TEXT NOT NULL,
 	timestamp DATETIME NOT NULL,
 	logs      TEXT NOT NULL
@@ -125,7 +126,7 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 
 CREATE TABLE IF NOT EXISTS metadata (
 	ethereumChainID                   BIGINT NOT NULL,
-	maxExpirationTime                 NUMERIC(78, 0) NOT NULL,
+	maxExpirationTime                 TEXT NOT NULL,
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
 	startOfCurrentUTCDay              DATETIME NOT NULL
 );
@@ -716,7 +717,24 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 func convertFilterValue(value interface{}) interface{} {
 	switch v := value.(type) {
 	case *big.Int:
-		return sqltypes.NewBigInt(v)
+		return sqltypes.NewSortedBigInt(v)
 	}
 	return value
+}
+
+func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	filterValueJSON, err := canonicaljson.Marshal(sqltypes.SingleAssetData{
+		Address: tokenAddress,
+		TokenID: sqltypes.NewBigInt(tokenID),
+	})
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
+	fmt.Println(string(filterValueJSON))
+	return OrderFilter{
+		Field: field,
+		Kind:  Contains,
+		Value: string(filterValueJSON),
+	}
 }

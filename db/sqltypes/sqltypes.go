@@ -1,3 +1,5 @@
+// +build !js
+
 package sqltypes
 
 import (
@@ -17,7 +19,7 @@ import (
 )
 
 // BigInt is a wrapper around *big.Int that implements the sql.Valuer
-// and sql.Scanner interfaces.
+// and sql.Scanner interfaces and *does not* retain sort order.
 type BigInt struct {
 	*big.Int
 }
@@ -31,7 +33,7 @@ func NewBigInt(v *big.Int) *BigInt {
 func BigIntFromString(v string) (*BigInt, error) {
 	bigInt, ok := ethmath.ParseBig256(v)
 	if !ok {
-		return nil, fmt.Errorf("sqltypes: could not convert %q to BigInt", v)
+		return nil, fmt.Errorf("dexietypes: could not convert %q to BigInt", v)
 	}
 	return NewBigInt(bigInt), nil
 }
@@ -44,7 +46,7 @@ func (i *BigInt) Value() (driver.Value, error) {
 	if i == nil || i.Int == nil {
 		return nil, nil
 	}
-	return i.String(), nil
+	return i.Int.String(), nil
 }
 
 func (i *BigInt) Scan(value interface{}) error {
@@ -63,7 +65,7 @@ func (i *BigInt) Scan(value interface{}) error {
 			// an error.
 			return fmt.Errorf("could not scan non-whole number float64 value %v into sqltypes.BigInt", value)
 		}
-		i.Int = big.NewInt(int64(v))
+		i.Int, _ = big.NewFloat(v).Int(big.NewInt(0))
 	case string:
 		parsed, ok := ethmath.ParseBig256(v)
 		if !ok {
@@ -79,19 +81,108 @@ func (i *BigInt) Scan(value interface{}) error {
 
 func (i *BigInt) MarshalJSON() ([]byte, error) {
 	if i == nil || i.Int == nil {
-		return canonicaljson.Marshal(nil)
+		return json.Marshal(nil)
 	}
-	return canonicaljson.Marshal(i.Int.String())
+	return json.Marshal(i.Int.String())
 }
 
 func (i *BigInt) UnmarshalJSON(data []byte) error {
 	unqouted, err := strconv.Unquote(string(data))
 	if err != nil {
-		return fmt.Errorf("could not unmarshal JSON data into sqltypes.BigInt: %s", string(data))
+		return fmt.Errorf("could not unmarshal JSON data into dexietypes.BigInt: %s", string(data))
 	}
 	bigInt, ok := ethmath.ParseBig256(unqouted)
 	if !ok {
-		return fmt.Errorf("could not unmarshal JSON data into sqltypes.BigInt: %s", string(data))
+		return fmt.Errorf("could not unmarshal JSON data into dexietypes.BigInt: %s", string(data))
+	}
+	i.Int = bigInt
+	return nil
+}
+
+// SortedBigInt is a wrapper around *big.Int that implements the sql.Valuer
+// and sql.Scanner interfaces and retains sort order by padding with zeroes.
+type SortedBigInt struct {
+	*big.Int
+}
+
+func NewSortedBigInt(v *big.Int) *SortedBigInt {
+	return &SortedBigInt{
+		Int: v,
+	}
+}
+
+func SortedBigIntFromString(v string) (*SortedBigInt, error) {
+	bigInt, ok := ethmath.ParseBig256(v)
+	if !ok {
+		return nil, fmt.Errorf("dexietypes: could not convert %q to BigInt", v)
+	}
+	return NewSortedBigInt(bigInt), nil
+}
+
+func SortedBigIntFromInt64(v int64) *SortedBigInt {
+	return NewSortedBigInt(big.NewInt(v))
+}
+
+func (i *SortedBigInt) Value() (driver.Value, error) {
+	if i == nil || i.Int == nil {
+		return nil, nil
+	}
+	// Note(albrow), strings in SQL are sorted in alphanumerical order, not
+	// numerical order. In order to sort by numerical order, we need to pad with
+	// zeroes. The maximum length of an unsigned 256 bit integer is 80, so we
+	// pad with zeroes such that the length of the number is always 80.
+	return fmt.Sprintf("%080s", i.Int.String()), nil
+}
+
+func (i *SortedBigInt) Scan(value interface{}) error {
+	if value == nil {
+		i = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case int64:
+		i.Int = big.NewInt(v)
+	case float64:
+		if math.Trunc(v) != v {
+			// float64 may be used by the database driver to represent 0 or any other
+			// whole number. This is okay as long as v is a whole number, i.e. does not
+			// have anything after the decimal point. If this is not the case we return
+			// an error.
+			return fmt.Errorf("could not scan non-whole number float64 value %v into sqltypes.BigInt", value)
+		}
+		i.Int, _ = big.NewFloat(v).Int(big.NewInt(0))
+	case string:
+		parsed, ok := ethmath.ParseBig256(v)
+		if !ok {
+			return fmt.Errorf("could not scan string value %q into sqltypes.BigInt", v)
+		}
+		i.Int = parsed
+	default:
+		return fmt.Errorf("could not scan type %T into sqltypes.BigInt", value)
+	}
+
+	return nil
+}
+
+func (i *SortedBigInt) MarshalJSON() ([]byte, error) {
+	if i == nil || i.Int == nil {
+		return json.Marshal(nil)
+	}
+	// Note(albrow), strings in Dexie.js are sorted in alphanumerical order, not
+	// numerical order. In order to sort by numerical order, we need to pad with
+	// zeroes. The maximum length of an unsigned 256 bit integer is 80, so we
+	// pad with zeroes such that the length of the number is always 80.
+	return json.Marshal(fmt.Sprintf("%080s", i.Int.String()))
+}
+
+func (i *SortedBigInt) UnmarshalJSON(data []byte) error {
+	unqouted, err := strconv.Unquote(string(data))
+	if err != nil {
+		return fmt.Errorf("could not unmarshal JSON data into dexietypes.BigInt: %s", string(data))
+	}
+	bigInt, ok := ethmath.ParseBig256(unqouted)
+	if !ok {
+		return fmt.Errorf("could not unmarshal JSON data into dexietypes.BigInt: %s", string(data))
 	}
 	i.Int = bigInt
 	return nil
@@ -131,25 +222,25 @@ func (s *ParsedAssetData) Scan(value interface{}) error {
 // Order is the SQL database representation a 0x order along with some relevant metadata.
 type Order struct {
 	Hash                     common.Hash      `db:"hash"`
-	ChainID                  *BigInt          `db:"chainID"`
+	ChainID                  *SortedBigInt    `db:"chainID"`
 	ExchangeAddress          common.Address   `db:"exchangeAddress"`
 	MakerAddress             common.Address   `db:"makerAddress"`
 	MakerAssetData           []byte           `db:"makerAssetData"`
 	MakerFeeAssetData        []byte           `db:"makerFeeAssetData"`
-	MakerAssetAmount         *BigInt          `db:"makerAssetAmount"`
-	MakerFee                 *BigInt          `db:"makerFee"`
+	MakerAssetAmount         *SortedBigInt    `db:"makerAssetAmount"`
+	MakerFee                 *SortedBigInt    `db:"makerFee"`
 	TakerAddress             common.Address   `db:"takerAddress"`
 	TakerAssetData           []byte           `db:"takerAssetData"`
 	TakerFeeAssetData        []byte           `db:"takerFeeAssetData"`
-	TakerAssetAmount         *BigInt          `db:"takerAssetAmount"`
-	TakerFee                 *BigInt          `db:"takerFee"`
+	TakerAssetAmount         *SortedBigInt    `db:"takerAssetAmount"`
+	TakerFee                 *SortedBigInt    `db:"takerFee"`
 	SenderAddress            common.Address   `db:"senderAddress"`
 	FeeRecipientAddress      common.Address   `db:"feeRecipientAddress"`
-	ExpirationTimeSeconds    *BigInt          `db:"expirationTimeSeconds"`
-	Salt                     *BigInt          `db:"salt"`
+	ExpirationTimeSeconds    *SortedBigInt    `db:"expirationTimeSeconds"`
+	Salt                     *SortedBigInt    `db:"salt"`
 	Signature                []byte           `db:"signature"`
 	LastUpdated              time.Time        `db:"lastUpdated"`
-	FillableTakerAssetAmount *BigInt          `db:"fillableTakerAssetAmount"`
+	FillableTakerAssetAmount *SortedBigInt    `db:"fillableTakerAssetAmount"`
 	IsRemoved                bool             `db:"isRemoved"`
 	IsPinned                 bool             `db:"isPinned"`
 	ParsedMakerAssetData     *ParsedAssetData `db:"parsedMakerAssetData"`
@@ -195,18 +286,18 @@ func (e *EventLogs) Scan(value interface{}) error {
 }
 
 type MiniHeader struct {
-	Hash      common.Hash `db:"hash"`
-	Parent    common.Hash `db:"parent"`
-	Number    *BigInt     `db:"number"`
-	Timestamp time.Time   `db:"timestamp"`
-	Logs      *EventLogs  `db:"logs"`
+	Hash      common.Hash   `db:"hash"`
+	Parent    common.Hash   `db:"parent"`
+	Number    *SortedBigInt `db:"number"`
+	Timestamp time.Time     `db:"timestamp"`
+	Logs      *EventLogs    `db:"logs"`
 }
 
 type Metadata struct {
-	EthereumChainID                   int       `db:"ethereumChainID"`
-	MaxExpirationTime                 *BigInt   `db:"maxExpirationTime"`
-	EthRPCRequestsSentInCurrentUTCDay int       `db:"ethRPCRequestsSentInCurrentUTCDay"`
-	StartOfCurrentUTCDay              time.Time `db:"startOfCurrentUTCDay"`
+	EthereumChainID                   int           `db:"ethereumChainID"`
+	MaxExpirationTime                 *SortedBigInt `db:"maxExpirationTime"`
+	EthRPCRequestsSentInCurrentUTCDay int           `db:"ethRPCRequestsSentInCurrentUTCDay"`
+	StartOfCurrentUTCDay              time.Time     `db:"startOfCurrentUTCDay"`
 }
 
 func OrderToCommonType(order *Order) *types.OrderWithMetadata {
@@ -247,25 +338,25 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 	}
 	return &Order{
 		Hash:                     order.Hash,
-		ChainID:                  NewBigInt(order.ChainID),
+		ChainID:                  NewSortedBigInt(order.ChainID),
 		ExchangeAddress:          order.ExchangeAddress,
 		MakerAddress:             order.MakerAddress,
 		MakerAssetData:           order.MakerAssetData,
 		MakerFeeAssetData:        order.MakerFeeAssetData,
-		MakerAssetAmount:         NewBigInt(order.MakerAssetAmount),
-		MakerFee:                 NewBigInt(order.MakerFee),
+		MakerAssetAmount:         NewSortedBigInt(order.MakerAssetAmount),
+		MakerFee:                 NewSortedBigInt(order.MakerFee),
 		TakerAddress:             order.TakerAddress,
 		TakerAssetData:           order.TakerAssetData,
 		TakerFeeAssetData:        order.TakerFeeAssetData,
-		TakerAssetAmount:         NewBigInt(order.TakerAssetAmount),
-		TakerFee:                 NewBigInt(order.TakerFee),
+		TakerAssetAmount:         NewSortedBigInt(order.TakerAssetAmount),
+		TakerFee:                 NewSortedBigInt(order.TakerFee),
 		SenderAddress:            order.SenderAddress,
 		FeeRecipientAddress:      order.FeeRecipientAddress,
-		ExpirationTimeSeconds:    NewBigInt(order.ExpirationTimeSeconds),
-		Salt:                     NewBigInt(order.Salt),
+		ExpirationTimeSeconds:    NewSortedBigInt(order.ExpirationTimeSeconds),
+		Salt:                     NewSortedBigInt(order.Salt),
 		Signature:                order.Signature,
 		LastUpdated:              order.LastUpdated,
-		FillableTakerAssetAmount: NewBigInt(order.FillableTakerAssetAmount),
+		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
 		IsRemoved:                order.IsRemoved,
 		IsPinned:                 order.IsPinned,
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
@@ -349,7 +440,7 @@ func MiniHeaderFromCommonType(miniHeader *types.MiniHeader) *MiniHeader {
 	return &MiniHeader{
 		Hash:      miniHeader.Hash,
 		Parent:    miniHeader.Parent,
-		Number:    NewBigInt(miniHeader.Number),
+		Number:    NewSortedBigInt(miniHeader.Number),
 		Timestamp: miniHeader.Timestamp,
 		Logs:      NewEventLogs(miniHeader.Logs),
 	}
@@ -381,7 +472,7 @@ func MetadataFromCommonType(metadata *types.Metadata) *Metadata {
 	}
 	return &Metadata{
 		EthereumChainID:                   metadata.EthereumChainID,
-		MaxExpirationTime:                 NewBigInt(metadata.MaxExpirationTime),
+		MaxExpirationTime:                 NewSortedBigInt(metadata.MaxExpirationTime),
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}

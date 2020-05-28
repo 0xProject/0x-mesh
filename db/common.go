@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/db/sqltypes"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -148,22 +147,6 @@ func MakerAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, token
 // that include the token address and token ID in MakerFeeAssetData.
 func MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress common.Address, tokenID *big.Int) OrderFilter {
 	return assetDataIncludesTokenAddressAndTokenID(OFParsedMakerFeeAssetData, tokenAddress, tokenID)
-}
-
-func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
-	filterValueJSON, err := canonicaljson.Marshal(sqltypes.SingleAssetData{
-		Address: tokenAddress,
-		TokenID: sqltypes.NewBigInt(tokenID),
-	})
-	if err != nil {
-		// big.Int and common.Address types should never return an error when marshaling to JSON
-		panic(err)
-	}
-	return OrderFilter{
-		Field: field,
-		Kind:  Contains,
-		Value: string(filterValueJSON),
-	}
 }
 
 // MakerAssetIncludesTokenAddress is a helper method which returns a filter that will match orders

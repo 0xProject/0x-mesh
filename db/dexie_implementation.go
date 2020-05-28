@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/db/dexietypes"
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 )
 
@@ -288,4 +289,20 @@ func convertFilterValue(value interface{}) interface{} {
 		return dexietypes.NewSortedBigInt(v)
 	}
 	return value
+}
+
+func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress common.Address, tokenID *big.Int) OrderFilter {
+	filterValueJSON, err := canonicaljson.Marshal(dexietypes.SingleAssetData{
+		Address: tokenAddress,
+		TokenID: dexietypes.NewBigInt(tokenID),
+	})
+	if err != nil {
+		// big.Int and common.Address types should never return an error when marshaling to JSON
+		panic(err)
+	}
+	return OrderFilter{
+		Field: field,
+		Kind:  Contains,
+		Value: string(filterValueJSON),
+	}
 }
