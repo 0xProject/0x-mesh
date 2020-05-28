@@ -109,6 +109,9 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 }
 
 func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+	if err := checkOrderQuery(query); err != nil {
+		return nil, err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)
@@ -127,6 +130,9 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 }
 
 func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
+	if err := checkOrderQuery(query); err != nil {
+		return 0, err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)
@@ -154,6 +160,9 @@ func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 }
 
 func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithMetadata, err error) {
+	if err := checkOrderQuery(query); err != nil {
+		return nil, err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)

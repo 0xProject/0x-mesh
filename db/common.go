@@ -314,3 +314,13 @@ func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 	}
 	return singleAssetDatas, nil
 }
+
+func checkOrderQuery(query *OrderQuery) error {
+	if query == nil {
+		return nil
+	}
+	if query.Offset != 0 && query.Limit == 0 {
+		return errors.New("can't use Offset without Limit")
+	}
+	return nil
+}

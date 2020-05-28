@@ -297,6 +297,9 @@ func (db *DB) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 }
 
 func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+	if err := checkOrderQuery(opts); err != nil {
+		return nil, err
+	}
 	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("*").From("orders"), opts)
 	if err != nil {
 		return nil, err
@@ -310,6 +313,9 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 }
 
 func (db *DB) CountOrders(opts *OrderQuery) (int, error) {
+	if err := checkOrderQuery(opts); err != nil {
+		return 0, err
+	}
 	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("COUNT(*)").From("orders"), opts)
 	if err != nil {
 		return 0, err
@@ -338,9 +344,6 @@ func addOptsToSelectOrdersQuery(query *sqlz.SelectStmt, opts *OrderQuery) (*sqlz
 		query.Limit(int64(opts.Limit))
 	}
 	if opts.Offset != 0 {
-		if opts.Limit == 0 {
-			return nil, errors.New("db.FindOrders: can't use Offset without Limit")
-		}
 		query.Offset(int64(opts.Offset))
 	}
 	whereConditions, err := whereConditionsFromOrderFilterOpts(opts.Filters)
@@ -405,6 +408,9 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
 // TODO(albrow): Test deleting all orders.
 func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+	if err := checkOrderQuery(opts); err != nil {
+		return nil, err
+	}
 	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 	// for DELETE statements. It also doesn't support RETURNING. As a
 	// workaround, we do a SELECT and DELETE inside a transaction.
