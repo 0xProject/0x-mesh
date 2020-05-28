@@ -47,6 +47,9 @@ func defaultOptions() *Options {
 // New creates a new connection to the database. The connection will be automatically closed
 // when the given context is canceled.
 func New(ctx context.Context, opts *Options) (database *DB, err error) {
+	if opts != nil && opts.DriverName != "dexie" {
+		return nil, fmt.Errorf(`unexpected driver name for js/wasm: %q (only "dexie" is supported)`, opts.DriverName)
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)

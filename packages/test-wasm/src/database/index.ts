@@ -1,7 +1,7 @@
 import Dexie, { Transaction } from 'dexie';
 
 export interface Options {
-    name: string;
+    dataSourceName: string;
     maxOrders: number;
     maxMiniHeaders: number;
 }
@@ -102,7 +102,7 @@ export class Database {
     private orders: Dexie.Table<Order, string>;
 
     constructor(opts: Options) {
-        this.db = new Dexie(opts.name);
+        this.db = new Dexie(opts.dataSourceName);
         this.maxOrders = opts.maxOrders;
         this.maxMiniHeaders = opts.maxMiniHeaders;
 
@@ -323,19 +323,49 @@ export class Database {
             query.sort.length === 0
         ) {
             return col.toArray();
-        } else if (query.sort.length === 1) {
-            // TODO(albrow): As an optimization we can skip calling `sortBy`
-            // if the results of the query would already be sorted in
-            // "natural order" based on the filters.
-            if (query.sort[0].direction === SortDirection.Desc) {
-                col = col.reverse();
+        } else {
+            if (
+                (query.offset !== null && query.offset !== undefined && query.offset !== 0) ||
+                (query.limit !== null && query.limit !== undefined && query.limit !== 0)
+            ) {
+                if (
+                    query.filters === null ||
+                    query.filters === undefined ||
+                    (query.filters.length === 1 && query.filters[0].field === 'hash')
+                ) {
+                    // This is okay.
+                } else {
+                    // TODO(albrow): Technically this is allowed if and only if
+                    // there is exactly one filter, exactly one sort, and the sort
+                    // field is equal to the filter field.
+                    throw new Error('sorting by arbitrary fields with limit and offset is not supported by Dexie.js');
+                }
             }
-            return col.sortBy(query.sort[0].field);
-        }
 
-        // TODO(albrow): Dexie.js can't sort by more than one field. Looks like
-        // we have no choice but to manually sort here. This will not be fast or
-        // efficient.
-        throw new Error('sorting by multiple fields is not yet implemented');
+            // Note(albrow): Dexie.js can't sort by more than one field. Looks like
+            // we have no choice but to manually sort here. This is not fast or
+            // efficient.
+            return (await col.toArray()).sort((a: Order, b: Order) => {
+                for (const s of query.sort!) {
+                    switch (s.direction) {
+                        case SortDirection.Asc:
+                            if (a[s.field] < b[s.field]) {
+                                return -1;
+                            } else if (a[s.field] > b[s.field]) {
+                                return 1;
+                            }
+                            break;
+                        case SortDirection.Desc:
+                            if (a[s.field] > b[s.field]) {
+                                return -1;
+                            } else if (a[s.field] < b[s.field]) {
+                                return 1;
+                            }
+                            break;
+                    }
+                }
+                return 0;
+            });
+        }
     }
 }

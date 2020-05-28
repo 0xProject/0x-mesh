@@ -2216,6 +2216,9 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 func newTestDB(t *testing.T, ctx context.Context) *DB {
 	db, err := New(ctx, TestOptions())
 	require.NoError(t, err)
+	count, err := db.CountOrders(nil)
+	require.NoError(t, err)
+	require.Equal(t, count, 0, "there should be no orders stored in a brand new database")
 	return db
 }
 
