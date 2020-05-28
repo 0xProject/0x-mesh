@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-browser",
-    "version": "9.3.0",
+    "version": "9.4.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser.",
     "main": "./lib/index.js",
     "license": "Apache-2.0",
@@ -8,6 +8,7 @@
         "build": "yarn build:go && yarn build:generate && yarn build:ts && yarn build:bundle",
         "build:bundle": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
         "build:ts": "tsc -b",
+        "clean": "shx rm -r ./lib && shx rm tsconfig.tsbuildinfo || exit 0",
         "watch:ts": "tsc -b -w",
         "build:generate": "INPUT_PATH=./wasm/main.wasm OUTPUT_PATH=./src/generated/wasm_buffer.ts go run ./scripts/generate_wasm_buffer.go",
         "build:go": "yarn build:go:main && yarn build:go:conversion-test",
@@ -20,7 +21,7 @@
         "docsPath": "../../docs/browser-bindings/browser"
     },
     "dependencies": {
-        "@0x/mesh-browser-lite": "^9.3.0",
+        "@0x/mesh-browser-lite": "^9.4.0",
         "base64-arraybuffer": "^0.2.0",
         "browserfs": "^1.4.3",
         "ethereum-types": "^3.0.0"
@@ -32,6 +33,7 @@
         "@types/base64-arraybuffer": "^0.1.0",
         "ignore-loader": "^0.1.2",
         "prettier": "^1.19.1",
+        "shx": "^0.3.2",
         "ts-loader": "^6.2.1",
         "tslint": "5.11.0",
         "typedoc": "^0.15.0",

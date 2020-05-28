@@ -280,7 +280,7 @@ export class WSClient {
      */
     public async addOrdersAsync(signedOrders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         assert.isArray('signedOrders', signedOrders);
-        const rawValidationResults: RawValidationResults = await (this._wsProvider as any).send('mesh_addOrders', [
+        const rawValidationResults: RawValidationResults = await this._wsProvider.send('mesh_addOrders', [
             signedOrders,
             { pinned },
         ]);
@@ -393,7 +393,7 @@ export class WSClient {
     public async unsubscribeAsync(subscriptionId: string): Promise<void> {
         assert.isString('subscriptionId', subscriptionId);
         const meshSubscriptionId = this._subscriptionIdToMeshSpecificId[subscriptionId];
-        await (this._wsProvider as any).send('mesh_unsubscribe', [meshSubscriptionId]);
+        await this._wsProvider.send('mesh_unsubscribe', [meshSubscriptionId]);
     }
     /**
      * Get notified when the underlying WS connection closes normally. If it closes with an
@@ -410,7 +410,7 @@ export class WSClient {
      * @param cb callback to call with the error when it occurs
      */
     public onReconnected(cb: () => void): void {
-        (this._wsProvider as any).on('reconnected', () => {
+        this._wsProvider.on('reconnected', () => {
             cb();
         });
     }
@@ -421,7 +421,7 @@ export class WSClient {
     public destroy(): void {
         clearInterval(this._heartbeatCheckIntervalId);
         this._wsProvider.clearSubscriptions('mesh_unsubscribe');
-        (this._wsProvider as any).disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
+        this._wsProvider.disconnect(WebSocket.connection.CLOSE_REASON_NORMAL, 'Normal connection closure');
     }
     /**
      * Subscribe to the 'heartbeat' topic and receive an ack from the Mesh every 5 seconds. This method

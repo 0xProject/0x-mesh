@@ -12,6 +12,7 @@
         "build": "wsrun --stages --fast-exit --exclude-missing build $PKG",
         "build:ts": "tsc -b",
         "watch:ts": "tsc -b -w",
+        "clean": "wsrun --fast-exit --exclude-missing clean $PKG",
         "docs:md": "wsrun --fast-exit --exclude-missing docs:md $PKG",
         "lint": "wsrun lint $PKG",
         "test": "wsrun --fast-exit --exclude-missing test $PKG "

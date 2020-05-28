@@ -16,7 +16,7 @@ gobin:
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
 wasmbrowsertest: gobin
-	gobin github.com/agnivade/wasmbrowsertest@v0.3.0
+	gobin github.com/0xProject/wasmbrowsertest@mesh-fork
 
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
@@ -30,11 +30,11 @@ deps-ts-no-lockfile:
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-node test-wasm-browser test-ts
+test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser-integration
 
 
 .PHONY: test-go
-test-go: test-go-parallel test-go-serial test-browser-conversion
+test-go: test-go-parallel test-go-serial
 
 
 .PHONY: test-go-parallel
@@ -46,22 +46,20 @@ test-go-parallel:
 test-go-serial:
 	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial
 
+
 .PHONY: test-browser-integration
 test-browser-integration:
 	go test ./integration-tests -timeout 185s --enable-browser-integration-tests -run BrowserIntegration
+
 
 .PHONY: test-browser-conversion
 test-browser-conversion:
 	go test ./packages/browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
 
-.PHONY: test-wasm-node
-test-wasm-node:
-	export ZEROEX_MESH_ROOT_DIR=$$(pwd); GOOS=js GOARCH=wasm go test -exec="$$ZEROEX_MESH_ROOT_DIR/test-wasm/go_js_wasm_exec" ./...
-
 
 .PHONY: test-wasm-browser
 test-wasm-browser:
-	GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+	WASM_INIT_FILE="$$(pwd)/packages/test-wasm/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
 
 
 .PHONY: test-ts
@@ -128,6 +126,7 @@ docker-mesh-bootstrap:
 .PHONY: docker-mesh-fluent-bit
 docker-mesh-fluent-bit:
 	docker build ./dockerfiles/mesh-fluent-bit -t 0xorg/mesh-fluent-bit -f ./dockerfiles/mesh-fluent-bit/Dockerfile
+
 
 .PHONY: docker-mesh-bridge
 docker-mesh-bridge:
