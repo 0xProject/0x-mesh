@@ -17,6 +17,7 @@ import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMess
 
 import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
 import { MeshDeployment, startServerAndClientAsync } from './utils/ws_server';
+import { assert } from '@0x/assert';
 
 blockchainTests.resets('WSClient', env => {
     describe('integration tests', () => {
@@ -185,9 +186,7 @@ blockchainTests.resets('WSClient', env => {
                 const now = new Date(Date.now()).getTime();
                 const perPage = ordersLength / 2;
                 const response = await deployment.client.getOrdersAsync(perPage);
-                assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
-                // Verify that snapshot ID in the response meets the expected schema.
-                expect(uuidValidate(response.snapshotID)).to.be.true();
+                assertRoughlyEquals(now, response.timestamp * secondsToMs(1), secondsToMs(2));
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the `getOrders` rpc response
@@ -211,19 +210,17 @@ blockchainTests.resets('WSClient', env => {
                 // timestamp is approximately equal (within 1 second) because the server
                 // will receive the request slightly after it is sent.
                 const now = new Date(Date.now()).getTime();
-                let page = 0;
                 const perPage = 5;
                 // First request for page index 0
-                let response = await deployment.client.getOrdersForPageAsync(page, perPage);
-                assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
-                expect(uuidValidate(response.snapshotID)).to.be.true();
+                let response = await deployment.client.getOrdersForPageAsync(perPage);
+                assertRoughlyEquals(now, response.timestamp * secondsToMs(1), secondsToMs(2));
 
                 let responseOrders = response.ordersInfos;
+                expect(responseOrders.length).to.be.eq(perPage);
+                const nextMinOrderHash = responseOrders[responseOrders.length - 1].orderHash;
 
                 // Second request for page index 1
-                page = 1;
-                response = await deployment.client.getOrdersForPageAsync(page, perPage, response.snapshotID);
-                expect(uuidValidate(response.snapshotID)).to.be.true();
+                response = await deployment.client.getOrdersForPageAsync(perPage, nextMinOrderHash);
 
                 // Combine orders found in first and second paginated requests
                 responseOrders = [...responseOrders, ...response.ordersInfos];

@@ -231,17 +231,14 @@ export class Mesh {
 
         // TODO(albrow): De-dupe this code with the method by the same name
         // in the TypeScript RPC client.
-        let page = 0;
-        let getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
-        snapshotID = getOrdersResponse.snapshotID;
+        let getOrdersResponse = await this.getOrdersForPageAsync(perPage);
         let ordersInfos = getOrdersResponse.ordersInfos;
-
         let allOrderInfos: OrderInfo[] = [];
 
         do {
             allOrderInfos = [...allOrderInfos, ...ordersInfos];
-            page++;
-            getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+            const minOrderHash = ordersInfos[ordersInfos.length - 1].orderHash;
+            getOrdersResponse = await this.getOrdersForPageAsync(perPage, minOrderHash);
             ordersInfos = getOrdersResponse.ordersInfos;
         } while (ordersInfos.length > 0);
 
@@ -255,12 +252,11 @@ export class Mesh {
 
     /**
      * Get page of 0x signed orders stored on the Mesh node at the specified snapshot
-     * @param page Page index at which to retrieve orders
      * @param perPage Number of signedOrders to fetch per paginated request
-     * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
-     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     * @param minOrderHash The minimum order hash for the returned orders. Should be set based on the last hash from the previous response.
+     * @returns Up to perPage orders with hash greater than minOrderHash, including order hashes and fillableTakerAssetAmounts
      */
-    public async getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse> {
+    public async getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<GetOrdersResponse> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
@@ -269,7 +265,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
 
-        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(page, perPage, snapshotID);
+        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(perPage, minOrderHash);
         return wrapperGetOrdersResponseToGetOrdersResponse(wrapperOrderResponse);
     }
 

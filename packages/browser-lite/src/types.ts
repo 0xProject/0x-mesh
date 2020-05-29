@@ -231,7 +231,7 @@ export interface MeshWrapper {
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
     getStatsAsync(): Promise<WrapperStats>;
-    getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<WrapperGetOrdersResponse>;
+    getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
