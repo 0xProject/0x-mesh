@@ -6,6 +6,24 @@ export interface Options {
     maxMiniHeaders: number;
 }
 
+export interface Query<FieldType> {
+    filters?: FilterOption<FieldType>[];
+    sort?: SortOption<FieldType>[];
+    limit?: number;
+    offset?: number;
+}
+
+export interface SortOption<FieldType> {
+    field: FieldType;
+    direction: SortDirection;
+}
+
+export interface FilterOption<FieldType> {
+    field: FieldType;
+    kind: FilterKind;
+    value: any;
+}
+
 export enum SortDirection {
     Asc = 'ASC',
     Desc = 'DESC',
@@ -50,23 +68,11 @@ export interface Order {
 
 export type OrderField = keyof Order;
 
-export interface OrderQuery {
-    filters?: OrderFilter[];
-    sort?: OrderSort[];
-    limit?: number;
-    offset?: number;
-}
+export type OrderQuery = Query<OrderField>;
 
-export interface OrderSort {
-    field: OrderField;
-    direction: SortDirection;
-}
+export type OrderSort = SortOption<OrderField>;
 
-export interface OrderFilter {
-    field: OrderField;
-    kind: FilterKind;
-    value: any;
-}
+export type OrderFilter = FilterOption<OrderField>;
 
 export interface AddOrdersResult {
     added: Order[];
@@ -74,12 +80,20 @@ export interface AddOrdersResult {
 }
 
 export interface MiniHeader {
-    // TODO(albrow): define this
+    hash: string;
+    parent: string;
+    number: string;
+    timestamp: string;
+    logs: string;
 }
 
-export interface MiniHeaderQuery {
-    // TODO(albrow): define this
-}
+export type MiniHeaderField = keyof MiniHeader;
+
+export type MiniHeaderQuery = Query<MiniHeaderField>;
+
+export type MiniHeaderSort = SortOption<MiniHeaderField>;
+
+export type MiniHeaderFilter = FilterOption<MiniHeaderField>;
 
 export interface AddMiniHeadersResult {
     added: MiniHeader[];
@@ -100,6 +114,7 @@ export class Database {
     private maxOrders: number;
     private maxMiniHeaders: number;
     private orders: Dexie.Table<Order, string>;
+    private miniHeaders: Dexie.Table<MiniHeader, string>;
 
     constructor(opts: Options) {
         this.db = new Dexie(opts.dataSourceName);
@@ -110,18 +125,19 @@ export class Database {
             // TODO(albrow): Add more indexes. https://dexie.org/docs/Version/Version.stores()
             orders:
                 '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData',
-            miniheaders: '&hash',
+            miniHeaders: '&hash,parent,number,timestamp,logs',
             metadata: '',
         });
 
         this.orders = this.db.table('orders');
+        this.miniHeaders = this.db.table('miniHeaders');
     }
 
     // AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
     public async addOrdersAsync(orders: Order[]): Promise<AddOrdersResult> {
         // TODO(albrow): Remove orders with max expiration time.
         const added: Order[] = [];
-        await this.db.transaction('rw', this.orders, async (txn: Transaction) => {
+        await this.db.transaction('rw', this.orders, async () => {
             for (const order of orders) {
                 try {
                     await this.orders.add(order);
@@ -198,7 +214,37 @@ export class Database {
 
     // AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
     public async addMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<AddMiniHeadersResult> {
-        return Promise.reject('not yet implemented');
+        // TODO(albrow): Remove miniHeaders after exceeding maxMiniHeaders
+        const added: MiniHeader[] = [];
+        const removed: MiniHeader[] = [];
+        await this.db.transaction('rw', this.miniHeaders, async () => {
+            for (const miniHeader of miniHeaders) {
+                try {
+                    await this.miniHeaders.add(miniHeader);
+                } catch (e) {
+                    if (e.name === 'ConstraintError') {
+                        // A miniHeader with this hash already exists. This is fine based on the semantics of
+                        // addMiniHeaders.
+                        continue;
+                    }
+                    throw e;
+                }
+                added.push(miniHeader);
+                const outdatedMiniHeaders = await this.miniHeaders
+                    .orderBy('number')
+                    .offset(this.maxMiniHeaders)
+                    .reverse()
+                    .toArray();
+                for (const outdated of outdatedMiniHeaders) {
+                    await this.miniHeaders.delete(outdated.hash);
+                    removed.push(outdated);
+                }
+            }
+        });
+        return {
+            added,
+            removed,
+        };
     }
 
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)

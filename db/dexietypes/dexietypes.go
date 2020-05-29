@@ -150,24 +150,12 @@ type Order struct {
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 }
 
-// EventLogs is a wrapper around []*ethtypes.Log that implements the
-// sql.Valuer and sql.Scanner interfaces.
-type EventLogs struct {
-	Logs []ethtypes.Log
-}
-
-func NewEventLogs(logs []ethtypes.Log) *EventLogs {
-	return &EventLogs{
-		Logs: logs,
-	}
-}
-
 type MiniHeader struct {
 	Hash      common.Hash   `json:"hash"`
 	Parent    common.Hash   `json:"parent"`
 	Number    *SortedBigInt `json:"number"`
 	Timestamp time.Time     `json:"timestamp"`
-	Logs      *EventLogs    `json:"logs"`
+	Logs      string        `json:"logs"`
 }
 
 type Metadata struct {
@@ -316,7 +304,7 @@ func MiniHeaderToCommonType(miniHeader *MiniHeader) *types.MiniHeader {
 		Parent:    miniHeader.Parent,
 		Number:    miniHeader.Number.Int,
 		Timestamp: miniHeader.Timestamp,
-		Logs:      miniHeader.Logs.Logs,
+		Logs:      EventLogsToCommonType(miniHeader.Logs),
 	}
 }
 
@@ -329,7 +317,7 @@ func MiniHeaderFromCommonType(miniHeader *types.MiniHeader) *MiniHeader {
 		Parent:    miniHeader.Parent,
 		Number:    NewSortedBigInt(miniHeader.Number),
 		Timestamp: miniHeader.Timestamp,
-		Logs:      NewEventLogs(miniHeader.Logs),
+		Logs:      EventLogsFromCommonType(miniHeader.Logs),
 	}
 }
 
@@ -339,6 +327,25 @@ func MiniHeadersToCommonType(miniHeaders []*MiniHeader) []*types.MiniHeader {
 		result[i] = MiniHeaderToCommonType(miniHeader)
 	}
 	return result
+}
+
+func MiniHeadersFromCommonType(miniHeaders []*types.MiniHeader) []*MiniHeader {
+	result := make([]*MiniHeader, len(miniHeaders))
+	for i, miniHeader := range miniHeaders {
+		result[i] = MiniHeaderFromCommonType(miniHeader)
+	}
+	return result
+}
+
+func EventLogsToCommonType(eventLogs string) []ethtypes.Log {
+	var result []ethtypes.Log
+	_ = json.Unmarshal([]byte(eventLogs), &result)
+	return result
+}
+
+func EventLogsFromCommonType(eventLogs []ethtypes.Log) string {
+	result, _ := json.Marshal(eventLogs)
+	return string(result)
 }
 
 func MetadataToCommonType(metadata *Metadata) *types.Metadata {
