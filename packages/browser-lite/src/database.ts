@@ -1,4 +1,4 @@
-import Dexie, { Transaction } from 'dexie';
+import Dexie from 'dexie';
 
 export type Record = Order | MiniHeader | Metadata;
 
@@ -115,6 +115,10 @@ function newNotFoundError(): Error {
 
 function newMetadataAlreadExistsError(): Error {
     return new Error('metadata already exists in the database (use UpdateMetadata instead?)');
+}
+
+export function createDatabase(opts: Options): Database {
+    return new Database(opts);
 }
 
 // TODO(albrow): Implement remaining methods.
@@ -268,7 +272,6 @@ export class Database {
     // FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
         const collection = this.prepareQuery(this.miniHeaders, query);
-        console.log(collection === undefined);
         return this.runQueryAsync(this.miniHeaders, collection, query);
     }
 

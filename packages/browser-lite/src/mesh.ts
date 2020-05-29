@@ -1,7 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
-import * as BrowserFS from 'browserfs';
 
 import { createSchemaValidator } from './schema_validator';
+import { createDatabase } from './database';
 import './wasm_exec';
 
 export { SignedOrder } from '@0x/order-utils';
@@ -96,27 +96,9 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
-// We use the global willLoadBrowserFS variable to signal that we are going to
-// initialize BrowserFS.
-(window as any).willLoadBrowserFS = true;
-
-BrowserFS.configure(
-    {
-        fs: 'IndexedDB',
-        options: {
-            storeName: '0x-mesh-db',
-        },
-    },
-    e => {
-        if (e) {
-            throw e;
-        }
-        // We use the global browserFS variable as a handle for Go/Wasm code to
-        // call into the BrowserFS API. Setting this variable also indicates
-        // that BrowserFS has finished loading.
-        (window as any).browserFS = BrowserFS.BFSRequire('fs');
-    },
-);
+(window as any).createSchemaValidator = createSchemaValidator;
+console.log('setting Dexie.js global');
+(window as any).__mesh_dexie_newDatabase__ = createDatabase;
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
@@ -127,8 +109,6 @@ const loadEventName = '0xmeshload';
 window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
-
-(window as any).createSchemaValidator = createSchemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
@@ -148,6 +128,7 @@ export class Mesh {
      * @return  An instance of Mesh
      */
     constructor(config: Config) {
+        console.log('inside Mesh constructor');
         this._config = config;
     }
 

@@ -268,13 +268,7 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	}
 
 	// Initialize db
-	databasePath := filepath.Join(config.DataDir, "sqlite-db", "db.sqlite")
-	// TOOD(albrow): Create and pass through context.
-	database, err := db.New(context.TODO(), &db.Options{
-		DriverName:     "sqlite3",
-		DataSourceName: databasePath,
-		MaxOrders:      config.MaxOrdersInStorage,
-	})
+	database, err := newDB(config)
 	if err != nil {
 		return nil, err
 	}
