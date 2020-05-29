@@ -3,12 +3,13 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
-	// This dependency is located on the `wasm_signer_core_4` branch.
+	// https://github.com/0xProject/go-ethereum/tree/wasm_signer_core_4
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200529225138-6a74e8575db2
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
 	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39
 	github.com/plaid/go-envvar => github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7
+	// https://github.com/0xProject/goleveldb/tree/full-wasm-support-0x-1
 	github.com/syndtr/goleveldb => github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c
 )
 
