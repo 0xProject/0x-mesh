@@ -33,7 +33,7 @@ func localStorageReadFile(path string) (data []byte, err error) {
 	}()
 	key := getKey(path)
 	rawData := js.Global().Get("localStorage").Call("getItem", key)
-	if rawData == js.Undefined() || rawData == js.Null() {
+	if rawData.Equal(js.Undefined()) || rawData.Equal(js.Null()) {
 		return nil, os.ErrNotExist
 	}
 	return base64.StdEncoding.DecodeString(rawData.String())
@@ -74,7 +74,7 @@ func localStorageWriteFile(path string, data []byte) (err error) {
 // isLocalStorageSupported returns true if localStorage is supported. It does
 // this by checking for the global "localStorage" object.
 func isLocalStorageSupported() bool {
-	return js.Global().Get("localStorage") != js.Null() && js.Global().Get("localStorage") != js.Undefined()
+	return !js.Global().Get("localStorage").Equal(js.Null()) && !js.Global().Get("localStorage").Equal(js.Undefined())
 }
 
 func convertRecoverErr(e interface{}) error {
