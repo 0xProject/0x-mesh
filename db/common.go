@@ -186,21 +186,21 @@ const (
 )
 
 type MiniHeaderQuery struct {
-	Filters []MiniHeaderFilter
-	Sort    []MiniHeaderSort
-	Limit   uint
-	Offset  uint
+	Filters []MiniHeaderFilter `json:"filters"`
+	Sort    []MiniHeaderSort   `json:"sort"`
+	Limit   uint               `json:"limit"`
+	Offset  uint               `json:"offset"`
 }
 
 type MiniHeaderSort struct {
-	Field     MiniHeaderField
-	Direction SortDirection
+	Field     MiniHeaderField `json:"field"`
+	Direction SortDirection   `json:"direction"`
 }
 
 type MiniHeaderFilter struct {
-	Field MiniHeaderField
-	Kind  FilterKind
-	Value interface{}
+	Field MiniHeaderField `json:"field"`
+	Kind  FilterKind      `json:"kind"`
+	Value interface{}     `json:"value"`
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
@@ -299,6 +299,16 @@ func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 }
 
 func checkOrderQuery(query *OrderQuery) error {
+	if query == nil {
+		return nil
+	}
+	if query.Offset != 0 && query.Limit == 0 {
+		return errors.New("can't use Offset without Limit")
+	}
+	return nil
+}
+
+func checkMiniHeaderQuery(query *MiniHeaderQuery) error {
 	if query == nil {
 		return nil
 	}

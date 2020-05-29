@@ -20,3 +20,11 @@ func (query *OrderQuery) JSValue() js.Value {
 	value, _ := jsutil.InefficientlyConvertToJS(query)
 	return value
 }
+
+func (query *MiniHeaderQuery) JSValue() js.Value {
+	if query == nil {
+		return js.Null()
+	}
+	value, _ := jsutil.InefficientlyConvertToJS(query)
+	return value
+}

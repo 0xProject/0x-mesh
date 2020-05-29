@@ -1,25 +1,27 @@
 import Dexie, { Transaction } from 'dexie';
 
+export type Record = Order | MiniHeader | Metadata;
+
 export interface Options {
     dataSourceName: string;
     maxOrders: number;
     maxMiniHeaders: number;
 }
 
-export interface Query<FieldType> {
-    filters?: FilterOption<FieldType>[];
-    sort?: SortOption<FieldType>[];
+export interface Query<T extends Record> {
+    filters?: FilterOption<T>[];
+    sort?: SortOption<T>[];
     limit?: number;
     offset?: number;
 }
 
-export interface SortOption<FieldType> {
-    field: FieldType;
+export interface SortOption<T extends Record> {
+    field: Extract<keyof T, string>;
     direction: SortDirection;
 }
 
-export interface FilterOption<FieldType> {
-    field: FieldType;
+export interface FilterOption<T extends Record> {
+    field: Extract<keyof T, string>;
     kind: FilterKind;
     value: any;
 }
@@ -68,11 +70,11 @@ export interface Order {
 
 export type OrderField = keyof Order;
 
-export type OrderQuery = Query<OrderField>;
+export type OrderQuery = Query<Order>;
 
-export type OrderSort = SortOption<OrderField>;
+export type OrderSort = SortOption<Order>;
 
-export type OrderFilter = FilterOption<OrderField>;
+export type OrderFilter = FilterOption<Order>;
 
 export interface AddOrdersResult {
     added: Order[];
@@ -89,11 +91,11 @@ export interface MiniHeader {
 
 export type MiniHeaderField = keyof MiniHeader;
 
-export type MiniHeaderQuery = Query<MiniHeaderField>;
+export type MiniHeaderQuery = Query<MiniHeader>;
 
-export type MiniHeaderSort = SortOption<MiniHeaderField>;
+export type MiniHeaderSort = SortOption<MiniHeader>;
 
-export type MiniHeaderFilter = FilterOption<MiniHeaderField>;
+export type MiniHeaderFilter = FilterOption<MiniHeader>;
 
 export interface AddMiniHeadersResult {
     added: MiniHeader[];
@@ -169,13 +171,13 @@ export class Database {
 
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
-        const collection = this.prepareOrderQuery(query);
-        return this.runQueryAsync(query, collection);
+        const collection = this.prepareQuery(this.orders, query);
+        return this.runQueryAsync(this.orders, collection, query);
     }
 
     // CountOrders(opts *OrderQuery) (int, error)
     public async countOrdersAsync(query: OrderQuery): Promise<number> {
-        const collection = this.prepareOrderQuery(query);
+        const collection = this.prepareQuery(this.orders, query);
         return collection.count();
     }
 
@@ -214,7 +216,6 @@ export class Database {
 
     // AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
     public async addMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<AddMiniHeadersResult> {
-        // TODO(albrow): Remove miniHeaders after exceeding maxMiniHeaders
         const added: MiniHeader[] = [];
         const removed: MiniHeader[] = [];
         await this.db.transaction('rw', this.miniHeaders, async () => {
@@ -249,22 +250,39 @@ export class Database {
 
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
     public async getMiniHeaderAsync(hash: string): Promise<MiniHeader> {
-        return Promise.reject('not yet implemented');
+        const miniHeader = await this.miniHeaders.get(hash);
+        if (miniHeader === undefined) {
+            throw newNotFoundError();
+        }
+        return miniHeader;
     }
 
     // FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
-        return Promise.reject('not yet implemented');
+        const collection = this.prepareQuery(this.miniHeaders, query);
+        console.log(collection === undefined);
+        return this.runQueryAsync(this.miniHeaders, collection, query);
     }
 
     // DeleteMiniHeader(hash common.Hash) error
     public async deleteMiniHeaderAsync(hash: string): Promise<void> {
-        return Promise.reject('not yet implemented');
+        return this.miniHeaders.delete(hash);
     }
 
     // DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async deleteMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
-        return Promise.reject('not yet implemented');
+        const deletedMiniHeaders: MiniHeader[] = [];
+        await this.db.transaction('rw', this.miniHeaders, async () => {
+            // TODO(albrow): Pay special attention to this code and make sure it works.
+            // Behavior of Dexie.js regarding transactions and function scope is a little
+            // too complicated/magical.
+            const miniHeaders = await this.findMiniHeadersAsync(query);
+            for (const miniHeader of miniHeaders) {
+                await this.miniHeaders.delete(miniHeader.hash);
+                deletedMiniHeaders.push(miniHeader);
+            }
+        });
+        return deletedMiniHeaders;
     }
 
     // GetMetadata() (*types.Metadata, error)
@@ -282,39 +300,40 @@ export class Database {
         return Promise.reject('not yet implemented');
     }
 
-    prepareOrderQuery(query: OrderQuery | undefined): Dexie.Collection<Order, string> {
+    prepareQuery<T extends Record, Key>(table: Dexie.Table<T, Key>, query?: Query<T>): Dexie.Collection<T, Key> {
         if (query === null || query === undefined) {
-            return this.orders.toCollection();
+            return table.toCollection();
         }
-        var col: Dexie.Collection;
+        var col: Dexie.Collection<T, Key>;
         if (query.filters !== undefined && query.filters !== null && query.filters.length > 0) {
+            console.log('at least one filter');
             const firstFilter = query.filters[0];
-            switch (query.filters[0].kind) {
+            switch (firstFilter.kind) {
                 case FilterKind.Equal:
-                    col = this.orders.where(firstFilter.field).equals(firstFilter.value);
+                    col = table.where(firstFilter.field).equals(firstFilter.value);
                     break;
                 case FilterKind.NotEqual:
-                    col = this.orders.where(firstFilter.field).notEqual(firstFilter.value);
+                    col = table.where(firstFilter.field).notEqual(firstFilter.value);
                     break;
                 case FilterKind.Greater:
-                    col = this.orders.where(firstFilter.field).above(firstFilter.value);
+                    col = table.where(firstFilter.field).above(firstFilter.value);
                     break;
                 case FilterKind.GreaterOrEqual:
-                    col = this.orders.where(firstFilter.field).aboveOrEqual(firstFilter.value);
+                    col = table.where(firstFilter.field).aboveOrEqual(firstFilter.value);
                     break;
                 case FilterKind.Less:
-                    col = this.orders.where(firstFilter.field).below(firstFilter.value);
+                    col = table.where(firstFilter.field).below(firstFilter.value);
                     break;
                 case FilterKind.LessOrEqual:
-                    col = this.orders.where(firstFilter.field).belowOrEqual(firstFilter.value);
+                    col = table.where(firstFilter.field).belowOrEqual(firstFilter.value);
                     break;
                 case FilterKind.Contains:
                     // TODO(albrow): This iterates through all orders and is very inefficient.
-                    // Is there a way to optimize this?
-                    col = this.orders.filter(order => {
-                        return order[firstFilter.field].toString().includes(firstFilter.value);
-                    });
+                    // Is there a way to optimize this?)
+                    col = table.filter(containsFilterFunc(firstFilter));
                     break;
+                default:
+                    throw new Error(`unexpected filter kind: ${firstFilter.kind}`);
             }
             if (query.filters.length > 1) {
                 // TODO(albrow): Dexie.js does not support multiple where conditions. We have to
@@ -323,33 +342,31 @@ export class Database {
                 query.filters.slice(1).forEach(filter => {
                     switch (filter.kind) {
                         case FilterKind.Equal:
-                            col.and(order => order[filter.field] === filter.value);
+                            col.and(record => record[filter.field] === filter.value);
                             break;
                         case FilterKind.NotEqual:
-                            col.and(order => order[filter.field] !== filter.value);
+                            col.and(record => record[filter.field] !== filter.value);
                             break;
                         case FilterKind.Greater:
-                            col.and(order => order[filter.field] > filter.value);
+                            col.and(record => record[filter.field] > filter.value);
                             break;
                         case FilterKind.GreaterOrEqual:
-                            col.and(order => order[filter.field] >= filter.value);
+                            col.and(record => record[filter.field] >= filter.value);
                             break;
                         case FilterKind.Less:
-                            col.and(order => order[filter.field] < filter.value);
+                            col.and(record => record[filter.field] < filter.value);
                             break;
                         case FilterKind.LessOrEqual:
-                            col.and(order => order[filter.field] <= filter.value);
+                            col.and(record => record[filter.field] <= filter.value);
                             break;
                         case FilterKind.Contains:
-                            col.and(order => {
-                                return order[filter.field].toString().includes(filter.value);
-                            });
+                            col.and(containsFilterFunc(filter));
                             break;
                     }
                 });
             }
         } else {
-            col = this.orders.toCollection();
+            col = table.toCollection();
         }
         if (query.offset !== undefined && query.offset !== 0) {
             col.offset(query.offset);
@@ -360,7 +377,11 @@ export class Database {
         return col;
     }
 
-    async runQueryAsync(query: OrderQuery | undefined, col: Dexie.Collection<Order, string>): Promise<Order[]> {
+    async runQueryAsync<T extends Record, Key>(
+        table: Dexie.Table<T, Key>,
+        col: Dexie.Collection<T, Key>,
+        query?: Query<T>,
+    ): Promise<T[]> {
         if (
             query === null ||
             query === undefined ||
@@ -377,7 +398,7 @@ export class Database {
                 if (
                     query.filters === null ||
                     query.filters === undefined ||
-                    (query.filters.length === 1 && query.filters[0].field === 'hash')
+                    (query.filters.length === 1 && query.filters[0].field === table.schema.primKey.keyPath)
                 ) {
                     // This is okay.
                 } else {
@@ -391,7 +412,7 @@ export class Database {
             // Note(albrow): Dexie.js can't sort by more than one field. Looks like
             // we have no choice but to manually sort here. This is not fast or
             // efficient.
-            return (await col.toArray()).sort((a: Order, b: Order) => {
+            return (await col.toArray()).sort((a: T, b: T) => {
                 for (const s of query.sort!) {
                     switch (s.direction) {
                         case SortDirection.Asc:
@@ -414,4 +435,20 @@ export class Database {
             });
         }
     }
+}
+
+function isString(x: any): x is string {
+    return typeof x === 'string';
+}
+
+function containsFilterFunc<T extends Record>(filter: FilterOption<T>): (record: T) => boolean {
+    return (record: T): boolean => {
+        const field = record[filter.field];
+        if (!isString(field)) {
+            throw new Error(
+                `cannot use CONTAINS filter on non-string field ${filter.field} of type ${typeof record[filter.field]}`,
+            );
+        }
+        return field.includes(filter.value);
+    };
 }

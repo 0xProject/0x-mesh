@@ -242,20 +242,76 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	return dexietypes.MiniHeadersToCommonType(dexieAdded), dexietypes.MiniHeadersToCommonType(dexieRemoved), nil
 }
 
-func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
-	return nil, errors.New("not yet implemented")
+func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	jsMiniHeader, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getMiniHeaderAsync", hash.Hex()))
+	if err != nil {
+		return nil, convertJSError(err)
+	}
+	var dexieMiniHeader dexietypes.MiniHeader
+	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeader, &dexieMiniHeader); err != nil {
+		return nil, err
+	}
+	return dexietypes.MiniHeaderToCommonType(&dexieMiniHeader), nil
 }
 
-func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
-	return nil, errors.New("not yet implemented")
+func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.MiniHeader, err error) {
+	if err := checkMiniHeaderQuery(query); err != nil {
+		return nil, err
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	query = formatMiniHeaderQuery(query)
+	jsMiniHeaders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("findMiniHeadersAsync", query))
+	if err != nil {
+		return nil, convertJSError(err)
+	}
+	var dexieMiniHeaders []*dexietypes.MiniHeader
+	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeaders, &dexieMiniHeaders); err != nil {
+		return nil, err
+	}
+	return dexietypes.MiniHeadersToCommonType(dexieMiniHeaders), nil
 }
 
-func (db *DB) DeleteMiniHeader(hash common.Hash) error {
-	return errors.New("not yet implemented")
+func (db *DB) DeleteMiniHeader(hash common.Hash) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	_, jsErr := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteMiniHeaderAsync", hash.Hex()))
+	if jsErr != nil {
+		return convertJSError(jsErr)
+	}
+	return nil
 }
 
-func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
-	return nil, errors.New("not yet implemented")
+func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHeader, err error) {
+	if err := checkMiniHeaderQuery(query); err != nil {
+		return nil, err
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	query = formatMiniHeaderQuery(query)
+	jsMiniHeaders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteMiniHeadersAsync", query))
+	if err != nil {
+		return nil, convertJSError(err)
+	}
+	var dexieMiniHeaders []*dexietypes.MiniHeader
+	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeaders, &dexieMiniHeaders); err != nil {
+		return nil, err
+	}
+	return dexietypes.MiniHeadersToCommonType(dexieMiniHeaders), nil
 }
 
 func (db *DB) GetMetadata() (*types.Metadata, error) {
@@ -300,6 +356,16 @@ func convertJSError(e error) error {
 }
 
 func formatOrderQuery(query *OrderQuery) *OrderQuery {
+	if query == nil {
+		return nil
+	}
+	for i, filter := range query.Filters {
+		query.Filters[i].Value = convertFilterValue(filter.Value)
+	}
+	return query
+}
+
+func formatMiniHeaderQuery(query *MiniHeaderQuery) *MiniHeaderQuery {
 	if query == nil {
 		return nil
 	}
