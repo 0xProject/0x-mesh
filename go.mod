@@ -4,7 +4,7 @@ go 1.14
 
 replace (
 	// This dependency is located on the `wasm_signer_core_4` branch.
-	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200528180959-6d9fc754ff10
+	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200529225138-6a74e8575db2
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
 	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39
@@ -39,7 +39,7 @@ require (
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-conn-security v0.1.0
+	github.com/libp2p/go-conn-security v0.1.0 // indirect
 	github.com/libp2p/go-libp2p v0.5.1
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.4
@@ -49,7 +49,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.5.0
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-protocol v0.1.0
+	github.com/libp2p/go-libp2p-protocol v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.2.5
 	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-maddr-filter v0.0.5
