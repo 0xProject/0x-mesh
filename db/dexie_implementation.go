@@ -314,16 +314,67 @@ func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHe
 	return dexietypes.MiniHeadersToCommonType(dexieMiniHeaders), nil
 }
 
-func (db *DB) GetMetadata() (*types.Metadata, error) {
-	return nil, errors.New("not yet implemented")
+func (db *DB) GetMetadata() (metadata *types.Metadata, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	jsMetadata, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getMetadataAsync"))
+	if err != nil {
+		return nil, convertJSError(err)
+	}
+	var dexieMetadata dexietypes.Metadata
+	if err := jsutil.InefficientlyConvertFromJS(jsMetadata, &dexieMetadata); err != nil {
+		return nil, err
+	}
+	return dexietypes.MetadataToCommonType(&dexieMetadata), nil
 }
 
-func (db *DB) SaveMetadata(metadata *types.Metadata) error {
-	return errors.New("not yet implemented")
+func (db *DB) SaveMetadata(metadata *types.Metadata) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	dexieMetadata := dexietypes.MetadataFromCommonType(metadata)
+	jsMetadata, err := jsutil.InefficientlyConvertToJS(dexieMetadata)
+	if err != nil {
+		return err
+	}
+	_, err = jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("saveMetadataAsync", jsMetadata))
+	if err != nil {
+		return convertJSError(err)
+	}
+	return nil
 }
 
-func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error {
-	return errors.New("not yet implemented")
+func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	jsUpdateFunc := js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		jsExistingMetadata := args[0]
+		var dexieExistingMetadata dexietypes.Metadata
+		if err := jsutil.InefficientlyConvertFromJS(jsExistingMetadata, &dexieExistingMetadata); err != nil {
+			panic(err)
+		}
+		metadataToUpdate := updateFunc(dexietypes.MetadataToCommonType(&dexieExistingMetadata))
+		dexieMetadataToUpdate := dexietypes.MetadataFromCommonType(metadataToUpdate)
+		jsMetadataToUpdate, err := jsutil.InefficientlyConvertToJS(dexieMetadataToUpdate)
+		if err != nil {
+			panic(err)
+		}
+		return jsMetadataToUpdate
+	})
+	defer jsUpdateFunc.Release()
+	_, jsErr := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("updateMetadataAsync", jsUpdateFunc))
+	if jsErr != nil {
+		return convertJSError(jsErr)
+	}
+	return nil
 }
 
 func recoverError(e interface{}) error {
@@ -350,6 +401,10 @@ func convertJSError(e error) error {
 		// TOOD(albrow): Handle more error messages here
 		case ErrNotFound.Error():
 			return ErrNotFound
+		case ErrMetadataAlreadyExists.Error():
+			return ErrMetadataAlreadyExists
+		case ErrDBFilledWithPinnedOrders.Error():
+			return ErrDBFilledWithPinnedOrders
 		}
 	}
 	return e

@@ -103,11 +103,18 @@ export interface AddMiniHeadersResult {
 }
 
 export interface Metadata {
-    // TODO(albrow): define this
+    ethereumChainID: number;
+    maxExpirationTime: string;
+    ethRPCRequestsSentInCurrentUTCDay: number;
+    startOfCurrentUTCDay: string;
 }
 
 function newNotFoundError(): Error {
     return new Error('could not find existing model or row in database');
+}
+
+function newMetadataAlreadExistsError(): Error {
+    return new Error('metadata already exists in the database (use UpdateMetadata instead?)');
 }
 
 // TODO(albrow): Implement remaining methods.
@@ -117,6 +124,7 @@ export class Database {
     private maxMiniHeaders: number;
     private orders: Dexie.Table<Order, string>;
     private miniHeaders: Dexie.Table<MiniHeader, string>;
+    private metadata: Dexie.Table<Metadata, number>;
 
     constructor(opts: Options) {
         this.db = new Dexie(opts.dataSourceName);
@@ -124,15 +132,15 @@ export class Database {
         this.maxMiniHeaders = opts.maxMiniHeaders;
 
         this.db.version(1).stores({
-            // TODO(albrow): Add more indexes. https://dexie.org/docs/Version/Version.stores()
             orders:
                 '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData',
             miniHeaders: '&hash,parent,number,timestamp,logs',
-            metadata: '',
+            metadata: '&ethereumChainID',
         });
 
         this.orders = this.db.table('orders');
         this.miniHeaders = this.db.table('miniHeaders');
+        this.metadata = this.db.table('metadata');
     }
 
     // AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
@@ -287,17 +295,33 @@ export class Database {
 
     // GetMetadata() (*types.Metadata, error)
     public async getMetadataAsync(): Promise<Metadata> {
-        return Promise.reject('not yet implemented');
+        const metadatas = await this.metadata.limit(1).toArray();
+        if (metadatas.length == 0) {
+            throw newNotFoundError();
+        }
+        return metadatas[0];
     }
 
     // SaveMetadata(metadata *types.Metadata) error
     public async saveMetadataAsync(metadata: Metadata): Promise<void> {
-        return Promise.reject('not yet implemented');
+        await this.db.transaction('rw', this.metadata, async () => {
+            if ((await this.metadata.count()) > 0) {
+                throw newMetadataAlreadExistsError();
+            }
+            await this.metadata.add(metadata);
+        });
     }
 
     // UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error
-    public async updateMetadatasAsync(updateFunc: (existingMetadata: Metadata) => Metadata): Promise<void> {
-        return Promise.reject('not yet implemented');
+    public async updateMetadataAsync(updateFunc: (existingMetadata: Metadata) => Metadata): Promise<void> {
+        await this.db.transaction('rw', this.metadata, async () => {
+            // TODO(albrow): Pay special attention to this code and make sure it works.
+            // Behavior of Dexie.js regarding transactions and function scope is a little
+            // too complicated/magical.
+            const existingMetadata = await this.getMetadataAsync();
+            const updatedMetadata = updateFunc(existingMetadata);
+            await this.metadata.put(updatedMetadata);
+        });
     }
 
     prepareQuery<T extends Record, Key>(table: Dexie.Table<T, Key>, query?: Query<T>): Dexie.Collection<T, Key> {
