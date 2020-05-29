@@ -513,10 +513,10 @@ func SignTestOrder(order *Order) (*SignedOrder, error) {
 	return signedOrder, nil
 }
 
-// Trim converts the order to a TrimmedOrder, which is the format expected by
+// Trim converts the order to a LibOrderOrder, which is the format expected by
 // our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
-	return wrappers.TrimmedOrder{
+func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
+	return wrappers.LibOrderOrder{
 		MakerAddress:          s.MakerAddress,
 		TakerAddress:          s.TakerAddress,
 		FeeRecipientAddress:   s.FeeRecipientAddress,

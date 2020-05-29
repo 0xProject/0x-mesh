@@ -663,19 +663,19 @@ func New() (*Decoder, error) {
 
 	erc20TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc20ABI.Events {
-		erc20TopicToEventName[event.ID()] = event.Name
+		erc20TopicToEventName[event.ID] = event.Name
 	}
 	erc721TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc721ABI.Events {
-		erc721TopicToEventName[event.ID()] = event.Name
+		erc721TopicToEventName[event.ID] = event.Name
 	}
 	erc1155TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc1155ABI.Events {
-		erc1155TopicToEventName[event.ID()] = event.Name
+		erc1155TopicToEventName[event.ID] = event.Name
 	}
 	exchangeTopicToEventName := map[common.Hash]string{}
 	for _, event := range exchangeABI.Events {
-		exchangeTopicToEventName[event.ID()] = event.Name
+		exchangeTopicToEventName[event.ID] = event.Name
 	}
 
 	return &Decoder{
