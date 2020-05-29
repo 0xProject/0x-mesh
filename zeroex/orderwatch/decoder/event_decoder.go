@@ -874,7 +874,15 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 
 	erc721Err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
 	if erc721Err != nil {
+		// FIXME(jalextowle): Is this even necessary anymore?
 		if _, ok := erc721Err.(UnsupportedEventError); ok {
+			// Try unpacking using the incorrect ERC721 event ABIs
+			fallbackErr := unpackLog(decodedLog, eventName, log, d.erc721EventsAbiWithoutTokenIDIndex)
+			if fallbackErr != nil {
+				// We return the original attempt's error if the fallback fails
+				return erc721Err
+			}
+		} else if strings.Contains(erc721Err.Error(), "Unpack(no-values unmarshalled") {
 			// Try unpacking using the incorrect ERC721 event ABIs
 			fallbackErr := unpackLog(decodedLog, eventName, log, d.erc721EventsAbiWithoutTokenIDIndex)
 			if fallbackErr != nil {
