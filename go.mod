@@ -3,14 +3,18 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
-	// https://github.com/0xProject/go-ethereum/tree/wasm_signer_core_4
+	// Equivalent to this:
+	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm_signer_core_4
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200529225138-6a74e8575db2
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
-	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39
+	// Equivalent to this:
+	// github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport wss-dialing-wasm-support
+	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967
 	github.com/plaid/go-envvar => github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7
-	// https://github.com/0xProject/goleveldb/tree/full-wasm-support-0x-1
-	github.com/syndtr/goleveldb => github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c
+	// Equivalent to this:
+	// github.com/syndtr/goleveldb => github.com/0xProject/goleveldb full-wasm-support-0x-go-1.14
+	github.com/syndtr/goleveldb => github.com/0xProject/goleveldb v1.0.1-0.20200530004936-22bf95dd2954
 )
 
 require (
@@ -58,7 +62,7 @@ require (
 	github.com/libp2p/go-ws-transport v0.2.0
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/multiformats/go-multiaddr v0.2.0
+	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
