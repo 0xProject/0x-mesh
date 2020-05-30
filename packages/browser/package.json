@@ -5,7 +5,7 @@
     "main": "./lib/index.js",
     "license": "Apache-2.0",
     "scripts": {
-        "build": "yarn build:go && yarn build:generate && yarn build:ts && yarn build:bundle",
+        "build": "yarn build:ts && yarn build:bundle && yarn build:go && yarn build:generate",
         "build:bundle": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
         "build:ts": "tsc -b",
         "clean": "shx rm -r ./lib && shx rm tsconfig.tsbuildinfo || exit 0",
@@ -31,6 +31,8 @@
         "@0x/ts-doc-gen": "^0.0.16",
         "@0x/tslint-config": "^4.0.0",
         "@types/base64-arraybuffer": "^0.1.0",
+        "clean-webpack-plugin": "^3.0.0",
+        "html-webpack-plugin": "^4.3.0",
         "ignore-loader": "^0.1.2",
         "prettier": "^1.19.1",
         "shx": "^0.3.2",

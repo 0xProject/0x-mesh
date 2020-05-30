@@ -4,9 +4,15 @@
     "engines": {
         "node": ">=11"
     },
-    "workspaces": [ 
-        "packages/*" 
-    ], 
+    "workspaces": {
+        "packages": ["packages/*"],
+        "nohoist": [
+            "*/clean-webpack-plugin", 
+            "*/clean-webpack-plugin/**",
+            "*/html-webpack-plugin", 
+            "*/html-webpack-plugin/**"
+        ]
+    }, 
     "scripts": {
         "wsrun": "wsrun",
         "build": "wsrun --stages --fast-exit --exclude-missing build $PKG",

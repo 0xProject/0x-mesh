@@ -1,10 +1,19 @@
 const path = require('path');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
     entry: './conversion-tests/conversion_test.ts',
     node: {
       fs: 'empty'
     },
+    plugins: [
+        new CleanWebpackPlugin(),
+        new HtmlWebpackPlugin({
+            filename: 'index.html',
+            template: './src/assets/index.html',
+        }),
+    ],
     module: {
         rules: [
             {
