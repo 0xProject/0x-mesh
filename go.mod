@@ -4,8 +4,8 @@ go 1.14
 
 replace (
 	// Equivalent to this:
-	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm_signer_core_4
-	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200529225138-6a74e8575db2
+	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum upgrade-go-1.14
+	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200601215128-bcb6fe70d7c6
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
 	// Equivalent to this:
