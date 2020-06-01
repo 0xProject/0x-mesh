@@ -224,8 +224,7 @@ export class Mesh {
         } while (ordersInfos.length > 0);
 
         getOrdersResponse = {
-            snapshotID,
-            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
+            timestamp: getOrdersResponse.timestamp,
             ordersInfos: allOrderInfos,
         };
         return getOrdersResponse;
