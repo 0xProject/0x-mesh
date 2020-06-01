@@ -425,6 +425,7 @@ func (w *Watcher) handleBlockEvents(
 		return nil
 	}
 
+	fmt.Printf("BlockWatcher handling %d events...\n", len(events))
 	// TODO(albrow): Consider implementing transactions.
 	// miniHeadersColTxn := w.meshDB.MiniHeaders.OpenTransaction()
 	// defer func() {
@@ -1160,7 +1161,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 			{
 				Field: db.OFExpirationTimeSeconds,
 				Kind:  db.LessOrEqual,
-				Value: latestBlockTimestamp.Unix(),
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
 			{
 				Field: db.OFIsRemoved,
@@ -1183,7 +1184,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 			{
 				Field: db.OFExpirationTimeSeconds,
 				Kind:  db.Greater,
-				Value: latestBlockTimestamp.Unix(),
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
 			{
 				Field: db.OFIsRemoved,
