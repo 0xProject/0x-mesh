@@ -212,7 +212,7 @@ func (cw *MeshWrapper) JSValue() js.Value {
 				// null or undefined.
 				minOrderHash := ""
 				if !jsutil.IsNullOrUndefined(args[1]) {
-					minOrderHash = args[2].String()
+					minOrderHash = args[1].String()
 				}
 				return cw.GetOrders(args[0].Int(), minOrderHash)
 			})

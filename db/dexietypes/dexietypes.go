@@ -144,8 +144,8 @@ type Order struct {
 	Signature                []byte         `json:"signature"`
 	LastUpdated              time.Time      `json:"lastUpdated"`
 	FillableTakerAssetAmount *SortedBigInt  `json:"fillableTakerAssetAmount"`
-	IsRemoved                bool           `json:"isRemoved"`
-	IsPinned                 bool           `json:"isPinned"`
+	IsRemoved                uint8          `json:"isRemoved"`
+	IsPinned                 uint8          `json:"isPinned"`
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 }
@@ -190,8 +190,8 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		Signature:                order.Signature,
 		FillableTakerAssetAmount: order.FillableTakerAssetAmount.Int,
 		LastUpdated:              order.LastUpdated,
-		IsRemoved:                order.IsRemoved,
-		IsPinned:                 order.IsPinned,
+		IsRemoved:                order.IsRemoved == 1,
+		IsPinned:                 order.IsPinned == 1,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
 	}
@@ -222,8 +222,8 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		Signature:                order.Signature,
 		LastUpdated:              order.LastUpdated,
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
-		IsRemoved:                order.IsRemoved,
-		IsPinned:                 order.IsPinned,
+		IsRemoved:                BoolToUint8(order.IsRemoved),
+		IsPinned:                 BoolToUint8(order.IsPinned),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 	}
@@ -370,4 +370,11 @@ func MetadataFromCommonType(metadata *types.Metadata) *Metadata {
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}
+}
+
+func BoolToUint8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
 }

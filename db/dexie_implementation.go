@@ -434,6 +434,8 @@ func convertFilterValue(value interface{}) interface{} {
 	switch v := value.(type) {
 	case *big.Int:
 		return dexietypes.NewSortedBigInt(v)
+	case bool:
+		return dexietypes.BoolToUint8(v)
 	}
 	return value
 }

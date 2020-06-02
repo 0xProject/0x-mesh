@@ -559,7 +559,7 @@ func (app *App) Start(ctx context.Context) error {
 	// so that Mesh does not validate any orders at outdated block heights
 	isCaughtUp := app.IsCaughtUpToLatestBlock(innerCtx)
 	if !isCaughtUp {
-		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(innerCtx); err != nil {
 			return err
 		}
 	}

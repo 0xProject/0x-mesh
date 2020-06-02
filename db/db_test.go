@@ -340,7 +340,17 @@ func TestFindOrdersFilter(t *testing.T) {
 			filters:        []OrderFilter{},
 			expectedOrders: originalOrders,
 		},
-
+		{
+			name: "IsRemoved = false",
+			filters: []OrderFilter{
+				{
+					Field: OFIsRemoved,
+					Kind:  Equal,
+					Value: false,
+				},
+			},
+			expectedOrders: originalOrders,
+		},
 		{
 			name: "MakerAddress = Address1",
 			filters: []OrderFilter{

@@ -227,21 +227,25 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	select {
 	case err := <-mainLoopErrChan:
 		if err != nil {
+			logger.WithError(err).Error("error in orderwatcher mainLoop")
 			cancel()
 			return err
 		}
 	case err := <-cleanupLoopErrChan:
 		if err != nil {
+			logger.WithError(err).Error("error in orderwatcher cleanupLoop")
 			cancel()
 			return err
 		}
 	case err := <-maxExpirationTimeLoopErrChan:
 		if err != nil {
+			logger.WithError(err).Error("error in orderwatcher maxExpirationTimeLoop")
 			cancel()
 			return err
 		}
 	case err := <-removedCheckerLoopErrChan:
 		if err != nil {
+			logger.WithError(err).Error("error in orderwatcher removedCheckerLoop")
 			cancel()
 			return err
 		}
@@ -425,7 +429,6 @@ func (w *Watcher) handleBlockEvents(
 		return nil
 	}
 
-	fmt.Printf("BlockWatcher handling %d events...\n", len(events))
 	// TODO(albrow): Consider implementing transactions.
 	// miniHeadersColTxn := w.meshDB.MiniHeaders.OpenTransaction()
 	// defer func() {
@@ -750,8 +753,8 @@ func (w *Watcher) handleBlockEvents(
 	}
 
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
-	ctx, done := context.WithTimeout(ctx, 1*time.Minute)
-	defer done()
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestBlockNumber, latestBlockTimestamp)
 	if err != nil {
 		return err

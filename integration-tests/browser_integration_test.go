@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -62,7 +61,7 @@ func TestBrowserIntegration(t *testing.T) {
 	// Start the standalone node in a goroutine.
 	// Note we need to use a specific data dir because we need to use the same private key for each test.
 	// The tests themselves are written in a way that depend on this.
-	dataDir := filepath.Join(standaloneDataDirPrefix, "standalone-0")
+	dataDir := standaloneDataDirPrefix + "0"
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

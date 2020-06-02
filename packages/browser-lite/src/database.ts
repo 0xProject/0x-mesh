@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { fromTokenUnitAmount } from '@0x/utils';
 
 export type Record = Order | MiniHeader | Metadata;
 
@@ -62,8 +63,8 @@ export interface Order {
     exchangeAddress: string;
     fillableTakerAssetAmount: string;
     lastUpdated: string;
-    isRemoved: boolean;
-    isPinned: boolean;
+    isRemoved: number;
+    isPinned: number;
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
 }
@@ -183,14 +184,25 @@ export class Database {
 
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
-        const collection = this.prepareQuery(this.orders, query);
-        return this.runQueryAsync(this.orders, collection, query);
+        if (!canUseNativeDexieIndexes(this.orders, query)) {
+            // As a fallback, implement the query inefficiently (in-memory).
+            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            return this.runQueryInMemoryAsync(this.orders, query!);
+        }
+        const col = this.buildCollectionWithDexieIndexes(this.orders, query);
+        return col.toArray();
     }
 
     // CountOrders(opts *OrderQuery) (int, error)
     public async countOrdersAsync(query: OrderQuery): Promise<number> {
-        const collection = this.prepareQuery(this.orders, query);
-        return collection.count();
+        if (!canUseNativeDexieIndexes(this.orders, query)) {
+            // As a fallback, implement the query inefficiently (in-memory).
+            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            const records = await this.runQueryInMemoryAsync(this.orders, query);
+            return records.length;
+        }
+        const col = this.buildCollectionWithDexieIndexes(this.orders, query);
+        return col.count();
     }
 
     // DeleteOrder(hash common.Hash) error
@@ -271,8 +283,13 @@ export class Database {
 
     // FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
-        const collection = this.prepareQuery(this.miniHeaders, query);
-        return this.runQueryAsync(this.miniHeaders, collection, query);
+        if (!canUseNativeDexieIndexes(this.miniHeaders, query)) {
+            // As a fallback, implement the query inefficiently (in-memory).
+            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            return this.runQueryInMemoryAsync(this.miniHeaders, query);
+        }
+        const col = this.buildCollectionWithDexieIndexes(this.miniHeaders, query);
+        return col.toArray();
     }
 
     // DeleteMiniHeader(hash common.Hash) error
@@ -327,141 +344,137 @@ export class Database {
         });
     }
 
-    prepareQuery<T extends Record, Key>(table: Dexie.Table<T, Key>, query?: Query<T>): Dexie.Collection<T, Key> {
+    buildCollectionWithDexieIndexes<T extends Record, Key>(
+        table: Dexie.Table<T, Key>,
+        query?: Query<T>,
+    ): Dexie.Collection<T, Key> {
         if (query === null || query === undefined) {
             return table.toCollection();
         }
+
+        // First we create the Collection based on the query fields.
         var col: Dexie.Collection<T, Key>;
-        if (query.filters !== undefined && query.filters !== null && query.filters.length > 0) {
-            console.log('at least one filter');
-            const firstFilter = query.filters[0];
-            switch (firstFilter.kind) {
+        if (queryUsesFilters(query)) {
+            const filter = query.filters![0];
+            switch (filter.kind) {
                 case FilterKind.Equal:
-                    col = table.where(firstFilter.field).equals(firstFilter.value);
+                    col = table.where(filter.field).equals(filter.value);
                     break;
                 case FilterKind.NotEqual:
-                    col = table.where(firstFilter.field).notEqual(firstFilter.value);
+                    col = table.where(filter.field).notEqual(filter.value);
                     break;
                 case FilterKind.Greater:
-                    col = table.where(firstFilter.field).above(firstFilter.value);
+                    col = table.where(filter.field).above(filter.value);
                     break;
                 case FilterKind.GreaterOrEqual:
-                    col = table.where(firstFilter.field).aboveOrEqual(firstFilter.value);
+                    col = table.where(filter.field).aboveOrEqual(filter.value);
                     break;
                 case FilterKind.Less:
-                    col = table.where(firstFilter.field).below(firstFilter.value);
+                    col = table.where(filter.field).below(filter.value);
                     break;
                 case FilterKind.LessOrEqual:
-                    col = table.where(firstFilter.field).belowOrEqual(firstFilter.value);
+                    col = table.where(filter.field).belowOrEqual(filter.value);
                     break;
                 case FilterKind.Contains:
                     // TODO(albrow): This iterates through all orders and is very inefficient.
                     // Is there a way to optimize this?)
-                    col = table.filter(containsFilterFunc(firstFilter));
+                    col = table.filter(containsFilterFunc(filter));
                     break;
                 default:
-                    throw new Error(`unexpected filter kind: ${firstFilter.kind}`);
+                    throw new Error(`unexpected filter kind: ${filter.kind}`);
             }
-            if (query.filters.length > 1) {
-                // TODO(albrow): Dexie.js does not support multiple where conditions. We have to
-                // use Collection.and which iterates through all orders in the collection so far
-                // and is very inefficient. Is there a way to optimize this?
-                query.filters.slice(1).forEach(filter => {
-                    switch (filter.kind) {
-                        case FilterKind.Equal:
-                            col.and(record => record[filter.field] === filter.value);
-                            break;
-                        case FilterKind.NotEqual:
-                            col.and(record => record[filter.field] !== filter.value);
-                            break;
-                        case FilterKind.Greater:
-                            col.and(record => record[filter.field] > filter.value);
-                            break;
-                        case FilterKind.GreaterOrEqual:
-                            col.and(record => record[filter.field] >= filter.value);
-                            break;
-                        case FilterKind.Less:
-                            col.and(record => record[filter.field] < filter.value);
-                            break;
-                        case FilterKind.LessOrEqual:
-                            col.and(record => record[filter.field] <= filter.value);
-                            break;
-                        case FilterKind.Contains:
-                            col.and(containsFilterFunc(filter));
-                            break;
-                    }
-                });
+        } else if (queryUsesSortOptions(query)) {
+            const sortOpt = query.sort![0];
+            col = table.orderBy(sortOpt.field);
+            if (sortOpt.direction === SortDirection.Desc) {
+                col = col.reverse();
             }
         } else {
             col = table.toCollection();
         }
-        if (query.offset !== undefined && query.offset !== 0) {
-            col.offset(query.offset);
+        if (queryUsesOffset(query)) {
+            col.offset(query.offset!);
         }
-        if (query.limit !== undefined && query.limit !== 0) {
-            col.limit(query.limit);
+        if (queryUsesLimit(query)) {
+            col.limit(query.limit!);
         }
         return col;
     }
 
-    async runQueryAsync<T extends Record, Key>(
-        table: Dexie.Table<T, Key>,
-        col: Dexie.Collection<T, Key>,
-        query?: Query<T>,
-    ): Promise<T[]> {
-        if (
-            query === null ||
-            query === undefined ||
-            query.sort === null ||
-            query.sort === undefined ||
-            query.sort.length === 0
-        ) {
-            return col.toArray();
-        } else {
-            if (
-                (query.offset !== null && query.offset !== undefined && query.offset !== 0) ||
-                (query.limit !== null && query.limit !== undefined && query.limit !== 0)
-            ) {
-                if (
-                    query.filters === null ||
-                    query.filters === undefined ||
-                    (query.filters.length === 1 && query.filters[0].field === table.schema.primKey.keyPath)
-                ) {
-                    // This is okay.
-                } else {
-                    // TODO(albrow): Technically this is allowed if and only if
-                    // there is exactly one filter, exactly one sort, and the sort
-                    // field is equal to the filter field.
-                    throw new Error('sorting by arbitrary fields with limit and offset is not supported by Dexie.js');
-                }
-            }
+    async runQueryInMemoryAsync<T extends Record, Key>(table: Dexie.Table<T, Key>, query: Query<T>): Promise<T[]> {
+        let records = await table.toArray();
+        if (queryUsesFilters(query)) {
+            records = filterRecords(query.filters!, records);
+        }
+        if (queryUsesSortOptions(query)) {
+            records = sortRecords(query.sort!, records);
+        }
+        if (queryUsesOffset(query) && queryUsesLimit(query)) {
+            records = records.slice(query.offset!, query.limit!);
+        } else if (queryUsesLimit(query)) {
+            records = records.slice(0, query.limit!);
+        } else if (queryUsesOffset(query)) {
+            records = records.slice(query.offset!);
+        }
 
-            // Note(albrow): Dexie.js can't sort by more than one field. Looks like
-            // we have no choice but to manually sort here. This is not fast or
-            // efficient.
-            return (await col.toArray()).sort((a: T, b: T) => {
-                for (const s of query.sort!) {
-                    switch (s.direction) {
-                        case SortDirection.Asc:
-                            if (a[s.field] < b[s.field]) {
-                                return -1;
-                            } else if (a[s.field] > b[s.field]) {
-                                return 1;
-                            }
-                            break;
-                        case SortDirection.Desc:
-                            if (a[s.field] > b[s.field]) {
-                                return -1;
-                            } else if (a[s.field] < b[s.field]) {
-                                return 1;
-                            }
-                            break;
-                    }
-                }
-                return 0;
-            });
+        return records;
+    }
+}
+
+function filterRecords<T extends Record>(filters: FilterOption<T>[], records: T[]): T[] {
+    // TODO(albrow): Use the native Dexie.js index for the *first* filter when possible.
+    for (let filter of filters) {
+        switch (filter.kind) {
+            case FilterKind.Equal:
+                records = records.filter(record => record[filter.field] === filter.value);
+                break;
+            case FilterKind.NotEqual:
+                records = records.filter(record => record[filter.field] !== filter.value);
+                break;
+            case FilterKind.Greater:
+                records = records.filter(record => record[filter.field] > filter.value);
+                break;
+            case FilterKind.GreaterOrEqual:
+                records = records.filter(record => record[filter.field] >= filter.value);
+                break;
+            case FilterKind.Less:
+                records = records.filter(record => record[filter.field] < filter.value);
+                break;
+            case FilterKind.LessOrEqual:
+                records = records.filter(record => record[filter.field] <= filter.value);
+                break;
+            case FilterKind.Contains:
+                records = records.filter(containsFilterFunc(filter));
+                break;
         }
     }
+
+    return records;
+}
+
+function sortRecords<T extends Record>(sortOpts: SortOption<T>[], records: T[]): T[] {
+    // TODO(albrow): Use native Dexie.js ordering when possible.
+    return records.sort((a: T, b: T) => {
+        for (const s of sortOpts) {
+            switch (s.direction) {
+                case SortDirection.Asc:
+                    if (a[s.field] < b[s.field]) {
+                        return -1;
+                    } else if (a[s.field] > b[s.field]) {
+                        return 1;
+                    }
+                    break;
+                case SortDirection.Desc:
+                    if (a[s.field] > b[s.field]) {
+                        return -1;
+                    } else if (a[s.field] < b[s.field]) {
+                        return 1;
+                    }
+                    break;
+            }
+        }
+        return 0;
+    });
 }
 
 function isString(x: any): x is string {
@@ -478,4 +491,45 @@ function containsFilterFunc<T extends Record>(filter: FilterOption<T>): (record:
         }
         return field.includes(filter.value);
     };
+}
+
+function canUseNativeDexieIndexes<T extends Record, Key>(table: Dexie.Table<T, Key>, query?: Query<T>): boolean {
+    if (query === null || query === undefined) return true;
+    if (queryUsesSortOptions(query) && query.sort!.length > 1) {
+        // Dexie does not support multiple sort orders.
+        return false;
+    }
+    if (queryUsesFilters(query) && query.filters!.length > 1) {
+        // Dexie does not support multiple filters.
+        return false;
+    }
+    if (queryUsesFilters(query) && queryUsesSortOptions(query) && query.filters![0].field !== query.sort![0].field) {
+        // Dexie does not support sorting and filtering by two different fields.
+        return false;
+    }
+    return true;
+}
+
+function queryUsesSortOptions<T extends Record>(query: Query<T>): boolean {
+    return query.sort !== null && query.sort !== undefined && query.sort.length > 0;
+}
+
+function queryUsesFilters<T extends Record>(query: Query<T>): boolean {
+    return query.filters !== null && query.filters !== undefined && query.filters.length > 0;
+}
+
+function queryUsesLimit<T extends Record>(query: Query<T>): boolean {
+    return query.limit !== null && query.limit !== undefined && query.limit !== 0;
+}
+
+function queryUsesOffset<T extends Record>(query: Query<T>): boolean {
+    return query.offset !== null && query.offset !== undefined && query.offset !== 0;
+}
+
+function filterUsesPrimaryKey<T extends Record, Key>(table: Dexie.Table<T, Key>, filter: FilterOption<T>): boolean {
+    return filter.field === table.schema.primKey.keyPath;
+}
+
+function sortUsesPrimaryKey<T extends Record, Key>(table: Dexie.Table<T, Key>, sort: SortOption<T>): boolean {
+    return sort.field === table.schema.primKey.keyPath;
 }

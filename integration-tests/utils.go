@@ -60,12 +60,12 @@ func min(a, b int) int {
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
-	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
+	oldDirs, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
 	require.NoError(t, err)
 
-	for _, oldFile := range oldFiles {
-		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "db")))
-		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "p2p")))
+	for _, oldDir := range oldDirs {
+		require.NoError(t, os.RemoveAll(filepath.Join(oldDir, "sqlite-db")))
+		require.NoError(t, os.RemoveAll(filepath.Join(oldDir, "p2p")))
 	}
 
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
@@ -234,7 +234,7 @@ func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogM
 			case runtime.APITypeError:
 				// Report any console.error events as test failures.
 				for _, arg := range ev.Args {
-					t.Errorf("JavaScript console error: (%s) %s", arg.Type, arg.Value)
+					t.Errorf("JavaScript console error: (%s) %s %s", arg.Type, arg.Value, arg.Description)
 				}
 			}
 		}
