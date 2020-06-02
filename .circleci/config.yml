@@ -32,6 +32,11 @@ jobs:
           name: Install Go linter
           command: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
       - run:
+          # NOTE(jalextowle): We previously vendored our dependencies to avoid
+          # this issue: https://github.com/golangci/golangci-lint/issues/825.
+          # Vendoring caused an issue where the output on CI was not the same as
+          # that locally, so it has been removed. This should be reevaluated if
+          # the issue reappears.
           name: Run linters
           command: make lint
       - run:
