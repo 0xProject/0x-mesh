@@ -21,6 +21,8 @@ github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39 h1:zMt
 github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967 h1:D7HZfoMYUXCYTVflLSqAXvCTotwR3cQn8s9peVA3/5M=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967/go.mod h1:u/HmnXUDjrIk299j/U0prf1a/BOO8xky3ekSk9YkZdY=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11 h1:4FnZlElDsHYCEMeTEj2oS/tzzulsQU0ytrZiNpbE8SA=
+github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11/go.mod h1:u/HmnXUDjrIk299j/U0prf1a/BOO8xky3ekSk9YkZdY=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c h1:sMhvadadLwwpHsq4hDRAd+lcmQHJYpn44Oe9f7sFTmA=
 github.com/0xProject/goleveldb v1.0.1-0.20191115232649-6a187a47701c/go.mod h1:vCim/erjgVmww+K+tF4+tf/zs63CPRiOtgdXqLgTM1Q=
 github.com/0xProject/goleveldb v1.0.1-0.20200530004603-c3409ec0ad1a h1:slc00OPeLlw+7paAFj5pio5PrGatKRk3eLc2I5H8MN0=

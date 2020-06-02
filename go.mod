@@ -7,8 +7,8 @@ replace (
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200602013744-00dbb5f71e53
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
-	// github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport wss-dialing-wasm-support
-	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967
+	// github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport upgrade-go-1.14
+	github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11
 	github.com/plaid/go-envvar => github.com/albrow/go-envvar v1.1.1-0.20200123010345-a6ece4436cb7
 	// github.com/syndtr/goleveldb => github.com/0xProject/goleveldb upgrade-go-1.14
 	github.com/syndtr/goleveldb => github.com/0xProject/goleveldb v1.0.1-0.20200602173211-6ee893c9b83a
