@@ -7,6 +7,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
@@ -26,7 +27,7 @@ func Open(path string) (*DB, error) {
 	// The global willLoadBrowserFS variable indicates whether browserFS will be
 	// loaded. browserFS has to be explicitly loaded in by JavaScript (and
 	// typically Webpack) and can't be loaded here.
-	if willLoadBrowserFS := js.Global().Get("willLoadBrowserFS"); !willLoadBrowserFS.Equal(js.Undefined()) && willLoadBrowserFS.Bool() == true {
+	if willLoadBrowserFS := js.Global().Get("willLoadBrowserFS"); !jsutil.IsNullOrUndefined(willLoadBrowserFS) && willLoadBrowserFS.Bool() == true {
 		return openBrowserFSDB(path)
 	}
 	// If browserFS is not going to be loaded, fallback to using an in-memory
@@ -60,7 +61,7 @@ func openBrowserFSDB(path string) (*DB, error) {
 		if time.Since(start) >= browserFSLoadTimeout {
 			return nil, errors.New("timed out waiting for BrowserFS to load")
 		}
-		if !js.Global().Get("browserFS").Equal(js.Undefined()) && !js.Global().Get("browserFS").Equal(js.Null()) {
+		if !jsutil.IsNullOrUndefined(js.Global().Get("browserFS")) {
 			log.Info("BrowserFS finished loading")
 			break
 		}

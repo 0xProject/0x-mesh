@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 	"syscall/js"
+
+	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 )
 
 // keyPrefix is a prefix applied to all entries in localStorage.
@@ -33,7 +35,7 @@ func localStorageReadFile(path string) (data []byte, err error) {
 	}()
 	key := getKey(path)
 	rawData := js.Global().Get("localStorage").Call("getItem", key)
-	if rawData.Equal(js.Undefined()) || rawData.Equal(js.Null()) {
+	if jsutil.IsNullOrUndefined(rawData) {
 		return nil, os.ErrNotExist
 	}
 	return base64.StdEncoding.DecodeString(rawData.String())
@@ -74,7 +76,7 @@ func localStorageWriteFile(path string, data []byte) (err error) {
 // isLocalStorageSupported returns true if localStorage is supported. It does
 // this by checking for the global "localStorage" object.
 func isLocalStorageSupported() bool {
-	return !js.Global().Get("localStorage").Equal(js.Null()) && !js.Global().Get("localStorage").Equal(js.Undefined())
+	return !jsutil.IsNullOrUndefined(js.Global().Get("localStorage"))
 }
 
 func convertRecoverErr(e interface{}) error {
