@@ -4,6 +4,7 @@ import { createDatabase } from './database';
 import { createSchemaValidator } from './schema_validator';
 import {
     AcceptedOrderInfo,
+    BigNumber,
     Config,
     ContractAddresses,
     ContractEvent,
@@ -29,6 +30,7 @@ import {
     RejectedOrderKind,
     RejectedOrderStatus,
     Stats,
+    SupportedProvider,
     ValidationResults,
     Verbosity,
     WethDepositEvent,
@@ -48,6 +50,7 @@ import {
 
 export {
     AcceptedOrderInfo,
+    BigNumber,
     Config,
     ContractAddresses,
     ContractEvent,
@@ -71,6 +74,8 @@ export {
     RejectedOrderInfo,
     RejectedOrderKind,
     RejectedOrderStatus,
+    SignedOrder,
+    SupportedProvider,
     Stats,
     ValidationResults,
     Verbosity,
