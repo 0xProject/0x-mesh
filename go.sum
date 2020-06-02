@@ -27,6 +27,8 @@ github.com/0xProject/goleveldb v1.0.1-0.20200530004603-c3409ec0ad1a h1:slc00OPeL
 github.com/0xProject/goleveldb v1.0.1-0.20200530004603-c3409ec0ad1a/go.mod h1:1Jo/RG6qMRJ3cgqzUqRWw592pkpuDJDKCIhMNXK5ar4=
 github.com/0xProject/goleveldb v1.0.1-0.20200530004936-22bf95dd2954 h1:11Y2r6UKXZZSA7SAfd50pJ1wFRgOEjLlZTJ3orOCAoE=
 github.com/0xProject/goleveldb v1.0.1-0.20200530004936-22bf95dd2954/go.mod h1:1Jo/RG6qMRJ3cgqzUqRWw592pkpuDJDKCIhMNXK5ar4=
+github.com/0xProject/goleveldb v1.0.1-0.20200602173211-6ee893c9b83a h1:7V/u2CwtbkJCQ4ctMzIMtxF8I1W1obt+y9zxw71Chg4=
+github.com/0xProject/goleveldb v1.0.1-0.20200602173211-6ee893c9b83a/go.mod h1:1Jo/RG6qMRJ3cgqzUqRWw592pkpuDJDKCIhMNXK5ar4=
 github.com/0xProject/qunit v0.0.0-20190730000255-81c18fdf7752/go.mod h1:Onz5mS+Tpffz0tyRWdHDrqKcQ1ZFNeRhYHrNAkaMgeQ=
 github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115 h1:OHq6PP4Y8Pjmhm9UB3RtYWQSgxJBQplojLCDZZLrVDg=
 github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115/go.mod h1:7icquWqYm+GkgQsUyBs0C0N1SyCHXQYBnoHaazVYDQ0=
