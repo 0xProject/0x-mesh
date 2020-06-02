@@ -29,9 +29,6 @@ jobs:
           name: Install dependencies
           command: make deps-no-lockfile
       - run:
-          name: Vendor Go dependencies as a workaround for https://github.com/golangci/golangci-lint/issues/865
-          command: go mod vendor
-      - run:
           name: Install Go linter
           command: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
       - run:
