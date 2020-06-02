@@ -14,7 +14,8 @@
         "composite": true,
         "declaration": true,
         "declarationMap": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "allowJs": true
     },
     // The root of the project is just a list of references and does not contain
     // any top-level TypeScript code.
