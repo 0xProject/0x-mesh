@@ -1,13 +1,7 @@
 import { SignedOrder } from '@0x/order-utils';
 
-import { createSchemaValidator } from './schema_validator';
 import { createDatabase } from './database';
-import './wasm_exec';
-
-export { SignedOrder } from '@0x/order-utils';
-export { BigNumber } from '@0x/utils';
-export { SupportedProvider } from 'ethereum-types';
-
+import { createSchemaValidator } from './schema_validator';
 import {
     AcceptedOrderInfo,
     Config,
@@ -42,6 +36,7 @@ import {
     WrapperOrderEvent,
     ZeroExMesh,
 } from './types';
+import './wasm_exec';
 import {
     configToWrapperConfig,
     orderEventsHandlerToWrapperOrderEventsHandler,
@@ -97,7 +92,6 @@ declare global {
 }
 
 (window as any).createSchemaValidator = createSchemaValidator;
-console.log('setting Dexie.js global');
 (window as any).__mesh_dexie_newDatabase__ = createDatabase;
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
@@ -128,7 +122,6 @@ export class Mesh {
      * @return  An instance of Mesh
      */
     constructor(config: Config) {
-        console.log('inside Mesh constructor');
         this._config = config;
     }
 
@@ -207,8 +200,6 @@ export class Mesh {
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
-
-        let snapshotID = ''; // New snapshot
 
         // TODO(albrow): De-dupe this code with the method by the same name
         // in the TypeScript RPC client.
