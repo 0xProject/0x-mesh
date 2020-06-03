@@ -60,6 +60,7 @@ func TestGetOrder(t *testing.T) {
 	originalOrder := added[0]
 
 	foundOrder, err := db.GetOrder(originalOrder.Hash)
+	fmt.Printf("%T %s", err, err)
 	require.NoError(t, err)
 	require.NotNil(t, foundOrder, "found order should not be nil")
 	assertOrdersAreEqual(t, originalOrder, foundOrder)

@@ -132,14 +132,13 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			})
 			r.mu.Unlock()
 			if err != nil {
-				// TODO(albrow): Update this
-				// if err == leveldb.ErrClosed {
-				// 	// We can't continue if the database is closed. Stop the rateLimiter and
-				// 	// return an error.
-				// 	ticker.Stop()
-				// 	wg.Wait()
-				// 	return err
-				// }
+				if err == db.ErrClosed {
+					// We can't continue if the database is closed. Stop the rateLimiter and
+					// return an error.
+					ticker.Stop()
+					wg.Wait()
+					return err
+				}
 				log.WithError(err).Error("rateLimiter.Start() error encountered while updating metadata in DB")
 			}
 		}

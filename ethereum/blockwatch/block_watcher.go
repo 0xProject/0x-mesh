@@ -167,12 +167,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	// Sync immediately when `Watch()` is called instead of waiting for the
 	// first Ticker tick
 	if err := w.SyncToLatestBlock(); err != nil {
-		// TODO(albrow): Update this
-		// if err == leveldb.ErrClosed {
-		// 	// We can't continue if the database is closed. Stop the watcher and
-		// 	// return an error.
-		// 	return err
-		// }
+		if err == db.ErrClosed {
+			// We can't continue if the database is closed. Stop the watcher and
+			// return an error.
+			return err
+		}
 		logMessage := "blockwatch.Watcher error encountered"
 		if isWarning(err) {
 			log.WithError(err).Warn(logMessage)
@@ -189,13 +188,12 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.SyncToLatestBlock(); err != nil {
-				// TODO(albrow): Update this.
-				// if err == leveldb.ErrClosed {
-				// 	// We can't continue if the database is closed. Stop the watcher and
-				// 	// return an error.
-				// 	ticker.Stop()
-				// 	return err
-				// }
+				if err == db.ErrClosed {
+					// We can't continue if the database is closed. Stop the watcher and
+					// return an error.
+					ticker.Stop()
+					return err
+				}
 				if _, ok := err.(TooMayBlocksBehindError); ok {
 					// We've fallen too many blocks behind to sync to the latest block.
 					// We'd need to start again from the latest block but also require

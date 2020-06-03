@@ -248,14 +248,13 @@ const updateMetadataQuery = `UPDATE metadata SET
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
-	return err
-}
-
-func (db *DB) Close() error {
-	panic(errors.New("Not implemented. Cancel the context instead."))
+	return convertErr(err)
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
 	if err != nil {
 		return nil, nil, err
@@ -286,18 +285,21 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	return added, nil, nil
 }
 
-func (db *DB) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
-	var order sqltypes.Order
-	if err := db.sqldb.GetContext(db.ctx, &order, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
-		}
+func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	var foundOrder sqltypes.Order
+	if err := db.sqldb.GetContext(db.ctx, &foundOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
 		return nil, err
 	}
-	return sqltypes.OrderToCommonType(&order), nil
+	return sqltypes.OrderToCommonType(&foundOrder), nil
 }
 
-func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+func (db *DB) FindOrders(opts *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	if err := checkOrderQuery(opts); err != nil {
 		return nil, err
 	}
@@ -305,15 +307,17 @@ func (db *DB) FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println(query.ToSQL(false))
-	var orders []*sqltypes.Order
-	if err := query.GetAllContext(db.ctx, &orders); err != nil {
+	var foundOrders []*sqltypes.Order
+	if err := query.GetAllContext(db.ctx, &foundOrders); err != nil {
 		return nil, err
 	}
-	return sqltypes.OrdersToCommonType(orders), nil
+	return sqltypes.OrdersToCommonType(foundOrders), nil
 }
 
-func (db *DB) CountOrders(opts *OrderQuery) (int, error) {
+func (db *DB) CountOrders(opts *OrderQuery) (count int, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	if err := checkOrderQuery(opts); err != nil {
 		return 0, err
 	}
@@ -321,11 +325,11 @@ func (db *DB) CountOrders(opts *OrderQuery) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	count, err := query.GetCount()
+	gotCount, err := query.GetCount()
 	if err != nil {
 		return 0, err
 	}
-	return int(count), nil
+	return int(gotCount), nil
 }
 
 type Selector interface {
@@ -401,14 +405,16 @@ func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereConditi
 
 func (db *DB) DeleteOrder(hash common.Hash) error {
 	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM orders WHERE hash = $1", hash); err != nil {
-		return err
+		return convertErr(err)
 	}
 	return nil
 }
 
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
-// TODO(albrow): Test deleting all orders.
-func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error) {
+func (db *DB) DeleteOrders(opts *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	if err := checkOrderQuery(opts); err != nil {
 		return nil, err
 	}
@@ -416,7 +422,7 @@ func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 	// for DELETE statements. It also doesn't support RETURNING. As a
 	// workaround, we do a SELECT and DELETE inside a transaction.
 	var ordersToDelete []*sqltypes.Order
-	err := db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		query, err := addOptsToSelectOrdersQuery(txn.Select("*").From("orders"), opts)
 		if err != nil {
 			return err
@@ -439,7 +445,10 @@ func (db *DB) DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 }
 
 // TODO(albrow): Consider automatically setting LastUpdated?
-func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error {
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	if updateFunc == nil {
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
 	}
@@ -474,6 +483,9 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 }
 
 func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	var miniHeadersToRemove []*sqltypes.MiniHeader
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		for _, miniHeader := range miniHeaders {
@@ -515,27 +527,33 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	return added, sqltypes.MiniHeadersToCommonType(miniHeadersToRemove), nil
 }
 
-func (db *DB) GetMiniHeader(hash common.Hash) (*types.MiniHeader, error) {
-	var miniHeader sqltypes.MiniHeader
-	if err := db.sqldb.GetContext(db.ctx, &miniHeader, "SELECT * FROM miniHeaders WHERE hash = $1", hash); err != nil {
+func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	var sqlMiniHeader sqltypes.MiniHeader
+	if err := db.sqldb.GetContext(db.ctx, &sqlMiniHeader, "SELECT * FROM miniHeaders WHERE hash = $1", hash); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	return sqltypes.MiniHeaderToCommonType(&miniHeader), nil
+	return sqltypes.MiniHeaderToCommonType(&sqlMiniHeader), nil
 }
 
-func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
+func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) (miniHeaders []*types.MiniHeader, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	query, err := findMiniHeadersQueryFromOpts(db.sqldb, opts)
 	if err != nil {
 		return nil, err
 	}
-	var miniHeaders []*sqltypes.MiniHeader
-	if err := query.GetAllContext(db.ctx, &miniHeaders); err != nil {
+	var sqlMiniHeaders []*sqltypes.MiniHeader
+	if err := query.GetAllContext(db.ctx, &sqlMiniHeaders); err != nil {
 		return nil, err
 	}
-	return sqltypes.MiniHeadersToCommonType(miniHeaders), nil
+	return sqltypes.MiniHeadersToCommonType(sqlMiniHeaders), nil
 }
 
 // TODO(albrow): Can this be de-duped?
@@ -614,20 +632,21 @@ func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.Wh
 
 func (db *DB) DeleteMiniHeader(hash common.Hash) error {
 	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM miniHeaders WHERE hash = $1", hash); err != nil {
-		// TODO(albrow): Specifically handle not found error.
-		// - Maybe wrap other types of errors for consistency with Dexie.js implementation?
-		return err
+		return convertErr(err)
 	}
 	return nil
 }
 
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
-func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error) {
+func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) (deleted []*types.MiniHeader, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 	// for DELETE statements. It also doesn't support RETURNING. As a
 	// workaround, we do a SELECT and DELETE inside a transaction.
 	var miniHeadersToDelete []*sqltypes.MiniHeader
-	err := db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
 		query, err := findMiniHeadersQueryFromOpts(tx, opts)
 		if err != nil {
 			return err
@@ -653,10 +672,7 @@ func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, err
 func (db *DB) GetMetadata() (*types.Metadata, error) {
 	var metadata sqltypes.Metadata
 	if err := db.sqldb.GetContext(db.ctx, &metadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
-		}
-		return nil, err
+		return nil, convertErr(err)
 	}
 	return sqltypes.MetadataToCommonType(&metadata), nil
 }
@@ -664,8 +680,11 @@ func (db *DB) GetMetadata() (*types.Metadata, error) {
 // SaveMetadata inserts the metadata into the database, overwriting any existing
 // metadata. It returns ErrMetadataAlreadyExists if the metadata has already been
 // saved in the database.
-func (db *DB) SaveMetadata(metadata *types.Metadata) error {
-	err := db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+func (db *DB) SaveMetadata(metadata *types.Metadata) (err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		query := db.sqldb.Select("COUNT(*)").From("metadata")
 		count, err := query.GetCount()
 		if err != nil {
@@ -683,7 +702,10 @@ func (db *DB) SaveMetadata(metadata *types.Metadata) error {
 // UpdateMetadata updates the metadata in the database via a transaction. It
 // accepts a callback function which will be provided with the old metadata and
 // should return the new metadata to save.
-func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error {
+func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) (err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
 	if updateFunc == nil {
 		return errors.New("db.UpdateMetadata: updateFunc cannot be nil")
 	}
@@ -737,4 +759,25 @@ func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress comm
 		Kind:  Contains,
 		Value: string(filterValueJSON),
 	}
+}
+
+// convertErr converts from SQL specific errors to common error types.
+func convertErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	// Check if the error matches known exported values.
+	switch err {
+	case sql.ErrNoRows:
+		return ErrNotFound
+	case sql.ErrConnDone:
+		return ErrClosed
+	}
+	// As a fallback, check the error string for errors which have no
+	// exported type/value.
+	switch err.Error() {
+	case "sql: database is closed":
+		return ErrClosed
+	}
+	return err
 }

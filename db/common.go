@@ -26,6 +26,7 @@ var (
 	ErrDBFilledWithPinnedOrders = errors.New("the database is full of pinned orders; no orders can be removed in order to make space")
 	ErrMetadataAlreadyExists    = errors.New("metadata already exists in the database (use UpdateMetadata instead?)")
 	ErrNotFound                 = errors.New("could not find existing model or row in database")
+	ErrClosed                   = errors.New("database is already closed")
 )
 
 type Database interface {

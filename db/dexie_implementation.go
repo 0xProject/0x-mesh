@@ -55,12 +55,21 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 			err = recoverError(r)
 		}
 	}()
-	dexieClass := js.Global().Get("__mesh_dexie_newDatabase__")
-	if jsutil.IsNullOrUndefined(dexieClass) {
+	newDexieDatabase := js.Global().Get("__mesh_dexie_newDatabase__")
+	if jsutil.IsNullOrUndefined(newDexieDatabase) {
 		return nil, errors.New("could not detect Dexie.js")
 	}
 	opts = parseOptions(opts)
-	dexie := dexieClass.Invoke(opts)
+	dexie := newDexieDatabase.Invoke(opts)
+
+	// Automatically close the database connection when the context is canceled.
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = dexie.Call("close")
+		}
+	}()
+
 	return &DB{
 		ctx:   ctx,
 		dexie: dexie,

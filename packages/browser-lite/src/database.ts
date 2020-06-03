@@ -154,6 +154,10 @@ export class Database {
         this._metadata = this._db.table('metadata');
     }
 
+    public close(): void {
+        this._db.close();
+    }
+
     // AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
     public async addOrdersAsync(orders: Order[]): Promise<AddOrdersResult> {
         // TODO(albrow): Remove orders with max expiration time.
