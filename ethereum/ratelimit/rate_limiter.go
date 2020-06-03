@@ -11,7 +11,6 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
 	log "github.com/sirupsen/logrus"
-	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/time/rate"
 )
 
@@ -133,13 +132,14 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 			})
 			r.mu.Unlock()
 			if err != nil {
-				if err == leveldb.ErrClosed {
-					// We can't continue if the database is closed. Stop the rateLimiter and
-					// return an error.
-					ticker.Stop()
-					wg.Wait()
-					return err
-				}
+				// TODO(albrow): Update this
+				// if err == leveldb.ErrClosed {
+				// 	// We can't continue if the database is closed. Stop the rateLimiter and
+				// 	// return an error.
+				// 	ticker.Stop()
+				// 	wg.Wait()
+				// 	return err
+				// }
 				log.WithError(err).Error("rateLimiter.Start() error encountered while updating metadata in DB")
 			}
 		}
