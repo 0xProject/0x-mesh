@@ -872,7 +872,7 @@ func (d *Decoder) decodeERC721(log types.Log, decodedLog interface{}) error {
 
 	erc721Err := unpackLog(decodedLog, eventName, log, d.erc721ABI)
 	if erc721Err != nil {
-		if strings.Contains(erc721Err.Error(), "Unpack(no-values unmarshalled") {
+		if _, ok := erc721Err.(UnsupportedEventError); ok {
 			// Try unpacking using the incorrect ERC721 event ABIs
 			fallbackErr := unpackLog(decodedLog, eventName, log, d.erc721EventsAbiWithoutTokenIDIndex)
 			if fallbackErr != nil {
@@ -914,6 +914,9 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.ABI) error {
 	if len(log.Data) > 0 {
 		if err := _abi.Unpack(decodedEvent, event, log.Data); err != nil {
+			if strings.Contains(err.Error(), "Unpack(no-values unmarshalled") {
+				return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
+			}
 			return err
 		}
 	}
@@ -922,9 +925,6 @@ func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.A
 		if arg.Indexed {
 			indexed = append(indexed, arg)
 		}
-	}
-	if len(indexed) != len(log.Topics[1:]) {
-		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 	}
 	return abi.ParseTopics(decodedEvent, indexed, log.Topics[1:])
 }
