@@ -3,8 +3,8 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
-	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum upgrade-to-go-1.14
-	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200603163540-b12a73c53a34
+	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum full-wasm-support
+	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum full-wasm-support
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
 	// github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport upgrade-go-1.14
@@ -32,6 +32,7 @@ require (
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
+	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-leveldb v0.4.0
@@ -65,6 +66,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/plaid/go-envvar v1.1.0
+	github.com/posener/complete v1.2.3 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.7.0 // indirect
