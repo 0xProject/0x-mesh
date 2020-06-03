@@ -3,8 +3,8 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
-	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum full-wasm-support
-	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum full-wasm-support
+	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm-support
+	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
 	github.com/libp2p/go-libp2p-pubsub => github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a
 	// github.com/libp2p/go-ws-transport => github.com/0xProject/go-ws-transport upgrade-go-1.14

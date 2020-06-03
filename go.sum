@@ -14,6 +14,10 @@ github.com/0xProject/go-ethereum v1.8.8-0.20200602013744-00dbb5f71e53 h1:E2waVaH
 github.com/0xProject/go-ethereum v1.8.8-0.20200602013744-00dbb5f71e53/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
 github.com/0xProject/go-ethereum v1.8.8-0.20200603163540-b12a73c53a34 h1:NVzgOsQO0wMjMcG0QEcaJDzG8KoypR3RXARxjUBmbvA=
 github.com/0xProject/go-ethereum v1.8.8-0.20200603163540-b12a73c53a34/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
+github.com/0xProject/go-ethereum v1.8.8-0.20200603221106-9eb281b27e51 h1:Fm4Rpec8mRuC8LwFlC75KT2kgZEF9JUhngdtGoEP2/Y=
+github.com/0xProject/go-ethereum v1.8.8-0.20200603221106-9eb281b27e51/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
+github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425 h1:BFs4B5VoJWA0PLH9DrtTvGDWqbg1thtfi6WSKQsUazg=
+github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a h1:OHjKy7tLiqETUbEzF2UmqaF8eUTjHqmJM2sP79dguJs=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a/go.mod h1:R4R0kH/6p2vu8O9xsue0HNSjEuXMEPBgg4h3nVDI15o=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200123233232-0b38359294da h1:8POpSF5LiutCqYqgG+vP4OcUFj3nnyOSddcSjUEbGKA=
