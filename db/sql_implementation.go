@@ -296,36 +296,36 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return sqltypes.OrderToCommonType(&foundOrder), nil
 }
 
-func (db *DB) FindOrders(opts *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
-	if err := checkOrderQuery(opts); err != nil {
+	if err := checkOrderQuery(query); err != nil {
 		return nil, err
 	}
-	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("*").From("orders"), opts)
+	stmt, err := addOptsToSelectOrdersQuery(db.sqldb.Select("*").From("orders"), query)
 	if err != nil {
 		return nil, err
 	}
 	var foundOrders []*sqltypes.Order
-	if err := query.GetAllContext(db.ctx, &foundOrders); err != nil {
+	if err := stmt.GetAllContext(db.ctx, &foundOrders); err != nil {
 		return nil, err
 	}
 	return sqltypes.OrdersToCommonType(foundOrders), nil
 }
 
-func (db *DB) CountOrders(opts *OrderQuery) (count int, err error) {
+func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
-	if err := checkOrderQuery(opts); err != nil {
+	if err := checkOrderQuery(query); err != nil {
 		return 0, err
 	}
-	query, err := addOptsToSelectOrdersQuery(db.sqldb.Select("COUNT(*)").From("orders"), opts)
+	stmt, err := addOptsToSelectOrdersQuery(db.sqldb.Select("COUNT(*)").From("orders"), query)
 	if err != nil {
 		return 0, err
 	}
-	gotCount, err := query.GetCount()
+	gotCount, err := stmt.GetCount()
 	if err != nil {
 		return 0, err
 	}
@@ -336,35 +336,35 @@ type Selector interface {
 	Select(cols ...string) *sqlz.SelectStmt
 }
 
-func addOptsToSelectOrdersQuery(query *sqlz.SelectStmt, opts *OrderQuery) (*sqlz.SelectStmt, error) {
+func addOptsToSelectOrdersQuery(stmt *sqlz.SelectStmt, opts *OrderQuery) (*sqlz.SelectStmt, error) {
 	if opts == nil {
-		return query, nil
+		return stmt, nil
 	}
 
 	ordering := orderingFromOrderSortOpts(opts.Sort)
 	if len(ordering) != 0 {
-		query.OrderBy(ordering...)
+		stmt.OrderBy(ordering...)
 	}
 	if opts.Limit != 0 {
-		query.Limit(int64(opts.Limit))
+		stmt.Limit(int64(opts.Limit))
 	}
 	if opts.Offset != 0 {
-		query.Offset(int64(opts.Offset))
+		stmt.Offset(int64(opts.Offset))
 	}
 	whereConditions, err := whereConditionsFromOrderFilterOpts(opts.Filters)
 	if err != nil {
 		return nil, err
 	}
 	if len(whereConditions) != 0 {
-		query.Where(whereConditions...)
+		stmt.Where(whereConditions...)
 	}
 
-	return query, nil
+	return stmt, nil
 }
 
-func orderingFromOrderSortOpts(opts []OrderSort) []sqlz.SQLStmt {
+func orderingFromOrderSortOpts(sortOpts []OrderSort) []sqlz.SQLStmt {
 	ordering := []sqlz.SQLStmt{}
-	for _, sortOpt := range opts {
+	for _, sortOpt := range sortOpts {
 		if sortOpt.Direction == Ascending {
 			ordering = append(ordering, sqlz.Asc(string(sortOpt.Field)))
 		} else {
@@ -374,10 +374,10 @@ func orderingFromOrderSortOpts(opts []OrderSort) []sqlz.SQLStmt {
 	return ordering
 }
 
-func whereConditionsFromOrderFilterOpts(opts []OrderFilter) ([]sqlz.WhereCondition, error) {
+func whereConditionsFromOrderFilterOpts(filterOpts []OrderFilter) ([]sqlz.WhereCondition, error) {
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
-	whereConditions := make([]sqlz.WhereCondition, len(opts))
-	for i, filterOpt := range opts {
+	whereConditions := make([]sqlz.WhereCondition, len(filterOpts))
+	for i, filterOpt := range filterOpts {
 		value := convertFilterValue(filterOpt.Value)
 		switch filterOpt.Kind {
 		case Equal:
@@ -411,11 +411,11 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 }
 
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
-func (db *DB) DeleteOrders(opts *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
+func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
-	if err := checkOrderQuery(opts); err != nil {
+	if err := checkOrderQuery(query); err != nil {
 		return nil, err
 	}
 	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
@@ -423,11 +423,11 @@ func (db *DB) DeleteOrders(opts *OrderQuery) (deleted []*types.OrderWithMetadata
 	// workaround, we do a SELECT and DELETE inside a transaction.
 	var ordersToDelete []*sqltypes.Order
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
-		query, err := addOptsToSelectOrdersQuery(txn.Select("*").From("orders"), opts)
+		stmt, err := addOptsToSelectOrdersQuery(txn.Select("*").From("orders"), query)
 		if err != nil {
 			return err
 		}
-		if err := query.GetAllContext(db.ctx, &ordersToDelete); err != nil {
+		if err := stmt.GetAllContext(db.ctx, &ordersToDelete); err != nil {
 			return err
 		}
 		for _, order := range ordersToDelete {
@@ -541,56 +541,56 @@ func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err
 	return sqltypes.MiniHeaderToCommonType(&sqlMiniHeader), nil
 }
 
-func (db *DB) FindMiniHeaders(opts *MiniHeaderQuery) (miniHeaders []*types.MiniHeader, err error) {
+func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.MiniHeader, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
-	query, err := findMiniHeadersQueryFromOpts(db.sqldb, opts)
+	stmt, err := findMiniHeadersQueryFromOpts(db.sqldb, query)
 	if err != nil {
 		return nil, err
 	}
 	var sqlMiniHeaders []*sqltypes.MiniHeader
-	if err := query.GetAllContext(db.ctx, &sqlMiniHeaders); err != nil {
+	if err := stmt.GetAllContext(db.ctx, &sqlMiniHeaders); err != nil {
 		return nil, err
 	}
 	return sqltypes.MiniHeadersToCommonType(sqlMiniHeaders), nil
 }
 
 // TODO(albrow): Can this be de-duped?
-func findMiniHeadersQueryFromOpts(selector Selector, opts *MiniHeaderQuery) (*sqlz.SelectStmt, error) {
-	query := selector.Select("*").From("miniHeaders")
-	if opts == nil {
-		return query, nil
+func findMiniHeadersQueryFromOpts(selector Selector, query *MiniHeaderQuery) (*sqlz.SelectStmt, error) {
+	stmt := selector.Select("*").From("miniHeaders")
+	if query == nil {
+		return stmt, nil
 	}
 
-	ordering := orderingFromMiniHeaderSortOpts(opts.Sort)
+	ordering := orderingFromMiniHeaderSortOpts(query.Sort)
 	if len(ordering) != 0 {
-		query.OrderBy(ordering...)
+		stmt.OrderBy(ordering...)
 	}
-	if opts.Limit != 0 {
-		query.Limit(int64(opts.Limit))
+	if query.Limit != 0 {
+		stmt.Limit(int64(query.Limit))
 	}
-	if opts.Offset != 0 {
-		if opts.Limit == 0 {
+	if query.Offset != 0 {
+		if query.Limit == 0 {
 			return nil, errors.New("db.FindMiniHeaders: can't use Offset without Limit")
 		}
-		query.Offset(int64(opts.Offset))
+		stmt.Offset(int64(query.Offset))
 	}
-	whereConditions, err := whereConditionsFromMiniHeaderFilterOpts(opts.Filters)
+	whereConditions, err := whereConditionsFromMiniHeaderFilterOpts(query.Filters)
 	if err != nil {
 		return nil, err
 	}
 	if len(whereConditions) != 0 {
-		query.Where(whereConditions...)
+		stmt.Where(whereConditions...)
 	}
 
-	return query, nil
+	return stmt, nil
 }
 
 // TODO(albrow): Can this be de-duped?
-func orderingFromMiniHeaderSortOpts(opts []MiniHeaderSort) []sqlz.SQLStmt {
+func orderingFromMiniHeaderSortOpts(sortOpts []MiniHeaderSort) []sqlz.SQLStmt {
 	ordering := []sqlz.SQLStmt{}
-	for _, sortOpt := range opts {
+	for _, sortOpt := range sortOpts {
 		if sortOpt.Direction == Ascending {
 			ordering = append(ordering, sqlz.Asc(string(sortOpt.Field)))
 		} else {
@@ -601,10 +601,10 @@ func orderingFromMiniHeaderSortOpts(opts []MiniHeaderSort) []sqlz.SQLStmt {
 }
 
 // TODO(albrow): Can this be de-duped?
-func whereConditionsFromMiniHeaderFilterOpts(opts []MiniHeaderFilter) ([]sqlz.WhereCondition, error) {
+func whereConditionsFromMiniHeaderFilterOpts(filterOpts []MiniHeaderFilter) ([]sqlz.WhereCondition, error) {
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
-	whereConditions := make([]sqlz.WhereCondition, len(opts))
-	for i, filterOpt := range opts {
+	whereConditions := make([]sqlz.WhereCondition, len(filterOpts))
+	for i, filterOpt := range filterOpts {
 		value := convertFilterValue(filterOpt.Value)
 		switch filterOpt.Kind {
 		case Equal:
@@ -638,7 +638,7 @@ func (db *DB) DeleteMiniHeader(hash common.Hash) error {
 }
 
 // TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
-func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) (deleted []*types.MiniHeader, err error) {
+func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHeader, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -647,11 +647,11 @@ func (db *DB) DeleteMiniHeaders(opts *MiniHeaderQuery) (deleted []*types.MiniHea
 	// workaround, we do a SELECT and DELETE inside a transaction.
 	var miniHeadersToDelete []*sqltypes.MiniHeader
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(tx *sqlz.Tx) error {
-		query, err := findMiniHeadersQueryFromOpts(tx, opts)
+		stmt, err := findMiniHeadersQueryFromOpts(tx, query)
 		if err != nil {
 			return err
 		}
-		if err := query.GetAllContext(db.ctx, &miniHeadersToDelete); err != nil {
+		if err := stmt.GetAllContext(db.ctx, &miniHeadersToDelete); err != nil {
 			return err
 		}
 		for _, miniHeader := range miniHeadersToDelete {
