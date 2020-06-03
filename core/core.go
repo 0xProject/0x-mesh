@@ -70,11 +70,16 @@ const (
 // within the core package. Intended for testing purposes.
 type privateConfig struct {
 	paginationSubprotocolPerPage int
+	paginationSubprotocols       []ordersyncSubprotocolFactory
 }
 
 func defaultPrivateConfig() privateConfig {
 	return privateConfig{
 		paginationSubprotocolPerPage: 500,
+		paginationSubprotocols: []ordersyncSubprotocolFactory{
+			NewFilteredPaginationSubprotocolV1,
+			NewFilteredPaginationSubprotocolV0,
+		},
 	}
 }
 
@@ -607,8 +612,9 @@ func (app *App) Start(ctx context.Context) error {
 	}
 
 	// Register and start ordersync service.
-	ordersyncSubprotocols := []ordersync.Subprotocol{
-		NewFilteredPaginationSubprotocol(app, app.privateConfig.paginationSubprotocolPerPage),
+	var ordersyncSubprotocols []ordersync.Subprotocol
+	for _, subprotocolFactory := range app.privateConfig.paginationSubprotocols {
+		ordersyncSubprotocols = append(ordersyncSubprotocols, subprotocolFactory(app, app.privateConfig.paginationSubprotocolPerPage))
 	}
 	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
 	orderSyncErrChan := make(chan error, 1)

@@ -179,7 +179,7 @@
 "@0x/mesh-browser@file:packages/browser":
   version "1.0.0"
   dependencies:
-    "@0x/mesh-browser-lite" "file:../../../Library/Caches/Yarn/v6/npm-@0x-mesh-browser-1.0.0-af2c78b1-c6d2-4c26-935e-7ac0e74fb3de-1591301336179/node_modules/@0x/browser-lite"
+    "@0x/mesh-browser-lite" "file:../../../Library/Caches/Yarn/v6/npm-@0x-mesh-browser-1.0.0-1f388d7c-4081-46d8-8f5f-8234d66c95e8-1591301344612/node_modules/@0x/browser-lite"
     base64-arraybuffer "^0.2.0"
     browserfs "^1.4.3"
     ethereum-types "^3.0.0"
