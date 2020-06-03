@@ -357,13 +357,10 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 	}
 }
 
-// TODO(albrow): Update this comment.
 // handleOrderExpirations takes care of generating expired and unexpired order events for orders that do not require re-validation.
 // Since expiry is now done according to block timestamp, we can figure out which orders have expired/unexpired statically. We do not
-// process blocks that require re-validation, since the validation process will already emit the necessary events and we cannot make
-// multiple updates to an order within a single DB transaction.
+// process blocks that require re-validation, since the validation process will already emit the necessary events.
 // latestBlockTimestamp is the latest block timestamp Mesh knows about
-// previousLatestBlockTimestamp is the previous latest block timestamp Mesh knew about
 // ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
 func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}

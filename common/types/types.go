@@ -43,8 +43,6 @@ type LatestBlock struct {
 // GetOrdersResponse is the return value for core.GetOrders. Also used in the
 // browser and RPC interface.
 type GetOrdersResponse struct {
-	// TODO(albrow): Update other types where needed (including in TypeScript).
-	// Rename timestamp and remove snapshotID.
 	Timestamp   time.Time    `json:"timestamp"`
 	OrdersInfos []*OrderInfo `json:"ordersInfos"`
 }

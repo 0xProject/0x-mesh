@@ -556,7 +556,6 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 	return sqltypes.MiniHeadersToCommonType(sqlMiniHeaders), nil
 }
 
-// TODO(albrow): Can this be de-duped?
 func findMiniHeadersQueryFromOpts(selector Selector, query *MiniHeaderQuery) (*sqlz.SelectStmt, error) {
 	stmt := selector.Select("*").From("miniHeaders")
 	if query == nil {
@@ -587,7 +586,6 @@ func findMiniHeadersQueryFromOpts(selector Selector, query *MiniHeaderQuery) (*s
 	return stmt, nil
 }
 
-// TODO(albrow): Can this be de-duped?
 func orderingFromMiniHeaderSortOpts(sortOpts []MiniHeaderSort) []sqlz.SQLStmt {
 	ordering := []sqlz.SQLStmt{}
 	for _, sortOpt := range sortOpts {
@@ -600,7 +598,6 @@ func orderingFromMiniHeaderSortOpts(sortOpts []MiniHeaderSort) []sqlz.SQLStmt {
 	return ordering
 }
 
-// TODO(albrow): Can this be de-duped?
 func whereConditionsFromMiniHeaderFilterOpts(filterOpts []MiniHeaderFilter) ([]sqlz.WhereCondition, error) {
 	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(filterOpts))

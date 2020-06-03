@@ -776,11 +776,14 @@ func (e ErrPerPageZero) Error() string {
 	return "perPage cannot be zero"
 }
 
-// TODO(albrow): Update this comment.
-// GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
-// string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
-// continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
-// received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
+// GetOrders retrieves perPage orders from the database with an order hash greater than
+// minOrderHash (exclusive). The orders in the response are sorted by hash. In order to
+// paginate through all orders:
+//
+// 1. First call GetOrders with an empty minOrderHash.
+// 2. On subsequent calls, use the maximum hash of the orders from the previous response as the next minOrderHash.
+// 3. When no orders are returned, pagination is complete.
+//
 func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrdersResponse, error) {
 	<-app.started
 
@@ -796,7 +799,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 				Kind:  db.Equal,
 				Value: false,
 			},
-			db.OrderFilter{
+			{
 				Field: db.OFHash,
 				Kind:  db.Greater,
 				Value: minOrderHash,

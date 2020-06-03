@@ -433,8 +433,8 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 		// them into blockHeaders
 		hashToBlockHeader := map[common.Hash]*types.MiniHeader{}
 		for _, log := range logs {
-			blockHeader, ok := hashToBlockHeader[log.BlockHash]
-			if !ok {
+			blockHeader, found := hashToBlockHeader[log.BlockHash]
+			if !found {
 				blockNumber := big.NewInt(0).SetUint64(log.BlockNumber)
 				header, err := w.client.HeaderByNumber(blockNumber)
 				if err != nil {
@@ -449,8 +449,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 				}
 				hashToBlockHeader[log.BlockHash] = blockHeader
 			}
-			// TODO(albrow): How to write this?
-			// blockHeader.Logs = append(blockHeader.Logs, db.NewEventLogs(logs))
+			blockHeader.Logs = append(blockHeader.Logs, logs...)
 		}
 		for _, blockHeader := range hashToBlockHeader {
 			events = append(events, &Event{

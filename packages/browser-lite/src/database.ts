@@ -128,7 +128,6 @@ export function createDatabase(opts: Options): Database {
     return new Database(opts);
 }
 
-// TODO(albrow): Implement remaining methods.
 export class Database {
     private readonly _db: Dexie;
     // private readonly maxOrders: number;
@@ -224,9 +223,6 @@ export class Database {
     public async deleteOrdersAsync(query: OrderQuery | undefined): Promise<Order[]> {
         const deletedOrders: Order[] = [];
         await this._db.transaction('rw', this._orders, async () => {
-            // TODO(albrow): Pay special attention to this code and make sure it works.
-            // Behavior of Dexie.js regarding transactions and function scope is a little
-            // too complicated/magical.
             const orders = await this.findOrdersAsync(query);
             for (const order of orders) {
                 await this._orders.delete(order.hash);
@@ -239,9 +235,6 @@ export class Database {
     // UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error
     public async updateOrderAsync(hash: string, updateFunc: (existingOrder: Order) => Order): Promise<void> {
         await this._db.transaction('rw', this._orders, async () => {
-            // TODO(albrow): Pay special attention to this code and make sure it works.
-            // Behavior of Dexie.js regarding transactions and function scope is a little
-            // too complicated/magical.
             const existingOrder = await this.getOrderAsync(hash);
             const updatedOrder = updateFunc(existingOrder);
             await this._orders.put(updatedOrder, hash);
