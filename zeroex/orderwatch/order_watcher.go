@@ -993,11 +993,11 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 }
 
 func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time) (*types.OrderWithMetadata, error) {
-	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
+	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(orderInfo.SignedOrder.MakerFeeAssetData, w.contractAddresses)
+	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerFeeAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}

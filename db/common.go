@@ -203,12 +203,11 @@ type MiniHeaderFilter struct {
 	Value interface{}     `json:"value"`
 }
 
-func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
+func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
 	if len(assetData) == 0 {
 		return []*types.SingleAssetData{}, nil
 	}
 	singleAssetDatas := []*types.SingleAssetData{}
-	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
 	assetDataName, err := assetDataDecoder.GetName(assetData)
 	if err != nil {
@@ -265,7 +264,7 @@ func ParseContractAddressesAndTokenIdsFromAssetData(assetData []byte, contractAd
 			return nil, err
 		}
 		for _, assetData := range decodedAssetData.NestedAssetData {
-			as, err := ParseContractAddressesAndTokenIdsFromAssetData(assetData, contractAddresses)
+			as, err := ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder, assetData, contractAddresses)
 			if err != nil {
 				return nil, err
 			}
