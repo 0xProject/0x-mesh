@@ -7,6 +7,7 @@
     "scripts": {
         "build": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
         "build:ts": "tsc -b",
+        "clean": "shx rm ./dist/bundle.js || exit 0",
         "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce the webpack bundle size",
         "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts",
         "lint": "tslint --format stylish --project ."

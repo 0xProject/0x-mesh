@@ -8,7 +8,7 @@
         "build": "yarn build:webpack && yarn build:wasm",
         "build:wasm": "GOOS=js GOARCH=wasm go build -o ./dist/main.wasm ../browser/go/mesh-browser/main.go",
         "build:webpack": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
-        "clean": "shx rm ./dist/bundle.js",
+        "clean": "shx rm ./dist/bundle.js || exit 0",
         "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce the webpack bundle size",
         "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts",
         "lint": "tslint --format stylish --project ."
