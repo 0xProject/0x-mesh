@@ -75,11 +75,11 @@ type MeshWrapper struct {
 
 // NewMeshWrapper creates a new wrapper from the given config.
 func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
-	app, err := core.New(config)
+	ctx, cancel := context.WithCancel(context.Background())
+	app, err := core.New(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	return &MeshWrapper{
 		app:    app,
 		ctx:    ctx,
@@ -98,7 +98,7 @@ func (cw *MeshWrapper) Start() error {
 	// cw.app.Start blocks until there is an error or the app is closed, so we
 	// need to start it in a goroutine.
 	go func() {
-		cw.errChan <- cw.app.Start(cw.ctx)
+		cw.errChan <- cw.app.Start()
 	}()
 
 	// Wait up to 1 second to see if cw.app.Start returns an error right away.

@@ -78,13 +78,13 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                "{}",
 	}
-	app, err := New(config)
+	app, err := New(ctx, config)
 	require.NoError(t, err)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := app.Start(ctx)
+		err := app.Start()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "ChainID mismatch")
 	}()
@@ -93,11 +93,11 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 	wg.Wait()
 }
 
-func newTestApp(t *testing.T) *App {
-	return newTestAppWithPrivateConfig(t, defaultPrivateConfig())
+func newTestApp(t *testing.T, ctx context.Context) *App {
+	return newTestAppWithPrivateConfig(t, ctx, defaultPrivateConfig())
 }
 
-func newTestAppWithPrivateConfig(t *testing.T, pConfig privateConfig) *App {
+func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, pConfig privateConfig) *App {
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,
@@ -116,7 +116,7 @@ func newTestAppWithPrivateConfig(t *testing.T, pConfig privateConfig) *App {
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                "{}",
 	}
-	app, err := newWithPrivateConfig(config, pConfig)
+	app, err := newWithPrivateConfig(ctx, config, pConfig)
 	require.NoError(t, err)
 	return app
 }
@@ -147,6 +147,8 @@ func init() {
 }
 
 func TestRepeatedAppInitialization(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,
@@ -166,9 +168,9 @@ func TestRepeatedAppInitialization(t *testing.T) {
 		CustomOrderFilter:                "{}",
 		CustomContractAddresses:          `{"exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788","devUtils":"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1","erc20Proxy":"0x1dc4c1cefef38a777b15aa20260a54e584b16c48","erc721Proxy":"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401","erc1155Proxy":"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"}`,
 	}
-	_, err := New(config)
+	_, err := New(ctx, config)
 	require.NoError(t, err)
-	_, err = New(config)
+	_, err = New(ctx, config)
 	require.NoError(t, err)
 }
 
@@ -238,11 +240,11 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		wg := &sync.WaitGroup{}
-		originalNode := newTestAppWithPrivateConfig(t, testCase.pConfig)
+		originalNode := newTestAppWithPrivateConfig(t, ctx, testCase.pConfig)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
 				require.NoError(t, err)
 			}
@@ -260,11 +262,11 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		require.NoError(t, err)
 		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
-		newNode := newTestApp(t)
+		newNode := newTestApp(t, ctx)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
 				require.NoError(t, err)
 			}

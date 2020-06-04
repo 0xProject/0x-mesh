@@ -39,12 +39,12 @@ func main() {
 	}
 
 	// Start core.App.
-	app, err := core.New(coreConfig)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	app, err := core.New(ctx, coreConfig)
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("could not initialize app")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Below, we will start several independent goroutines. We use separate
 	// channels to communicate errors and a waitgroup to wait for all goroutines
@@ -55,7 +55,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := app.Start(ctx); err != nil {
+		if err := app.Start(); err != nil {
 			coreErrChan <- err
 		}
 	}()

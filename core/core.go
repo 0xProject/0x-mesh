@@ -193,6 +193,7 @@ type Config struct {
 }
 
 type App struct {
+	ctx               context.Context
 	config            Config
 	privateConfig     privateConfig
 	peerID            peer.ID
@@ -216,11 +217,11 @@ type App struct {
 
 var setupLoggerOnce = &sync.Once{}
 
-func New(config Config) (*App, error) {
-	return newWithPrivateConfig(config, defaultPrivateConfig())
+func New(ctx context.Context, config Config) (*App, error) {
+	return newWithPrivateConfig(ctx, config, defaultPrivateConfig())
 }
 
-func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
+func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateConfig) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	setupLoggerOnce.Do(func() {
@@ -273,7 +274,7 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	}
 
 	// Initialize db
-	database, err := newDB(config)
+	database, err := newDB(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +367,7 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	}
 
 	app := &App{
+		ctx:               ctx,
 		started:           make(chan struct{}),
 		config:            config,
 		privateConfig:     pConfig,
@@ -480,7 +482,7 @@ func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
 	return metadata, nil
 }
 
-func (app *App) Start(ctx context.Context) error {
+func (app *App) Start() error {
 	// Get the publish topics depending on our custom order filter.
 	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
@@ -489,7 +491,7 @@ func (app *App) Start(ctx context.Context) error {
 
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
-	innerCtx, cancel := context.WithCancel(ctx)
+	innerCtx, cancel := context.WithCancel(app.ctx)
 	defer cancel()
 
 	// Below, we will start several independent goroutines. We use separate
