@@ -365,6 +365,50 @@ func TestDeleteOrder(t *testing.T) {
 	assert.Empty(t, foundOrders, "expected no orders remaining in the database")
 }
 
+func TestDeleteOrdersLimitAndOffset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create orders with increasing makerAssetAmount.
+	// - orders[0].MakerAssetAmount = 0
+	// - orders[1].MakerAssetAmount = 1
+	// - etc.
+	numOrders := 10
+	originalOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < numOrders; i++ {
+		testOrder := newTestOrder()
+		testOrder.MakerAssetAmount = big.NewInt(int64(i))
+		originalOrders = append(originalOrders, testOrder)
+	}
+	_, _, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+
+	// Call DeleteOrders and make sure the return value is what we expect.
+	deletedOrders, err := db.DeleteOrders(&OrderQuery{
+		Sort: []OrderSort{
+			{
+				Field:     OFMakerAssetAmount,
+				Direction: Ascending,
+			},
+		},
+		Offset: 3,
+		Limit:  4,
+	})
+	require.NoError(t, err)
+	assertOrderSlicesAreEqual(t, originalOrders[3:7], deletedOrders)
+
+	// Call FindOrders to check that the remaining orders in the db are
+	// what we expect.
+	expectedRemainingOrders := append(
+		safeSubsliceOrders(originalOrders, 0, 3),
+		safeSubsliceOrders(originalOrders, 7, 10)...,
+	)
+	actualRemainingOrders, err := db.FindOrders(nil)
+	require.NoError(t, err)
+	assertOrderSlicesAreUnsortedEqual(t, expectedRemainingOrders, actualRemainingOrders)
+}
+
 func TestDeleteOrdersFilter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -710,6 +754,50 @@ func TestDeleteMiniHeader(t *testing.T) {
 	foundMiniHeaders, err := db.FindMiniHeaders(nil)
 	require.NoError(t, err)
 	assert.Empty(t, foundMiniHeaders, "expected no miniHeaders remaining in the database")
+}
+
+func TestDeleteMiniHeadersLimitAndOffset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create miniHeaders with increasing Number.
+	// - miniHeaders[0].Number = 0
+	// - miniHeaders[1].Number = 1
+	// - etc.
+	numMiniHeaders := 10
+	originalMiniHeaders := []*types.MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		testMiniHeader := newTestMiniHeader()
+		testMiniHeader.Number = big.NewInt(int64(i))
+		originalMiniHeaders = append(originalMiniHeaders, testMiniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+	require.NoError(t, err)
+
+	// Call DeleteMiniHeaders and make sure the return value is what we expect.
+	deletedMiniHeaders, err := db.DeleteMiniHeaders(&MiniHeaderQuery{
+		Sort: []MiniHeaderSort{
+			{
+				Field:     MFNumber,
+				Direction: Ascending,
+			},
+		},
+		Offset: 3,
+		Limit:  4,
+	})
+	require.NoError(t, err)
+	assertMiniHeaderSlicesAreEqual(t, originalMiniHeaders[3:7], deletedMiniHeaders)
+
+	// Call FindMiniHeaders to check that the remaining orders in the db are
+	// what we expect.
+	expectedRemainingMiniHeaders := append(
+		safeSubsliceMiniHeaders(originalMiniHeaders, 0, 3),
+		safeSubsliceMiniHeaders(originalMiniHeaders, 7, 10)...,
+	)
+	actualRemainingMiniHeaders, err := db.FindMiniHeaders(nil)
+	require.NoError(t, err)
+	assertMiniHeaderSlicesAreUnsortedEqual(t, expectedRemainingMiniHeaders, actualRemainingMiniHeaders)
 }
 
 func TestDeleteMiniHeadersFilter(t *testing.T) {

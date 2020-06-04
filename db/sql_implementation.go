@@ -86,8 +86,10 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	return db, nil
 }
 
-// TODO(albrow): Use a proper migration tool.
-// TODO(albrow): Add indexes.
+// TODO(albrow): Use a proper migration tool. We don't technically need this
+// now but it will be necessary if we ever change the database schema.
+// Note(albrow): If needed, we can optimize this by adding indexes to the
+// orders and miniHeaders tables.
 const schema = `
 CREATE TABLE IF NOT EXISTS orders (
 	hash                     TEXT UNIQUE NOT NULL,
@@ -132,7 +134,8 @@ CREATE TABLE IF NOT EXISTS metadata (
 );
 `
 
-// TODO(albrow): Used prepared statement for inserts.
+// Note(albrow): If needed, we can optimize this by using prepared
+// statements for inserts instead of just a string.
 const insertOrderQuery = `INSERT INTO orders (
 	hash,
 	chainID,
@@ -281,7 +284,6 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	}
 
 	// TODO(albrow): Remove orders with longest expiration time.
-	// TODO(albrow): Return appropriate values for added, removed.
 	return added, nil, nil
 }
 
@@ -375,7 +377,6 @@ func orderingFromOrderSortOpts(sortOpts []OrderSort) []sqlz.SQLStmt {
 }
 
 func whereConditionsFromOrderFilterOpts(filterOpts []OrderFilter) ([]sqlz.WhereCondition, error) {
-	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(filterOpts))
 	for i, filterOpt := range filterOpts {
 		value := convertFilterValue(filterOpt.Value)
@@ -393,8 +394,8 @@ func whereConditionsFromOrderFilterOpts(filterOpts []OrderFilter) ([]sqlz.WhereC
 		case GreaterOrEqual:
 			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), value)
 		case Contains:
-			// TODO(albrow): Value cannot contain special characters like "%".
-			// TODO(albrow): Optimize this so it is easier to index.
+			// Note(albrow): If needed, we can optimize this so it is easier to index.
+			// LIKE queries are notoriously slow.
 			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", value))
 		default:
 			return nil, fmt.Errorf("db.FindOrder: unknown FilterOpt.Kind: %s", filterOpt.Kind)
@@ -410,7 +411,6 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	return nil
 }
 
-// TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
 func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
@@ -444,7 +444,6 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 	return sqltypes.OrdersToCommonType(ordersToDelete), nil
 }
 
-// TODO(albrow): Consider automatically setting LastUpdated?
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
@@ -521,10 +520,31 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 		return nil, nil, err
 	}
 
-	// TODO(albrow): Because of how the above code is written, a single
-	// miniHeader could exist in both added and removed sets. Should we
-	// remove such miniHeaders from both sets in this case?
-	return added, sqltypes.MiniHeadersToCommonType(miniHeadersToRemove), nil
+	// Because of how the above code is written, a single miniHeader could exist
+	// in both added and removed sets. We should remove such miniHeaders from both
+	// sets in this case.
+	addedMap := map[common.Hash]*types.MiniHeader{}
+	removedMap := map[common.Hash]*sqltypes.MiniHeader{}
+	for _, a := range added {
+		addedMap[a.Hash] = a
+	}
+	for _, r := range miniHeadersToRemove {
+		removedMap[r.Hash] = r
+	}
+	dedupedAdded := []*types.MiniHeader{}
+	dedupedRemoved := []*sqltypes.MiniHeader{}
+	for _, a := range added {
+		if _, wasRemoved := removedMap[a.Hash]; !wasRemoved {
+			dedupedAdded = append(dedupedAdded, a)
+		}
+	}
+	for _, r := range miniHeadersToRemove {
+		if _, wasAdded := addedMap[r.Hash]; !wasAdded {
+			dedupedRemoved = append(dedupedRemoved, r)
+		}
+	}
+
+	return dedupedAdded, sqltypes.MiniHeadersToCommonType(dedupedRemoved), nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
@@ -599,7 +619,6 @@ func orderingFromMiniHeaderSortOpts(sortOpts []MiniHeaderSort) []sqlz.SQLStmt {
 }
 
 func whereConditionsFromMiniHeaderFilterOpts(filterOpts []MiniHeaderFilter) ([]sqlz.WhereCondition, error) {
-	// TODO(albrow): Type-check on value? You can't use CONTAINS with numeric types.
 	whereConditions := make([]sqlz.WhereCondition, len(filterOpts))
 	for i, filterOpt := range filterOpts {
 		value := convertFilterValue(filterOpt.Value)
@@ -617,8 +636,8 @@ func whereConditionsFromMiniHeaderFilterOpts(filterOpts []MiniHeaderFilter) ([]s
 		case GreaterOrEqual:
 			whereConditions[i] = sqlz.Gte(string(filterOpt.Field), value)
 		case Contains:
-			// TODO(albrow): Value cannot contain special characters like "%".
-			// TODO(albrow): Optimize this so it is easier to index.
+			// Note(albrow): If needed, we can optimize this so it is easier to index.
+			// LIKE queries are notoriously slow.
 			whereConditions[i] = sqlz.Like(string(filterOpt.Field), fmt.Sprintf("%%%s%%", value))
 		default:
 			return nil, fmt.Errorf("db.FindMiniHeaders: unknown FilterOpt.Kind: %s", filterOpt.Kind)
@@ -634,7 +653,6 @@ func (db *DB) DeleteMiniHeader(hash common.Hash) error {
 	return nil
 }
 
-// TODO(albrow): Test deleting with ORDER BY, LIMIT, and OFFSET.
 func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHeader, err error) {
 	defer func() {
 		err = convertErr(err)
