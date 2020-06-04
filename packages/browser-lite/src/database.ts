@@ -195,7 +195,7 @@ export class Database {
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
         if (!canUseNativeDexieIndexes(this._orders, query)) {
             // As a fallback, implement the query inefficiently (in-memory).
-            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
             return runQueryInMemoryAsync(this._orders, query);
         }
         const col = buildCollectionWithDexieIndexes(this._orders, query);
@@ -206,7 +206,7 @@ export class Database {
     public async countOrdersAsync(query?: OrderQuery): Promise<number> {
         if (!canUseNativeDexieIndexes(this._orders, query)) {
             // As a fallback, implement the query inefficiently (in-memory).
-            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
             const records = await runQueryInMemoryAsync(this._orders, query);
             return records.length;
         }
@@ -288,7 +288,7 @@ export class Database {
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
         if (!canUseNativeDexieIndexes(this._miniHeaders, query)) {
             // As a fallback, implement the query inefficiently (in-memory).
-            // TODO(albrow): Find some ways to optimize specific common queries with compound indexes.
+            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
             return runQueryInMemoryAsync(this._miniHeaders, query);
         }
         const col = buildCollectionWithDexieIndexes(this._miniHeaders, query);
@@ -304,9 +304,6 @@ export class Database {
     public async deleteMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
         const deletedMiniHeaders: MiniHeader[] = [];
         await this._db.transaction('rw', this._miniHeaders, async () => {
-            // TODO(albrow): Pay special attention to this code and make sure it works.
-            // Behavior of Dexie.js regarding transactions and function scope is a little
-            // too complicated/magical.
             const miniHeaders = await this.findMiniHeadersAsync(query);
             for (const miniHeader of miniHeaders) {
                 await this._miniHeaders.delete(miniHeader.hash);
@@ -338,9 +335,6 @@ export class Database {
     // UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error
     public async updateMetadataAsync(updateFunc: (existingMetadata: Metadata) => Metadata): Promise<void> {
         await this._db.transaction('rw', this._metadata, async () => {
-            // TODO(albrow): Pay special attention to this code and make sure it works.
-            // Behavior of Dexie.js regarding transactions and function scope is a little
-            // too complicated/magical.
             const existingMetadata = await this.getMetadataAsync();
             const updatedMetadata = updateFunc(existingMetadata);
             await this._metadata.put(updatedMetadata);
@@ -381,8 +375,8 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
                 col = table.where(filter.field).belowOrEqual(filter.value);
                 break;
             case FilterKind.Contains:
-                // TODO(albrow): This iterates through all orders and is very inefficient.
-                // Is there a way to optimize this?)
+                // Note(albrow): This iterates through all orders and is very inefficient.
+                // If needed, we should try to find a way to optimize this.
                 col = table.filter(containsFilterFunc(filter));
                 break;
             default:
@@ -441,7 +435,8 @@ async function runQueryInMemoryAsync<T extends Record, Key>(
 
 function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, records: T[]): T[] {
     let result = records;
-    // TODO(albrow): Use the native Dexie.js index for the *first* filter when possible.
+    // Note(albrow): As an optimization, we could use the native Dexie.js index for
+    // the *first* filter when possible.
     for (const filter of filters) {
         switch (filter.kind) {
             case FilterKind.Equal:
@@ -474,7 +469,8 @@ function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, record
 }
 
 function sortRecords<T extends Record>(sortOpts: Array<SortOption<T>>, records: T[]): T[] {
-    // TODO(albrow): Use native Dexie.js ordering when possible.
+    // Note(albrow): As an optimization, we could use native Dexie.js ordering for
+    // the *first* sort option when possible.
     const result = records;
     return result.sort((a: T, b: T) => {
         for (const s of sortOpts) {
