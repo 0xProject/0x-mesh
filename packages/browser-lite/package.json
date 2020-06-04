@@ -15,7 +15,6 @@
         "docsPath": "../../docs/browser-bindings/browser-lite"
     },
     "dependencies": {
-        "@0x/contract-addresses": "^4.9.0",
         "@0x/order-utils": "^10.2.0",
         "@0x/utils": "^5.4.0",
         "ajv": "^6.12.2",
