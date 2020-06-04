@@ -15,7 +15,7 @@ import (
 )
 
 // ordersyncSubprotocolFactory is a function that can be used to create an ordersync.Subprotocol.
-// Note(albrow): Using a factor here allows us to specify which subprotocols we want to use before
+// Note(albrow): Using a factory here allows us to specify which subprotocols we want to use before
 // the app is fully initialized. Factory functions won't actually be called until the app is done
 // initializing.
 type ordersyncSubprotocolFactory func(app *App, perPage int) ordersync.Subprotocol

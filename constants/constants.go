@@ -27,9 +27,6 @@ var NullAddress = common.HexToAddress("0x000000000000000000000000000000000000000
 // NullBytes is an empty byte array
 var NullBytes = common.FromHex("0x")
 
-// NullHash is the empty hash.
-var NullHash = common.HexToHash("0x")
-
 var (
 	// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
 	GanacheAccount0           = common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631")

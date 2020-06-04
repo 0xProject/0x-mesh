@@ -88,7 +88,6 @@ const (
 	LessOrEqual    FilterKind = "<="
 	GreaterOrEqual FilterKind = ">="
 	Contains       FilterKind = "CONTAINS"
-	// TODO(albrow): Starts with?
 )
 
 type OrderField string

@@ -11,7 +11,6 @@ import (
 
 func newDB(ctx context.Context, config Config) (*db.DB, error) {
 	databasePath := filepath.Join(config.DataDir, "mesh_dexie_db")
-	// TOOD(albrow): Create and pass through context.
 	return db.New(ctx, &db.Options{
 		DriverName:     "dexie",
 		DataSourceName: databasePath,

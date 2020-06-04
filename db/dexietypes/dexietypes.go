@@ -1,9 +1,7 @@
 package dexietypes
 
-// TODO(albrow): Can some of these types be de-duped with sqltypes without
-// importing "database/sql/driver"?
-// TODO(albrow): Could these be optimized by more directly converting between
-// Go types and JavaScript types instead of using jsutil.IneffecientlyConvertX?
+// Note(albrow): Could be optimized if needed by more directly converting between
+// Go types and JavaScript types instead of using jsutil.IneffecientlyConvertX.
 
 import (
 	"encoding/json"

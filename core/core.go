@@ -782,9 +782,15 @@ func (e ErrPerPageZero) Error() string {
 // minOrderHash (exclusive). The orders in the response are sorted by hash. In order to
 // paginate through all orders:
 //
-// 1. First call GetOrders with an empty minOrderHash.
-// 2. On subsequent calls, use the maximum hash of the orders from the previous response as the next minOrderHash.
-// 3. When no orders are returned, pagination is complete.
+//     1. First call GetOrders with an empty minOrderHash.
+//     2. On subsequent calls, use the maximum hash of the orders from the previous response as the next minOrderHash.
+//     3. When no orders are returned, pagination is complete.
+//
+// When following this process, GetOrders offers the following guarantees:
+//
+//    1. Any order that was present before pagination started *and* was present after pagination ended will be included in a response.
+//    2. No order will be included in more than one response.
+//    3. Orders that were added or deleted during pagination may or may not be included in a response.
 //
 func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrdersResponse, error) {
 	<-app.started
