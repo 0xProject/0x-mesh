@@ -426,16 +426,6 @@ func (w *Watcher) handleBlockEvents(
 		return nil
 	}
 
-	// TODO(albrow): Consider implementing transactions.
-	// miniHeadersColTxn := w.meshDB.MiniHeaders.OpenTransaction()
-	// defer func() {
-	// 	_ = miniHeadersColTxn.Discard()
-	// }()
-	// ordersColTxn := w.meshtypes.OrderWithMetadatas.OpenTransaction()
-	// defer func() {
-	// 	_ = ordersColTxn.Discard()
-	// }()
-
 	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
@@ -757,20 +747,6 @@ func (w *Watcher) handleBlockEvents(
 		return err
 	}
 
-	// TODO(albrow): Consider using transactions.
-	// if err := ordersColTxn.Commit(); err != nil {
-	// 	logger.WithFields(logger.Fields{
-	// 		"error": err.Error(),
-	// 	}).Error("Failed to commit orders collection transaction")
-	// 	return err
-	// }
-	// if err := miniHeadersColTxn.Commit(); err != nil {
-	// 	logger.WithFields(logger.Fields{
-	// 		"error": err.Error(),
-	// 	}).Error("Failed to commit miniheaders collection transaction")
-	// 	return err
-	// }
-
 	orderEvents := append(expirationOrderEvents, postValidationOrderEvents...)
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
@@ -812,11 +788,6 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	w.handleBlockEventsMu.RLock()
 	defer w.handleBlockEventsMu.RUnlock()
 
-	// TODO(albrow): Do we need a transaction here?
-	// ordersColTxn := w.meshtypes.OrderWithMetadatas.OpenTransaction()
-	// defer func() {
-	// 	_ = ordersColTxn.Discard()
-	// }()
 	lastUpdatedCutOff := time.Now().Add(-lastUpdatedBuffer)
 	orders, err := w.db.FindOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
@@ -1267,7 +1238,6 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				} else {
-					// TODO(albrow): Do we need to do this in a transaction?
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount)
 				}
 				// Order was filled, emit event
@@ -1603,7 +1573,6 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	return nil
 }
 
-// TODO(albrow): Do we need to do this in a transaction?
 func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.LastUpdated = time.Now().UTC()
@@ -1618,7 +1587,6 @@ func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMeta
 	}
 }
 
-// TODO(albrow): Do we need to do this in a transaction?
 func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = false
@@ -1636,7 +1604,6 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 	}
 }
 
-// TODO(albrow): Do we need to do this in a transaction?
 func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
@@ -1658,7 +1625,6 @@ type orderDeleter interface {
 	Delete(id []byte) error
 }
 
-// TODO(albrow): Do we need to do this inside a transaction?
 func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 	if err := w.db.DeleteOrder(order.Hash); err != nil {
 		return err
