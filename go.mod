@@ -59,11 +59,9 @@ require (
 	github.com/libp2p/go-tcp-transport v0.1.1
 	github.com/libp2p/go-ws-transport v0.2.0
 	github.com/mattn/go-colorable v0.1.2 // indirect
-	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/plaid/go-envvar v1.1.0
 	github.com/posener/complete v1.2.3 // indirect
@@ -75,7 +73,6 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
-	github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208 // indirect
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190809123943-df4f5c81cb3b // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -83,6 +80,4 @@ require (
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
-	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 )
