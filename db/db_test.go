@@ -307,322 +307,22 @@ func TestFindOrdersFilter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	db := newTestDB(t, ctx)
+	_, testCases := makeOrderFilterTestCases(t, db)
 
-	// Create some test orders with very specific characteristics to make it easier to write tests.
-	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
-	// - MakerAssetData will be 'a', 'b', 'c', etc.
-	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
-	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
-	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
-	for i := 0; i < numOrders; i++ {
-		order := newTestOrder()
-		order.MakerAssetAmount = big.NewInt(int64(i))
-		order.TakerAssetAmount = big.NewInt(int64(i))
-		order.MakerAssetData = []byte{97 + byte(i)}
-		parsedMakerAssetData := []*types.SingleAssetData{
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(0),
-			},
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(int64(i)*10 + 1),
-			},
-		}
-		order.ParsedMakerAssetData = parsedMakerAssetData
-		originalOrders = append(originalOrders, order)
-	}
-	_, _, err := db.AddOrders(originalOrders)
-	require.NoError(t, err)
-
-	testCases := []findOrdersFilterTestCase{
-		{
-			name:           "no filter",
-			filters:        []OrderFilter{},
-			expectedOrders: originalOrders,
-		},
-		{
-			name: "IsRemoved = false",
-			filters: []OrderFilter{
-				{
-					Field: OFIsRemoved,
-					Kind:  Equal,
-					Value: false,
-				},
-			},
-			expectedOrders: originalOrders,
-		},
-		{
-			name: "MakerAddress = Address1",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAddress,
-					Kind:  Equal,
-					Value: constants.GanacheAccount1,
-				},
-			},
-			expectedOrders: originalOrders,
-		},
-
-		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
-		{
-			name: "MakerAssetAmount = 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Equal,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: originalOrders[5:6],
-		},
-		{
-			name: "MakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "MakerAssetAmount < 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: originalOrders[:5],
-		},
-		{
-			name: "MakerAssetAmount > 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Greater,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: originalOrders[6:],
-		},
-		{
-			name: "MakerAssetAmount <= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  LessOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: originalOrders[:6],
-		},
-		{
-			name: "MakerAssetAmount >= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: originalOrders[5:],
-		},
-		{
-			name: "MakerAssetAmount < 10^76",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: math.BigPow(10, 76),
-				},
-			},
-			expectedOrders: originalOrders,
-		},
-
-		// Filter on MakerAssetData (type []byte/TEXT)
-		{
-			name: "MakerAssetData = f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Equal,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: originalOrders[5:6],
-		},
-		{
-			name: "MakerAssetData != f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  NotEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "MakerAssetData < f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: originalOrders[:5],
-		},
-		{
-			name: "MakerAssetData > f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Greater,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: originalOrders[6:],
-		},
-		{
-			name: "MakerAssetData <= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  LessOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: originalOrders[:6],
-		},
-		{
-			name: "MakerAssetData >= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  GreaterOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedOrders: originalOrders[5:],
-		},
-
-		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
-		{
-			name: "ParsedMakerAssetData CONTAINS query that matches all",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedOrders: originalOrders,
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedOrders: originalOrders[5:6],
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
-			},
-			expectedOrders: originalOrders,
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
-			},
-			expectedOrders: originalOrders[5:6],
-		},
-		{
-			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerFeeAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
-			},
-			expectedOrders: originalOrders,
-		},
-
-		// Combining two or more filters
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-			},
-			expectedOrders: originalOrders[3:7],
-		},
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-				{
-					Field: OFTakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedOrders: append(safeSubsliceOrders(originalOrders, 3, 5), safeSubsliceOrders(originalOrders, 6, 7)...),
-		},
-	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
 		t.Run(testCaseName, runFindOrdersFilterTestCase(t, db, testCase))
 	}
 }
 
-type findOrdersFilterTestCase struct {
-	name           string
-	filters        []OrderFilter
-	expectedOrders []*types.OrderWithMetadata
-	expectedError  string
-}
-
-func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase findOrdersFilterTestCase) func(t *testing.T) {
+func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase orderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &OrderQuery{
 			Filters: testCase.filters,
 		}
-
 		foundOrders, err := db.FindOrders(findOpts)
-		if testCase.expectedError != "" {
-			require.Error(t, err, "expected an error but got nil")
-			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
-		} else {
-			require.NoError(t, err)
-			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedOrders, foundOrders)
-		}
+		require.NoError(t, err)
+		assertOrderSlicesAreUnsortedEqual(t, testCase.expectedMatchingOrders, foundOrders)
 	}
 }
 
@@ -630,301 +330,23 @@ func TestCountOrdersFilter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	db := newTestDB(t, ctx)
+	_, testCases := makeOrderFilterTestCases(t, db)
 
-	// Create some test orders with very specific characteristics to make it easier to write tests.
-	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
-	// - MakerAssetData will be 'a', 'b', 'c', etc.
-	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
-	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
-	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
-	for i := 0; i < numOrders; i++ {
-		order := newTestOrder()
-		order.MakerAssetAmount = big.NewInt(int64(i))
-		order.TakerAssetAmount = big.NewInt(int64(i))
-		order.MakerAssetData = []byte{97 + byte(i)}
-		parsedMakerAssetData := []*types.SingleAssetData{
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(0),
-			},
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(int64(i)*10 + 1),
-			},
-		}
-		order.ParsedMakerAssetData = parsedMakerAssetData
-		originalOrders = append(originalOrders, order)
-	}
-	_, _, err := db.AddOrders(originalOrders)
-	require.NoError(t, err)
-
-	// TODO(albrow): Can this be de-duped with the findOrders test cases?
-	testCases := []countOrdersFilterTestCase{
-		{
-			name:          "no filter",
-			filters:       []OrderFilter{},
-			expectedCount: len(originalOrders),
-		},
-
-		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
-		{
-			name: "MakerAssetAmount = 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Equal,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 1,
-		},
-		{
-			name: "MakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: len(originalOrders) - 1,
-		},
-		{
-			name: "MakerAssetAmount < 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 5,
-		},
-		{
-			name: "MakerAssetAmount > 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Greater,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 4,
-		},
-		{
-			name: "MakerAssetAmount <= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  LessOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 6,
-		},
-		{
-			name: "MakerAssetAmount >= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 5,
-		},
-		{
-			name: "MakerAssetAmount < 10^76",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: math.BigPow(10, 76),
-				},
-			},
-			expectedCount: len(originalOrders),
-		},
-
-		// Filter on MakerAssetData (type []byte/TEXT)
-		{
-			name: "MakerAssetData = f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Equal,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: 1,
-		},
-		{
-			name: "MakerAssetData != f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  NotEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: len(originalOrders) - 1,
-		},
-		{
-			name: "MakerAssetData < f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: 5,
-		},
-		{
-			name: "MakerAssetData > f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Greater,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: 4,
-		},
-		{
-			name: "MakerAssetData <= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  LessOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: 6,
-		},
-		{
-			name: "MakerAssetData >= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  GreaterOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedCount: 5,
-		},
-
-		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
-		{
-			name: "ParsedMakerAssetData CONTAINS query that matches all",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedCount: len(originalOrders),
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedCount: 1,
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
-			},
-			expectedCount: len(originalOrders),
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
-			},
-			expectedCount: 1,
-		},
-		{
-			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerFeeAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
-			},
-			expectedCount: len(originalOrders),
-		},
-
-		// Combining two or more filters
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-			},
-			expectedCount: 4,
-		},
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-				{
-					Field: OFTakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedCount: 3,
-		},
-	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
 		t.Run(testCaseName, runCountOrdersFilterTestCase(t, db, testCase))
 	}
 }
 
-type countOrdersFilterTestCase struct {
-	name          string
-	filters       []OrderFilter
-	expectedCount int
-	expectedError string
-}
-
-func runCountOrdersFilterTestCase(t *testing.T, db *DB, testCase countOrdersFilterTestCase) func(t *testing.T) {
+func runCountOrdersFilterTestCase(t *testing.T, db *DB, testCase orderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		opts := &OrderQuery{
 			Filters: testCase.filters,
 		}
 
 		count, err := db.CountOrders(opts)
-		if testCase.expectedError != "" {
-			require.Error(t, err, "expected an error but got nil")
-			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
-		} else {
-			require.NoError(t, err)
-			require.Equal(t, testCase.expectedCount, count, "wrong number of orders")
-		}
+		require.NoError(t, err)
+		require.Equal(t, len(testCase.expectedMatchingOrders), count, "wrong number of orders")
 	}
 }
 
@@ -948,294 +370,14 @@ func TestDeleteOrdersFilter(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	// Create some test orders with very specific characteristics to make it easier to write tests.
-	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
-	// - MakerAssetData will be 'a', 'b', 'c', etc.
-	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
-	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
-	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
-	for i := 0; i < numOrders; i++ {
-		order := newTestOrder()
-		order.MakerAssetAmount = big.NewInt(int64(i))
-		order.TakerAssetAmount = big.NewInt(int64(i))
-		order.MakerAssetData = []byte{97 + byte(i)}
-		order.ParsedMakerAssetData = []*types.SingleAssetData{
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(0),
-			},
-			{
-				Address: constants.GanacheDummyERC721TokenAddress,
-				TokenID: big.NewInt(int64(i)*10 + 1),
-			},
-		}
-		originalOrders = append(originalOrders, order)
-	}
-	_, _, err := db.AddOrders(originalOrders)
-	require.NoError(t, err)
-
-	testCases := []deleteOrdersFilterTestCase{
-		{
-			name:                    "no filter",
-			filters:                 []OrderFilter{},
-			expectedRemainingOrders: []*types.OrderWithMetadata{},
-		},
-
-		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
-		{
-			name: "MakerAssetAmount = 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Equal,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "MakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: originalOrders[5:6],
-		},
-		{
-			name: "MakerAssetAmount < 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: originalOrders[5:],
-		},
-		{
-			name: "MakerAssetAmount > 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Greater,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: originalOrders[:6],
-		},
-		{
-			name: "MakerAssetAmount <= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  LessOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: originalOrders[6:],
-		},
-		{
-			name: "MakerAssetAmount >= 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: originalOrders[:5],
-		},
-		{
-			name: "MakerAssetAmount < 10^76",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  Less,
-					Value: math.BigPow(10, 76),
-				},
-			},
-			expectedRemainingOrders: []*types.OrderWithMetadata{},
-		},
-
-		// Filter on MakerAssetData (type []byte/TEXT)
-		{
-			name: "MakerAssetData = f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Equal,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "MakerAssetData != f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  NotEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: originalOrders[5:6],
-		},
-		{
-			name: "MakerAssetData < f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: originalOrders[5:],
-		},
-		{
-			name: "MakerAssetData > f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  Greater,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: originalOrders[:6],
-		},
-		{
-			name: "MakerAssetData <= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  LessOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: originalOrders[6:],
-		},
-		{
-			name: "MakerAssetData >= f",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetData,
-					Kind:  GreaterOrEqual,
-					Value: []byte("f"),
-				},
-			},
-			expectedRemainingOrders: originalOrders[:5],
-		},
-
-		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
-		{
-			name: "ParsedMakerAssetData CONTAINS query that matches all",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedRemainingOrders: []*types.OrderWithMetadata{},
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				{
-					Field: OFParsedMakerAssetData,
-					Kind:  Contains,
-					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
-				},
-			},
-			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
-			},
-			expectedRemainingOrders: []*types.OrderWithMetadata{},
-		},
-		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
-			filters: []OrderFilter{
-				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
-			},
-			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 5), safeSubsliceOrders(originalOrders, 6, 10)...),
-		},
-		{
-			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
-			filters: []OrderFilter{
-				MakerFeeAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
-			},
-			expectedRemainingOrders: []*types.OrderWithMetadata{},
-		},
-
-		// Combining two or more filters
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-			},
-			expectedRemainingOrders: append(safeSubsliceOrders(originalOrders, 0, 3), safeSubsliceOrders(originalOrders, 7, 10)...),
-		},
-		{
-			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
-			filters: []OrderFilter{
-				{
-					Field: OFMakerAssetAmount,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: OFMakerAssetData,
-					Kind:  Less,
-					Value: []byte("h"),
-				},
-				{
-					Field: OFTakerAssetAmount,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedRemainingOrders: []*types.OrderWithMetadata{
-				originalOrders[0],
-				originalOrders[1],
-				originalOrders[2],
-				originalOrders[5],
-				originalOrders[7],
-				originalOrders[8],
-				originalOrders[9],
-			},
-		},
-		// TODO(albrow): Need more test coverage for convertFilterValue?
-	}
+	storedOrders, testCases := makeOrderFilterTestCases(t, db)
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
-		t.Run(testCaseName, runDeleteOrdersFilterTestCase(t, db, originalOrders, testCase))
+		t.Run(testCaseName, runDeleteOrdersFilterTestCase(t, db, storedOrders, testCase))
 	}
 }
 
-type deleteOrdersFilterTestCase struct {
-	name                    string
-	filters                 []OrderFilter
-	expectedRemainingOrders []*types.OrderWithMetadata
-	expectedError           string
-}
-
-func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase deleteOrdersFilterTestCase) func(t *testing.T) {
+func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types.OrderWithMetadata, testCase orderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		defer func() {
 			// After each case, reset the state of the database by re-adding the original orders.
@@ -1247,36 +389,27 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types
 			Filters: testCase.filters,
 		}
 		deletedOrders, err := db.DeleteOrders(deleteOpts)
-		if testCase.expectedError != "" {
-			require.Error(t, err, "expected an error but got nil")
-			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
-		} else {
-			require.NoError(t, err)
-			foundOrders, err := db.FindOrders(nil)
-			require.NoError(t, err)
-			assertOrderSlicesAreUnsortedEqual(t, testCase.expectedRemainingOrders, foundOrders)
+		assertOrderSlicesAreUnsortedEqual(t, testCase.expectedMatchingOrders, deletedOrders)
 
-			// Figure out which orders were supposed to be deleted and
-			// make sure that they were.
-			// TODO(albrow): Make this test use the same structure as deleteMiniHeadersFilter
-			// and make each test case include the expected *deleted* orders instead of
-			// expected remaining. Then we can potentially de-dupe the test cases with
-			// findOrdersFilter.
-			expectedDeletedOrders := []*types.OrderWithMetadata{}
-			for _, order := range originalOrders {
-				shouldBeDeleted := true
-				for _, remainingOrder := range testCase.expectedRemainingOrders {
-					if order.Hash.Hex() == remainingOrder.Hash.Hex() {
-						shouldBeDeleted = false
-						break
-					}
-				}
-				if shouldBeDeleted {
-					expectedDeletedOrders = append(expectedDeletedOrders, order)
+		// Figure out which orders should still remain in the database, then
+		// call FindOrders and make sure we get back what we expect.
+		expectedRemainingOrders := []*types.OrderWithMetadata{}
+		for _, order := range originalOrders {
+			shouldBeRemaining := true
+			for _, remainingOrder := range testCase.expectedMatchingOrders {
+				if order.Hash.Hex() == remainingOrder.Hash.Hex() {
+					shouldBeRemaining = false
+					break
 				}
 			}
-			assertOrderSlicesAreUnsortedEqual(t, expectedDeletedOrders, deletedOrders)
+			if shouldBeRemaining {
+				expectedRemainingOrders = append(expectedRemainingOrders, order)
+			}
 		}
+		require.NoError(t, err)
+		actualRemainingOrders, err := db.FindOrders(nil)
+		require.NoError(t, err)
+		assertOrderSlicesAreUnsortedEqual(t, expectedRemainingOrders, actualRemainingOrders)
 	}
 }
 
@@ -1386,7 +519,6 @@ func TestFindMiniHeadersSort(t *testing.T) {
 	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
 	require.NoError(t, err)
 
-	// TODO(albrow): Add test cases.
 	testCases := []findMiniHeadersSortTestCase{
 		{
 			sortOpts: []MiniHeaderSort{
@@ -1546,268 +678,22 @@ func TestFindMiniHeadersFilter(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	// Create some test miniheaders with very specific characteristics to make it easier to write tests.
-	// - Number will be 0, 1, 2, etc.
-	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
-	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
-	numMiniHeaders := 10
-	originalMiniHeaders := []*types.MiniHeader{}
-	for i := 0; i < numMiniHeaders; i++ {
-		miniHeader := newTestMiniHeader()
-		miniHeader.Number = big.NewInt(int64(i))
-		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
-		for i := range miniHeader.Logs {
-			miniHeader.Logs[i].BlockNumber = miniHeader.Number.Uint64()
-		}
-		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
-	}
-	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
-	require.NoError(t, err)
-
-	testCases := []findMiniHeadersFilterTestCase{
-		{
-			name:                "no filter",
-			filters:             []MiniHeaderFilter{},
-			expectedMiniHeaders: originalMiniHeaders,
-		},
-
-		// Filter on Number (type BigInt/NUMERIC)
-		{
-			name: "Number = 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Equal,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[5:6],
-		},
-		{
-			name: "Number != 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
-		},
-		{
-			name: "Number < 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Less,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[:5],
-		},
-		{
-			name: "Number > 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Greater,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[6:],
-		},
-		{
-			name: "Number <= 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  LessOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[:6],
-		},
-		{
-			name: "Number >= 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[5:],
-		},
-		{
-			name: "Number < 10^76",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Less,
-					Value: math.BigPow(10, 76),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders,
-		},
-
-		// Filter on Timestamp (type time.Time/TIMESTAMP)
-		{
-			name: "Timestamp = 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Equal,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[5:6],
-		},
-		{
-			name: "Timestamp != 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  NotEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
-		},
-		{
-			name: "Timestamp < 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[:5],
-		},
-		{
-			name: "Timestamp > 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Greater,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[6:],
-		},
-		{
-			name: "Timestamp <= 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  LessOrEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[:6],
-		},
-		{
-			name: "Timestamp >= 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  GreaterOrEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[5:],
-		},
-
-		// Filter on Logs (type ParsedAssetData/TEXT)
-		{
-			name: "Logs CONTAINS query that matches all",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders,
-		},
-		{
-			name: "Logs CONTAINS query that matches one",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"blockNumber":"0x5"`,
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[5:6],
-		},
-
-		// Combining two or more filters
-		{
-			name: "Number >= 3 AND Timestamp < h",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(700, 0),
-				},
-			},
-			expectedMiniHeaders: originalMiniHeaders[3:7],
-		},
-		{
-			name: "Number >= 3 AND Timestamp < 700 AND Number != 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(700, 0),
-				},
-				{
-					Field: MFNumber,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
-		},
-	}
+	_, testCases := makeMiniHeaderFilterTestCases(t, db)
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
 		t.Run(testCaseName, runFindMiniHeadersFilterTestCase(t, db, testCase))
 	}
 }
 
-type findMiniHeadersFilterTestCase struct {
-	name                string
-	filters             []MiniHeaderFilter
-	expectedMiniHeaders []*types.MiniHeader
-	expectedError       string
-}
-
-func runFindMiniHeadersFilterTestCase(t *testing.T, db *DB, testCase findMiniHeadersFilterTestCase) func(t *testing.T) {
+func runFindMiniHeadersFilterTestCase(t *testing.T, db *DB, testCase miniHeaderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		findOpts := &MiniHeaderQuery{
 			Filters: testCase.filters,
 		}
 
 		foundMiniHeaders, err := db.FindMiniHeaders(findOpts)
-		if testCase.expectedError != "" {
-			require.Error(t, err, "expected an error but got nil")
-			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
-		} else {
-			require.NoError(t, err)
-			assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMiniHeaders, foundMiniHeaders)
-		}
+		require.NoError(t, err)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMatchingMiniHeaders, foundMiniHeaders)
 	}
 }
 
@@ -1830,297 +716,48 @@ func TestDeleteMiniHeadersFilter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	db := newTestDB(t, ctx)
+	storedMiniHeaders, testCases := makeMiniHeaderFilterTestCases(t, db)
 
-	// Create some test miniheaders with very specific characteristics to make it easier to write tests.
-	// - Number will be 0, 1, 2, etc.
-	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
-	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
-	numMiniHeaders := 10
-	originalMiniHeaders := []*types.MiniHeader{}
-	for i := 0; i < numMiniHeaders; i++ {
-		miniHeader := newTestMiniHeader()
-		miniHeader.Number = big.NewInt(int64(i))
-		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
-		for i := range miniHeader.Logs {
-			miniHeader.Logs[i].BlockNumber = miniHeader.Number.Uint64()
-		}
-		originalMiniHeaders = append(originalMiniHeaders, miniHeader)
-	}
-	_, _, err := db.AddMiniHeaders(originalMiniHeaders)
-	require.NoError(t, err)
-
-	// TODO(albrow): These test cases can potentially be de-duped with findMiniHeaders test cases.
-	// Same for orders.
-	testCases := []deleteMiniHeadersFilterTestCase{
-		{
-			name:                       "no filter",
-			filters:                    []MiniHeaderFilter{},
-			expectedDeletedMiniHeaders: originalMiniHeaders,
-		},
-
-		// Filter on Number (type BigInt/NUMERIC)
-		{
-			name: "Number = 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Equal,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
-		},
-		{
-			name: "Number != 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
-		},
-		{
-			name: "Number < 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Less,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[:5],
-		},
-		{
-			name: "Number > 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Greater,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[6:],
-		},
-		{
-			name: "Number <= 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  LessOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[:6],
-		},
-		{
-			name: "Number >= 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[5:],
-		},
-		{
-			name: "Number < 10^76",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  Less,
-					Value: math.BigPow(10, 76),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders,
-		},
-
-		// Filter on Timestamp (type time.Time/TIMESTAMP)
-		{
-			name: "Timestamp = 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Equal,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
-		},
-		{
-			name: "Timestamp != 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  NotEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 0, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 10)...),
-		},
-		{
-			name: "Timestamp < 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[:5],
-		},
-		{
-			name: "Timestamp > 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  Greater,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[6:],
-		},
-		{
-			name: "Timestamp <= 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  LessOrEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[:6],
-		},
-		{
-			name: "Timestamp >= 500",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFTimestamp,
-					Kind:  GreaterOrEqual,
-					Value: time.Unix(500, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[5:],
-		},
-
-		// Filter on Logs (type ParsedAssetData/TEXT)
-		{
-			name: "Logs CONTAINS query that matches all",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders,
-		},
-		{
-			name: "Logs CONTAINS query that matches one",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"blockNumber":"0x5"`,
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[5:6],
-		},
-
-		// Combining two or more filters
-		{
-			name: "Number >= 3 AND Timestamp < h",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(700, 0),
-				},
-			},
-			expectedDeletedMiniHeaders: originalMiniHeaders[3:7],
-		},
-		{
-			name: "Number >= 3 AND Timestamp < 700 AND Number != 5",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFNumber,
-					Kind:  GreaterOrEqual,
-					Value: big.NewInt(3),
-				},
-				{
-					Field: MFTimestamp,
-					Kind:  Less,
-					Value: time.Unix(700, 0),
-				},
-				{
-					Field: MFNumber,
-					Kind:  NotEqual,
-					Value: big.NewInt(5),
-				},
-			},
-			expectedDeletedMiniHeaders: append(safeSubsliceMiniHeaders(originalMiniHeaders, 3, 5), safeSubsliceMiniHeaders(originalMiniHeaders, 6, 7)...),
-		},
-	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
-		t.Run(testCaseName, runDeleteMiniHeadersFilterTestCase(t, db, originalMiniHeaders, testCase))
+		t.Run(testCaseName, runDeleteMiniHeadersFilterTestCase(t, db, storedMiniHeaders, testCase))
 	}
 }
 
-type deleteMiniHeadersFilterTestCase struct {
-	name                       string
-	filters                    []MiniHeaderFilter
-	expectedDeletedMiniHeaders []*types.MiniHeader
-	expectedError              string
-}
-
-func runDeleteMiniHeadersFilterTestCase(t *testing.T, db *DB, originalMiniHeaders []*types.MiniHeader, testCase deleteMiniHeadersFilterTestCase) func(t *testing.T) {
+func runDeleteMiniHeadersFilterTestCase(t *testing.T, db *DB, storedMiniHeaders []*types.MiniHeader, testCase miniHeaderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		defer func() {
 			// After each case, reset the state of the database by re-adding the original miniHeaders.
-			_, _, err := db.AddMiniHeaders(originalMiniHeaders)
+			_, _, err := db.AddMiniHeaders(storedMiniHeaders)
 			require.NoError(t, err)
 		}()
 
 		findOpts := &MiniHeaderQuery{
 			Filters: testCase.filters,
 		}
-
 		deletedMiniHeaders, err := db.DeleteMiniHeaders(findOpts)
-		if testCase.expectedError != "" {
-			require.Error(t, err, "expected an error but got nil")
-			assert.Contains(t, err.Error(), testCase.expectedError, "wrong error message")
-		} else {
-			require.NoError(t, err)
-			assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedDeletedMiniHeaders, deletedMiniHeaders)
+		require.NoError(t, err)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMatchingMiniHeaders, deletedMiniHeaders)
 
-			// Calculate expected remanining miniheaders and make sure that each one is still
-			// in the database.
-			expectedRemainingMiniHeaders := []*types.MiniHeader{}
-			for _, miniHeader := range originalMiniHeaders {
-				shouldBeRemaining := true
-				for _, remainingMiniHeader := range testCase.expectedDeletedMiniHeaders {
-					if miniHeader.Hash.Hex() == remainingMiniHeader.Hash.Hex() {
-						shouldBeRemaining = false
-						break
-					}
-				}
-				if shouldBeRemaining {
-					expectedRemainingMiniHeaders = append(expectedRemainingMiniHeaders, miniHeader)
+		// Calculate expected remanining miniheaders and make sure that each one is still
+		// in the database.
+		expectedRemainingMiniHeaders := []*types.MiniHeader{}
+		for _, miniHeader := range storedMiniHeaders {
+			shouldBeRemaining := true
+			for _, remainingMiniHeader := range testCase.expectedMatchingMiniHeaders {
+				if miniHeader.Hash.Hex() == remainingMiniHeader.Hash.Hex() {
+					shouldBeRemaining = false
+					break
 				}
 			}
-
-			remainingMiniHeaders, err := db.FindMiniHeaders(nil)
-			require.NoError(t, err)
-			assertMiniHeaderSlicesAreUnsortedEqual(t, expectedRemainingMiniHeaders, remainingMiniHeaders)
+			if shouldBeRemaining {
+				expectedRemainingMiniHeaders = append(expectedRemainingMiniHeaders, miniHeader)
+			}
 		}
+
+		remainingMiniHeaders, err := db.FindMiniHeaders(nil)
+		require.NoError(t, err)
+		assertMiniHeaderSlicesAreUnsortedEqual(t, expectedRemainingMiniHeaders, remainingMiniHeaders)
 	}
 }
 
@@ -2337,6 +974,551 @@ func newTestMetadata() *types.Metadata {
 		EthRPCRequestsSentInCurrentUTCDay: 1337,
 		StartOfCurrentUTCDay:              time.Date(1992, time.September, 29, 8, 0, 0, 0, time.UTC),
 	}
+}
+
+type orderFilterTestCase struct {
+	name                   string
+	filters                []OrderFilter
+	expectedMatchingOrders []*types.OrderWithMetadata
+}
+
+func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata, []orderFilterTestCase) {
+	// Create some test orders with very specific characteristics to make it easier to write tests.
+	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
+	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
+	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
+	numOrders := 10
+	storedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrder()
+		order.MakerAssetAmount = big.NewInt(int64(i))
+		order.TakerAssetAmount = big.NewInt(int64(i))
+		order.MakerAssetData = []byte{97 + byte(i)}
+		parsedMakerAssetData := []*types.SingleAssetData{
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(0),
+			},
+			{
+				Address: constants.GanacheDummyERC721TokenAddress,
+				TokenID: big.NewInt(int64(i)*10 + 1),
+			},
+		}
+		order.ParsedMakerAssetData = parsedMakerAssetData
+		storedOrders = append(storedOrders, order)
+	}
+	_, _, err := db.AddOrders(storedOrders)
+	require.NoError(t, err)
+
+	testCases := []orderFilterTestCase{
+		{
+			name:                   "no filter",
+			filters:                []OrderFilter{},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "IsRemoved = false",
+			filters: []OrderFilter{
+				{
+					Field: OFIsRemoved,
+					Kind:  Equal,
+					Value: false,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "MakerAddress = Address1",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAddress,
+					Kind:  Equal,
+					Value: constants.GanacheAccount1,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+
+		// Filter on MakerAssetAmount (type BigInt/NUMERIC)
+		{
+			name: "MakerAssetAmount = 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Equal,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: storedOrders[5:6],
+		},
+		{
+			name: "MakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  NotEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: append(safeSubsliceOrders(storedOrders, 0, 5), safeSubsliceOrders(storedOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetAmount < 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: storedOrders[:5],
+		},
+		{
+			name: "MakerAssetAmount > 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Greater,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: storedOrders[6:],
+		},
+		{
+			name: "MakerAssetAmount <= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  LessOrEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: storedOrders[:6],
+		},
+		{
+			name: "MakerAssetAmount >= 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: storedOrders[5:],
+		},
+		{
+			name: "MakerAssetAmount < 10^76",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  Less,
+					Value: math.BigPow(10, 76),
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+
+		// Filter on MakerAssetData (type []byte/TEXT)
+		{
+			name: "MakerAssetData = f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Equal,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[5:6],
+		},
+		{
+			name: "MakerAssetData != f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  NotEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: append(safeSubsliceOrders(storedOrders, 0, 5), safeSubsliceOrders(storedOrders, 6, 10)...),
+		},
+		{
+			name: "MakerAssetData < f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[:5],
+		},
+		{
+			name: "MakerAssetData > f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  Greater,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[6:],
+		},
+		{
+			name: "MakerAssetData <= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  LessOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[:6],
+		},
+		{
+			name: "MakerAssetData >= f",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetData,
+					Kind:  GreaterOrEqual,
+					Value: []byte("f"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[5:],
+		},
+
+		// Filter on ParsedMakerAssetData (type ParsedAssetData/TEXT)
+		{
+			name: "ParsedMakerAssetData CONTAINS query that matches all",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"0"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				{
+					Field: OFParsedMakerAssetData,
+					Kind:  Contains,
+					Value: fmt.Sprintf(`"address":"%s","tokenID":"51"`, strings.ToLower(constants.GanacheDummyERC721TokenAddress.Hex())),
+				},
+			},
+			expectedMatchingOrders: storedOrders[5:6],
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(0)),
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			filters: []OrderFilter{
+				MakerAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC721TokenAddress, big.NewInt(51)),
+			},
+			expectedMatchingOrders: storedOrders[5:6],
+		},
+		{
+			name: "ParsedMakerFeeAssetData CONTAINS with helper method query that matches all",
+			filters: []OrderFilter{
+				MakerFeeAssetIncludesTokenAddressAndTokenID(constants.GanacheDummyERC1155MintableAddress, big.NewInt(567)),
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+
+		// Combining two or more filters
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(3),
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+			},
+			expectedMatchingOrders: storedOrders[3:7],
+		},
+		{
+			name: "MakerAssetAmount >= 3 AND MakerAssetData < h AND TakerAssetAmount != 5",
+			filters: []OrderFilter{
+				{
+					Field: OFMakerAssetAmount,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(3),
+				},
+				{
+					Field: OFMakerAssetData,
+					Kind:  Less,
+					Value: []byte("h"),
+				},
+				{
+					Field: OFTakerAssetAmount,
+					Kind:  NotEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingOrders: append(safeSubsliceOrders(storedOrders, 3, 5), safeSubsliceOrders(storedOrders, 6, 7)...),
+		},
+	}
+
+	return storedOrders, testCases
+}
+
+type miniHeaderFilterTestCase struct {
+	name                        string
+	filters                     []MiniHeaderFilter
+	expectedMatchingMiniHeaders []*types.MiniHeader
+}
+
+func makeMiniHeaderFilterTestCases(t *testing.T, db *DB) ([]*types.MiniHeader, []miniHeaderFilterTestCase) {
+	// Create some test miniheaders with very specific characteristics to make it easier to write tests.
+	// - Number will be 0, 1, 2, etc.
+	// - Timestamp will be 0, 100, 200, etc. seconds since Unix Epoch
+	// - Each log in Logs will have BlockNumber set to 0, 1, 2, etc.
+	numMiniHeaders := 10
+	storedMiniHeaders := []*types.MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = big.NewInt(int64(i))
+		miniHeader.Timestamp = time.Unix(int64(i)*100, 0)
+		for i := range miniHeader.Logs {
+			miniHeader.Logs[i].BlockNumber = miniHeader.Number.Uint64()
+		}
+		storedMiniHeaders = append(storedMiniHeaders, miniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(storedMiniHeaders)
+	require.NoError(t, err)
+
+	testCases := []miniHeaderFilterTestCase{
+		{
+			name:                        "no filter",
+			filters:                     []MiniHeaderFilter{},
+			expectedMatchingMiniHeaders: storedMiniHeaders,
+		},
+
+		// Filter on Number (type BigInt/NUMERIC)
+		{
+			name: "Number = 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Equal,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[5:6],
+		},
+		{
+			name: "Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: append(safeSubsliceMiniHeaders(storedMiniHeaders, 0, 5), safeSubsliceMiniHeaders(storedMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Number < 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[:5],
+		},
+		{
+			name: "Number > 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Greater,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[6:],
+		},
+		{
+			name: "Number <= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  LessOrEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[:6],
+		},
+		{
+			name: "Number >= 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[5:],
+		},
+		{
+			name: "Number < 10^76",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  Less,
+					Value: math.BigPow(10, 76),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders,
+		},
+
+		// Filter on Timestamp (type time.Time/TIMESTAMP)
+		{
+			name: "Timestamp = 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Equal,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[5:6],
+		},
+		{
+			name: "Timestamp != 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  NotEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: append(safeSubsliceMiniHeaders(storedMiniHeaders, 0, 5), safeSubsliceMiniHeaders(storedMiniHeaders, 6, 10)...),
+		},
+		{
+			name: "Timestamp < 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[:5],
+		},
+		{
+			name: "Timestamp > 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  Greater,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[6:],
+		},
+		{
+			name: "Timestamp <= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  LessOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[:6],
+		},
+		{
+			name: "Timestamp >= 500",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFTimestamp,
+					Kind:  GreaterOrEqual,
+					Value: time.Unix(500, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[5:],
+		},
+
+		// Filter on Logs (type ParsedAssetData/TEXT)
+		{
+			name: "Logs CONTAINS query that matches all",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders,
+		},
+		{
+			name: "Logs CONTAINS query that matches one",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFLogs,
+					Kind:  Contains,
+					Value: `"blockNumber":"0x5"`,
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[5:6],
+		},
+
+		// Combining two or more filters
+		{
+			name: "Number >= 3 AND Timestamp < h",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(3),
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+			},
+			expectedMatchingMiniHeaders: storedMiniHeaders[3:7],
+		},
+		{
+			name: "Number >= 3 AND Timestamp < 700 AND Number != 5",
+			filters: []MiniHeaderFilter{
+				{
+					Field: MFNumber,
+					Kind:  GreaterOrEqual,
+					Value: big.NewInt(3),
+				},
+				{
+					Field: MFTimestamp,
+					Kind:  Less,
+					Value: time.Unix(700, 0),
+				},
+				{
+					Field: MFNumber,
+					Kind:  NotEqual,
+					Value: big.NewInt(5),
+				},
+			},
+			expectedMatchingMiniHeaders: append(safeSubsliceMiniHeaders(storedMiniHeaders, 3, 5), safeSubsliceMiniHeaders(storedMiniHeaders, 6, 7)...),
+		},
+	}
+
+	return storedMiniHeaders, testCases
 }
 
 // safeSubsliceOrders returns a (shallow) subslice of orders without modifying
