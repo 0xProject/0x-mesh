@@ -26,6 +26,6 @@
         "@0x/ts-doc-gen": "^0.0.16",
         "shx": "^0.3.2",
         "typedoc": "^0.15.0",
-        "typescript": "^3.5.3"
+        "typescript": "^3.9.3"
     }
 }

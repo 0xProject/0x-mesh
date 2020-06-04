@@ -19,7 +19,7 @@ func ErrorToJS(err error) js.Value {
 // IsNullOrUndefined returns true if the given JavaScript value is either null
 // or undefined.
 func IsNullOrUndefined(value js.Value) bool {
-	return value == js.Null() || value == js.Undefined()
+	return value.IsNull() || value.IsUndefined()
 }
 
 // WrapInPromise converts a potentially blocking Go function to a non-blocking

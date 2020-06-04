@@ -30,10 +30,10 @@ the dropdown menu in the GitHub UI to select `development`.
 ## Prerequisites
 
 -   [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
--   [Go version 1.13.x](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g)).
+-   [Go version 1.14.x](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g)).
 -   [Node.js version >=11](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm)).
 -   [Yarn package manager](https://yarnpkg.com/en/).
--   [golangci-lint version 1.22.2](https://github.com/golangci/golangci-lint#install).
+-   [golangci-lint version 1.27.0](https://github.com/golangci/golangci-lint#install-golangci-lint).
 -   [Python](https://www.python.org/downloads/). (Many OSes already have this).
 -   [Google Chrome](https://www.google.com/chrome/). If you already have Google Chrome you typically don't need to do anything. On Ubuntu you can run `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install`.
 -   A C compiler such as [GCC](https://gcc.gnu.org/) or [Clang](https://clang.llvm.org/). Some OSes will already have this. On Ubuntu you can run `sudo apt-get install build-essential`.
