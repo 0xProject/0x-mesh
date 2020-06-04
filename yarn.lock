@@ -163,24 +163,6 @@
     jsonschema "^1.2.0"
     lodash.values "^4.3.0"
 
-"@0x/mesh-browser-lite@file:packages/browser-lite":
-  version "1.0.0"
-  dependencies:
-    "@0x/order-utils" "^10.2.0"
-    "@0x/utils" "^5.4.0"
-    ajv "^6.12.2"
-    base64-arraybuffer "^0.2.0"
-    browserfs "^1.4.3"
-    ethereum-types "^3.0.0"
-
-"@0x/mesh-browser@file:packages/browser":
-  version "1.0.0"
-  dependencies:
-    "@0x/mesh-browser-lite" "file:../Library/Caches/Yarn/v6/npm-@0x-mesh-browser-1.0.0-4471228d-3d01-4169-a560-65f26f9b73eb-1591298415054/node_modules/@0x/browser-lite"
-    base64-arraybuffer "^0.2.0"
-    browserfs "^1.4.3"
-    ethereum-types "^3.0.0"
-
 "@0x/order-utils@^10.0.1", "@0x/order-utils@^10.2.0", "@0x/order-utils@^10.2.4":
   version "10.2.4"
   resolved "https://registry.yarnpkg.com/@0x/order-utils/-/order-utils-10.2.4.tgz#23afe4656c9c71f2cf80f510154f7e2900515d68"

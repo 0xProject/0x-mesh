@@ -20,6 +20,6 @@
         "webpack-cli": "^3.3.7"
     },
     "dependencies": {
-        "@0x/mesh-browser": "file:../browser"
+        "@0x/mesh-browser": "1.0.0"
     }
 }
