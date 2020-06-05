@@ -44,6 +44,20 @@ the dropdown menu in the GitHub UI to select `development`.
 make deps
 ```
 
+## Building TypeScript packages
+
+Mesh contains some TypeScript packages, all of which are contained in a small monorepo in the __packages/__ directory. Some
+packages are published, and some are only used internally for development and testing.
+
+To build all the TypeScript packages:
+
+```
+yarn build
+```
+
+You can also run `yarn build` inside of individual packages in order to just build that package and its dependencies. However,
+changing any Go code will require running `yarn build` at the root of the project again.
+
 ## Running Tests
 
 Some of the tests depend on having a test Ethereum node running. Before running
