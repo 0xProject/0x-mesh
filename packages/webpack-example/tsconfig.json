@@ -1,17 +1,14 @@
 {
+    "extends": "../../tsconfig-base",
     "compilerOptions": {
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "module": "commonjs",
-        "target": "es5",
-        "lib": ["es2017", "dom"],
-        "experimentalDecorators": true,
-        "downlevelIteration": true,
-        "noImplicitReturns": true,
-        "pretty": true,
-        "skipLibCheck": true,
-        "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
-        "strict": true
+        // TODO(albrow): Change to lib.
+        "outDir": "dist",
+        "rootDir": "src"
     },
-    "include": ["./src/**/*", "./test/**/*"]
+    "include": ["./src/**/*", "./test/**/*"],
+    "references": [
+        {
+            "path": "../browser"
+        }
+    ]
 }

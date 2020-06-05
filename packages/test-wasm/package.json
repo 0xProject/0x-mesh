@@ -6,7 +6,7 @@
     "main": "./lib/index.js",
     "license": "Apache-2.0",
     "scripts": {
-        "build": "./node_modules/.bin/webpack --mode=development",
+        "build": "tsc -b && ./node_modules/.bin/webpack --mode=development",
         "clean": "shx rm -r ./dist && shx rm -r ./lib || exit 0",
         "lint": "tslint --format stylish --project ."
     },

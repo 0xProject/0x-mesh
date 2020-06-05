@@ -1,9 +1,14 @@
 {
-    "extends": "../../tsconfig",
+    "extends": "../../tsconfig-base",
     "compilerOptions": {
         "outDir": "./dist",
         "rootDir": "./src",
         "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"]
     },
-    "include": ["./src/**/*", "./test/**/*"]
+    "include": ["./src/**/*", "./test/**/*"],
+    "references": [
+        {
+            "path": "../browser"
+        }
+    ]
 }
