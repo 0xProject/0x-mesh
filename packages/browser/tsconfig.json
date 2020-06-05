@@ -1,8 +1,8 @@
 {
     "extends": "../../tsconfig",
-    "compilerOptions": { 
-        "outDir": "lib", 
-        "rootDir": "src" 
+    "compilerOptions": {
+        "outDir": "lib",
+        "rootDir": "src"
     },
     "include": ["./src/**/*"],
     "exclude": ["./conversion-tests/**/*"]

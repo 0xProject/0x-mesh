@@ -99,6 +99,20 @@ available linters, run:
 make lint
 ```
 
+## Running prettier
+
+0x Mesh uses a tool called [prettier](https://prettier.io/), which is a tool that
+enforces a consistent style across the Typescript codebase. The continuous integration
+pipeline will fail if Typescript code is not "prettified," so `prettier` must be run
+to ensure that the code is properly formatted.
+
+The prettier tool can be run using the following command from the top-level of the
+0x-Mesh repository (outside of a directory inside `packages/`):
+
+```bash
+yarn prettier
+```
+
 ## Managing Dependencies
 
 Mesh uses [Go Modules](https://github.com/golang/go/wiki/Modules) for managing
@@ -144,3 +158,8 @@ following to your editor config:
 	// ...
 }
 ```
+
+### Prettier Configuration
+
+Configurations for most popular text editors can be found
+[here](https://prettier.io/docs/en/editors.html).
