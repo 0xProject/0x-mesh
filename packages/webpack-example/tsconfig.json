@@ -1,8 +1,7 @@
 {
     "extends": "../../tsconfig-base",
     "compilerOptions": {
-        // TODO(albrow): Change to lib.
-        "outDir": "dist",
+        "outDir": "lib",
         "rootDir": "src"
     },
     "include": ["./src/**/*", "./test/**/*"],
