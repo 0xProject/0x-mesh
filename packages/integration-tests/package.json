@@ -5,7 +5,7 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "build": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
+        "build": "yarn build:ts && node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
         "build:ts": "tsc -b",
         "clean": "shx rm ./dist/bundle.js || exit 0",
         "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce the webpack bundle size",
