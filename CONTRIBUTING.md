@@ -173,7 +173,12 @@ following to your editor config:
 }
 ```
 
-### Prettier Configuration
+### Prettier
 
-Configurations for most popular text editors can be found
+Prettier configurations for most popular text editors can be found
 [here](https://prettier.io/docs/en/editors.html).
+
+### TSLint
+
+TSLint configurations for most popular text editors can be found
+[here](https://palantir.github.io/tslint/usage/third-party-tools/).
