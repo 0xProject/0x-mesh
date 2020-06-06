@@ -1,7 +1,7 @@
 // The root of the project is just a list of references and does not contain
 // any top-level TypeScript code.
 {
-    "extends": "tsconfig-base",
+    "extends": "./tsconfig-base",
     "include": [],
     "references": [
         { "path": "./packages/browser" },
