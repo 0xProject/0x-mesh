@@ -4,18 +4,20 @@
     "engines": {
         "node": ">=11"
     },
-    "workspaces": [ 
-        "packages/*" 
-    ], 
+    "workspaces": [
+        "packages/*"
+    ],
     "scripts": {
         "wsrun": "wsrun",
-        "build": "wsrun --stages --fast-exit --exclude-missing build $PKG",
+        "build": "wsrun --stages --fast-exit --exclude-missing build",
         "build:ts": "tsc -b",
         "watch:ts": "tsc -b -w",
-        "clean": "wsrun --fast-exit --exclude-missing clean $PKG",
-        "docs:md": "wsrun --fast-exit --exclude-missing docs:md $PKG",
-        "lint": "wsrun lint $PKG",
-        "test": "wsrun --fast-exit --exclude-missing test $PKG "
+        "clean": "wsrun --fast-exit --exclude-missing clean",
+        "docs:md": "wsrun --fast-exit --exclude-missing docs:md",
+        "lint": "wsrun lint",
+        "prettier": "prettier --write '**/*.{ts,tsx,json,md}' --config .prettierrc",
+        "prettier:ci": "prettier --list-different '**/*.{ts,tsx,json}' --config .prettierrc",
+        "test": "wsrun --fast-exit --exclude-missing test "
     },
     "description": "A peer-to-peer network for sharing orders",
     "main": "index.js",

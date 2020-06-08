@@ -116,29 +116,20 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	buildStandaloneForTests(t, ctx)
 	buildBootstrapForTests(t, ctx)
 
-	fmt.Println("Clear yarn cache...")
-	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
-	cmd.Dir = "../"
+	// Note(albrow): We have to rebuild the browser package manually in case
+	// any Go code was changed. The TypeScript compiler can automatically rebuild
+	// for TypeScript code changes only.
+	fmt.Println("Building mesh-browser package...")
+	cmd := exec.CommandContext(ctx, "yarn", "build")
+	cmd.Dir = "../packages/browser"
 	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
+	require.NoError(t, err, "could not build mesh-browser package: %s", string(output))
 
-	fmt.Println("Installing dependencies for TypeScript bindings...")
-	cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
-	cmd.Dir = "../"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
-
-	fmt.Println("Running postinstall for browser node...")
-	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
+	fmt.Println("Building integration-tests package...")
+	cmd = exec.CommandContext(ctx, "yarn", "build")
 	cmd.Dir = "../packages/integration-tests"
 	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
-
-	fmt.Println("Building TypeScript bindings...")
-	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
+	require.NoError(t, err, "could not build integration-tests package: %s", string(output))
 	fmt.Println("Done building everything")
 }
 

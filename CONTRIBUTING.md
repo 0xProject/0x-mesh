@@ -44,6 +44,20 @@ the dropdown menu in the GitHub UI to select `development`.
 make deps
 ```
 
+## Building TypeScript packages
+
+Mesh contains some TypeScript packages, all of which are contained in a small monorepo in the __packages/__ directory. Some
+packages are published, and some are only used internally for development and testing.
+
+To build all the TypeScript packages:
+
+```
+yarn build
+```
+
+You can also run `yarn build` inside of individual packages in order to just build that package and its dependencies. However,
+changing any Go code will require running `yarn build` at the root of the project again.
+
 ## Running Tests
 
 Some of the tests depend on having a test Ethereum node running. Before running
@@ -99,6 +113,20 @@ available linters, run:
 make lint
 ```
 
+## Running prettier
+
+0x Mesh uses a tool called [prettier](https://prettier.io/), which is a tool that
+enforces a consistent style across the Typescript codebase. The continuous integration
+pipeline will fail if Typescript code is not "prettified," so `prettier` must be run
+to ensure that the code is properly formatted.
+
+The prettier tool can be run using the following command from the top-level of the
+0x-Mesh repository (outside of a directory inside `packages/`):
+
+```bash
+yarn prettier
+```
+
 ## Managing Dependencies
 
 Mesh uses [Go Modules](https://github.com/golang/go/wiki/Modules) for managing
@@ -144,3 +172,13 @@ following to your editor config:
 	// ...
 }
 ```
+
+### Prettier
+
+Prettier configurations for most popular text editors can be found
+[here](https://prettier.io/docs/en/editors.html).
+
+### TSLint
+
+TSLint configurations for most popular text editors can be found
+[here](https://palantir.github.io/tslint/usage/third-party-tools/).

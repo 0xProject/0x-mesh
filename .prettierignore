@@ -1,0 +1,10 @@
+lib
+docs
+*README.md
+CHANGELOG.md
+CONTRIBUTING.md
+ISSUE_TEMPLATE.md
+pull_request_template.md
+ethereum/blockwatch/testdata
+packages/**/generated/**
+*.d.ts
