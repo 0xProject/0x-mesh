@@ -5,7 +5,6 @@
 package jsutil
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -89,16 +88,22 @@ func AwaitPromise(promise js.Value) (result js.Value, err error) {
 // InefficientlyConvertToJS converts the given Go value to a JS value by
 // encoding to JSON and then decoding it. This function is not very efficient
 // and its use should be phased out over time as much as possible.
-func InefficientlyConvertToJS(value interface{}) (js.Value, error) {
-	var jsValue interface{}
-	buf := bytes.Buffer{}
-	if err := json.NewEncoder(&buf).Encode(value); err != nil {
+func InefficientlyConvertToJS(value interface{}) (result js.Value, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			switch e := e.(type) {
+			case error:
+				err = e
+			default:
+				err = fmt.Errorf("unexpected error: (%T) %s", e, e)
+			}
+		}
+	}()
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
 		return js.Undefined(), err
 	}
-	if err := json.NewDecoder(&buf).Decode(&jsValue); err != nil {
-		return js.Undefined(), err
-	}
-	return js.ValueOf(jsValue), nil
+	return js.Global().Get("JSON").Call("parse", string(jsonBytes)), nil
 }
 
 // InefficientlyConvertFromJS converts the given JS value to a Go value and sets

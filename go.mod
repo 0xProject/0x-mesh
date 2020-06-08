@@ -22,7 +22,6 @@ require (
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/chromedp/cdproto v0.0.0-20190827000638-b5ac1e37ce90
 	github.com/chromedp/chromedp v0.4.0
-	github.com/coocood/freecache v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
@@ -63,9 +62,8 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33
-	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
+	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709
 	github.com/plaid/go-envvar v1.1.0
-	github.com/posener/complete v1.2.3 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.7.0 // indirect
