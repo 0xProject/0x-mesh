@@ -96,8 +96,18 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
-(window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
-(window as any).__mesh_dexie_newDatabase__ = createDatabase;
+/**
+ * @ignore
+ * Sets the required global variables the Mesh needs to access from Go land.
+ * This includes the `db` and `orderfilter` packages.
+ * */
+export function _setGlobals() {
+    (window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
+    (window as any).__mesh_dexie_newDatabase__ = createDatabase;
+}
+
+// We immediately want to set the required globals.
+_setGlobals();
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;

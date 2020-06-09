@@ -1,5 +1,4 @@
-import { createDatabase } from '@0x/mesh-browser-lite/lib/database';
-import { createSchemaValidator } from '@0x/mesh-browser-lite/lib/schema_validator';
+import { _setGlobals } from '@0x/mesh-browser-lite';
 
-(window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
-(window as any).__mesh_dexie_newDatabase__ = createDatabase;
+// Set the globals that are required for e.g. the `db` and `orderfilter` packages.
+_setGlobals();

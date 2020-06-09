@@ -496,7 +496,7 @@ func TestAddMiniHeaders(t *testing.T) {
 	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		// It's important to note that each miniHeader has a increasing
-		// blockNumber. Later will add more miniHeaders with higher numbers.
+		// blockNumber. Later we will add more miniHeaders with higher numbers.
 		miniHeader := newTestMiniHeader()
 		miniHeader.Number = big.NewInt(int64(i))
 		miniHeaders = append(miniHeaders, miniHeader)
