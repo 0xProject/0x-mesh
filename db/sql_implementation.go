@@ -309,6 +309,7 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(stmt.ToSQL(false))
 	var foundOrders []*sqltypes.Order
 	if err := stmt.GetAllContext(db.ctx, &foundOrders); err != nil {
 		return nil, err
@@ -768,7 +769,6 @@ func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress comm
 		// big.Int and common.Address types should never return an error when marshaling to JSON
 		panic(err)
 	}
-	fmt.Println(string(filterValueJSON))
 	return OrderFilter{
 		Field: field,
 		Kind:  Contains,

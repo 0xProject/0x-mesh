@@ -30,7 +30,7 @@ type rateLimiter struct {
 	perSecondLimiter      *rate.Limiter
 	currentUTCCheckpoint  time.Time // Start of current UTC 24hr period
 	grantedInLast24hrsUTC int       // Number of granted requests issued in last 24hr UTC
-	meshDB                *db.DB
+	database              *db.DB
 	aClock                clock.Clock
 	wasStartedOnce        bool       // Whether the rate limiter has previously been started
 	startMutex            sync.Mutex // Mutex around the start check
@@ -38,8 +38,8 @@ type rateLimiter struct {
 }
 
 // New instantiates a new RateLimiter
-func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *db.DB, aClock clock.Clock) (RateLimiter, error) {
-	metadata, err := meshDB.GetMetadata()
+func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, database *db.DB, aClock clock.Clock) (RateLimiter, error) {
+	metadata, err := database.GetMetadata()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *db.DB, a
 	if currentUTCCheckpoint != storedUTCCheckpoint {
 		storedUTCCheckpoint = currentUTCCheckpoint
 		storedGrantedInLast24HrsUTC = 0
-		if err := meshDB.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
+		if err := database.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 			metadata.StartOfCurrentUTCDay = storedUTCCheckpoint
 			metadata.EthRPCRequestsSentInCurrentUTCDay = storedGrantedInLast24HrsUTC
 			return metadata
@@ -73,7 +73,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *db.DB, a
 		aClock:                aClock,
 		maxRequestsPer24Hrs:   maxRequestsPer24Hrs,
 		perSecondLimiter:      perSecondLimiter,
-		meshDB:                meshDB,
+		database:              database,
 		currentUTCCheckpoint:  storedUTCCheckpoint,
 		grantedInLast24hrsUTC: storedGrantedInLast24HrsUTC,
 	}, nil
@@ -125,7 +125,7 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		case <-ticker.C:
 			// Store grants issued and current UTC checkpoint to DB
 			r.mu.Lock()
-			err := r.meshDB.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
+			err := r.database.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 				metadata.StartOfCurrentUTCDay = r.currentUTCCheckpoint
 				metadata.EthRPCRequestsSentInCurrentUTCDay = r.grantedInLast24hrsUTC
 				return metadata

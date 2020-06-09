@@ -60,13 +60,8 @@ func min(a, b int) int {
 }
 
 func removeOldFiles(t *testing.T, ctx context.Context) {
-	oldDirs, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
-	require.NoError(t, err)
-
-	for _, oldDir := range oldDirs {
-		require.NoError(t, os.RemoveAll(filepath.Join(oldDir, "sqlite-db")))
-		require.NoError(t, os.RemoveAll(filepath.Join(oldDir, "p2p")))
-	}
+	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "sqlite-db")))
+	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "p2p")))
 
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
 }

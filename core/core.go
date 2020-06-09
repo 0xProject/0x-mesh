@@ -1003,7 +1003,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 			{
 				Field: db.OFIsPinned,
 				Kind:  db.Equal,
-				Value: false,
+				Value: true,
 			},
 		},
 	})

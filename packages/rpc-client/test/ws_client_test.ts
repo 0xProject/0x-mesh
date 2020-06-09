@@ -62,7 +62,6 @@ blockchainTests.resets('WSClient', env => {
             const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
             const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
             const mintAmount = new BigNumber('100e18');
-            // tslint:disable:await-promise
             await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
             await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
             await makerToken
@@ -71,7 +70,6 @@ blockchainTests.resets('WSClient', env => {
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
-            // tslint:enable:await-promise
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
                 ...constants.STATIC_ORDER_PARAMS,
                 feeRecipientAddress: constants.NULL_ADDRESS,
@@ -340,9 +338,7 @@ blockchainTests.resets('WSClient', env => {
                     });
 
                     // Cancel an order and then wait for the emitted order event.
-                    // tslint:disable:await-promise
                     await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
-                    // tslint:enable:await-promise
                     await subscription;
                 })().catch(done);
             });

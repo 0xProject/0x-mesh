@@ -61,11 +61,10 @@ func TestBrowserIntegration(t *testing.T) {
 	// Start the standalone node in a goroutine.
 	// Note we need to use a specific data dir because we need to use the same private key for each test.
 	// The tests themselves are written in a way that depend on this.
-	dataDir := standaloneDataDirPrefix + "0"
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, dataDir, customOrderFilter, standaloneLogMessages)
+		startStandaloneNode(t, ctx, count, browserIntegrationTestDataDir, customOrderFilter, standaloneLogMessages)
 	}()
 
 	// standaloneOrder is an order that will be sent to the network by the

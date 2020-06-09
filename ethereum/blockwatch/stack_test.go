@@ -20,12 +20,6 @@ var (
 		Parent:    common.HexToHash("0x0"),
 		Timestamp: time.Now().UTC(),
 	}
-	miniHeaderTwo = &types.MiniHeader{
-		Number:    big.NewInt(2),
-		Hash:      common.HexToHash("0x2"),
-		Parent:    common.HexToHash("0x1"),
-		Timestamp: time.Now().UTC(),
-	}
 )
 
 func newTestStack(t *testing.T, ctx context.Context) *Stack {
@@ -34,39 +28,38 @@ func newTestStack(t *testing.T, ctx context.Context) *Stack {
 	return NewStack(database)
 }
 
-func TestSimpleStackPushPeekPop(t *testing.T) {
+func TestStackPushPeekPop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stack := newTestStack(t, ctx)
 
 	err := stack.Push(miniHeaderOne)
 	require.NoError(t, err)
+	expectedMiniHeader := miniHeaderOne
 
-	expectedLen := 1
-	miniHeaders, err := stack.PeekAll()
+	actualMiniHeaders, err := stack.PeekAll()
 	require.NoError(t, err)
-	require.Len(t, miniHeaders, expectedLen)
+	require.Len(t, actualMiniHeaders, 1)
+	assert.Equal(t, expectedMiniHeader, actualMiniHeaders[0])
 
-	miniHeader, err := stack.Peek()
+	actualMiniHeader, err := stack.Peek()
 	require.NoError(t, err)
-	assert.Equal(t, miniHeaders[0], miniHeader)
+	assert.Equal(t, expectedMiniHeader, actualMiniHeader)
 
-	expectedLen = 1
-	miniHeaders, err = stack.PeekAll()
+	actualMiniHeaders, err = stack.PeekAll()
 	require.NoError(t, err)
-	assert.Len(t, miniHeaders, expectedLen)
+	assert.Len(t, actualMiniHeaders, 1)
 
-	miniHeader, err = stack.Pop()
+	actualMiniHeader, err = stack.Pop()
 	require.NoError(t, err)
-	assert.Equal(t, miniHeaders[0], miniHeader)
+	assert.Equal(t, expectedMiniHeader, actualMiniHeader)
 
-	expectedLen = 0
-	miniHeaders, err = stack.PeekAll()
+	actualMiniHeaders, err = stack.PeekAll()
 	require.NoError(t, err)
-	assert.Len(t, miniHeaders, expectedLen)
+	assert.Len(t, actualMiniHeaders, 0)
 }
 
-func TestSimpleStackErrorIfPushTwoHeadersWithSameNumber(t *testing.T) {
+func TestStackErrorIfPushTwoHeadersWithSameNumber(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stack := newTestStack(t, ctx)
@@ -78,7 +71,7 @@ func TestSimpleStackErrorIfPushTwoHeadersWithSameNumber(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestSimpleStackClear(t *testing.T) {
+func TestStackClear(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stack := newTestStack(t, ctx)

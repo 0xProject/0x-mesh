@@ -182,12 +182,12 @@ func TestScenario3(t *testing.T) {
 	wg.Wait()
 }
 
-func initMetadata(t *testing.T, meshDB *db.DB) {
+func initMetadata(t *testing.T, database *db.DB) {
 	metadata := &types.Metadata{
 		EthereumChainID:   1337,
 		MaxExpirationTime: constants.UnlimitedExpirationTime,
 	}
-	err := meshDB.SaveMetadata(metadata)
+	err := database.SaveMetadata(metadata)
 	require.NoError(t, err)
 }
 

@@ -212,8 +212,9 @@ var _ ordersync.Subprotocol = (*FilteredPaginationSubProtocolV1)(nil)
 
 // FilteredPaginationSubProtocolV1 is an ordersync subprotocol which returns all orders by
 // paginating through them. It involves sending multiple requests until pagination is
-// finished and all orders have been returned. Version 1 is the new implementation of the
-// subprotocol that matches the current database implementation.
+// finished and all orders have been returned. Version 1 was implemented in
+// https://github.com/0xProject/0x-mesh/pull/793 after changing the database implementation
+// from LevelDB to SQL and Dexie.js/IndexedDB.
 type FilteredPaginationSubProtocolV1 struct {
 	app         *App
 	orderFilter *orderfilter.Filter

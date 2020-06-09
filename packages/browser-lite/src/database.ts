@@ -1,5 +1,9 @@
 // tslint:disable:max-file-line-count
 
+/**
+ * @hidden
+ */
+
 import Dexie from 'dexie';
 
 export type Record = Order | MiniHeader | Metadata;
@@ -130,7 +134,7 @@ export function createDatabase(opts: Options): Database {
 
 export class Database {
     private readonly _db: Dexie;
-    // private readonly maxOrders: number;
+    // private readonly _maxOrders: number;
     private readonly _maxMiniHeaders: number;
     private readonly _orders: Dexie.Table<Order, string>;
     private readonly _miniHeaders: Dexie.Table<MiniHeader, string>;
@@ -315,10 +319,17 @@ export class Database {
 
     // GetMetadata() (*types.Metadata, error)
     public async getMetadataAsync(): Promise<Metadata> {
-        const metadatas = await this._metadata.limit(1).toArray();
-        if (metadatas.length === 0) {
+        const count = await this._metadata.count();
+        if (count === 0) {
             throw newNotFoundError();
+        } else if (count > 1) {
+            // This should never happen, but it's possible if a user manually messed around with
+            // IndexedDB. In this case, just delete the metadata table and we should start
+            // over.
+            await this._metadata.clear();
+            throw new Error('more than one metadata entry stored in the database');
         }
+        const metadatas = await this._metadata.toArray();
         return metadatas[0];
     }
 
@@ -351,7 +362,7 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
     }
 
     // First we create the Collection based on the query fields.
-    let col: Dexie.Collection<T, Key>;
+    let col: Dexie.Collection<T, Key> | undefined;
     if (queryUsesFilters(query)) {
         // tslint:disable-next-line:no-non-null-assertion
         const filter = query.filters![0];
@@ -382,14 +393,17 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
             default:
                 throw new Error(`unexpected filter kind: ${filter.kind}`);
         }
-    } else if (queryUsesSortOptions(query)) {
+    }
+    if (queryUsesSortOptions(query)) {
         // tslint:disable-next-line:no-non-null-assertion
         const sortOpt = query.sort![0];
         col = table.orderBy(sortOpt.field);
         if (sortOpt.direction === SortDirection.Desc) {
             col = col.reverse();
         }
-    } else {
+    }
+    if (col === undefined) {
+        // Query doesn't use filter or sort options.
         col = table.toCollection();
     }
     if (queryUsesOffset(query)) {

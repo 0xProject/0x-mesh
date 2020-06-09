@@ -60,7 +60,6 @@ func TestGetOrder(t *testing.T) {
 	originalOrder := added[0]
 
 	foundOrder, err := db.GetOrder(originalOrder.Hash)
-	fmt.Printf("%T %s", err, err)
 	require.NoError(t, err)
 	require.NotNil(t, foundOrder, "found order should not be nil")
 	assertOrdersAreEqual(t, originalOrder, foundOrder)
@@ -313,6 +312,35 @@ func TestFindOrdersFilter(t *testing.T) {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
 		t.Run(testCaseName, runFindOrdersFilterTestCase(t, db, testCase))
 	}
+}
+
+func TestFindOrdersFilterSortLimitAndOffset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	storedOrders := createAndStoreOrdersForFilterTests(t, db)
+
+	query := &OrderQuery{
+		Filters: []OrderFilter{
+			{
+				Field: OFMakerAssetAmount,
+				Kind:  GreaterOrEqual,
+				Value: big.NewInt(3),
+			},
+		},
+		Sort: []OrderSort{
+			{
+				Field:     OFMakerAssetAmount,
+				Direction: Ascending,
+			},
+		},
+		Limit:  3,
+		Offset: 2,
+	}
+	expectedOrders := storedOrders[5:8]
+	actualOrders, err := db.FindOrders(query)
+	require.NoError(t, err)
+	assertOrderSlicesAreEqual(t, expectedOrders, actualOrders)
 }
 
 func runFindOrdersFilterTestCase(t *testing.T, db *DB, testCase orderFilterTestCase) func(t *testing.T) {
@@ -1070,7 +1098,7 @@ type orderFilterTestCase struct {
 	expectedMatchingOrders []*types.OrderWithMetadata
 }
 
-func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata, []orderFilterTestCase) {
+func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWithMetadata {
 	// Create some test orders with very specific characteristics to make it easier to write tests.
 	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
 	// - MakerAssetData will be 'a', 'b', 'c', etc.
@@ -1098,7 +1126,11 @@ func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata,
 	}
 	_, _, err := db.AddOrders(storedOrders)
 	require.NoError(t, err)
+	return storedOrders
+}
 
+func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata, []orderFilterTestCase) {
+	storedOrders := createAndStoreOrdersForFilterTests(t, db)
 	testCases := []orderFilterTestCase{
 		{
 			name:                   "no filter",

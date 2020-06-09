@@ -96,7 +96,7 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
-(window as any).createSchemaValidator = createSchemaValidator;
+(window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
 (window as any).__mesh_dexie_newDatabase__ = createDatabase;
 
 // The interval (in milliseconds) to check whether Wasm is done loading.

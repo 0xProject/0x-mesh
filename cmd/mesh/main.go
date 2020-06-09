@@ -38,7 +38,7 @@ func main() {
 		log.WithField("error", err.Error()).Fatal("could not parse environment variables")
 	}
 
-	// Start core.App.
+	// Initialize core.App.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	app, err := core.New(ctx, coreConfig)

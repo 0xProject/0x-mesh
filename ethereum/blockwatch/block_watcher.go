@@ -449,7 +449,7 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 				}
 				hashToBlockHeader[log.BlockHash] = blockHeader
 			}
-			blockHeader.Logs = append(blockHeader.Logs, logs...)
+			blockHeader.Logs = append(blockHeader.Logs, log)
 		}
 		for _, blockHeader := range hashToBlockHeader {
 			events = append(events, &Event{
