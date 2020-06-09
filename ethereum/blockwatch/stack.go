@@ -29,21 +29,14 @@ func NewStack(db *db.DB) *Stack {
 
 // Peek returns the top of the stack
 func (s *Stack) Peek() (*types.MiniHeader, error) {
-	miniHeaders, err := s.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Limit: 1,
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-	})
+	latestMiniHeader, err := s.db.GetLatestMiniHeader()
 	if err != nil {
+		if err == db.ErrNotFound {
+			return nil, nil
+		}
 		return nil, err
-	} else if len(miniHeaders) == 0 {
-		return nil, nil
 	}
-	return miniHeaders[0], nil
+	return latestMiniHeader, nil
 }
 
 // Pop returns the top of the stack and removes it from the stack

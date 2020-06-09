@@ -763,22 +763,14 @@ func (w *Watcher) handleBlockEvents(
 }
 
 func (w *Watcher) getLatestBlock() (*types.MiniHeader, error) {
-	latestBlocks, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-		Limit: 1,
-	})
+	latestBlock, err := w.db.GetLatestMiniHeader()
 	if err != nil {
+		if err == db.ErrNotFound {
+			return nil, errNoBlocksStored
+		}
 		return nil, err
 	}
-	if len(latestBlocks) == 0 {
-		return nil, errNoBlocksStored
-	}
-	return latestBlocks[0], nil
+	return latestBlock, nil
 }
 
 // Cleanup re-validates all orders in DB which haven't been re-validated in
@@ -828,12 +820,6 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	if err != nil {
 		return err
 	}
-
-	// if err := ordersColTxn.Commit(); err != nil {
-	// 	logger.WithFields(logger.Fields{
-	// 		"error": err.Error(),
-	// 	}).Error("Failed to commit orders collection transaction")
-	// }
 
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
@@ -1416,22 +1402,10 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	// call (an unlikely but possible situation leading to an incorrect view of the world for these orders).
 	// Unfortunately, this is the best we can do until EIP-1898 support in Parity.
 	// Source: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md#rationale
-	latestMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-		Limit: 1,
-	})
+	latestMiniHeader, err := w.getLatestBlock()
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(latestMiniHeaders) == 0 {
-		return nil, nil, errors.New("orderwatch: Could not get latest miniheader")
-	}
-	latestMiniHeader := latestMiniHeaders[0]
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()

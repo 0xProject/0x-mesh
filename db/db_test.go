@@ -496,7 +496,7 @@ func TestAddMiniHeaders(t *testing.T) {
 	miniHeaders := []*types.MiniHeader{}
 	for i := 0; i < numMiniHeaders; i++ {
 		// It's important to note that each miniHeader has a increasing
-		// blockNuber. Later will add more miniHeaders with higher numbers.
+		// blockNumber. Later will add more miniHeaders with higher numbers.
 		miniHeader := newTestMiniHeader()
 		miniHeader.Number = big.NewInt(int64(i))
 		miniHeaders = append(miniHeaders, miniHeader)
@@ -518,7 +518,7 @@ func TestAddMiniHeaders(t *testing.T) {
 	miniHeadersWithHigherBlockNumbers := []*types.MiniHeader{}
 	for i := dbOpts.MaxMiniHeaders; i < dbOpts.MaxMiniHeaders+10; i++ {
 		// It's important to note that each miniHeader has a increasing
-		// blockNuber. Later will add more miniHeaders with higher numbers.
+		// blockNumber. Later will add more miniHeaders with higher numbers.
 		miniHeader := newTestMiniHeader()
 		miniHeader.Number = big.NewInt(int64(i))
 		miniHeadersWithHigherBlockNumbers = append(miniHeadersWithHigherBlockNumbers, miniHeader)
@@ -546,6 +546,26 @@ func TestGetMiniHeader(t *testing.T) {
 
 	_, err = db.GetMiniHeader(common.Hash{})
 	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetMiniHeader with a hash that doesn't exist should return ErrNotFound")
+}
+
+func TestGetLatestMiniHeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numMiniHeaders := 3
+	storedMiniHeaders := []*types.MiniHeader{}
+	for i := 0; i < numMiniHeaders; i++ {
+		miniHeader := newTestMiniHeader()
+		miniHeader.Number = big.NewInt(int64(i))
+		storedMiniHeaders = append(storedMiniHeaders, miniHeader)
+	}
+	_, _, err := db.AddMiniHeaders(storedMiniHeaders)
+	require.NoError(t, err)
+
+	foundMiniHeader, err := db.GetLatestMiniHeader()
+	require.NoError(t, err)
+	assertMiniHeadersAreEqual(t, storedMiniHeaders[2], foundMiniHeader)
 }
 
 func TestFindMiniHeaders(t *testing.T) {
@@ -1320,7 +1340,7 @@ func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata,
 			expectedMatchingOrders: storedOrders,
 		},
 		{
-			name: "ParsedMakerAssetData CONTAINS with helper method query that matches one",
+			name: "ParsedMakerAssetData CONTAINS query that matches one",
 			filters: []OrderFilter{
 				{
 					Field: OFParsedMakerAssetData,

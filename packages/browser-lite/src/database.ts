@@ -393,6 +393,7 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
             default:
                 throw new Error(`unexpected filter kind: ${filter.kind}`);
         }
+        // tslint:disable-next-line:no-non-null-assertion
         if (queryUsesSortOptions(query) && query.sort![0].direction === SortDirection.Desc) {
             // Note(albrow): This is only allowed if the sort and filter are using
             // the same field. Dexie automatically returns records sorted by the filter

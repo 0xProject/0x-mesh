@@ -831,20 +831,8 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Simulate a block found with a timestamp past expirationTime
-	latestBlocks, err := database.FindMiniHeaders(&db.MiniHeaderQuery{
-		Limit: 1,
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-	})
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
-	if len(latestBlocks) == 0 {
-		t.Error("No miniHeaders stored in database")
-	}
-	latestBlock := latestBlocks[0]
 	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
 		Hash:      common.HexToHash("0x1"),
@@ -1182,20 +1170,8 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Simulate a block found with a timestamp past expirationTime
-	latestBlocks, err := database.FindMiniHeaders(&db.MiniHeaderQuery{
-		Limit: 1,
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-	})
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
-	if len(latestBlocks) == 0 {
-		t.Error("No miniHeaders stored in database")
-	}
-	latestBlock := latestBlocks[0]
 	blockTimestamp := expirationTime.Add(1 * time.Minute)
 	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
@@ -1279,20 +1255,8 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 
 	// Simulate a block found with a timestamp past expirationTime. This will mark the order as removed
 	// and will remove it from the expiration watcher.
-	latestBlocks, err := database.FindMiniHeaders(&db.MiniHeaderQuery{
-		Limit: 1,
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-	})
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
-	if len(latestBlocks) == 0 {
-		t.Error("No miniHeaders stored in database")
-	}
-	latestBlock := latestBlocks[0]
 	blockTimestamp := expirationTime.Add(1 * time.Minute)
 	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
@@ -1462,7 +1426,6 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 
 	// Ensure at least one block has been processed and is stored in the DB
 	// before tests run
-	// storedBlocks, err := database.FindAllMiniHeadersSortedByNumber()
 	storedBlocks, err := database.FindMiniHeaders(nil)
 	require.NoError(t, err)
 	if len(storedBlocks) == 0 {

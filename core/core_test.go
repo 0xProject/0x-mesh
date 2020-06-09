@@ -180,16 +180,6 @@ func TestOrderSync(t *testing.T) {
 	}
 
 	testCases := []ordersyncTestCase{
-		// NOTE(albrow): The test case below is just a sanity check to make sure
-		// that the test fails if no subprotocols are enabled. Un-comment this
-		// as needed after making changes to any subprotocol configuration.
-		// {
-		// 	name: "no subprotocols enabled",
-		// 	pConfig: privateConfig{
-		// 		paginationSubprotocolPerPage: 10,
-		// 		paginationSubprotocols:       []ordersyncSubprotocolFactory{},
-		// 	},
-		// },
 		{
 			name: "FilteredPaginationSubprotocol version 0",
 			pConfig: privateConfig{

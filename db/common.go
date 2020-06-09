@@ -203,6 +203,27 @@ type MiniHeaderFilter struct {
 	Value interface{}     `json:"value"`
 }
 
+// GetLatestMiniHeader is a helper method for getting the latest MiniHeader.
+// It returns ErrNotFound if there are no MiniHeaders in the database.
+func (db *DB) GetLatestMiniHeader() (*types.MiniHeader, error) {
+	latestMiniHeaders, err := db.FindMiniHeaders(&MiniHeaderQuery{
+		Sort: []MiniHeaderSort{
+			{
+				Field:     MFNumber,
+				Direction: Descending,
+			},
+		},
+		Limit: 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(latestMiniHeaders) == 0 {
+		return nil, ErrNotFound
+	}
+	return latestMiniHeaders[0], nil
+}
+
 func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {
 	if len(assetData) == 0 {
 		return []*types.SingleAssetData{}, nil

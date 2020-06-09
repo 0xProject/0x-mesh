@@ -966,21 +966,17 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) GetStats() (*types.Stats, error) {
 	<-app.started
 
-	latestMiniHeaders, err := app.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
 	var latestBlock types.LatestBlock
-	if len(latestMiniHeaders) != 0 {
-		latestBlock.Number = int(latestMiniHeaders[0].Number.Int64())
-		latestBlock.Hash = latestMiniHeaders[0].Hash
+	latestMiniHeader, err := app.db.GetLatestMiniHeader()
+	if err != nil {
+		if err != db.ErrNotFound {
+			// ErrNotFound is okay. For any other error, return it.
+			return nil, err
+		}
+	}
+	if latestMiniHeader != nil {
+		latestBlock.Number = int(latestMiniHeader.Number.Int64())
+		latestBlock.Hash = latestMiniHeader.Hash
 	}
 	numOrders, err := app.db.CountOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
@@ -1084,25 +1080,17 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 // IsCaughtUpToLatestBlock returns whether or not the latest block stored by Mesh corresponds
 // to the latest block retrieved from it's Ethereum RPC endpoint
 func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
-	latestStoredBlocks, err := app.db.FindMiniHeaders(&db.MiniHeaderQuery{
-		Sort: []db.MiniHeaderSort{
-			{
-				Field:     db.MFNumber,
-				Direction: db.Descending,
-			},
-		},
-		Limit: 1,
-	})
+	latestStoredBlock, err := app.db.GetLatestMiniHeader()
 	if err != nil {
+		if err == db.ErrNotFound {
+			// This just means there are no MiniHeaders stored.
+			return false
+		}
 		log.WithFields(map[string]interface{}{
 			"err": err.Error(),
 		}).Warn("failed to fetch the latest miniHeader from DB")
 		return false
 	}
-	if len(latestStoredBlocks) == 0 {
-		return false
-	}
-	latestStoredBlock := latestStoredBlocks[0]
 	latestRPCBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
 	if err != nil {
 		log.WithFields(map[string]interface{}{
