@@ -362,7 +362,7 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
     }
 
     // First we create the Collection based on the query fields.
-    let col: Dexie.Collection<T, Key> | undefined;
+    let col: Dexie.Collection<T, Key>;
     if (queryUsesFilters(query)) {
         // tslint:disable-next-line:no-non-null-assertion
         const filter = query.filters![0];
@@ -393,16 +393,21 @@ function buildCollectionWithDexieIndexes<T extends Record, Key>(
             default:
                 throw new Error(`unexpected filter kind: ${filter.kind}`);
         }
-    }
-    if (queryUsesSortOptions(query)) {
+        if (queryUsesSortOptions(query) && query.sort![0].direction === SortDirection.Desc) {
+            // Note(albrow): This is only allowed if the sort and filter are using
+            // the same field. Dexie automatically returns records sorted by the filter
+            // field. If the direction is Ascending, we don't need to do anything else.
+            // If it the direction is Descending, we just need to call reverse().
+            col.reverse();
+        }
+    } else if (queryUsesSortOptions(query)) {
         // tslint:disable-next-line:no-non-null-assertion
         const sortOpt = query.sort![0];
         col = table.orderBy(sortOpt.field);
         if (sortOpt.direction === SortDirection.Desc) {
             col = col.reverse();
         }
-    }
-    if (col === undefined) {
+    } else {
         // Query doesn't use filter or sort options.
         col = table.toCollection();
     }
