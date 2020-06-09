@@ -97,11 +97,12 @@ declare global {
 }
 
 /**
- * @ignore
  * Sets the required global variables the Mesh needs to access from Go land.
  * This includes the `db` and `orderfilter` packages.
- * */
-export function _setGlobals() {
+ *
+ * @ignore
+ */
+export function _setGlobals(): void {
     (window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
     (window as any).__mesh_dexie_newDatabase__ = createDatabase;
 }
