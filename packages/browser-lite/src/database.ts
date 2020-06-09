@@ -4,6 +4,11 @@
  * @hidden
  */
 
+/**
+ * NOTE(jalextowle): This comment must be here so that typedoc knows that the above
+ * comment is a module comment
+ */
+
 import Dexie from 'dexie';
 
 export type Record = Order | MiniHeader | Metadata;

@@ -59,7 +59,7 @@ func TestBrowserIntegration(t *testing.T) {
 	customOrderFilter := `{"properties": { "makerAddress": { "const": "0x6ecbe1db9ef729cbe972c83fb886247691fb6beb" }}}`
 
 	// Start the standalone node in a goroutine.
-	// Note we need to use a specific data dir because we need to use the same private key for each test.
+	// Note(albrow) we need to use a specific data dir because we need to use the same private key for each test.
 	// The tests themselves are written in a way that depend on this.
 	wg.Add(1)
 	go func() {

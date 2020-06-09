@@ -875,7 +875,7 @@ func runDeleteMiniHeadersFilterTestCase(t *testing.T, db *DB, storedMiniHeaders 
 		require.NoError(t, err)
 		assertMiniHeaderSlicesAreUnsortedEqual(t, testCase.expectedMatchingMiniHeaders, deletedMiniHeaders)
 
-		// Calculate expected remanining miniheaders and make sure that each one is still
+		// Calculate expected remaining miniheaders and make sure that each one is still
 		// in the database.
 		expectedRemainingMiniHeaders := []*types.MiniHeader{}
 		for _, miniHeader := range storedMiniHeaders {
