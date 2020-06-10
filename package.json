@@ -15,8 +15,8 @@
         "clean": "wsrun --fast-exit --exclude-missing clean",
         "docs:md": "wsrun --fast-exit --exclude-missing docs:md",
         "lint": "wsrun lint",
-        "prettier": "prettier --write '**/*.{ts,tsx,json}' --config .prettierrc",
-        "prettier:ci": "prettier --list-different '**/*.{ts,tsx,json}' --config .prettierrc",
+        "prettier": "prettier --write '**/*.{ts,tsx,json,md}' --config .prettierrc",
+        "prettier:ci": "prettier --list-different '**/*.{ts,tsx,json,md}' --config .prettierrc",
         "test": "wsrun --fast-exit --exclude-missing test "
     },
     "description": "A peer-to-peer network for sharing orders",

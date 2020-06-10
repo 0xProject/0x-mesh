@@ -2,7 +2,7 @@
 
 # 0x Mesh JSON-RPC API Documentation
 
-The JSON-RPC API is intended to be a *private* API. The API should only be
+The JSON-RPC API is intended to be a _private_ API. The API should only be
 accessible to the developers running the Mesh node and should not be exposed to
 the public. The API runs on a separate port from the peer-to-peer protocols and
 access to it can be controlled via a firewall.
@@ -133,11 +133,7 @@ Gets orders already stored in a Mesh node at a particular snapshot of the DB sta
 {
     "jsonrpc": "2.0",
     "method": "mesh_getOrders",
-    "params": [
-        1,
-        100,
-        ""
-    ],
+    "params": [1, 100, ""],
     "id": 1
 }
 ```
