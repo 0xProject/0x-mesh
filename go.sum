@@ -3,10 +3,6 @@ github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425 h1:BFs4B5V
 github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a h1:OHjKy7tLiqETUbEzF2UmqaF8eUTjHqmJM2sP79dguJs=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a/go.mod h1:R4R0kH/6p2vu8O9xsue0HNSjEuXMEPBgg4h3nVDI15o=
-github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39 h1:zMth0Fw7e4MWjaNoN+lKzwdvqeNI2Mj12Zk63AMC3vI=
-github.com/0xProject/go-ws-transport v0.1.1-0.20200201000210-2db3396fec39/go.mod h1:9BHJz/4Q5A9ludYWKoGCFC5gUElzlHoKzu0yY9p/klM=
-github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967 h1:D7HZfoMYUXCYTVflLSqAXvCTotwR3cQn8s9peVA3/5M=
-github.com/0xProject/go-ws-transport v0.1.1-0.20200530011125-b4ab00766967/go.mod h1:u/HmnXUDjrIk299j/U0prf1a/BOO8xky3ekSk9YkZdY=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11 h1:4FnZlElDsHYCEMeTEj2oS/tzzulsQU0ytrZiNpbE8SA=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11/go.mod h1:u/HmnXUDjrIk299j/U0prf1a/BOO8xky3ekSk9YkZdY=
 github.com/0xProject/goleveldb v1.0.1-0.20200602173211-6ee893c9b83a h1:7V/u2CwtbkJCQ4ctMzIMtxF8I1W1obt+y9zxw71Chg4=
@@ -429,10 +425,10 @@ github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hd
 github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/mattn/go-runewidth v0.0.4 h1:2BvfKmzob6Bmd4YsL0zygOqfdFnK7GR4QL06Do4/p7Y=
 github.com/mattn/go-runewidth v0.0.4/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
-github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/mattn/go-sqlite3 v1.9.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
 github.com/mattn/go-sqlite3 v2.0.3+incompatible h1:gXHsfypPkaMZrKbD5209QV9jbUTJKjyR5WD3HYQSd+U=
 github.com/mattn/go-sqlite3 v2.0.3+incompatible/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
+github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/miekg/dns v1.1.12/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
@@ -502,8 +498,6 @@ github.com/multiformats/go-varint v0.0.5/go.mod h1:3Ls8CIEsrijN6+B7PbrXRPxHRPuXS
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/naoina/go-stringutil v0.1.0/go.mod h1:XJ2SJL9jCtBh+P9q5btrd/Ylo8XwT/h1USek5+NqSA0=
 github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416/go.mod h1:NBIhNtsFMo3G2szEBne+bO4gS192HuIYRqfvOWb4i1E=
-github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33 h1:DQMe4Gmdz3tmthcNAbzAjW3Q7COoMi5Q2cJQnWsUkv8=
-github.com/ocdogan/rbt v0.0.0-20160425054511-de6e2b48be33/go.mod h1:0uoVzTOFUpKmyAwRLuwFo79XnkqEuZzxnDqsCKlRT4I=
 github.com/oklog/ulid v1.3.1 h1:EGfNDEx6MqHz8B3uNV6QAib1UR2Lm97sHi3ocA6ESJ4=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.1 h1:b3iUnf1v+ppJiOfNX4yxxqfWKMQPZR5yoh8urCTFX88=
