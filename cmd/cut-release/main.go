@@ -38,28 +38,6 @@ func main() {
 	}
 
 	generateTypescriptDocs()
-	createReleaseChangelog(env.Version)
-}
-
-func createReleaseChangelog(version string) {
-	regex := fmt.Sprintf(`(?ms)(## v%s\n)(.*?)(## v)`, version)
-	changelog, err := getFileContentsWithRegex("CHANGELOG.md", regex)
-	if err != nil {
-		log.Println("No CHANGELOG entries found for version", version)
-		return // Noop
-	}
-
-	releaseChangelog := fmt.Sprintf(`- [Docker image](https://hub.docker.com/r/0xorg/mesh/tags)
-- [README](https://github.com/0xProject/0x-mesh/blob/v%s/README.md)
-
-## Summary
-%s
-`, version, changelog)
-
-	err = ioutil.WriteFile("RELEASE_CHANGELOG.md", []byte(releaseChangelog), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func generateTypescriptDocs() {
