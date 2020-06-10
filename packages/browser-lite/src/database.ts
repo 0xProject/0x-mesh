@@ -139,7 +139,7 @@ export function createDatabase(opts: Options): Database {
 
 export class Database {
     private readonly _db: Dexie;
-    // private readonly _maxOrders: number;
+    private readonly _maxOrders: number;
     private readonly _maxMiniHeaders: number;
     private readonly _orders: Dexie.Table<Order, string>;
     private readonly _miniHeaders: Dexie.Table<MiniHeader, string>;
@@ -147,7 +147,7 @@ export class Database {
 
     constructor(opts: Options) {
         this._db = new Dexie(opts.dataSourceName);
-        // this._maxOrders = opts.maxOrders;
+        this._maxOrders = opts.maxOrders;
         this._maxMiniHeaders = opts.maxMiniHeaders;
 
         this._db.version(1).stores({
@@ -168,9 +168,9 @@ export class Database {
 
     // AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
     public async addOrdersAsync(orders: Order[]): Promise<AddOrdersResult> {
-        // TODO(albrow): Remove orders with max expiration time.
-        const added: Order[] = [];
-        await this._db.transaction('rw!', this._orders, async () => {
+        const addedMap = new Map<string, Order>();
+        const removed: Order[] = [];
+        await this._db.transaction('rw', this._orders, async () => {
             for (const order of orders) {
                 try {
                     await this._orders.add(order);
@@ -182,12 +182,29 @@ export class Database {
                     }
                     throw e;
                 }
-                added.push(order);
+                addedMap.set(order.hash, order);
+            }
+
+            // Remove orders with an expiration time too far in the future.
+            const ordersToRemove = await this._orders
+                .orderBy('expirationTimeSeconds')
+                .offset(this._maxOrders)
+                .toArray();
+            for (const order of ordersToRemove) {
+                await this._orders.delete(order.hash);
+                if (addedMap.has(order.hash)) {
+                    // If the order was previously added, remove it from
+                    // the added set and don't add it to the removed set.
+                    addedMap.delete(order.hash);
+                } else {
+                    removed.push(order);
+                }
             }
         });
+
         return {
-            added,
-            removed: [],
+            added: Array.from(addedMap.values()),
+            removed,
         };
     }
 
@@ -257,7 +274,7 @@ export class Database {
 
     // AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
     public async addMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<AddMiniHeadersResult> {
-        const added: MiniHeader[] = [];
+        const addedMap = new Map<string, MiniHeader>();
         const removed: MiniHeader[] = [];
         await this._db.transaction('rw!', this._miniHeaders, async () => {
             for (const miniHeader of miniHeaders) {
@@ -271,20 +288,29 @@ export class Database {
                     }
                     throw e;
                 }
-                added.push(miniHeader);
-                const outdatedMiniHeaders = await this._miniHeaders
-                    .orderBy('number')
-                    .offset(this._maxMiniHeaders)
-                    .reverse()
-                    .toArray();
-                for (const outdated of outdatedMiniHeaders) {
-                    await this._miniHeaders.delete(outdated.hash);
+                addedMap.set(miniHeader.hash, miniHeader);
+            }
+
+            // Remove any outdated miniHeaders.
+            const outdatedMiniHeaders = await this._miniHeaders
+                .orderBy('number')
+                .offset(this._maxMiniHeaders)
+                .reverse()
+                .toArray();
+            for (const outdated of outdatedMiniHeaders) {
+                await this._miniHeaders.delete(outdated.hash);
+                if (addedMap.has(outdated.hash)) {
+                    // If the order was previously added, remove it from
+                    // the added set and don't add it to the removed set.
+                    addedMap.delete(outdated.hash);
+                } else {
                     removed.push(outdated);
                 }
             }
         });
+
         return {
-            added,
+            added: Array.from(addedMap.values()),
             removed,
         };
     }

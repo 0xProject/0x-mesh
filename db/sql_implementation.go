@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -20,6 +21,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// largeLimit is used as a workaround due to the fact that SQL does not allow limit without offset.
+const largeLimit = math.MaxInt64
 
 var _ Database = (*DB)(nil)
 
@@ -259,7 +263,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 		err = convertErr(err)
 	}()
 
-	var ordersToRemove []*sqltypes.Order
+	addedMap := map[common.Hash]*types.OrderWithMetadata{}
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		for _, order := range orders {
 			result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
@@ -271,14 +275,18 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 				return err
 			}
 			if affected > 0 {
-				added = append(added, order)
+				addedMap[order.Hash] = order
 			}
 		}
 
+		// Remove orders with an expiration time too far in the future.
 		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 		// for DELETE statements. It also doesn't support RETURNING. As a
 		// workaround, we do a SELECT and DELETE inside a transaction.
-		removeQuery := txn.Select("*").From("orders").OrderBy(sqlz.Asc(string(OFExpirationTimeSeconds))).Offset(int64(db.opts.MaxOrders)).Limit(999999999999999999)
+		// HACK(albrow): SQL doesn't support limit without offset. As a
+		// workaround, we set the limit to an extremely large number.
+		removeQuery := txn.Select("*").From("orders").OrderBy(sqlz.Asc(string(OFExpirationTimeSeconds))).Limit(largeLimit).Offset(int64(db.opts.MaxOrders))
+		var ordersToRemove []*sqltypes.Order
 		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
 		if err != nil {
 			return err
@@ -288,38 +296,24 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 			if err != nil {
 				return err
 			}
+			if _, found := addedMap[order.Hash]; found {
+				// If the order was previously added, remove it from
+				// the added set and don't add it to the removed set.
+				delete(addedMap, order.Hash)
+			} else {
+				removed = append(removed, sqltypes.OrderToCommonType(order))
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Because of how the above code is written, a single order could exist
-	// in both added and removed sets. We should remove such orders from both
-	// sets in this case.
-	addedMap := map[common.Hash]*types.OrderWithMetadata{}
-	removedMap := map[common.Hash]*sqltypes.Order{}
-	for _, a := range added {
-		addedMap[a.Hash] = a
-	}
-	for _, r := range ordersToRemove {
-		removedMap[r.Hash] = r
-	}
-	dedupedAdded := []*types.OrderWithMetadata{}
-	dedupedRemoved := []*sqltypes.Order{}
-	for _, a := range added {
-		if _, wasRemoved := removedMap[a.Hash]; !wasRemoved {
-			dedupedAdded = append(dedupedAdded, a)
-		}
-	}
-	for _, r := range ordersToRemove {
-		if _, wasAdded := addedMap[r.Hash]; !wasAdded {
-			dedupedRemoved = append(dedupedRemoved, r)
-		}
+	for _, order := range addedMap {
+		added = append(added, order)
 	}
 
-	return dedupedAdded, sqltypes.OrdersToCommonType(dedupedRemoved), nil
+	return added, removed, nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
@@ -520,7 +514,8 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	defer func() {
 		err = convertErr(err)
 	}()
-	var miniHeadersToRemove []*sqltypes.MiniHeader
+
+	addedMap := map[common.Hash]*types.MiniHeader{}
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		for _, miniHeader := range miniHeaders {
 			result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
@@ -532,15 +527,18 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 				return err
 			}
 			if affected > 0 {
-				added = append(added, miniHeader)
+				addedMap[miniHeader.Hash] = miniHeader
 			}
 		}
 
 		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 		// for DELETE statements. It also doesn't support RETURNING. As a
 		// workaround, we do a SELECT and DELETE inside a transaction.
-		trimQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(99999999999).Offset(int64(db.opts.MaxMiniHeaders))
-		if err := trimQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
+		// HACK(albrow): SQL doesn't support limit without offset. As a
+		// workaround, we set the limit to an extremely large number.
+		removeQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(largeLimit).Offset(int64(db.opts.MaxMiniHeaders))
+		var miniHeadersToRemove []*sqltypes.MiniHeader
+		if err := removeQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
 			return err
 		}
 		for _, miniHeader := range miniHeadersToRemove {
@@ -548,38 +546,24 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 			if err != nil {
 				return err
 			}
+			if _, found := addedMap[miniHeader.Hash]; found {
+				// If the miniHeader was previously added, remove it from
+				// the added set and don't add it to the removed set.
+				delete(addedMap, miniHeader.Hash)
+			} else {
+				removed = append(removed, sqltypes.MiniHeaderToCommonType(miniHeader))
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Because of how the above code is written, a single miniHeader could exist
-	// in both added and removed sets. We should remove such miniHeaders from both
-	// sets in this case.
-	addedMap := map[common.Hash]*types.MiniHeader{}
-	removedMap := map[common.Hash]*sqltypes.MiniHeader{}
-	for _, a := range added {
-		addedMap[a.Hash] = a
-	}
-	for _, r := range miniHeadersToRemove {
-		removedMap[r.Hash] = r
-	}
-	dedupedAdded := []*types.MiniHeader{}
-	dedupedRemoved := []*sqltypes.MiniHeader{}
-	for _, a := range added {
-		if _, wasRemoved := removedMap[a.Hash]; !wasRemoved {
-			dedupedAdded = append(dedupedAdded, a)
-		}
-	}
-	for _, r := range miniHeadersToRemove {
-		if _, wasAdded := addedMap[r.Hash]; !wasAdded {
-			dedupedRemoved = append(dedupedRemoved, r)
-		}
+	for _, miniHeader := range addedMap {
+		added = append(added, miniHeader)
 	}
 
-	return dedupedAdded, sqltypes.MiniHeadersToCommonType(dedupedRemoved), nil
+	return added, removed, nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
