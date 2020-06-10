@@ -6,7 +6,7 @@ const (
 	wsRPCPort       = 60501
 	httpRPCPort     = 60701
 
-	standaloneDataDirPrefix                    = "./data/standalone-"
+	browserIntegrationTestDataDir              = "./data/standalone-0"
 	standaloneWSRPCEndpointPrefix              = "ws://localhost:"
 	standaloneHTTPRPCEndpointPrefix            = "http://localhost:"
 	standaloneRPCAddrPrefix                    = "localhost:"

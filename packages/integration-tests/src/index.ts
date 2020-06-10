@@ -69,9 +69,11 @@ provider.start();
             for (const event of events) {
                 // Check the happy path for getOrdersForPageAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
-                const firstOrdersResponse = await mesh.getOrdersForPageAsync(0, 1, '');
+                const firstOrdersResponse = await mesh.getOrdersForPageAsync(1);
                 console.log(JSON.stringify(firstOrdersResponse));
-                const secondOrdersResponse = await mesh.getOrdersForPageAsync(1, 1, firstOrdersResponse.snapshotID);
+                const nextMinOrderHash =
+                    firstOrdersResponse.ordersInfos[firstOrdersResponse.ordersInfos.length - 1].orderHash;
+                const secondOrdersResponse = await mesh.getOrdersForPageAsync(1, nextMinOrderHash);
                 console.log(JSON.stringify(secondOrdersResponse));
 
                 // Check the happy path for getOrders (just make sure it

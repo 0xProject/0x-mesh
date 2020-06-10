@@ -284,7 +284,7 @@ export function wrapperGetOrdersResponseToGetOrdersResponse(
 ): GetOrdersResponse {
     return {
         ...wrapperGetOrdersResponse,
-        snapshotTimestamp: new Date(wrapperGetOrdersResponse.snapshotTimestamp).getTime(),
+        timestamp: new Date(wrapperGetOrdersResponse.timestamp).getTime(),
         ordersInfos: wrapperGetOrdersResponse.ordersInfos.map(wrapperOrderInfoToOrderInfo),
     };
 }

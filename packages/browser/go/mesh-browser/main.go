@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/packages/browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 )
 
@@ -74,11 +75,11 @@ type MeshWrapper struct {
 
 // NewMeshWrapper creates a new wrapper from the given config.
 func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
-	app, err := core.New(config)
+	ctx, cancel := context.WithCancel(context.Background())
+	app, err := core.New(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	return &MeshWrapper{
 		app:    app,
 		ctx:    ctx,
@@ -97,7 +98,7 @@ func (cw *MeshWrapper) Start() error {
 	// cw.app.Start blocks until there is an error or the app is closed, so we
 	// need to start it in a goroutine.
 	go func() {
-		cw.errChan <- cw.app.Start(cw.ctx)
+		cw.errChan <- cw.app.Start()
 	}()
 
 	// Wait up to 1 second to see if cw.app.Start returns an error right away.
@@ -167,8 +168,8 @@ func (cw *MeshWrapper) GetStats() (js.Value, error) {
 // GetOrders converts raw JavaScript parameters into the appropriate type, calls
 // core.App.GetOrders, converts the result into basic JavaScript types (string,
 // int, etc.) and returns it.
-func (cw *MeshWrapper) GetOrders(page int, perPage int, snapshotID string) (js.Value, error) {
-	ordersResponse, err := cw.app.GetOrders(page, perPage, snapshotID)
+func (cw *MeshWrapper) GetOrders(perPage int, minOrderHash string) (js.Value, error) {
+	ordersResponse, err := cw.app.GetOrders(perPage, common.HexToHash(minOrderHash))
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -204,16 +205,16 @@ func (cw *MeshWrapper) JSValue() js.Value {
 				return cw.GetStats()
 			})
 		}),
-		// getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse>
+		// getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<GetOrdersResponse>
 		"getOrdersForPageAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
-				// snapshotID is optional in the JavaScript function. Check if it is
+				// minOrderHash is optional in the JavaScript function. Check if it is
 				// null or undefined.
-				snapshotID := ""
-				if !jsutil.IsNullOrUndefined(args[2]) {
-					snapshotID = args[2].String()
+				minOrderHash := ""
+				if !jsutil.IsNullOrUndefined(args[1]) {
+					minOrderHash = args[1].String()
 				}
-				return cw.GetOrders(args[0].Int(), args[1].Int(), snapshotID)
+				return cw.GetOrders(args[0].Int(), minOrderHash)
 			})
 		}),
 		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>

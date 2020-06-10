@@ -307,7 +307,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder, i int) {
-			trimmedOrders := []wrappers.TrimmedOrder{}
+			trimmedOrders := []wrappers.LibOrderOrder{}
 			for _, signedOrder := range signedOrders {
 				trimmedOrders = append(trimmedOrders, signedOrder.Trim())
 			}
@@ -841,7 +841,7 @@ func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zer
 	trimmedOrder := signedOrder.Trim()
 	data, err := o.devUtilsABI.Pack(
 		"getOrderRelevantStates",
-		[]wrappers.TrimmedOrder{trimmedOrder},
+		[]wrappers.LibOrderOrder{trimmedOrder},
 		[][]byte{signedOrder.Signature},
 	)
 	if err != nil {
