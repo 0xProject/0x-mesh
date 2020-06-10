@@ -7,14 +7,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 var (
@@ -25,9 +25,9 @@ var (
 // Client defines the methods needed to satisfy the client expected when
 // instantiating a Watcher instance.
 type Client interface {
-	HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error)
-	HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error)
-	FilterLogs(q ethereum.FilterQuery) ([]types.Log, error)
+	HeaderByNumber(number *big.Int) (*types.MiniHeader, error)
+	HeaderByHash(hash common.Hash) (*types.MiniHeader, error)
+	FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error)
 }
 
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
@@ -63,7 +63,7 @@ func (e UnknownBlockNumberError) Error() string {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error) {
+func (rc *RpcClient) HeaderByNumber(number *big.Int) (*types.MiniHeader, error) {
 	var blockParam string
 	if number == nil {
 		blockParam = "latest"
@@ -101,7 +101,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	if !ok {
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block timestamp returned from eth_getBlockByNumber")
 	}
-	miniHeader := &miniheader.MiniHeader{
+	miniHeader := &types.MiniHeader{
 		Hash:      header.Hash,
 		Parent:    header.ParentHash,
 		Number:    blockNum,
@@ -122,7 +122,7 @@ func (e UnknownBlockHashError) Error() string {
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
+func (rc *RpcClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	header, err := rc.ethRPCClient.HeaderByHash(ctx, hash)
@@ -135,7 +135,7 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, err
 		}
 		return nil, err
 	}
-	miniHeader := &miniheader.MiniHeader{
+	miniHeader := &types.MiniHeader{
 		Hash:      header.Hash(),
 		Parent:    header.ParentHash,
 		Number:    header.Number,
@@ -156,7 +156,7 @@ func (e FilterUnknownBlockError) Error() string {
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
-func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
+func (rc *RpcClient) FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	logs, err := rc.ethRPCClient.FilterLogs(ctx, q)

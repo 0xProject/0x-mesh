@@ -1,15 +1,10 @@
 import { SignedOrder } from '@0x/order-utils';
-import * as BrowserFS from 'browserfs';
 
+import { createDatabase } from './database';
 import { createSchemaValidator } from './schema_validator';
-import './wasm_exec';
-
-export { SignedOrder } from '@0x/order-utils';
-export { BigNumber } from '@0x/utils';
-export { SupportedProvider } from 'ethereum-types';
-
 import {
     AcceptedOrderInfo,
+    BigNumber,
     Config,
     ContractAddresses,
     ContractEvent,
@@ -35,6 +30,7 @@ import {
     RejectedOrderKind,
     RejectedOrderStatus,
     Stats,
+    SupportedProvider,
     ValidationResults,
     Verbosity,
     WethDepositEvent,
@@ -42,6 +38,7 @@ import {
     WrapperOrderEvent,
     ZeroExMesh,
 } from './types';
+import './wasm_exec';
 import {
     configToWrapperConfig,
     orderEventsHandlerToWrapperOrderEventsHandler,
@@ -53,6 +50,7 @@ import {
 
 export {
     AcceptedOrderInfo,
+    BigNumber,
     Config,
     ContractAddresses,
     ContractEvent,
@@ -76,6 +74,8 @@ export {
     RejectedOrderInfo,
     RejectedOrderKind,
     RejectedOrderStatus,
+    SignedOrder,
+    SupportedProvider,
     Stats,
     ValidationResults,
     Verbosity,
@@ -96,27 +96,19 @@ declare global {
     const zeroExMesh: ZeroExMesh;
 }
 
-// We use the global willLoadBrowserFS variable to signal that we are going to
-// initialize BrowserFS.
-(window as any).willLoadBrowserFS = true;
+/**
+ * Sets the required global variables the Mesh needs to access from Go land.
+ * This includes the `db` and `orderfilter` packages.
+ *
+ * @ignore
+ */
+export function _setGlobals(): void {
+    (window as any).__mesh_createSchemaValidator__ = createSchemaValidator;
+    (window as any).__mesh_dexie_newDatabase__ = createDatabase;
+}
 
-BrowserFS.configure(
-    {
-        fs: 'IndexedDB',
-        options: {
-            storeName: '0x-mesh-db',
-        },
-    },
-    e => {
-        if (e) {
-            throw e;
-        }
-        // We use the global browserFS variable as a handle for Go/Wasm code to
-        // call into the BrowserFS API. Setting this variable also indicates
-        // that BrowserFS has finished loading.
-        (window as any).browserFS = BrowserFS.BFSRequire('fs');
-    },
-);
+// We immediately want to set the required globals.
+_setGlobals();
 
 // The interval (in milliseconds) to check whether Wasm is done loading.
 const wasmLoadCheckIntervalMs = 100;
@@ -127,8 +119,6 @@ const loadEventName = '0xmeshload';
 window.addEventListener(loadEventName, () => {
     isWasmLoaded = true;
 });
-
-(window as any).createSchemaValidator = createSchemaValidator;
 
 /**
  * The main class for this package. Has methods for receiving order events and
@@ -227,27 +217,21 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
 
-        let snapshotID = ''; // New snapshot
-
         // TODO(albrow): De-dupe this code with the method by the same name
         // in the TypeScript RPC client.
-        let page = 0;
-        let getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
-        snapshotID = getOrdersResponse.snapshotID;
+        let getOrdersResponse = await this.getOrdersForPageAsync(perPage);
         let ordersInfos = getOrdersResponse.ordersInfos;
-
         let allOrderInfos: OrderInfo[] = [];
 
         do {
             allOrderInfos = [...allOrderInfos, ...ordersInfos];
-            page++;
-            getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+            const minOrderHash = ordersInfos[ordersInfos.length - 1].orderHash;
+            getOrdersResponse = await this.getOrdersForPageAsync(perPage, minOrderHash);
             ordersInfos = getOrdersResponse.ordersInfos;
         } while (ordersInfos.length > 0);
 
         getOrdersResponse = {
-            snapshotID,
-            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
+            timestamp: getOrdersResponse.timestamp,
             ordersInfos: allOrderInfos,
         };
         return getOrdersResponse;
@@ -255,12 +239,11 @@ export class Mesh {
 
     /**
      * Get page of 0x signed orders stored on the Mesh node at the specified snapshot
-     * @param page Page index at which to retrieve orders
      * @param perPage Number of signedOrders to fetch per paginated request
-     * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
-     * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
+     * @param minOrderHash The minimum order hash for the returned orders. Should be set based on the last hash from the previous response.
+     * @returns Up to perPage orders with hash greater than minOrderHash, including order hashes and fillableTakerAssetAmounts
      */
-    public async getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<GetOrdersResponse> {
+    public async getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<GetOrdersResponse> {
         await waitForLoadAsync();
         if (this._wrapper === undefined) {
             // If this is called after startAsync, this._wrapper is always
@@ -269,7 +252,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
 
-        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(page, perPage, snapshotID);
+        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(perPage, minOrderHash);
         return wrapperGetOrdersResponseToGetOrdersResponse(wrapperOrderResponse);
     }
 

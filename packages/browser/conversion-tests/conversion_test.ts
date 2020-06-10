@@ -371,13 +371,11 @@ function testContractEventPrelude(
 
 function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): void {
     let printer = prettyPrintTestCase('getOrdersResponse', 'EmptyOrderInfo');
-    printer('snapshotID', getOrdersResponse[0].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
-    printer('snapshotTimestamp', getOrdersResponse[0].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('timestamp', getOrdersResponse[0].timestamp === '2006-01-01T00:00:00Z');
     printer('orderInfo.length', getOrdersResponse[0].ordersInfos.length === 0);
 
     printer = prettyPrintTestCase('getOrdersResponse', 'OneOrderInfo');
-    printer('snapshotID', getOrdersResponse[1].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
-    printer('snapshotTimestamp', getOrdersResponse[1].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('timestamp', getOrdersResponse[1].timestamp === '2006-01-01T00:00:00Z');
     printer('orderInfo.length', getOrdersResponse[1].ordersInfos.length === 1);
     printer('orderInfo.orderHash', getOrdersResponse[1].ordersInfos[0].orderHash === hexUtils.leftPad('0x1', 32));
     printer('orderInfo.signedOrder.chainId', getOrdersResponse[1].ordersInfos[0].signedOrder.chainId === 1337);
@@ -442,8 +440,7 @@ function testGetOrdersResponse(getOrdersResponse: WrapperGetOrdersResponse[]): v
     );
 
     printer = prettyPrintTestCase('getOrdersResponse', 'TwoOrderInfos');
-    printer('snapshotID', getOrdersResponse[2].snapshotID === '208c81f9-6f8d-44aa-b6ea-0a3276ec7318');
-    printer('snapshotTimestamp', getOrdersResponse[2].snapshotTimestamp === '2006-01-01T00:00:00Z');
+    printer('timestamp', getOrdersResponse[2].timestamp === '2006-01-01T00:00:00Z');
     printer('orderInfo.length', getOrdersResponse[2].ordersInfos.length === 2);
     printer('orderInfo.orderHash', getOrdersResponse[2].ordersInfos[0].orderHash === hexUtils.leftPad('0x1', 32));
     printer('orderInfo.signedOrder.chainId', getOrdersResponse[2].ordersInfos[0].signedOrder.chainId === 1337);

@@ -19,7 +19,7 @@ type MiniHeader struct {
 
 // ID returns the MiniHeader's ID
 // HACK(fabio): This method is used when storing MiniHeaders in the DB
-// Ideally this would live in the `meshdb` package but it adds the need
+// Ideally this would live in the `db` package but it adds the need
 // to cast back-and-forth between two almost identical types so we keep
 // it here for convenience sake.
 func (m *MiniHeader) ID() []byte {

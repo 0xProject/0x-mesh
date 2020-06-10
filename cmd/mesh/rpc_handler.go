@@ -18,6 +18,7 @@ import (
 	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/ethereum/go-ethereum/common"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	log "github.com/sirupsen/logrus"
@@ -60,11 +61,10 @@ func instantiateServer(ctx context.Context, app *core.App, rpcAddr string) *rpc.
 }
 
 // GetOrders is called when an RPC client calls GetOrders.
-func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (result *types.GetOrdersResponse, err error) {
+func (handler *rpcHandler) GetOrders(perPage int, minOrderHashHex string) (result *types.GetOrdersResponse, err error) {
 	log.WithFields(map[string]interface{}{
-		"page":       page,
-		"perPage":    perPage,
-		"snapshotID": snapshotID,
+		"perPage":         perPage,
+		"minOrderHashHex": minOrderHashHex,
 	}).Debug("received GetOrders request via RPC")
 	// Catch panics, log stack trace and return RPC error message
 	defer func() {
@@ -82,7 +82,8 @@ func (handler *rpcHandler) GetOrders(page, perPage int, snapshotID string) (resu
 			err = errors.New("method handler crashed in GetOrders RPC call (check logs for stack trace)")
 		}
 	}()
-	getOrdersResponse, err := handler.app.GetOrders(page, perPage, snapshotID)
+	var minOrderHash = common.HexToHash(minOrderHashHex)
+	getOrdersResponse, err := handler.app.GetOrders(perPage, minOrderHash)
 	if err != nil {
 		if _, ok := err.(core.ErrSnapshotNotFound); ok {
 			return nil, err

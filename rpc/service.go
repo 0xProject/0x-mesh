@@ -33,7 +33,7 @@ type RPCHandler interface {
 	// AddOrders is called when the client sends an AddOrders request.
 	AddOrders(signedOrdersRaw []*json.RawMessage, opts types.AddOrdersOpts) (*ordervalidator.ValidationResults, error)
 	// GetOrders is called when the clients sends a GetOrders request
-	GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error)
+	GetOrders(perPage int, minOrderHash string) (*types.GetOrdersResponse, error)
 	// AddPeer is called when the client sends an AddPeer request.
 	AddPeer(peerInfo peerstore.PeerInfo) error
 	// GetStats is called when the client sends an GetStats request.
@@ -136,8 +136,8 @@ func (s *rpcService) AddOrders(signedOrdersRaw []*json.RawMessage, opts *types.A
 }
 
 // GetOrders calls rpcHandler.GetOrders and returns the validation results.
-func (s *rpcService) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
-	return s.rpcHandler.GetOrders(page, perPage, snapshotID)
+func (s *rpcService) GetOrders(perPage int, minOrderHash string) (*types.GetOrdersResponse, error) {
+	return s.rpcHandler.GetOrders(perPage, minOrderHash)
 }
 
 // AddPeer builds PeerInfo out of the given peer ID and multiaddresses and

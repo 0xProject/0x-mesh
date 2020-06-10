@@ -8,14 +8,12 @@ export { SupportedProvider } from 'ethereum-types';
 
 /** @ignore */
 export interface WrapperGetOrdersResponse {
-    snapshotID: string;
-    snapshotTimestamp: string;
+    timestamp: string;
     ordersInfos: WrapperOrderInfo[];
 }
 
 export interface GetOrdersResponse {
-    snapshotID: string;
-    snapshotTimestamp: number;
+    timestamp: number;
     ordersInfos: OrderInfo[];
 }
 
@@ -231,7 +229,7 @@ export interface MeshWrapper {
     onError(handler: (err: Error) => void): void;
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
     getStatsAsync(): Promise<WrapperStats>;
-    getOrdersForPageAsync(page: number, perPage: number, snapshotID?: string): Promise<WrapperGetOrdersResponse>;
+    getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
 }
 
