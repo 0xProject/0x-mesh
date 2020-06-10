@@ -27,7 +27,7 @@ easily modified to deploy on
 
 ### Setting up docker-compose.yml
 
-Let's start by creating a new directory and adding a __docker-compose.yml__ file
+Let's start by creating a new directory and adding a **docker-compose.yml** file
 with the following contents:
 
 ```
@@ -82,12 +82,12 @@ services:
             - PRIVATE_KEY_PATH=/app/keys/privkey
 ```
 
-In most cases, the only change you need to make to the __docker-compose.yml__
-file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint. The 
-`WS_RPC_ADDR` and `HTTP_RPC_ADDR` above will allow any Docker containers running in the same Docker 
-Compose file to access the Mesh RPC API via 
-[links](https://docs.docker.com/compose/networking/#links). To use this feature, 
-be sure to add the following line to any containers you wish to access the Mesh 
+In most cases, the only change you need to make to the **docker-compose.yml**
+file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint. The
+`WS_RPC_ADDR` and `HTTP_RPC_ADDR` above will allow any Docker containers running in the same Docker
+Compose file to access the Mesh RPC API via
+[links](https://docs.docker.com/compose/networking/#links). To use this feature,
+be sure to add the following line to any containers you wish to access the Mesh
 RPC API from:
 
 ```
@@ -97,11 +97,10 @@ links:
 
 You can then use the URL `ws://mesh:60557` to access the RPC API.
 
-Alternatively, if you want to open up your Mesh RPC API to the public internet, 
-you can set `WS_RPC_ADDR=0.0.0.0:60557` and `HTTP_RPC_ADDR=0.0.0.0:60556`. If 
-you choose to go this route, we strongly recommend using an external firewall 
+Alternatively, if you want to open up your Mesh RPC API to the public internet,
+you can set `WS_RPC_ADDR=0.0.0.0:60557` and `HTTP_RPC_ADDR=0.0.0.0:60556`. If
+you choose to go this route, we strongly recommend using an external firewall
 to restrict who can access your RPC API.
-
 
 ### Deploying with Docker Machine
 
@@ -164,7 +163,7 @@ logs called `myPeerID`:
 
 ```json
 {
-    "myPeerID": "QmbKkHnmkmFxKbPWbBNz3inKizDuqjTsWsVyutnshYULLp",
+    "myPeerID": "QmbKkHnmkmFxKbPWbBNz3inKizDuqjTsWsVyutnshYULLp"
 }
 ```
 

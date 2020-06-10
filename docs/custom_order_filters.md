@@ -2,9 +2,9 @@
 
 Mesh supports the creation of separate sub-networks where 0x orders that adhere to a specific schema are shared. Each sub-network is built around a custom order filter. The custom filter defines which orders are allowed to be shared within a sub-network. For example:
 
-- All orders for a specific asset pair (e.g., WETH/DAI)
-- All orders for non-fungibles (i.e., ERC721, ERC1155)
-- All orders used by a specific DApp
+-   All orders for a specific asset pair (e.g., WETH/DAI)
+-   All orders for non-fungibles (i.e., ERC721, ERC1155)
+-   All orders used by a specific DApp
 
 A custom filter may be passed into Mesh as a [JSON Schema](https://json-schema.org/) via the `CUSTOM_ORDER_FILTER` environment variable. Messages that contain orders that don't match this schema will be dropped. As a limitation, filtering is only possible by looking at the static fields of an order. So for example, it is not possible to filter orders by doing an on-chain check or sending an HTTP request to a third-party API. We don't expect that this limitation is going to be a problem in practice and it comes with the huge benefit of enabling cross-topic forwarding in the future (more on that later).
 
@@ -14,17 +14,20 @@ All orders must match the following JSON Schema:
 
 ```json
 {
-	"id": "/rootOrder",
-	"allOf": [{
-		"$ref": "/customOrder"
-	}, {
-		"$ref": "/signedOrder"
-	}]
+    "id": "/rootOrder",
+    "allOf": [
+        {
+            "$ref": "/customOrder"
+        },
+        {
+            "$ref": "/signedOrder"
+        }
+    ]
 }
 ```
 
-- `/signedOrder` is the JSON Schema that will match any valid 0x orders.
-- `/customOrder` is the custom schema passed in through the `CUSTOM_ORDER_FILTER` environment variable.
+-   `/signedOrder` is the JSON Schema that will match any valid 0x orders.
+-   `/customOrder` is the custom schema passed in through the `CUSTOM_ORDER_FILTER` environment variable.
 
 Organizing the JSON Schema for orders like this means that `CUSTOM_ORDER_FILTER` can be relatively small. It doesn't need to contain all the required fields for a signed 0x order. It just needs to contain any _additional_ requirements on top of the default ones.
 
@@ -42,16 +45,17 @@ The following `CUSTOM_ORDER_FILTER` doesn't add any additional requirements. All
 
 ```json
 {
-	"properties": {
-		"senderAddress": {
-			"pattern": "0x00000000000000000000000000000000ba5eba11",
-			"type": "string"
-		}
-	}
+    "properties": {
+        "senderAddress": {
+            "pattern": "0x00000000000000000000000000000000ba5eba11",
+            "type": "string"
+        }
+    }
 }
 ```
 
 #### Mainnet WETH <-> DAI orders:
+
 ```json
 {
     "oneOf": [
@@ -121,7 +125,6 @@ The following `CUSTOM_ORDER_FILTER` doesn't add any additional requirements. All
 ```
 
 Where `${AUGUR_ERC1155_CONTRACT_ADDRESS}` needs to be replaced with the Augur ERC1155 token used to represent the outcomes of their various prediction markets.
-
 
 As you can see by the above examples, JSON-Schema has support for [regular expressions](https://json-schema.org/understanding-json-schema/reference/regular_expressions.html) allowing for partial matching of any 0x order field.
 

@@ -10,7 +10,7 @@ _outside_ of your `GOPATH`.
 0x Mesh uses two main branches:
 
 1. The `development` branch contains the latest (possibly unreleased) changes
-	and is not guaranteed to be stable.
+   and is not guaranteed to be stable.
 2. The `master` branch contains the latest stable release.
 
 If you intend to fork 0x Mesh and open a PR, you should work off of the
@@ -46,7 +46,7 @@ make deps
 
 ## Building TypeScript packages
 
-Mesh contains some TypeScript packages, all of which are contained in a small monorepo in the __packages/__ directory. Some
+Mesh contains some TypeScript packages, all of which are contained in a small monorepo in the **packages/** directory. Some
 packages are published, and some are only used internally for development and testing.
 
 To build all the TypeScript packages:
@@ -91,6 +91,7 @@ make test-all
 ```
 
 ### Potential Issues
+
 The default maximum number of open files is too low in some operating systems
 for the tests to be run successfully. If an error that reads like "Too many open files,"
 it may be necessary to increase this limit. On Unix-like operating systems, the `ulimit`
