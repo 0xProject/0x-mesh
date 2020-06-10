@@ -50,6 +50,49 @@ func TestAddOrders(t *testing.T) {
 	}
 }
 
+func TestAddOrdersMaxExpirationTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	opts := TestOptions()
+	opts.MaxOrders = 10
+	db, err := New(ctx, opts)
+	require.NoError(t, err)
+
+	// Create the max number of orders with increasing expiration time
+	// 0, 1, 2, etc.
+	originalOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < opts.MaxOrders; i++ {
+		testOrder := newTestOrder()
+		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i))
+		originalOrders = append(originalOrders, testOrder)
+	}
+
+	added, removed, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+	assert.Len(t, removed, 0, "Expected no orders to be removed")
+	assertOrderSlicesAreUnsortedEqual(t, originalOrders, added)
+
+	// Add two new orders, one with an expiration time too far in the future
+	// and another with an expiration time soon enough to replace an existing
+	// order.
+	orderWithLongerExpirationTime := newTestOrder()
+	orderWithLongerExpirationTime.ExpirationTimeSeconds = big.NewInt(int64(opts.MaxOrders))
+	orderWithShorterExpirationTime := newTestOrder()
+	orderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(int64(opts.MaxOrders - 2))
+	newOrders := []*types.OrderWithMetadata{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
+	added, removed, err = db.AddOrders(newOrders)
+	require.NoError(t, err)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{orderWithShorterExpirationTime}, added)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{originalOrders[len(originalOrders)-1]}, removed)
+
+	// Check the remaining orders in the database to make sure they are what we expect.
+	expectedRemainingOrders := make([]*types.OrderWithMetadata, len(originalOrders))
+	copy(expectedRemainingOrders, originalOrders)
+	expectedRemainingOrders[len(expectedRemainingOrders)-1] = orderWithShorterExpirationTime
+	actualRemainingOrders, err := db.FindOrders(nil)
+	assertOrderSlicesAreUnsortedEqual(t, expectedRemainingOrders, actualRemainingOrders)
+}
+
 func TestGetOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

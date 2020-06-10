@@ -258,33 +258,68 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	defer func() {
 		err = convertErr(err)
 	}()
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+
+	var ordersToRemove []*sqltypes.Order
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		for _, order := range orders {
+			result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
+			if err != nil {
+				return err
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if affected > 0 {
+				added = append(added, order)
+			}
+		}
+
+		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+		// for DELETE statements. It also doesn't support RETURNING. As a
+		// workaround, we do a SELECT and DELETE inside a transaction.
+		removeQuery := txn.Select("*").From("orders").OrderBy(sqlz.Asc(string(OFExpirationTimeSeconds))).Offset(int64(db.opts.MaxOrders)).Limit(999999999999999999)
+		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
+		if err != nil {
+			return err
+		}
+		for _, order := range ordersToRemove {
+			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
 
-	for _, order := range orders {
-		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
-		if err != nil {
-			return nil, nil, err
-		}
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return nil, nil, err
-		}
-		if affected > 0 {
-			added = append(added, order)
+	// Because of how the above code is written, a single order could exist
+	// in both added and removed sets. We should remove such orders from both
+	// sets in this case.
+	addedMap := map[common.Hash]*types.OrderWithMetadata{}
+	removedMap := map[common.Hash]*sqltypes.Order{}
+	for _, a := range added {
+		addedMap[a.Hash] = a
+	}
+	for _, r := range ordersToRemove {
+		removedMap[r.Hash] = r
+	}
+	dedupedAdded := []*types.OrderWithMetadata{}
+	dedupedRemoved := []*sqltypes.Order{}
+	for _, a := range added {
+		if _, wasRemoved := removedMap[a.Hash]; !wasRemoved {
+			dedupedAdded = append(dedupedAdded, a)
 		}
 	}
-	if err := txn.Commit(); err != nil {
-		return nil, nil, err
+	for _, r := range ordersToRemove {
+		if _, wasAdded := addedMap[r.Hash]; !wasAdded {
+			dedupedRemoved = append(dedupedRemoved, r)
+		}
 	}
 
-	// TODO(albrow): Remove orders with longest expiration time.
-	return added, nil, nil
+	return dedupedAdded, sqltypes.OrdersToCommonType(dedupedRemoved), nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
