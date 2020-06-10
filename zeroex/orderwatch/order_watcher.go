@@ -897,8 +897,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		dbOrders = append(dbOrders, dbOrder)
 	}
 
-	// TODO(albrow): Should AddOrders return the new max expiration time?
-	// Or is there a better way to do this?
+	addedMap := map[common.Hash]*types.OrderWithMetadata{}
 	addedOrders, removedOrders, err := w.db.AddOrders(dbOrders)
 	if err != nil {
 		return nil, err
@@ -916,6 +915,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			EndState:                 zeroex.ESOrderAdded,
 		}
 		orderEvents = append(orderEvents, addedEvent)
+		addedMap[order.Hash] = order
 	}
 	for _, order := range removedOrders {
 		stoppedWatchingEvent := &zeroex.OrderEvent{
@@ -940,8 +940,58 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		}
 	}
 
-	// TODO(albrow): How to handle the edge case of orders that were not
-	// added due to the max expiration time changing?
+	// HACK(albrow): We need to handle orders in the orderInfos argument that
+	// were never added due to the max expiration time effectively changing
+	// within the database transaction above. In other words, new orders that
+	// _were_ added can change the effective max expiration time, meaning some
+	// orders in orderInfos were actually not added. This should not happen
+	// often. For now, we respond by emitting an ADDED event immediately
+	// followed by a STOPPED_WATCHING event. If this order was submitted via
+	// RPC, the RPC client will see a response that indicates the order was
+	// successfully added, and then it will look like we immediately stopped
+	// watching it. This is not too far off from what really happened but is
+	// slightly inefficient.
+	//
+	// TODO(albrow): In the future, we should return an error and then react to
+	// that error differently depending on whether the order was received via
+	// RPC or from a peer. In the former case, we should return an RPC error
+	// response indicating that the order was not in fact added. In the latter
+	// case, we should effectively no-op, neither penalizing the peer or
+	// emitting any order events.
+	for _, orderToAdd := range orderInfos {
+		_, wasAdded := addedMap[orderToAdd.OrderHash]
+		if !wasAdded {
+			addedEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderToAdd.OrderHash,
+				SignedOrder:              orderToAdd.SignedOrder,
+				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESOrderAdded,
+			}
+			stoppedWatchingEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderToAdd.OrderHash,
+				SignedOrder:              orderToAdd.SignedOrder,
+				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESStoppedWatching,
+			}
+			orderEvents = append(orderEvents, addedEvent, stoppedWatchingEvent)
+		}
+	}
+
+	// Set the new max expiration time if needed.
+	if len(removedOrders) > 0 {
+		newMaxExpirationTime, err := w.db.GetCurrentMaxExpirationTime()
+		if err != nil {
+			return nil, err
+		}
+		logger.WithFields(logger.Fields{
+			"oldMaxExpirationTime": w.maxExpirationTime.String(),
+			"newMaxExpirationTime": newMaxExpirationTime.String(),
+		}).Debug("increasing max expiration time")
+		w.maxExpirationTime = newMaxExpirationTime
+		w.saveMaxExpirationTime(newMaxExpirationTime)
+	}
 
 	return orderEvents, nil
 }

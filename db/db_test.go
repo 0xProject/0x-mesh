@@ -91,6 +91,8 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	expectedRemainingOrders[len(expectedRemainingOrders)-1] = orderWithShorterExpirationTime
 	actualRemainingOrders, err := db.FindOrders(nil)
 	assertOrderSlicesAreUnsortedEqual(t, expectedRemainingOrders, actualRemainingOrders)
+
+	// TODO(albrow): Pinned orders should not be removed.
 }
 
 func TestGetOrder(t *testing.T) {

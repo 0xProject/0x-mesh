@@ -904,9 +904,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
 }
 
-// TODO(albrow): Re-enable this test or move it.
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
-	t.Skip("Decreasing expiratin time is not yet implemented")
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
@@ -916,7 +914,10 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer teardownSubTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	database, err := db.New(ctx, db.TestOptions())
+	maxOrders := 10
+	dbOpts := db.TestOptions()
+	dbOpts.MaxOrders = maxOrders
+	database, err := db.New(ctx, dbOpts)
 	require.NoError(t, err)
 
 	// Store metadata entry in DB
@@ -928,7 +929,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	require.NoError(t, err)
 
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	orderWatcher.maxOrders = 20
+	orderWatcher.maxOrders = maxOrders
 
 	// Create and watch maxOrders orders. Each order has a different expiration time.
 	optionsForIndex := func(index int) []orderopts.Option {
@@ -939,14 +940,14 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		}
 	}
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, orderWatcher.maxOrders, optionsForIndex)
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, maxOrders, optionsForIndex)
 	for _, signedOrder := range signedOrders {
 		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
 	}
 
 	// We don't care about the order events above for the purposes of this test,
 	// so we only subscribe now.
-	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// The next order should cause some orders to be removed and the appropriate
@@ -958,30 +959,36 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
 	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
-	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
+	expectedOrderEvents := int(float64(maxOrders)*(1-maxOrdersTrimRatio)) + 1
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
+	// One event should be STOPPED_WATCHING. The other events shoudl be ADDED.
+	numAdded := 0
+	numStoppedWatching := 0
 	for i, orderEvent := range orderEvents {
-		// Last event should be ADDED. The other events should be STOPPED_WATCHING.
-		if i == expectedOrderEvents-1 {
-			assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState, "order event %d had wrong EndState", i)
-		} else {
-			// For STOPPED_WATCHING events, we also make sure that the expiration time is after
-			// the current max expiration time.
+		switch orderEvent.EndState {
+		case zeroex.ESOrderAdded:
+			numAdded += 1
+		case zeroex.ESStoppedWatching:
+			numStoppedWatching += 1
 			assert.Equal(t, zeroex.ESStoppedWatching, orderEvent.EndState, "order event %d had wrong EndState", i)
 			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(orderWatcher.MaxExpirationTime()) != -1, "remaining order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, orderWatcher.MaxExpirationTime())
+		default:
+			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
 		}
 	}
+	assert.Equal(t, 1, numAdded, "wrong number of ADDED events")
+	assert.Equal(t, len(orderEvents)-1, numStoppedWatching, "wrong number of STOPPED_WATCHING events")
 
 	// Now we check that the correct number of orders remain and that all
 	// remaining orders have an expiration time less than the current max.
-	expectedRemainingOrders := int(float64(orderWatcher.maxOrders)*maxOrdersTrimRatio) + 1
+	expectedRemainingOrders := int(float64(maxOrders)*maxOrdersTrimRatio) + 1
 	remainingOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
-		assert.True(t, order.ExpirationTimeSeconds.Cmp(orderWatcher.MaxExpirationTime()) == -1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, orderWatcher.MaxExpirationTime())
+		assert.True(t, order.ExpirationTimeSeconds.Cmp(orderWatcher.MaxExpirationTime()) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, orderWatcher.MaxExpirationTime())
 	}
 }
 
