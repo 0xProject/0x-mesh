@@ -164,6 +164,39 @@ func TestGetOrder(t *testing.T) {
 	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetOrder with a hash that doesn't exist should return ErrNotFound")
 }
 
+func TestGetCurrentMaxExpirationTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some non-pinned orders with expiration times 0, 1, 2, etc.
+	nonPinnedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < 5; i++ {
+		order := newTestOrder()
+		order.ExpirationTimeSeconds = big.NewInt(int64(i))
+		order.IsPinned = false
+		nonPinnedOrders = append(nonPinnedOrders, order)
+	}
+	_, _, err := db.AddOrders(nonPinnedOrders)
+	require.NoError(t, err)
+
+	// Create some pinned orders with expiration times 0, 2, 4, etc.
+	pinnedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < 5; i++ {
+		order := newTestOrder()
+		order.ExpirationTimeSeconds = big.NewInt(int64(i * 2))
+		order.IsPinned = true
+		pinnedOrders = append(pinnedOrders, order)
+	}
+	_, _, err = db.AddOrders(pinnedOrders)
+	require.NoError(t, err)
+
+	expectedMaxExpirationTime := nonPinnedOrders[len(nonPinnedOrders)-1].ExpirationTimeSeconds
+	actualMaxExpirationTime, err := db.GetCurrentMaxExpirationTime()
+	require.NoError(t, err)
+	assert.Equal(t, expectedMaxExpirationTime, actualMaxExpirationTime)
+}
+
 func TestUpdateOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -225,7 +225,9 @@ func (db *DB) GetLatestMiniHeader() (*types.MiniHeader, error) {
 	return latestMiniHeaders[0], nil
 }
 
-// TODO(albrow): Test this.
+// GetCurrentMaxExpirationTime returns the maximum expiration time for non-pinned orders
+// stored in the database. If there are no non-pinned orders in the database, it returns
+// constants.UnlimitedExpirationTime.
 func (db *DB) GetCurrentMaxExpirationTime() (*big.Int, error) {
 	// Note(albrow): We don't include pinned orders because they are
 	// never removed due to exceeding the max expiration time.
