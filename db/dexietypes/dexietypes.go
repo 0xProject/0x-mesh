@@ -144,6 +144,7 @@ type Order struct {
 	FillableTakerAssetAmount *SortedBigInt  `json:"fillableTakerAssetAmount"`
 	IsRemoved                uint8          `json:"isRemoved"`
 	IsPinned                 uint8          `json:"isPinned"`
+	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 }
@@ -222,6 +223,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
 		IsRemoved:                BoolToUint8(order.IsRemoved),
 		IsPinned:                 BoolToUint8(order.IsPinned),
+		IsNotPinned:              BoolToUint8(!order.IsPinned),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 	}

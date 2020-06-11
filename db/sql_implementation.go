@@ -285,7 +285,11 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 		// workaround, we do a SELECT and DELETE inside a transaction.
 		// HACK(albrow): SQL doesn't support limit without offset. As a
 		// workaround, we set the limit to an extremely large number.
-		removeQuery := txn.Select("*").From("orders").OrderBy(sqlz.Asc(string(OFExpirationTimeSeconds))).Limit(largeLimit).Offset(int64(db.opts.MaxOrders))
+		removeQuery := txn.Select("*").From("orders").
+			OrderBy(sqlz.Desc(string(OFIsPinned)), sqlz.Asc(string(OFExpirationTimeSeconds))).
+			Limit(largeLimit).
+			Offset(int64(db.opts.MaxOrders))
+		fmt.Println(removeQuery.ToSQL(false))
 		var ordersToRemove []*sqltypes.Order
 		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
 		if err != nil {

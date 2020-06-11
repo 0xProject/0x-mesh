@@ -75,6 +75,7 @@ export interface Order {
     lastUpdated: string;
     isRemoved: number;
     isPinned: number;
+    isNotPinned: number; // Used in a compound index in queries related to max expiration time.
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
 }
@@ -152,7 +153,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData',
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp,logs',
             metadata: '&ethereumChainID',
         });
@@ -187,7 +188,7 @@ export class Database {
 
             // Remove orders with an expiration time too far in the future.
             const ordersToRemove = await this._orders
-                .orderBy('expirationTimeSeconds')
+                .orderBy('[isNotPinned+expirationTimeSeconds]')
                 .offset(this._maxOrders)
                 .toArray();
             for (const order of ordersToRemove) {
