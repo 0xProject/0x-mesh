@@ -67,6 +67,18 @@ jobs:
       - run:
           name: Run all tests
           command: make test-all 
+      - run:
+          name: Run all tests
+          command: make test-all 
+      - run:
+          name: Run all tests
+          command: make test-all 
+      - run:
+          name: Run all tests
+          command: make test-all 
+      - run:
+          name: Run all tests
+          command: make test-all 
       # END FIXME
       - run:
           name: Test installing Mesh without CGO
