@@ -289,7 +289,6 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 			OrderBy(sqlz.Desc(string(OFIsPinned)), sqlz.Asc(string(OFExpirationTimeSeconds))).
 			Limit(largeLimit).
 			Offset(int64(db.opts.MaxOrders))
-		fmt.Println(removeQuery.ToSQL(false))
 		var ordersToRemove []*sqltypes.Order
 		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
 		if err != nil {
@@ -485,33 +484,27 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
 	}
 
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
-
-	var existingOrder sqltypes.Order
-	if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
-		if err == sql.ErrNoRows {
-			return ErrNotFound
+	return db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		var existingOrder sqltypes.Order
+		if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return err
 		}
-		return err
-	}
 
-	commonOrder := sqltypes.OrderToCommonType(&existingOrder)
-	commonUpdatedOrder, err := updateFunc(commonOrder)
-	if err != nil {
-		return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
-	}
-	updatedOrder := sqltypes.OrderFromCommonType(commonUpdatedOrder)
-	_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
+		commonOrder := sqltypes.OrderToCommonType(&existingOrder)
+		commonUpdatedOrder, err := updateFunc(commonOrder)
+		if err != nil {
+			return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
+		}
+		updatedOrder := sqltypes.OrderFromCommonType(commonUpdatedOrder)
+		_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
@@ -748,30 +741,25 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 		return errors.New("db.UpdateMetadata: updateFunc cannot be nil")
 	}
 
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
-
-	var existingMetadata sqltypes.Metadata
-	if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
-		if err == sql.ErrNoRows {
-			return ErrNotFound
+	return db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		var existingMetadata sqltypes.Metadata
+		if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return err
 		}
-		return err
-	}
 
-	commonMetadata := sqltypes.MetadataToCommonType(&existingMetadata)
-	commonUpdatedMetadata := updateFunc(commonMetadata)
-	updatedMetadata := sqltypes.MetadataFromCommonType(commonUpdatedMetadata)
-	_, err = txn.NamedExecContext(db.ctx, updateMetadataQuery, updatedMetadata)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
+		commonMetadata := sqltypes.MetadataToCommonType(&existingMetadata)
+		commonUpdatedMetadata := updateFunc(commonMetadata)
+		updatedMetadata := sqltypes.MetadataFromCommonType(commonUpdatedMetadata)
+		_, err = txn.NamedExecContext(db.ctx, updateMetadataQuery, updatedMetadata)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func convertFilterValue(value interface{}) interface{} {
