@@ -41,7 +41,6 @@ require (
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karlseguin/expect v1.0.1 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p v0.5.1
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
@@ -66,7 +65,7 @@ require (
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.7.0 // indirect
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
