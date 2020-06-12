@@ -1387,6 +1387,14 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	// Calculate max expiration time based on number of orders stored.
 	// This value is *exclusive*. Any incoming orders with an expiration time
 	// greater or equal to this will be rejected.
+	//
+	// Note(albrow): Technically speaking this is sub-optimal. We are assuming
+	// that we need to have space in the database for the entire slice of orders,
+	// but some of them could be invalid and therefore not actually get stored.
+	// However, the optimal implementation would be less efficient and could
+	// result in sending more ETH RPC requests than necessary. The edge case
+	// where potentially valid orders are rejected should be rare in practice, and
+	// would affect at most len(orders)/2 orders.
 	maxExpirationTime := constants.UnlimitedExpirationTime
 	orderCount, err := w.db.CountOrders(nil)
 	if err != nil {
