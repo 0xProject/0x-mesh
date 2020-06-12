@@ -294,10 +294,9 @@ type MiniHeader struct {
 }
 
 type Metadata struct {
-	EthereumChainID                   int           `db:"ethereumChainID"`
-	MaxExpirationTime                 *SortedBigInt `db:"maxExpirationTime"`
-	EthRPCRequestsSentInCurrentUTCDay int           `db:"ethRPCRequestsSentInCurrentUTCDay"`
-	StartOfCurrentUTCDay              time.Time     `db:"startOfCurrentUTCDay"`
+	EthereumChainID                   int       `db:"ethereumChainID"`
+	EthRPCRequestsSentInCurrentUTCDay int       `db:"ethRPCRequestsSentInCurrentUTCDay"`
+	StartOfCurrentUTCDay              time.Time `db:"startOfCurrentUTCDay"`
 }
 
 func OrderToCommonType(order *Order) *types.OrderWithMetadata {
@@ -460,7 +459,6 @@ func MetadataToCommonType(metadata *Metadata) *types.Metadata {
 	}
 	return &types.Metadata{
 		EthereumChainID:                   metadata.EthereumChainID,
-		MaxExpirationTime:                 metadata.MaxExpirationTime.Int,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}
@@ -472,7 +470,6 @@ func MetadataFromCommonType(metadata *types.Metadata) *Metadata {
 	}
 	return &Metadata{
 		EthereumChainID:                   metadata.EthereumChainID,
-		MaxExpirationTime:                 NewSortedBigInt(metadata.MaxExpirationTime),
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}

@@ -280,7 +280,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 	}
 
 	// Initialize metadata and check stored chain id (if any).
-	metadata, err := initMetadata(config.EthereumChainID, database)
+	_, err = initMetadata(config.EthereumChainID, database)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +354,6 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 		ChainID:           config.EthereumChainID,
 		ContractAddresses: contractAddresses,
 		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
@@ -462,8 +461,7 @@ func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
 		if err == db.ErrNotFound {
 			// No stored metadata found (first startup)
 			metadata = &types.Metadata{
-				EthereumChainID:   chainID,
-				MaxExpirationTime: constants.UnlimitedExpirationTime,
+				EthereumChainID: chainID,
 			}
 			if err := database.SaveMetadata(metadata); err != nil {
 				return nil, err
@@ -1014,6 +1012,10 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxExpirationTime, err := app.db.GetCurrentMaxExpirationTime()
+	if err != nil {
+		return nil, err
+	}
 
 	response := &types.Stats{
 		Version:                           version,
@@ -1027,7 +1029,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 		NumPeers:                          app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
 		NumPinnedOrders:                   numPinnedOrders,
-		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+		MaxExpirationTime:                 maxExpirationTime.String(),
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),

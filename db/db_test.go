@@ -1071,15 +1071,15 @@ func TestUpdateMetadata(t *testing.T) {
 	err = db.SaveMetadata(originalMetadata)
 	require.NoError(t, err)
 
-	updatedMaxExpirationTime := originalMetadata.MaxExpirationTime.Add(originalMetadata.MaxExpirationTime, big.NewInt(500))
+	updatedETHRPCRequests := originalMetadata.EthRPCRequestsSentInCurrentUTCDay + 200
 	err = db.UpdateMetadata(func(existingMetadata *types.Metadata) *types.Metadata {
 		updatedMetadata := existingMetadata
-		updatedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+		updatedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
 		return updatedMetadata
 	})
 
 	expectedMetadata := originalMetadata
-	expectedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+	expectedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
 	foundMetadata, err := db.GetMetadata()
 	require.NoError(t, err)
 	assertMetadatasAreEqual(t, expectedMetadata, foundMetadata)
@@ -1235,7 +1235,6 @@ func newTestEventLogs() []ethtypes.Log {
 func newTestMetadata() *types.Metadata {
 	return &types.Metadata{
 		EthereumChainID:                   42,
-		MaxExpirationTime:                 big.NewInt(12345),
 		EthRPCRequestsSentInCurrentUTCDay: 1337,
 		StartOfCurrentUTCDay:              time.Date(1992, time.September, 29, 8, 0, 0, 0, time.UTC),
 	}

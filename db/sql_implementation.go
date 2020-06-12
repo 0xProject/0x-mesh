@@ -132,7 +132,6 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 
 CREATE TABLE IF NOT EXISTS metadata (
 	ethereumChainID                   BIGINT NOT NULL,
-	maxExpirationTime                 TEXT NOT NULL,
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
 	startOfCurrentUTCDay              DATETIME NOT NULL
 );
@@ -236,19 +235,16 @@ const insertMiniHeaderQuery = `INSERT INTO miniHeaders (
 
 const insertMetadataQuery = `INSERT INTO metadata (
 	ethereumChainID,
-	maxExpirationTime,
 	ethRPCRequestsSentInCurrentUTCDay,
 	startOfCurrentUTCDay
 ) VALUES (
 	:ethereumChainID,
-	:maxExpirationTime,
 	:ethRPCRequestsSentInCurrentUTCDay,
 	:startOfCurrentUTCDay
 )`
 
 const updateMetadataQuery = `UPDATE metadata SET
 	ethereumChainID = :ethereumChainID,
-	maxExpirationTime = :maxExpirationTime,
 	ethRPCRequestsSentInCurrentUTCDay = :ethRPCRequestsSentInCurrentUTCDay,
 	startOfCurrentUTCDay = :startOfCurrentUTCDay
 `

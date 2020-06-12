@@ -116,7 +116,6 @@ export interface AddMiniHeadersResult {
 
 export interface Metadata {
     ethereumChainID: number;
-    maxExpirationTime: string;
     ethRPCRequestsSentInCurrentUTCDay: number;
     startOfCurrentUTCDay: string;
 }
