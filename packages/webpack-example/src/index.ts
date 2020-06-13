@@ -6,7 +6,8 @@ import { BigNumber, Mesh, OrderEvent, SignedOrder, SupportedProvider } from '@0x
     const mesh = new Mesh({
         verbosity: 4,
         ethereumChainID: 1,
-        web3Provider: (window as any).web3.currentProvider as SupportedProvider,
+        // web3Provider: (window as any).web3.currentProvider as SupportedProvider,
+        ethereumRPCURL: 'https://mainnet.infura.io/v3/af2e590be00f463fbfd0b546784065ad',
     });
 
     // This handler will be called whenever there is a critical error.

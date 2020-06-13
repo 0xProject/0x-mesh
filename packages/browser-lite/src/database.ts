@@ -170,7 +170,7 @@ export class Database {
     public async addOrdersAsync(orders: Order[]): Promise<AddOrdersResult> {
         // TODO(albrow): Remove orders with max expiration time.
         const added: Order[] = [];
-        await this._db.transaction('rw', this._orders, async () => {
+        await this._db.transaction('rw!', this._orders, async () => {
             for (const order of orders) {
                 try {
                     await this._orders.add(order);
@@ -193,46 +193,108 @@ export class Database {
 
     // GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
     public async getOrderAsync(hash: string): Promise<Order> {
-        const order = await this._orders.get(hash);
-        if (order === undefined) {
-            throw newNotFoundError();
-        }
-        return order;
+        return this._db.transaction('rw!', this._orders, async () => {
+            const order = await this._orders.get(hash);
+            if (order === undefined) {
+                throw newNotFoundError();
+            }
+            return order;
+        });
     }
 
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
-        if (!canUseNativeDexieIndexes(this._orders, query)) {
-            // As a fallback, implement the query inefficiently (in-memory).
-            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
-            return runQueryInMemoryAsync(this._orders, query);
-        }
-        const col = buildCollectionWithDexieIndexes(this._orders, query);
-        return col.toArray();
+        return this._db.transaction('rw!', this._orders, async () => {
+            let orders = await this._orders.toArray();
+            if (query === undefined || query === null) {
+            } else {
+                if (queryUsesFilters(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = filterRecords(query.filters!, orders);
+                }
+                if (queryUsesSortOptions(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = sortRecords(query.sort!, orders);
+                }
+                if (queryUsesOffset(query) && queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!, query.limit!);
+                } else if (queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(0, query.limit!);
+                } else if (queryUsesOffset(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!);
+                }
+            }
+            return orders;
+        });
     }
 
     // CountOrders(opts *OrderQuery) (int, error)
     public async countOrdersAsync(query?: OrderQuery): Promise<number> {
-        if (!canUseNativeDexieIndexes(this._orders, query)) {
-            // As a fallback, implement the query inefficiently (in-memory).
-            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
-            const records = await runQueryInMemoryAsync(this._orders, query);
-            return records.length;
-        }
-        const col = buildCollectionWithDexieIndexes(this._orders, query);
-        return col.count();
+        return this._db.transaction('rw!', this._orders, async () => {
+            let orders = await this._orders.toArray();
+            if (query === undefined || query === null) {
+            } else {
+                if (queryUsesFilters(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = filterRecords(query.filters!, orders);
+                }
+                if (queryUsesSortOptions(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = sortRecords(query.sort!, orders);
+                }
+                if (queryUsesOffset(query) && queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!, query.limit!);
+                } else if (queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(0, query.limit!);
+                } else if (queryUsesOffset(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!);
+                }
+            }
+            return orders.length;
+        });
     }
 
     // DeleteOrder(hash common.Hash) error
     public async deleteOrderAsync(hash: string): Promise<void> {
-        return this._orders.delete(hash);
+        return this._db.transaction('rw!', this._orders, async () => {
+            return this._orders.delete(hash);
+        });
     }
 
     // DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async deleteOrdersAsync(query: OrderQuery | undefined): Promise<Order[]> {
         const deletedOrders: Order[] = [];
-        await this._db.transaction('rw', this._orders, async () => {
-            const orders = await this.findOrdersAsync(query);
+        await this._db.transaction('rw!', this._orders, async () => {
+            // const orders = await this.findOrdersAsync(query);
+            let orders = await this._orders.toArray();
+            if (query === undefined || query === null) {
+            } else {
+                if (queryUsesFilters(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = filterRecords(query.filters!, orders);
+                }
+                if (queryUsesSortOptions(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = sortRecords(query.sort!, orders);
+                }
+                if (queryUsesOffset(query) && queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!, query.limit!);
+                } else if (queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(0, query.limit!);
+                } else if (queryUsesOffset(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    orders = orders.slice(query.offset!);
+                }
+            }
+
             for (const order of orders) {
                 await this._orders.delete(order.hash);
                 deletedOrders.push(order);
@@ -243,8 +305,11 @@ export class Database {
 
     // UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error
     public async updateOrderAsync(hash: string, updateFunc: (existingOrder: Order) => Order): Promise<void> {
-        await this._db.transaction('rw', this._orders, async () => {
-            const existingOrder = await this.getOrderAsync(hash);
+        await this._db.transaction('rw!', this._orders, async () => {
+            const existingOrder = await this._orders.get(hash);
+            if (existingOrder === undefined) {
+                throw newNotFoundError();
+            }
             const updatedOrder = updateFunc(existingOrder);
             await this._orders.put(updatedOrder, hash);
         });
@@ -254,7 +319,7 @@ export class Database {
     public async addMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<AddMiniHeadersResult> {
         const added: MiniHeader[] = [];
         const removed: MiniHeader[] = [];
-        await this._db.transaction('rw', this._miniHeaders, async () => {
+        await this._db.transaction('rw!', this._miniHeaders, async () => {
             for (const miniHeader of miniHeaders) {
                 try {
                     await this._miniHeaders.add(miniHeader);
@@ -286,34 +351,79 @@ export class Database {
 
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
     public async getMiniHeaderAsync(hash: string): Promise<MiniHeader> {
-        const miniHeader = await this._miniHeaders.get(hash);
-        if (miniHeader === undefined) {
-            throw newNotFoundError();
-        }
-        return miniHeader;
+        return this._db.transaction('rw!', this._miniHeaders, async () => {
+            const miniHeader = await this._miniHeaders.get(hash);
+            if (miniHeader === undefined) {
+                throw newNotFoundError();
+            }
+            return miniHeader;
+        });
     }
 
     // FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
-        if (!canUseNativeDexieIndexes(this._miniHeaders, query)) {
-            // As a fallback, implement the query inefficiently (in-memory).
-            // Note(albrow): If needed we can optimize specific common queries with compound indexes.
-            return runQueryInMemoryAsync(this._miniHeaders, query);
-        }
-        const col = buildCollectionWithDexieIndexes(this._miniHeaders, query);
-        return col.toArray();
+        return this._db.transaction('rw!', this._miniHeaders, async () => {
+            // const miniHeaders = await this.findMiniHeadersAsync(query);
+            let miniHeaders = await this._miniHeaders.toArray();
+            if (query === undefined || query === null) {
+            } else {
+                if (queryUsesFilters(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = filterRecords(query.filters!, miniHeaders);
+                }
+                if (queryUsesSortOptions(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = sortRecords(query.sort!, miniHeaders);
+                }
+                if (queryUsesOffset(query) && queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(query.offset!, query.limit!);
+                } else if (queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(0, query.limit!);
+                } else if (queryUsesOffset(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(query.offset!);
+                }
+            }
+            return miniHeaders;
+        });
     }
 
     // DeleteMiniHeader(hash common.Hash) error
     public async deleteMiniHeaderAsync(hash: string): Promise<void> {
-        return this._miniHeaders.delete(hash);
+        return this._db.transaction('rw!', this._miniHeaders, async () => {
+            return this._miniHeaders.delete(hash);
+        });
     }
 
     // DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async deleteMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
         const deletedMiniHeaders: MiniHeader[] = [];
-        await this._db.transaction('rw', this._miniHeaders, async () => {
-            const miniHeaders = await this.findMiniHeadersAsync(query);
+        await this._db.transaction('rw!', this._miniHeaders, async () => {
+            // const miniHeaders = await this.findMiniHeadersAsync(query);
+            let miniHeaders = await this._miniHeaders.toArray();
+            if (query === undefined || query === null) {
+            } else {
+                if (queryUsesFilters(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = filterRecords(query.filters!, miniHeaders);
+                }
+                if (queryUsesSortOptions(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = sortRecords(query.sort!, miniHeaders);
+                }
+                if (queryUsesOffset(query) && queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(query.offset!, query.limit!);
+                } else if (queryUsesLimit(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(0, query.limit!);
+                } else if (queryUsesOffset(query)) {
+                    // tslint:disable-next-line:no-non-null-assertion
+                    miniHeaders = miniHeaders.slice(query.offset!);
+                }
+            }
             for (const miniHeader of miniHeaders) {
                 await this._miniHeaders.delete(miniHeader.hash);
                 deletedMiniHeaders.push(miniHeader);
@@ -324,23 +434,25 @@ export class Database {
 
     // GetMetadata() (*types.Metadata, error)
     public async getMetadataAsync(): Promise<Metadata> {
-        const count = await this._metadata.count();
-        if (count === 0) {
-            throw newNotFoundError();
-        } else if (count > 1) {
-            // This should never happen, but it's possible if a user manually messed around with
-            // IndexedDB. In this case, just delete the metadata table and we should start
-            // over.
-            await this._metadata.clear();
-            throw new Error('more than one metadata entry stored in the database');
-        }
-        const metadatas = await this._metadata.toArray();
-        return metadatas[0];
+        return this._db.transaction('rw!', this._metadata, async () => {
+            const count = await this._metadata.count();
+            if (count === 0) {
+                throw newNotFoundError();
+            } else if (count > 1) {
+                // This should never happen, but it's possible if a user manually messed around with
+                // IndexedDB. In this case, just delete the metadata table and we should start
+                // over.
+                await this._metadata.clear();
+                throw new Error('more than one metadata entry stored in the database');
+            }
+            const metadatas = await this._metadata.toArray();
+            return metadatas[0];
+        });
     }
 
     // SaveMetadata(metadata *types.Metadata) error
     public async saveMetadataAsync(metadata: Metadata): Promise<void> {
-        await this._db.transaction('rw', this._metadata, async () => {
+        await this._db.transaction('rw!', this._metadata, async () => {
             if ((await this._metadata.count()) > 0) {
                 throw newMetadataAlreadExistsError();
             }
@@ -350,8 +462,10 @@ export class Database {
 
     // UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error
     public async updateMetadataAsync(updateFunc: (existingMetadata: Metadata) => Metadata): Promise<void> {
-        await this._db.transaction('rw', this._metadata, async () => {
-            const existingMetadata = await this.getMetadataAsync();
+        await this._db.transaction('rw!', this._metadata, async () => {
+            // const existingMetadata = await this.getMetadataAsync();
+            const metadatas = await this._metadata.toArray();
+            const existingMetadata = metadatas[0];
             const updatedMetadata = updateFunc(existingMetadata);
             await this._metadata.put(updatedMetadata);
         });

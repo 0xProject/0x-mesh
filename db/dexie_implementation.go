@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"path/filepath"
+	"runtime/debug"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/common/types"
@@ -280,7 +281,9 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 	query = formatMiniHeaderQuery(query)
 	jsMiniHeaders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("findMiniHeadersAsync", query))
 	if err != nil {
-		return nil, convertJSError(err)
+		convertJSError(err)
+		panic(err)
+		// return nil, convertJSError(err)
 	}
 	var dexieMiniHeaders []*dexietypes.MiniHeader
 	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeaders, &dexieMiniHeaders); err != nil {
@@ -415,6 +418,9 @@ func convertJSError(e error) error {
 		case ErrDBFilledWithPinnedOrders.Error():
 			return ErrDBFilledWithPinnedOrders
 		}
+		fmt.Println(e.Value.Get("stack"))
+		fmt.Println(js.Global().Get("JSON").Call("stringify", e.Value.Get("inner")))
+		debug.PrintStack()
 	}
 	return e
 }

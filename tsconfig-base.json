@@ -2,8 +2,8 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es5",
-        "lib": ["es2017", "dom"],
+        "target": "ES2016",
+        "lib": ["ES2017", "dom"],
         "experimentalDecorators": true,
         "downlevelIteration": true,
         "noImplicitReturns": true,
