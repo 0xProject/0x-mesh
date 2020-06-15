@@ -13,8 +13,8 @@ import (
 )
 
 type Filter struct {
-	orderValidator       js.Value
-	messageValidator     js.Value
+	orderValidator       js.Func
+	messageValidator     js.Func
 	encodedSchema        string
 	chainID              int
 	rawCustomOrderSchema string
@@ -54,9 +54,22 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 		return nil, errors.New(`"messageValidator" has not been set on the provided "schemaValidator"`)
 	}
 	return &Filter{
-		orderValidator:       orderValidator,
-		messageValidator:     messageValidator,
+		orderValidator:       createValidatorFunction("orderValidator", orderValidator),
+		messageValidator:     createValidatorFunction("messageValidator", messageValidator),
 		chainID:              chainID,
 		rawCustomOrderSchema: customOrderSchema,
 	}, nil
+}
+
+func createValidatorFunction(functionName string, function js.Value) js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if len(args) != 1 {
+			panic(fmt.Sprintf(`Incorrect number of arguments to "%s"`, functionName))
+		}
+		resultChan := make(chan interface{})
+		go func() {
+			resultChan <- function.Invoke(args[0])
+		}()
+		return <-resultChan
+	})
 }
