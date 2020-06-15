@@ -1307,7 +1307,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
-	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID)
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1380,7 +1380,7 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestMiniHeader, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 
@@ -1396,16 +1396,18 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	// where potentially valid orders are rejected should be rare in practice, and
 	// would affect at most len(orders)/2 orders.
 	maxExpirationTime := constants.UnlimitedExpirationTime
-	orderCount, err := w.db.CountOrders(nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	if orderCount+len(orders) > w.maxOrders {
-		storedMaxExpirationTime, err := w.db.GetCurrentMaxExpirationTime()
+	if !pinned {
+		orderCount, err := w.db.CountOrders(nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		maxExpirationTime = storedMaxExpirationTime
+		if orderCount+len(orders) > w.maxOrders {
+			storedMaxExpirationTime, err := w.db.GetCurrentMaxExpirationTime()
+			if err != nil {
+				return nil, nil, err
+			}
+			maxExpirationTime = storedMaxExpirationTime
+		}
 	}
 
 	for _, order := range orders {
@@ -1420,7 +1422,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		if order.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
+		if !pinned && order.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
