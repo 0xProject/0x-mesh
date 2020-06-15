@@ -820,6 +820,19 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			return nil, err
 		}
 		dbOrders = append(dbOrders, dbOrder)
+
+		// We create an ADDED event for all orders in orderInfos.
+		// Some orders might not actually be added, as a workaround we
+		// will also emit a STOPPED_WATCHING event in some cases (see
+		// below)
+		addedEvent := &zeroex.OrderEvent{
+			Timestamp:                now,
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderAdded,
+		}
+		orderEvents = append(orderEvents, addedEvent)
 	}
 
 	addedMap := map[common.Hash]*types.OrderWithMetadata{}
@@ -832,14 +845,6 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		if err != nil {
 			return orderEvents, err
 		}
-		addedEvent := &zeroex.OrderEvent{
-			Timestamp:                now,
-			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
-			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-			EndState:                 zeroex.ESOrderAdded,
-		}
-		orderEvents = append(orderEvents, addedEvent)
 		addedMap[order.Hash] = order
 	}
 	for _, order := range removedOrders {
@@ -870,29 +875,22 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	// within the database transaction above. In other words, new orders that
 	// _were_ added can change the effective max expiration time, meaning some
 	// orders in orderInfos were actually not added. This should not happen
-	// often. For now, we respond by emitting an ADDED event immediately
+	// often. For now, we respond by emitting an ADDED event (above) immediately
 	// followed by a STOPPED_WATCHING event. If this order was submitted via
 	// RPC, the RPC client will see a response that indicates the order was
 	// successfully added, and then it will look like we immediately stopped
 	// watching it. This is not too far off from what really happened but is
 	// slightly inefficient.
 	//
-	// TODO(albrow): In the future, we should return an error and then react to
-	// that error differently depending on whether the order was received via
-	// RPC or from a peer. In the former case, we should return an RPC error
-	// response indicating that the order was not in fact added. In the latter
-	// case, we should effectively no-op, neither penalizing the peer or
-	// emitting any order events.
+	// TODO(albrow): In the future, we should add an additional return value and
+	// then react to that differently depending on whether the order was
+	// received via RPC or from a peer. In the former case, we should return an
+	// RPC error response indicating that the order was not in fact added. In
+	// the latter case, we should not emit any order events but might potentially
+	// want to adjust the peer's score.
 	for _, orderToAdd := range orderInfos {
 		_, wasAdded := addedMap[orderToAdd.OrderHash]
 		if !wasAdded {
-			addedEvent := &zeroex.OrderEvent{
-				Timestamp:                now,
-				OrderHash:                orderToAdd.OrderHash,
-				SignedOrder:              orderToAdd.SignedOrder,
-				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
-				EndState:                 zeroex.ESOrderAdded,
-			}
 			stoppedWatchingEvent := &zeroex.OrderEvent{
 				Timestamp:                now,
 				OrderHash:                orderToAdd.OrderHash,
@@ -900,7 +898,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
 				EndState:                 zeroex.ESStoppedWatching,
 			}
-			orderEvents = append(orderEvents, addedEvent, stoppedWatchingEvent)
+			orderEvents = append(orderEvents, stoppedWatchingEvent)
 		}
 	}
 
