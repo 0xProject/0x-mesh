@@ -17,7 +17,6 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
-	"github.com/0xProject/0x-mesh/zeroex/orderwatch/slowcounter"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
@@ -43,35 +42,12 @@ const (
 	// corresponds to a block depth of ~25.
 	permanentlyDeleteAfter = 5 * time.Minute
 
-	// expirationPollingInterval specifies the interval in which the order watcher should check for expired
-	// orders
-	expirationPollingInterval = 50 * time.Millisecond
-
-	// maxOrdersTrimRatio affects how many orders are trimmed whenever we reach the
-	// maximum number of orders. When order storage is full, Watcher will remove
-	// orders until the total number of remaining orders is equal to
-	// maxOrdersTrimRatio * maxOrders.
-	maxOrdersTrimRatio = 0.9
-
 	// defaultMaxOrders is the default max number of orders in storage.
 	defaultMaxOrders = 100000
-
-	// maxExpirationTimeCheckInterval is how often to check whether we can
-	// increase the max expiration time.
-	maxExpirationTimeCheckInterval = 30 * time.Second
 
 	// maxBlockEventsToHandle is the max number of block events we want to process in a single
 	// call to `handleBlockEvents`
 	maxBlockEventsToHandle = 500
-
-	// configuration options for the SlowCounter used for increasing max
-	// expiration time. Effectively, we will increase every 5 minutes as long as
-	// there is enough space in the database for orders. The first increase will
-	// be 5 seconds and the amount doubles from there (second increase will be 10
-	// seconds, then 20 seconds, then 40, etc.)
-	slowCounterOffset   = 5 // seconds
-	slowCounterRate     = 2.0
-	slowCounterInterval = 5 * time.Minute
 )
 
 var errNoBlocksStored = errors.New("no blocks were stored in the database")
@@ -91,8 +67,6 @@ type Watcher struct {
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
 	mu                         sync.Mutex
-	maxExpirationTime          *big.Int
-	maxExpirationCounter       *slowcounter.SlowCounter
 	maxOrders                  int
 	handleBlockEventsMu        sync.RWMutex
 	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
@@ -109,7 +83,6 @@ type Config struct {
 	ChainID           int
 	ContractAddresses ethereum.ContractAddresses
 	MaxOrders         int
-	MaxExpirationTime *big.Int
 }
 
 // New instantiates a new order watcher
@@ -124,24 +97,6 @@ func New(config Config) (*Watcher, error) {
 	if config.MaxOrders == 0 {
 		return nil, errors.New("config.MaxOrders is required and cannot be zero")
 	}
-	if config.MaxExpirationTime == nil {
-		return nil, errors.New("config.MaxExpirationTime is required and cannot be nil")
-	} else if big.NewInt(time.Now().Unix()).Cmp(config.MaxExpirationTime) == 1 {
-		// MaxExpirationTime should never be in the past.
-		config.MaxExpirationTime = big.NewInt(time.Now().Unix())
-	}
-
-	// Configure a SlowCounter to be used for increasing max expiration time.
-	slowCounterConfig := slowcounter.Config{
-		Offset:   big.NewInt(slowCounterOffset),
-		Rate:     slowCounterRate,
-		Interval: slowCounterInterval,
-		MaxCount: constants.UnlimitedExpirationTime,
-	}
-	maxExpirationCounter, err := slowcounter.New(slowCounterConfig, config.MaxExpirationTime)
-	if err != nil {
-		return nil, err
-	}
 
 	w := &Watcher{
 		db:                         config.DB,
@@ -151,8 +106,6 @@ func New(config Config) (*Watcher, error) {
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
 		contractAddresses:          config.ContractAddresses,
-		maxExpirationTime:          big.NewInt(0).Set(config.MaxExpirationTime),
-		maxExpirationCounter:       maxExpirationCounter,
 		maxOrders:                  config.MaxOrders,
 		blockEventsChan:            make(chan []*blockwatch.Event, 100),
 		atLeastOneBlockProcessed:   make(chan struct{}),
@@ -194,8 +147,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	// A waitgroup lets us wait for all goroutines to exit.
 	wg := &sync.WaitGroup{}
 
-	// Start four independent goroutines. The main loop, cleanup loop, removed orders
-	// checker and max expirationTime checker. Use four separate channels to communicate errors.
+	// Start some independent goroutines, each with a separate channel for communicating errors.
 	mainLoopErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {
@@ -207,12 +159,6 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
-	}()
-	maxExpirationTimeLoopErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		maxExpirationTimeLoopErrChan <- w.maxExpirationTimeLoop(innerCtx)
 	}()
 	removedCheckerLoopErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -234,12 +180,6 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	case err := <-cleanupLoopErrChan:
 		if err != nil {
 			logger.WithError(err).Error("error in orderwatcher cleanupLoop")
-			cancel()
-			return err
-		}
-	case err := <-maxExpirationTimeLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher maxExpirationTimeLoop")
 			cancel()
 			return err
 		}
@@ -319,21 +259,6 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 		start = time.Now()
 		if err := w.Cleanup(ctx, defaultLastUpdatedBuffer); err != nil {
 			return err
-		}
-	}
-}
-
-func (w *Watcher) maxExpirationTimeLoop(ctx context.Context) error {
-	ticker := time.NewTicker(maxExpirationTimeCheckInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			ticker.Stop()
-			return nil
-		case <-ticker.C:
-			if err := w.increaseMaxExpirationTimeIfPossible(); err != nil {
-				return err
-			}
 		}
 	}
 }
@@ -895,10 +820,22 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			return nil, err
 		}
 		dbOrders = append(dbOrders, dbOrder)
+
+		// We create an ADDED event for all orders in orderInfos.
+		// Some orders might not actually be added, as a workaround we
+		// will also emit a STOPPED_WATCHING event in some cases (see
+		// below)
+		addedEvent := &zeroex.OrderEvent{
+			Timestamp:                now,
+			OrderHash:                orderInfo.OrderHash,
+			SignedOrder:              orderInfo.SignedOrder,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			EndState:                 zeroex.ESOrderAdded,
+		}
+		orderEvents = append(orderEvents, addedEvent)
 	}
 
-	// TODO(albrow): Should AddOrders return the new max expiration time?
-	// Or is there a better way to do this?
+	addedMap := map[common.Hash]*types.OrderWithMetadata{}
 	addedOrders, removedOrders, err := w.db.AddOrders(dbOrders)
 	if err != nil {
 		return nil, err
@@ -908,14 +845,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		if err != nil {
 			return orderEvents, err
 		}
-		addedEvent := &zeroex.OrderEvent{
-			Timestamp:                now,
-			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
-			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-			EndState:                 zeroex.ESOrderAdded,
-		}
-		orderEvents = append(orderEvents, addedEvent)
+		addedMap[order.Hash] = order
 	}
 	for _, order := range removedOrders {
 		stoppedWatchingEvent := &zeroex.OrderEvent{
@@ -940,8 +870,48 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		}
 	}
 
-	// TODO(albrow): How to handle the edge case of orders that were not
-	// added due to the max expiration time changing?
+	// HACK(albrow): We need to handle orders in the orderInfos argument that
+	// were never added due to the max expiration time effectively changing
+	// within the database transaction above. In other words, new orders that
+	// _were_ added can change the effective max expiration time, meaning some
+	// orders in orderInfos were actually not added. This should not happen
+	// often. For now, we respond by emitting an ADDED event (above) immediately
+	// followed by a STOPPED_WATCHING event. If this order was submitted via
+	// RPC, the RPC client will see a response that indicates the order was
+	// successfully added, and then it will look like we immediately stopped
+	// watching it. This is not too far off from what really happened but is
+	// slightly inefficient.
+	//
+	// TODO(albrow): In the future, we should add an additional return value and
+	// then react to that differently depending on whether the order was
+	// received via RPC or from a peer. In the former case, we should return an
+	// RPC error response indicating that the order was not in fact added. In
+	// the latter case, we should not emit any order events but might potentially
+	// want to adjust the peer's score.
+	for _, orderToAdd := range orderInfos {
+		_, wasAdded := addedMap[orderToAdd.OrderHash]
+		if !wasAdded {
+			stoppedWatchingEvent := &zeroex.OrderEvent{
+				Timestamp:                now,
+				OrderHash:                orderToAdd.OrderHash,
+				SignedOrder:              orderToAdd.SignedOrder,
+				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
+				EndState:                 zeroex.ESStoppedWatching,
+			}
+			orderEvents = append(orderEvents, stoppedWatchingEvent)
+		}
+	}
+
+	if len(removedOrders) > 0 {
+		newMaxExpirationTime, err := w.db.GetCurrentMaxExpirationTime()
+		if err != nil {
+			return nil, err
+		}
+		logger.WithFields(logger.Fields{
+			"ordersRemoved":        len(removedOrders),
+			"newMaxExpirationTime": newMaxExpirationTime.String(),
+		}).Debug("removed orders due to exceeding max expiration time")
+	}
 
 	return orderEvents, nil
 }
@@ -981,12 +951,6 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 	}, nil
-}
-
-// MaxExpirationTime returns the current maximum expiration time for incoming
-// orders.
-func (w *Watcher) MaxExpirationTime() *big.Int {
-	return w.maxExpirationTime
 }
 
 // TODO(albrow): All in-memory state can be removed.
@@ -1341,7 +1305,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
-	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID)
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1414,9 +1378,36 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestMiniHeader, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
+
+	// Calculate max expiration time based on number of orders stored.
+	// This value is *exclusive*. Any incoming orders with an expiration time
+	// greater or equal to this will be rejected.
+	//
+	// Note(albrow): Technically speaking this is sub-optimal. We are assuming
+	// that we need to have space in the database for the entire slice of orders,
+	// but some of them could be invalid and therefore not actually get stored.
+	// However, the optimal implementation would be less efficient and could
+	// result in sending more ETH RPC requests than necessary. The edge case
+	// where potentially valid orders are rejected should be rare in practice, and
+	// would affect at most len(orders)/2 orders.
+	maxExpirationTime := constants.UnlimitedExpirationTime
+	if !pinned {
+		orderCount, err := w.db.CountOrders(nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		if orderCount+len(orders) > w.maxOrders {
+			storedMaxExpirationTime, err := w.db.GetCurrentMaxExpirationTime()
+			if err != nil {
+				return nil, nil, err
+			}
+			maxExpirationTime = storedMaxExpirationTime
+		}
+	}
+
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
@@ -1429,7 +1420,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		if order.ExpirationTimeSeconds.Cmp(w.MaxExpirationTime()) == 1 {
+		if !pinned && order.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1763,36 +1754,6 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
 	return nil
-}
-
-func (w *Watcher) increaseMaxExpirationTimeIfPossible() error {
-	if orderCount, err := w.db.CountOrders(nil); err != nil {
-		return err
-	} else if orderCount < w.maxOrders {
-		// We have enough space for new orders. Set the new max expiration time to the
-		// value of slow counter.
-		newMaxExpiration := w.maxExpirationCounter.Count()
-		if w.maxExpirationTime.Cmp(newMaxExpiration) != 0 {
-			logger.WithFields(logger.Fields{
-				"oldMaxExpirationTime": w.maxExpirationTime.String(),
-				"newMaxExpirationTime": fmt.Sprint(newMaxExpiration),
-			}).Debug("increasing max expiration time")
-			w.maxExpirationTime.Set(newMaxExpiration)
-			w.saveMaxExpirationTime(newMaxExpiration)
-		}
-	}
-
-	return nil
-}
-
-// saveMaxExpirationTime saves the new max expiration time in the database.
-func (w *Watcher) saveMaxExpirationTime(maxExpirationTime *big.Int) {
-	if err := w.db.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
-		metadata.MaxExpirationTime = maxExpirationTime
-		return metadata
-	}); err != nil {
-		logger.WithError(err).Error("could not update max expiration time in database")
-	}
 }
 
 func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time.Time) {

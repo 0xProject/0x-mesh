@@ -173,7 +173,6 @@ type MiniHeader struct {
 
 type Metadata struct {
 	EthereumChainID                   int
-	MaxExpirationTime                 *big.Int
 	EthRPCRequestsSentInCurrentUTCDay int
 	StartOfCurrentUTCDay              time.Time
 }

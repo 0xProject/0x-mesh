@@ -825,7 +825,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -904,9 +904,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
 }
 
-// TODO(albrow): Re-enable this test or move it.
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
-	t.Skip("Decreasing expiratin time is not yet implemented")
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
@@ -916,19 +914,14 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	defer teardownSubTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	database, err := db.New(ctx, db.TestOptions())
-	require.NoError(t, err)
-
-	// Store metadata entry in DB
-	metadata := &types.Metadata{
-		EthereumChainID:   1337,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
-	}
-	err = database.SaveMetadata(metadata)
+	maxOrders := 10
+	dbOpts := db.TestOptions()
+	dbOpts.MaxOrders = maxOrders
+	database, err := db.New(ctx, dbOpts)
 	require.NoError(t, err)
 
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	orderWatcher.maxOrders = 20
+	orderWatcher.maxOrders = maxOrders
 
 	// Create and watch maxOrders orders. Each order has a different expiration time.
 	optionsForIndex := func(index int) []orderopts.Option {
@@ -939,14 +932,14 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		}
 	}
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, orderWatcher.maxOrders, optionsForIndex)
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, maxOrders, optionsForIndex)
 	for _, signedOrder := range signedOrders {
-		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
+		watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
 	}
 
 	// We don't care about the order events above for the purposes of this test,
 	// so we only subscribe now.
-	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// The next order should cause some orders to be removed and the appropriate
@@ -957,32 +950,76 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
-	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
+	expectedOrderEvents := 2
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
-	for i, orderEvent := range orderEvents {
-		// Last event should be ADDED. The other events should be STOPPED_WATCHING.
-		if i == expectedOrderEvents-1 {
-			assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState, "order event %d had wrong EndState", i)
-		} else {
-			// For STOPPED_WATCHING events, we also make sure that the expiration time is after
-			// the current max expiration time.
-			assert.Equal(t, zeroex.ESStoppedWatching, orderEvent.EndState, "order event %d had wrong EndState", i)
+
+	storedMaxExpirationTime, err := database.GetCurrentMaxExpirationTime()
+	require.NoError(t, err)
+
+	// One event should be STOPPED_WATCHING. The other event should be ADDED.
+	// The order in which the events are emitted is not guaranteed.
+	numAdded := 0
+	numStoppedWatching := 0
+	for _, orderEvent := range orderEvents {
+		switch orderEvent.EndState {
+		case zeroex.ESOrderAdded:
+			numAdded += 1
 			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
-			assert.True(t, orderExpirationTime.Cmp(orderWatcher.MaxExpirationTime()) != -1, "remaining order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, orderWatcher.MaxExpirationTime())
+			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
+		case zeroex.ESStoppedWatching:
+			numStoppedWatching += 1
+			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
+		default:
+			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
 		}
 	}
+	assert.Equal(t, 1, numAdded, "wrong number of ADDED events")
+	assert.Equal(t, 1, numStoppedWatching, "wrong number of STOPPED_WATCHING events")
 
 	// Now we check that the correct number of orders remain and that all
 	// remaining orders have an expiration time less than the current max.
-	expectedRemainingOrders := int(float64(orderWatcher.maxOrders)*maxOrdersTrimRatio) + 1
+	expectedRemainingOrders := orderWatcher.maxOrders
 	remainingOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
-		assert.True(t, order.ExpirationTimeSeconds.Cmp(orderWatcher.MaxExpirationTime()) == -1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, orderWatcher.MaxExpirationTime())
+		assert.True(t, order.ExpirationTimeSeconds.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, storedMaxExpirationTime)
 	}
+
+	// Confirm that a pinned order will be accepted even if its expiration
+	// is greater than the current max.
+	pinnedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(big.NewInt(0).Add(storedMaxExpirationTime, big.NewInt(10))),
+	)
+	pinnedOrderHash, err := pinnedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, pinnedOrder, true)
+
+	expectedOrderEvents = 2
+	orderEvents = waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
+	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
+
+	// One event should be STOPPED_WATCHING. The other event should be ADDED.
+	// The order in which the events are emitted is not guaranteed.
+	numAdded = 0
+	numStoppedWatching = 0
+	for _, orderEvent := range orderEvents {
+		switch orderEvent.EndState {
+		case zeroex.ESOrderAdded:
+			numAdded += 1
+			assert.Equal(t, pinnedOrderHash.Hex(), orderEvent.OrderHash.Hex(), "ADDED event had wrong order hash")
+		case zeroex.ESStoppedWatching:
+			numStoppedWatching += 1
+		default:
+			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
+		}
+	}
+	assert.Equal(t, 1, numAdded, "wrong number of ADDED events")
+	assert.Equal(t, 1, numStoppedWatching, "wrong number of STOPPED_WATCHING events")
 }
 
 func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
@@ -1052,9 +1089,9 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderOne, false)
 	signedOrderTwo := signedOrders[1]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderTwo, false)
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
 
@@ -1107,8 +1144,8 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	signedOrderOne := signedOrders[0]
 	signedOrderTwo := signedOrders[1]
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false)
 
 	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 	require.NoError(t, err)
@@ -1163,8 +1200,8 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	signedOrderOne := signedOrders[0]
 	signedOrderTwo := signedOrders[1]
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -1248,7 +1285,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -1372,7 +1409,7 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Start watching an order
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -1381,11 +1418,11 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 	return blockWatcher, orderEventsChan
 }
 
-func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, signedOrder *zeroex.SignedOrder) {
+func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedOrder, pinned bool) {
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, pinned, constants.TestChainID)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)
@@ -1413,7 +1450,6 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 		OrderValidator:    orderValidator,
 		ChainID:           constants.TestChainID,
 		ContractAddresses: ganacheAddresses,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
 		MaxOrders:         1000,
 	})
 	require.NoError(t, err)

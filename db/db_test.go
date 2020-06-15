@@ -50,6 +50,102 @@ func TestAddOrders(t *testing.T) {
 	}
 }
 
+func TestAddOrdersMaxExpirationTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	opts := TestOptions()
+	opts.MaxOrders = 10
+	db, err := New(ctx, opts)
+	require.NoError(t, err)
+
+	// Create the max number of orders with increasing expiration time
+	// 0, 1, 2, etc.
+	originalOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < opts.MaxOrders; i++ {
+		testOrder := newTestOrder()
+		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i))
+		testOrder.IsPinned = false
+		originalOrders = append(originalOrders, testOrder)
+	}
+
+	added, removed, err := db.AddOrders(originalOrders)
+	require.NoError(t, err)
+	assert.Len(t, removed, 0, "Expected no orders to be removed")
+	assertOrderSlicesAreUnsortedEqual(t, originalOrders, added)
+
+	// Add two new orders, one with an expiration time too far in the future
+	// and another with an expiration time soon enough to replace an existing
+	// order.
+	currentMaxExpirationTime := originalOrders[len(originalOrders)-1].ExpirationTimeSeconds
+	orderWithLongerExpirationTime := newTestOrder()
+	orderWithLongerExpirationTime.IsPinned = false
+	orderWithLongerExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
+	orderWithShorterExpirationTime := newTestOrder()
+	orderWithShorterExpirationTime.IsPinned = false
+	orderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
+	newOrders := []*types.OrderWithMetadata{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
+	added, removed, err = db.AddOrders(newOrders)
+	require.NoError(t, err)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{orderWithShorterExpirationTime}, added)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{originalOrders[len(originalOrders)-1]}, removed)
+
+	// Check the remaining orders in the database to make sure they are what we expect.
+	expectedStoredOrders := make([]*types.OrderWithMetadata, len(originalOrders))
+	copy(expectedStoredOrders, originalOrders)
+	expectedStoredOrders[len(expectedStoredOrders)-1] = orderWithShorterExpirationTime
+	actualStoredOrders, err := db.FindOrders(nil)
+	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
+
+	// Add some pinned orders. Pinned orders should replace non-pinned orders, even if
+	// they have a later expiration time.
+	pinnedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < opts.MaxOrders; i++ {
+		testOrder := newTestOrder()
+		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i * 10))
+		testOrder.IsPinned = true
+		pinnedOrders = append(pinnedOrders, testOrder)
+	}
+	added, removed, err = db.AddOrders(pinnedOrders)
+	require.NoError(t, err)
+	assert.Len(t, removed, 10, "expected all non-pinned orders to be removed")
+	assertOrderSlicesAreUnsortedEqual(t, pinnedOrders, added)
+
+	// Add two new pinned orders, one with an expiration time too far in the future
+	// and another with an expiration time soon enough to replace an existing
+	// order. Then check that new pinned orders do replace existing pinned orders with
+	// longer expiration times.
+	currentMaxExpirationTime = pinnedOrders[len(pinnedOrders)-1].ExpirationTimeSeconds
+	pinnedOrderWithLongerExpirationTime := newTestOrder()
+	pinnedOrderWithLongerExpirationTime.IsPinned = true
+	pinnedOrderWithLongerExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
+	pinnedOrderWithShorterExpirationTime := newTestOrder()
+	pinnedOrderWithShorterExpirationTime.IsPinned = true
+	pinnedOrderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
+	newPinnedOrders := []*types.OrderWithMetadata{pinnedOrderWithLongerExpirationTime, pinnedOrderWithShorterExpirationTime}
+	added, removed, err = db.AddOrders(newPinnedOrders)
+	require.NoError(t, err)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrderWithShorterExpirationTime}, added)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrders[len(pinnedOrders)-1]}, removed)
+
+	// Check the remaining orders in the database to make sure they are what we expect.
+	expectedStoredOrders = make([]*types.OrderWithMetadata, len(pinnedOrders))
+	copy(expectedStoredOrders, pinnedOrders)
+	expectedStoredOrders[len(expectedStoredOrders)-1] = pinnedOrderWithShorterExpirationTime
+	actualStoredOrders, err = db.FindOrders(nil)
+	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
+
+	// Try to re-add the original (non-pinned) orders. Non-pinned orders should never replace pinned orders.
+	added, removed, err = db.AddOrders(originalOrders)
+	require.NoError(t, err)
+	assert.Len(t, removed, 0, "expected no pinned orders to be removed")
+	assert.Len(t, added, 0, "expected no non-pinned orders to be added")
+
+	// Check that the orders stored in the database are the same as before (only
+	// pinned orders with the shortest expiration time)
+	actualStoredOrders, err = db.FindOrders(nil)
+	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
+}
+
 func TestGetOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -66,6 +162,39 @@ func TestGetOrder(t *testing.T) {
 
 	_, err = db.GetOrder(common.Hash{})
 	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetOrder with a hash that doesn't exist should return ErrNotFound")
+}
+
+func TestGetCurrentMaxExpirationTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	// Create some non-pinned orders with expiration times 0, 1, 2, etc.
+	nonPinnedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < 5; i++ {
+		order := newTestOrder()
+		order.ExpirationTimeSeconds = big.NewInt(int64(i))
+		order.IsPinned = false
+		nonPinnedOrders = append(nonPinnedOrders, order)
+	}
+	_, _, err := db.AddOrders(nonPinnedOrders)
+	require.NoError(t, err)
+
+	// Create some pinned orders with expiration times 0, 2, 4, etc.
+	pinnedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < 5; i++ {
+		order := newTestOrder()
+		order.ExpirationTimeSeconds = big.NewInt(int64(i * 2))
+		order.IsPinned = true
+		pinnedOrders = append(pinnedOrders, order)
+	}
+	_, _, err = db.AddOrders(pinnedOrders)
+	require.NoError(t, err)
+
+	expectedMaxExpirationTime := nonPinnedOrders[len(nonPinnedOrders)-1].ExpirationTimeSeconds
+	actualMaxExpirationTime, err := db.GetCurrentMaxExpirationTime()
+	require.NoError(t, err)
+	assert.Equal(t, expectedMaxExpirationTime, actualMaxExpirationTime)
 }
 
 func TestUpdateOrder(t *testing.T) {
@@ -942,15 +1071,15 @@ func TestUpdateMetadata(t *testing.T) {
 	err = db.SaveMetadata(originalMetadata)
 	require.NoError(t, err)
 
-	updatedMaxExpirationTime := originalMetadata.MaxExpirationTime.Add(originalMetadata.MaxExpirationTime, big.NewInt(500))
+	updatedETHRPCRequests := originalMetadata.EthRPCRequestsSentInCurrentUTCDay + 200
 	err = db.UpdateMetadata(func(existingMetadata *types.Metadata) *types.Metadata {
 		updatedMetadata := existingMetadata
-		updatedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+		updatedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
 		return updatedMetadata
 	})
 
 	expectedMetadata := originalMetadata
-	expectedMetadata.MaxExpirationTime = updatedMaxExpirationTime
+	expectedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
 	foundMetadata, err := db.GetMetadata()
 	require.NoError(t, err)
 	assertMetadatasAreEqual(t, expectedMetadata, foundMetadata)
@@ -1106,7 +1235,6 @@ func newTestEventLogs() []ethtypes.Log {
 func newTestMetadata() *types.Metadata {
 	return &types.Metadata{
 		EthereumChainID:                   42,
-		MaxExpirationTime:                 big.NewInt(12345),
 		EthRPCRequestsSentInCurrentUTCDay: 1337,
 		StartOfCurrentUTCDay:              time.Date(1992, time.September, 29, 8, 0, 0, 0, time.UTC),
 	}

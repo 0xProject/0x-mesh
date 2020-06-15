@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -20,6 +21,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// largeLimit is used as a workaround due to the fact that SQL does not allow limit without offset.
+const largeLimit = math.MaxInt64
 
 var _ Database = (*DB)(nil)
 
@@ -128,7 +132,6 @@ CREATE TABLE IF NOT EXISTS miniHeaders (
 
 CREATE TABLE IF NOT EXISTS metadata (
 	ethereumChainID                   BIGINT NOT NULL,
-	maxExpirationTime                 TEXT NOT NULL,
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
 	startOfCurrentUTCDay              DATETIME NOT NULL
 );
@@ -232,19 +235,16 @@ const insertMiniHeaderQuery = `INSERT INTO miniHeaders (
 
 const insertMetadataQuery = `INSERT INTO metadata (
 	ethereumChainID,
-	maxExpirationTime,
 	ethRPCRequestsSentInCurrentUTCDay,
 	startOfCurrentUTCDay
 ) VALUES (
 	:ethereumChainID,
-	:maxExpirationTime,
 	:ethRPCRequestsSentInCurrentUTCDay,
 	:startOfCurrentUTCDay
 )`
 
 const updateMetadataQuery = `UPDATE metadata SET
 	ethereumChainID = :ethereumChainID,
-	maxExpirationTime = :maxExpirationTime,
 	ethRPCRequestsSentInCurrentUTCDay = :ethRPCRequestsSentInCurrentUTCDay,
 	startOfCurrentUTCDay = :startOfCurrentUTCDay
 `
@@ -258,33 +258,61 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	defer func() {
 		err = convertErr(err)
 	}()
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
+
+	addedMap := map[common.Hash]*types.OrderWithMetadata{}
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		for _, order := range orders {
+			result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
+			if err != nil {
+				return err
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if affected > 0 {
+				addedMap[order.Hash] = order
+			}
+		}
+
+		// Remove orders with an expiration time too far in the future.
+		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+		// for DELETE statements. It also doesn't support RETURNING. As a
+		// workaround, we do a SELECT and DELETE inside a transaction.
+		// HACK(albrow): SQL doesn't support limit without offset. As a
+		// workaround, we set the limit to an extremely large number.
+		removeQuery := txn.Select("*").From("orders").
+			OrderBy(sqlz.Desc(string(OFIsPinned)), sqlz.Asc(string(OFExpirationTimeSeconds))).
+			Limit(largeLimit).
+			Offset(int64(db.opts.MaxOrders))
+		var ordersToRemove []*sqltypes.Order
+		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
+		if err != nil {
+			return err
+		}
+		for _, order := range ordersToRemove {
+			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+			if _, found := addedMap[order.Hash]; found {
+				// If the order was previously added, remove it from
+				// the added set and don't add it to the removed set.
+				delete(addedMap, order.Hash)
+			} else {
+				removed = append(removed, sqltypes.OrderToCommonType(order))
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
-
-	for _, order := range orders {
-		result, err := txn.NamedExecContext(db.ctx, insertOrderQuery, sqltypes.OrderFromCommonType(order))
-		if err != nil {
-			return nil, nil, err
-		}
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return nil, nil, err
-		}
-		if affected > 0 {
-			added = append(added, order)
-		}
-	}
-	if err := txn.Commit(); err != nil {
-		return nil, nil, err
+	for _, order := range addedMap {
+		added = append(added, order)
 	}
 
-	// TODO(albrow): Remove orders with longest expiration time.
-	return added, nil, nil
+	return added, removed, nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
@@ -452,40 +480,35 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 		return errors.New("db.UpdateOrders: updateFunc cannot be nil")
 	}
 
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
-
-	var existingOrder sqltypes.Order
-	if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
-		if err == sql.ErrNoRows {
-			return ErrNotFound
+	return db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		var existingOrder sqltypes.Order
+		if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM orders WHERE hash = $1", hash); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return err
 		}
-		return err
-	}
 
-	commonOrder := sqltypes.OrderToCommonType(&existingOrder)
-	commonUpdatedOrder, err := updateFunc(commonOrder)
-	if err != nil {
-		return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
-	}
-	updatedOrder := sqltypes.OrderFromCommonType(commonUpdatedOrder)
-	_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
+		commonOrder := sqltypes.OrderToCommonType(&existingOrder)
+		commonUpdatedOrder, err := updateFunc(commonOrder)
+		if err != nil {
+			return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
+		}
+		updatedOrder := sqltypes.OrderFromCommonType(commonUpdatedOrder)
+		_, err = txn.NamedExecContext(db.ctx, updateOrderQuery, updatedOrder)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
-	var miniHeadersToRemove []*sqltypes.MiniHeader
+
+	addedMap := map[common.Hash]*types.MiniHeader{}
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		for _, miniHeader := range miniHeaders {
 			result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
@@ -497,15 +520,18 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 				return err
 			}
 			if affected > 0 {
-				added = append(added, miniHeader)
+				addedMap[miniHeader.Hash] = miniHeader
 			}
 		}
 
 		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
 		// for DELETE statements. It also doesn't support RETURNING. As a
 		// workaround, we do a SELECT and DELETE inside a transaction.
-		trimQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(99999999999).Offset(int64(db.opts.MaxMiniHeaders))
-		if err := trimQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
+		// HACK(albrow): SQL doesn't support limit without offset. As a
+		// workaround, we set the limit to an extremely large number.
+		removeQuery := txn.Select("*").From("miniHeaders").OrderBy(sqlz.Desc(string(MFNumber))).Limit(largeLimit).Offset(int64(db.opts.MaxMiniHeaders))
+		var miniHeadersToRemove []*sqltypes.MiniHeader
+		if err := removeQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
 			return err
 		}
 		for _, miniHeader := range miniHeadersToRemove {
@@ -513,38 +539,24 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 			if err != nil {
 				return err
 			}
+			if _, found := addedMap[miniHeader.Hash]; found {
+				// If the miniHeader was previously added, remove it from
+				// the added set and don't add it to the removed set.
+				delete(addedMap, miniHeader.Hash)
+			} else {
+				removed = append(removed, sqltypes.MiniHeaderToCommonType(miniHeader))
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Because of how the above code is written, a single miniHeader could exist
-	// in both added and removed sets. We should remove such miniHeaders from both
-	// sets in this case.
-	addedMap := map[common.Hash]*types.MiniHeader{}
-	removedMap := map[common.Hash]*sqltypes.MiniHeader{}
-	for _, a := range added {
-		addedMap[a.Hash] = a
-	}
-	for _, r := range miniHeadersToRemove {
-		removedMap[r.Hash] = r
-	}
-	dedupedAdded := []*types.MiniHeader{}
-	dedupedRemoved := []*sqltypes.MiniHeader{}
-	for _, a := range added {
-		if _, wasRemoved := removedMap[a.Hash]; !wasRemoved {
-			dedupedAdded = append(dedupedAdded, a)
-		}
-	}
-	for _, r := range miniHeadersToRemove {
-		if _, wasAdded := addedMap[r.Hash]; !wasAdded {
-			dedupedRemoved = append(dedupedRemoved, r)
-		}
+	for _, miniHeader := range addedMap {
+		added = append(added, miniHeader)
 	}
 
-	return dedupedAdded, sqltypes.MiniHeadersToCommonType(dedupedRemoved), nil
+	return added, removed, nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
@@ -725,30 +737,25 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 		return errors.New("db.UpdateMetadata: updateFunc cannot be nil")
 	}
 
-	txn, err := db.sqldb.BeginTxx(db.ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
-
-	var existingMetadata sqltypes.Metadata
-	if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
-		if err == sql.ErrNoRows {
-			return ErrNotFound
+	return db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		var existingMetadata sqltypes.Metadata
+		if err := txn.GetContext(db.ctx, &existingMetadata, "SELECT * FROM metadata LIMIT 1"); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return err
 		}
-		return err
-	}
 
-	commonMetadata := sqltypes.MetadataToCommonType(&existingMetadata)
-	commonUpdatedMetadata := updateFunc(commonMetadata)
-	updatedMetadata := sqltypes.MetadataFromCommonType(commonUpdatedMetadata)
-	_, err = txn.NamedExecContext(db.ctx, updateMetadataQuery, updatedMetadata)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
+		commonMetadata := sqltypes.MetadataToCommonType(&existingMetadata)
+		commonUpdatedMetadata := updateFunc(commonMetadata)
+		updatedMetadata := sqltypes.MetadataFromCommonType(commonUpdatedMetadata)
+		_, err = txn.NamedExecContext(db.ctx, updateMetadataQuery, updatedMetadata)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func convertFilterValue(value interface{}) interface{} {

@@ -144,6 +144,7 @@ type Order struct {
 	FillableTakerAssetAmount *SortedBigInt  `json:"fillableTakerAssetAmount"`
 	IsRemoved                uint8          `json:"isRemoved"`
 	IsPinned                 uint8          `json:"isPinned"`
+	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 }
@@ -157,10 +158,9 @@ type MiniHeader struct {
 }
 
 type Metadata struct {
-	EthereumChainID                   int           `json:"ethereumChainID"`
-	MaxExpirationTime                 *SortedBigInt `json:"maxExpirationTime"`
-	EthRPCRequestsSentInCurrentUTCDay int           `json:"ethRPCRequestsSentInCurrentUTCDay"`
-	StartOfCurrentUTCDay              time.Time     `json:"startOfCurrentUTCDay"`
+	EthereumChainID                   int       `json:"ethereumChainID"`
+	EthRPCRequestsSentInCurrentUTCDay int       `json:"ethRPCRequestsSentInCurrentUTCDay"`
+	StartOfCurrentUTCDay              time.Time `json:"startOfCurrentUTCDay"`
 }
 
 func OrderToCommonType(order *Order) *types.OrderWithMetadata {
@@ -222,6 +222,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
 		IsRemoved:                BoolToUint8(order.IsRemoved),
 		IsPinned:                 BoolToUint8(order.IsPinned),
+		IsNotPinned:              BoolToUint8(!order.IsPinned),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 	}
@@ -352,7 +353,6 @@ func MetadataToCommonType(metadata *Metadata) *types.Metadata {
 	}
 	return &types.Metadata{
 		EthereumChainID:                   metadata.EthereumChainID,
-		MaxExpirationTime:                 metadata.MaxExpirationTime.Int,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}
@@ -364,7 +364,6 @@ func MetadataFromCommonType(metadata *types.Metadata) *Metadata {
 	}
 	return &Metadata{
 		EthereumChainID:                   metadata.EthereumChainID,
-		MaxExpirationTime:                 NewSortedBigInt(metadata.MaxExpirationTime),
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 	}

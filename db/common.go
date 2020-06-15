@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
@@ -222,6 +223,37 @@ func (db *DB) GetLatestMiniHeader() (*types.MiniHeader, error) {
 		return nil, ErrNotFound
 	}
 	return latestMiniHeaders[0], nil
+}
+
+// GetCurrentMaxExpirationTime returns the maximum expiration time for non-pinned orders
+// stored in the database. If there are no non-pinned orders in the database, it returns
+// constants.UnlimitedExpirationTime.
+func (db *DB) GetCurrentMaxExpirationTime() (*big.Int, error) {
+	// Note(albrow): We don't include pinned orders because they are
+	// never removed due to exceeding the max expiration time.
+	ordersWithLongestExpirationTime, err := db.FindOrders(&OrderQuery{
+		Filters: []OrderFilter{
+			{
+				Field: OFIsPinned,
+				Kind:  Equal,
+				Value: false,
+			},
+		},
+		Sort: []OrderSort{
+			{
+				Field:     OFExpirationTimeSeconds,
+				Direction: Descending,
+			},
+		},
+		Limit: 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(ordersWithLongestExpirationTime) == 0 {
+		return constants.UnlimitedExpirationTime, nil
+	}
+	return ordersWithLongestExpirationTime[0].ExpirationTimeSeconds, nil
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {

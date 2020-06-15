@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/assert"
@@ -77,7 +76,6 @@ func TestScenario2(t *testing.T) {
 	// Set metadata to just short of maximum requests per 24 hours.
 	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
-		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              startOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: requestsSentInCurrentDay,
 	}
@@ -133,7 +131,6 @@ func TestScenario3(t *testing.T) {
 	// non-zero `EthRPCRequestsSentInCurrentUTCDay`
 	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
-		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              yesterdayMidnightUTC,
 		EthRPCRequestsSentInCurrentUTCDay: 5000,
 	}
@@ -184,8 +181,7 @@ func TestScenario3(t *testing.T) {
 
 func initMetadata(t *testing.T, database *db.DB) {
 	metadata := &types.Metadata{
-		EthereumChainID:   1337,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
+		EthereumChainID: 1337,
 	}
 	err := database.SaveMetadata(metadata)
 	require.NoError(t, err)
