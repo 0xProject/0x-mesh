@@ -23,7 +23,7 @@ const (
 	// grantTimingTolerance is the maximum allowed difference between the expected
 	// time for a request to be granted and the actual time it is granted. Used
 	// throughout these tests to account for subtle timing differences.
-	grantTimingTolerance = 50 * time.Millisecond
+	grantTimingTolerance = 60 * time.Millisecond
 )
 
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
@@ -192,7 +192,7 @@ func initMetadata(t *testing.T, database *db.DB) {
 }
 
 // expectRequestsGranted calls ratelimiter.Wait until the given number of
-// reqeusts are allowed. It returns an error if it waits for less than
+// requests are allowed. It returns an error if it waits for less than
 // minDelay or longer than maxDelay for any single request.
 func expectRequestsGranted(t *testing.T, rateLimiter RateLimiter, numRequests int, minDelay time.Duration, maxDelay time.Duration) {
 	for i := 0; i < numRequests; i++ {
