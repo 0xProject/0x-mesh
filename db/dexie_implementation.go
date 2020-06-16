@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"path/filepath"
+	"runtime/debug"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/common/types"
@@ -230,25 +231,14 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 			err = recoverError(r)
 		}
 	}()
-	jsMiniHeaders, err := jsutil.InefficientlyConvertToJS(dexietypes.MiniHeadersFromCommonType(miniHeaders))
-	if err != nil {
-		return nil, nil, err
-	}
+	jsMiniHeaders := dexietypes.MiniHeadersFromCommonType(miniHeaders)
 	jsResult, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("addMiniHeadersAsync", jsMiniHeaders))
 	if err != nil {
 		return nil, nil, convertJSError(err)
 	}
 	jsAdded := jsResult.Get("added")
-	var dexieAdded []*dexietypes.MiniHeader
-	if err := jsutil.InefficientlyConvertFromJS(jsAdded, &dexieAdded); err != nil {
-		return nil, nil, err
-	}
 	jsRemoved := jsResult.Get("removed")
-	var dexieRemoved []*dexietypes.MiniHeader
-	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &dexieRemoved); err != nil {
-		return nil, nil, err
-	}
-	return dexietypes.MiniHeadersToCommonType(dexieAdded), dexietypes.MiniHeadersToCommonType(dexieRemoved), nil
+	return dexietypes.MiniHeadersToCommonType(jsAdded), dexietypes.MiniHeadersToCommonType(jsRemoved), nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
@@ -261,11 +251,7 @@ func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	var dexieMiniHeader dexietypes.MiniHeader
-	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeader, &dexieMiniHeader); err != nil {
-		return nil, err
-	}
-	return dexietypes.MiniHeaderToCommonType(&dexieMiniHeader), nil
+	return dexietypes.MiniHeaderToCommonType(jsMiniHeader), nil
 }
 
 func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.MiniHeader, err error) {
@@ -282,11 +268,7 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	var dexieMiniHeaders []*dexietypes.MiniHeader
-	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeaders, &dexieMiniHeaders); err != nil {
-		return nil, err
-	}
-	return dexietypes.MiniHeadersToCommonType(dexieMiniHeaders), nil
+	return dexietypes.MiniHeadersToCommonType(jsMiniHeaders), nil
 }
 
 func (db *DB) DeleteMiniHeader(hash common.Hash) (err error) {
@@ -316,11 +298,7 @@ func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHe
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	var dexieMiniHeaders []*dexietypes.MiniHeader
-	if err := jsutil.InefficientlyConvertFromJS(jsMiniHeaders, &dexieMiniHeaders); err != nil {
-		return nil, err
-	}
-	return dexietypes.MiniHeadersToCommonType(dexieMiniHeaders), nil
+	return dexietypes.MiniHeadersToCommonType(jsMiniHeaders), nil
 }
 
 func (db *DB) GetMetadata() (metadata *types.Metadata, err error) {
@@ -387,6 +365,9 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 }
 
 func recoverError(e interface{}) error {
+	if e != nil {
+		debug.PrintStack()
+	}
 	switch e := e.(type) {
 	case error:
 		return e

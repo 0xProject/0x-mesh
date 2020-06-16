@@ -17,7 +17,11 @@ func (query *OrderQuery) JSValue() js.Value {
 	if query == nil {
 		return js.Null()
 	}
-	value, _ := jsutil.InefficientlyConvertToJS(query)
+	value, err := jsutil.InefficientlyConvertToJS(query)
+	if err != nil {
+		// Should never happen
+		panic(err)
+	}
 	return value
 }
 
@@ -25,6 +29,10 @@ func (query *MiniHeaderQuery) JSValue() js.Value {
 	if query == nil {
 		return js.Null()
 	}
-	value, _ := jsutil.InefficientlyConvertToJS(query)
+	value, err := jsutil.InefficientlyConvertToJS(query)
+	if err != nil {
+		// Should never happen
+		panic(err)
+	}
 	return value
 }

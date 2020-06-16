@@ -1128,7 +1128,7 @@ func TestParseContractAddressesAndTokenIdsFromAssetData(t *testing.T) {
 	}
 }
 
-func newTestDB(t *testing.T, ctx context.Context) *DB {
+func newTestDB(t testing.TB, ctx context.Context) *DB {
 	db, err := New(ctx, TestOptions())
 	require.NoError(t, err)
 	count, err := db.CountOrders(nil)
@@ -1722,33 +1722,9 @@ func makeMiniHeaderFilterTestCases(t *testing.T, db *DB) ([]*types.MiniHeader, [
 			expectedMatchingMiniHeaders: storedMiniHeaders[5:],
 		},
 
-		// Filter on Logs (type ParsedAssetData/TEXT)
-		{
-			name: "Logs CONTAINS query that matches all",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"address":"0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"`,
-				},
-			},
-			expectedMatchingMiniHeaders: storedMiniHeaders,
-		},
-		{
-			name: "Logs CONTAINS query that matches one",
-			filters: []MiniHeaderFilter{
-				{
-					Field: MFLogs,
-					Kind:  Contains,
-					Value: `"blockNumber":"0x5"`,
-				},
-			},
-			expectedMatchingMiniHeaders: storedMiniHeaders[5:6],
-		},
-
 		// Combining two or more filters
 		{
-			name: "Number >= 3 AND Timestamp < h",
+			name: "Number >= 3 AND Timestamp < 700",
 			filters: []MiniHeaderFilter{
 				{
 					Field: MFNumber,
@@ -1963,7 +1939,7 @@ func lessByTimestampDescAndNumberDesc(miniHeaders []*types.MiniHeader) func(i, j
 	}
 }
 
-func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*types.MiniHeader) {
+func assertMiniHeaderSlicesAreEqual(t testing.TB, expected, actual []*types.MiniHeader) {
 	assert.Len(t, actual, len(expected), "wrong number of miniheaders")
 	for i, expectedMiniHeader := range expected {
 		if i >= len(actual) {
@@ -1983,7 +1959,7 @@ func assertMiniHeaderSlicesAreEqual(t *testing.T, expected, actual []*types.Mini
 	}
 }
 
-func assertMiniHeaderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*types.MiniHeader) {
+func assertMiniHeaderSlicesAreUnsortedEqual(t testing.TB, expected, actual []*types.MiniHeader) {
 	// Make a copy of the given mini headers so we don't mess up the original when sorting them.
 	expectedCopy := make([]*types.MiniHeader, len(expected))
 	copy(expectedCopy, expected)
@@ -1994,7 +1970,7 @@ func assertMiniHeaderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*ty
 	assertMiniHeaderSlicesAreEqual(t, expected, actual)
 }
 
-func assertMiniHeadersAreEqual(t *testing.T, expected, actual *types.MiniHeader) {
+func assertMiniHeadersAreEqual(t testing.TB, expected, actual *types.MiniHeader) {
 	if expected.Timestamp.Equal(actual.Timestamp) {
 		// HACK(albrow): In this case, the two values represent the same time.
 		// This is what we care about, but the assert package might consider

@@ -98,7 +98,7 @@ export interface MiniHeader {
     parent: string;
     number: string;
     timestamp: string;
-    logs: string;
+    logs: Uint8Array;
 }
 
 export type MiniHeaderField = keyof MiniHeader;
@@ -153,7 +153,7 @@ export class Database {
         this._db.version(1).stores({
             orders:
                 '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,[isNotPinned+expirationTimeSeconds]',
-            miniHeaders: '&hash,parent,number,timestamp,logs',
+            miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
         });
 
