@@ -33,10 +33,9 @@ func (s *SchemaValidationResult) Errors() []*SchemaValidationError {
 // ValidateOrderJSON Validates a JSON encoded signed order using the AJV javascript library.
 // This libarary is used to increase the performance of Mesh nodes that run in the browser.
 func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, error) {
-	jsResult := f.orderValidator.Invoke(string(orderJSON))
-	fatal := jsResult.Get("fatal")
-	if !jsutil.IsNullOrUndefined(fatal) {
-		return nil, errors.New(fatal.String())
+	jsResult, err := jsutil.AwaitPromise(f.orderValidator.Invoke(string(orderJSON)))
+	if err != nil {
+		return nil, err
 	}
 	valid := jsResult.Get("success").Bool()
 	jsErrors := jsResult.Get("errors")
@@ -48,10 +47,9 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 }
 
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
-	jsResult := f.messageValidator.Invoke(string(messageJSON))
-	fatal := jsResult.Get("fatal")
-	if !jsutil.IsNullOrUndefined(fatal) {
-		return false, errors.New(fatal.String())
+	jsResult, err := jsutil.AwaitPromise(f.messageValidator.Invoke(string(messageJSON)))
+	if err != nil {
+		return false, err
 	}
 	return jsResult.Get("success").Bool(), nil
 }

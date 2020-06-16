@@ -8,8 +8,8 @@
  */
 import * as ajv from 'ajv';
 
-interface SynchronousValidationFunction {
-    (data: any): boolean;
+interface AsynchronousValidationFunction {
+    (data: any): Promise<boolean>;
     schema?: object | boolean;
     errors?: null | ajv.ErrorObject[];
 }
@@ -17,12 +17,11 @@ interface SynchronousValidationFunction {
 export interface SchemaValidationResult {
     success: boolean;
     errors: string[];
-    fatal?: string;
 }
 
 export interface SchemaValidator {
-    orderValidator: (input: string) => SchemaValidationResult;
-    messageValidator: (input: string) => SchemaValidationResult;
+    orderValidator: (input: string) => Promise<SchemaValidationResult>;
+    messageValidator: (input: string) => Promise<SchemaValidationResult>;
 }
 
 /**
@@ -40,15 +39,22 @@ export function createSchemaValidator(
 ): SchemaValidator {
     const AJV = new ajv();
     for (const schema of schemas) {
-        AJV.addSchema(JSON.parse(schema));
+        AJV.addSchema({
+            ...JSON.parse(schema),
+            async: true,
+        });
     }
     const customOrderSchema = JSON.parse(customOrderSchemaString);
     AJV.addSchema({
         ...customOrderSchema,
+        async: true,
         $id: '/customOrder',
     });
     for (const schema of rootSchemas) {
-        AJV.addSchema(JSON.parse(schema));
+        AJV.addSchema({
+            ...JSON.parse(schema),
+            async: true,
+        });
     }
 
     const orderValidate = AJV.getSchema('/rootOrder');
@@ -63,23 +69,19 @@ export function createSchemaValidator(
         throw new Error('Cannot find "rootOrderMessage" schema in AJV');
     }
     return {
-        orderValidator: constructValidationFunctionWrapper(orderValidate as SynchronousValidationFunction),
-        messageValidator: constructValidationFunctionWrapper(messageValidate as SynchronousValidationFunction),
+        orderValidator: constructValidationFunctionWrapper(orderValidate as AsynchronousValidationFunction),
+        messageValidator: constructValidationFunctionWrapper(messageValidate as AsynchronousValidationFunction),
     };
 }
 
 function constructValidationFunctionWrapper(
-    validationFunction: SynchronousValidationFunction,
-): (input: string) => SchemaValidationResult {
-    return (input: string) => {
+    validationFunction: AsynchronousValidationFunction,
+): (input: string) => Promise<SchemaValidationResult> {
+    return async (input: string) => {
         const result: SchemaValidationResult = { success: false, errors: [] };
-        try {
-            result.success = validationFunction(JSON.parse(input));
-            if (validationFunction.errors) {
-                result.errors = validationFunction.errors.map(error => JSON.stringify(error));
-            }
-        } catch (error) {
-            result.fatal = JSON.stringify(error);
+        result.success = await validationFunction(JSON.parse(input));
+        if (validationFunction.errors) {
+            result.errors = validationFunction.errors.map(error => JSON.stringify(error));
         }
         return result;
     };
