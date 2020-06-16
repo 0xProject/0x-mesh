@@ -286,7 +286,7 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 			}
 			lastCounted = time.Now()
 
-			if float64(count) / float64(w.maxOrders) > databaseUtilizationThreshold {
+			if float64(count)/float64(w.maxOrders) > databaseUtilizationThreshold {
 				if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
 					return err
 				}
