@@ -54,6 +54,6 @@ func TestMiniHeadersConversion(t *testing.T) {
 	}
 
 	// Convert to JS/Dexie type and back. Make sure we get back the same values that we started with.
-	gotMiniHeader := MiniHeaderToCommonType(MiniHeaderFromCommonType(originalMiniHeader))
-	assert.Equal(t, originalMiniHeader, gotMiniHeader)
+	convertedMiniHeader := MiniHeaderToCommonType(MiniHeaderFromCommonType(originalMiniHeader))
+	assert.Equal(t, originalMiniHeader, convertedMiniHeader)
 }
