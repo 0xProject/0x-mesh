@@ -1,16 +1,24 @@
+// +build js,wasm
+
 package dexietypes
 
 // Note(albrow): Could be optimized if needed by more directly converting between
 // Go types and JavaScript types instead of using jsutil.IneffecientlyConvertX.
+// The technique we used for MiniHeaders could be used in more places if needed.
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
+	"syscall/js"
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/common"
 	ethmath "github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -87,15 +95,19 @@ func SortedBigIntFromInt64(v int64) *SortedBigInt {
 	return NewSortedBigInt(big.NewInt(v))
 }
 
-func (i *SortedBigInt) MarshalJSON() ([]byte, error) {
-	if i == nil || i.Int == nil {
-		return json.Marshal(nil)
-	}
+func (i *SortedBigInt) FixedLengthString() string {
 	// Note(albrow), strings in Dexie.js are sorted in alphanumerical order, not
 	// numerical order. In order to sort by numerical order, we need to pad with
 	// zeroes. The maximum length of an unsigned 256 bit integer is 80, so we
 	// pad with zeroes such that the length of the number is always 80.
-	return json.Marshal(fmt.Sprintf("%080s", i.Int.String()))
+	return fmt.Sprintf("%080s", i.Int.String())
+}
+
+func (i *SortedBigInt) MarshalJSON() ([]byte, error) {
+	if i == nil || i.Int == nil {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(i.FixedLengthString())
 }
 
 func (i *SortedBigInt) UnmarshalJSON(data []byte) error {
@@ -147,14 +159,6 @@ type Order struct {
 	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
-}
-
-type MiniHeader struct {
-	Hash      common.Hash   `json:"hash"`
-	Parent    common.Hash   `json:"parent"`
-	Number    *SortedBigInt `json:"number"`
-	Timestamp time.Time     `json:"timestamp"`
-	Logs      string        `json:"logs"`
 }
 
 type Metadata struct {
@@ -294,57 +298,76 @@ func SingleAssetDataFromCommonType(singleAssetData *types.SingleAssetData) *Sing
 	}
 }
 
-func MiniHeaderToCommonType(miniHeader *MiniHeader) *types.MiniHeader {
-	if miniHeader == nil {
+func MiniHeaderToCommonType(miniHeader js.Value) *types.MiniHeader {
+	if jsutil.IsNullOrUndefined(miniHeader) {
 		return nil
+	}
+	number, ok := ethmath.ParseBig256(miniHeader.Get("number").String())
+	if !ok {
+		panic(errors.New("could not convert number to uint64"))
+	}
+	timestamp, err := time.Parse(time.RFC3339Nano, miniHeader.Get("timestamp").String())
+	if err != nil {
+		panic(errors.New("could not convert timestamp: " + err.Error()))
 	}
 	return &types.MiniHeader{
-		Hash:      miniHeader.Hash,
-		Parent:    miniHeader.Parent,
-		Number:    miniHeader.Number.Int,
-		Timestamp: miniHeader.Timestamp,
-		Logs:      EventLogsToCommonType(miniHeader.Logs),
+		Hash:      common.HexToHash(miniHeader.Get("hash").String()),
+		Parent:    common.HexToHash(miniHeader.Get("parent").String()),
+		Number:    number,
+		Timestamp: timestamp,
+		Logs:      EventLogsToCommonType(miniHeader.Get("logs")),
 	}
 }
 
-func MiniHeaderFromCommonType(miniHeader *types.MiniHeader) *MiniHeader {
+func MiniHeaderFromCommonType(miniHeader *types.MiniHeader) js.Value {
 	if miniHeader == nil {
-		return nil
+		return js.Null()
 	}
-	return &MiniHeader{
-		Hash:      miniHeader.Hash,
-		Parent:    miniHeader.Parent,
-		Number:    NewSortedBigInt(miniHeader.Number),
-		Timestamp: miniHeader.Timestamp,
-		Logs:      EventLogsFromCommonType(miniHeader.Logs),
-	}
+	return js.ValueOf(
+		map[string]interface{}{
+			"hash":      miniHeader.Hash.Hex(),
+			"parent":    miniHeader.Parent.Hex(),
+			"number":    NewSortedBigInt(miniHeader.Number).FixedLengthString(),
+			"timestamp": miniHeader.Timestamp.Format(time.RFC3339Nano),
+			"logs":      EventLogsFromCommonType(miniHeader.Logs),
+		},
+	)
 }
 
-func MiniHeadersToCommonType(miniHeaders []*MiniHeader) []*types.MiniHeader {
-	result := make([]*types.MiniHeader, len(miniHeaders))
-	for i, miniHeader := range miniHeaders {
-		result[i] = MiniHeaderToCommonType(miniHeader)
+func MiniHeadersToCommonType(miniHeaders js.Value) []*types.MiniHeader {
+	result := make([]*types.MiniHeader, miniHeaders.Length())
+	for i := range result {
+		result[i] = MiniHeaderToCommonType(miniHeaders.Index(i))
 	}
 	return result
 }
 
-func MiniHeadersFromCommonType(miniHeaders []*types.MiniHeader) []*MiniHeader {
-	result := make([]*MiniHeader, len(miniHeaders))
+func MiniHeadersFromCommonType(miniHeaders []*types.MiniHeader) js.Value {
+	result := make([]interface{}, len(miniHeaders))
 	for i, miniHeader := range miniHeaders {
 		result[i] = MiniHeaderFromCommonType(miniHeader)
 	}
-	return result
+	return js.ValueOf(result)
 }
 
-func EventLogsToCommonType(eventLogs string) []ethtypes.Log {
+func EventLogsToCommonType(eventLogs js.Value) []ethtypes.Log {
 	var result []ethtypes.Log
-	_ = json.Unmarshal([]byte(eventLogs), &result)
+	buf := make([]byte, eventLogs.Get("length").Int())
+	js.CopyBytesToGo(buf, eventLogs)
+	if err := gob.NewDecoder(bytes.NewBuffer(buf)).Decode(&result); err != nil {
+		panic(err)
+	}
 	return result
 }
 
-func EventLogsFromCommonType(eventLogs []ethtypes.Log) string {
-	result, _ := json.Marshal(eventLogs)
-	return string(result)
+func EventLogsFromCommonType(eventLogs []ethtypes.Log) js.Value {
+	buf := &bytes.Buffer{}
+	if err := gob.NewEncoder(buf).Encode(eventLogs); err != nil {
+		panic(err)
+	}
+	result := js.Global().Get("Uint8Array").New(len(buf.Bytes()))
+	js.CopyBytesToJS(result, buf.Bytes())
+	return result
 }
 
 func MetadataToCommonType(metadata *Metadata) *types.Metadata {
