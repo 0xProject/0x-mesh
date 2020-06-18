@@ -13,7 +13,7 @@ import (
 
 // sleepTime is used to force processes that block the event loop to give the
 // event loop time to continue. This should be as low as possible.
-const sleepTime = 175 * time.Microsecond
+const sleepTime = 500 * time.Microsecond
 
 type SchemaValidationError struct {
 	err error

@@ -54,6 +54,8 @@ func (s RejectedOrderStatus) JSValue() js.Value {
 	})
 }
 
+const computeOptimalChunkBatchSize = 3
+
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
 // is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
 // encodes signedOrders one at a time until the computed payload size is as close to the
@@ -63,27 +65,29 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
-	encodedSignedOrderByteLengthChan := make(chan int, 1)
-	for _, signedOrder := range signedOrders {
-		go func() {
+	go func() {
+		batchIdx := 0
+		for _, signedOrder := range signedOrders {
+			if batchIdx%computeOptimalChunkBatchSize == 2 {
+				time.Sleep(sleepTime)
+			}
 			time.Sleep(sleepTime)
 			encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
-			encodedSignedOrderByteLengthChan <- encodedSignedOrderByteLength
-		}()
-		encodedSignedOrderByteLength := <-encodedSignedOrderByteLengthChan
-		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
-			payloadLength += encodedSignedOrderByteLength
-			nextChunkSize++
-		} else {
-			if nextChunkSize == 0 {
-				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
-				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+			if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+				payloadLength += encodedSignedOrderByteLength
+				nextChunkSize++
+			} else {
+				if nextChunkSize == 0 {
+					// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
+					log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+				}
+				chunkSizes = append(chunkSizes, nextChunkSize)
+				nextChunkSize = 1
+				payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
 			}
-			chunkSizes = append(chunkSizes, nextChunkSize)
-			nextChunkSize = 1
-			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
+			batchIdx = batchIdx + 1
 		}
-	}
+	}()
 	if nextChunkSize != 0 {
 		chunkSizes = append(chunkSizes, nextChunkSize)
 	}
