@@ -16,6 +16,19 @@ func ErrorToJS(err error) js.Value {
 	return js.Global().Get("Error").New(err.Error())
 }
 
+func NextTick(ctx context.Context) {
+	var executor js.Func
+	executor = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		resolve := args[0]
+		go func() {
+			defer executor.Release()
+			js.Global().Call("setTimeout", resolve, 0)
+		}()
+		return nil
+	})
+	AwaitPromiseContext(ctx, js.Global().Get("Promise").New(executor))
+}
+
 // IsNullOrUndefined returns true if the given JavaScript value is either null
 // or undefined.
 func IsNullOrUndefined(value js.Value) bool {

@@ -3,8 +3,8 @@
 package orderfilter
 
 import (
+	"context"
 	"errors"
-	"syscall/js"
 	"time"
 
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
@@ -39,21 +39,12 @@ func (s *SchemaValidationResult) Errors() []*SchemaValidationError {
 // ValidateOrderJSON Validates a JSON encoded signed order using the AJV javascript library.
 // This libarary is used to increase the performance of Mesh nodes that run in the browser.
 func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, error) {
-	resultChan := make(chan js.Value, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		time.Sleep(sleepTime)
-		result, err := jsutil.AwaitPromise(f.orderValidator.Invoke(string(orderJSON)))
-		if err != nil {
-			errChan <- err
-		}
-		resultChan <- result
-	}()
-	var result js.Value
-	select {
-	case err := <-errChan:
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	jsutil.NextTick(ctx)
+	result, err := jsutil.AwaitPromiseContext(ctx, f.orderValidator.Invoke(string(orderJSON)))
+	if err != nil {
 		return nil, err
-	case result = <-resultChan:
 	}
 	valid := result.Get("success").Bool()
 	jsErrors := result.Get("errors")
@@ -65,21 +56,12 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 }
 
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
-	resultChan := make(chan js.Value, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		time.Sleep(sleepTime)
-		result, err := jsutil.AwaitPromise(f.messageValidator.Invoke(string(messageJSON)))
-		if err != nil {
-			errChan <- err
-		}
-		resultChan <- result
-	}()
-	var result js.Value
-	select {
-	case err := <-errChan:
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	jsutil.NextTick(ctx)
+	result, err := jsutil.AwaitPromiseContext(ctx, f.messageValidator.Invoke(string(messageJSON)))
+	if err != nil {
 		return false, err
-	case result = <-resultChan:
 	}
 	return result.Get("success").Bool(), nil
 }
