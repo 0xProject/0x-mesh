@@ -73,7 +73,7 @@ lint: lint-go lint-ts lint-prettier
 
 .PHONY: lint-go
 lint-go:
-	golangci-lint run
+	golangci-lint run --timeout 2m
 
 
 .PHONY: lint-ts
