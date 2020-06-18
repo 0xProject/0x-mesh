@@ -3,6 +3,7 @@
 package ordervalidator
 
 import (
+	"sync"
 	"syscall/js"
 	"time"
 
@@ -65,13 +66,14 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		batchIdx := 0
 		for _, signedOrder := range signedOrders {
 			if batchIdx%computeOptimalChunkBatchSize == 2 {
 				time.Sleep(sleepTime)
 			}
-			time.Sleep(sleepTime)
 			encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
 			if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
 				payloadLength += encodedSignedOrderByteLength
@@ -87,7 +89,9 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 			}
 			batchIdx = batchIdx + 1
 		}
+		wg.Done()
 	}()
+	wg.Wait()
 	if nextChunkSize != 0 {
 		chunkSizes = append(chunkSizes, nextChunkSize)
 	}
