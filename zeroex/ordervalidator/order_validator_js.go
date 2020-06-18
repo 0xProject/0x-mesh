@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// sleepTime is used to force processes that block the event loop to give the
+// event loop time to continue. This should be as low as possible.
+const sleepTime = 175 * time.Microsecond
+
 func (v ValidationResults) JSValue() js.Value {
 	accepted := make([]interface{}, len(v.Accepted))
 	for i, info := range v.Accepted {
@@ -62,7 +66,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 	encodedSignedOrderByteLengthChan := make(chan int, 1)
 	for _, signedOrder := range signedOrders {
 		go func() {
-			time.Sleep(250 * time.Microsecond)
+			time.Sleep(sleepTime)
 			encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
 			encodedSignedOrderByteLengthChan <- encodedSignedOrderByteLength
 		}()

@@ -11,6 +11,10 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 )
 
+// sleepTime is used to force processes that block the event loop to give the
+// event loop time to continue. This should be as low as possible.
+const sleepTime = 175 * time.Microsecond
+
 type SchemaValidationError struct {
 	err error
 }
@@ -38,8 +42,7 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*SchemaValidationResult, e
 	resultChan := make(chan js.Value, 1)
 	errChan := make(chan error, 1)
 	go func() {
-		// FIXME(jalextowle): Reduce this if possible
-		time.Sleep(time.Millisecond)
+		time.Sleep(sleepTime)
 		result, err := jsutil.AwaitPromise(f.orderValidator.Invoke(string(orderJSON)))
 		if err != nil {
 			errChan <- err
@@ -65,8 +68,7 @@ func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	resultChan := make(chan js.Value, 1)
 	errChan := make(chan error, 1)
 	go func() {
-		// FIXME(jalextowle): Reduce this if possible
-		time.Sleep(time.Millisecond)
+		time.Sleep(sleepTime)
 		result, err := jsutil.AwaitPromise(f.messageValidator.Invoke(string(messageJSON)))
 		if err != nil {
 			errChan <- err
