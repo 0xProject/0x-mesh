@@ -2,7 +2,13 @@
 
 package ordervalidator
 
-import "syscall/js"
+import (
+	"syscall/js"
+	"time"
+
+	"github.com/0xProject/0x-mesh/zeroex"
+	log "github.com/sirupsen/logrus"
+)
 
 func (v ValidationResults) JSValue() js.Value {
 	accepted := make([]interface{}, len(v.Accepted))
@@ -42,4 +48,41 @@ func (s RejectedOrderStatus) JSValue() js.Value {
 		"code":    s.Code,
 		"message": s.Message,
 	})
+}
+
+// computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
+// is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
+// encodes signedOrders one at a time until the computed payload size is as close to the
+// maxRequestContentLength as possible.
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedOrder) []int {
+	chunkSizes := []int{}
+
+	payloadLength := jsonRPCPayloadByteLength
+	nextChunkSize := 0
+	encodedSignedOrderByteLengthChan := make(chan int, 1)
+	for _, signedOrder := range signedOrders {
+		go func() {
+			time.Sleep(250 * time.Microsecond)
+			encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
+			encodedSignedOrderByteLengthChan <- encodedSignedOrderByteLength
+		}()
+		encodedSignedOrderByteLength := <-encodedSignedOrderByteLengthChan
+		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+			payloadLength += encodedSignedOrderByteLength
+			nextChunkSize++
+		} else {
+			if nextChunkSize == 0 {
+				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
+				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+			}
+			chunkSizes = append(chunkSizes, nextChunkSize)
+			nextChunkSize = 1
+			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
+		}
+	}
+	if nextChunkSize != 0 {
+		chunkSizes = append(chunkSizes, nextChunkSize)
+	}
+
+	return chunkSizes
 }
