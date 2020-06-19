@@ -10,10 +10,14 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+		"encoding/json"
 	"net/http/httptest"
 	"testing"
 	"time"
+	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
@@ -435,18 +439,36 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
-func TestComputeABIEncodedSignedOrderByteLength(t *testing.T) {
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataByteLength = 268
 
+func TestComputeABIEncodedSignedOrderByteLength(t *testing.T) {
 	signedOrder := scenario.NewSignedTestOrder(t)
 	signedOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
 	signedOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
 	signedOrder.Order.MakerAssetData = common.Hex2Bytes("")
 	signedOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
 
-	expectedLength, err := orderValidator.computeABIEncodedSignedOrderByteLength(signedOrder)
+	trimmedOrder := signedOrder.Trim()
+
+	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
 	require.NoError(t, err)
+	data, err := devUtilsABI.Pack(
+		"getOrderRelevantStates",
+		[]wrappers.LibOrderOrder{trimmedOrder},
+		[][]byte{signedOrder.Signature},
+	)
+	require.NoError(t, err)
+
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	require.NoError(t, err)
+
+	expectedLength := len(encodedData) - emptyGetOrderRelevantStatesCallDataByteLength
 
 	length := computeABIEncodedSignedOrderByteLength(signedOrder)
 
