@@ -38,6 +38,15 @@ func main() {
 	}
 
 	generateTypescriptDocs()
+
+	// Run `yarn prettier` to prettify the newly generated docs
+	cmd = exec.Command("yarn", "prettier")
+	cmd.Dir = "."
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(stdoutStderr))
+		log.Fatal(err)
+	}
 }
 
 func generateTypescriptDocs() {
