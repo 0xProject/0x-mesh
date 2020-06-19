@@ -223,12 +223,12 @@ export class Mesh {
         let ordersInfos = getOrdersResponse.ordersInfos;
         let allOrderInfos: OrderInfo[] = [];
 
-        do {
+        while (ordersInfos.length > 0) {
             allOrderInfos = [...allOrderInfos, ...ordersInfos];
             const minOrderHash = ordersInfos[ordersInfos.length - 1].orderHash;
             getOrdersResponse = await this.getOrdersForPageAsync(perPage, minOrderHash);
             ordersInfos = getOrdersResponse.ordersInfos;
-        } while (ordersInfos.length > 0);
+        }
 
         getOrdersResponse = {
             timestamp: getOrdersResponse.timestamp,
