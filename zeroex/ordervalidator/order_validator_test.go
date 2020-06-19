@@ -435,6 +435,24 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
+func TestComputeABIEncodedSignedOrderByteLength(t *testing.T) {
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+
+	signedOrder := scenario.NewSignedTestOrder(t)
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("")
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+
+	expectedLength, err := orderValidator.computeABIEncodedSignedOrderByteLength(signedOrder)
+	require.NoError(t, err)
+
+	length := computeABIEncodedSignedOrderByteLength(signedOrder)
+
+	assert.Equal(t, expectedLength, length)
+}
+
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
 	return func(t *testing.T) {

@@ -837,6 +837,19 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 */
 const jsonRPCPayloadByteLength = 444
 
+func numWords(bytes []byte) int {
+	return (len(bytes) + 31) / 32
+}
+
+func computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) int {
+	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 bytes per 256-bit word.
+	return 1536 + 64 * (
+		numWords(signedOrder.Order.MakerAssetData) +
+		numWords(signedOrder.Order.TakerAssetData) +
+		numWords(signedOrder.Order.MakerFeeAssetData) +
+		numWords(signedOrder.Order.MakerFeeAssetData))
+}
+
 func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
 	trimmedOrder := signedOrder.Trim()
 	data, err := o.devUtilsABI.Pack(
@@ -866,7 +879,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
-		encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
+		encodedSignedOrderByteLength := computeABIEncodedSignedOrderByteLength(signedOrder)
 		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
 			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++
