@@ -39,6 +39,13 @@ import (
 
 const areNewOrders = false
 
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataStringLength = 268
+
 const (
 	maxEthRPCRequestsPer24HrUTC = 1000000
 	maxEthRPCRequestsPerSeconds = 1000.0
@@ -439,38 +446,56 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
-// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
-// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
-// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
-// get the number of bytes taken up by the SignedOrder alone.
-// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
-const emptyGetOrderRelevantStatesCallDataByteLength = 268
-
-func TestComputeABIEncodedSignedOrderByteLength(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t)
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("")
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
-
+func abiEncode(signedOrder *zeroex.SignedOrder) ([]byte, error) {
 	trimmedOrder := signedOrder.Trim()
 
 	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
-	require.NoError(t, err)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	data, err := devUtilsABI.Pack(
 		"getOrderRelevantStates",
 		[]wrappers.LibOrderOrder{trimmedOrder},
 		[][]byte{signedOrder.Signature},
 	)
-	require.NoError(t, err)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	dataBytes := hexutil.Bytes(data)
 	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return encodedData, nil
+}
+
+func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
+	signedOrder := scenario.NewSignedTestOrder(t)
+
+	encoded, err := abiEncode(signedOrder)
 	require.NoError(t, err)
+	expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
 
-	expectedLength := len(encodedData) - emptyGetOrderRelevantStatesCallDataByteLength
+	length := computeABIEncodedSignedOrderStringLength(signedOrder)
 
-	length := computeABIEncodedSignedOrderByteLength(signedOrder)
+	assert.Equal(t, expectedLength, length)
+}
+
+func TestMultiAssetComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
+	signedOrder := scenario.NewSignedTestOrder(t)
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	signedOrder.Order.MakerAssetData = multiAssetAssetData
+	signedOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+
+	encoded, err := abiEncode(signedOrder)
+	require.NoError(t, err)
+	expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+
+	length := computeABIEncodedSignedOrderStringLength(signedOrder)
 
 	assert.Equal(t, expectedLength, length)
 }
