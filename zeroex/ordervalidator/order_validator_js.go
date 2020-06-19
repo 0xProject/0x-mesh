@@ -73,7 +73,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 		// down the execution of the Mesh node, so we sleep after executing
 		// "batches" of computations.
 		if batchIdx%computeOptimalChunkBatchSize == computeOptimalChunkBatchSize-1 {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			jsutil.NextTick(ctx)
 			cancel()
 		}

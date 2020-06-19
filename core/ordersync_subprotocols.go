@@ -114,12 +114,9 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 		}
 		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
 		// Filter the orders for this page.
-		for _, orderInfo := range ordersResp.OrdersInfos {
-			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
-				return nil, err
-			} else if matches {
-				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
-			}
+		filteredOrders, err = filterOrdersForRequest(p.orderFilter, ordersResp.OrdersInfos, filteredOrders)
+		if err != nil {
+			return nil, err
 		}
 		if len(filteredOrders) == 0 {
 			// If none of the orders for this page match the filter, we continue
@@ -154,14 +151,9 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 		return nil, fmt.Errorf("FilteredPaginationSubProtocolV0 received response with wrong metadata type (got %T)", res.Metadata)
 	}
 	filteredOrders := []*zeroex.SignedOrder{}
-	for _, order := range res.Orders {
-		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
-			return nil, err
-		} else if matches {
-			filteredOrders = append(filteredOrders, order)
-		} else if !matches {
-			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
-		}
+	filteredOrders, err := filterOrdersForResponse(p.app, p.orderFilter, res.ProviderID, res.Orders)
+	if err != nil {
+		return nil, err
 	}
 	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
 	if err != nil {
@@ -291,12 +283,9 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 		}
 		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
 		// Filter the orders for this page.
-		for _, orderInfo := range ordersResp.OrdersInfos {
-			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
-				return nil, err
-			} else if matches {
-				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
-			}
+		filteredOrders, err = filterOrdersForRequest(p.orderFilter, ordersResp.OrdersInfos, filteredOrders)
+		if err != nil {
+			return nil, err
 		}
 		if len(filteredOrders) == 0 {
 			// If none of the orders for this page match the filter, we continue
@@ -328,15 +317,9 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	if !ok {
 		return nil, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
-	for _, order := range res.Orders {
-		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
-			return nil, err
-		} else if matches {
-			filteredOrders = append(filteredOrders, order)
-		} else if !matches {
-			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
-		}
+	filteredOrders, err := filterOrdersForResponse(p.app, p.orderFilter, res.ProviderID, res.Orders)
+	if err != nil {
+		return nil, err
 	}
 	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
 	if err != nil {
