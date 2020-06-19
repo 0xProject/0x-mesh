@@ -5,8 +5,9 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "build": "node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
+        "build": "yarn build:ts && node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
         "build:ts": "tsc -b",
+        "clean": "shx rm ./dist/bundle.js || exit 0",
         "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce the webpack bundle size",
         "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts",
         "lint": "tslint --format stylish --project ."
@@ -14,12 +15,12 @@
     "devDependencies": {
         "rimraf": "^3.0.0",
         "ts-loader": "^6.0.4",
-        "typescript": "^3.5.3",
+        "typescript": "^3.9.3",
         "webpack": "^4.39.2",
         "webpack-cli": "^3.3.7"
     },
     "dependencies": {
-        "@0x/mesh-browser": "file:../browser",
+        "@0x/mesh-browser": "1.0.0",
         "@0x/order-utils": "^10.0.1",
         "@0x/subproviders": "^6.0.2",
         "@0x/utils": "^5.1.1"

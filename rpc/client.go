@@ -9,6 +9,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -51,9 +52,9 @@ func (c *Client) AddOrders(orders []*zeroex.SignedOrder, opts ...types.AddOrders
 }
 
 // GetOrders gets all orders stored on the Mesh node at a particular point in time in a paginated fashion
-func (c *Client) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
+func (c *Client) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrdersResponse, error) {
 	var getOrdersResponse types.GetOrdersResponse
-	if err := c.rpcClient.Call(&getOrdersResponse, "mesh_getOrders", page, perPage, snapshotID); err != nil {
+	if err := c.rpcClient.Call(&getOrdersResponse, "mesh_getOrders", perPage, minOrderHash.Hex()); err != nil {
 		return nil, err
 	}
 	return &getOrdersResponse, nil

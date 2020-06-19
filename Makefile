@@ -68,7 +68,7 @@ test-ts:
 
 
 .PHONY: lint
-lint: lint-go lint-ts
+lint: lint-go lint-ts lint-prettier
 
 
 .PHONY: lint-go
@@ -80,6 +80,9 @@ lint-go:
 lint-ts:
 	yarn lint
 
+.PHONY: lint-prettier
+lint-prettier:
+	yarn prettier:ci
 
 .PHONY: mesh
 mesh:

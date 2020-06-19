@@ -258,13 +258,11 @@ func setGlobals() {
 		"getOrdersResponse": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return []interface{}{
 				types.GetOrdersResponse{
-					SnapshotID:        "208c81f9-6f8d-44aa-b6ea-0a3276ec7318",
-					SnapshotTimestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
-					OrdersInfos:       []*types.OrderInfo{},
+					Timestamp:   time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
+					OrdersInfos: []*types.OrderInfo{},
 				},
 				types.GetOrdersResponse{
-					SnapshotID:        "208c81f9-6f8d-44aa-b6ea-0a3276ec7318",
-					SnapshotTimestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
+					Timestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
 					OrdersInfos: []*types.OrderInfo{
 						&types.OrderInfo{
 							OrderHash: common.HexToHash("0x1"),
@@ -294,8 +292,7 @@ func setGlobals() {
 					},
 				},
 				types.GetOrdersResponse{
-					SnapshotID:        "208c81f9-6f8d-44aa-b6ea-0a3276ec7318",
-					SnapshotTimestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
+					Timestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
 					OrdersInfos: []*types.OrderInfo{
 						&types.OrderInfo{
 							OrderHash: common.HexToHash("0x1"),

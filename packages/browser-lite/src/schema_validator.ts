@@ -1,3 +1,11 @@
+/**
+ * @hidden
+ */
+
+/**
+ * NOTE(jalextowle): This comment must be here so that typedoc knows that the above
+ * comment is a module comment
+ */
 import * as ajv from 'ajv';
 
 interface SynchronousValidationFunction {
@@ -44,7 +52,6 @@ export function createSchemaValidator(
     }
 
     const orderValidate = AJV.getSchema('/rootOrder');
-    // tslint:disable-next-line:no-non-null-assertion
     if (orderValidate === undefined) {
         throw new Error('Cannot find "/rootOrder" schema in AJV');
     }

@@ -110,9 +110,8 @@ export class WSClient {
     }
     private static _convertRawGetOrdersResponse(rawGetOrdersResponse: RawGetOrdersResponse): GetOrdersResponse {
         return {
-            snapshotID: rawGetOrdersResponse.snapshotID,
             // tslint:disable-next-line:custom-no-magic-numbers
-            snapshotTimestamp: Math.round(new Date(rawGetOrdersResponse.snapshotTimestamp).getTime() / 1000),
+            timestamp: Math.round(new Date(rawGetOrdersResponse.timestamp).getTime() / 1000),
             ordersInfos: WSClient._convertRawOrderInfos(rawGetOrdersResponse.ordersInfos),
         };
     }
@@ -309,25 +308,19 @@ export class WSClient {
      * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
      */
     public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
-        let snapshotID = ''; // New snapshot
-
-        let page = 0;
-        let getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
-        snapshotID = getOrdersResponse.snapshotID;
+        let getOrdersResponse = await this.getOrdersForPageAsync(perPage);
         let ordersInfos = getOrdersResponse.ordersInfos;
-
         let allOrderInfos: OrderInfo[] = [];
 
         do {
             allOrderInfos = [...allOrderInfos, ...ordersInfos];
-            page++;
-            getOrdersResponse = await this.getOrdersForPageAsync(page, perPage, snapshotID);
+            const minOrderHash = ordersInfos[ordersInfos.length - 1].orderHash;
+            getOrdersResponse = await this.getOrdersForPageAsync(perPage, minOrderHash);
             ordersInfos = getOrdersResponse.ordersInfos;
         } while (ordersInfos.length > 0);
 
         getOrdersResponse = {
-            snapshotID,
-            snapshotTimestamp: getOrdersResponse.snapshotTimestamp,
+            timestamp: getOrdersResponse.timestamp,
             ordersInfos: allOrderInfos,
         };
         return getOrdersResponse;
@@ -339,17 +332,10 @@ export class WSClient {
      * @param snapshotID The DB snapshot at which to fetch orders. If omitted, a new snapshot is created
      * @returns the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
      */
-    public async getOrdersForPageAsync(
-        page: number,
-        perPage: number = 200,
-        snapshotID?: string,
-    ): Promise<GetOrdersResponse> {
-        const finalSnapshotID = snapshotID === undefined ? '' : snapshotID;
-
+    public async getOrdersForPageAsync(perPage: number = 200, minOrderHash: string = ''): Promise<GetOrdersResponse> {
         const rawGetOrdersResponse: RawGetOrdersResponse = await this._wsProvider.send('mesh_getOrders', [
-            page,
             perPage,
-            finalSnapshotID,
+            minOrderHash,
         ]);
         const getOrdersResponse = WSClient._convertRawGetOrdersResponse(rawGetOrdersResponse);
         return getOrdersResponse;

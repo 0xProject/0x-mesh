@@ -241,8 +241,7 @@ func registerConvertConfigField(description string, field string) {
 }
 
 func registerGetOrdersResponseTest(description string, orderInfoLength int) {
-	registerGetOrdersResponseField(description, "snapshotID")
-	registerGetOrdersResponseField(description, "snapshotTimestamp")
+	registerGetOrdersResponseField(description, "timestamp")
 	registerGetOrdersResponseField(description, "orderInfo.length")
 	for i := 0; i < orderInfoLength; i++ {
 		registerGetOrdersResponseField(description, "orderInfo.orderHash")

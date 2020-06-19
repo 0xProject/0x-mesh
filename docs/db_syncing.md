@@ -16,12 +16,12 @@ When first connecting the DB and Mesh node, we first need to make sure both have
 
 Subscribe to the Mesh node's `orders` subscription over a WS connection. This can be done using our [golang](https://godoc.org/github.com/0xProject/0x-mesh/rpc) or [Typescript/Javascript](json_rpc_clients/typescript/README.md) clients or any other JSON-RPC WebSocket client. Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each order event has an associated [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
 
-| End state                                       | DB operation                    |
-|--------------------------------------------|---------------------------------|
-| ADDED                                      | Insert                    |
-| FILLED                                     | Update |
-| FULLY_FILLED, EXPIRED, CANCELLED, UNFUNDED | Remove                    |
-| FILLABILITY_INCREASED                      | Upsert             |
+| End state                                  | DB operation |
+| ------------------------------------------ | ------------ |
+| ADDED                                      | Insert       |
+| FILLED                                     | Update       |
+| FULLY_FILLED, EXPIRED, CANCELLED, UNFUNDED | Remove       |
+| FILLABILITY_INCREASED                      | Upsert       |
 
 **Note:** Updates refer to updating the order's `fillableTakerAssetAmount` in the DB.
 
@@ -37,10 +37,10 @@ There might have been orders stored in Mesh that the DB doesn't know about at th
 
 Since there might also be orders added to the database that Mesh doesn't know about, we must also add all DB orders to Mesh. We can do this using the [mesh_addOrders](rpc_api.md#mesh_addorders) JSON-RPC method. This method accepts an array of signed 0x orders and returns which have been accepted and rejected. The accepted orders are returned with their `fillableTakerAssetAmount` and so these amounts should be updated in the database. Rejected orders are rejected with a specific [RejectedOrderStatus](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-variables), including an identifying `code`.
 
-| Code                                                                                                                                                                                                                  | Reason                        | Should be retried? |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|--------------------|
-| EthRPCRequestFailed, CoordinatorRequestFailed, CoordinatorEndpointNotFound, InternalError                                                                                                                             | Failure to validate the order     | Yes                |
-| MaxOrderSizeExceeded, OrderMaxExpirationExceeded, OrderForIncorrectChain, SenderAddressNotAllowed                                                                                                                   | Failed Mesh-specific criteria | No                 |
+| Code                                                                                                                                                                                                                    | Reason                        | Should be retried? |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------ |
+| EthRPCRequestFailed, CoordinatorRequestFailed, CoordinatorEndpointNotFound, InternalError                                                                                                                               | Failure to validate the order | Yes                |
+| MaxOrderSizeExceeded, OrderMaxExpirationExceeded, OrderForIncorrectChain, SenderAddressNotAllowed                                                                                                                       | Failed Mesh-specific criteria | No                 |
 | OrderHasInvalidMakerAssetData, OrderHasInvalidTakerAssetData, OrderHasInvalidSignature, OrderUnfunded, OrderCancelled, OrderFullyFilled, OrderHasInvalidMakerAssetAmount, OrderHasInvalidTakerAssetAmount, OrderExpired | Invalid or unfillable order   | No                 |
 
 If an order was rejected with a code related to the "failure to validate the order" reason above, you can re-try adding the order to Mesh after a back-off period. For all other rejection reasons, the orders should be removed from the database.

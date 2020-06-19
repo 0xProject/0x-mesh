@@ -401,8 +401,7 @@ export interface ValidationResults {
 }
 
 export interface RawGetOrdersResponse {
-    snapshotID: string;
-    snapshotTimestamp: string;
+    timestamp: string;
     ordersInfos: RawAcceptedOrderInfo[];
 }
 
@@ -410,8 +409,7 @@ export interface RawGetOrdersResponse {
 // method. The `snapshotTimestamp` is the second UTC timestamp of when the Mesh
 // was queried for these orders
 export interface GetOrdersResponse {
-    snapshotID: string;
-    snapshotTimestamp: number;
+    timestamp: number;
     ordersInfos: OrderInfo[];
 }
 
