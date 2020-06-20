@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p"
@@ -44,6 +45,9 @@ const (
 	//    approxDelay * (1 - jitter) <= actualDelay < approxDelay * (1 + jitter)
 	//
 	ordersyncJitterAmount = 0.1
+	// maxRequestPeersInParallel is the largest number of peers that `GetOrders`
+	// will try to pull orders from at once.
+	maxRequestPeersInParallel = 10
 )
 
 var (
@@ -285,10 +289,11 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
-		// TODO(albrow): As a performance optimization, do this for loop
-		// partly in parallel.
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
+		i := 0
+		wg := &sync.WaitGroup{}
+		waitChan := make(chan struct{}, 1)
 		for _, peerID := range currentNeighbors {
 			if len(successfullySyncedPeers) >= minPeers {
 				return nil
@@ -300,30 +305,49 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			log.WithFields(log.Fields{
 				"provider": peerID.Pretty(),
 			}).Trace("requesting orders from neighbor via ordersync")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
+
+			if i == maxRequestPeersInParallel {
+				i = 0
+				go func() {
+					wg.Wait()
+					waitChan <- struct{}{}
+				}()
+				select {
+				case <-waitChan:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			} else {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+				}
 			}
 
-			if err := s.getOrdersFromPeer(ctx, peerID); err != nil {
-				log.WithFields(log.Fields{
-					"error":    err.Error(),
-					"provider": peerID.Pretty(),
-				}).Warn("could not get orders from peer via ordersync")
-				continue
-			} else {
-				// TODO(albrow): Handle case where no orders were returned from this
-				// peer. This could be considered a valid response, depending on the implementation
-				// details of the subprotocol. We need to not try them again, but also not count
-				// them toward the number of peers we have successfully synced with.
-				log.WithFields(log.Fields{
-					"provider": peerID.Pretty(),
-				}).Trace("succesfully got orders from peer via ordersync")
-				successfullySyncedPeers.Add(peerID.Pretty())
-			}
+			i = i + 1
+			wg.Add(1)
+			go func(id peer.ID) {
+				defer wg.Done()
+				if err := s.getOrdersFromPeer(ctx, id); err != nil {
+					log.WithFields(log.Fields{
+						"error":    err.Error(),
+						"provider": id.Pretty(),
+					}).Warn("could not get orders from peer via ordersync")
+				} else {
+					// TODO(albrow): Handle case where no orders were returned from this
+					// peer. This could be considered a valid response, depending on the implementation
+					// details of the subprotocol. We need to not try them again, but also not count
+					// them toward the number of peers we have successfully synced with.
+					log.WithFields(log.Fields{
+						"provider": id.Pretty(),
+					}).Trace("succesfully got orders from peer via ordersync")
+					successfullySyncedPeers.Add(id.Pretty())
+				}
+			}(peerID)
 		}
 
+		wg.Wait()
 		delayBeforeNextRetry := retryBackoff.Duration()
 		log.WithFields(log.Fields{
 			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
