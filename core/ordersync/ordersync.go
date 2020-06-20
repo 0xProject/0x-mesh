@@ -294,6 +294,8 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		i := 0
 		wg := &sync.WaitGroup{}
 		waitChan := make(chan struct{}, 1)
+		innerCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
 		for _, peerID := range currentNeighbors {
 			if len(successfullySyncedPeers) >= minPeers {
 				return nil
@@ -329,7 +331,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			wg.Add(1)
 			go func(id peer.ID) {
 				defer wg.Done()
-				if err := s.getOrdersFromPeer(ctx, id); err != nil {
+				if err := s.getOrdersFromPeer(innerCtx, id); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
