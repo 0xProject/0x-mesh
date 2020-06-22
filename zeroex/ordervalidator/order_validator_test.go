@@ -6,11 +6,13 @@ package ordervalidator
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,8 +25,10 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -34,6 +38,13 @@ import (
 )
 
 const areNewOrders = false
+
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataStringLength = 268
 
 const (
 	maxEthRPCRequestsPer24HrUTC = 1000000
@@ -433,6 +444,56 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
 	expectedChunkSizes := []int{2, 3} // MultiAsset order is larger so can only fit two orders in first chunk
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
+}
+
+func abiEncode(signedOrder *zeroex.SignedOrder) ([]byte, error) {
+	trimmedOrder := signedOrder.Trim()
+
+	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
+	if err != nil {
+		return []byte{}, err
+	}
+
+	data, err := devUtilsABI.Pack(
+		"getOrderRelevantStates",
+		[]wrappers.LibOrderOrder{trimmedOrder},
+		[][]byte{signedOrder.Signature},
+	)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return encodedData, nil
+}
+
+func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
+	testOrder := scenario.NewSignedTestOrder(t)
+
+	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+
+	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
+
+	for _, signedOrder := range testCases {
+		label := fmt.Sprintf("test order: %v", signedOrder)
+
+		encoded, err := abiEncode(signedOrder)
+		require.NoError(t, err)
+		expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+
+		length := computeABIEncodedSignedOrderStringLength(signedOrder)
+
+		assert.Equal(t, expectedLength, length, label)
+	}
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
