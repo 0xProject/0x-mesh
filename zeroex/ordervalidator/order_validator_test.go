@@ -473,31 +473,27 @@ func abiEncode(signedOrder *zeroex.SignedOrder) ([]byte, error) {
 }
 
 func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t)
+	testOrder := scenario.NewSignedTestOrder(t)
 
-	encoded, err := abiEncode(signedOrder)
-	require.NoError(t, err)
-	expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
 
-	length := computeABIEncodedSignedOrderStringLength(signedOrder)
+	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
 
-	assert.Equal(t, expectedLength, length)
-}
+	for _, signedOrder := range testCases {
+		label := fmt.Sprintf("test order: %v", signedOrder)
 
-func TestMultiAssetComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t)
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
-	signedOrder.Order.MakerAssetData = multiAssetAssetData
-	signedOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+		encoded, err := abiEncode(signedOrder)
+		require.NoError(t, err)
+		expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
 
-	encoded, err := abiEncode(signedOrder)
-	require.NoError(t, err)
-	expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+		length := computeABIEncodedSignedOrderStringLength(signedOrder)
 
-	length := computeABIEncodedSignedOrderStringLength(signedOrder)
-
-	assert.Equal(t, expectedLength, length)
+		assert.Equal(t, expectedLength, length, label)
+	}
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {

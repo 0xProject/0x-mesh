@@ -826,7 +826,7 @@ func numWords(bytes []byte) int {
 }
 
 func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) int {
-	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word.
+	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
 	return 1536 + 64*(numWords(signedOrder.Order.MakerAssetData)+
 		numWords(signedOrder.Order.TakerAssetData)+
 		numWords(signedOrder.Order.MakerFeeAssetData)+
