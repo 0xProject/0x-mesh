@@ -12,8 +12,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/orderfilter"
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
-	"github.com/0xProject/0x-mesh/packages/browser/go/providerwrapper"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/providerwrapper"
 )
 
 // ConvertConfig converts a JavaScript config object into a core.Config. It also

@@ -122,7 +122,7 @@ pipeline will fail if Typescript code is not "prettified," so `prettier` must be
 to ensure that the code is properly formatted.
 
 The prettier tool can be run using the following command from the top-level of the
-0x-Mesh repository (outside of a directory inside `packages/`):
+0x-Mesh repository (outside of a directory inside **packages/**):
 
 ```bash
 yarn prettier

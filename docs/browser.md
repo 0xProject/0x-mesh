@@ -84,7 +84,7 @@ yarn add @0x/mesh-browser-lite
 
 ### Example usage
 
-[The webpack-example directory](../packages/webpack-example) and
-[the webpack-example-lite directory](../packages/webpack-example) include
+[The webpack-example directory](../packages/mesh-webpack-example) and
+[the webpack-example-lite directory](../packages/mesh-webpack-example-lite) include
 examples of how to use the `@0x/mesh-browser` and the `@0x/mesh-browser-lite` packages,
 respectively.

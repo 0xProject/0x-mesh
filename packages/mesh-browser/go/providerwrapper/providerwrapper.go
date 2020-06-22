@@ -12,7 +12,7 @@ import (
 	"math/rand"
 	"syscall/js"
 
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	log "github.com/sirupsen/logrus"

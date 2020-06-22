@@ -1,6 +1,6 @@
 {
     "private": true,
-    "name": "@0x/browser-shim",
+    "name": "@0x/mesh-browser-shim",
     "description": "Bundled Javascript init files to use with `wasmbrowsertest` for testing Go WebAssembly binaries",
     "version": "1.0.0",
     "main": "./lib/index.js",

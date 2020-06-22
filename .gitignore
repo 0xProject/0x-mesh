@@ -12,7 +12,7 @@ yarn-error.log
 */**/yarn-error.log*
 ganache.log
 */**/ganache.log*
-packages/browser/src/generated
+packages/**/generated/**
 */**/dist/**/*
 !*/**/dist/index.html
 !integration-tests/data/standalone-0/keys/privKey

@@ -107,7 +107,7 @@ func TestBrowserIntegration(t *testing.T) {
 	}()
 
 	// Start a simple HTTP server to serve the web page for the browser node.
-	ts := httptest.NewServer(http.FileServer(http.Dir("../packages/integration-tests/dist")))
+	ts := httptest.NewServer(http.FileServer(http.Dir("../packages/mesh-integration-tests/dist")))
 	defer ts.Close()
 
 	// browserLogMessages is a channel through which log messages from the

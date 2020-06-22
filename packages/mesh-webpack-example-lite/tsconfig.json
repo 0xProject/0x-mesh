@@ -4,11 +4,10 @@
         "outDir": "lib",
         "rootDir": "src"
     },
-    "include": ["./src/**/*"],
-    "exclude": ["./conversion-tests/**/*"],
+    "include": ["./src/**/*", "./test/**/*"],
     "references": [
         {
-            "path": "../browser-lite"
+            "path": "../mesh-browser-lite"
         }
     ]
 }

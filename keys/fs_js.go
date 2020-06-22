@@ -9,7 +9,7 @@ import (
 	"os"
 	"syscall/js"
 
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 )
 
 // keyPrefix is a prefix applied to all entries in localStorage.

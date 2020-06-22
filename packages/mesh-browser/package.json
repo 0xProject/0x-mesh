@@ -18,7 +18,7 @@
         "lint": "tslint --format stylish --project ."
     },
     "config": {
-        "docsPath": "../../docs/browser-bindings/browser"
+        "docsPath": "../../docs/browser-bindings/mesh-browser"
     },
     "dependencies": {
         "@0x/mesh-browser-lite": "1.0.0",
