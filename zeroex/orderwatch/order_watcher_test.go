@@ -109,6 +109,39 @@ func init() {
 	}
 }
 
+func TestOrderWatcherStoresValidOrders(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	signedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+	)
+	setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+
+	orders, err := database.FindOrders(nil)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	assert.Equal(t, expectedOrderHash, orders[0].Hash)
+	assert.WithinDuration(t, orders[0].LastUpdated, time.Now(), 4*time.Second)
+	assert.Equal(t, latestStoredBlock.Number, orders[0].LastValidatedBlockNumber)
+	assert.Equal(t, latestStoredBlock.Hash, orders[0].LastValidatedBlockHash)
+}
+
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -1157,9 +1190,11 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 		signedOrderOneHash: orderOne,
 	}
 
-	// previousLatestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	latestBlockTimestamp := expirationTime.Add(1 * time.Second)
-	orderEvents, err := orderWatcher.handleOrderExpirations(latestBlockTimestamp, ordersToRevalidate)
+	// Make a "fake" block with a timestamp 1 second after expirationTime.
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	latestBlock.Timestamp = expirationTime.Add(1 * time.Second)
+	orderEvents, err := orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 1)
@@ -1241,10 +1276,12 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 		signedOrderOneHash: orderOne,
 	}
 
-	// LatestBlockTimestamp is earlier than previous latest simulating block-reorg where new latest block
-	// has an earlier timestamp than the last
-	latestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.handleOrderExpirations(latestBlockTimestamp, ordersToRevalidate)
+	// Make a "fake" block with a timestamp 1 minute before expirationTime. This simulates
+	// block-reorg where new latest block has an earlier timestamp than the last
+	latestBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	latestBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 1)
@@ -1340,8 +1377,12 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 			},
 		},
 	}
-	validationBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, validationBlockTimestamp)
+	// Make a "fake" block with a timestamp 1 minute before expirationTime. This simulates
+	// block-reorg where new latest block has an earlier timestamp than the last
+	validationBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	validationBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, validationBlock)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 2)

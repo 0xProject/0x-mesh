@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
@@ -266,9 +267,9 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If some requests fail, this method still returns whatever order information it was able to
 // retrieve up until the failure.
-// The `blockNumber` parameter lets the caller specify a specific block height at which to validate
-// the orders. This can be set to the `latest` block or any other historical block number.
-func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber *big.Int) *ValidationResults {
+// The `validationBlock` parameter lets the caller specify a specific block at which to validate
+// the orders. This can be set to the `latest` block or any other historical block.
+func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -330,7 +331,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					Pending: false,
 					Context: ctx,
 				}
-				opts.BlockNumber = blockNumber
+				opts.BlockNumber = validationBlock.Number
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, trimmedOrders, signatures)
 				if err != nil {
