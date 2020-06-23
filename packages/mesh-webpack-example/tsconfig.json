@@ -7,7 +7,7 @@
     "include": ["./src/**/*", "./test/**/*"],
     "references": [
         {
-            "path": "../browser-lite"
+            "path": "../mesh-browser"
         }
     ]
 }

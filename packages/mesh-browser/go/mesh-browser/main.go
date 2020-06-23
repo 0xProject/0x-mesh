@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/packages/browser/go/browserutil"
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/browserutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

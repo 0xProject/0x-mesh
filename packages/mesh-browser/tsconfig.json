@@ -5,9 +5,10 @@
         "rootDir": "src"
     },
     "include": ["./src/**/*"],
+    "exclude": ["./conversion-tests/**/*"],
     "references": [
         {
-            "path": "../browser-lite"
+            "path": "../mesh-browser-lite"
         }
     ]
 }

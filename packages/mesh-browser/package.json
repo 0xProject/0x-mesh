@@ -20,12 +20,6 @@
     "config": {
         "docsPath": "../../docs/browser-bindings/browser"
     },
-    "dependencies": {
-        "@0x/mesh-browser-lite": "1.0.0",
-        "base64-arraybuffer": "^0.2.0",
-        "browserfs": "^1.4.3",
-        "ethereum-types": "^3.0.0"
-    },
     "devDependencies": {
         "@0x/subproviders": "^6.0.5",
         "@0x/ts-doc-gen": "^0.0.16",
@@ -40,5 +34,10 @@
         "typescript": "^3.9.3",
         "webpack": "^4.41.5",
         "webpack-cli": "^3.3.10"
+    },
+    "dependencies": {
+        "@0x/mesh-browser-lite": "1.0.0",
+        "base64-arraybuffer": "^0.2.0",
+        "ethereum-types": "^3.0.0"
     }
 }

@@ -117,13 +117,13 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	// for TypeScript code changes only.
 	fmt.Println("Building mesh-browser package...")
 	cmd := exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../packages/browser"
+	cmd.Dir = "../packages/mesh-browser"
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not build mesh-browser package: %s", string(output))
 
 	fmt.Println("Building integration-tests package...")
 	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../packages/integration-tests"
+	cmd.Dir = "../packages/mesh-integration-tests"
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build integration-tests package: %s", string(output))
 	fmt.Println("Done building everything")

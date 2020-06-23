@@ -9,7 +9,7 @@ import (
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 )
 
 type Filter struct {

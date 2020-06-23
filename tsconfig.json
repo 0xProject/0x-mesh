@@ -4,12 +4,12 @@
     "extends": "./tsconfig-base",
     "include": [],
     "references": [
-        { "path": "./packages/browser" },
-        { "path": "./packages/browser-lite" },
-        { "path": "./packages/webpack-example" },
-        { "path": "./packages/webpack-example-lite" },
-        { "path": "./packages/rpc-client" },
-        { "path": "./packages/integration-tests" },
-        { "path": "./packages/test-wasm" }
+        { "path": "./packages/mesh-browser" },
+        { "path": "./packages/mesh-browser-lite" },
+        { "path": "./packages/mesh-webpack-example" },
+        { "path": "./packages/mesh-webpack-example-lite" },
+        { "path": "./packages/mesh-rpc-client" },
+        { "path": "./packages/mesh-integration-tests" },
+        { "path": "./packages/mesh-browser-shim" }
     ]
 }

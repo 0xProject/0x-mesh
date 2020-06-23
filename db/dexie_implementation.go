@@ -13,7 +13,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/dexietypes"
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
