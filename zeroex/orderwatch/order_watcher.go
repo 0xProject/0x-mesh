@@ -21,6 +21,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -32,8 +33,8 @@ const (
 	// maxDeleteInterval specifies the maximum amount of time between calls to permanentlyDeleteStaleRemovedOrders
 	maxDeleteInterval = 5 * time.Minute
 
-	// countInterval specifies the amount of time between calls to db.CountOrders. If the count is higher than a threshold, then permanentlyDeleteStaleRemovedOrders will be called, so this is the minimum interval between calls to permanentlyDeleteStaleRemovedOrders.
-	countInterval = 5 * time.Second
+	// checkDatabaseUtilizationThresholdInterval specifies the amount of time between calls to db.CountOrders. If the count is higher than a threshold, then permanentlyDeleteStaleRemovedOrders will be called, so this is the minimum interval between calls to permanentlyDeleteStaleRemovedOrders.
+	checkDatabaseUtilizationThresholdInterval = 5 * time.Second
 
 	// If, after a call to db.CountOrders, the database utilization exceeds databaseUtilizationThreshold, then permanentlyDeleteStaleRemovedOrders will be called.
 	databaseUtilizationThreshold = 0.5
@@ -144,60 +145,22 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
-	// Create a child context so that we can preemptively cancel if there is an
-	// error.
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// A waitgroup lets us wait for all goroutines to exit.
-	wg := &sync.WaitGroup{}
-	wg.Add(3)
-
-	// Start some independent goroutines, each with a separate channel for communicating errors.
-	mainLoopErrChan := make(chan error, 1)
-	go func() {
-		defer wg.Done()
-		mainLoopErrChan <- w.mainLoop(innerCtx)
-	}()
-	cleanupLoopErrChan := make(chan error, 1)
-	go func() {
-		defer wg.Done()
-		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
-	}()
-	removedCheckerLoopErrChan := make(chan error, 1)
-	go func() {
-		defer wg.Done()
-		removedCheckerLoopErrChan <- w.removedCheckerLoop(innerCtx)
-	}()
-
-	// If any error channel returns a non-nil error, we cancel the inner context
-	// and return the error. Note that this means we only return the first error
-	// that occurs.
-	select {
-	case err := <-mainLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher mainLoop")
-			cancel()
+	g, innerCtx := errgroup.WithContext(ctx)
+	namedLoops := []struct {
+		loop func(context.Context) error
+		name string
+	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "cleanupLoop"}, {w.removedCheckerLoop, "removedCheckerLoop"}}
+	for _, namedLoop := range namedLoops {
+		g.Go(func() error {
+			err := namedLoop.loop(innerCtx)
+			if err != nil {
+				logger.WithError(err).Error(fmt.Sprintf("error in orderwatcher %s", namedLoop.name))
+			}
 			return err
-		}
-	case err := <-cleanupLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher cleanupLoop")
-			cancel()
-			return err
-		}
-	case err := <-removedCheckerLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher removedCheckerLoop")
-			cancel()
-			return err
-		}
+		})
 	}
-
-	// Wait for all goroutines to exit. If we reached here it means we are done
-	// and there are no errors.
-	wg.Wait()
-	return nil
+	// Wait for all loops to return nil, or for any loop to return an error.
+	return g.Wait()
 }
 
 func (w *Watcher) mainLoop(ctx context.Context) error {
@@ -267,26 +230,23 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
+	if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+		return err
+	}
 	lastDeleted := time.Now()
-	lastCounted := time.Now()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-time.After(maxDeleteInterval - time.Since(lastDeleted)):
-			if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
-				return err
-			}
-			lastDeleted = time.Now()
-		case <-time.After(countInterval - time.Since(lastCounted)):
+		case <-time.After(checkDatabaseUtilizationThresholdInterval):
 			count, err := w.db.CountOrders(nil)
 			if err != nil {
 				return err
 			}
-			lastCounted = time.Now()
+			databaseUtilization := float64(count) / float64(w.maxOrders)
 
-			if float64(count)/float64(w.maxOrders) > databaseUtilizationThreshold {
+			if time.Since(lastDeleted) > maxDeleteInterval || databaseUtilization > databaseUtilizationThreshold {
 				if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
 					return err
 				}
