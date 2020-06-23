@@ -245,6 +245,8 @@ type Order struct {
 	IsPinned                 bool             `db:"isPinned"`
 	ParsedMakerAssetData     *ParsedAssetData `db:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  *ParsedAssetData `db:"parsedMakerFeeAssetData"`
+	LastValidatedBlockNumber *SortedBigInt    `db:"lastValidatedBlockNumber"`
+	LastValidatedBlockHash   common.Hash      `db:"lastValidatedBlockHash"`
 }
 
 // EventLogs is a wrapper around []*ethtypes.Log that implements the
@@ -328,6 +330,8 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		IsPinned:                 order.IsPinned,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
+		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
+		LastValidatedBlockHash:   order.LastValidatedBlockHash,
 	}
 }
 
@@ -360,6 +364,8 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		IsPinned:                 order.IsPinned,
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
+		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),
+		LastValidatedBlockHash:   order.LastValidatedBlockHash,
 	}
 }
 

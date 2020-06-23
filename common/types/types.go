@@ -132,6 +132,12 @@ type OrderWithMetadata struct {
 	ParsedMakerAssetData []*SingleAssetData `json:"parsedMakerAssetData"`
 	// Same as ParsedMakerAssetData but for MakerFeeAssetData instead of MakerAssetData.
 	ParsedMakerFeeAssetData []*SingleAssetData `json:"parsedMakerFeeAssetData"`
+	// LastValidatedBlockNumber is the block number at which the order was
+	// last validated.
+	LastValidatedBlockNumber *big.Int `json:"lastValidatedBlockNumber"`
+	// LastValidatedBlockHash is the hash of the block at which the order was
+	// last validated.
+	LastValidatedBlockHash common.Hash `json:"lastValidatedBlockHash"`
 }
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {

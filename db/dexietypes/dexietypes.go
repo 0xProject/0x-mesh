@@ -159,6 +159,8 @@ type Order struct {
 	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
+	LastValidatedBlockNumber *SortedBigInt  `json:"lastValidatedBlockNumber"`
+	LastValidatedBlockHash   common.Hash    `json:"lastValidatedBlockHash"`
 }
 
 type Metadata struct {
@@ -196,6 +198,8 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		IsPinned:                 order.IsPinned == 1,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
+		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
+		LastValidatedBlockHash:   order.LastValidatedBlockHash,
 	}
 }
 
@@ -229,6 +233,8 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		IsNotPinned:              BoolToUint8(!order.IsPinned),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
+		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),
+		LastValidatedBlockHash:   order.LastValidatedBlockHash,
 	}
 }
 
