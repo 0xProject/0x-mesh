@@ -21,6 +21,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	logger "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -144,62 +145,17 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
-	// Create a child context so that we can preemptively cancel if there is an
-	// error.
-	innerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	g, innerCtx := errgroup.WithContext(ctx)
 
-	// A waitgroup lets us wait for all goroutines to exit.
-	wg := &sync.WaitGroup{}
-
-	// Start some independent goroutines, each with a separate channel for communicating errors.
-	mainLoopErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mainLoopErrChan <- w.mainLoop(innerCtx)
-	}()
-	cleanupLoopErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		cleanupLoopErrChan <- w.cleanupLoop(innerCtx)
-	}()
-	removedCheckerLoopErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		removedCheckerLoopErrChan <- w.removedCheckerLoop(innerCtx)
-	}()
-
-	// If any error channel returns a non-nil error, we cancel the inner context
-	// and return the error. Note that this means we only return the first error
-	// that occurs.
-	select {
-	case err := <-mainLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher mainLoop")
-			cancel()
-			return err
-		}
-	case err := <-cleanupLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher cleanupLoop")
-			cancel()
-			return err
-		}
-	case err := <-removedCheckerLoopErrChan:
-		if err != nil {
-			logger.WithError(err).Error("error in orderwatcher removedCheckerLoop")
-			cancel()
-			return err
-		}
+	loops := []func(context.Context) error{w.mainLoop, w.cleanupLoop, w.removedCheckerLoop}
+	for _, loop := range loops {
+		loop := loop
+		g.Go(func() error {
+			return loop(innerCtx)
+		})
 	}
-
-	// Wait for all goroutines to exit. If we reached here it means we are done
-	// and there are no errors.
-	wg.Wait()
-	return nil
+	// Wait for all loops to return nil, or for any loop to return an error.
+	return g.Wait()
 }
 
 func (w *Watcher) mainLoop(ctx context.Context) error {
