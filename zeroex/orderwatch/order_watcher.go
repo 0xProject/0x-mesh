@@ -29,9 +29,14 @@ const (
 	// were not caught by the event watcher process.
 	minCleanupInterval = 1 * time.Hour
 
-	// minRemovedCheckInterval specifies the minimum amount of time between checks
-	// on whether to remove orders flaggged for removal from the DB
-	minRemovedCheckInterval = 5 * time.Minute
+	// maxDeleteInterval specifies the maximum amount of time between calls to permanentlyDeleteStaleRemovedOrders
+	maxDeleteInterval = 5 * time.Minute
+
+	// checkDatabaseUtilizationThresholdInterval specifies the amount of time between calls to db.CountOrders. If the count is higher than a threshold, then permanentlyDeleteStaleRemovedOrders will be called, so this is the minimum interval between calls to permanentlyDeleteStaleRemovedOrders.
+	checkDatabaseUtilizationThresholdInterval = 5 * time.Second
+
+	// If, after a call to db.CountOrders, the database utilization exceeds databaseUtilizationThreshold, then permanentlyDeleteStaleRemovedOrders will be called.
+	databaseUtilizationThreshold = 0.5
 
 	// defaultLastUpdatedBuffer specifies how long it must have been since an order was
 	// last updated in order to be re-validated by the cleanup worker
@@ -264,20 +269,28 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
-	for {
-		start := time.Now()
-		if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
-			return err
-		}
+	if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+		return err
+	}
+	lastDeleted := time.Now()
 
+	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		// Wait minRemovedCheckInterval before calling permanentlyDeleteStaleRemovedOrders again. Since
-		// we only start waiting _after_ permanentlyDeleteStaleRemovedOrders completes, we will never
-		// have multiple calls to permanentlyDeleteStaleRemovedOrders running in parallel
-		case <-time.After(minRemovedCheckInterval - time.Since(start)):
-			continue
+		case <-time.After(checkDatabaseUtilizationThresholdInterval):
+			count, err := w.db.CountOrders(nil)
+			if err != nil {
+				return err
+			}
+			databaseUtilization := float64(count) / float64(w.maxOrders)
+
+			if time.Since(lastDeleted) > maxDeleteInterval || databaseUtilization > databaseUtilizationThreshold {
+				if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+					return err
+				}
+				lastDeleted = time.Now()
+			}
 		}
 	}
 }
