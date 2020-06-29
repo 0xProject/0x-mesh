@@ -35,10 +35,16 @@ import (
 const (
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	miniHeaderRetentionLimit    = 2
-	blockPollingInterval        = 1000 * time.Millisecond
+	blockPollingInterval        = 1 * time.Second
 	ethereumRPCMaxContentLength = 524288
 	maxEthRPCRequestsPer24HrUTC = 1000000
 	maxEthRPCRequestsPerSeconds = 1000.0
+
+	// processBlockSleepTime is the amount of time ot wait for order watcher to
+	// process block events. If possible, we should listen for order events instead
+	// of sleeping, but we need to use this in some places where we don't expect
+	// any order events.
+	processBlockSleepTime = 350 * time.Millisecond
 )
 
 var (
@@ -136,10 +142,14 @@ func TestOrderWatcherStoresValidOrders(t *testing.T) {
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, expectedOrderHash, orders[0].Hash)
-	assert.WithinDuration(t, orders[0].LastUpdated, time.Now(), 4*time.Second)
-	assert.Equal(t, latestStoredBlock.Number, orders[0].LastValidatedBlockNumber)
-	assert.Equal(t, latestStoredBlock.Hash, orders[0].LastValidatedBlockHash)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
@@ -159,6 +169,8 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
@@ -178,12 +190,19 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
@@ -194,8 +213,8 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -208,6 +227,8 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 		orderopts.MakerFeeAssetData(scenario.WETHAssetData),
 		orderopts.MakerFee(wethFeeAmount),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
@@ -227,11 +248,19 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
@@ -242,8 +271,8 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -254,6 +283,8 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
@@ -273,12 +304,20 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
+
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
@@ -289,8 +328,8 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -301,6 +340,8 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy. We do this by setting the
@@ -321,12 +362,19 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
@@ -337,8 +385,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -348,6 +396,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Remove Maker's ERC1155 approval to ERC1155Proxy
@@ -367,12 +417,19 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
@@ -383,8 +440,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -396,6 +453,8 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Reduce Maker's ERC1155 balance
@@ -415,12 +474,19 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
@@ -431,8 +497,8 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -440,6 +506,8 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
@@ -459,12 +527,19 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
@@ -475,8 +550,8 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -485,6 +560,8 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
@@ -504,12 +581,19 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Transfer makerAsset back to maker address
 	zrxCoinbase := constants.GanacheAccount0
@@ -529,12 +613,19 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherNoChange(t *testing.T) {
@@ -545,8 +636,10 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+	}()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -555,13 +648,23 @@ func TestOrderWatcherNoChange(t *testing.T) {
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	dbOrder := orders[0]
-	assert.Equal(t, false, dbOrder.IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Transfer more ZRX to makerAddress (doesn't impact the order)
 	zrxCoinbase := constants.GanacheAccount0
@@ -576,12 +679,25 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
+	// HACK(albrow): Normally we would wait for order events instead of sleeping here,
+	// but in this case we don't *expect* any order events. Sleeping is a workaround.
+	// We could potentially solve this by adding internal events inside of order watcher
+	// that are only used for testing, but that would also incur some overhead.
+	time.Sleep(processBlockSleepTime)
+
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	require.NotEqual(t, dbOrder.LastUpdated, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
@@ -592,8 +708,8 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -602,6 +718,8 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 		orderopts.MakerAssetData(scenario.WETHAssetData),
 		orderopts.TakerAssetData(scenario.ZRXAssetData),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Withdraw maker's WETH (i.e. decrease WETH balance)
@@ -625,11 +743,20 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Deposit maker's ETH (i.e. increase WETH balance)
 	opts = &bind.TransactOpts{
@@ -649,12 +776,19 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherCanceled(t *testing.T) {
@@ -665,12 +799,14 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Cancel order
@@ -691,12 +827,19 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherCancelUpTo(t *testing.T) {
@@ -707,12 +850,14 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Cancel order with epoch
@@ -733,12 +878,19 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherERC20Filled(t *testing.T) {
@@ -749,8 +901,8 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -759,6 +911,8 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Fill order
@@ -780,12 +934,19 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
@@ -796,8 +957,8 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -806,6 +967,8 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
 
 	// Partially fill order
@@ -828,12 +991,19 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
 
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, false, orders[0].IsRemoved)
-	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     halfAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
@@ -857,6 +1027,8 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false)
 
@@ -889,9 +1061,14 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: nextBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Simulate a block re-org
 	replacementBlockHash := common.HexToHash("0x2")
@@ -932,9 +1109,14 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: reorgBlockEvents[len(reorgBlockEvents)-1].BlockHeader,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
@@ -1063,8 +1245,8 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
@@ -1078,13 +1260,6 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	numOrders := 2
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
-
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
 
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
@@ -1112,8 +1287,8 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
@@ -1540,9 +1715,28 @@ func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEven
 }
 
 func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *ethtypes.Transaction) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancelFn()
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
+}
+
+// orderState contains the order hash and some metadata fields for an order that are updated
+// by/controlled by order watcher.
+type orderState struct {
+	hash               common.Hash
+	isRemoved          bool
+	fillableAmount     *big.Int
+	lastUpdated        time.Time
+	lastValidatedBlock *types.MiniHeader
+}
+
+func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderWithMetadata) {
+	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
+	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
+	assert.Equal(t, expectedState.fillableAmount, order.FillableTakerAssetAmount, "FillableTakerAssetAmount")
+	assert.WithinDuration(t, expectedState.lastUpdated, order.LastUpdated, 4*time.Second, "LastUpdated")
+	assert.Equal(t, expectedState.lastValidatedBlock.Number, order.LastValidatedBlockNumber, "LastValidatedBlockNumber")
+	assert.Equal(t, expectedState.lastValidatedBlock.Hash, order.LastValidatedBlockHash, "LastValidatedBlockHash")
 }

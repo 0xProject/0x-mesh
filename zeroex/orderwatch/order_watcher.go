@@ -1159,11 +1159,14 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			expiration := time.Unix(order.SignedOrder().ExpirationTimeSeconds.Int64(), 0)
+			// The order is expired if ExpirationTimeSeconds is equal to or less than the timestamp
+			// of the validation block.
+			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
+			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlock.Timestamp.Before(expiration) {
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
 					w.rewatchOrder(order, nil, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
@@ -1174,12 +1177,13 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				}
-				// No important state-change happened
+				// No important state-change happened. Still want to update lastValidatedBlock
+				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			}
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlock.Timestamp.Before(expiration) {
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
 					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
@@ -1205,7 +1209,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlock.Timestamp.Before(expiration) {
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
 					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
