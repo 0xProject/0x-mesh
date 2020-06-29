@@ -78,6 +78,8 @@ export interface Order {
     isNotPinned: number; // Used in a compound index in queries related to max expiration time.
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
+    lastValidatedBlockNumber: string;
+    lastValidatedBlockHash: string;
 }
 
 export type OrderField = keyof Order;
