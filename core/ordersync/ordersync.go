@@ -47,7 +47,7 @@ const (
 	ordersyncJitterAmount = 0.1
 	// maxRequestPeersInParallel is the largest number of peers that `GetOrders`
 	// will try to pull orders from at once.
-	maxRequestPeersInParallel = 15
+	maxRequestPeersInParallel = 10
 )
 
 var (
