@@ -335,8 +335,15 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 						"provider": id.Pretty(),
 					}).Trace("succesfully got orders from peer via ordersync")
 					successfullySyncedPeers.Add(id.Pretty())
+					if len(successfullySyncedPeers) >= minPeers {
+						cancel()
+					}
 				}
 			}(peerID)
+		}
+
+		if innerCtx.Err() == context.Canceled {
+			return nil
 		}
 
 		wg.Wait()
