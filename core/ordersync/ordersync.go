@@ -47,7 +47,7 @@ const (
 	ordersyncJitterAmount = 0.1
 	// maxRequestPeersInParallel is the largest number of peers that `GetOrders`
 	// will try to pull orders from at once.
-	maxRequestPeersInParallel = 10
+	maxRequestPeersInParallel = 15
 )
 
 var (
@@ -289,11 +289,10 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
+		wg := &sync.WaitGroup{}
+		semaphore := make(chan struct{}, maxRequestPeersInParallel)
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
-		i := 0
-		wg := &sync.WaitGroup{}
-		waitChan := make(chan struct{}, 1)
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
@@ -308,29 +307,20 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				"provider": peerID.Pretty(),
 			}).Trace("requesting orders from neighbor via ordersync")
 
-			if i == maxRequestPeersInParallel {
-				i = 0
-				go func() {
-					wg.Wait()
-					waitChan <- struct{}{}
-				}()
-				select {
-				case <-waitChan:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-				}
-			}
-
-			i = i + 1
 			wg.Add(1)
 			go func(id peer.ID) {
-				defer wg.Done()
+				select {
+				case <-innerCtx.Done():
+					// NOTE(jalextowle): In this case, we haven't written to the semaphore
+					// so we shouldn't read from it.
+					wg.Done()
+					return
+				case semaphore <- struct{}{}:
+					defer func() {
+						wg.Done()
+						<-semaphore
+					}()
+				}
 				if err := s.getOrdersFromPeer(innerCtx, id); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
