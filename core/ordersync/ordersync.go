@@ -289,7 +289,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
-		m := &sync.Mutex{}
+		m := &sync.RWMutex{}
 		wg := &sync.WaitGroup{}
 		semaphore := make(chan struct{}, maxRequestPeersInParallel)
 		currentNeighbors := s.node.Neighbors()
@@ -297,10 +297,10 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
-			m.Lock()
+			m.RLock()
 			successfullySyncedPeerLength := len(successfullySyncedPeers)
 			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
-			m.Unlock()
+			m.RUnlock()
 			if successfullySyncedPeerLength >= minPeers {
 				return nil
 			}
@@ -338,8 +338,10 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					}).Trace("succesfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
-					successfullySyncedPeerLength := len(successfullySyncedPeers)
 					m.Unlock()
+					m.RLock()
+					successfullySyncedPeerLength := len(successfullySyncedPeers)
+					m.RUnlock()
 					if successfullySyncedPeerLength >= minPeers {
 						cancel()
 					}
@@ -355,9 +357,9 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		}
 
 		delayBeforeNextRetry := retryBackoff.Duration()
-		m.Lock()
+		m.RLock()
 		successfullySyncedPeerLength := len(successfullySyncedPeers)
-		m.Unlock()
+		m.RUnlock()
 		log.WithFields(log.Fields{
 			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
 			"minPeers":                minPeers,
