@@ -338,10 +338,8 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					}).Trace("succesfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
-					m.Unlock()
-					m.RLock()
 					successfullySyncedPeerLength := len(successfullySyncedPeers)
-					m.RUnlock()
+					m.Unlock()
 					if successfullySyncedPeerLength >= minPeers {
 						cancel()
 					}
