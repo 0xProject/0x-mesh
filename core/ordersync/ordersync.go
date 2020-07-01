@@ -289,6 +289,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
+		m := &sync.Mutex{}
 		wg := &sync.WaitGroup{}
 		semaphore := make(chan struct{}, maxRequestPeersInParallel)
 		currentNeighbors := s.node.Neighbors()
@@ -296,10 +297,14 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
-			if len(successfullySyncedPeers) >= minPeers {
+			m.Lock()
+			successfullySyncedPeerLength := len(successfullySyncedPeers)
+			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
+			m.Unlock()
+			if successfullySyncedPeerLength >= minPeers {
 				return nil
 			}
-			if successfullySyncedPeers.Contains(peerID.Pretty()) {
+			if successfullySynced {
 				continue
 			}
 
@@ -309,17 +314,14 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 
 			wg.Add(1)
 			go func(id peer.ID) {
+				defer wg.Done()
 				select {
 				case <-innerCtx.Done():
 					// NOTE(jalextowle): In this case, we haven't written to the semaphore
 					// so we shouldn't read from it.
-					wg.Done()
 					return
 				case semaphore <- struct{}{}:
-					defer func() {
-						wg.Done()
-						<-semaphore
-					}()
+					defer func() { <-semaphore }()
 				}
 				if err := s.getOrdersFromPeer(innerCtx, id); err != nil {
 					log.WithFields(log.Fields{
@@ -334,24 +336,32 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
 					}).Trace("succesfully got orders from peer via ordersync")
+					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
-					if len(successfullySyncedPeers) >= minPeers {
+					successfullySyncedPeerLength := len(successfullySyncedPeers)
+					m.Unlock()
+					if successfullySyncedPeerLength >= minPeers {
 						cancel()
 					}
 				}
 			}(peerID)
 		}
 
+		// Wait for all goroutines to exit. If the inner context has been
+		// cancelled, then we have successfully completed ordersync.
+		wg.Wait()
 		if innerCtx.Err() == context.Canceled {
 			return nil
 		}
 
-		wg.Wait()
 		delayBeforeNextRetry := retryBackoff.Duration()
+		m.Lock()
+		successfullySyncedPeerLength := len(successfullySyncedPeers)
+		m.Unlock()
 		log.WithFields(log.Fields{
 			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
 			"minPeers":                minPeers,
-			"successfullySyncedPeers": len(successfullySyncedPeers),
+			"successfullySyncedPeers": successfullySyncedPeerLength,
 		}).Debug("ordersync could not get orders from enough peers (trying again soon)")
 		select {
 		case <-ctx.Done():
