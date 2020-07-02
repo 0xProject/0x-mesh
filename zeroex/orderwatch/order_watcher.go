@@ -300,11 +300,11 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 // process blocks that require re-validation, since the validation process will already emit the necessary events.
 // latestBlockTimestamp is the latest block timestamp Mesh knows about
 // ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
-func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 
 	// Check for any orders that have now expired.
-	expiredOrders, err := w.findOrdersToExpire(latestBlockTimestamp)
+	expiredOrders, err := w.findOrdersToExpire(validationBlock.Timestamp)
 	if err != nil {
 		return orderEvents, err
 	}
@@ -314,9 +314,9 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersT
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		w.unwatchOrder(order, nil)
+		w.unwatchOrder(order, nil, validationBlock)
 		orderEvent := &zeroex.OrderEvent{
-			Timestamp:                latestBlockTimestamp,
+			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder(),
 			FillableTakerAssetAmount: big.NewInt(0),
@@ -330,7 +330,7 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersT
 	// A block re-org may have happened resulting in the latest block timestamp
 	// being lower than on the previous latest block. We need to "unexpire" any
 	// orders that have now become valid again as a result.
-	unexpiredOrders, err := w.findOrdersToUnexpire(latestBlockTimestamp)
+	unexpiredOrders, err := w.findOrdersToUnexpire(validationBlock.Timestamp)
 	if err != nil {
 		return orderEvents, err
 	}
@@ -340,9 +340,9 @@ func (w *Watcher) handleOrderExpirations(latestBlockTimestamp time.Time, ordersT
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		w.rewatchOrder(order, order.FillableTakerAssetAmount)
+		w.rewatchOrder(order, order.FillableTakerAssetAmount, validationBlock)
 		orderEvent := &zeroex.OrderEvent{
-			Timestamp:                latestBlockTimestamp,
+			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -364,7 +364,7 @@ func (w *Watcher) handleBlockEvents(
 		return nil
 	}
 
-	latestBlockNumber, latestBlockTimestamp := w.getBlockchainState(events)
+	validationBlock := w.getLatestBlockFromEvents(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 	for _, event := range events {
@@ -672,7 +672,7 @@ func (w *Watcher) handleBlockEvents(
 		}
 	}
 
-	expirationOrderEvents, err := w.handleOrderExpirations(latestBlockTimestamp, orderHashToDBOrder)
+	expirationOrderEvents, err := w.handleOrderExpirations(validationBlock, orderHashToDBOrder)
 	if err != nil {
 		return err
 	}
@@ -680,7 +680,7 @@ func (w *Watcher) handleBlockEvents(
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
-	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestBlockNumber, latestBlockTimestamp)
+	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, validationBlock)
 	if err != nil {
 		return err
 	}
@@ -754,7 +754,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestBlock.Number, latestBlock.Timestamp)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestBlock)
 	if err != nil {
 		return err
 	}
@@ -822,13 +822,13 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlockNumber *big.Int, pinned bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
 
 	for _, orderInfo := range orderInfos {
-		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now)
+		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock)
 		if err != nil {
 			return nil, err
 		}
@@ -929,7 +929,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	return orderEvents, nil
 }
 
-func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time) (*types.OrderWithMetadata, error) {
+func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader) (*types.OrderWithMetadata, error) {
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
@@ -963,6 +963,8 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+		LastValidatedBlockNumber: validationBlock.Number,
+		LastValidatedBlockHash:   validationBlock.Hash,
 	}, nil
 }
 
@@ -1138,7 +1140,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 	validationResults *ordervalidator.ValidationResults,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	validationBlockTimestamp time.Time,
+	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
@@ -1159,9 +1161,9 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
-			w.rewatchOrder(order, acceptedOrderInfo.FillableTakerAssetAmount)
+			w.rewatchOrder(order, acceptedOrderInfo.FillableTakerAssetAmount, validationBlock)
 			orderEvent := &zeroex.OrderEvent{
-				Timestamp:                validationBlockTimestamp,
+				Timestamp:                validationBlock.Timestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder(),
 				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
@@ -1170,14 +1172,17 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			expiration := time.Unix(order.SignedOrder().ExpirationTimeSeconds.Int64(), 0)
+			// The order is expired if ExpirationTimeSeconds is equal to or less than the timestamp
+			// of the validation block.
+			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
+			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
-					w.rewatchOrder(order, nil)
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+					w.rewatchOrder(order, nil, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlockTimestamp,
+						Timestamp:                validationBlock.Timestamp,
 						OrderHash:                order.Hash,
 						SignedOrder:              order.SignedOrder(),
 						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -1185,15 +1190,16 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				}
-				// No important state-change happened
+				// No important state-change happened. Still want to update lastValidatedBlock
+				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			}
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
-					w.rewatchOrder(order, newFillableAmount)
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlockTimestamp,
+						Timestamp:                validationBlock.Timestamp,
 						OrderHash:                order.Hash,
 						SignedOrder:              order.SignedOrder(),
 						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -1201,11 +1207,11 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				} else {
-					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount)
+					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
 				// Order was filled, emit event
 				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                validationBlockTimestamp,
+					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
 					EndState:                 zeroex.ESOrderFilled,
@@ -1216,10 +1222,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && validationBlockTimestamp.Before(expiration) {
-					w.rewatchOrder(order, newFillableAmount)
+				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlockTimestamp,
+						Timestamp:                validationBlock.Timestamp,
 						OrderHash:                order.Hash,
 						SignedOrder:              order.SignedOrder(),
 						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
@@ -1227,10 +1233,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					}
 					orderEvents = append(orderEvents, orderEvent)
 				} else {
-					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount)
+					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
 				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                validationBlockTimestamp,
+					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
 					EndState:                 zeroex.ESOrderFillabilityIncreased,
@@ -1260,7 +1266,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				// If the oldFillableAmount was already 0, this order is already flagged for removal.
 			} else {
 				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded
-				w.unwatchOrder(order, big.NewInt(0))
+				w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventEndState corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
@@ -1268,7 +1274,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					return nil, err
 				}
 				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                validationBlockTimestamp,
+					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
 					FillableTakerAssetAmount: big.NewInt(0),
@@ -1291,8 +1297,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	ctx context.Context,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	validationBlockNumber *big.Int,
-	validationBlockTimestamp time.Time,
+	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	signedOrders := []*zeroex.SignedOrder{}
 	for _, order := range orderHashToDBOrder {
@@ -1308,10 +1313,10 @@ func (w *Watcher) generateOrderEventsIfChanged(
 		return nil, nil
 	}
 	areNewOrders := false
-	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlockNumber)
+	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlock)
 
 	return w.convertValidationResultsIntoOrderEvents(
-		validationResults, orderHashToDBOrder, orderHashToEvents, validationBlockTimestamp,
+		validationResults, orderHashToDBOrder, orderHashToEvents, validationBlock,
 	)
 }
 
@@ -1346,7 +1351,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock.Number, pinned)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1379,7 +1384,7 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	// call (an unlikely but possible situation leading to an incorrect view of the world for these orders).
 	// Unfortunately, this is the best we can do until EIP-1898 support in Parity.
 	// Source: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md#rationale
-	latestMiniHeader, err := w.getLatestBlock()
+	latestBlock, err := w.getLatestBlock()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1387,8 +1392,8 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 	areNewOrders := true
-	zeroexResults := w.orderValidator.BatchValidate(ctx, orders, areNewOrders, latestMiniHeader.Number)
-	return latestMiniHeader, zeroexResults, nil
+	zeroexResults := w.orderValidator.BatchValidate(ctx, orders, areNewOrders, latestBlock)
+	return latestBlock, zeroexResults, nil
 }
 
 func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
@@ -1551,10 +1556,13 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	return nil
 }
 
-func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int) {
+// TODO(albrow): Add tests for LastValidatedBlockNumber and LastValidatedBlockHash for
+// this and other similar functions.
+func (w *Watcher) updateOrderLastValidatedBlock(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.LastUpdated = time.Now().UTC()
-		orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
 		return orderToUpdate, nil
 	})
 	if err != nil {
@@ -1565,10 +1573,28 @@ func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMeta
 	}
 }
 
-func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int) {
+func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
+	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
+		return orderToUpdate, nil
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
+}
+
+func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = false
 		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
 		if newFillableTakerAssetAmount != nil {
 			orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
 		}
@@ -1582,10 +1608,12 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 	}
 }
 
-func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int) {
+func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
 		if newFillableAmount != nil {
 			orderToUpdate.FillableTakerAssetAmount = newFillableAmount
 		}
@@ -1769,14 +1797,18 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-func (w *Watcher) getBlockchainState(events []*blockwatch.Event) (*big.Int, time.Time) {
-	var latestBlockNumber *big.Int
-	var latestBlockTimestamp time.Time
+func (w *Watcher) getLatestBlockFromEvents(events []*blockwatch.Event) *types.MiniHeader {
+	var latestBlock *types.MiniHeader
 	for _, event := range events {
-		latestBlockNumber = event.BlockHeader.Number
-		latestBlockTimestamp = event.BlockHeader.Timestamp
+		if latestBlock == nil {
+			latestBlock = event.BlockHeader
+		} else {
+			if event.BlockHeader.Number.Cmp(latestBlock.Number) == 1 {
+				latestBlock = event.BlockHeader
+			}
+		}
 	}
-	return latestBlockNumber, latestBlockTimestamp
+	return latestBlock
 }
 
 // WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed it's

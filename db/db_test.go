@@ -1184,6 +1184,8 @@ func newTestOrder() *types.OrderWithMetadata {
 				TokenID: big.NewInt(567),
 			},
 		},
+		LastValidatedBlockNumber: big.NewInt(int64(rand.Int())),
+		LastValidatedBlockHash:   common.BigToHash(big.NewInt(int64(rand.Int()))),
 	}
 }
 

@@ -119,7 +119,9 @@ CREATE TABLE IF NOT EXISTS orders (
 	isRemoved                BOOLEAN NOT NULL,
 	isPinned                 BOOLEAN NOT NULL,
 	parsedMakerAssetData     TEXT NOT NULL,
-	parsedMakerFeeAssetData  TEXT NOT NULL
+	parsedMakerFeeAssetData  TEXT NOT NULL,
+	lastValidatedBlockNumber TEXT NOT NULL,
+	lastValidatedBlockHash   TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS miniHeaders (
@@ -163,7 +165,9 @@ const insertOrderQuery = `INSERT INTO orders (
 	isRemoved,
 	isPinned,
 	parsedMakerAssetData,
-	parsedMakerFeeAssetData
+	parsedMakerFeeAssetData,
+	lastValidatedBlockNumber,
+	lastValidatedBlockHash
 ) VALUES (
 	:hash,
 	:chainID,
@@ -188,7 +192,9 @@ const insertOrderQuery = `INSERT INTO orders (
 	:isRemoved,
 	:isPinned,
 	:parsedMakerAssetData,
-	:parsedMakerFeeAssetData
+	:parsedMakerFeeAssetData,
+	:lastValidatedBlockNumber,
+	:lastValidatedBlockHash
 ) ON CONFLICT DO NOTHING
 `
 
@@ -215,7 +221,9 @@ const updateOrderQuery = `UPDATE orders SET
 	isRemoved = :isRemoved,
 	isPinned = :isPinned,
 	parsedMakerAssetData = :parsedMakerAssetData,
-	parsedMakerFeeAssetData = :parsedMakerFeeAssetData
+	parsedMakerFeeAssetData = :parsedMakerFeeAssetData,
+	lastValidatedBlockNumber = :lastValidatedBlockNumber,
+	lastValidatedBlockHash = :lastValidatedBlockHash
 WHERE orders.hash = :hash
 `
 

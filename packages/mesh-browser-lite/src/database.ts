@@ -78,6 +78,8 @@ export interface Order {
     isNotPinned: number; // Used in a compound index in queries related to max expiration time.
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
+    lastValidatedBlockNumber: string;
+    lastValidatedBlockHash: string;
 }
 
 export type OrderField = keyof Order;
@@ -152,7 +154,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,[isNotPinned+expirationTimeSeconds]',
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
         });
