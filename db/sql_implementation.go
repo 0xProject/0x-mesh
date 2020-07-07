@@ -316,6 +316,9 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 				delete(addedMap, order.Hash)
 			} else {
 				removed = append(removed, sqltypes.OrderToCommonType(order))
+				if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+					return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
+				}
 			}
 		}
 		return nil
@@ -325,6 +328,9 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	}
 	for _, order := range addedMap {
 		added = append(added, order)
+		if inserted := db.filter.Insert(order.Hash.Bytes()); !inserted {
+			return nil, nil, fmt.Errorf(`couldn't insert hash "%s" into cuckoo filter`, order.Hash.Hex())
+		}
 	}
 
 	return added, removed, nil
@@ -451,6 +457,9 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM orders WHERE hash = $1", hash); err != nil {
 		return convertErr(err)
 	}
+	if deleted := db.filter.Delete(hash.Bytes()); !deleted {
+		return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, hash.Hex())
+	}
 	return nil
 }
 
@@ -477,6 +486,9 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
 			if err != nil {
 				return err
+			}
+			if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+				return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
 			}
 		}
 		return nil

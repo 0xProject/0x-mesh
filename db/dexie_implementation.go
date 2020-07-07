@@ -109,7 +109,23 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &dexieRemoved); err != nil {
 		return nil, nil, err
 	}
-	return dexietypes.OrdersToCommonType(dexieAdded), dexietypes.OrdersToCommonType(dexieRemoved), nil
+	// NOTE(jalextowle): We remove orders from the cuckoo filter first to avoid
+	// overfilling the filter.
+	removed = make([]*types.OrderWithMetadata, len(dexieRemoved))
+	for i, order := range dexieRemoved {
+		removed[i] = dexietypes.OrderToCommonType(order)
+		if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+			return nil, nil, fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
+		}
+	}
+	added = make([]*types.OrderWithMetadata, len(dexieAdded))
+	for i, order := range dexieAdded {
+		added[i] = dexietypes.OrderToCommonType(order)
+		if inserted := db.filter.Insert(order.Hash.Bytes()); !inserted {
+			return nil, nil, fmt.Errorf(`couldn't insert hash "%s" into cuckoo filter`, order.Hash.Hex())
+		}
+	}
+	return added, removed, nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
@@ -177,6 +193,9 @@ func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 	if jsErr != nil {
 		return convertJSError(jsErr)
 	}
+	if deleted := db.filter.Delete(hash.Bytes()); !deleted {
+		return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, hash.Hex())
+	}
 	return nil
 }
 
@@ -198,7 +217,14 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &dexieOrders); err != nil {
 		return nil, err
 	}
-	return dexietypes.OrdersToCommonType(dexieOrders), nil
+	deletedOrders = make([]*types.OrderWithMetadata, len(dexieOrders))
+	for i, order := range dexieOrders {
+		deletedOrders[i] = dexietypes.OrderToCommonType(order)
+		if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+			return nil, fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
+		}
+	}
+	return deletedOrders, nil
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
