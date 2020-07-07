@@ -145,16 +145,20 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	w.wasStartedOnce = true
 	w.mu.Unlock()
 
-	g, innerCtx := errgroup.WithContext(ctx)
+	g, ctx := errgroup.WithContext(ctx)
 
 	loops := []func(context.Context) error{w.mainLoop, w.cleanupLoop, w.removedCheckerLoop}
-	for _, loop := range loops {
-		loop := loop
+	for i, loop := range loops {
+		i, loop := i, loop
 		g.Go(func() error {
-			return loop(innerCtx)
+			err := loop(ctx)
+			if err != nil {
+	 			logger.WithError(err).Errorf("error in orderwatcher loop %v", i)
+			}
+			return err
 		})
 	}
-	// Wait for all loops to return nil, or for any loop to return an error.
+
 	return g.Wait()
 }
 
