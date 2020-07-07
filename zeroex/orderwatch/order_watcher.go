@@ -153,7 +153,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		g.Go(func() error {
 			err := loop(ctx)
 			if err != nil {
-	 			logger.WithError(err).Errorf("error in orderwatcher loop %v", i)
+				logger.WithError(err).Errorf("error in orderwatcher loop %v", i)
 			}
 			return err
 		})
