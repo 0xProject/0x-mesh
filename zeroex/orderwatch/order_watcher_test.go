@@ -698,8 +698,6 @@ func TestOrderWatcherNoChange(t *testing.T) {
 		lastValidatedBlock: latestStoredBlock,
 	}
 	checkOrderState(t, expectedOrderState, newOrders[0])
-	
-	blockWatcher.SyncToLatestBlock()
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
