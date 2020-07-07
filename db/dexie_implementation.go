@@ -17,14 +17,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
+	"github.com/seiflotfy/cuckoofilter"
 )
 
 var _ Database = (*DB)(nil)
 
 type DB struct {
-	ctx   context.Context
-	dexie js.Value
-	opts  *Options
+	ctx    context.Context
+	dexie  js.Value
+	filter *cuckoo.Filter
+	opts   *Options
 }
 
 func TestOptions() *Options {
@@ -71,11 +73,16 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 		}
 	}()
 
-	return &DB{
-		ctx:   ctx,
-		dexie: dexie,
-		opts:  opts,
-	}, nil
+	db := &DB{
+		ctx:    ctx,
+		filter: cuckoo.NewFilter(uint(opts.MaxOrders)),
+		dexie:  dexie,
+		opts:   opts,
+	}
+	if err := db.fillCuckooFilter(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {

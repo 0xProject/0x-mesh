@@ -369,3 +369,17 @@ func checkMiniHeaderQuery(query *MiniHeaderQuery) error {
 	}
 	return nil
 }
+
+func (db *DB) fillCuckooFilter() error {
+	orders, err := db.FindOrders(nil)
+	if err != nil {
+		return err
+	}
+	for _, order := range orders {
+		success := db.filter.Insert(order.Hash.Bytes())
+		if !success {
+			return fmt.Errorf(`failed to insert hash "%s" into cuckoo filter during filter bootstrapping`, order.Hash.Bytes())
+		}
+	}
+	return nil
+}

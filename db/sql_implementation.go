@@ -20,6 +20,7 @@ import (
 	"github.com/ido50/sqlz"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/seiflotfy/cuckoofilter"
 )
 
 // largeLimit is used as a workaround due to the fact that SQL does not allow limit without offset.
@@ -29,9 +30,10 @@ var _ Database = (*DB)(nil)
 
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
-	ctx   context.Context
-	sqldb *sqlz.DB
-	opts  *Options
+	ctx    context.Context
+	filter *cuckoo.Filter
+	sqldb  *sqlz.DB
+	opts   *Options
 }
 
 func defaultOptions() *Options {
@@ -79,11 +81,16 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	}()
 
 	db := &DB{
-		ctx:   ctx,
-		sqldb: sqlz.Newx(sqldb),
-		opts:  opts,
+		ctx:    ctx,
+		sqldb:  sqlz.Newx(sqldb),
+		filter: cuckoo.NewFilter(uint(opts.MaxOrders)),
+		opts:   opts,
 	}
 	if err := db.migrate(); err != nil {
+		return nil, err
+	}
+
+	if err := db.fillCuckooFilter(); err != nil {
 		return nil, err
 	}
 
