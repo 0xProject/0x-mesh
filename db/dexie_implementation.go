@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"path/filepath"
 	"runtime/debug"
+	"sync"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/common/types"
@@ -22,10 +23,15 @@ import (
 
 var _ Database = (*DB)(nil)
 
+type LockedCuckooFilter struct {
+	f *cuckoo.Filter
+	*sync.RWMutex
+}
+
 type DB struct {
 	ctx    context.Context
 	dexie  js.Value
-	filter *cuckoo.Filter
+	filter *LockedCuckooFilter
 	opts   *Options
 }
 
@@ -74,10 +80,13 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 	}()
 
 	db := &DB{
-		ctx:    ctx,
-		filter: cuckoo.NewFilter(uint(opts.MaxOrders)),
-		dexie:  dexie,
-		opts:   opts,
+		ctx: ctx,
+		filter: &LockedCuckooFilter{
+			cuckoo.NewFilter(uint(opts.MaxOrders)),
+			&sync.RWMutex{},
+		},
+		dexie: dexie,
+		opts:  opts,
 	}
 	if err := db.fillCuckooFilter(); err != nil {
 		return nil, err
@@ -114,14 +123,20 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	removed = make([]*types.OrderWithMetadata, len(dexieRemoved))
 	for i, order := range dexieRemoved {
 		removed[i] = dexietypes.OrderToCommonType(order)
-		if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+		db.filter.Lock()
+		deleted := db.filter.f.Delete(order.Hash.Bytes())
+		db.filter.Unlock()
+		if !deleted {
 			return nil, nil, fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
 		}
 	}
 	added = make([]*types.OrderWithMetadata, len(dexieAdded))
 	for i, order := range dexieAdded {
 		added[i] = dexietypes.OrderToCommonType(order)
-		if inserted := db.filter.Insert(order.Hash.Bytes()); !inserted {
+		db.filter.Lock()
+		inserted := db.filter.f.Insert(order.Hash.Bytes())
+		db.filter.Unlock()
+		if !inserted {
 			return nil, nil, fmt.Errorf(`couldn't insert hash "%s" into cuckoo filter`, order.Hash.Hex())
 		}
 	}
@@ -193,7 +208,10 @@ func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 	if jsErr != nil {
 		return convertJSError(jsErr)
 	}
-	if deleted := db.filter.Delete(hash.Bytes()); !deleted {
+	db.filter.Lock()
+	deleted := db.filter.f.Delete(hash.Bytes())
+	db.filter.Unlock()
+	if !deleted {
 		return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, hash.Hex())
 	}
 	return nil
@@ -220,7 +238,10 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 	deletedOrders = make([]*types.OrderWithMetadata, len(dexieOrders))
 	for i, order := range dexieOrders {
 		deletedOrders[i] = dexietypes.OrderToCommonType(order)
-		if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+		db.filter.Lock()
+		deleted := db.filter.f.Delete(order.Hash.Bytes())
+		db.filter.Unlock()
+		if !deleted {
 			return nil, fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
 		}
 	}

@@ -375,11 +375,13 @@ func (db *DB) fillCuckooFilter() error {
 	if err != nil {
 		return err
 	}
+	db.filter.Lock()
 	for _, order := range orders {
-		success := db.filter.Insert(order.Hash.Bytes())
+		success := db.filter.f.Insert(order.Hash.Bytes())
 		if !success {
 			return fmt.Errorf(`failed to insert hash "%s" into cuckoo filter during filter bootstrapping`, order.Hash.Bytes())
 		}
 	}
+	db.filter.Unlock()
 	return nil
 }

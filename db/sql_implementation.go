@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
@@ -28,10 +29,15 @@ const largeLimit = math.MaxInt64
 
 var _ Database = (*DB)(nil)
 
+type LockedCuckooFilter struct {
+	f *cuckoo.Filter
+	*sync.RWMutex
+}
+
 // DB instantiates the DB connection and creates all the collections used by the application
 type DB struct {
 	ctx    context.Context
-	filter *cuckoo.Filter
+	filter *LockedCuckooFilter
 	sqldb  *sqlz.DB
 	opts   *Options
 }
@@ -81,10 +87,13 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	}()
 
 	db := &DB{
-		ctx:    ctx,
-		sqldb:  sqlz.Newx(sqldb),
-		filter: cuckoo.NewFilter(uint(opts.MaxOrders)),
-		opts:   opts,
+		ctx:   ctx,
+		sqldb: sqlz.Newx(sqldb),
+		filter: &LockedCuckooFilter{
+			cuckoo.NewFilter(uint(opts.MaxOrders)),
+			&sync.RWMutex{},
+		},
+		opts: opts,
 	}
 	if err := db.migrate(); err != nil {
 		return nil, err
@@ -316,7 +325,10 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 				delete(addedMap, order.Hash)
 			} else {
 				removed = append(removed, sqltypes.OrderToCommonType(order))
-				if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+				db.filter.Lock()
+				deleted := db.filter.f.Delete(order.Hash.Bytes())
+				db.filter.Unlock()
+				if !deleted {
 					return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
 				}
 			}
@@ -328,7 +340,10 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	}
 	for _, order := range addedMap {
 		added = append(added, order)
-		if inserted := db.filter.Insert(order.Hash.Bytes()); !inserted {
+		db.filter.Lock()
+		inserted := db.filter.f.Insert(order.Hash.Bytes())
+		db.filter.Unlock()
+		if !inserted {
 			return nil, nil, fmt.Errorf(`couldn't insert hash "%s" into cuckoo filter`, order.Hash.Hex())
 		}
 	}
@@ -457,7 +472,10 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	if _, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM orders WHERE hash = $1", hash); err != nil {
 		return convertErr(err)
 	}
-	if deleted := db.filter.Delete(hash.Bytes()); !deleted {
+	db.filter.Lock()
+	deleted := db.filter.f.Delete(hash.Bytes())
+	db.filter.Unlock()
+	if !deleted {
 		return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, hash.Hex())
 	}
 	return nil
@@ -487,7 +505,10 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 			if err != nil {
 				return err
 			}
-			if deleted := db.filter.Delete(order.Hash.Bytes()); !deleted {
+			db.filter.Lock()
+			deleted := db.filter.f.Delete(order.Hash.Bytes())
+			db.filter.Unlock()
+			if !deleted {
 				return fmt.Errorf(`couldn't remove hash "%s" from cuckoo filter`, order.Hash.Hex())
 			}
 		}
