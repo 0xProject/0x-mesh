@@ -1158,7 +1158,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-			// A previous event caused this order to be removed from DB because it's
+			// A previous event caused this order to be removed from DB because its
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
 			w.rewatchOrder(order, newFillableAmount, validationBlock)
@@ -1600,7 +1600,7 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 		return err
 	}
 
-	// After permanently deleting an order, we also remove it's assetData from the Decoder
+	// After permanently deleting an order, we also remove its assetData from the Decoder
 	err := w.removeAssetDataAddressFromEventDecoder(order.MakerAssetData)
 	if err != nil {
 		// This should never happen since the same error would have happened when adding
@@ -1775,7 +1775,7 @@ func (w *Watcher) getLatestBlockFromEvents(events []*blockwatch.Event) *types.Mi
 	return latestBlock
 }
 
-// WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed it's
+// WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed its
 // first block
 func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error {
 	select {
