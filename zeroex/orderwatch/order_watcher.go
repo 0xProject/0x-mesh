@@ -1172,10 +1172,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			// The time stamp is valid if ExpirationTimeSeconds is equal to or greater than the time stamp
+			// The timestamp is valid if its expiration time is greater than the timestamp
 			// of the validation block.
-			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
-			timeStampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) == 1
+			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
+			timestampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
 			isOrderUnexpired := order.IsRemoved && timeStampIsValid
 
 			if isOrderUnexpired {
