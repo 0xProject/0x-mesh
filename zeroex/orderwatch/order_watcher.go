@@ -1158,10 +1158,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-			// A previous event caused this order to be removed from DB because it's
+			// A previous event caused this order to be removed from DB because its
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
-			w.rewatchOrder(order, acceptedOrderInfo.FillableTakerAssetAmount, validationBlock)
+			w.rewatchOrder(order, newFillableAmount, validationBlock)
 			orderEvent := &zeroex.OrderEvent{
 				Timestamp:                validationBlock.Timestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
@@ -1176,10 +1176,11 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// of the validation block.
 			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
 			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
+			isOrderUnexpired := order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+				if isOrderUnexpired {
 					w.rewatchOrder(order, nil, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
@@ -1196,7 +1197,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+				if isOrderUnexpired {
 					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
@@ -1222,7 +1223,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
 				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
 				// If order was previously expired, check if it has become unexpired
-				if order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired {
+				if isOrderUnexpired {
 					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
@@ -1636,7 +1637,7 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 		return err
 	}
 
-	// After permanently deleting an order, we also remove it's assetData from the Decoder
+	// After permanently deleting an order, we also remove its assetData from the Decoder
 	err := w.removeAssetDataAddressFromEventDecoder(order.MakerAssetData)
 	if err != nil {
 		// This should never happen since the same error would have happened when adding
@@ -1811,7 +1812,7 @@ func (w *Watcher) getLatestBlockFromEvents(events []*blockwatch.Event) *types.Mi
 	return latestBlock
 }
 
-// WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed it's
+// WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed its
 // first block
 func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error {
 	select {
