@@ -1161,12 +1161,12 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// A previous event caused this order to be removed from DB because it's
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
 			// causes order fill txn to get reverted). We need to re-add order and emit an event.
-			w.rewatchOrder(order, acceptedOrderInfo.FillableTakerAssetAmount, validationBlock)
+			w.rewatchOrder(order, newFillableAmount, validationBlock)
 			orderEvent := &zeroex.OrderEvent{
 				Timestamp:                validationBlock.Timestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder(),
-				FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+				FillableTakerAssetAmount: newFillableAmount,
 				EndState:                 zeroex.ESOrderAdded,
 				ContractEvents:           orderHashToEvents[order.Hash],
 			}
@@ -1216,7 +1216,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
 					EndState:                 zeroex.ESOrderFilled,
-					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					FillableTakerAssetAmount: newFillableAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
 				orderEvents = append(orderEvents, orderEvent)
@@ -1241,7 +1241,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
 					EndState:                 zeroex.ESOrderFillabilityIncreased,
-					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
+					FillableTakerAssetAmount: newFillableAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
 				orderEvents = append(orderEvents, orderEvent)
