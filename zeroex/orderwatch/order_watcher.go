@@ -1195,7 +1195,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			}
-			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
+			if oldAmountIsMoreThenNewAmount {
 				if !isOrderUnexpired {
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
@@ -1209,7 +1209,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
 				orderEvents = append(orderEvents, orderEvent)
-			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
+			} else {
 				if !isOrderUnexpired {
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
