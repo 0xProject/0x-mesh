@@ -1172,11 +1172,11 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			// The order is expired if ExpirationTimeSeconds is equal to or less than the timestamp
+			// The time stamp is valid if ExpirationTimeSeconds is equal to or greater than the time stamp
 			// of the validation block.
 			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
-			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
-			isOrderUnexpired := order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired
+			timeStampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) == 1
+			isOrderUnexpired := order.IsRemoved && timeStampIsValid
 
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
@@ -1194,24 +1194,16 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				continue
-			}
-			if oldAmountIsMoreThenNewAmount {
-				// Order was filled, emit event
-				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                validationBlock.Timestamp,
-					OrderHash:                acceptedOrderInfo.OrderHash,
-					SignedOrder:              order.SignedOrder(),
-					EndState:                 zeroex.ESOrderFilled,
-					FillableTakerAssetAmount: newFillableAmount,
-					ContractEvents:           orderHashToEvents[order.Hash],
-				}
-				orderEvents = append(orderEvents, orderEvent)
 			} else {
+				endState := zeroex.ESOrderFillabilityIncreased
+				if oldAmountIsMoreThenNewAmount {
+					endState = zeroex.ESOrderFilled
+				}
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
-					EndState:                 zeroex.ESOrderFillabilityIncreased,
+					EndState:                 endState,
 					FillableTakerAssetAmount: newFillableAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
