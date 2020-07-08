@@ -150,7 +150,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	namedLoops := []struct {
 		loop func(context.Context) error
 		name string
-	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "mainLoop"}, {w.removedCheckerLoop, "mainLoop"}}
+	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "cleanupLoop"}, {w.removedCheckerLoop, "removedCheckerLoop"}}
 	for _, namedLoop := range namedLoops {
 		namedLoop := namedLoop
 		g.Go(func() error {
