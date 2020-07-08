@@ -1171,11 +1171,9 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 			orderEvents = append(orderEvents, orderEvent)
 		} else {
-			// The order is expired if ExpirationTimeSeconds is equal to or less than the timestamp
-			// of the validation block.
 			validationBlockTimeStampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
-			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
-			isOrderUnexpired := order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired
+			orderTimeStampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) == 1
+			isOrderUnexpired := order.IsRemoved && orderTimeStampIsValid
 
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
@@ -1188,6 +1186,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			}
+
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// No important state-change happened. Still want to update lastValidatedBlock
 				w.updateOrderLastValidatedBlock(order, validationBlock)
