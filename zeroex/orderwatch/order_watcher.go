@@ -1188,17 +1188,14 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					EndState:                 zeroex.ESOrderUnexpired,
 				}
 				orderEvents = append(orderEvents, orderEvent)
+			} else {
+				w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 			}
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-				// No important state-change happened. Still want to update lastValidatedBlock
-				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			}
 			if oldAmountIsMoreThenNewAmount {
-				if !isOrderUnexpired {
-					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
-				}
 				// Order was filled, emit event
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
@@ -1210,9 +1207,6 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			} else {
-				if !isOrderUnexpired {
-					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
-				}
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
