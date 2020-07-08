@@ -1178,36 +1178,25 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			isOrderExpired := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) != 1
 			isOrderUnexpired := order.IsRemoved && oldFillableAmount.Cmp(big.NewInt(0)) != 0 && !isOrderExpired
 
-			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-				// If order was previously expired, check if it has become unexpired
-				if isOrderUnexpired {
-					w.rewatchOrder(order, newFillableAmount, validationBlock)
-					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlock.Timestamp,
-						OrderHash:                order.Hash,
-						SignedOrder:              order.SignedOrder(),
-						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-						EndState:                 zeroex.ESOrderUnexpired,
-					}
-					orderEvents = append(orderEvents, orderEvent)
+			if isOrderUnexpired {
+				w.rewatchOrder(order, newFillableAmount, validationBlock)
+				orderEvent := &zeroex.OrderEvent{
+					Timestamp:                validationBlock.Timestamp,
+					OrderHash:                order.Hash,
+					SignedOrder:              order.SignedOrder(),
+					FillableTakerAssetAmount: order.FillableTakerAssetAmount,
+					EndState:                 zeroex.ESOrderUnexpired,
 				}
+				orderEvents = append(orderEvents, orderEvent)
+			}
+
+			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// No important state-change happened. Still want to update lastValidatedBlock
 				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			}
 			if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && oldAmountIsMoreThenNewAmount {
-				// If order was previously expired, check if it has become unexpired
-				if isOrderUnexpired {
-					w.rewatchOrder(order, newFillableAmount, validationBlock)
-					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlock.Timestamp,
-						OrderHash:                order.Hash,
-						SignedOrder:              order.SignedOrder(),
-						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-						EndState:                 zeroex.ESOrderUnexpired,
-					}
-					orderEvents = append(orderEvents, orderEvent)
-				} else {
+				if !isOrderUnexpired {
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
 				// Order was filled, emit event
@@ -1221,19 +1210,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			} else if oldFillableAmount.Cmp(big.NewInt(0)) == 1 && !oldAmountIsMoreThenNewAmount {
-				// The order is now fillable for more then it was before. E.g.: A fill txn reverted (block-reorg)
-				// If order was previously expired, check if it has become unexpired
-				if isOrderUnexpired {
-					w.rewatchOrder(order, newFillableAmount, validationBlock)
-					orderEvent := &zeroex.OrderEvent{
-						Timestamp:                validationBlock.Timestamp,
-						OrderHash:                order.Hash,
-						SignedOrder:              order.SignedOrder(),
-						FillableTakerAssetAmount: order.FillableTakerAssetAmount,
-						EndState:                 zeroex.ESOrderUnexpired,
-					}
-					orderEvents = append(orderEvents, orderEvent)
-				} else {
+				if !isOrderUnexpired {
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
 				orderEvent := &zeroex.OrderEvent{
