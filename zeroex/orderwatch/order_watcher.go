@@ -1155,7 +1155,6 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 		}
 		oldFillableAmount := order.FillableTakerAssetAmount
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
-		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
 		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because its
@@ -1193,29 +1192,21 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				// No important state-change happened. Still want to update lastValidatedBlock
 				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
-			} else if oldAmountIsMoreThenNewAmount {
-				if !isOrderUnexpired {
-					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
-				}
-				// Order was filled, emit event
-				orderEvent := &zeroex.OrderEvent{
-					Timestamp:                validationBlock.Timestamp,
-					OrderHash:                acceptedOrderInfo.OrderHash,
-					SignedOrder:              order.SignedOrder(),
-					EndState:                 zeroex.ESOrderFilled,
-					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
-					ContractEvents:           orderHashToEvents[order.Hash],
-				}
-				orderEvents = append(orderEvents, orderEvent)
 			} else {
 				if !isOrderUnexpired {
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
+
+				endState := zeroex.ESOrderFillabilityIncreased
+				if oldFillableAmount.Cmp(newFillableAmount) == 1 {
+					endState = zeroex.ESOrderFilled
+				}
+
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
-					EndState:                 zeroex.ESOrderFillabilityIncreased,
+					EndState:                 endState,
 					FillableTakerAssetAmount: acceptedOrderInfo.FillableTakerAssetAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
 				}
