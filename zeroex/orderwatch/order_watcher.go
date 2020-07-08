@@ -1181,7 +1181,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
 				// If order was previously expired, check if it has become unexpired
 				if isOrderUnexpired {
-					w.rewatchOrder(order, nil, validationBlock)
+					w.rewatchOrder(order, newFillableAmount, validationBlock)
 					orderEvent := &zeroex.OrderEvent{
 						Timestamp:                validationBlock.Timestamp,
 						OrderHash:                order.Hash,
