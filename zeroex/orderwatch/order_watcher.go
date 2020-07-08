@@ -147,13 +147,16 @@ func (w *Watcher) Watch(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	loops := []func(context.Context) error{w.mainLoop, w.cleanupLoop, w.removedCheckerLoop}
-	for i, loop := range loops {
-		i, loop := i, loop
+	namedLoops := []struct {
+		loop func(context.Context) error
+		name string
+	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "mainLoop"}, {w.removedCheckerLoop, "mainLoop"}}
+	for _, namedLoop := range namedLoops {
+		namedLoop := namedLoop
 		g.Go(func() error {
-			err := loop(ctx)
+			err := namedLoop.loop(ctx)
 			if err != nil {
-				logger.WithError(err).Errorf("error in orderwatcher loop %v", i)
+				logger.WithError(err).Errorf("error in orderwatcher %v", namedLoop.name)
 			}
 			return err
 		})
