@@ -1176,7 +1176,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
 			timestampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
-			isOrderUnexpired := order.IsRemoved && timeStampIsValid
+			isOrderUnexpired := order.IsRemoved && timestampIsValid
 
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
