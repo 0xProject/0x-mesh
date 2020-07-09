@@ -1522,21 +1522,6 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 
 // TODO(albrow): Add tests for LastValidatedBlockNumber and LastValidatedBlockHash for
 // this and other similar functions.
-func (w *Watcher) updateOrderLastValidatedBlock(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
-	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
-		orderToUpdate.LastUpdated = time.Now().UTC()
-		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
-		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
-		return orderToUpdate, nil
-	})
-	if err != nil {
-		logger.WithFields(logger.Fields{
-			"error": err.Error(),
-			"order": order,
-		}).Error("Failed to update order")
-	}
-}
-
 func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.LastUpdated = time.Now().UTC()
