@@ -152,7 +152,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 		name string
 	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "cleanupLoop"}, {w.removedCheckerLoop, "removedCheckerLoop"}}
 	for _, namedLoop := range namedLoops {
-		namedLoop := namedLoop
+		namedLoop := namedLoop // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {
 			err := namedLoop.loop(ctx)
 			if err != nil {
