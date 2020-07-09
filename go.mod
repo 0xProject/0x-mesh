@@ -31,6 +31,7 @@ require (
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
+	github.com/graph-gophers/graphql-go v0.0.0-20200622220639-c1d9693c95a6
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ido50/sqlz v0.0.0-20200308174337-487b8faf612c

@@ -98,6 +98,18 @@ func main() {
 		}
 	}()
 
+	// Start GraphQL server.
+	graphQLErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// TODO(albrow): Pass in port number.
+		// log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
+		if err := serveGraphQL(ctx, app); err != nil {
+			graphQLErrChan <- err
+		}
+	}()
+
 	// Block until there is an error or the app is closed.
 	select {
 	case <-ctx.Done():
@@ -112,6 +124,9 @@ func main() {
 		cancel()
 		log.WithField("error", err.Error()).Error("WS RPC server returned error")
 	case err := <-httpRPCErrChan:
+		cancel()
+		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
+	case err := <-graphQLErrChan:
 		cancel()
 		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
 	}

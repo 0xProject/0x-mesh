@@ -36,7 +36,7 @@ type Stats struct {
 
 // LatestBlock is the latest block processed by the Mesh node.
 type LatestBlock struct {
-	Number int         `json:"number"`
+	Number string      `json:"number"`
 	Hash   common.Hash `json:"hash"`
 }
 

@@ -243,7 +243,7 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcP
 
 	// Ensure that the "LatestBlock" in the stats response is non-nil and has a nonzero block number.
 	assert.NotNil(t, getStatsResponse.LatestBlock)
-	assert.True(t, getStatsResponse.LatestBlock.Number > 0)
+	assert.True(t, getStatsResponse.LatestBlock.Number != "")
 
 	// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
 	//                   should be the latest block.
