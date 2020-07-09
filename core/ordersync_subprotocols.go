@@ -11,6 +11,7 @@ import (
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/seiflotfy/cuckoofilter"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -385,6 +386,178 @@ func (p *FilteredPaginationSubProtocolV1) ParseRequestMetadata(metadata json.Raw
 
 func (p *FilteredPaginationSubProtocolV1) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
 	var parsed FilteredPaginationResponseMetadataV1
+	if err := json.Unmarshal(metadata, &parsed); err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+/*** FIXME -- Add comments ***/
+
+var _ ordersync.Subprotocol = (*CuckooFilteredPaginationSubProtocolV0)(nil)
+
+type CuckooFilteredPaginationSubProtocolV0 struct {
+	app          *App
+	cuckooFilter *cuckoo.Filter
+	orderFilter  *orderfilter.Filter
+	perPage      int
+}
+
+func NewCuckooFilteredPaginationSubProtocolV0(app *App, perPage int) ordersync.Subprotocol {
+	return &CuckooFilteredPaginationSubProtocolV0{
+		app:         app,
+		orderFilter: app.orderFilter,
+		perPage:     perPage,
+	}
+}
+
+type CuckooFilteredPaginationRequestMetadataV0 struct {
+	MinOrderHash common.Hash `json:"minOrderHash"`
+}
+
+type CuckooFilteredPaginationResponseMetadataV0 struct {
+	NextMinOrderHash common.Hash `json:"nextMinOrderHash"`
+}
+
+func (p *CuckooFilteredPaginationSubProtocolV0) Name() string {
+	return "/pagination-with-cuckoo-filter/version/1"
+}
+
+func (p *CuckooFilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Context, req *ordersync.Request) (*ordersync.Response, error) {
+	var metadata *CuckooFilteredPaginationRequestMetadataV0
+	if req.Metadata == nil {
+		// Default metadata for the first request.
+		metadata = &CuckooFilteredPaginationRequestMetadataV0{
+			MinOrderHash: common.Hash{},
+		}
+	} else {
+		var ok bool
+		metadata, ok = req.Metadata.(*CuckooFilteredPaginationRequestMetadataV0)
+		if !ok {
+			return nil, fmt.Errorf("FilteredPaginationSubProtocolV1 received request with wrong metadata type (got %T)", req.Metadata)
+		}
+	}
+
+	// It's possible that none of the orders in the current page match the filter.
+	// We don't want to respond with zero orders, so keep iterating until we find
+	// at least some orders that match the filter.
+	filteredOrders := []*zeroex.SignedOrder{}
+	currentMinOrderHash := metadata.MinOrderHash
+	nextMinOrderHash := common.Hash{}
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+		// Get the orders for this page.
+		ordersResp, err := p.app.GetOrders(p.perPage, currentMinOrderHash)
+		if err != nil {
+			return nil, err
+		}
+		if len(ordersResp.OrdersInfos) == 0 {
+			// No more orders left.
+			break
+		}
+		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
+		// Filter the orders for this page through the orderfilter and the cuckoo filter.
+		for _, orderInfo := range ordersResp.OrdersInfos {
+			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+				return nil, err
+			} else if matches && p.cuckooFilter.Lookup(orderInfo.OrderHash.Bytes()) {
+				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+			}
+		}
+		if len(filteredOrders) == 0 {
+			// If none of the orders for this page match the filter, we continue
+			// on to the next page.
+			currentMinOrderHash = nextMinOrderHash
+			continue
+		} else {
+			break
+		}
+	}
+
+	return &ordersync.Response{
+		Orders:   filteredOrders,
+		Complete: len(filteredOrders) == 0,
+		Metadata: &FilteredPaginationResponseMetadataV1{
+			NextMinOrderHash: nextMinOrderHash,
+		},
+	}, nil
+}
+
+func (p *CuckooFilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, error) {
+	if res.Metadata == nil {
+		return nil, errors.New("FilteredPaginationSubProtocolV1 received response with nil metadata")
+	}
+	_, ok := res.Metadata.(*CuckooFilteredPaginationResponseMetadataV0)
+	if !ok {
+		return nil, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
+	}
+	filteredOrders := []*zeroex.SignedOrder{}
+	for _, order := range res.Orders {
+		// TODO(jalextowle): This approach causes us to calculate this hash more than once
+		orderHash, err := order.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+
+		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
+			return nil, err
+		} else if matches && p.cuckooFilter.Lookup(orderHash.Bytes()) {
+			filteredOrders = append(filteredOrders, order)
+		} else {
+			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
+		}
+	}
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
+	if err != nil {
+		return nil, err
+	}
+	for _, acceptedOrderInfo := range validationResults.Accepted {
+		if acceptedOrderInfo.IsNew {
+			log.WithFields(map[string]interface{}{
+				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
+				"from":      res.ProviderID.Pretty(),
+				"protocol":  "ordersync",
+			}).Info("received new valid order from peer")
+			log.WithFields(map[string]interface{}{
+				"order":     acceptedOrderInfo.SignedOrder,
+				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
+				"from":      res.ProviderID.Pretty(),
+				"protocol":  "ordersync",
+			}).Trace("all fields for new valid order received from peer")
+		}
+	}
+
+	// Calculate the next min order hash to send in our next request.
+	// This is equal to the maximum order hash we have received so far.
+	var nextMinOrderHash common.Hash
+	if len(res.Orders) > 0 {
+		hash, err := res.Orders[len(res.Orders)-1].ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		nextMinOrderHash = hash
+	}
+	return &ordersync.Request{
+		Metadata: &CuckooFilteredPaginationRequestMetadataV0{
+			MinOrderHash: nextMinOrderHash,
+		},
+	}, nil
+}
+
+func (p *CuckooFilteredPaginationSubProtocolV0) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
+	var parsed CuckooFilteredPaginationRequestMetadataV0
+	if err := json.Unmarshal(metadata, &parsed); err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+func (p *CuckooFilteredPaginationSubProtocolV0) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
+	var parsed CuckooFilteredPaginationResponseMetadataV0
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
 		return nil, err
 	}
