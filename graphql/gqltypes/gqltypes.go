@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type LatestBlock struct {
@@ -49,5 +50,53 @@ func StatsFromCommonType(stats *types.Stats) *Stats {
 		EthRPCRequestsSentInCurrentUTCDay: int32(stats.EthRPCRequestsSentInCurrentUTCDay),
 		EthRPCRateLimitExpiredRequests:    int32(stats.EthRPCRateLimitExpiredRequests),
 		MaxExpirationTime:                 stats.MaxExpirationTime,
+	}
+}
+
+type OrderWithMetadata struct {
+	Hash                              string
+	ChainID                           string
+	ExchangeAddress                   string
+	MakerAddress                      string
+	MakerAssetData                    string
+	MakerFeeAssetData                 string
+	MakerAssetAmount                  string
+	MakerFee                          string
+	TakerAddress                      string
+	TakerAssetData                    string
+	TakerFeeAssetData                 string
+	TakerAssetAmount                  string
+	TakerFee                          string
+	SenderAddress                     string
+	FeeRecipientAddress               string
+	ExpirationTimeSeconds             string
+	Salt                              string
+	Signature                         string
+	RemainingFillableTakerAssetAmount string
+	LastUpdated                       string
+}
+
+func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithMetadata {
+	return &OrderWithMetadata{
+		Hash:                              order.Hash.Hex(),
+		ChainID:                           order.ChainID.String(),
+		ExchangeAddress:                   order.ExchangeAddress.Hex(),
+		MakerAddress:                      order.MakerAddress.Hex(),
+		MakerAssetData:                    common.Bytes2Hex(order.MakerAssetData),
+		MakerFeeAssetData:                 common.Bytes2Hex(order.MakerFeeAssetData),
+		MakerAssetAmount:                  order.MakerAssetAmount.String(),
+		MakerFee:                          order.MakerFee.String(),
+		TakerAddress:                      order.TakerAddress.Hex(),
+		TakerAssetData:                    common.Bytes2Hex(order.TakerAssetData),
+		TakerFeeAssetData:                 common.Bytes2Hex(order.TakerFeeAssetData),
+		TakerAssetAmount:                  order.TakerAssetAmount.String(),
+		TakerFee:                          order.TakerFee.String(),
+		SenderAddress:                     order.SenderAddress.Hex(),
+		FeeRecipientAddress:               order.FeeRecipientAddress.Hex(),
+		ExpirationTimeSeconds:             order.ExpirationTimeSeconds.String(),
+		Salt:                              order.Salt.String(),
+		Signature:                         common.Bytes2Hex(order.Signature),
+		RemainingFillableTakerAssetAmount: order.FillableTakerAssetAmount.String(),
+		LastUpdated:                       order.LastUpdated.Format(time.RFC3339),
 	}
 }

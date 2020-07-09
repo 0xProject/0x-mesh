@@ -85,9 +85,6 @@ func (handler *rpcHandler) GetOrders(perPage int, minOrderHashHex string) (resul
 	var minOrderHash = common.HexToHash(minOrderHashHex)
 	getOrdersResponse, err := handler.app.GetOrders(perPage, minOrderHash)
 	if err != nil {
-		if _, ok := err.(core.ErrSnapshotNotFound); ok {
-			return nil, err
-		}
 		if _, ok := err.(core.ErrPerPageZero); ok {
 			return nil, err
 		}

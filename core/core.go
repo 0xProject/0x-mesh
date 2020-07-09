@@ -784,13 +784,14 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 	}
 }
 
-// ErrSnapshotNotFound is the error returned when a snapshot not found with a particular id
-type ErrSnapshotNotFound struct {
-	id string
+func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.GetOrder(hash)
 }
 
-func (e ErrSnapshotNotFound) Error() string {
-	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
+func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.FindOrders(query)
 }
 
 // ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0

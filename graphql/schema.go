@@ -7,29 +7,35 @@ import (
 
 const schemaString = `
 """
-A 32-byte Keccak256 hash encoded as a hexadecimal string.
+A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
-scalar Hash
-"""
-An Ethereum address encoded as a hexadecimal string.
-"""
-scalar Address
-"""
-A BigNumber or uint256 value encoded as a numerical string.
-"""
-scalar BigNumber
-"""
-An array of arbitrary bytes encoded as a hexadecimal string.
-"""
-scalar Bytes
-"""
-A time encoded as a string using the RFC3339 standard.
-"""
-scalar Timestamp
-"""
-An arbitrary set of key-value pairs. Encoded as a JSON object.
-"""
-scalar Object
+type OrderWithMetadata {
+  chainId: String!
+  exchangeAddress: String!
+  makerAddress: String!
+  makerAssetData: String!
+  makerAssetAmount: String!
+  makerFeeAssetData: String!
+  makerFee: String!
+  takerAddress: String!
+  takerAssetData: String!
+  takerAssetAmount: String!
+  takerFeeAssetData: String!
+  takerFee: String!
+  senderAddress: String!
+  feeRecipientAddress: String!
+  expirationTimeSeconds: String!
+  salt: String!
+  signature: String!
+  """
+  The hash, which can be used to uniquely identify an order.
+  """
+  hash: String!
+  """
+  The remaining amount of the maker asset which has not yet been filled.
+  """
+  remainingFillableTakerAssetAmount: String!
+}
 
 """
 The block number and block hash for the latest block that has been processed by Mesh.
@@ -59,11 +65,15 @@ type Stats {
 }
 
 type Query {
+  """
+  Returns the order with the specified hash, or null if no order is found with that hash.
+  """
+  order(hash: String!): OrderWithMetadata
 	"""
 	Returns the current stats.
 	"""
 	stats: Stats
-  }
+}
 `
 
 func NewSchema(app *core.App) (*graphql.Schema, error) {

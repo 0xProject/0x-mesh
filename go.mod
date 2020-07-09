@@ -15,6 +15,7 @@ replace (
 )
 
 require (
+	github.com/0xProject/go-ethereum v1.8.7
 	github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115
 	github.com/albrow/stringset v2.1.0+incompatible
 	github.com/aristanetworks/goarista v0.0.0-20190712234253-ed1100a1c015 // indirect
