@@ -25,30 +25,20 @@ var config = Config{
 	Topics:          []common.Hash{},
 }
 
-var (
+const (
 	basicFakeClientFixture = "testdata/fake_client_basic_fixture.json"
+	blockRetentionLimit    = 10
 )
 
 func dbOptions() *db.Options {
 	options := db.TestOptions()
-	// For the block watcher tests we set MaxMiniHeaders to 10.
-	options.MaxMiniHeaders = 10
 	return options
 }
 
 func TestWatcher(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	fakeClient, err := newFakeClient("testdata/fake_client_block_poller_fixtures.json")
-	require.NoError(t, err)
-
-	// Polling interval unused because we hijack the ticker for this test
-	require.NoError(t, err)
-	config.Client = fakeClient
-	config.DB = database
-	watcher := New(config)
+	fakeClient, watcher := setupFakeClientAndOrderWatcher(t, ctx, "testdata/fake_client_block_poller_fixtures.json")
 
 	// Having a buffer of 1 unblocks the below for-loop without resorting to a goroutine
 	events := make(chan []*Event, 1)
@@ -57,7 +47,7 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err = watcher.SyncToLatestBlock()
+		err := watcher.SyncToLatestBlock()
 		if strings.HasPrefix(scenarioLabel, "ERROR") {
 			require.Error(t, err)
 		} else {
@@ -91,15 +81,7 @@ func TestWatcher(t *testing.T) {
 func TestWatcherStartStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	fakeClient, err := newFakeClient(basicFakeClientFixture)
-	require.NoError(t, err)
-
-	require.NoError(t, err)
-	config.Client = fakeClient
-	config.DB = database
-	watcher := New(config)
+	_, watcher := setupFakeClientAndOrderWatcher(t, ctx, basicFakeClientFixture)
 
 	// Start the watcher in a goroutine. We use the done channel to signal when
 	// watcher.Watch returns.
@@ -196,13 +178,7 @@ func TestGetSubBlockRanges(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	fakeClient, err := newFakeClient(basicFakeClientFixture)
-	require.NoError(t, err)
-	config.Client = fakeClient
-	config.DB = database
-	watcher := New(config)
+	_, watcher := setupFakeClientAndOrderWatcher(t, ctx, basicFakeClientFixture)
 
 	for _, testCase := range testCases {
 		blockRanges := watcher.getSubBlockRanges(testCase.from, testCase.to, rangeSize)
@@ -213,13 +189,10 @@ func TestGetSubBlockRanges(t *testing.T) {
 func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	// Fixture will return block 132 as the tip of the chain (127 blocks from block 5)
-	fakeClient, err := newFakeClient("testdata/fake_client_fast_sync_fixture.json")
-	require.NoError(t, err)
 
-	require.NoError(t, err)
+	// Fixture will return block 132 as the tip of the chain (127 blocks from block 5)
+	_, watcher := setupFakeClientAndOrderWatcher(t, ctx, "testdata/fake_client_fast_sync_fixture.json")
+
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &types.MiniHeader{
 		Number:    big.NewInt(5),
@@ -227,11 +200,7 @@ func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
 		Timestamp: time.Now(),
 	}
-
-	config.DB = database
-	config.Client = fakeClient
-	watcher := New(config)
-	err = watcher.stack.Push(lastBlockSeen)
+	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
 	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
@@ -248,13 +217,10 @@ func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	// Fixture will return block 133 as the tip of the chain (128 blocks from block 5)
-	fakeClient, err := newFakeClient("testdata/fake_client_reset_fixture.json")
-	require.NoError(t, err)
 
-	require.NoError(t, err)
+	// Fixture will return block 133 as the tip of the chain (128 blocks from block 5)
+	_, watcher := setupFakeClientAndOrderWatcher(t, ctx, "testdata/fake_client_reset_fixture.json")
+
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &types.MiniHeader{
 		Number:    big.NewInt(5),
@@ -262,11 +228,7 @@ func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
 		Timestamp: time.Now(),
 	}
-
-	config.DB = database
-	config.Client = fakeClient
-	watcher := New(config)
-	err = watcher.stack.Push(lastBlockSeen)
+	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
 	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
@@ -282,13 +244,10 @@ func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 func TestFastSyncToLatestBlockNoneMissed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	database, err := db.New(ctx, dbOptions())
-	require.NoError(t, err)
-	// Fixture will return block 5 as the tip of the chain
-	fakeClient, err := newFakeClient("testdata/fake_client_basic_fixture.json")
-	require.NoError(t, err)
 
-	require.NoError(t, err)
+	// Fixture will return block 5 as the tip of the chain
+	_, watcher := setupFakeClientAndOrderWatcher(t, ctx, "testdata/fake_client_basic_fixture.json")
+
 	// Add block number 5 as the last block seen by BlockWatcher
 	lastBlockSeen := &types.MiniHeader{
 		Number:    big.NewInt(5),
@@ -296,12 +255,7 @@ func TestFastSyncToLatestBlockNoneMissed(t *testing.T) {
 		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
 		Timestamp: time.Now(),
 	}
-
-	config.DB = database
-	config.Client = fakeClient
-	watcher := New(config)
-
-	err = watcher.stack.Push(lastBlockSeen)
+	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
 	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
@@ -347,7 +301,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		{
 			Label: "HAPPY_PATH",
 			rangeToFilterLogsResponse: map[string]filterLogsResponse{
-				"10-20": filterLogsResponse{
+				"10-20": {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
@@ -432,13 +386,9 @@ func TestFilterLogsRecursively(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		database, err := db.New(ctx, dbOptions())
-		require.NoError(t, err)
 		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
 		require.NoError(t, err)
-		config.Client = fakeLogClient
-		config.DB = database
-		watcher := New(config)
+		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
 		logs, err := watcher.filterLogsRecurisively(from, to, []ethtypes.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
@@ -460,12 +410,12 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	from := 10
 	to := 20
 	testCases := []logsInBlockRangeTestCase{
-		logsInBlockRangeTestCase{
+		{
 			Label: "HAPPY_PATH",
 			From:  from,
 			To:    to,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				aRange(from, to): filterLogsResponse{
+				aRange(from, to): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
@@ -474,17 +424,17 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			Logs:                   []ethtypes.Log{logStub},
 			FurthestBlockProcessed: to,
 		},
-		logsInBlockRangeTestCase{
+		{
 			Label: "SPLIT_REQUEST_BY_MAX_BLOCKS_IN_QUERY",
 			From:  from,
 			To:    from + maxBlocksInGetLogsQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
 				},
-				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
@@ -493,22 +443,22 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			Logs:                   []ethtypes.Log{logStub, logStub},
 			FurthestBlockProcessed: from + maxBlocksInGetLogsQuery + 10,
 		},
-		logsInBlockRangeTestCase{
+		{
 			Label: "SHORT_CIRCUIT_SEMAPHORE_BLOCKED_REQUESTS_ON_ERROR",
 			From:  from,
 			To:    from + (maxBlocksInGetLogsQuery * (getLogsRequestChunkSize + 1)),
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
 				// Same number of responses as the getLogsRequestChunkSize since the
 				// error response will stop any further requests.
-				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): {
 					Err: errUnexpected,
 				},
-				aRange(from+maxBlocksInGetLogsQuery, from+(maxBlocksInGetLogsQuery*2)-1): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+(maxBlocksInGetLogsQuery*2)-1): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
 				},
-				aRange(from+(maxBlocksInGetLogsQuery*2), from+(maxBlocksInGetLogsQuery*3)-1): filterLogsResponse{
+				aRange(from+(maxBlocksInGetLogsQuery*2), from+(maxBlocksInGetLogsQuery*3)-1): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
@@ -517,17 +467,17 @@ func TestGetLogsInBlockRange(t *testing.T) {
 			Logs:                   []ethtypes.Log{},
 			FurthestBlockProcessed: from - 1,
 		},
-		logsInBlockRangeTestCase{
+		{
 			Label: "CORRECT_FURTHEST_BLOCK_PROCESSED_ON_ERROR",
 			From:  from,
 			To:    from + maxBlocksInGetLogsQuery + 10,
 			RangeToFilterLogsResponse: map[string]filterLogsResponse{
-				aRange(from, from+maxBlocksInGetLogsQuery-1): filterLogsResponse{
+				aRange(from, from+maxBlocksInGetLogsQuery-1): {
 					Logs: []ethtypes.Log{
 						logStub,
 					},
 				},
-				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): filterLogsResponse{
+				aRange(from+maxBlocksInGetLogsQuery, from+maxBlocksInGetLogsQuery+10): {
 					Err: errUnexpected,
 				}},
 			Logs:                   []ethtypes.Log{logStub},
@@ -538,13 +488,9 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		database, err := db.New(ctx, dbOptions())
-		require.NoError(t, err)
 		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		require.NoError(t, err)
-		config.DB = database
-		config.Client = fakeLogClient
-		watcher := New(config)
+		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
 		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(ctx, testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
@@ -564,6 +510,23 @@ func TestIsWarning(t *testing.T) {
 	for err, expected := range errs {
 		assert.Equal(t, expected, isWarning(err))
 	}
+}
+
+func setupFakeClientAndOrderWatcher(t *testing.T, ctx context.Context, testdataPath string) (*fakeClient, *Watcher) {
+	fakeClient, err := newFakeClient(testdataPath)
+	require.NoError(t, err)
+	return fakeClient, setupOrderWatcher(t, ctx, fakeClient)
+}
+
+func setupOrderWatcher(t *testing.T, ctx context.Context, client Client) *Watcher {
+	database, err := db.New(ctx, dbOptions())
+	require.NoError(t, err)
+
+	// Polling interval unused because we hijack the ticker for this test
+	require.NoError(t, err)
+	config.Client = client
+	config.DB = database
+	return New(blockRetentionLimit, config)
 }
 
 func aRange(from, to int) string {

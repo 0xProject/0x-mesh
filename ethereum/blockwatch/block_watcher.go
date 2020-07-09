@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -66,6 +67,7 @@ func (e TooMayBlocksBehindError) Error() string {
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
+	MaxMiniHeaders  int
 	DB              *db.DB
 	PollingInterval time.Duration
 	WithLogs        bool
@@ -77,7 +79,8 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	stack               *Stack
+	stack               *simplestack.SimpleStack
+	db                  *db.DB
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -90,10 +93,11 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(config Config) *Watcher {
+func New(retentionLimit int, config Config) *Watcher {
 	return &Watcher{
 		pollingInterval: config.PollingInterval,
-		stack:           NewStack(config.DB),
+		db:              config.DB,
+		stack:           simplestack.New(retentionLimit, []*types.MiniHeader{}),
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
@@ -229,7 +233,7 @@ func (w *Watcher) SyncToLatestBlock() error {
 	w.syncToLatestBlockMu.Lock()
 	defer w.syncToLatestBlockMu.Unlock()
 
-	existingMiniHeaders, err := w.stack.PeekAll()
+	checkpoint, err := w.stack.Checkpoint()
 	if err != nil {
 		return err
 	}
@@ -302,14 +306,24 @@ func (w *Watcher) SyncToLatestBlock() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		// TODO(albrow): Take another look at this. Maybe extract to method.
-		if err := w.stack.Clear(); err != nil {
-			return err
-		}
-		if _, _, err := w.stack.db.AddMiniHeaders(existingMiniHeaders); err != nil {
+		if err := w.stack.Reset(checkpoint); err != nil {
 			return err
 		}
 	} else {
+		_, err := w.stack.Checkpoint()
+		if err != nil {
+			return err
+		}
+		if _, err := w.db.DeleteMiniHeaders(nil); err != nil {
+			return err
+		}
+		newMiniheaders, err := w.stack.PeekAll()
+		if err != nil {
+			return err
+		}
+		if _, _, err := w.db.AddMiniHeaders(newMiniheaders); err != nil {
+			return err
+		}
 		w.blockFeed.Send(allEvents)
 	}
 

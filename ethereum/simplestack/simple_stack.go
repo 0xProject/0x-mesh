@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	// FIXME Remove this
+	log "github.com/sirupsen/logrus"
 )
 
 // UpdateType is the type of update applied to the in-memory stack
@@ -90,6 +92,7 @@ func (s *SimpleStack) push(miniHeader *types.MiniHeader) error {
 	}
 
 	if len(s.miniHeaders) == s.limit {
+		log.Info(s.limit)
 		s.miniHeaders = s.miniHeaders[1:]
 	}
 	s.miniHeaders = append(s.miniHeaders, miniHeader)
