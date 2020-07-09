@@ -1673,7 +1673,9 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	// Start OrderWatcher
 	go func() {
 		err := orderWatcher.Watch(ctx)
-		require.NoError(t, err)
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	// Ensure at least one block has been processed and is stored in the DB
