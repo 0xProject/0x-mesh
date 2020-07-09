@@ -1544,9 +1544,7 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
-		if newFillableTakerAssetAmount != nil {
-			orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
-		}
+		orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
 		return orderToUpdate, nil
 	})
 	if err != nil {
