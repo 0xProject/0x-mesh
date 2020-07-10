@@ -67,7 +67,6 @@ func (e TooMayBlocksBehindError) Error() string {
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
-	MaxMiniHeaders  int
 	DB              *db.DB
 	PollingInterval time.Duration
 	WithLogs        bool
@@ -143,10 +142,21 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 			return blocksElapsed, err
 		}
 		if len(events) > 0 {
+			newMiniHeaders, err := w.stack.PeekAll()
+			if err != nil {
+				return blocksElapsed, err
+			}
+			if _, _, err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
+				return blocksElapsed, err
+			}
 			w.blockFeed.Send(events)
 		}
 	} else {
-		// Clear all block headers from stack so BlockWatcher starts again from latest block
+		// Clear all block headers from stack and database so BlockWatcher
+		// starts again from latest block
+		if _, err := w.db.DeleteMiniHeaders(nil); err != nil {
+			return blocksElapsed, err
+		}
 		if err := w.stack.Clear(); err != nil {
 			return blocksElapsed, err
 		}
@@ -314,14 +324,8 @@ func (w *Watcher) SyncToLatestBlock() error {
 		if err != nil {
 			return err
 		}
-		if _, err := w.db.DeleteMiniHeaders(nil); err != nil {
-			return err
-		}
-		newMiniheaders, err := w.stack.PeekAll()
-		if err != nil {
-			return err
-		}
-		if _, _, err := w.db.AddMiniHeaders(newMiniheaders); err != nil {
+		newMiniHeaders, err := w.stack.PeekAll()
+		if _, _, err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
 			return err
 		}
 		w.blockFeed.Send(allEvents)
@@ -411,7 +415,7 @@ func (w *Watcher) addLogs(header *types.MiniHeader) (*types.MiniHeader, error) {
 	return header, nil
 }
 
-// getMissedEventsToBackfill finds missed events that might have occured while the Mesh node was
+// getMissedEventsToBackfill finds missed events that might have occurred while the Mesh node was
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
@@ -500,7 +504,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]etht
 	for len(blockRanges) != 0 {
 		var chunk []*blockRange
 		if len(blockRanges) < getLogsRequestChunkSize {
-			chunk = blockRanges[:len(blockRanges)]
+			chunk = blockRanges
 		} else {
 			chunk = blockRanges[:getLogsRequestChunkSize]
 		}

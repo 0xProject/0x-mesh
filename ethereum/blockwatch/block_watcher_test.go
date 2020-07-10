@@ -521,9 +521,6 @@ func setupFakeClientAndOrderWatcher(t *testing.T, ctx context.Context, testdataP
 func setupOrderWatcher(t *testing.T, ctx context.Context, client Client) *Watcher {
 	database, err := db.New(ctx, dbOptions())
 	require.NoError(t, err)
-
-	// Polling interval unused because we hijack the ticker for this test
-	require.NoError(t, err)
 	config.Client = client
 	config.DB = database
 	return New(blockRetentionLimit, config)
