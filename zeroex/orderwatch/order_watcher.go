@@ -1189,7 +1189,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}
 				orderEvents = append(orderEvents, orderEvent)
 			} else {
-				w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
+				w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, newFillableAmount, validationBlock)
 			}
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
@@ -1522,7 +1522,7 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 
 // TODO(albrow): Add tests for LastValidatedBlockNumber and LastValidatedBlockHash for
 // this and other similar functions.
-func (w *Watcher) updateOrderFillableTakerAssetAmount(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
+func (w *Watcher) updateOrderFillableTakerAssetAmountAndBlockInfo(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.FillableTakerAssetAmount = newFillableTakerAssetAmount
