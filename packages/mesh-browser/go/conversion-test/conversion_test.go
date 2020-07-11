@@ -92,16 +92,14 @@ func TestBrowserConversions(t *testing.T) {
 	}()
 
 	go func() {
-		select {
-		case <-done:
-			// NOTE(jalextowle): It is somewhat useful to know whether or not
-			// there are test results that were logged in the typescript but were
-			// not registered in this test file. For these purposes, we wait for
-			// last logs to appear before closing the test. Logs that are logged
-			// after the sleeping period will still be ignored.
-			time.Sleep(2 * time.Second)
-			cancel()
-		}
+		<-done
+		// NOTE(jalextowle): It is somewhat useful to know whether or not
+		// there are test results that were logged in the typescript but were
+		// not registered in this test file. For these purposes, we wait for
+		// last logs to appear before closing the test. Logs that are logged
+		// after the sleeping period will still be ignored.
+		time.Sleep(2 * time.Second)
+		cancel()
 	}()
 
 	wg.Wait()

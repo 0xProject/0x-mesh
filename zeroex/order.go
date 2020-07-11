@@ -603,8 +603,6 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	return signedOrderBytes, err
 }
 
-const addressHexLength = 42
-
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
 func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	var signedOrderJSON SignedOrderJSON

@@ -55,9 +55,6 @@ const (
 	// corresponds to a block depth of ~25.
 	permanentlyDeleteAfter = 5 * time.Minute
 
-	// defaultMaxOrders is the default max number of orders in storage.
-	defaultMaxOrders = 100000
-
 	// maxBlockEventsToHandle is the max number of block events we want to
 	// process in a single call to `handleBlockEvents`
 	maxBlockEventsToHandle = 500
@@ -1837,10 +1834,6 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	}
 }
 
-type orderDeleter interface {
-	Delete(id []byte) error
-}
-
 func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 	if err := w.db.DeleteOrder(order.Hash); err != nil {
 		return err
@@ -2034,9 +2027,4 @@ func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error
 	case <-time.After(60 * time.Second):
 		return errors.New("timed out waiting for first block to be processed by Mesh node. Check your backing Ethereum RPC endpoint")
 	}
-}
-
-type logWithType struct {
-	Type string
-	Log  ethtypes.Log
 }

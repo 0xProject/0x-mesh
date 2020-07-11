@@ -180,7 +180,7 @@ func (a *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
-		return "", errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+		return "", fmt.Errorf("Unrecognized assetData with prefix: %s", idHex)
 	}
 	return info.name, nil
 }
@@ -194,7 +194,7 @@ func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
-		return errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+		return fmt.Errorf("Unrecognized assetData with prefix: %s", idHex)
 	}
 
 	// This is necessary to prevent a nil pointer exception for ABIs with no inputs

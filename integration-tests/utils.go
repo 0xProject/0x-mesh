@@ -52,13 +52,6 @@ func init() {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func removeOldFiles(t *testing.T, ctx context.Context) {
 	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "sqlite-db")))
 	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "p2p")))

@@ -19,8 +19,8 @@ import (
 	"github.com/albrow/stringset"
 	"github.com/jpillora/backoff"
 	network "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	peer "github.com/libp2p/go-libp2p-peer"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )

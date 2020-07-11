@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"fmt"
-	mathrand "math/rand"
 	"strings"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -40,20 +40,6 @@ const (
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
-	// defaultNetworkTimeout is the default timeout for network requests (e.g.
-	// connecting to a new peer).
-	defaultNetworkTimeout = 30 * time.Second
-	// checkBandwidthLoopInterval is how often to potentially check bandwidth usage
-	// for peers.
-	checkBandwidthLoopInterval = 5 * time.Second
-	// chanceToCheckBandwidthUsage is the approximate ratio of (number of check
-	// bandwidth loop iterations in which we check bandwidth usage) to (total
-	// number of check bandwidth loop iterations). We check bandwidth
-	// non-deterministically in order to prevent spammers from avoiding detection
-	// by carefully timing their bandwidth usage. So on each iteration of the
-	// check bandwidth loop we generate a number between 0 and 1. If its less than
-	// chanceToCheckBandiwdthUsage, we perform a bandwidth check.
-	chanceToCheckBandwidthUsage = 0.1
 	// DataStoreType constants
 	leveldbDataStore = "leveldb"
 	sqlDataStore     = "sqldb"
@@ -308,21 +294,6 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
-}
-
-func continuoslyCheckBandwidth(ctx context.Context, banner *banner.Banner) error {
-	ticker := time.NewTicker(checkBandwidthLoopInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			// Check bandwidth usage non-deterministically
-			if mathrand.Float64() <= chanceToCheckBandwidthUsage {
-				banner.CheckBandwidthUsage()
-			}
-		}
-	}
 }
 
 // NewDHTWithDatastore returns a new Kademlia DHT instance configured with store

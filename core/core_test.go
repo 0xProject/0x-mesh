@@ -30,8 +30,6 @@ const (
 	// blockProcessingWaitTime is the amount of time to wait for Mesh to process
 	// new blocks that have been mined.
 	blockProcessingWaitTime = 1 * time.Second
-	// ordersyncWaitTime is the amount of time to wait for ordersync to run.
-	ordersyncWaitTime = 2 * time.Second
 )
 
 func TestEthereumChainDetection(t *testing.T) {

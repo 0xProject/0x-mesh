@@ -54,6 +54,9 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 	}
 
 	messageLoader, err := newLoader(chainID, customOrderSchema, contractAddresses)
+	if err != nil {
+		return nil, err
+	}
 	if err := messageLoader.AddSchemas(rootOrderSchemaLoader); err != nil {
 		return nil, err
 	}

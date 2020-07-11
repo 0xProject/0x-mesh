@@ -37,8 +37,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +47,6 @@ const (
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
-	expirationPollingInterval     = 50 * time.Millisecond
 	rateLimiterCheckpointInterval = 1 * time.Minute
 	// estimatedNonPollingEthereumRPCRequestsPer24Hrs is an estimate of the
 	// minimum number of RPC requests Mesh needs to send (not including block
@@ -292,7 +290,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 
 	// Initialize ETH JSON-RPC RateLimiter
 	var ethRPCRateLimiter ratelimit.RateLimiter
-	if config.EnableEthereumRPCRateLimiting == false {
+	if !config.EnableEthereumRPCRateLimiting {
 		ethRPCRateLimiter = ratelimit.NewUnlimited()
 	} else {
 		clock := clock.New()
@@ -951,12 +949,8 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		return nil, err
 	}
 
-	for _, orderInfo := range validationResults.Accepted {
-		allValidationResults.Accepted = append(allValidationResults.Accepted, orderInfo)
-	}
-	for _, orderInfo := range validationResults.Rejected {
-		allValidationResults.Rejected = append(allValidationResults.Rejected, orderInfo)
-	}
+	allValidationResults.Accepted = append(allValidationResults.Accepted, validationResults.Accepted...)
+	allValidationResults.Rejected = append(allValidationResults.Rejected, validationResults.Rejected...)
 
 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
 		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
@@ -990,7 +984,7 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 }
 
 // AddPeer can be used to manually connect to a new peer.
-func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
+func (app *App) AddPeer(peerInfo peer.AddrInfo) error {
 	<-app.started
 
 	return app.node.Connect(peerInfo, peerConnectTimeout)

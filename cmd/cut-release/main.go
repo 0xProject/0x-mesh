@@ -194,19 +194,3 @@ func getDocsCommitHash(docsPath string) (string, error) {
 	}
 	return matches[1], nil
 }
-
-func getFileContentsWithRegex(filePath string, regex string) (string, error) {
-	dat, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var re = regexp.MustCompile(regex)
-	matches := re.FindAllStringSubmatch(string(dat), -1)
-
-	if len(matches) < 1 || len(matches[0]) < 3 {
-		return "", errors.New("No contents found")
-	}
-
-	return matches[0][2], nil
-}

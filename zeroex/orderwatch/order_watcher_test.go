@@ -37,11 +37,8 @@ import (
 const (
 	blockRetentionLimit         = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
-	miniHeaderRetentionLimit    = 2
 	blockPollingInterval        = 1 * time.Second
 	ethereumRPCMaxContentLength = 524288
-	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = 1000.0
 
 	// processBlockSleepTime is the amount of time ot wait for order watcher to
 	// process block events. If possible, we should listen for order events instead
@@ -1386,7 +1383,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	select {
-	case _ = <-orderEventsChan:
+	case <-orderEventsChan:
 		t.Error("Expected no orderEvents to fire after calling Cleanup()")
 	case <-time.After(100 * time.Millisecond):
 		// Noop

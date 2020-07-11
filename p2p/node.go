@@ -4,10 +4,8 @@ package p2p
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	mathrand "math/rand"
 	"path/filepath"
 	"sync"
@@ -92,13 +90,14 @@ const (
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
 // messages.
 type Node struct {
-	ctx              context.Context
-	config           Config
-	messageHandler   MessageHandler
-	host             host.Host
-	connManager      *connmgr.BasicConnMgr
-	dht              *dht.IpfsDHT
-	routingDiscovery discovery.Discovery
+	ctx            context.Context
+	config         Config
+	messageHandler MessageHandler
+	host           host.Host
+	connManager    *connmgr.BasicConnMgr
+	dht            *dht.IpfsDHT
+	// TODO(jalextowle): Make this linter compliant
+	routingDiscovery discovery.Discovery //nolint:staticcheck
 	pubsub           *pubsub.PubSub
 	sub              *pubsub.Subscription
 	banner           *banner.Banner
@@ -342,32 +341,6 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	return nil
 }
 
-func getPrivateKey(path string) (p2pcrypto.PrivKey, error) {
-	if path == "" {
-		// If path is empty, generate a new key.
-		priv, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-		return priv, nil
-	}
-
-	// Otherwise parse the key at the path given.
-	keyBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	decodedKey, err := p2pcrypto.ConfigDecodeKey(string(keyBytes))
-	if err != nil {
-		return nil, err
-	}
-	priv, err := p2pcrypto.UnmarshalPrivateKey(decodedKey)
-	if err != nil {
-		return nil, err
-	}
-	return priv, nil
-}
-
 // Multiaddrs returns all multi addresses at which the node is dialable.
 func (n *Node) Multiaddrs() []ma.Multiaddr {
 	return n.host.Addrs()
@@ -441,7 +414,8 @@ func (n *Node) Start() error {
 			// Note(albrow): Advertise doesn't return an error, so we have no
 			// choice but to assume it worked.
 			for _, rendezvousPoint := range n.config.RendezvousPoints {
-				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL))
+				// TODO(jalextowle): Make this linter compliant
+				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL)) //nolint:staticcheck
 			}
 		}
 	}()
@@ -617,7 +591,8 @@ func (n *Node) findNewPeers(ctx context.Context) error {
 		}).Trace("looking for new peers")
 		findPeersCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
 		defer cancel()
-		peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousPoint, discovery.Limit(maxNewPeers))
+		// TODO(jalextowle): Make this linter compliant
+		peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousPoint, discovery.Limit(maxNewPeers)) //nolint:staticcheck
 		if err != nil {
 			return err
 		}
@@ -710,7 +685,9 @@ func (n *Node) Send(data []byte) error {
 	// which is assigned to firstErr.
 	var firstErr error
 	for _, topic := range n.config.PublishTopics {
-		err := n.pubsub.Publish(topic, data)
+		// TODO(jalextowle): This should be replaced with `pubsub.Join`
+		// and `topic.Publish`
+		err := n.pubsub.Publish(topic, data) //nolint:staticcheck
 		if err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -723,7 +700,9 @@ func (n *Node) Send(data []byte) error {
 func (n *Node) receive(ctx context.Context) (*Message, error) {
 	if n.sub == nil {
 		var err error
-		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic)
+		// TODO(jalextowle): This should be replaced with `pubsub.Join`
+		// and `topic.Publish`
+		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}

@@ -42,10 +42,7 @@ const areNewOrders = false
 const emptyGetOrderRelevantStatesCallDataStringLength = 268
 
 const (
-	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = 1000.0
-	defaultCheckpointInterval   = 1 * time.Minute
-	defaultEthRPCTimeout        = 5 * time.Second
+	defaultEthRPCTimeout = 5 * time.Second
 )
 
 var (
@@ -455,8 +452,4 @@ func signedOrderWithCustomSignature(t *testing.T, signature []byte) *zeroex.Sign
 	signedOrder := scenario.NewSignedTestOrder(t)
 	signedOrder.Signature = signature
 	return signedOrder
-}
-
-func copyOrder(order zeroex.Order) zeroex.Order {
-	return order
 }

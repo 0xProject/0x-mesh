@@ -124,6 +124,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	copy(expectedStoredOrders, originalOrders)
 	expectedStoredOrders[len(expectedStoredOrders)-1] = orderWithShorterExpirationTime
 	actualStoredOrders, err := db.FindOrders(nil)
+	require.NoError(t, err)
 	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
 
 	// Add some pinned orders. Pinned orders should replace non-pinned orders, even if
@@ -164,6 +165,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	copy(expectedStoredOrders, pinnedOrders)
 	expectedStoredOrders[len(expectedStoredOrders)-1] = pinnedOrderWithShorterExpirationTime
 	actualStoredOrders, err = db.FindOrders(nil)
+	require.NoError(t, err)
 	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
 
 	// Try to re-add the original (non-pinned) orders. Non-pinned orders should never replace pinned orders.
@@ -176,6 +178,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	// Check that the orders stored in the database are the same as before (only
 	// pinned orders with the shortest expiration time)
 	actualStoredOrders, err = db.FindOrders(nil)
+	require.NoError(t, err)
 	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
 }
 
@@ -1148,6 +1151,7 @@ func TestUpdateMetadata(t *testing.T) {
 		updatedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
 		return updatedMetadata
 	})
+	require.NoError(t, err)
 
 	expectedMetadata := originalMetadata
 	expectedMetadata.EthRPCRequestsSentInCurrentUTCDay = updatedETHRPCRequests
