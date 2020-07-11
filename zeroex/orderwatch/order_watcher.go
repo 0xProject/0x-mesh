@@ -246,7 +246,7 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
-	if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+	if err := w.permanentlyDeleteStaleRemovedOrders(); err != nil {
 		return err
 	}
 	lastDeleted := time.Now()
@@ -263,7 +263,7 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 			databaseUtilization := float64(count) / float64(w.maxOrders)
 
 			if time.Since(lastDeleted) > maxDeleteInterval || databaseUtilization > databaseUtilizationThreshold {
-				if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+				if err := w.permanentlyDeleteStaleRemovedOrders(); err != nil {
 					return err
 				}
 				lastDeleted = time.Now()
@@ -975,7 +975,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	return nil
 }
 
-func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
+func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 	// TODO(albrow): This could be optimized by using a single query to delete
 	// stale orders instead of finding them and deleting one-by-one. Limited by
 	// the fact that we need to update in-memory state. When we remove in-memory

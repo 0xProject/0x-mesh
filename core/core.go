@@ -283,7 +283,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 	}
 
 	// Initialize metadata and check stored chain id (if any).
-	_, err = initMetadata(config.EthereumChainID, database)
+	err = initMetadata(config.EthereumChainID, database)
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +458,7 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
+func initMetadata(chainID int, database *db.DB) error {
 	metadata, err := database.GetMetadata()
 	if err != nil {
 		if err == db.ErrNotFound {
@@ -467,20 +467,20 @@ func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
 				EthereumChainID: chainID,
 			}
 			if err := database.SaveMetadata(metadata); err != nil {
-				return nil, err
+				return err
 			}
-			return metadata, nil
+			return nil
 		}
-		return nil, err
+		return err
 	}
 
 	// on subsequent startups, verify we are on the same chain
 	if metadata.EthereumChainID != chainID {
 		err := fmt.Errorf("expected chainID to be %d but got %d", metadata.EthereumChainID, chainID)
 		log.WithError(err).Error("Mesh previously started on different Ethereum chain; switch chainId or remove DB")
-		return nil, err
+		return err
 	}
-	return metadata, nil
+	return nil
 }
 
 func (app *App) Start() error {

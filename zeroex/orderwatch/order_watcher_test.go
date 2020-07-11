@@ -2087,7 +2087,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	}
 }
 
-func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, expectedNumberOfEvents int, timeout time.Duration) []*zeroex.OrderEvent {
+func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, expectedNumberOfEvents int, waitTimeForOrderEvents time.Duration) []*zeroex.OrderEvent {
 	allOrderEvents := []*zeroex.OrderEvent{}
 	for {
 		select {
@@ -2097,7 +2097,7 @@ func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEven
 				return allOrderEvents
 			}
 			continue
-		case <-time.After(timeout):
+		case <-time.After(waitTimeForOrderEvents):
 			t.Fatalf("timed out waiting for %d order events (received %d events)", expectedNumberOfEvents, len(allOrderEvents))
 		}
 	}

@@ -3,7 +3,9 @@ linters:
   enable:
       # Finds repeated strings that could be made constants
       - goconst
-      # Identifies commonly misspelled words
-      - misspell
       # Ensures that the code was formatted with `gofmt -s`
       - gofmt
+      # Identifies commonly misspelled words
+      - misspell
+      # Identifies unused function parameters
+      - unparam

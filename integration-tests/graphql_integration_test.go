@@ -332,7 +332,7 @@ func sortOrdersByHashDesc(orders []*gqlclient.OrderWithMetadata) {
 }
 
 func buildAndStartGraphQLServer(t *testing.T, ctx context.Context, wg *sync.WaitGroup) (client *gqlclient.Client, peerID string) {
-	removeOldFiles(t, ctx)
+	removeOldFiles(t)
 	buildStandaloneForTests(t, ctx)
 
 	// Start a standalone node with a wait group that is completed when the goroutine completes.

@@ -39,15 +39,15 @@ func TestEthereumChainDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	// simulate starting up on mainnet
-	_, err = initMetadata(1, database)
+	err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// simulate restart on same chain
-	_, err = initMetadata(1, database)
+	err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// should error when attempting to start on different chain
-	_, err = initMetadata(2, database)
+	err = initMetadata(2, database)
 	assert.Error(t, err)
 }
 

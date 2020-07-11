@@ -387,4 +387,5 @@ func checkOrderQuery(query *OrderQuery) error {
 		return errors.New("can't use Offset without Limit")
 	}
 	return nil
+
 }

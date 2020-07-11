@@ -275,6 +275,16 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 	for _, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder) {
+			// FIXME - Is this needed?
+			// trimmedOrders := []wrappers.LibOrderOrder{}
+			// for _, signedOrder := range signedOrders {
+			// 	trimmedOrders = append(trimmedOrders, signedOrder.Trim())
+			// }
+			// signatures := [][]byte{}
+			// for _, signedOrder := range signedOrders {
+			// 	signatures = append(signatures, signedOrder.Signature)
+			// }
+
 			defer wg.Done()
 
 			select {
