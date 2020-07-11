@@ -5,3 +5,5 @@ linters:
       - goconst
       # Identifies commonly misspelled words
       - misspell
+      # Ensures that the code was formatted with `gofmt -s`
+      - gofmt
