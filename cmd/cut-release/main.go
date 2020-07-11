@@ -92,6 +92,12 @@ func generateTypescriptDocs() {
 	}
 }
 
+const (
+	captureVersionString                = `"version": "(.*)"`
+	captureMeshBrowserVersionString     = `"@0x/mesh-browser": "(.*)"`
+	captureMeshBrowserLiteVersionString = `"@0x/mesh-browser-lite": "(.*)"`
+)
+
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
 	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
@@ -105,37 +111,37 @@ func updateHardCodedVersions(version string) {
 
 	// Update `packages/mesh-browser-lite/package.json`
 	browserLitePackageJSONPath := "packages/mesh-browser-lite/package.json"
-	regex = `"version": "(.*)"`
+	regex = captureVersionString
 	updateFileWithRegex(browserLitePackageJSONPath, regex, newVersionString)
 
 	// Update `packages/mesh-browser/package.json`
 	browserPackageJSONPath := "packages/mesh-browser/package.json"
-	regex = `"version": "(.*)"`
+	regex = captureVersionString
 	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
 	// NOTE(jalextowle): `@0x/mesh-browser` uses the local version of `@0x/mesh-browser-lite`
 	// on the `development` branch. Once the `@0x/mesh-browser-lite` package has been published,
 	// we need to update dependency in `@0x/mesh-browser` to published version.
-	regex = `"@0x/mesh-browser-lite": "(.*)"`
+	regex = captureMeshBrowserLiteVersionString
 	updateFileWithRegex(browserPackageJSONPath, regex, newBrowserLiteDependencyString)
 
 	// Update `packages/mesh-webpack-example-lite/package.json`
 	webpackExampleLitePackageJSONPath := "packages/mesh-webpack-example-lite/package.json"
-	regex = `"@0x/mesh-browser-lite": "(.*)"`
+	regex = captureMeshBrowserLiteVersionString
 	updateFileWithRegex(webpackExampleLitePackageJSONPath, regex, newBrowserLiteDependencyString)
 
 	// Update `packages/mesh-webpack-example/package.json`
 	webpackExamplePackageJSONPath := "packages/mesh-webpack-example/package.json"
-	regex = `"@0x/mesh-browser": "(.*)"`
+	regex = captureMeshBrowserVersionString
 	updateFileWithRegex(webpackExamplePackageJSONPath, regex, newBrowserDependencyString)
 
 	// Update `packages/mesh-integration-tests/package.json`
 	integrationTestsPackageJSONPath := "packages/mesh-integration-tests/package.json"
-	regex = `"@0x/mesh-browser": "(.*)"`
+	regex = captureMeshBrowserVersionString
 	updateFileWithRegex(integrationTestsPackageJSONPath, regex, newBrowserDependencyString)
 
 	// Update `packages/mesh-browser-shim/package.json`
 	testWasmPackageJSONPath := "packages/mesh-browser-shim/package.json"
-	regex = `"@0x/mesh-browser-lite": "(.*)"`
+	regex = captureMeshBrowserLiteVersionString
 	updateFileWithRegex(testWasmPackageJSONPath, regex, newBrowserLiteDependencyString)
 
 	// Update `core.go`

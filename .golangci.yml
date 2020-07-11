@@ -1,2 +1,7 @@
 linters:
   disable-all: false
+  enable:
+      # Finds repeated strings that could be made constants
+      - goconst
+      # Identifies commonly misspelled words
+      - misspell

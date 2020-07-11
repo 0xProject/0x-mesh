@@ -56,6 +56,8 @@ func (h *KeySuffixHook) Fire(entry *log.Entry) error {
 	return nil
 }
 
+const stringType = "string"
+
 // getTypeForValue returns a string representation of the type of the given val.
 func getTypeForValue(val interface{}) (string, error) {
 	if val == nil {
@@ -77,12 +79,12 @@ func getTypeForValue(val interface{}) (string, error) {
 	if _, ok := val.(encoding.TextMarshaler); ok {
 		// The json package always encodes values that implement
 		// encoding.TextMarshaler as a string.
-		return "string", nil
+		return stringType, nil
 	}
 	if _, ok := val.(error); ok {
 		// The json package always encodes values that implement
 		// error as a string.
-		return "string", nil
+		return stringType, nil
 	}
 
 	underlyingType := getUnderlyingType(reflect.TypeOf(val))
@@ -99,7 +101,7 @@ func getTypeForValue(val interface{}) (string, error) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
 		return "number", nil
 	case reflect.String, reflect.Complex64, reflect.Complex128, reflect.Func, reflect.Chan:
-		return "string", nil
+		return stringType, nil
 	case reflect.Array, reflect.Slice:
 		return "array", nil
 	case reflect.Map:

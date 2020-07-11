@@ -96,8 +96,8 @@ func NewSignedTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOr
 	return signedOrder
 }
 
-// NewSignedTestOrdersBatch effeciently creates numOrders orders with independent options.
-// If the options require setting up maker or taker state, that state will be set up effeciently
+// NewSignedTestOrdersBatch efficiently creates numOrders orders with independent options.
+// If the options require setting up maker or taker state, that state will be set up efficiently
 // with one transaction per address.
 //
 // optionsForIndex is a function which returns the options for creating the order at a specific

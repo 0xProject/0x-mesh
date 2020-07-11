@@ -331,7 +331,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				} else {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
-					}).Trace("succesfully got orders from peer via ordersync")
+					}).Trace("successfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
 					delete(nextRequestForPeer, id)

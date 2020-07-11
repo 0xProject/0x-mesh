@@ -24,7 +24,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -297,7 +296,7 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 }
 
 // NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
-// as the persistant storage interface.
+// as the persistent storage interface.
 func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
 	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 }

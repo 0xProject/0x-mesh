@@ -23,7 +23,7 @@ var testCases []string
 var browserConversionTestsEnabled bool
 
 // The test `TestBrowserConversions` has a non-standard timeout, so it needs to be
-// run seperately from other go tests.
+// run separately from other go tests.
 func init() {
 	flag.BoolVar(&browserConversionTestsEnabled, "enable-browser-conversion-tests", false, "enable browser conversion tests")
 	testing.Init()
@@ -471,22 +471,24 @@ func startBrowserInstance(t *testing.T, ctx context.Context, url string, done ch
 	}
 }
 
+const meshRootDirectory = "../../../../"
+
 func buildForTests(t *testing.T, ctx context.Context) {
 	fmt.Println("Clear yarn cache...")
 	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
-	cmd.Dir = "../../../../"
+	cmd.Dir = meshRootDirectory
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
 
 	fmt.Println("Installing dependencies for Wasm binary and Typescript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "install")
-	cmd.Dir = "../../../../"
+	cmd.Dir = meshRootDirectory
 	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
+	require.NoError(t, err, "could not install dependencies for TypeScript bindings: %s", string(output))
 
 	fmt.Println("Building Wasm binary and Typescript bindings...")
 	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../../../../"
+	cmd.Dir = meshRootDirectory
 	output, err = cmd.CombinedOutput()
 	require.NoError(t, err, "could not build Wasm binary and Typescript bindings: %s", string(output))
 	fmt.Println("Finished building for tests")
