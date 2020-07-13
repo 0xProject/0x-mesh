@@ -36,6 +36,11 @@ deps-ts-no-lockfile:
 	yarn install --frozen-lockfile
 
 
+# Provides a pre-commit convenience command that runs all of the tests and the linters
+.PHONY: check
+check: test-all lint
+
+
 .PHONY: test-all
 test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser-integration
 
