@@ -1178,7 +1178,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
 			isOrderUnexpired := order.IsRemoved && expirationTimeIsValid
 
-			// If order was previously expired, check if it has become unexpired.
+			// We can tell that an order was previously expired if it was marked as removed with a non-zero fillable amount. There is no other explanation for this database state. The order is considered "unexpired" if it was previously expired but now has a valid expiration time based on the latest block timestamp.
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
 				orderEvent := &zeroex.OrderEvent{
