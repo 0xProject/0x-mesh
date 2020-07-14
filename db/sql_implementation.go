@@ -567,52 +567,27 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	return added, removed, nil
 }
 
-func (db *DB) ResetMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
+// ResetMiniHeaders deletes all of the existing miniheaders and then stores new
+// miniheaders in the database.
+func (db *DB) ResetMiniHeaders(miniHeaders []*types.MiniHeader) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
 
-	removedMap := map[common.Hash]*types.MiniHeader{}
 	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
-		removeQuery := txn.Select("*").From("miniHeaders")
-		var miniHeadersToRemove []*sqltypes.MiniHeader
-		if err := removeQuery.GetAllContext(db.ctx, &miniHeadersToRemove); err != nil {
+		_, err := txn.DeleteFrom("miniHeaders").ExecContext(db.ctx)
+		if err != nil {
 			return err
 		}
-		for _, miniHeader := range miniHeadersToRemove {
-			_, err := txn.DeleteFrom("miniHeaders").Where(sqlz.Eq(string(MFHash), miniHeader.Hash)).ExecContext(db.ctx)
-			if err != nil {
-				return err
-			}
-			removedMap[miniHeader.Hash] = sqltypes.MiniHeaderToCommonType(miniHeader)
-		}
-
 		for _, miniHeader := range miniHeaders {
-			result, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
+			_, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(miniHeader))
 			if err != nil {
 				return err
-			}
-			affected, err := result.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if _, found := removedMap[miniHeader.Hash]; found && affected > 0 {
-				// If the miniHeader was previously removed, remove it from
-				// the removed set and don't add it to the added set.
-				delete(removedMap, miniHeader.Hash)
-			} else {
-				added = append(added, miniHeader)
 			}
 		}
 		return nil
 	})
-	for _, miniHeader := range removedMap {
-		removed = append(removed, miniHeader)
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	return added, removed, nil
+	return nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {

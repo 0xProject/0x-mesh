@@ -241,20 +241,20 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	return dexietypes.MiniHeadersToCommonType(jsAdded), dexietypes.MiniHeadersToCommonType(jsRemoved), nil
 }
 
-func (db *DB) ResetMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
+// ResetMiniHeaders deletes all of the existing miniheaders and then stores new
+// miniheaders in the database.
+func (db *DB) ResetMiniHeaders(miniHeaders []*types.MiniHeader) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)
 		}
 	}()
 	jsMiniHeaders := dexietypes.MiniHeadersFromCommonType(miniHeaders)
-	jsResult, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("resetMiniHeadersAsync", jsMiniHeaders))
+	_, err = jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("resetMiniHeadersAsync", jsMiniHeaders))
 	if err != nil {
-		return nil, nil, convertJSError(err)
+		return convertJSError(err)
 	}
-	jsAdded := jsResult.Get("added")
-	jsRemoved := jsResult.Get("removed")
-	return dexietypes.MiniHeadersToCommonType(jsAdded), dexietypes.MiniHeadersToCommonType(jsRemoved), nil
+	return nil
 }
 
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {

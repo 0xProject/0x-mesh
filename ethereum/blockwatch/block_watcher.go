@@ -141,7 +141,7 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 		}
 		if len(events) > 0 {
 			newMiniHeaders := w.stack.PeekAll()
-			if _, _, err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
+			if err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
 				return blocksElapsed, err
 			}
 			w.blockFeed.Send(events)
@@ -305,7 +305,7 @@ func (w *Watcher) SyncToLatestBlock(ctx context.Context) error {
 	} else {
 		w.stack.Checkpoint()
 		newMiniHeaders := w.stack.PeekAll()
-		if _, _, err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
+		if err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
 			return err
 		}
 		w.blockFeed.Send(allEvents)

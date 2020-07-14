@@ -116,11 +116,6 @@ export interface AddMiniHeadersResult {
     removed: MiniHeader[];
 }
 
-export interface ResetMiniHeadersResult {
-    added: MiniHeader[];
-    removed: MiniHeader[];
-}
-
 export interface Metadata {
     ethereumChainID: number;
     ethRPCRequestsSentInCurrentUTCDay: number;
@@ -322,43 +317,25 @@ export class Database {
         };
     }
 
-    // ResetMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
-    public async resetMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<ResetMiniHeadersResult> {
-        const removedMap = new Map<string, MiniHeader>();
-        const added: MiniHeader[] = [];
+    // ResetMiniHeaders(miniHeaders []*types.MiniHeader) (err error)
+    public async resetMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<void> {
         await this._db.transaction('rw!', this._miniHeaders, async () => {
             // Remove all of the existing miniheaders
-            const outdatedMiniHeaders = await this._miniHeaders.toArray();
-            for (const outdated of outdatedMiniHeaders) {
-                await this._miniHeaders.delete(outdated.hash);
-                removedMap.set(outdated.hash, outdated);
-            }
+            await this._miniHeaders.clear();
 
             for (const miniHeader of miniHeaders) {
                 try {
                     await this._miniHeaders.add(miniHeader);
                 } catch (e) {
                     if (e.name === 'ConstraintError') {
-                        // A miniHeader with this hash already exists. This is fine based on the semantics of
-                        // addMiniHeaders.
+                        // A miniHeader with this hash already exists. This is
+                        // fine based on the semantics of addMiniHeaders.
                         continue;
                     }
                     throw e;
                 }
-                if (removedMap.has(miniHeader.hash)) {
-                    // If the order was previously removed, remove it from
-                    // the removed set and don't add it to the added set.
-                    removedMap.delete(miniHeader.hash);
-                } else {
-                    added.push(miniHeader);
-                }
             }
         });
-
-        return {
-            added,
-            removed: Array.from(removedMap.values()),
-        };
     }
 
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
