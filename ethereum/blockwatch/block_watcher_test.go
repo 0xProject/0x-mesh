@@ -54,8 +54,7 @@ func TestWatcher(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		retainedBlocks, err := watcher.stack.PeekAll()
-		require.NoError(t, err)
+		retainedBlocks := watcher.stack.PeekAll()
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, fmt.Sprintf("%s (timestep: %d)", scenarioLabel, i))
 
@@ -208,8 +207,7 @@ func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 	assert.Equal(t, 127, blocksElapsed)
 
 	// Check that block 132 is now in the DB, and block 5 was removed.
-	headers, err := watcher.stack.PeekAll()
-	require.NoError(t, err)
+	headers := watcher.stack.PeekAll()
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(132), headers[0].Number)
 }
@@ -236,8 +234,7 @@ func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 	assert.Equal(t, 128, blocksElapsed)
 
 	// Check that all blocks have been removed from BlockWatcher
-	headers, err := watcher.stack.PeekAll()
-	require.NoError(t, err)
+	headers := watcher.stack.PeekAll()
 	require.Len(t, headers, 0)
 }
 
@@ -263,8 +260,7 @@ func TestFastSyncToLatestBlockNoneMissed(t *testing.T) {
 	assert.Equal(t, blocksElapsed, 0)
 
 	// Check that block 5 is still in the DB
-	headers, err := watcher.stack.PeekAll()
-	require.NoError(t, err)
+	headers := watcher.stack.PeekAll()
 	require.Len(t, headers, 1)
 	assert.Equal(t, big.NewInt(5), headers[0].Number)
 }

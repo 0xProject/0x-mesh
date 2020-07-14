@@ -7,10 +7,9 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 )
 
-// UpdateType is the type of update applied to the in-memory stack
+// UpdateType is the type of update applied to the in-memory stack.
 type UpdateType int
 
-// UpdateType values
 const (
 	Pop UpdateType = iota
 	Push
@@ -22,7 +21,7 @@ type Update struct {
 	MiniHeader *types.MiniHeader
 }
 
-// SimpleStack is a simple in-memory stack used in tests
+// SimpleStack is a simple in-memory stack used in tests.
 type SimpleStack struct {
 	limit              int
 	miniHeaders        []*types.MiniHeader
@@ -31,7 +30,7 @@ type SimpleStack struct {
 	latestCheckpointID int
 }
 
-// New instantiates a new SimpleStack
+// New instantiates a new SimpleStack.
 func New(retentionLimit int, miniHeaders []*types.MiniHeader) *SimpleStack {
 	return &SimpleStack{
 		limit:       retentionLimit,
@@ -40,29 +39,29 @@ func New(retentionLimit int, miniHeaders []*types.MiniHeader) *SimpleStack {
 	}
 }
 
-// Peek returns the top of the stack
-func (s *SimpleStack) Peek() (*types.MiniHeader, error) {
+// Peek returns the top of the stack.
+func (s *SimpleStack) Peek() *types.MiniHeader {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	if len(s.miniHeaders) == 0 {
-		return nil, nil
+		return nil
 	}
-	return s.miniHeaders[len(s.miniHeaders)-1], nil
+	return s.miniHeaders[len(s.miniHeaders)-1]
 }
 
-// Pop returns the top of the stack and removes it from the stack
-func (s *SimpleStack) Pop() (*types.MiniHeader, error) {
+// Pop returns the top of the stack and removes it from the stack.
+func (s *SimpleStack) Pop() *types.MiniHeader {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	return s.pop()
 }
 
-// you MUST acquire a lock on the mutex `mu` before calling `pop()`
-func (s *SimpleStack) pop() (*types.MiniHeader, error) {
+// you MUST acquire a lock on the mutex `mu` before calling `pop()`.
+func (s *SimpleStack) pop() *types.MiniHeader {
 	if len(s.miniHeaders) == 0 {
-		return nil, nil
+		return nil
 	}
 	top := s.miniHeaders[len(s.miniHeaders)-1]
 	s.miniHeaders = s.miniHeaders[:len(s.miniHeaders)-1]
@@ -70,10 +69,10 @@ func (s *SimpleStack) pop() (*types.MiniHeader, error) {
 		Type:       Pop,
 		MiniHeader: top,
 	})
-	return top, nil
+	return top
 }
 
-// Push adds a types.MiniHeader to the stack
+// Push adds a types.MiniHeader to the stack.
 func (s *SimpleStack) Push(miniHeader *types.MiniHeader) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -81,7 +80,7 @@ func (s *SimpleStack) Push(miniHeader *types.MiniHeader) error {
 	return s.push(miniHeader)
 }
 
-// you MUST acquire a lock on the mutex `mu` before calling `push()`
+// you MUST acquire a lock on the mutex `mu` before calling `push()`.
 func (s *SimpleStack) push(miniHeader *types.MiniHeader) error {
 	for _, h := range s.miniHeaders {
 		if h.Number.Int64() == miniHeader.Number.Int64() {
@@ -100,8 +99,8 @@ func (s *SimpleStack) push(miniHeader *types.MiniHeader) error {
 	return nil
 }
 
-// PeekAll returns all the miniHeaders currently in the stack
-func (s *SimpleStack) PeekAll() ([]*types.MiniHeader, error) {
+// PeekAll returns all the miniHeaders currently in the stack.
+func (s *SimpleStack) PeekAll() []*types.MiniHeader {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -109,33 +108,32 @@ func (s *SimpleStack) PeekAll() ([]*types.MiniHeader, error) {
 	m := make([]*types.MiniHeader, len(s.miniHeaders))
 	copy(m, s.miniHeaders)
 
-	return m, nil
+	return m
 }
 
-// Clear removes all items from the stack and clears any set checkpoint
-func (s *SimpleStack) Clear() error {
+// Clear removes all items from the stack and clears any set checkpoint.
+func (s *SimpleStack) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.miniHeaders = []*types.MiniHeader{}
 	s.updates = []*Update{}
 	s.latestCheckpointID = 0
-	return nil
 }
 
 // Checkpoint checkpoints the changes to the stack such that a subsequent
 // call to `Reset(checkpointID)` with the checkpointID returned from this
 // call will reset any subsequent changes back to the state of the stack
-// at the time of this checkpoint
-func (s *SimpleStack) Checkpoint() (int, error) {
+// at the time of this checkpoint.
+func (s *SimpleStack) Checkpoint() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.updates = []*Update{}
 	s.latestCheckpointID++
-	return s.latestCheckpointID, nil
+	return s.latestCheckpointID
 }
 
-// Reset resets the in-memory stack with the contents from the latest checkpoint
+// Reset resets the in-memory stack with the contents from the latest checkpoint.
 func (s *SimpleStack) Reset(checkpointID int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,9 +152,7 @@ func (s *SimpleStack) Reset(checkpointID int) error {
 				return err
 			}
 		case Push:
-			if _, err := s.pop(); err != nil {
-				return err
-			}
+			_ = s.pop()
 		default:
 			return fmt.Errorf("Unrecognized update type encountered: %d", u.Type)
 		}
@@ -165,7 +161,7 @@ func (s *SimpleStack) Reset(checkpointID int) error {
 	return nil
 }
 
-// GetUpdates returns the updates applied since the last checkpoint
+// GetUpdates returns the updates applied since the last checkpoint.
 func (s *SimpleStack) GetUpdates() []*Update {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

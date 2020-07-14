@@ -34,26 +34,21 @@ func TestSimpleStackPushPeekPop(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedLen := 1
-	miniHeaders, err := stack.PeekAll()
-	require.NoError(t, err)
+	miniHeaders := stack.PeekAll()
 	assert.Len(t, miniHeaders, expectedLen)
 
-	miniHeader, err := stack.Peek()
-	require.NoError(t, err)
+	miniHeader := stack.Peek()
 	assert.Equal(t, miniHeaders[0], miniHeader)
 
 	expectedLen = 1
-	miniHeaders, err = stack.PeekAll()
-	require.NoError(t, err)
+	miniHeaders = stack.PeekAll()
 	assert.Len(t, miniHeaders, expectedLen)
 
-	miniHeader, err = stack.Pop()
-	require.NoError(t, err)
+	miniHeader = stack.Pop()
 	assert.Equal(t, miniHeaders[0], miniHeader)
 
 	expectedLen = 0
-	miniHeaders, err = stack.PeekAll()
-	require.NoError(t, err)
+	miniHeaders = stack.PeekAll()
 	assert.Len(t, miniHeaders, expectedLen)
 }
 
@@ -81,28 +76,22 @@ func TestSimpleStackClear(t *testing.T) {
 	err := stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
-	miniHeader, err := stack.Peek()
-	require.NoError(t, err)
+	miniHeader := stack.Peek()
 	assert.Equal(t, miniHeaderOne, miniHeader)
 
-	err = stack.Clear()
-	require.NoError(t, err)
+	stack.Clear()
 
-	miniHeader, err = stack.Peek()
-	require.NoError(t, err)
+	miniHeader = stack.Peek()
 	require.Nil(t, miniHeader)
 }
 
 func TestSimpleStackErrorIfResetWithOldCheckpoint(t *testing.T) {
 	stack := New(10, []*types.MiniHeader{})
 
-	checkpointIDOne, err := stack.Checkpoint()
-	require.NoError(t, err)
+	checkpointIDOne := stack.Checkpoint()
+	checkpointIDTwo := stack.Checkpoint()
 
-	checkpointIDTwo, err := stack.Checkpoint()
-	require.NoError(t, err)
-
-	err = stack.Reset(checkpointIDOne)
+	err := stack.Reset(checkpointIDOne)
 	require.Error(t, err)
 
 	err = stack.Reset(checkpointIDTwo)
@@ -118,23 +107,19 @@ func TestSimpleStackCheckpoint(t *testing.T) {
 
 	assert.Len(t, stack.updates, 2)
 
-	_, err = stack.Checkpoint()
-	require.NoError(t, err)
+	stack.Checkpoint()
 
 	assert.Len(t, stack.updates, 0)
 
-	miniHeader, err := stack.Pop()
-	require.NoError(t, err)
+	miniHeader := stack.Pop()
 	assert.Equal(t, miniHeaderTwo, miniHeader)
 
-	miniHeader, err = stack.Pop()
-	require.NoError(t, err)
+	miniHeader = stack.Pop()
 	assert.Equal(t, miniHeaderOne, miniHeader)
 
 	assert.Len(t, stack.updates, 2)
 
-	_, err = stack.Checkpoint()
-	require.NoError(t, err)
+	stack.Checkpoint()
 
 	assert.Len(t, stack.updates, 0)
 }
@@ -145,15 +130,13 @@ func TestSimpleStackCheckpointAfterSameHeaderPushedAndPopped(t *testing.T) {
 	err := stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 	// Pop miniHeaderOne
-	miniHeader, err := stack.Pop()
-	require.NoError(t, err)
+	miniHeader := stack.Pop()
 	assert.Equal(t, miniHeaderOne, miniHeader)
 
 	assert.Len(t, stack.miniHeaders, 0)
 	assert.Len(t, stack.updates, 2)
 
-	_, err = stack.Checkpoint()
-	require.NoError(t, err)
+	stack.Checkpoint()
 
 	assert.Len(t, stack.updates, 0)
 }
@@ -164,8 +147,7 @@ func TestSimpleStackCheckpointAfterSameHeaderPushedThenPoppedThenPushed(t *testi
 	err := stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 	// Pop miniHeaderOne
-	miniHeader, err := stack.Pop()
-	require.NoError(t, err)
+	miniHeader := stack.Pop()
 	assert.Equal(t, miniHeaderOne, miniHeader)
 	// Push miniHeaderOne again
 	err = stack.Push(miniHeaderOne)
@@ -174,8 +156,7 @@ func TestSimpleStackCheckpointAfterSameHeaderPushedThenPoppedThenPushed(t *testi
 	assert.Len(t, stack.miniHeaders, 1)
 	assert.Len(t, stack.updates, 3)
 
-	_, err = stack.Checkpoint()
-	require.NoError(t, err)
+	stack.Checkpoint()
 
 	assert.Len(t, stack.updates, 0)
 }
@@ -183,10 +164,9 @@ func TestSimpleStackCheckpointAfterSameHeaderPushedThenPoppedThenPushed(t *testi
 func TestSimpleStackCheckpointThenReset(t *testing.T) {
 	stack := New(10, []*types.MiniHeader{})
 
-	checkpointID, err := stack.Checkpoint()
-	require.NoError(t, err)
+	checkpointID := stack.Checkpoint()
 
-	err = stack.Push(miniHeaderOne)
+	err := stack.Push(miniHeaderOne)
 	require.NoError(t, err)
 
 	assert.Len(t, stack.miniHeaders, 1)
@@ -204,21 +184,18 @@ func TestSimpleStackCheckpointThenReset(t *testing.T) {
 	assert.Len(t, stack.miniHeaders, 1)
 	assert.Len(t, stack.updates, 1)
 
-	checkpointID, err = stack.Checkpoint()
-	require.NoError(t, err)
+	checkpointID = stack.Checkpoint()
 
 	assert.Len(t, stack.miniHeaders, 1)
 	assert.Len(t, stack.updates, 0)
 
-	miniHeader, err := stack.Pop()
-	require.NoError(t, err)
+	miniHeader := stack.Pop()
 	assert.Equal(t, miniHeader, miniHeaderTwo)
 
 	assert.Len(t, stack.miniHeaders, 0)
 	assert.Len(t, stack.updates, 1)
 
-	checkpointID, err = stack.Checkpoint()
-	require.NoError(t, err)
+	checkpointID = stack.Checkpoint()
 
 	assert.Len(t, stack.miniHeaders, 0)
 	assert.Len(t, stack.updates, 0)
