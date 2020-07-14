@@ -604,33 +604,28 @@ type blockRange struct {
 // blocks' logs twice.
 func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 	chunks := []*blockRange{}
-	numBlocksLeft := to - from
+	numBlocksLeft := to - from + 1
 	if numBlocksLeft < rangeSize {
 		chunks = append(chunks, &blockRange{
 			FromBlock: from,
 			ToBlock:   to,
 		})
 	} else {
-		blocks := []int{}
-		for i := 0; i <= numBlocksLeft; i++ {
-			blocks = append(blocks, from+i)
-		}
-		numChunks := len(blocks) / rangeSize
-		remainder := len(blocks) % rangeSize
+		numChunks := numBlocksLeft / rangeSize
+		remainder := numBlocksLeft % rangeSize
 		if remainder > 0 {
 			numChunks = numChunks + 1
 		}
 
 		for i := 0; i < numChunks; i = i + 1 {
-			fromIndex := i * rangeSize
-			toIndex := fromIndex + rangeSize
-			if toIndex > len(blocks) {
-				toIndex = len(blocks)
+			chunkFromBlock := from + i*rangeSize
+			chunkToBlock := chunkFromBlock + rangeSize - 1
+			if chunkToBlock > to {
+				chunkToBlock = to
 			}
-			bs := blocks[fromIndex:toIndex]
 			blockRange := &blockRange{
-				FromBlock: bs[0],
-				ToBlock:   bs[len(bs)-1],
+				FromBlock: chunkFromBlock,
+				ToBlock:   chunkToBlock,
 			}
 			chunks = append(chunks, blockRange)
 		}
@@ -692,11 +687,6 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []ethtypes.Log) (
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
-}
-
-// getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
-func (w *Watcher) getAllRetainedBlocks() ([]*types.MiniHeader, error) {
-	return w.stack.PeekAll()
 }
 
 func isWarning(err error) bool {

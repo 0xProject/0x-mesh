@@ -54,7 +54,7 @@ func TestWatcher(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		retainedBlocks, err := watcher.getAllRetainedBlocks()
+		retainedBlocks, err := watcher.stack.PeekAll()
 		require.NoError(t, err)
 		expectedRetainedBlocks := fakeClient.ExpectedRetainedBlocks()
 		assert.Equal(t, expectedRetainedBlocks, retainedBlocks, fmt.Sprintf("%s (timestep: %d)", scenarioLabel, i))
