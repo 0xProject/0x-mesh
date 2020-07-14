@@ -998,7 +998,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 		}
 	}
 	if latestMiniHeader != nil {
-		latestBlock.Number = latestMiniHeader.Number.String()
+		latestBlock.Number = int(latestMiniHeader.Number.Int64())
 		latestBlock.Hash = latestMiniHeader.Hash
 	}
 	numOrders, err := app.db.CountOrders(&db.OrderQuery{

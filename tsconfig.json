@@ -8,7 +8,6 @@
         { "path": "./packages/mesh-browser-lite" },
         { "path": "./packages/mesh-webpack-example" },
         { "path": "./packages/mesh-webpack-example-lite" },
-        { "path": "./packages/mesh-rpc-client" },
         { "path": "./packages/mesh-integration-tests" },
         { "path": "./packages/mesh-browser-shim" }
     ]

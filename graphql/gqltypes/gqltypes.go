@@ -17,7 +17,8 @@ type LatestBlock struct {
 
 func LatestBlockFromCommonType(latestBlock types.LatestBlock) LatestBlock {
 	return LatestBlock{
-		Number: latestBlock.Number,
+		// TODO(albrow): Change this.
+		Number: fmt.Sprint(latestBlock.Number),
 		Hash:   latestBlock.Hash.Hex(),
 	}
 }

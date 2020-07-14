@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -60,44 +59,6 @@ func main() {
 		}
 	}()
 
-	// Start WS RPC server.
-	wsRPCErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.WithField("ws_rpc_addr", config.WSRPCAddr).Info("starting WS RPC server")
-		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr)
-		go func() {
-			selectedRPCAddr, err := waitForSelectedAddress(ctx, rpcServer)
-			if err != nil {
-				log.WithError(err).Warn("WS RPC server did not start")
-			}
-			log.WithField("address", selectedRPCAddr).Info("started WS RPC server")
-		}()
-		if err := rpcServer.Listen(ctx, rpc.WSHandler); err != nil {
-			wsRPCErrChan <- err
-		}
-	}()
-
-	// Start HTTP RPC server.
-	httpRPCErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
-		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr)
-		go func() {
-			selectedRPCAddr, err := waitForSelectedAddress(ctx, rpcServer)
-			if err != nil {
-				log.WithError(err).Warn("HTTP RPC server did not start")
-			}
-			log.WithField("address", selectedRPCAddr).Info("started HTTP RPC server")
-		}()
-		if err := rpcServer.Listen(ctx, rpc.HTTPHandler); err != nil {
-			httpRPCErrChan <- err
-		}
-	}()
-
 	// Start GraphQL server.
 	graphQLErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -120,15 +81,9 @@ func main() {
 	case err := <-coreErrChan:
 		cancel()
 		log.WithField("error", err.Error()).Error("core app exited with error")
-	case err := <-wsRPCErrChan:
-		cancel()
-		log.WithField("error", err.Error()).Error("WS RPC server returned error")
-	case err := <-httpRPCErrChan:
-		cancel()
-		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
 	case err := <-graphQLErrChan:
 		cancel()
-		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
+		log.WithField("error", err.Error()).Error("GraphQL server returned error")
 	}
 
 	// If we reached here it means there was an error. Wait for all goroutines
