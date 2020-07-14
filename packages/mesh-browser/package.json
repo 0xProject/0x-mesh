@@ -24,6 +24,7 @@
         "@0x/subproviders": "^6.0.5",
         "@0x/ts-doc-gen": "^0.0.16",
         "@0x/tslint-config": "^4.0.0",
+        "@0x/utils": "^5.5.0",
         "@types/base64-arraybuffer": "^0.1.0",
         "ignore-loader": "^0.1.2",
         "prettier": "^1.19.1",

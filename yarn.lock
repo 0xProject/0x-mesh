@@ -145,6 +145,15 @@
     bignumber.js "~9.0.0"
     ethereum-types "^3.1.0"
 
+"@0x/types@^3.1.3":
+  version "3.1.3"
+  resolved "https://registry.yarnpkg.com/@0x/types/-/types-3.1.3.tgz#f5edbcb0fe38f6c2979cd6cedacf7c132a72aa23"
+  integrity sha512-6lHKOlr90zN5P/Rrg/SfdHXUASU4ZDBr5Y4IBwwKrrPo/XetxNFxdZQcDxmVJT8aG13f7r6xnDwwlEyFtvnWEQ==
+  dependencies:
+    "@types/node" "*"
+    bignumber.js "~9.0.0"
+    ethereum-types "^3.1.1"
+
 "@0x/typescript-typings@^4.2.2", "@0x/typescript-typings@^4.3.0":
   version "4.3.0"
   resolved "https://registry.yarnpkg.com/@0x/typescript-typings/-/typescript-typings-4.3.0.tgz#4813a996ac5101841d1c22f4aa1738ab56168857"
@@ -165,6 +174,17 @@
     "@types/react" "*"
     bignumber.js "~9.0.0"
     ethereum-types "^3.1.0"
+    popper.js "1.14.3"
+
+"@0x/typescript-typings@^5.1.0":
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/@0x/typescript-typings/-/typescript-typings-5.1.0.tgz#8e81a8605e3ef02bea16b73e4bd229ce010912c6"
+  integrity sha512-djQWgwabVgQ5jH3KFlrzOdLVZhYRpOIwlZtvkeznjToi8Xw2YXBoX0OL6ZJ/PhyNCEgtopO11HsHTR2mcyKyIg==
+  dependencies:
+    "@types/bn.js" "^4.11.0"
+    "@types/react" "*"
+    bignumber.js "~9.0.0"
+    ethereum-types "^3.1.1"
     popper.js "1.14.3"
 
 "@0x/utils@^4.3.3":
@@ -199,6 +219,25 @@
     chalk "^2.3.0"
     detect-node "2.0.3"
     ethereum-types "^3.1.0"
+    ethereumjs-util "^5.1.1"
+    ethers "~4.0.4"
+    isomorphic-fetch "2.2.1"
+    js-sha3 "^0.7.0"
+    lodash "^4.17.11"
+
+"@0x/utils@^5.5.0":
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/@0x/utils/-/utils-5.5.0.tgz#b167a09e3a950035e45e05050f95be709b4d2b79"
+  integrity sha512-2rDKKzdbPEjKXv5HSrkB6VzukZrd1EJGXFhJIlLEN/c2Z9svFnWhQiSlPQX0o1bK435gJQbd1I3B6O3I2TkLrQ==
+  dependencies:
+    "@0x/types" "^3.1.3"
+    "@0x/typescript-typings" "^5.1.0"
+    "@types/node" "*"
+    abortcontroller-polyfill "^1.1.9"
+    bignumber.js "~9.0.0"
+    chalk "^2.3.0"
+    detect-node "2.0.3"
+    ethereum-types "^3.1.1"
     ethereumjs-util "^5.1.1"
     ethers "~4.0.4"
     isomorphic-fetch "2.2.1"
@@ -2913,6 +2952,14 @@ ethereum-types@^3.0.0, ethereum-types@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/ethereum-types/-/ethereum-types-3.1.0.tgz#76de33b398b5b5375e08e647c92ac00e87a647d9"
   integrity sha512-E4lBfxzRSFjd2OM+BATc0b3nN+xWVpAQhBCwSNS9kbsXVPV2LNhIduwCR8Poc8seQukFfuXp0QoVXOlQbUS2pQ==
+  dependencies:
+    "@types/node" "*"
+    bignumber.js "~9.0.0"
+
+ethereum-types@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/ethereum-types/-/ethereum-types-3.1.1.tgz#fc9ea72f0d4b93cd651e31ed79b9af4126e15f5a"
+  integrity sha512-4PRpHfzN4v+IhgrEOS4KYugtKliuDESGtWjmhpPmOC2RUilo6wQDYKK2PKaq4rYG+dzHxIfXrPh/AnQpRgSNhw==
   dependencies:
     "@types/node" "*"
     bignumber.js "~9.0.0"

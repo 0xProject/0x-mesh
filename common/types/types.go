@@ -28,7 +28,7 @@ type Stats struct {
 	NumOrders                         int         `json:"numOrders"`
 	NumOrdersIncludingRemoved         int         `json:"numOrdersIncludingRemoved"`
 	NumPinnedOrders                   int         `json:"numPinnedOrders"`
-	MaxExpirationTime                 string      `json:"maxExpirationTime"`
+	MaxExpirationTime                 *big.Int    `json:"maxExpirationTime"`
 	StartOfCurrentUTCDay              time.Time   `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int         `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int64       `json:"ethRPCRateLimitExpiredRequests"`
@@ -36,7 +36,7 @@ type Stats struct {
 
 // LatestBlock is the latest block processed by the Mesh node.
 type LatestBlock struct {
-	Number int         `json:"number"`
+	Number *big.Int    `json:"number"`
 	Hash   common.Hash `json:"hash"`
 }
 

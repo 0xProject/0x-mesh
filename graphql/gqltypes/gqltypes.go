@@ -53,7 +53,7 @@ func StatsFromCommonType(stats *types.Stats) *Stats {
 		StartOfCurrentUTCDay:              stats.StartOfCurrentUTCDay.Format(time.RFC3339),
 		EthRPCRequestsSentInCurrentUTCDay: int32(stats.EthRPCRequestsSentInCurrentUTCDay),
 		EthRPCRateLimitExpiredRequests:    int32(stats.EthRPCRateLimitExpiredRequests),
-		MaxExpirationTime:                 stats.MaxExpirationTime,
+		MaxExpirationTime:                 stats.MaxExpirationTime.String(),
 	}
 }
 
