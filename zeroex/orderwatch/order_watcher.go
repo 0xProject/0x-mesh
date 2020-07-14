@@ -1175,6 +1175,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			orderTimeStampIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimeStampSeconds) == 1
 			isOrderUnexpired := order.IsRemoved && orderTimeStampIsValid
 
+			// If order was previously expired, check if it has become unexpired.
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
 				orderEvent := &zeroex.OrderEvent{
@@ -1188,7 +1189,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			}
 
 			if oldFillableAmount.Cmp(newFillableAmount) == 0 {
-				// No important state-change happened. Still want to update lastValidatedBlock
+				// No important state-change happened. Still want to update lastValidatedBlock.
 				w.updateOrderLastValidatedBlock(order, validationBlock)
 				continue
 			} else {
@@ -1196,6 +1197,9 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					w.updateOrderFillableTakerAssetAmount(order, newFillableAmount, validationBlock)
 				}
 
+				// Either the fillable amount has increased, e.g. a fill transaction reverted
+				// because of a block reorg, or it has decreased because of a partial or complete
+				// fill.
 				endState := zeroex.ESOrderFillabilityIncreased
 				if oldFillableAmount.Cmp(newFillableAmount) == 1 {
 					endState = zeroex.ESOrderFilled
