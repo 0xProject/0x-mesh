@@ -578,12 +578,11 @@ type blockRange struct {
 // blocks' logs twice.
 func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 	chunks := []*blockRange{}
-	for from+rangeSize-1 < to {
+	for ; from+rangeSize-1 < to; from += rangeSize {
 		chunks = append(chunks, &blockRange{
 			FromBlock: from,
 			ToBlock:   from + rangeSize - 1,
 		})
-		from += rangeSize
 	}
 	return append(chunks, &blockRange{
 		FromBlock: from,

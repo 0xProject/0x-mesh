@@ -317,15 +317,15 @@ export class Database {
         };
     }
 
-    // ResetMiniHeaders(miniHeaders []*types.MiniHeader) (err error)
-    public async resetMiniHeadersAsync(miniHeaders: MiniHeader[]): Promise<void> {
+    // ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error)
+    public async resetMiniHeadersAsync(newMiniHeaders: MiniHeader[]): Promise<void> {
         await this._db.transaction('rw!', this._miniHeaders, async () => {
             // Remove all of the existing miniheaders
             await this._miniHeaders.clear();
 
-            for (const miniHeader of miniHeaders) {
+            for (const newMiniHeader of newMiniHeaders) {
                 try {
-                    await this._miniHeaders.add(miniHeader);
+                    await this._miniHeaders.add(newMiniHeader);
                 } catch (e) {
                     if (e.name === 'ConstraintError') {
                         // A miniHeader with this hash already exists. This is
