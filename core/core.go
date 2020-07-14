@@ -321,7 +321,10 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient := blockwatch.NewRpcClient(ethClient)
+	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
+	if err != nil {
+		return nil, err
+	}
 
 	topics := orderwatch.GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{

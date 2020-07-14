@@ -1,7 +1,6 @@
 package blockwatch
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -23,8 +22,6 @@ type fixtureTimestep struct {
 	BlockEvents      []*Event                         `json:"blockEvents" gencodec:"required"`
 	ScenarioLabel    string                           `json:"scenarioLabel" gencodec:"required"`
 }
-
-var _ Client = &fakeClient{}
 
 // fakeClient is a fake Client for testing purposes.
 type fakeClient struct {
@@ -49,7 +46,7 @@ func newFakeClient(fixtureFilePath string) (*fakeClient, error) {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByNumber(_ context.Context, number *big.Int) (*types.MiniHeader, error) {
+func (fc *fakeClient) HeaderByNumber(number *big.Int) (*types.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
@@ -68,7 +65,7 @@ func (fc *fakeClient) HeaderByNumber(_ context.Context, number *big.Int) (*types
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByHash(_ context.Context, hash common.Hash) (*types.MiniHeader, error) {
+func (fc *fakeClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
@@ -80,7 +77,7 @@ func (fc *fakeClient) HeaderByHash(_ context.Context, hash common.Hash) (*types.
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
-func (fc *fakeClient) FilterLogs(_ context.Context, q ethereum.FilterQuery) ([]ethtypes.Log, error) {
+func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	// IMPLEMENTED WITH A CANNED RESPONSE. FOR MORE ELABORATE TESTING, SEE `fakeLogClient`
 	return []ethtypes.Log{
 		{
