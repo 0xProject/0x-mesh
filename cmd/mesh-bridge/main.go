@@ -31,39 +31,39 @@ package main
 // 	Verbosity          int    `envvar:"VERBOSITY"`
 // }
 
-// func main() {
-// 	env := clientEnvVars{}
-// 	if err := envvar.Parse(&env); err != nil {
-// 		panic(err)
-// 	}
+func main() {
+	// 	env := clientEnvVars{}
+	// 	if err := envvar.Parse(&env); err != nil {
+	// 		panic(err)
+	// 	}
 
-// 	log.SetLevel(log.Level(env.Verbosity))
+	// 	log.SetLevel(log.Level(env.Verbosity))
 
-// 	firstClient, err := rpc.NewClient(env.FirstWSRPCAddress)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("could not create client")
-// 	}
-// 	stats, err := firstClient.GetStats()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	log.WithField("stats", stats).Info("Spun up first client")
+	// 	firstClient, err := rpc.NewClient(env.FirstWSRPCAddress)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("could not create client")
+	// 	}
+	// 	stats, err := firstClient.GetStats()
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	log.WithField("stats", stats).Info("Spun up first client")
 
-// 	secondClient, err := rpc.NewClient(env.SecondWSRPCAddress)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("could not create client")
-// 	}
-// 	stats, err = secondClient.GetStats()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	log.WithField("stats", stats).Info("Spun up second client")
+	// 	secondClient, err := rpc.NewClient(env.SecondWSRPCAddress)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("could not create client")
+	// 	}
+	// 	stats, err = secondClient.GetStats()
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	log.WithField("stats", stats).Info("Spun up second client")
 
-// 	go func() {
-// 		pipeOrders(secondClient, firstClient, secondWSRPCAddressLabel, firstWSRPCAddressLabel)
-// 	}()
-// 	pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
-// }
+	// 	go func() {
+	// 		pipeOrders(secondClient, firstClient, secondWSRPCAddressLabel, firstWSRPCAddressLabel)
+	// 	}()
+	// 	pipeOrders(firstClient, secondClient, firstWSRPCAddressLabel, secondWSRPCAddressLabel)
+}
 
 // func pipeOrders(inClient, outClient *rpc.Client, inLabel, outLabel string) {
 // 	ctx, cancel := context.WithCancel(context.Background())

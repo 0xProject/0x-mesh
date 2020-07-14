@@ -34,33 +34,33 @@ package main
 // 	ExchangeAddress:       contractAddresses.Exchange,
 // }
 
-// func main() {
-// 	env := clientEnvVars{}
-// 	if err := envvar.Parse(&env); err != nil {
-// 		panic(err)
-// 	}
+func main() {
+	// 	env := clientEnvVars{}
+	// 	if err := envvar.Parse(&env); err != nil {
+	// 		panic(err)
+	// 	}
 
-// 	client, err := rpc.NewClient(env.WSRPCAddress)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("could not create client")
-// 	}
+	// 	client, err := rpc.NewClient(env.WSRPCAddress)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("could not create client")
+	// 	}
 
-// 	ethClient, err := ethrpc.Dial(env.EthereumRPCURL)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("could not create Ethereum rpc client")
-// 	}
+	// 	ethClient, err := ethrpc.Dial(env.EthereumRPCURL)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("could not create Ethereum rpc client")
+	// 	}
 
-// 	signer := signer.NewEthRPCSigner(ethClient)
-// 	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("could not sign 0x order")
-// 	}
+	// 	signer := signer.NewEthRPCSigner(ethClient)
+	// 	signedTestOrder, err := zeroex.SignOrder(signer, testOrder)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("could not sign 0x order")
+	// 	}
 
-// 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
-// 	validationResults, err := client.AddOrders(signedTestOrders)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("error from AddOrder")
-// 	} else {
-// 		log.Printf("submitted %d orders. Accepted: %d, Rejected: %d", len(signedTestOrders), len(validationResults.Accepted), len(validationResults.Rejected))
-// 	}
-// }
+	// 	signedTestOrders := []*zeroex.SignedOrder{signedTestOrder}
+	// 	validationResults, err := client.AddOrders(signedTestOrders)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("error from AddOrder")
+	// 	} else {
+	// 		log.Printf("submitted %d orders. Accepted: %d, Rejected: %d", len(signedTestOrders), len(validationResults.Accepted), len(validationResults.Rejected))
+	// 	}
+}
