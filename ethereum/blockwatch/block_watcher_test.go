@@ -47,7 +47,7 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err := watcher.SyncToLatestBlock()
+		err := watcher.SyncToLatestBlock(ctx)
 		if strings.HasPrefix(scenarioLabel, "ERROR") {
 			require.Error(t, err)
 		} else {
@@ -390,7 +390,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		require.NoError(t, err)
 		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
-		logs, err := watcher.filterLogsRecurisively(from, to, []ethtypes.Log{})
+		logs, err := watcher.filterLogsRecursively(ctx, from, to, []ethtypes.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.rangeToFilterLogsResponse), fakeLogClient.Count())
