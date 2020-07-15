@@ -43,6 +43,7 @@ import (
 )
 
 const (
+	blockRetentionLimit           = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
@@ -333,7 +334,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	blockWatcher := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
 
 	// Initialize the order validator
 	orderValidator, err := ordervalidator.New(

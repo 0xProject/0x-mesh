@@ -317,6 +317,27 @@ export class Database {
         };
     }
 
+    // ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error)
+    public async resetMiniHeadersAsync(newMiniHeaders: MiniHeader[]): Promise<void> {
+        await this._db.transaction('rw!', this._miniHeaders, async () => {
+            // Remove all of the existing miniheaders
+            await this._miniHeaders.clear();
+
+            for (const newMiniHeader of newMiniHeaders) {
+                try {
+                    await this._miniHeaders.add(newMiniHeader);
+                } catch (e) {
+                    if (e.name === 'ConstraintError') {
+                        // A miniHeader with this hash already exists. This is
+                        // fine based on the semantics of addMiniHeaders.
+                        continue;
+                    }
+                    throw e;
+                }
+            }
+        });
+    }
+
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
     public async getMiniHeaderAsync(hash: string): Promise<MiniHeader> {
         return this._db.transaction('rw!', this._miniHeaders, async () => {

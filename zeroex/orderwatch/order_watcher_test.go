@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	blockRetentionLimit         = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
 	miniHeaderRetentionLimit    = 2
 	blockPollingInterval        = 1 * time.Second
@@ -1657,7 +1658,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	blockWatcher := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
 	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{

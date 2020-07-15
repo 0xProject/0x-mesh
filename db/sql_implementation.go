@@ -567,6 +567,29 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 	return added, removed, nil
 }
 
+// ResetMiniHeaders deletes all of the existing miniheaders and then stores new
+// miniheaders in the database.
+func (db *DB) ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+
+	err = db.sqldb.TransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		_, err := txn.DeleteFrom("miniHeaders").ExecContext(db.ctx)
+		if err != nil {
+			return err
+		}
+		for _, newMiniHeader := range newMiniHeaders {
+			_, err := txn.NamedExecContext(db.ctx, insertMiniHeaderQuery, sqltypes.MiniHeaderFromCommonType(newMiniHeader))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
 	defer func() {
 		err = convertErr(err)

@@ -43,6 +43,7 @@ type Database interface {
 	FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
 	DeleteMiniHeader(hash common.Hash) error
 	DeleteMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
+	ResetMiniHeaders(miniHeaders []*types.MiniHeader) error
 	GetMetadata() (*types.Metadata, error)
 	SaveMetadata(metadata *types.Metadata) error
 	UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error

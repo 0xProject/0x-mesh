@@ -30,6 +30,9 @@ type Client interface {
 	FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error)
 }
 
+// Ensure that RpcClient is compliant with the Client interface.
+var _ Client = &RpcClient{}
+
 // RpcClient is a Client for fetching Ethereum blocks from a specific JSON-RPC endpoint.
 type RpcClient struct {
 	ethRPCClient ethrpcclient.Client
@@ -51,7 +54,7 @@ type GetBlockByNumberResponse struct {
 }
 
 // UnknownBlockNumberError is the error returned from a filter logs RPC call when the block number
-// specified is not recognized
+// specified is not recognized.
 type UnknownBlockNumberError struct {
 	Message     string
 	BlockNumber *big.Int
@@ -110,8 +113,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*types.MiniHeader, error) 
 	return miniHeader, nil
 }
 
-// UnknownBlockHashError is the error returned from a filter logs RPC call when the blockHash
-// specified is not recognized
+// UnknownBlockHashError is the error returned from a filter logs RPC call when
+// the blockHash specified is not recognized.
 type UnknownBlockHashError struct {
 	BlockHash common.Hash
 }
@@ -144,8 +147,8 @@ func (rc *RpcClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) {
 	return miniHeader, nil
 }
 
-// FilterUnknownBlockError is the error returned from a filter logs RPC call when the blockHash
-// specified is not recognized
+// FilterUnknownBlockError is the error returned from a filter logs RPC call when
+// the blockHash specified is not recognized.
 type FilterUnknownBlockError struct {
 	Message     string
 	FilterQuery ethereum.FilterQuery
