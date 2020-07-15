@@ -3,11 +3,17 @@ package main
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/graphql"
 	"github.com/graph-gophers/graphql-go/relay"
 )
+
+// gracefulShutdownTimeout is the maximum amount of time to allow
+// responding to any incoming requests after the server receives
+// the signal to shutdown.
+const gracefulShutdownTimeout = 10 * time.Second
 
 func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQL bool) error {
 	schema, err := graphql.NewSchema(app)
@@ -28,8 +34,9 @@ func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQ
 	go func() {
 		select {
 		case <-ctx.Done():
-			// TODO(albrow): Graceful shutdowns.
-			server.Close()
+			shutdownContext, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
+			defer cancel()
+			_ = server.Shutdown(shutdownContext)
 		}
 	}()
 
