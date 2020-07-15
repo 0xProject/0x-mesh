@@ -9,21 +9,21 @@ import (
 	"github.com/graph-gophers/graphql-go/relay"
 )
 
-// TODO(albrow): Support context
-func serveGraphQL(ctx context.Context, app *core.App) error {
+func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQL bool) error {
 	schema, err := graphql.NewSchema(app)
 	if err != nil {
 		return err
 	}
 
 	handler := http.NewServeMux()
-	handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(graphiQLPage)
-	}))
-	handler.Handle("/query", &relay.Handler{Schema: schema})
+	if enableGraphiQL {
+		handler.Handle("/graphiql", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write(graphiQLPage)
+		}))
+	}
+	handler.Handle("/", &relay.Handler{Schema: schema})
 
-	// TODO(albrow): Pass in port number
-	server := &http.Server{Addr: ":8080", Handler: handler}
+	server := &http.Server{Addr: addr, Handler: handler}
 
 	go func() {
 		select {
@@ -36,6 +36,7 @@ func serveGraphQL(ctx context.Context, app *core.App) error {
 	return server.ListenAndServe()
 }
 
+// TODO(albrow): Update this to use the latest GraphiQL version.
 var graphiQLPage = []byte(`
 <!DOCTYPE html>
 <html>

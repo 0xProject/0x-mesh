@@ -18,12 +18,14 @@ import (
 // standaloneConfig contains configuration options specific to running 0x Mesh
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
-	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
-	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
-	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
-	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
-	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`
+	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
+	// By default, 0x Mesh will listen on localhost and port 60557.
+	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"localhost:60557"`
+	// EnableGraphiQL determines whether or not to enable GraphiQL, an interactive
+	// GraphQL IDE which can be accessed by visiting /graphiql in a browser. See
+	// https://github.com/graphql/graphiql for more information. By default, GraphiQL
+	// is disabled.
+	EnableGraphiQL bool `envvar:"ENABLE_GRAPHIQL" default:"false"`
 }
 
 func main() {
@@ -64,9 +66,8 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// TODO(albrow): Pass in port number.
-		// log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
-		if err := serveGraphQL(ctx, app); err != nil {
+		log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
+		if err := serveGraphQL(ctx, app, config.GraphQLServerAddr, config.EnableGraphiQL); err != nil {
 			graphQLErrChan <- err
 		}
 	}()
