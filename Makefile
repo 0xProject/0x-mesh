@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-ts wasmbrowsertest
+deps: deps-ts wasmbrowsertest go-bindata
 
 
 .PHONY: deps-ts
@@ -11,6 +11,13 @@ deps-ts:
 .PHONY: gobin
 gobin:
 	GO111MODULE=off go get -u github.com/myitcv/gobin
+
+
+# go-bindata is a tool for embedding files so that they are included in binaries.
+# This installs the CLI for go-bindata.
+.PHONY: go-bindata
+go-bindata: gobin
+	gobin github.com/go-bindata/go-bindata/v3/go-bindata@v3.1.3
 
 
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
@@ -34,7 +41,7 @@ test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser
 
 
 .PHONY: test-go
-test-go: test-go-parallel test-go-serial
+test-go: generate test-go-parallel test-go-serial
 
 
 .PHONY: test-go-parallel
@@ -84,8 +91,13 @@ lint-ts:
 lint-prettier:
 	yarn prettier:ci
 
+
+.PHONY: generate
+generate:
+	go generate ./...
+
 .PHONY: mesh
-mesh:
+mesh: generate
 	go install ./cmd/mesh
 
 
@@ -105,7 +117,7 @@ db-integrity-check:
 
 
 .PHONY: cut-release
-cut-release:
+cut-release: generate
 	go run ./cmd/cut-release/main.go
 
 
@@ -117,7 +129,7 @@ all: mesh mesh-keygen mesh-bootstrap db-integrity-check
 
 
 .PHONY: docker-mesh
-docker-mesh:
+docker-mesh: generate
 	docker build . -t 0xorg/mesh -f ./dockerfiles/mesh/Dockerfile
 
 
@@ -132,5 +144,5 @@ docker-mesh-fluent-bit:
 
 
 .PHONY: docker-mesh-bridge
-docker-mesh-bridge:
+docker-mesh-bridge: generate
 	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
