@@ -185,3 +185,16 @@ func (r *resolver) Orders(args ordersArgs) ([]*gqltypes.OrderWithMetadata, error
 	}
 	return gqltypes.OrdersWithMetadataFromCommonType(orders), nil
 }
+
+type addOrdersArgs struct {
+	Orders []gqltypes.NewOrder
+	Pinned bool
+}
+
+func (r *resolver) AddOrders(args addOrdersArgs) (*gqltypes.AddOrdersResults, error) {
+	return nil, errors.New("Not yet implemented")
+}
+
+func (r *resolver) OrderEvents() (<-chan []gqltypes.OrderEvent, error) {
+	return nil, errors.New("Not yet implemented")
+}
