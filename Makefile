@@ -28,7 +28,7 @@ wasmbrowsertest: gobin
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
+deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest go-bindata
 
 
 .PHONY: deps-ts-no-lockfile
