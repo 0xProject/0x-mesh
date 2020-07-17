@@ -1,0 +1,26 @@
+{
+    "name": "mesh-webpack-example",
+    "description": "An example of how to run Mesh directly in the browser using Webpack and the @0x/mesh-browser package.",
+    "version": "9.4.0",
+    "main": "index.js",
+    "license": "Apache-2.0",
+    "private": true,
+    "scripts": {
+        "build": "tsc -b && node --max_old_space_size=3072 ./node_modules/.bin/webpack --mode=development",
+        "clean": "shx rm ./dist/bundle.js || exit 0",
+        "postinstall:comment": "Remove the go and scripts directories of the mesh browser package to reduce the webpack bundle size",
+        "postinstall": "yarn rimraf ./node_modules/@0x/mesh-browser/go ./node_modules/@0x/mesh-browser/scripts",
+        "lint": "tslint --format stylish --project ."
+    },
+    "devDependencies": {
+        "rimraf": "^3.0.0",
+        "shx": "^0.3.2",
+        "ts-loader": "^6.0.4",
+        "typescript": "^3.9.3",
+        "webpack": "^4.39.2",
+        "webpack-cli": "^3.3.7"
+    },
+    "dependencies": {
+        "@0x/mesh-browser": "9.4.0"
+    }
+}

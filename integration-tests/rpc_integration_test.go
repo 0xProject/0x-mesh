@@ -19,6 +19,7 @@ import (
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +49,7 @@ func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType stri
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait until the rpc server has been started, and then create an rpc client
@@ -117,7 +118,7 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
@@ -144,14 +145,13 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 	assert.Len(t, validationResponse.Accepted, numOrders)
 	assert.Len(t, validationResponse.Rejected, 0)
 
-	fixmeGetOrdersResponse, err := client.GetOrders(0, 10, "")
+	getOrdersResponse, err := client.GetOrders(10, common.Hash{})
 	require.NoError(t, err)
 	// NOTE(jalextowle) This statement holds true for many pagination algorithms, but it may be necessary
 	//                  to drop this requirement if the `GetOrders` endpoint changes dramatically.
-	require.Len(t, fixmeGetOrdersResponse.OrdersInfos, 10)
+	require.Len(t, getOrdersResponse.OrdersInfos, 10)
 
 	// Make a new "GetOrders" request with different pagination parameters.
-	snapshotID := ""
 	for _, testCase := range []struct {
 		ordersPerPage int
 	}{
@@ -169,29 +169,26 @@ func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpc
 		},
 	} {
 		if testCase.ordersPerPage <= 0 {
-			_, err := client.GetOrders(0, testCase.ordersPerPage, snapshotID)
+			_, err := client.GetOrders(testCase.ordersPerPage, common.Hash{})
 			require.EqualError(t, err, "perPage cannot be zero")
 		} else {
-
-			// If numOrders % testCase.ordersPerPage is nonzero, then we must increment the number of pages to
-			// iterate through because the numOrder / testCase.ordersPerPage calculation rounds down.
-			highestPageNumber := numOrders / testCase.ordersPerPage
-			if numOrders%testCase.ordersPerPage > 0 {
-				highestPageNumber++
-			}
-
 			// Iterate through enough pages to get all of the orders in the mesh nodes database. Compare the
 			// responses to the orders that we expect to be in the database.
 			var responseOrders []*types.OrderInfo
-			for pageNumber := 0; pageNumber < highestPageNumber; pageNumber++ {
+			currentMinHash := common.Hash{}
+			for {
 				expectedTimestamp := time.Now().UTC()
-				getOrdersResponse, err := client.GetOrders(pageNumber, testCase.ordersPerPage, snapshotID)
-				assert.WithinDuration(t, expectedTimestamp, getOrdersResponse.SnapshotTimestamp, time.Second)
+				getOrdersResponse, err := client.GetOrders(testCase.ordersPerPage, currentMinHash)
+				assert.WithinDuration(t, expectedTimestamp, getOrdersResponse.Timestamp, time.Second)
 				require.NoError(t, err)
-				// NOTE(jalextowle) This statement holds true for many pagination algorithms, but it may be necessary
-				//                  to drop this requirement if the `GetOrders` endpoint changes dramatically.
-				require.Len(t, getOrdersResponse.OrdersInfos, min(testCase.ordersPerPage, numOrders-pageNumber*testCase.ordersPerPage))
-				responseOrders = append(responseOrders, getOrdersResponse.OrdersInfos...)
+				orderInfos := getOrdersResponse.OrdersInfos
+				assert.LessOrEqual(t, len(orderInfos), testCase.ordersPerPage, "response contained too many orders")
+				responseOrders = append(responseOrders, orderInfos...)
+				if len(orderInfos) > 0 {
+					currentMinHash = orderInfos[len(orderInfos)-1].OrderHash
+				} else {
+					break
+				}
 			}
 			assertSignedOrdersMatch(t, signedTestOrders, responseOrders)
 		}
@@ -226,7 +223,7 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcP
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and get the peer ID of the node. Start the
@@ -253,16 +250,16 @@ func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcP
 	getStatsResponse.LatestBlock = types.LatestBlock{}
 
 	// Ensure that the correct response was logged by "GetStats"
-	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic)
-	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous)
-	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous)
-	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID)
-	require.Equal(t, 1337, getStatsResponse.EthereumChainID)
-	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock)
-	require.Equal(t, 0, getStatsResponse.NumOrders)
-	require.Equal(t, 0, getStatsResponse.NumPeers)
-	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime)
-	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay)
+	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic, "PubSubTopic")
+	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous, "Rendezvous")
+	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous, "SecondaryRendezvous")
+	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID, "PeerID")
+	require.Equal(t, 1337, getStatsResponse.EthereumChainID, "EthereumChainID")
+	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock, "LatestBlock")
+	require.Equal(t, 0, getStatsResponse.NumOrders, "NumOrders")
+	require.Equal(t, 0, getStatsResponse.NumPeers, "NumPeers")
+	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime, "MaxExpirationTime")
+	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay, "StartOfCurrentDay")
 
 	cancel()
 	wg.Wait()
@@ -285,7 +282,7 @@ func TestOrdersSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client.
@@ -345,7 +342,7 @@ func TestHeartbeatSubscription(t *testing.T) {
 	count := int(atomic.AddInt32(&nodeCount, 1))
 	go func() {
 		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", logMessages)
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
 	}()
 
 	// Wait for the rpc server to start and then start the rpc client

@@ -42,7 +42,7 @@ machine where all Mesh-related data will be stored.
 -   Ports 60557, 60558, and 60559 are the default ports used for the JSON RPC endpoint, communicating with peers over TCP, and communicating with peers over WebSockets, respectively.
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
 -   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
--   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (*warning:* changing this setting can exceed the limits of your Ethereum RPC provider).
+-   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (_warning:_ changing this setting can exceed the limits of your Ethereum RPC provider).
 -   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
 
 ## Persisting State

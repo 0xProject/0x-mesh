@@ -12,15 +12,15 @@ approach comes with a lot of advantages, but also has some drawbacks:
 
 ### Advantages
 
-- Increased decentralization
-- Little to no hosting costs
-- Ability to trade experimental/niche assets
+-   Increased decentralization
+-   Little to no hosting costs
+-   Ability to trade experimental/niche assets
 
 ### Drawbacks
 
-- Longer warm-up time
-- Increased risk of trade collisions
-- Consumes more end-user resources
+-   Longer warm-up time
+-   Increased risk of trade collisions
+-   Consumes more end-user resources
 
 ## @0x/mesh-browser
 
@@ -77,14 +77,14 @@ yarn add @0x/mesh-browser-lite
 
 ## Documentation
 
-* Documentation for the `@0x/mesh-browser` package is available at
-[0x-org.gitbook.io/mesh/browser-bindings/browser](https://0x-org.gitbook.io/mesh/browser-bindings/browser).
-* Documentation for the `@0x/mesh-browser-lite` package is available at
-[0x-org.gitbook.io/mesh/browser-bindings/browser-lite](https://0x-org.gitbook.io/mesh/browser-bindings/browser-lite).
+-   Documentation for the `@0x/mesh-browser` package is available at
+    [0x-org.gitbook.io/mesh/browser-bindings/browser](https://0x-org.gitbook.io/mesh/browser-bindings/browser).
+-   Documentation for the `@0x/mesh-browser-lite` package is available at
+    [0x-org.gitbook.io/mesh/browser-bindings/browser-lite](https://0x-org.gitbook.io/mesh/browser-bindings/browser-lite).
 
 ### Example usage
 
-[The webpack-example directory](../packages/webpack-example) and
-[the webpack-example-lite directory](../packages/webpack-example) include
+[The webpack-example directory](../packages/mesh-webpack-example) and
+[the webpack-example-lite directory](../packages/mesh-webpack-example-lite) include
 examples of how to use the `@0x/mesh-browser` and the `@0x/mesh-browser-lite` packages,
 respectively.

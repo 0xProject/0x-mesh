@@ -10,18 +10,16 @@ import (
 	"math/big"
 	"net/http"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
@@ -233,7 +231,6 @@ type ValidationResults struct {
 // OrderValidator validates 0x orders
 type OrderValidator struct {
 	maxRequestContentLength      int
-	devUtilsABI                  abi.ABI
 	devUtils                     *wrappers.DevUtilsCaller
 	coordinatorRegistry          *wrappers.CoordinatorRegistryCaller
 	assetDataDecoder             *zeroex.AssetDataDecoder
@@ -244,10 +241,6 @@ type OrderValidator struct {
 
 // New instantiates a new order validator
 func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLength int, contractAddresses ethereum.ContractAddresses) (*OrderValidator, error) {
-	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
-	if err != nil {
-		return nil, err
-	}
 	devUtils, err := wrappers.NewDevUtilsCaller(contractAddresses.DevUtils, contractCaller)
 	if err != nil {
 		return nil, err
@@ -260,7 +253,6 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 
 	return &OrderValidator{
 		maxRequestContentLength:      maxRequestContentLength,
-		devUtilsABI:                  devUtilsABI,
 		devUtils:                     devUtils,
 		coordinatorRegistry:          coordinatorRegistry,
 		assetDataDecoder:             assetDataDecoder,
@@ -275,9 +267,9 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 // requests concurrently. If a request fails, re-attempt it up to four times before giving up.
 // If some requests fail, this method still returns whatever order information it was able to
 // retrieve up until the failure.
-// The `blockNumber` parameter lets the caller specify a specific block height at which to validate
-// the orders. This can be set to the `latest` block or any other historical block number.
-func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, blockNumber *big.Int) *ValidationResults {
+// The `validationBlock` parameter lets the caller specify a specific block at which to validate
+// the orders. This can be set to the `latest` block or any other historical block.
+func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*zeroex.SignedOrder, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
 	if len(rawSignedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -307,7 +299,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 	for i, signedOrders := range signedOrderChunks {
 		wg.Add(1)
 		go func(signedOrders []*zeroex.SignedOrder, i int) {
-			trimmedOrders := []wrappers.TrimmedOrder{}
+			trimmedOrders := []wrappers.LibOrderOrder{}
 			for _, signedOrder := range signedOrders {
 				trimmedOrders = append(trimmedOrders, signedOrder.Trim())
 			}
@@ -339,7 +331,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					Pending: false,
 					Context: ctx,
 				}
-				opts.BlockNumber = blockNumber
+				opts.BlockNumber = validationBlock.Number
 
 				results, err := o.devUtils.GetOrderRelevantStates(opts, trimmedOrders, signatures)
 				if err != nil {
@@ -811,13 +803,6 @@ func (o *OrderValidator) isSupportedStaticCallData(staticCallAssetData zeroex.St
 	return true
 }
 
-// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
-// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
-// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
-// get the number of bytes taken up by the SignedOrder alone.
-// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
-const emptyGetOrderRelevantStatesCallDataByteLength = 268
-
 // jsonRPCPayloadByteLength is the number of bytes occupied by the default call to `getOrderRelevantStates` with 0 signedOrders
 // passed in. The `data` includes the empty `getOrderRelevantStates` calldata.
 /*
@@ -837,23 +822,16 @@ const emptyGetOrderRelevantStatesCallDataByteLength = 268
 */
 const jsonRPCPayloadByteLength = 444
 
-func (o *OrderValidator) computeABIEncodedSignedOrderByteLength(signedOrder *zeroex.SignedOrder) (int, error) {
-	trimmedOrder := signedOrder.Trim()
-	data, err := o.devUtilsABI.Pack(
-		"getOrderRelevantStates",
-		[]wrappers.TrimmedOrder{trimmedOrder},
-		[][]byte{signedOrder.Signature},
-	)
-	if err != nil {
-		return 0, err
-	}
-	dataBytes := hexutil.Bytes(data)
-	encodedData, err := json.Marshal(dataBytes)
-	if err != nil {
-		return 0, err
-	}
-	encodedSignedOrderByteLength := len(encodedData) - emptyGetOrderRelevantStatesCallDataByteLength
-	return encodedSignedOrderByteLength, nil
+func numWords(bytes []byte) int {
+	return (len(bytes) + 31) / 32
+}
+
+func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) int {
+	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
+	return 1536 + 64*(numWords(signedOrder.Order.MakerAssetData)+
+		numWords(signedOrder.Order.TakerAssetData)+
+		numWords(signedOrder.Order.MakerFeeAssetData)+
+		numWords(signedOrder.Order.MakerFeeAssetData))
 }
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
@@ -866,7 +844,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
-		encodedSignedOrderByteLength, _ := o.computeABIEncodedSignedOrderByteLength(signedOrder)
+		encodedSignedOrderByteLength := computeABIEncodedSignedOrderStringLength(signedOrder)
 		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
 			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++

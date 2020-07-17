@@ -9,7 +9,7 @@ import (
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 )
 
 type Filter struct {
@@ -24,13 +24,13 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 	chainIDSchema := fmt.Sprintf(`{"$id": "/chainId", "const":%d}`, chainID)
 	exchangeAddressSchema := fmt.Sprintf(`{"$id": "/exchangeAddress", "enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
 
-	if jsutil.IsNullOrUndefined(js.Global().Get("createSchemaValidator")) {
-		return nil, errors.New(`"createSchemaValidator" has not been set on the Javascript "global" object`)
+	if jsutil.IsNullOrUndefined(js.Global().Get("__mesh_createSchemaValidator__")) {
+		return nil, errors.New(`"__mesh_createSchemaValidator__" has not been set on the Javascript "global" object`)
 	}
 	// NOTE(jalextowle): The order of the schemas within the two arrays
 	// defines their order of compilation.
 	schemaValidator := js.Global().Call(
-		"createSchemaValidator",
+		"__mesh_createSchemaValidator__",
 		customOrderSchema,
 		[]interface{}{
 			addressSchema,

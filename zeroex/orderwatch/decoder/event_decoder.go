@@ -2,10 +2,8 @@ package decoder
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -663,19 +661,19 @@ func New() (*Decoder, error) {
 
 	erc20TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc20ABI.Events {
-		erc20TopicToEventName[event.ID()] = event.Name
+		erc20TopicToEventName[event.ID] = event.Name
 	}
 	erc721TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc721ABI.Events {
-		erc721TopicToEventName[event.ID()] = event.Name
+		erc721TopicToEventName[event.ID] = event.Name
 	}
 	erc1155TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc1155ABI.Events {
-		erc1155TopicToEventName[event.ID()] = event.Name
+		erc1155TopicToEventName[event.ID] = event.Name
 	}
 	exchangeTopicToEventName := map[common.Hash]string{}
 	for _, event := range exchangeABI.Events {
-		exchangeTopicToEventName[event.ID()] = event.Name
+		exchangeTopicToEventName[event.ID] = event.Name
 	}
 
 	return &Decoder{
@@ -916,6 +914,9 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.ABI) error {
 	if len(log.Data) > 0 {
 		if err := _abi.Unpack(decodedEvent, event, log.Data); err != nil {
+			if strings.Contains(err.Error(), "Unpack(no-values unmarshalled") {
+				return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
+			}
 			return err
 		}
 	}
@@ -925,107 +926,5 @@ func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.A
 			indexed = append(indexed, arg)
 		}
 	}
-	if len(indexed) != len(log.Topics[1:]) {
-		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
-	}
-	return parseTopics(decodedEvent, indexed, log.Topics[1:])
-}
-
-/**
-* HACK(fabio): The code below was pulled in from `go-ethereum/accounts/abi/bind` since it was
-* unfortunately not exported.
-**/
-
-// Big batch of reflect types for topic reconstruction.
-var (
-	reflectHash    = reflect.TypeOf(common.Hash{})
-	reflectAddress = reflect.TypeOf(common.Address{})
-	reflectBigInt  = reflect.TypeOf(new(big.Int))
-)
-
-// parseTopics converts the indexed topic fields into actual log field values.
-//
-// Note, dynamic types cannot be reconstructed since they get mapped to Keccak256
-// hashes as the topic value!
-func parseTopics(out interface{}, fields abi.Arguments, topics []common.Hash) error {
-	// Sanity check that the fields and topics match up
-	if len(fields) != len(topics) {
-		return errors.New("topic/field count mismatch")
-	}
-	// Iterate over all the fields and reconstruct them from topics
-	for _, arg := range fields {
-		if !arg.Indexed {
-			return errors.New("non-indexed field in topic reconstruction")
-		}
-		field := reflect.ValueOf(out).Elem().FieldByName(abi.ToCamelCase(arg.Name))
-
-		// Try to parse the topic back into the fields based on primitive types
-		switch field.Kind() {
-		case reflect.Bool:
-			if topics[0][common.HashLength-1] == 1 {
-				field.Set(reflect.ValueOf(true))
-			}
-		case reflect.Int8:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(int8(num.Int64())))
-
-		case reflect.Int16:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(int16(num.Int64())))
-
-		case reflect.Int32:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(int32(num.Int64())))
-
-		case reflect.Int64:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(num.Int64()))
-
-		case reflect.Uint8:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(uint8(num.Uint64())))
-
-		case reflect.Uint16:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(uint16(num.Uint64())))
-
-		case reflect.Uint32:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(uint32(num.Uint64())))
-
-		case reflect.Uint64:
-			num := new(big.Int).SetBytes(topics[0][:])
-			field.Set(reflect.ValueOf(num.Uint64()))
-
-		default:
-			// Ran out of plain primitive types, try custom types
-			switch field.Type() {
-			case reflectHash: // Also covers all dynamic types
-				field.Set(reflect.ValueOf(topics[0]))
-
-			case reflectAddress:
-				var addr common.Address
-				copy(addr[:], topics[0][common.HashLength-common.AddressLength:])
-				field.Set(reflect.ValueOf(addr))
-
-			case reflectBigInt:
-				num := new(big.Int).SetBytes(topics[0][:])
-				field.Set(reflect.ValueOf(num))
-
-			default:
-				// Ran out of custom types, try the crazies
-				switch {
-
-				// static byte array
-				case arg.Type.T == abi.FixedBytesTy:
-					reflect.Copy(field, reflect.ValueOf(topics[0][:arg.Type.Size]))
-
-				default:
-					return fmt.Errorf("unsupported indexed type: %v", arg.Type)
-				}
-			}
-		}
-		topics = topics[1:]
-	}
-	return nil
+	return abi.ParseTopics(decodedEvent, indexed, log.Topics[1:])
 }

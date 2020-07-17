@@ -5,6 +5,8 @@ package types
 import (
 	"encoding/json"
 	"syscall/js"
+
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 )
 
 func (r GetOrdersResponse) JSValue() js.Value {
@@ -47,4 +49,9 @@ func (s Stats) JSValue() js.Value {
 		"ethRPCRequestsSentInCurrentUTCDay": s.EthRPCRequestsSentInCurrentUTCDay,
 		"ethRPCRateLimitExpiredRequests":    s.EthRPCRateLimitExpiredRequests,
 	})
+}
+
+func (o OrderWithMetadata) JSValue() js.Value {
+	value, _ := jsutil.InefficientlyConvertToJS(o)
+	return value
 }
