@@ -1,55 +1,84 @@
 """
+A 32-byte Keccak256 hash encoded as a hexadecimal string.
+"""
+scalar Hash
+"""
+An Ethereum address encoded as a hexadecimal string.
+"""
+scalar Address
+"""
+A BigNumber or uint256 value encoded as a numerical string.
+"""
+scalar BigNumber
+"""
+An array of arbitrary bytes encoded as a hexadecimal string.
+"""
+scalar Bytes
+"""
+A time encoded as a string using the RFC3339 standard.
+"""
+scalar Time
+"""
+An arbitrary set of key-value pairs. Encoded as a JSON object.
+"""
+scalar Map
+"""
+Arbitrary value, typically a String or Int.
+"""
+scalar Any
+
+"""
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
-type SignedOrder {
-    chainId: String!
-    exchangeAddress: String!
-    makerAddress: String!
-    makerAssetData: String!
-    makerAssetAmount: String!
-    makerFeeAssetData: String!
-    makerFee: String!
-    takerAddress: String!
-    takerAssetData: String!
-    takerAssetAmount: String!
-    takerFeeAssetData: String!
-    takerFee: String!
-    senderAddress: String!
-    feeRecipientAddress: String!
-    expirationTimeSeconds: String!
-    salt: String!
-    signature: String!
+type Order {
+    chainId: Int!
+    exchangeAddress: Address!
+    makerAddress: Address!
+    makerAssetData: Bytes!
+    makerAssetAmount: BigNumber!
+    makerFeeAssetData: Bytes!
+    makerFee: BigNumber!
+    takerAddress: Address!
+    takerAssetData: Bytes!
+    takerAssetAmount: BigNumber!
+    takerFeeAssetData: Bytes!
+    takerFee: BigNumber!
+    senderAddress: Address!
+    feeRecipientAddress: Address!
+    expirationTimeSeconds: BigNumber!
+    salt: BigNumber!
+    signature: Bytes!
 }
 
 """
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
 type OrderWithMetadata {
-    chainId: String!
-    exchangeAddress: String!
-    makerAddress: String!
-    makerAssetData: String!
-    makerAssetAmount: String!
-    makerFeeAssetData: String!
-    makerFee: String!
-    takerAddress: String!
-    takerAssetData: String!
-    takerAssetAmount: String!
-    takerFeeAssetData: String!
-    takerFee: String!
-    senderAddress: String!
-    feeRecipientAddress: String!
-    expirationTimeSeconds: String!
-    salt: String!
-    signature: String!
+    chainId: Int!
+    exchangeAddress: Address!
+    makerAddress: Address!
+    makerAssetData: Bytes!
+    makerAssetAmount: BigNumber!
+    makerFeeAssetData: Bytes!
+    makerFee: BigNumber!
+    takerAddress: Address!
+    takerAssetData: Bytes!
+    takerAssetAmount: BigNumber!
+    takerFeeAssetData: Bytes!
+    takerFee: BigNumber!
+    senderAddress: Address!
+    feeRecipientAddress: Address!
+    expirationTimeSeconds: BigNumber!
+    salt: BigNumber!
+    signature: Bytes!
     """
     The hash, which can be used to uniquely identify an order.
     """
-    hash: String!
+    hash: Hash!
     """
     The remaining amount of the maker asset which has not yet been filled.
     """
-    fillableTakerAssetAmount: String!
+    remainingFillableTakerAssetAmount: BigNumber!
 }
 
 """
@@ -73,7 +102,7 @@ enum OrderField {
     feeRecipientAddress
     expirationTimeSeconds
     salt
-    fillableTakerAssetAmount
+    remainingFillableTakerAssetAmount
 }
 
 """
@@ -97,17 +126,15 @@ enum SortDirection {
 }
 
 """
-The value to filter with. Must be the same type as the field you are filtering by.
-"""
-scalar FilterValue
-
-"""
 A filter on orders. Can be used in queries to only return orders that meet certain criteria.
 """
 input OrderFilter {
     field: OrderField!
     kind: FilterKind!
-    value: FilterValue!
+    """
+    value must match the type of the filter field.
+    """
+    value: Any!
 }
 
 """
@@ -122,8 +149,8 @@ input OrderSort {
 The block number and block hash for the latest block that has been processed by Mesh.
 """
 type LatestBlock {
-    number: String!
-    hash: String!
+    number: BigNumber!
+    hash: Hash!
 }
 
 """
@@ -135,21 +162,21 @@ type Stats {
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int!
-    latestBlock: LatestBlock!
+    latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
     numOrdersIncludingRemoved: Int!
-    startOfCurrentUTCDay: String!
+    startOfCurrentUTCDay: Time!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
-    maxExpirationTime: String!
+    maxExpirationTime: BigNumber!
 }
 
 type Query {
     """
     Returns the order with the specified hash, or null if no order is found with that hash.
     """
-    order(hash: String!): OrderWithMetadata
+    order(hash: Hash!): OrderWithMetadata
     """
     Returns an array of orders that satisfy certain criteria.
     """
@@ -172,30 +199,30 @@ type Query {
     """
     Returns the current stats.
     """
-    stats: Stats
+    stats: Stats!
 }
 
 """
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
 input NewOrder {
-    chainId: String!
-    exchangeAddress: String!
-    makerAddress: String!
-    makerAssetData: String!
-    makerAssetAmount: String!
-    makerFeeAssetData: String!
-    makerFee: String!
-    takerAddress: String!
-    takerAssetData: String!
-    takerAssetAmount: String!
-    takerFeeAssetData: String!
-    takerFee: String!
-    senderAddress: String!
-    feeRecipientAddress: String!
-    expirationTimeSeconds: String!
-    salt: String!
-    signature: String!
+    chainId: Int!
+    exchangeAddress: Address!
+    makerAddress: Address!
+    makerAssetData: Bytes!
+    makerAssetAmount: BigNumber!
+    makerFeeAssetData: Bytes!
+    makerFee: BigNumber!
+    takerAddress: Address!
+    takerAssetData: Bytes!
+    takerAssetAmount: BigNumber!
+    takerFeeAssetData: Bytes!
+    takerFee: BigNumber!
+    senderAddress: Address!
+    feeRecipientAddress: Address!
+    expirationTimeSeconds: BigNumber!
+    salt: BigNumber!
+    signature: Bytes!
 }
 
 """
@@ -230,11 +257,11 @@ type RejectedOrderResult {
     """
     The hash of the order. May be null if the hash could not be computed.
     """
-    hash: String
+    hash: Hash
     """
     The order that was rejected.
     """
-    order: SignedOrder!
+    order: Order!
     """
     A machine-readable code indicating why the order was rejected. This code is designed to
     be used by programs and applications and will never change without breaking backwards-compatibility.
@@ -248,32 +275,14 @@ type RejectedOrderResult {
 }
 
 """
-A set of all possible codes included in RejectedOrderResult.
+A set of all possible codes included in RejectedOrderResult. Note that more codes will be added
+to the final spec. See the [current Mesh docs](https://godoc.org/github.com/0xProject/0x-mesh/zeroex/ordervalidator#pkg-variables)
+for a list of all codes currently in use.
 """
 enum RejectedOrderCode {
     ETH_RPC_REQUEST_FAILED
-    COORDINATOR_REQUEST_FAILED
-    COORDINATOR_SOFT_CANCELLED
-    COORDINATOR_ENDPOINT_NOT_FOUND
-    ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT
-    ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT
-    ORDER_EXPIRED
-    ORDER_FULLY_FILLED
-    ORDER_CANCELLED
-    ORDER_UNFUNDED
-    ORDER_HAS_INVALID_MAKER_ASSET_DATA
-    ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA
-    ORDER_HAS_INVALID_TAKER_ASSET_DATA
-    ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA
-    ORDER_HAS_INVALID_SIGNATURE
-    ORDER_MAX_EXPIRATION_EXCEEDED
-    INTERNAL_ERROR
-    MAX_ORDER_SIZE_EXCEEDED
-    ORDER_ALREADY_STORED_AND_UNFILLABLE
-    ORDER_FOR_INCORRECT_CHAIN
-    INCORRECT_EXCHANGE_ADDRESS
-    SENDER_ADDRESS_NOT_ALLOWED
-    DATABASE_FULL_OF_ORDERS
+    INVALID_MAKER_ASSET_AMOUNT
+    INVALID_TAKER_ASSET_AMOUNT
 }
 
 type Mutation {
@@ -300,7 +309,7 @@ type OrderEvent {
     was re-validated. Otherwise (e.g., for ADDED, STOPPED_WATCHING), the timestamp corresponds
     when the event was generated on the server side.
     """
-    timestamp: String!
+    timestamp: Time!
     """
     Contains all the contract events that triggered the order to be re-validated.
     All events that _may_ have affected the state of the order are included here.
@@ -355,23 +364,17 @@ enum OrderEndState {
 }
 
 """
-The contract event parameters, which are arbitrary key-value pairs based on the type of the event.
-They are encoded as a JSON object.
-"""
-scalar ContractEventParams
-
-"""
 An on-chain contract event.
 """
 type ContractEvent {
     """
     The hash of the block where the event was generated.
     """
-    blockHash: String!
+    blockHash: Hash!
     """
     The hash of the transaction where the event was generated.
     """
-    txHash: String!
+    txHash: Hash!
     """
     The index of the transaction where the event was generated.
     """
@@ -387,7 +390,7 @@ type ContractEvent {
     """
     The address of the contract that generated the event.
     """
-    address: String!
+    address: Address!
     """
     The kind of event (e.g. "ERC20TransferEvent").
     """
@@ -395,7 +398,7 @@ type ContractEvent {
     """
     The parameters for the event. The parameters are different for each event kind.
     """
-    parameters: ContractEventParams!
+    parameters: Map!
 }
 
 type Subscription {

@@ -1,0 +1,108 @@
+// Contains non-generated custom model code.
+
+package types
+
+import (
+	"fmt"
+	"io"
+	"math/big"
+
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
+)
+
+// Hash is a 32-byte Keccak256 hash encoded as a hexadecimal string.
+type Hash common.Hash
+
+// UnmarshalGQL implements the graphql.Unmarshaler interface
+func (h *Hash) UnmarshalGQL(v interface{}) error {
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("Hash must be a hex-encoded string")
+	}
+	hash := common.HexToHash(s)
+	if (hash == common.Hash{}) {
+		return fmt.Errorf("invalid Hash value: %q", s)
+	}
+	(*h) = Hash(hash)
+
+	return nil
+}
+
+// MarshalGQL implements the graphql.Marshaler interface
+func (h Hash) MarshalGQL(w io.Writer) {
+	hexString := common.Hash(h).Hex()
+	_, _ = w.Write([]byte(hexString))
+}
+
+// Address is an Ethereum address encoded as a hexadecimal string.
+type Address common.Address
+
+// UnmarshalGQL implements the graphql.Unmarshaler interface
+func (a *Address) UnmarshalGQL(v interface{}) error {
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("Address must be a hex-encoded string")
+	}
+	address := common.HexToAddress(s)
+	if address == constants.NullAddress {
+		return fmt.Errorf("invalid Address value: %q", s)
+	}
+	(*a) = Address(address)
+
+	return nil
+}
+
+// MarshalGQL implements the graphql.Marshaler interface
+func (a Address) MarshalGQL(w io.Writer) {
+	hexString := common.Address(a).Hex()
+	_, _ = w.Write([]byte(hexString))
+}
+
+// BigNumber is a uint256 value encoded as a numerical string.
+type BigNumber big.Int
+
+// UnmarshalGQL implements the graphql.Unmarshaler interface
+func (b *BigNumber) UnmarshalGQL(v interface{}) error {
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("BigNumber must be a numerical string")
+	}
+	bigInt, ok := math.ParseBig256(s)
+	if !ok {
+		return fmt.Errorf("invalid BigNumber value: %q", s)
+	}
+	(*b) = BigNumber(*bigInt)
+
+	return nil
+}
+
+// MarshalGQL implements the graphql.Marshaler interface
+func (b BigNumber) MarshalGQL(w io.Writer) {
+	bigInt := big.Int(b)
+	_, _ = w.Write([]byte((&bigInt).String()))
+}
+
+// Bytes is an array of arbitrary bytes encoded as a hexadecimal string.
+type Bytes []byte
+
+func (b *Bytes) UnmarshalGQL(v interface{}) error {
+	s, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("Bytes must be a hex-encoded string")
+	}
+	bytes := common.FromHex(s)
+	if len(bytes) == 0 {
+		return fmt.Errorf("invalid Bytes value: %q", s)
+	}
+	(*b) = Bytes(bytes)
+
+	return nil
+}
+
+// MarshalGQL implements the graphql.Marshaler interface
+func (b Bytes) MarshalGQL(w io.Writer) {
+	hexString := common.ToHex([]byte(b))
+	_, _ = w.Write([]byte(hexString))
+}
