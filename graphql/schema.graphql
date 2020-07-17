@@ -31,7 +31,7 @@ scalar Any
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
 type Order {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -54,7 +54,7 @@ type Order {
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
 type OrderWithMetadata {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -78,7 +78,7 @@ type OrderWithMetadata {
     """
     The remaining amount of the maker asset which has not yet been filled.
     """
-    remainingFillableTakerAssetAmount: BigNumber!
+    fillableTakerAssetAmount: BigNumber!
 }
 
 """
@@ -102,7 +102,7 @@ enum OrderField {
     feeRecipientAddress
     expirationTimeSeconds
     salt
-    remainingFillableTakerAssetAmount
+    fillableTakerAssetAmount
 }
 
 """
@@ -161,7 +161,7 @@ type Stats {
     pubSubTopic: String!
     rendezvous: String!
     peerID: String!
-    ethereumChainID: Int!
+    ethereumChainID: Int! # TODO(albrow): This should be BigNumber
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
@@ -206,7 +206,7 @@ type Query {
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
 input NewOrder {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -326,7 +326,7 @@ enum OrderEndState {
     """
     ADDED
     """
-    The order was filled for a partial amount. The order is still fillable up to the remainingFillableTakerAssetAmount.
+    The order was filled for a partial amount. The order is still fillable up to the fillableTakerAssetAmount.
     """
     FILLED
     """

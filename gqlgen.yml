@@ -14,13 +14,13 @@ exec:
 
 # Where should any generated models go?
 model:
-    filename: graphql/types/types_generated.go
-    package: types
+    filename: graphql/gqltypes/types_generated.go
+    package: gqltypes
 
 # Where should the resolver implementations go?
 resolver:
-    layout: single-file
-    filename: graphql/resolvers.go
+    layout: follow-schema
+    dir: graphql
     package: graphql
 
 # Optional: turn on use `gqlgen:"fieldName"` tags in your models
@@ -35,7 +35,7 @@ resolver:
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
 autobind:
-    - 'github.com/0xProject/0x-mesh/graphql/types'
+    - 'github.com/0xProject/0x-mesh/graphql/gqltypes'
 
 # This section declares type mapping between the GraphQL and go type systems
 #

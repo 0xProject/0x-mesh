@@ -1,11 +1,13 @@
 // Contains non-generated custom model code.
 
-package types
+package gqltypes
 
 import (
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
@@ -32,8 +34,8 @@ func (h *Hash) UnmarshalGQL(v interface{}) error {
 
 // MarshalGQL implements the graphql.Marshaler interface
 func (h Hash) MarshalGQL(w io.Writer) {
-	hexString := common.Hash(h).Hex()
-	_, _ = w.Write([]byte(hexString))
+	quotedHexString := strconv.Quote(common.Hash(h).Hex())
+	_, _ = w.Write([]byte(quotedHexString))
 }
 
 // Address is an Ethereum address encoded as a hexadecimal string.
@@ -56,8 +58,9 @@ func (a *Address) UnmarshalGQL(v interface{}) error {
 
 // MarshalGQL implements the graphql.Marshaler interface
 func (a Address) MarshalGQL(w io.Writer) {
-	hexString := common.Address(a).Hex()
-	_, _ = w.Write([]byte(hexString))
+	hexString := strings.ToLower(common.Address(a).Hex())
+	quotedHexString := strconv.Quote(hexString)
+	_, _ = w.Write([]byte(quotedHexString))
 }
 
 // BigNumber is a uint256 value encoded as a numerical string.
@@ -103,6 +106,10 @@ func (b *Bytes) UnmarshalGQL(v interface{}) error {
 
 // MarshalGQL implements the graphql.Marshaler interface
 func (b Bytes) MarshalGQL(w io.Writer) {
-	hexString := common.ToHex([]byte(b))
-	_, _ = w.Write([]byte(hexString))
+	quotedHexString := strconv.Quote(common.ToHex([]byte(b)))
+	_, _ = w.Write([]byte(quotedHexString))
+}
+
+func lowerCaseAndQuote(s string) string {
+	return strconv.Quote(strings.ToLower(s))
 }

@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/0xProject/0x-mesh/graphql/types"
+	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	gqlparser "github.com/vektah/gqlparser/v2"
@@ -73,7 +73,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*types.NewOrder, pinned *bool) int
+		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool) int
 	}
 
 	Order struct {
@@ -104,30 +104,30 @@ type ComplexityRoot struct {
 	}
 
 	OrderWithMetadata struct {
-		ChainID                           func(childComplexity int) int
-		ExchangeAddress                   func(childComplexity int) int
-		ExpirationTimeSeconds             func(childComplexity int) int
-		FeeRecipientAddress               func(childComplexity int) int
-		Hash                              func(childComplexity int) int
-		MakerAddress                      func(childComplexity int) int
-		MakerAssetAmount                  func(childComplexity int) int
-		MakerAssetData                    func(childComplexity int) int
-		MakerFee                          func(childComplexity int) int
-		MakerFeeAssetData                 func(childComplexity int) int
-		RemainingFillableTakerAssetAmount func(childComplexity int) int
-		Salt                              func(childComplexity int) int
-		SenderAddress                     func(childComplexity int) int
-		Signature                         func(childComplexity int) int
-		TakerAddress                      func(childComplexity int) int
-		TakerAssetAmount                  func(childComplexity int) int
-		TakerAssetData                    func(childComplexity int) int
-		TakerFee                          func(childComplexity int) int
-		TakerFeeAssetData                 func(childComplexity int) int
+		ChainID                  func(childComplexity int) int
+		ExchangeAddress          func(childComplexity int) int
+		ExpirationTimeSeconds    func(childComplexity int) int
+		FeeRecipientAddress      func(childComplexity int) int
+		FillableTakerAssetAmount func(childComplexity int) int
+		Hash                     func(childComplexity int) int
+		MakerAddress             func(childComplexity int) int
+		MakerAssetAmount         func(childComplexity int) int
+		MakerAssetData           func(childComplexity int) int
+		MakerFee                 func(childComplexity int) int
+		MakerFeeAssetData        func(childComplexity int) int
+		Salt                     func(childComplexity int) int
+		SenderAddress            func(childComplexity int) int
+		Signature                func(childComplexity int) int
+		TakerAddress             func(childComplexity int) int
+		TakerAssetAmount         func(childComplexity int) int
+		TakerAssetData           func(childComplexity int) int
+		TakerFee                 func(childComplexity int) int
+		TakerFeeAssetData        func(childComplexity int) int
 	}
 
 	Query struct {
-		Order  func(childComplexity int, hash types.Hash) int
-		Orders func(childComplexity int, sort []*types.OrderSort, filters []*types.OrderFilter, limit *int) int
+		Order  func(childComplexity int, hash gqltypes.Hash) int
+		Orders func(childComplexity int, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) int
 		Stats  func(childComplexity int) int
 	}
 
@@ -160,15 +160,15 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddOrders(ctx context.Context, orders []*types.NewOrder, pinned *bool) (*types.AddOrdersResults, error)
+	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
-	Order(ctx context.Context, hash types.Hash) (*types.OrderWithMetadata, error)
-	Orders(ctx context.Context, sort []*types.OrderSort, filters []*types.OrderFilter, limit *int) ([]*types.OrderWithMetadata, error)
-	Stats(ctx context.Context) (*types.Stats, error)
+	Order(ctx context.Context, hash gqltypes.Hash) (*gqltypes.OrderWithMetadata, error)
+	Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error)
+	Stats(ctx context.Context) (*gqltypes.Stats, error)
 }
 type SubscriptionResolver interface {
-	OrderEvents(ctx context.Context) (<-chan []*types.OrderEvent, error)
+	OrderEvents(ctx context.Context) (<-chan []*gqltypes.OrderEvent, error)
 }
 
 type executableSchema struct {
@@ -294,7 +294,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*types.NewOrder), args["pinned"].(*bool)), true
+		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool)), true
 
 	case "Order.chainId":
 		if e.complexity.Order.ChainID == nil {
@@ -471,6 +471,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderWithMetadata.FeeRecipientAddress(childComplexity), true
 
+	case "OrderWithMetadata.fillableTakerAssetAmount":
+		if e.complexity.OrderWithMetadata.FillableTakerAssetAmount == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadata.FillableTakerAssetAmount(childComplexity), true
+
 	case "OrderWithMetadata.hash":
 		if e.complexity.OrderWithMetadata.Hash == nil {
 			break
@@ -512,13 +519,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.OrderWithMetadata.MakerFeeAssetData(childComplexity), true
-
-	case "OrderWithMetadata.remainingFillableTakerAssetAmount":
-		if e.complexity.OrderWithMetadata.RemainingFillableTakerAssetAmount == nil {
-			break
-		}
-
-		return e.complexity.OrderWithMetadata.RemainingFillableTakerAssetAmount(childComplexity), true
 
 	case "OrderWithMetadata.salt":
 		if e.complexity.OrderWithMetadata.Salt == nil {
@@ -586,7 +586,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Order(childComplexity, args["hash"].(types.Hash)), true
+		return e.complexity.Query.Order(childComplexity, args["hash"].(gqltypes.Hash)), true
 
 	case "Query.orders":
 		if e.complexity.Query.Orders == nil {
@@ -598,7 +598,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Orders(childComplexity, args["sort"].([]*types.OrderSort), args["filters"].([]*types.OrderFilter), args["limit"].(*int)), true
+		return e.complexity.Query.Orders(childComplexity, args["sort"].([]*gqltypes.OrderSort), args["filters"].([]*gqltypes.OrderFilter), args["limit"].(*int)), true
 
 	case "Query.stats":
 		if e.complexity.Query.Stats == nil {
@@ -847,7 +847,7 @@ scalar Any
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
 type Order {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -870,7 +870,7 @@ type Order {
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
 type OrderWithMetadata {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -894,7 +894,7 @@ type OrderWithMetadata {
     """
     The remaining amount of the maker asset which has not yet been filled.
     """
-    remainingFillableTakerAssetAmount: BigNumber!
+    fillableTakerAssetAmount: BigNumber!
 }
 
 """
@@ -918,7 +918,7 @@ enum OrderField {
     feeRecipientAddress
     expirationTimeSeconds
     salt
-    remainingFillableTakerAssetAmount
+    fillableTakerAssetAmount
 }
 
 """
@@ -977,7 +977,7 @@ type Stats {
     pubSubTopic: String!
     rendezvous: String!
     peerID: String!
-    ethereumChainID: Int!
+    ethereumChainID: BigNumber!
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
@@ -1022,7 +1022,7 @@ type Query {
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
 input NewOrder {
-    chainId: Int!
+    chainId: BigNumber!
     exchangeAddress: Address!
     makerAddress: Address!
     makerAssetData: Bytes!
@@ -1142,7 +1142,7 @@ enum OrderEndState {
     """
     ADDED
     """
-    The order was filled for a partial amount. The order is still fillable up to the remainingFillableTakerAssetAmount.
+    The order was filled for a partial amount. The order is still fillable up to the fillableTakerAssetAmount.
     """
     FILLED
     """
@@ -1234,9 +1234,9 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []*types.NewOrder
+	var arg0 []*gqltypes.NewOrder
 	if tmp, ok := rawArgs["orders"]; ok {
-		arg0, err = ec.unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrderᚄ(ctx, tmp)
+		arg0, err = ec.unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1270,9 +1270,9 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_order_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 types.Hash
+	var arg0 gqltypes.Hash
 	if tmp, ok := rawArgs["hash"]; ok {
-		arg0, err = ec.unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, tmp)
+		arg0, err = ec.unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1284,17 +1284,17 @@ func (ec *executionContext) field_Query_order_args(ctx context.Context, rawArgs 
 func (ec *executionContext) field_Query_orders_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []*types.OrderSort
+	var arg0 []*gqltypes.OrderSort
 	if tmp, ok := rawArgs["sort"]; ok {
-		arg0, err = ec.unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSortᚄ(ctx, tmp)
+		arg0, err = ec.unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSortᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["sort"] = arg0
-	var arg1 []*types.OrderFilter
+	var arg1 []*gqltypes.OrderFilter
 	if tmp, ok := rawArgs["filters"]; ok {
-		arg1, err = ec.unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilterᚄ(ctx, tmp)
+		arg1, err = ec.unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilterᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1347,7 +1347,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _AcceptedOrderResult_order(ctx context.Context, field graphql.CollectedField, obj *types.AcceptedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _AcceptedOrderResult_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AcceptedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1376,12 +1376,12 @@ func (ec *executionContext) _AcceptedOrderResult_order(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*types.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadata)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _AcceptedOrderResult_isNew(ctx context.Context, field graphql.CollectedField, obj *types.AcceptedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _AcceptedOrderResult_isNew(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AcceptedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1415,7 +1415,7 @@ func (ec *executionContext) _AcceptedOrderResult_isNew(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _AddOrdersResults_accepted(ctx context.Context, field graphql.CollectedField, obj *types.AddOrdersResults) (ret graphql.Marshaler) {
+func (ec *executionContext) _AddOrdersResults_accepted(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AddOrdersResults) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1444,12 +1444,12 @@ func (ec *executionContext) _AddOrdersResults_accepted(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*types.AcceptedOrderResult)
+	res := resTmp.([]*gqltypes.AcceptedOrderResult)
 	fc.Result = res
-	return ec.marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAcceptedOrderResultᚄ(ctx, field.Selections, res)
+	return ec.marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _AddOrdersResults_rejected(ctx context.Context, field graphql.CollectedField, obj *types.AddOrdersResults) (ret graphql.Marshaler) {
+func (ec *executionContext) _AddOrdersResults_rejected(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AddOrdersResults) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1478,12 +1478,12 @@ func (ec *executionContext) _AddOrdersResults_rejected(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*types.RejectedOrderResult)
+	res := resTmp.([]*gqltypes.RejectedOrderResult)
 	fc.Result = res
-	return ec.marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderResultᚄ(ctx, field.Selections, res)
+	return ec.marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_blockHash(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_blockHash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1512,12 +1512,12 @@ func (ec *executionContext) _ContractEvent_blockHash(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Hash)
+	res := resTmp.(gqltypes.Hash)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_txHash(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_txHash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1546,12 +1546,12 @@ func (ec *executionContext) _ContractEvent_txHash(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Hash)
+	res := resTmp.(gqltypes.Hash)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_txIndex(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_txIndex(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1585,7 +1585,7 @@ func (ec *executionContext) _ContractEvent_txIndex(ctx context.Context, field gr
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_logIndex(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_logIndex(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1619,7 +1619,7 @@ func (ec *executionContext) _ContractEvent_logIndex(ctx context.Context, field g
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_isRemoved(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_isRemoved(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1653,7 +1653,7 @@ func (ec *executionContext) _ContractEvent_isRemoved(ctx context.Context, field 
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_address(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_address(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1682,12 +1682,12 @@ func (ec *executionContext) _ContractEvent_address(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_kind(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_kind(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1721,7 +1721,7 @@ func (ec *executionContext) _ContractEvent_kind(ctx context.Context, field graph
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ContractEvent_parameters(ctx context.Context, field graphql.CollectedField, obj *types.ContractEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _ContractEvent_parameters(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1755,7 +1755,7 @@ func (ec *executionContext) _ContractEvent_parameters(ctx context.Context, field
 	return ec.marshalNMap2map(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _LatestBlock_number(ctx context.Context, field graphql.CollectedField, obj *types.LatestBlock) (ret graphql.Marshaler) {
+func (ec *executionContext) _LatestBlock_number(ctx context.Context, field graphql.CollectedField, obj *gqltypes.LatestBlock) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1784,12 +1784,12 @@ func (ec *executionContext) _LatestBlock_number(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _LatestBlock_hash(ctx context.Context, field graphql.CollectedField, obj *types.LatestBlock) (ret graphql.Marshaler) {
+func (ec *executionContext) _LatestBlock_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.LatestBlock) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1818,9 +1818,9 @@ func (ec *executionContext) _LatestBlock_hash(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Hash)
+	res := resTmp.(gqltypes.Hash)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1847,7 +1847,7 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*types.NewOrder), args["pinned"].(*bool))
+		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1859,12 +1859,12 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*types.AddOrdersResults)
+	res := resTmp.(*gqltypes.AddOrdersResults)
 	fc.Result = res
-	return ec.marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddOrdersResults(ctx, field.Selections, res)
+	return ec.marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1893,12 +1893,12 @@ func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1927,12 +1927,12 @@ func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1961,12 +1961,12 @@ func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1995,12 +1995,12 @@ func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2029,12 +2029,12 @@ func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2063,12 +2063,12 @@ func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2097,12 +2097,12 @@ func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2131,12 +2131,12 @@ func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2165,12 +2165,12 @@ func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2199,12 +2199,12 @@ func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2233,12 +2233,12 @@ func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2267,12 +2267,12 @@ func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_senderAddress(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2301,12 +2301,12 @@ func (ec *executionContext) _Order_senderAddress(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2335,12 +2335,12 @@ func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2369,12 +2369,12 @@ func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2403,12 +2403,12 @@ func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.CollectedField, obj *types.Order) (ret graphql.Marshaler) {
+func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2437,12 +2437,12 @@ func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql.CollectedField, obj *types.OrderEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2471,12 +2471,12 @@ func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*types.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadata)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderEvent_endState(ctx context.Context, field graphql.CollectedField, obj *types.OrderEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderEvent_endState(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2505,12 +2505,12 @@ func (ec *executionContext) _OrderEvent_endState(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.OrderEndState)
+	res := resTmp.(gqltypes.OrderEndState)
 	fc.Result = res
-	return ec.marshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEndState(ctx, field.Selections, res)
+	return ec.marshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEndState(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderEvent_timestamp(ctx context.Context, field graphql.CollectedField, obj *types.OrderEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderEvent_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2544,7 +2544,7 @@ func (ec *executionContext) _OrderEvent_timestamp(ctx context.Context, field gra
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderEvent_contractEvents(ctx context.Context, field graphql.CollectedField, obj *types.OrderEvent) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderEvent_contractEvents(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2573,12 +2573,12 @@ func (ec *executionContext) _OrderEvent_contractEvents(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*types.ContractEvent)
+	res := resTmp.([]*gqltypes.ContractEvent)
 	fc.Result = res
-	return ec.marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐContractEventᚄ(ctx, field.Selections, res)
+	return ec.marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEventᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2607,12 +2607,12 @@ func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2641,12 +2641,12 @@ func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Conte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2675,12 +2675,12 @@ func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2709,12 +2709,12 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2743,12 +2743,12 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2777,12 +2777,12 @@ func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2811,12 +2811,12 @@ func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2845,12 +2845,12 @@ func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2879,12 +2879,12 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2913,12 +2913,12 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2947,12 +2947,12 @@ func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2981,12 +2981,12 @@ func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3015,12 +3015,12 @@ func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3049,12 +3049,12 @@ func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Address)
+	res := resTmp.(gqltypes.Address)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3083,12 +3083,12 @@ func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3117,12 +3117,12 @@ func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3151,12 +3151,12 @@ func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Bytes)
+	res := resTmp.(gqltypes.Bytes)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3185,12 +3185,12 @@ func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.Hash)
+	res := resTmp.(gqltypes.Hash)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_remainingFillableTakerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *types.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadata_fillableTakerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3207,7 +3207,7 @@ func (ec *executionContext) _OrderWithMetadata_remainingFillableTakerAssetAmount
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RemainingFillableTakerAssetAmount, nil
+		return obj.FillableTakerAssetAmount, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3219,9 +3219,9 @@ func (ec *executionContext) _OrderWithMetadata_remainingFillableTakerAssetAmount
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_order(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3248,7 +3248,7 @@ func (ec *executionContext) _Query_order(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Order(rctx, args["hash"].(types.Hash))
+		return ec.resolvers.Query().Order(rctx, args["hash"].(gqltypes.Hash))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3257,9 +3257,9 @@ func (ec *executionContext) _Query_order(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*types.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadata)
 	fc.Result = res
-	return ec.marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_orders(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3286,7 +3286,7 @@ func (ec *executionContext) _Query_orders(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Orders(rctx, args["sort"].([]*types.OrderSort), args["filters"].([]*types.OrderFilter), args["limit"].(*int))
+		return ec.resolvers.Query().Orders(rctx, args["sort"].([]*gqltypes.OrderSort), args["filters"].([]*gqltypes.OrderFilter), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3298,9 +3298,9 @@ func (ec *executionContext) _Query_orders(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*types.OrderWithMetadata)
+	res := resTmp.([]*gqltypes.OrderWithMetadata)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadataᚄ(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_stats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3332,9 +3332,9 @@ func (ec *executionContext) _Query_stats(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*types.Stats)
+	res := resTmp.(*gqltypes.Stats)
 	fc.Result = res
-	return ec.marshalNStats2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐStats(ctx, field.Selections, res)
+	return ec.marshalNStats2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐStats(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3406,7 +3406,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RejectedOrderResult_hash(ctx context.Context, field graphql.CollectedField, obj *types.RejectedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _RejectedOrderResult_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3432,12 +3432,12 @@ func (ec *executionContext) _RejectedOrderResult_hash(ctx context.Context, field
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*types.Hash)
+	res := resTmp.(*gqltypes.Hash)
 	fc.Result = res
-	return ec.marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RejectedOrderResult_order(ctx context.Context, field graphql.CollectedField, obj *types.RejectedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _RejectedOrderResult_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3466,12 +3466,12 @@ func (ec *executionContext) _RejectedOrderResult_order(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*types.Order)
+	res := resTmp.(*gqltypes.Order)
 	fc.Result = res
-	return ec.marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrder(ctx, field.Selections, res)
+	return ec.marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RejectedOrderResult_code(ctx context.Context, field graphql.CollectedField, obj *types.RejectedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _RejectedOrderResult_code(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3500,12 +3500,12 @@ func (ec *executionContext) _RejectedOrderResult_code(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.RejectedOrderCode)
+	res := resTmp.(gqltypes.RejectedOrderCode)
 	fc.Result = res
-	return ec.marshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderCode(ctx, field.Selections, res)
+	return ec.marshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderCode(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RejectedOrderResult_message(ctx context.Context, field graphql.CollectedField, obj *types.RejectedOrderResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _RejectedOrderResult_message(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3539,7 +3539,7 @@ func (ec *executionContext) _RejectedOrderResult_message(ctx context.Context, fi
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3573,7 +3573,7 @@ func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3607,7 +3607,7 @@ func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_rendezvous(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_rendezvous(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3641,7 +3641,7 @@ func (ec *executionContext) _Stats_rendezvous(ctx context.Context, field graphql
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_peerID(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_peerID(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3675,7 +3675,7 @@ func (ec *executionContext) _Stats_peerID(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_ethereumChainID(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_ethereumChainID(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3704,12 +3704,12 @@ func (ec *executionContext) _Stats_ethereumChainID(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_latestBlock(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_latestBlock(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3735,12 +3735,12 @@ func (ec *executionContext) _Stats_latestBlock(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*types.LatestBlock)
+	res := resTmp.(*gqltypes.LatestBlock)
 	fc.Result = res
-	return ec.marshalOLatestBlock2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐLatestBlock(ctx, field.Selections, res)
+	return ec.marshalOLatestBlock2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐLatestBlock(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_numPeers(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_numPeers(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3774,7 +3774,7 @@ func (ec *executionContext) _Stats_numPeers(ctx context.Context, field graphql.C
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_numOrders(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_numOrders(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3808,7 +3808,7 @@ func (ec *executionContext) _Stats_numOrders(ctx context.Context, field graphql.
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_numOrdersIncludingRemoved(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_numOrdersIncludingRemoved(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3842,7 +3842,7 @@ func (ec *executionContext) _Stats_numOrdersIncludingRemoved(ctx context.Context
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_startOfCurrentUTCDay(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_startOfCurrentUTCDay(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3876,7 +3876,7 @@ func (ec *executionContext) _Stats_startOfCurrentUTCDay(ctx context.Context, fie
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_ethRPCRequestsSentInCurrentUTCDay(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_ethRPCRequestsSentInCurrentUTCDay(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3910,7 +3910,7 @@ func (ec *executionContext) _Stats_ethRPCRequestsSentInCurrentUTCDay(ctx context
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_ethRPCRateLimitExpiredRequests(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_ethRPCRateLimitExpiredRequests(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3944,7 +3944,7 @@ func (ec *executionContext) _Stats_ethRPCRateLimitExpiredRequests(ctx context.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_maxExpirationTime(ctx context.Context, field graphql.CollectedField, obj *types.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_maxExpirationTime(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3973,9 +3973,9 @@ func (ec *executionContext) _Stats_maxExpirationTime(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(types.BigNumber)
+	res := resTmp.(gqltypes.BigNumber)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Subscription_orderEvents(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
@@ -4008,7 +4008,7 @@ func (ec *executionContext) _Subscription_orderEvents(ctx context.Context, field
 		return nil
 	}
 	return func() graphql.Marshaler {
-		res, ok := <-resTmp.(<-chan []*types.OrderEvent)
+		res, ok := <-resTmp.(<-chan []*gqltypes.OrderEvent)
 		if !ok {
 			return nil
 		}
@@ -4016,7 +4016,7 @@ func (ec *executionContext) _Subscription_orderEvents(ctx context.Context, field
 			w.Write([]byte{'{'})
 			graphql.MarshalString(field.Alias).MarshalGQL(w)
 			w.Write([]byte{':'})
-			ec.marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEventᚄ(ctx, field.Selections, res).MarshalGQL(w)
+			ec.marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEventᚄ(ctx, field.Selections, res).MarshalGQL(w)
 			w.Write([]byte{'}'})
 		})
 	}
@@ -5077,111 +5077,111 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj interface{}) (types.NewOrder, error) {
-	var it types.NewOrder
+func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj interface{}) (gqltypes.NewOrder, error) {
+	var it gqltypes.NewOrder
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
 		case "chainId":
 			var err error
-			it.ChainID, err = ec.unmarshalNInt2int(ctx, v)
+			it.ChainID, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "exchangeAddress":
 			var err error
-			it.ExchangeAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, v)
+			it.ExchangeAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAddress":
 			var err error
-			it.MakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, v)
+			it.MakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAssetData":
 			var err error
-			it.MakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, v)
+			it.MakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAssetAmount":
 			var err error
-			it.MakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.MakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerFeeAssetData":
 			var err error
-			it.MakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, v)
+			it.MakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerFee":
 			var err error
-			it.MakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.MakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAddress":
 			var err error
-			it.TakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, v)
+			it.TakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAssetData":
 			var err error
-			it.TakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, v)
+			it.TakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAssetAmount":
 			var err error
-			it.TakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.TakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerFeeAssetData":
 			var err error
-			it.TakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, v)
+			it.TakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerFee":
 			var err error
-			it.TakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.TakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "senderAddress":
 			var err error
-			it.SenderAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, v)
+			it.SenderAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "feeRecipientAddress":
 			var err error
-			it.FeeRecipientAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx, v)
+			it.FeeRecipientAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "expirationTimeSeconds":
 			var err error
-			it.ExpirationTimeSeconds, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.ExpirationTimeSeconds, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "salt":
 			var err error
-			it.Salt, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx, v)
+			it.Salt, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "signature":
 			var err error
-			it.Signature, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx, v)
+			it.Signature, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -5191,21 +5191,21 @@ func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj inte
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputOrderFilter(ctx context.Context, obj interface{}) (types.OrderFilter, error) {
-	var it types.OrderFilter
+func (ec *executionContext) unmarshalInputOrderFilter(ctx context.Context, obj interface{}) (gqltypes.OrderFilter, error) {
+	var it gqltypes.OrderFilter
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
 		case "field":
 			var err error
-			it.Field, err = ec.unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderField(ctx, v)
+			it.Field, err = ec.unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderField(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "kind":
 			var err error
-			it.Kind, err = ec.unmarshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐFilterKind(ctx, v)
+			it.Kind, err = ec.unmarshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐFilterKind(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -5221,21 +5221,21 @@ func (ec *executionContext) unmarshalInputOrderFilter(ctx context.Context, obj i
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputOrderSort(ctx context.Context, obj interface{}) (types.OrderSort, error) {
-	var it types.OrderSort
+func (ec *executionContext) unmarshalInputOrderSort(ctx context.Context, obj interface{}) (gqltypes.OrderSort, error) {
+	var it gqltypes.OrderSort
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
 		case "field":
 			var err error
-			it.Field, err = ec.unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderField(ctx, v)
+			it.Field, err = ec.unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderField(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "direction":
 			var err error
-			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐSortDirection(ctx, v)
+			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐSortDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -5255,7 +5255,7 @@ func (ec *executionContext) unmarshalInputOrderSort(ctx context.Context, obj int
 
 var acceptedOrderResultImplementors = []string{"AcceptedOrderResult"}
 
-func (ec *executionContext) _AcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, obj *types.AcceptedOrderResult) graphql.Marshaler {
+func (ec *executionContext) _AcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.AcceptedOrderResult) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, acceptedOrderResultImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5287,7 +5287,7 @@ func (ec *executionContext) _AcceptedOrderResult(ctx context.Context, sel ast.Se
 
 var addOrdersResultsImplementors = []string{"AddOrdersResults"}
 
-func (ec *executionContext) _AddOrdersResults(ctx context.Context, sel ast.SelectionSet, obj *types.AddOrdersResults) graphql.Marshaler {
+func (ec *executionContext) _AddOrdersResults(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.AddOrdersResults) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, addOrdersResultsImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5319,7 +5319,7 @@ func (ec *executionContext) _AddOrdersResults(ctx context.Context, sel ast.Selec
 
 var contractEventImplementors = []string{"ContractEvent"}
 
-func (ec *executionContext) _ContractEvent(ctx context.Context, sel ast.SelectionSet, obj *types.ContractEvent) graphql.Marshaler {
+func (ec *executionContext) _ContractEvent(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.ContractEvent) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, contractEventImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5381,7 +5381,7 @@ func (ec *executionContext) _ContractEvent(ctx context.Context, sel ast.Selectio
 
 var latestBlockImplementors = []string{"LatestBlock"}
 
-func (ec *executionContext) _LatestBlock(ctx context.Context, sel ast.SelectionSet, obj *types.LatestBlock) graphql.Marshaler {
+func (ec *executionContext) _LatestBlock(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.LatestBlock) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, latestBlockImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5444,7 +5444,7 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 var orderImplementors = []string{"Order"}
 
-func (ec *executionContext) _Order(ctx context.Context, sel ast.SelectionSet, obj *types.Order) graphql.Marshaler {
+func (ec *executionContext) _Order(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.Order) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, orderImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5551,7 +5551,7 @@ func (ec *executionContext) _Order(ctx context.Context, sel ast.SelectionSet, ob
 
 var orderEventImplementors = []string{"OrderEvent"}
 
-func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSet, obj *types.OrderEvent) graphql.Marshaler {
+func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderEvent) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, orderEventImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5593,7 +5593,7 @@ func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSe
 
 var orderWithMetadataImplementors = []string{"OrderWithMetadata"}
 
-func (ec *executionContext) _OrderWithMetadata(ctx context.Context, sel ast.SelectionSet, obj *types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) _OrderWithMetadata(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderWithMetadata) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, orderWithMetadataImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5692,8 +5692,8 @@ func (ec *executionContext) _OrderWithMetadata(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "remainingFillableTakerAssetAmount":
-			out.Values[i] = ec._OrderWithMetadata_remainingFillableTakerAssetAmount(ctx, field, obj)
+		case "fillableTakerAssetAmount":
+			out.Values[i] = ec._OrderWithMetadata_fillableTakerAssetAmount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -5779,7 +5779,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var rejectedOrderResultImplementors = []string{"RejectedOrderResult"}
 
-func (ec *executionContext) _RejectedOrderResult(ctx context.Context, sel ast.SelectionSet, obj *types.RejectedOrderResult) graphql.Marshaler {
+func (ec *executionContext) _RejectedOrderResult(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.RejectedOrderResult) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, rejectedOrderResultImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -5818,7 +5818,7 @@ func (ec *executionContext) _RejectedOrderResult(ctx context.Context, sel ast.Se
 
 var statsImplementors = []string{"Stats"}
 
-func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, obj *types.Stats) graphql.Marshaler {
+func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.Stats) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, statsImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -6165,11 +6165,11 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) marshalNAcceptedOrderResult2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, v types.AcceptedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNAcceptedOrderResult2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, v gqltypes.AcceptedOrderResult) graphql.Marshaler {
 	return ec._AcceptedOrderResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAcceptedOrderResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*types.AcceptedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.AcceptedOrderResult) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6193,7 +6193,7 @@ func (ec *executionContext) marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xP
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAcceptedOrderResult(ctx, sel, v[i])
+			ret[i] = ec.marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResult(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6206,7 +6206,7 @@ func (ec *executionContext) marshalNAcceptedOrderResult2ᚕᚖgithubᚗcomᚋ0xP
 	return ret
 }
 
-func (ec *executionContext) marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, v *types.AcceptedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResult(ctx context.Context, sel ast.SelectionSet, v *gqltypes.AcceptedOrderResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6216,11 +6216,11 @@ func (ec *executionContext) marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProj
 	return ec._AcceptedOrderResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNAddOrdersResults2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddOrdersResults(ctx context.Context, sel ast.SelectionSet, v types.AddOrdersResults) graphql.Marshaler {
+func (ec *executionContext) marshalNAddOrdersResults2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx context.Context, sel ast.SelectionSet, v gqltypes.AddOrdersResults) graphql.Marshaler {
 	return ec._AddOrdersResults(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddOrdersResults(ctx context.Context, sel ast.SelectionSet, v *types.AddOrdersResults) graphql.Marshaler {
+func (ec *executionContext) marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx context.Context, sel ast.SelectionSet, v *gqltypes.AddOrdersResults) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6230,12 +6230,12 @@ func (ec *executionContext) marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProject
 	return ec._AddOrdersResults(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx context.Context, v interface{}) (types.Address, error) {
-	var res types.Address
+func (ec *executionContext) unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx context.Context, v interface{}) (gqltypes.Address, error) {
+	var res gqltypes.Address
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐAddress(ctx context.Context, sel ast.SelectionSet, v types.Address) graphql.Marshaler {
+func (ec *executionContext) marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx context.Context, sel ast.SelectionSet, v gqltypes.Address) graphql.Marshaler {
 	return v
 }
 
@@ -6262,12 +6262,12 @@ func (ec *executionContext) marshalNAny2interface(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx context.Context, v interface{}) (types.BigNumber, error) {
-	var res types.BigNumber
+func (ec *executionContext) unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx context.Context, v interface{}) (gqltypes.BigNumber, error) {
+	var res gqltypes.BigNumber
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBigNumber(ctx context.Context, sel ast.SelectionSet, v types.BigNumber) graphql.Marshaler {
+func (ec *executionContext) marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx context.Context, sel ast.SelectionSet, v gqltypes.BigNumber) graphql.Marshaler {
 	return v
 }
 
@@ -6285,20 +6285,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx context.Context, v interface{}) (types.Bytes, error) {
-	var res types.Bytes
+func (ec *executionContext) unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx context.Context, v interface{}) (gqltypes.Bytes, error) {
+	var res gqltypes.Bytes
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐBytes(ctx context.Context, sel ast.SelectionSet, v types.Bytes) graphql.Marshaler {
+func (ec *executionContext) marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx context.Context, sel ast.SelectionSet, v gqltypes.Bytes) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNContractEvent2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐContractEvent(ctx context.Context, sel ast.SelectionSet, v types.ContractEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNContractEvent2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEvent(ctx context.Context, sel ast.SelectionSet, v gqltypes.ContractEvent) graphql.Marshaler {
 	return ec._ContractEvent(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐContractEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*types.ContractEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.ContractEvent) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6322,7 +6322,7 @@ func (ec *executionContext) marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProject
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNContractEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐContractEvent(ctx, sel, v[i])
+			ret[i] = ec.marshalNContractEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEvent(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6335,7 +6335,7 @@ func (ec *executionContext) marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProject
 	return ret
 }
 
-func (ec *executionContext) marshalNContractEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐContractEvent(ctx context.Context, sel ast.SelectionSet, v *types.ContractEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNContractEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEvent(ctx context.Context, sel ast.SelectionSet, v *gqltypes.ContractEvent) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6345,21 +6345,21 @@ func (ec *executionContext) marshalNContractEvent2ᚖgithubᚗcomᚋ0xProjectᚋ
 	return ec._ContractEvent(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐFilterKind(ctx context.Context, v interface{}) (types.FilterKind, error) {
-	var res types.FilterKind
+func (ec *executionContext) unmarshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐFilterKind(ctx context.Context, v interface{}) (gqltypes.FilterKind, error) {
+	var res gqltypes.FilterKind
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐFilterKind(ctx context.Context, sel ast.SelectionSet, v types.FilterKind) graphql.Marshaler {
+func (ec *executionContext) marshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐFilterKind(ctx context.Context, sel ast.SelectionSet, v gqltypes.FilterKind) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, v interface{}) (types.Hash, error) {
-	var res types.Hash
+func (ec *executionContext) unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (gqltypes.Hash, error) {
+	var res gqltypes.Hash
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, sel ast.SelectionSet, v types.Hash) graphql.Marshaler {
+func (ec *executionContext) marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v gqltypes.Hash) graphql.Marshaler {
 	return v
 }
 
@@ -6400,11 +6400,11 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrder(ctx context.Context, v interface{}) (types.NewOrder, error) {
+func (ec *executionContext) unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx context.Context, v interface{}) (gqltypes.NewOrder, error) {
 	return ec.unmarshalInputNewOrder(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrderᚄ(ctx context.Context, v interface{}) ([]*types.NewOrder, error) {
+func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderᚄ(ctx context.Context, v interface{}) ([]*gqltypes.NewOrder, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -6414,9 +6414,9 @@ func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 		}
 	}
 	var err error
-	res := make([]*types.NewOrder, len(vSlice))
+	res := make([]*gqltypes.NewOrder, len(vSlice))
 	for i := range vSlice {
-		res[i], err = ec.unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrder(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -6424,19 +6424,19 @@ func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrder(ctx context.Context, v interface{}) (*types.NewOrder, error) {
+func (ec *executionContext) unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx context.Context, v interface{}) (*gqltypes.NewOrder, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐNewOrder(ctx, v)
+	res, err := ec.unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx, v)
 	return &res, err
 }
 
-func (ec *executionContext) marshalNOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v types.Order) graphql.Marshaler {
+func (ec *executionContext) marshalNOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v gqltypes.Order) graphql.Marshaler {
 	return ec._Order(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v *types.Order) graphql.Marshaler {
+func (ec *executionContext) marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v *gqltypes.Order) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6446,20 +6446,20 @@ func (ec *executionContext) marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmes
 	return ec._Order(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEndState(ctx context.Context, v interface{}) (types.OrderEndState, error) {
-	var res types.OrderEndState
+func (ec *executionContext) unmarshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEndState(ctx context.Context, v interface{}) (gqltypes.OrderEndState, error) {
+	var res gqltypes.OrderEndState
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEndState(ctx context.Context, sel ast.SelectionSet, v types.OrderEndState) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEndState(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderEndState) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNOrderEvent2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEvent(ctx context.Context, sel ast.SelectionSet, v types.OrderEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderEvent2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEvent(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderEvent) graphql.Marshaler {
 	return ec._OrderEvent(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*types.OrderEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.OrderEvent) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6483,7 +6483,7 @@ func (ec *executionContext) marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNOrderEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEvent(ctx, sel, v[i])
+			ret[i] = ec.marshalNOrderEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEvent(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6496,7 +6496,7 @@ func (ec *executionContext) marshalNOrderEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNOrderEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderEvent(ctx context.Context, sel ast.SelectionSet, v *types.OrderEvent) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEvent(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderEvent) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6506,44 +6506,44 @@ func (ec *executionContext) marshalNOrderEvent2ᚖgithubᚗcomᚋ0xProjectᚋ0x�
 	return ec._OrderEvent(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderField(ctx context.Context, v interface{}) (types.OrderField, error) {
-	var res types.OrderField
+func (ec *executionContext) unmarshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderField(ctx context.Context, v interface{}) (gqltypes.OrderField, error) {
+	var res gqltypes.OrderField
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderField(ctx context.Context, sel ast.SelectionSet, v types.OrderField) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderField2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderField(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderField) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalNOrderFilter2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilter(ctx context.Context, v interface{}) (types.OrderFilter, error) {
+func (ec *executionContext) unmarshalNOrderFilter2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilter(ctx context.Context, v interface{}) (gqltypes.OrderFilter, error) {
 	return ec.unmarshalInputOrderFilter(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNOrderFilter2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilter(ctx context.Context, v interface{}) (*types.OrderFilter, error) {
+func (ec *executionContext) unmarshalNOrderFilter2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilter(ctx context.Context, v interface{}) (*gqltypes.OrderFilter, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalNOrderFilter2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilter(ctx, v)
+	res, err := ec.unmarshalNOrderFilter2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilter(ctx, v)
 	return &res, err
 }
 
-func (ec *executionContext) unmarshalNOrderSort2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSort(ctx context.Context, v interface{}) (types.OrderSort, error) {
+func (ec *executionContext) unmarshalNOrderSort2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSort(ctx context.Context, v interface{}) (gqltypes.OrderSort, error) {
 	return ec.unmarshalInputOrderSort(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNOrderSort2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSort(ctx context.Context, v interface{}) (*types.OrderSort, error) {
+func (ec *executionContext) unmarshalNOrderSort2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSort(ctx context.Context, v interface{}) (*gqltypes.OrderSort, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalNOrderSort2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSort(ctx, v)
+	res, err := ec.unmarshalNOrderSort2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSort(ctx, v)
 	return &res, err
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadata) graphql.Marshaler {
 	return ec._OrderWithMetadata(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.OrderWithMetadata) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6567,7 +6567,7 @@ func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xPro
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx, sel, v[i])
+			ret[i] = ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6580,7 +6580,7 @@ func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xPro
 	return ret
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadata) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6590,20 +6590,20 @@ func (ec *executionContext) marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjec
 	return ec._OrderWithMetadata(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderCode(ctx context.Context, v interface{}) (types.RejectedOrderCode, error) {
-	var res types.RejectedOrderCode
+func (ec *executionContext) unmarshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderCode(ctx context.Context, v interface{}) (gqltypes.RejectedOrderCode, error) {
+	var res gqltypes.RejectedOrderCode
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderCode(ctx context.Context, sel ast.SelectionSet, v types.RejectedOrderCode) graphql.Marshaler {
+func (ec *executionContext) marshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderCode(ctx context.Context, sel ast.SelectionSet, v gqltypes.RejectedOrderCode) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNRejectedOrderResult2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderResult(ctx context.Context, sel ast.SelectionSet, v types.RejectedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNRejectedOrderResult2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResult(ctx context.Context, sel ast.SelectionSet, v gqltypes.RejectedOrderResult) graphql.Marshaler {
 	return ec._RejectedOrderResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*types.RejectedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.RejectedOrderResult) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6627,7 +6627,7 @@ func (ec *executionContext) marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xP
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderResult(ctx, sel, v[i])
+			ret[i] = ec.marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResult(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6640,7 +6640,7 @@ func (ec *executionContext) marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xP
 	return ret
 }
 
-func (ec *executionContext) marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐRejectedOrderResult(ctx context.Context, sel ast.SelectionSet, v *types.RejectedOrderResult) graphql.Marshaler {
+func (ec *executionContext) marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResult(ctx context.Context, sel ast.SelectionSet, v *gqltypes.RejectedOrderResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6650,20 +6650,20 @@ func (ec *executionContext) marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProj
 	return ec._RejectedOrderResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐSortDirection(ctx context.Context, v interface{}) (types.SortDirection, error) {
-	var res types.SortDirection
+func (ec *executionContext) unmarshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐSortDirection(ctx context.Context, v interface{}) (gqltypes.SortDirection, error) {
+	var res gqltypes.SortDirection
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v types.SortDirection) graphql.Marshaler {
+func (ec *executionContext) marshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v gqltypes.SortDirection) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNStats2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐStats(ctx context.Context, sel ast.SelectionSet, v types.Stats) graphql.Marshaler {
+func (ec *executionContext) marshalNStats2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐStats(ctx context.Context, sel ast.SelectionSet, v gqltypes.Stats) graphql.Marshaler {
 	return ec._Stats(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNStats2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐStats(ctx context.Context, sel ast.SelectionSet, v *types.Stats) graphql.Marshaler {
+func (ec *executionContext) marshalNStats2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐStats(ctx context.Context, sel ast.SelectionSet, v *gqltypes.Stats) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -6950,24 +6950,24 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
-func (ec *executionContext) unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, v interface{}) (types.Hash, error) {
-	var res types.Hash
+func (ec *executionContext) unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (gqltypes.Hash, error) {
+	var res gqltypes.Hash
 	return res, res.UnmarshalGQL(v)
 }
 
-func (ec *executionContext) marshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, sel ast.SelectionSet, v types.Hash) graphql.Marshaler {
+func (ec *executionContext) marshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v gqltypes.Hash) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) unmarshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, v interface{}) (*types.Hash, error) {
+func (ec *executionContext) unmarshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (*gqltypes.Hash, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx, v)
+	res, err := ec.unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, v)
 	return &res, err
 }
 
-func (ec *executionContext) marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐHash(ctx context.Context, sel ast.SelectionSet, v *types.Hash) graphql.Marshaler {
+func (ec *executionContext) marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v *gqltypes.Hash) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -6997,18 +6997,18 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalOLatestBlock2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐLatestBlock(ctx context.Context, sel ast.SelectionSet, v types.LatestBlock) graphql.Marshaler {
+func (ec *executionContext) marshalOLatestBlock2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐLatestBlock(ctx context.Context, sel ast.SelectionSet, v gqltypes.LatestBlock) graphql.Marshaler {
 	return ec._LatestBlock(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOLatestBlock2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐLatestBlock(ctx context.Context, sel ast.SelectionSet, v *types.LatestBlock) graphql.Marshaler {
+func (ec *executionContext) marshalOLatestBlock2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐLatestBlock(ctx context.Context, sel ast.SelectionSet, v *gqltypes.LatestBlock) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._LatestBlock(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilterᚄ(ctx context.Context, v interface{}) ([]*types.OrderFilter, error) {
+func (ec *executionContext) unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilterᚄ(ctx context.Context, v interface{}) ([]*gqltypes.OrderFilter, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -7018,9 +7018,9 @@ func (ec *executionContext) unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProject
 		}
 	}
 	var err error
-	res := make([]*types.OrderFilter, len(vSlice))
+	res := make([]*gqltypes.OrderFilter, len(vSlice))
 	for i := range vSlice {
-		res[i], err = ec.unmarshalNOrderFilter2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderFilter(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNOrderFilter2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderFilter(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -7028,7 +7028,7 @@ func (ec *executionContext) unmarshalOOrderFilter2ᚕᚖgithubᚗcomᚋ0xProject
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSortᚄ(ctx context.Context, v interface{}) ([]*types.OrderSort, error) {
+func (ec *executionContext) unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSortᚄ(ctx context.Context, v interface{}) ([]*gqltypes.OrderSort, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -7038,9 +7038,9 @@ func (ec *executionContext) unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProject�
 		}
 	}
 	var err error
-	res := make([]*types.OrderSort, len(vSlice))
+	res := make([]*gqltypes.OrderSort, len(vSlice))
 	for i := range vSlice {
-		res[i], err = ec.unmarshalNOrderSort2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderSort(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNOrderSort2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderSort(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -7048,11 +7048,11 @@ func (ec *executionContext) unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProject�
 	return res, nil
 }
 
-func (ec *executionContext) marshalOOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalOOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadata) graphql.Marshaler {
 	return ec._OrderWithMetadata(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋtypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *types.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadata) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

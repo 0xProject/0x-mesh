@@ -28,7 +28,8 @@ func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQ
 	}
 
 	// Set up handler for GrqphQL queries
-	graphQLServer := gqlserver.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graphql.Resolver{}}))
+	resolver := graphql.NewResolver(app)
+	graphQLServer := gqlserver.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 	handler.Handle("/graphql", graphQLServer)
 
 	// Start the server
