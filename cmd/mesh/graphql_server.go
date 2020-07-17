@@ -7,7 +7,9 @@ import (
 
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/graphql"
-	"github.com/graph-gophers/graphql-go/relay"
+	"github.com/0xProject/0x-mesh/graphql/generated"
+
+	gqlserver "github.com/99designs/gqlgen/graphql/handler"
 )
 
 // gracefulShutdownTimeout is the maximum amount of time to allow
@@ -16,21 +18,21 @@ import (
 const gracefulShutdownTimeout = 10 * time.Second
 
 func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQL bool) error {
-	schema, err := graphql.NewSchema(app)
-	if err != nil {
-		return err
-	}
-
 	handler := http.NewServeMux()
+
+	// Set up handler for GraphiQL
 	if enableGraphiQL {
-		handler.Handle("/graphiql", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(graphiQLPage)
 		}))
 	}
-	handler.Handle("/", &relay.Handler{Schema: schema})
 
+	// Set up handler for GrqphQL queries
+	graphQLServer := gqlserver.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graphql.Resolver{}}))
+	handler.Handle("/graphql", graphQLServer)
+
+	// Start the server
 	server := &http.Server{Addr: addr, Handler: handler}
-
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -39,7 +41,6 @@ func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQ
 			_ = server.Shutdown(shutdownContext)
 		}
 	}()
-
 	return server.ListenAndServe()
 }
 
@@ -67,7 +68,7 @@ var graphiQLPage = []byte(`
 
     <script>
       const graphQLFetcher = graphQLParams =>
-        fetch('/', {
+        fetch('/graphql', {
           method: 'post',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(graphQLParams),
