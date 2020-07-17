@@ -5,221 +5,219 @@ websocket endpoint.
 
 ## Hierarchy
 
-* **WSClient**
+-   **WSClient**
 
 ## Index
 
 ### Constructors
 
-* [constructor](#constructor)
+-   [constructor](#constructor)
 
 ### Methods
 
-* [addOrdersAsync](#addordersasync)
-* [destroy](#destroy)
-* [getOrdersAsync](#getordersasync)
-* [getOrdersForPageAsync](#getordersforpageasync)
-* [getStatsAsync](#getstatsasync)
-* [onClose](#onclose)
-* [onReconnected](#onreconnected)
-* [subscribeToOrdersAsync](#subscribetoordersasync)
-* [unsubscribeAsync](#unsubscribeasync)
+-   [addOrdersAsync](#addordersasync)
+-   [destroy](#destroy)
+-   [getOrdersAsync](#getordersasync)
+-   [getOrdersForPageAsync](#getordersforpageasync)
+-   [getStatsAsync](#getstatsasync)
+-   [onClose](#onclose)
+-   [onReconnected](#onreconnected)
+-   [subscribeToOrdersAsync](#subscribetoordersasync)
+-   [unsubscribeAsync](#unsubscribeasync)
 
 ## Constructors
 
-###  constructor
+### constructor
 
-\+ **new WSClient**(`url`: string, `wsOpts?`: [WSOpts](#interface-wsopts)): *[WSClient](#class-wsclient)*
+\+ **new WSClient**(`url`: string, `wsOpts?`: [WSOpts](#interface-wsopts)): _[WSClient](#class-wsclient)_
 
-*Defined in [ws_client.ts:252](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L252)*
+_Defined in [ws_client.ts:251](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L251)_
 
 Instantiates a new WSClient instance
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`url` | string | WS server endpoint |
-`wsOpts?` | [WSOpts](#interface-wsopts) | WebSocket options |
+| Name      | Type                        | Description        |
+| --------- | --------------------------- | ------------------ |
+| `url`     | string                      | WS server endpoint |
+| `wsOpts?` | [WSOpts](#interface-wsopts) | WebSocket options  |
 
-**Returns:** *[WSClient](#class-wsclient)*
+**Returns:** _[WSClient](#class-wsclient)_
 
 An instance of WSClient
 
 ## Methods
 
-###  addOrdersAsync
+### addOrdersAsync
 
-▸ **addOrdersAsync**(`signedOrders`: SignedOrder[], `pinned`: boolean): *Promise‹[ValidationResults](#interface-validationresults)›*
+▸ **addOrdersAsync**(`signedOrders`: SignedOrder[], `pinned`: boolean): _Promise‹[ValidationResults](#interface-validationresults)›_
 
-*Defined in [ws_client.ts:281](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L281)*
+_Defined in [ws_client.ts:280](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L280)_
 
 Adds an array of 0x signed orders to the Mesh node.
 
 **Parameters:**
 
-Name | Type | Default | Description |
------- | ------ | ------ | ------ |
-`signedOrders` | SignedOrder[] | - | signedOrders to add |
-`pinned` | boolean | true | Whether or not the orders should be pinned. Pinned orders will not be affected by any DDoS prevention or incentive mechanisms and will always stay in storage until they are no longer fillable. |
+| Name           | Type          | Default | Description                                                                                                                                                                                      |
+| -------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `signedOrders` | SignedOrder[] | -       | signedOrders to add                                                                                                                                                                              |
+| `pinned`       | boolean       | true    | Whether or not the orders should be pinned. Pinned orders will not be affected by any DDoS prevention or incentive mechanisms and will always stay in storage until they are no longer fillable. |
 
-**Returns:** *Promise‹[ValidationResults](#interface-validationresults)›*
+**Returns:** _Promise‹[ValidationResults](#interface-validationresults)›_
 
 validation results
 
-___
+---
 
-###  destroy
+### destroy
 
-▸ **destroy**(): *void*
+▸ **destroy**(): _void_
 
-*Defined in [ws_client.ts:421](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L421)*
+_Defined in [ws_client.ts:407](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L407)_
 
 destroy unsubscribes all active subscriptions, closes the websocket connection
 and stops the internal heartbeat connection liveness check.
 
-**Returns:** *void*
+**Returns:** _void_
 
-___
+---
 
-###  getOrdersAsync
+### getOrdersAsync
 
-▸ **getOrdersAsync**(`perPage`: number): *Promise‹[GetOrdersResponse](#interface-getordersresponse)›*
+▸ **getOrdersAsync**(`perPage`: number): _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
-*Defined in [ws_client.ts:311](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L311)*
+_Defined in [ws_client.ts:310](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L310)_
 
 Get all 0x signed orders currently stored in the Mesh node
 
 **Parameters:**
 
-Name | Type | Default | Description |
------- | ------ | ------ | ------ |
-`perPage` | number | 200 | number of signedOrders to fetch per paginated request |
+| Name      | Type   | Default | Description                                           |
+| --------- | ------ | ------- | ----------------------------------------------------- |
+| `perPage` | number | 200     | number of signedOrders to fetch per paginated request |
 
-**Returns:** *Promise‹[GetOrdersResponse](#interface-getordersresponse)›*
+**Returns:** _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
 the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
 
-___
+---
 
-###  getOrdersForPageAsync
+### getOrdersForPageAsync
 
-▸ **getOrdersForPageAsync**(`page`: number, `perPage`: number, `snapshotID?`: undefined | string): *Promise‹[GetOrdersResponse](#interface-getordersresponse)›*
+▸ **getOrdersForPageAsync**(`perPage`: number, `minOrderHash`: string): _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
-*Defined in [ws_client.ts:342](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L342)*
+_Defined in [ws_client.ts:335](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L335)_
 
 Get page of 0x signed orders stored on the Mesh node at the specified snapshot
 
 **Parameters:**
 
-Name | Type | Default | Description |
------- | ------ | ------ | ------ |
-`page` | number | - | Page index at which to retrieve orders |
-`perPage` | number | 200 | number of signedOrders to fetch per paginated request |
-`snapshotID?` | undefined &#124; string | - | The DB snapshot at which to fetch orders. If omitted, a new snapshot is created |
+| Name           | Type   | Default | Description                                           |
+| -------------- | ------ | ------- | ----------------------------------------------------- |
+| `perPage`      | number | 200     | number of signedOrders to fetch per paginated request |
+| `minOrderHash` | string | ""      | -                                                     |
 
-**Returns:** *Promise‹[GetOrdersResponse](#interface-getordersresponse)›*
+**Returns:** _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
 the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTakerAssetAmounts
 
-___
+---
 
-###  getStatsAsync
+### getStatsAsync
 
-▸ **getStatsAsync**(): *Promise‹[GetStatsResponse](#interface-getstatsresponse)›*
+▸ **getStatsAsync**(): _Promise‹[GetStatsResponse](#interface-getstatsresponse)›_
 
-*Defined in [ws_client.ts:302](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L302)*
+_Defined in [ws_client.ts:301](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L301)_
 
-**Returns:** *Promise‹[GetStatsResponse](#interface-getstatsresponse)›*
+**Returns:** _Promise‹[GetStatsResponse](#interface-getstatsresponse)›_
 
-___
+---
 
-###  onClose
+### onClose
 
-▸ **onClose**(`cb`: function): *void*
+▸ **onClose**(`cb`: function): _void_
 
-*Defined in [ws_client.ts:403](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L403)*
+_Defined in [ws_client.ts:389](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L389)_
 
 Get notified when the underlying WS connection closes normally. If it closes with an
 error, WSClient automatically attempts to re-connect without emitting a `close` event.
 
 **Parameters:**
 
-▪ **cb**: *function*
+▪ **cb**: _function_
 
 callback to call when WS connection closes
 
-▸ (): *void*
+▸ (): _void_
 
-**Returns:** *void*
+**Returns:** _void_
 
-___
+---
 
-###  onReconnected
+### onReconnected
 
-▸ **onReconnected**(`cb`: function): *void*
+▸ **onReconnected**(`cb`: function): _void_
 
-*Defined in [ws_client.ts:412](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L412)*
+_Defined in [ws_client.ts:398](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L398)_
 
 Get notified when a connection to the underlying WS connection is re-established
 
 **Parameters:**
 
-▪ **cb**: *function*
+▪ **cb**: _function_
 
 callback to call with the error when it occurs
 
-▸ (): *void*
+▸ (): _void_
 
-**Returns:** *void*
+**Returns:** _void_
 
-___
+---
 
-###  subscribeToOrdersAsync
+### subscribeToOrdersAsync
 
-▸ **subscribeToOrdersAsync**(`cb`: function): *Promise‹string›*
+▸ **subscribeToOrdersAsync**(`cb`: function): _Promise‹string›_
 
-*Defined in [ws_client.ts:363](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L363)*
+_Defined in [ws_client.ts:349](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L349)_
 
 Subscribe to the 'orders' topic and receive order events from Mesh. This method returns a
 subscriptionId that can be used to `unsubscribe()` from this subscription.
 
 **Parameters:**
 
-▪ **cb**: *function*
+▪ **cb**: _function_
 
 callback function where you'd like to get notified about order events
 
-▸ (`orderEvents`: [OrderEvent](#interface-orderevent)[]): *void*
+▸ (`orderEvents`: [OrderEvent](#interface-orderevent)[]): _void_
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`orderEvents` | [OrderEvent](#interface-orderevent)[] |
+| Name          | Type                                  |
+| ------------- | ------------------------------------- |
+| `orderEvents` | [OrderEvent](#interface-orderevent)[] |
 
-**Returns:** *Promise‹string›*
+**Returns:** _Promise‹string›_
 
 subscriptionId
 
-___
+---
 
-###  unsubscribeAsync
+### unsubscribeAsync
 
-▸ **unsubscribeAsync**(`subscriptionId`: string): *Promise‹void›*
+▸ **unsubscribeAsync**(`subscriptionId`: string): _Promise‹void›_
 
-*Defined in [ws_client.ts:393](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/ws_client.ts#L393)*
+_Defined in [ws_client.ts:379](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/ws_client.ts#L379)_
 
 Unsubscribe from a subscription
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`subscriptionId` | string | identifier of the subscription to cancel  |
+| Name             | Type   | Description                              |
+| ---------------- | ------ | ---------------------------------------- |
+| `subscriptionId` | string | identifier of the subscription to cancel |
 
-**Returns:** *Promise‹void›*
-
+**Returns:** _Promise‹void›_
 
 <hr />
 
@@ -229,124 +227,123 @@ Name | Type | Description |
 
 ### Enumeration members
 
-* [ERC1155ApprovalForAllEvent](#erc1155approvalforallevent)
-* [ERC1155TransferBatchEvent](#erc1155transferbatchevent)
-* [ERC1155TransferSingleEvent](#erc1155transfersingleevent)
-* [ERC20ApprovalEvent](#erc20approvalevent)
-* [ERC20TransferEvent](#erc20transferevent)
-* [ERC721ApprovalEvent](#erc721approvalevent)
-* [ERC721ApprovalForAllEvent](#erc721approvalforallevent)
-* [ERC721TransferEvent](#erc721transferevent)
-* [ExchangeCancelEvent](#exchangecancelevent)
-* [ExchangeCancelUpToEvent](#exchangecanceluptoevent)
-* [ExchangeFillEvent](#exchangefillevent)
-* [WethDepositEvent](#wethdepositevent)
-* [WethWithdrawalEvent](#wethwithdrawalevent)
+-   [ERC1155ApprovalForAllEvent](#erc1155approvalforallevent)
+-   [ERC1155TransferBatchEvent](#erc1155transferbatchevent)
+-   [ERC1155TransferSingleEvent](#erc1155transfersingleevent)
+-   [ERC20ApprovalEvent](#erc20approvalevent)
+-   [ERC20TransferEvent](#erc20transferevent)
+-   [ERC721ApprovalEvent](#erc721approvalevent)
+-   [ERC721ApprovalForAllEvent](#erc721approvalforallevent)
+-   [ERC721TransferEvent](#erc721transferevent)
+-   [ExchangeCancelEvent](#exchangecancelevent)
+-   [ExchangeCancelUpToEvent](#exchangecanceluptoevent)
+-   [ExchangeFillEvent](#exchangefillevent)
+-   [WethDepositEvent](#wethdepositevent)
+-   [WethWithdrawalEvent](#wethwithdrawalevent)
 
 ## Enumeration members
 
-###  ERC1155ApprovalForAllEvent
+### ERC1155ApprovalForAllEvent
 
 • **ERC1155ApprovalForAllEvent**: = "ERC1155ApprovalForAllEvent"
 
-*Defined in [types.ts:222](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L222)*
+_Defined in [types.ts:222](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L222)_
 
-___
+---
 
-###  ERC1155TransferBatchEvent
+### ERC1155TransferBatchEvent
 
 • **ERC1155TransferBatchEvent**: = "ERC1155TransferBatchEvent"
 
-*Defined in [types.ts:224](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L224)*
+_Defined in [types.ts:224](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L224)_
 
-___
+---
 
-###  ERC1155TransferSingleEvent
+### ERC1155TransferSingleEvent
 
 • **ERC1155TransferSingleEvent**: = "ERC1155TransferSingleEvent"
 
-*Defined in [types.ts:223](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L223)*
+_Defined in [types.ts:223](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L223)_
 
-___
+---
 
-###  ERC20ApprovalEvent
+### ERC20ApprovalEvent
 
 • **ERC20ApprovalEvent**: = "ERC20ApprovalEvent"
 
-*Defined in [types.ts:218](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L218)*
+_Defined in [types.ts:218](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L218)_
 
-___
+---
 
-###  ERC20TransferEvent
+### ERC20TransferEvent
 
 • **ERC20TransferEvent**: = "ERC20TransferEvent"
 
-*Defined in [types.ts:217](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L217)*
+_Defined in [types.ts:217](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L217)_
 
-___
+---
 
-###  ERC721ApprovalEvent
+### ERC721ApprovalEvent
 
 • **ERC721ApprovalEvent**: = "ERC721ApprovalEvent"
 
-*Defined in [types.ts:220](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L220)*
+_Defined in [types.ts:220](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L220)_
 
-___
+---
 
-###  ERC721ApprovalForAllEvent
+### ERC721ApprovalForAllEvent
 
 • **ERC721ApprovalForAllEvent**: = "ERC721ApprovalForAllEvent"
 
-*Defined in [types.ts:221](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L221)*
+_Defined in [types.ts:221](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L221)_
 
-___
+---
 
-###  ERC721TransferEvent
+### ERC721TransferEvent
 
 • **ERC721TransferEvent**: = "ERC721TransferEvent"
 
-*Defined in [types.ts:219](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L219)*
+_Defined in [types.ts:219](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L219)_
 
-___
+---
 
-###  ExchangeCancelEvent
+### ExchangeCancelEvent
 
 • **ExchangeCancelEvent**: = "ExchangeCancelEvent"
 
-*Defined in [types.ts:226](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L226)*
+_Defined in [types.ts:226](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L226)_
 
-___
+---
 
-###  ExchangeCancelUpToEvent
+### ExchangeCancelUpToEvent
 
 • **ExchangeCancelUpToEvent**: = "ExchangeCancelUpToEvent"
 
-*Defined in [types.ts:227](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L227)*
+_Defined in [types.ts:227](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L227)_
 
-___
+---
 
-###  ExchangeFillEvent
+### ExchangeFillEvent
 
 • **ExchangeFillEvent**: = "ExchangeFillEvent"
 
-*Defined in [types.ts:225](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L225)*
+_Defined in [types.ts:225](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L225)_
 
-___
+---
 
-###  WethDepositEvent
+### WethDepositEvent
 
 • **WethDepositEvent**: = "WethDepositEvent"
 
-*Defined in [types.ts:228](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L228)*
+_Defined in [types.ts:228](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L228)_
 
-___
+---
 
-###  WethWithdrawalEvent
+### WethWithdrawalEvent
 
 • **WethWithdrawalEvent**: = "WethWithdrawalEvent"
 
-*Defined in [types.ts:229](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L229)*
-
+_Defined in [types.ts:229](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L229)_
 
 <hr />
 
@@ -356,97 +353,96 @@ ___
 
 ### Enumeration members
 
-* [Added](#added)
-* [Cancelled](#cancelled)
-* [Expired](#expired)
-* [FillabilityIncreased](#fillabilityincreased)
-* [Filled](#filled)
-* [FullyFilled](#fullyfilled)
-* [Invalid](#invalid)
-* [StoppedWatching](#stoppedwatching)
-* [Unexpired](#unexpired)
-* [Unfunded](#unfunded)
+-   [Added](#added)
+-   [Cancelled](#cancelled)
+-   [Expired](#expired)
+-   [FillabilityIncreased](#fillabilityincreased)
+-   [Filled](#filled)
+-   [FullyFilled](#fullyfilled)
+-   [Invalid](#invalid)
+-   [StoppedWatching](#stoppedwatching)
+-   [Unexpired](#unexpired)
+-   [Unfunded](#unfunded)
 
 ## Enumeration members
 
-###  Added
+### Added
 
 • **Added**: = "ADDED"
 
-*Defined in [types.ts:286](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L286)*
+_Defined in [types.ts:286](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L286)_
 
-___
+---
 
-###  Cancelled
+### Cancelled
 
 • **Cancelled**: = "CANCELLED"
 
-*Defined in [types.ts:289](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L289)*
+_Defined in [types.ts:289](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L289)_
 
-___
+---
 
-###  Expired
+### Expired
 
 • **Expired**: = "EXPIRED"
 
-*Defined in [types.ts:290](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L290)*
+_Defined in [types.ts:290](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L290)_
 
-___
+---
 
-###  FillabilityIncreased
+### FillabilityIncreased
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-*Defined in [types.ts:294](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L294)*
+_Defined in [types.ts:294](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L294)_
 
-___
+---
 
-###  Filled
+### Filled
 
 • **Filled**: = "FILLED"
 
-*Defined in [types.ts:287](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L287)*
+_Defined in [types.ts:287](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L287)_
 
-___
+---
 
-###  FullyFilled
+### FullyFilled
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-*Defined in [types.ts:288](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L288)*
+_Defined in [types.ts:288](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L288)_
 
-___
+---
 
-###  Invalid
+### Invalid
 
 • **Invalid**: = "INVALID"
 
-*Defined in [types.ts:285](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L285)*
+_Defined in [types.ts:285](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L285)_
 
-___
+---
 
-###  StoppedWatching
+### StoppedWatching
 
 • **StoppedWatching**: = "STOPPED_WATCHING"
 
-*Defined in [types.ts:292](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L292)*
+_Defined in [types.ts:292](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L292)_
 
-___
+---
 
-###  Unexpired
+### Unexpired
 
 • **Unexpired**: = "UNEXPIRED"
 
-*Defined in [types.ts:291](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L291)*
+_Defined in [types.ts:291](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L291)_
 
-___
+---
 
-###  Unfunded
+### Unfunded
 
 • **Unfunded**: = "UNFUNDED"
 
-*Defined in [types.ts:293](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L293)*
-
+_Defined in [types.ts:293](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L293)_
 
 <hr />
 
@@ -456,133 +452,132 @@ ___
 
 ### Enumeration members
 
-* [InternalError](#internalerror)
-* [MaxOrderSizeExceeded](#maxordersizeexceeded)
-* [NetworkRequestFailed](#networkrequestfailed)
-* [OrderAlreadyStored](#orderalreadystored)
-* [OrderCancelled](#ordercancelled)
-* [OrderExpired](#orderexpired)
-* [OrderForIncorrectChain](#orderforincorrectchain)
-* [OrderFullyFilled](#orderfullyfilled)
-* [OrderHasInvalidMakerAssetAmount](#orderhasinvalidmakerassetamount)
-* [OrderHasInvalidMakerAssetData](#orderhasinvalidmakerassetdata)
-* [OrderHasInvalidSignature](#orderhasinvalidsignature)
-* [OrderHasInvalidTakerAssetAmount](#orderhasinvalidtakerassetamount)
-* [OrderHasInvalidTakerAssetData](#orderhasinvalidtakerassetdata)
-* [OrderUnfunded](#orderunfunded)
+-   [InternalError](#internalerror)
+-   [MaxOrderSizeExceeded](#maxordersizeexceeded)
+-   [NetworkRequestFailed](#networkrequestfailed)
+-   [OrderAlreadyStored](#orderalreadystored)
+-   [OrderCancelled](#ordercancelled)
+-   [OrderExpired](#orderexpired)
+-   [OrderForIncorrectChain](#orderforincorrectchain)
+-   [OrderFullyFilled](#orderfullyfilled)
+-   [OrderHasInvalidMakerAssetAmount](#orderhasinvalidmakerassetamount)
+-   [OrderHasInvalidMakerAssetData](#orderhasinvalidmakerassetdata)
+-   [OrderHasInvalidSignature](#orderhasinvalidsignature)
+-   [OrderHasInvalidTakerAssetAmount](#orderhasinvalidtakerassetamount)
+-   [OrderHasInvalidTakerAssetData](#orderhasinvalidtakerassetdata)
+-   [OrderUnfunded](#orderunfunded)
 
 ## Enumeration members
 
-###  InternalError
+### InternalError
 
 • **InternalError**: = "InternalError"
 
-*Defined in [types.ts:358](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L358)*
+_Defined in [types.ts:358](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L358)_
 
-___
+---
 
-###  MaxOrderSizeExceeded
+### MaxOrderSizeExceeded
 
 • **MaxOrderSizeExceeded**: = "MaxOrderSizeExceeded"
 
-*Defined in [types.ts:359](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L359)*
+_Defined in [types.ts:359](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L359)_
 
-___
+---
 
-###  NetworkRequestFailed
+### NetworkRequestFailed
 
 • **NetworkRequestFailed**: = "NetworkRequestFailed"
 
-*Defined in [types.ts:362](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L362)*
+_Defined in [types.ts:362](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L362)_
 
-___
+---
 
-###  OrderAlreadyStored
+### OrderAlreadyStored
 
 • **OrderAlreadyStored**: = "OrderAlreadyStored"
 
-*Defined in [types.ts:360](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L360)*
+_Defined in [types.ts:360](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L360)_
 
-___
+---
 
-###  OrderCancelled
+### OrderCancelled
 
 • **OrderCancelled**: = "OrderCancelled"
 
-*Defined in [types.ts:367](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L367)*
+_Defined in [types.ts:367](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L367)_
 
-___
+---
 
-###  OrderExpired
+### OrderExpired
 
 • **OrderExpired**: = "OrderExpired"
 
-*Defined in [types.ts:365](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L365)*
+_Defined in [types.ts:365](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L365)_
 
-___
+---
 
-###  OrderForIncorrectChain
+### OrderForIncorrectChain
 
 • **OrderForIncorrectChain**: = "OrderForIncorrectChain"
 
-*Defined in [types.ts:361](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L361)*
+_Defined in [types.ts:361](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L361)_
 
-___
+---
 
-###  OrderFullyFilled
+### OrderFullyFilled
 
 • **OrderFullyFilled**: = "OrderFullyFilled"
 
-*Defined in [types.ts:366](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L366)*
+_Defined in [types.ts:366](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L366)_
 
-___
+---
 
-###  OrderHasInvalidMakerAssetAmount
+### OrderHasInvalidMakerAssetAmount
 
 • **OrderHasInvalidMakerAssetAmount**: = "OrderHasInvalidMakerAssetAmount"
 
-*Defined in [types.ts:363](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L363)*
+_Defined in [types.ts:363](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L363)_
 
-___
+---
 
-###  OrderHasInvalidMakerAssetData
+### OrderHasInvalidMakerAssetData
 
 • **OrderHasInvalidMakerAssetData**: = "OrderHasInvalidMakerAssetData"
 
-*Defined in [types.ts:369](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L369)*
+_Defined in [types.ts:369](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L369)_
 
-___
+---
 
-###  OrderHasInvalidSignature
+### OrderHasInvalidSignature
 
 • **OrderHasInvalidSignature**: = "OrderHasInvalidSignature"
 
-*Defined in [types.ts:371](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L371)*
+_Defined in [types.ts:371](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L371)_
 
-___
+---
 
-###  OrderHasInvalidTakerAssetAmount
+### OrderHasInvalidTakerAssetAmount
 
 • **OrderHasInvalidTakerAssetAmount**: = "OrderHasInvalidTakerAssetAmount"
 
-*Defined in [types.ts:364](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L364)*
+_Defined in [types.ts:364](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L364)_
 
-___
+---
 
-###  OrderHasInvalidTakerAssetData
+### OrderHasInvalidTakerAssetData
 
 • **OrderHasInvalidTakerAssetData**: = "OrderHasInvalidTakerAssetData"
 
-*Defined in [types.ts:370](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L370)*
+_Defined in [types.ts:370](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L370)_
 
-___
+---
 
-###  OrderUnfunded
+### OrderUnfunded
 
 • **OrderUnfunded**: = "OrderUnfunded"
 
-*Defined in [types.ts:368](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L368)*
-
+_Defined in [types.ts:368](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L368)_
 
 <hr />
 
@@ -592,34 +587,33 @@ ___
 
 ### Enumeration members
 
-* [MeshError](#mesherror)
-* [MeshValidation](#meshvalidation)
-* [ZeroexValidation](#zeroexvalidation)
+-   [MeshError](#mesherror)
+-   [MeshValidation](#meshvalidation)
+-   [ZeroexValidation](#zeroexvalidation)
 
 ## Enumeration members
 
-###  MeshError
+### MeshError
 
 • **MeshError**: = "MESH_ERROR"
 
-*Defined in [types.ts:353](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L353)*
+_Defined in [types.ts:353](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L353)_
 
-___
+---
 
-###  MeshValidation
+### MeshValidation
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-*Defined in [types.ts:354](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L354)*
+_Defined in [types.ts:354](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L354)_
 
-___
+---
 
-###  ZeroexValidation
+### ZeroexValidation
 
 • **ZeroexValidation**: = "ZEROEX_VALIDATION"
 
-*Defined in [types.ts:352](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L352)*
-
+_Defined in [types.ts:352](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L352)_
 
 <hr />
 
@@ -627,49 +621,48 @@ ___
 
 ## Hierarchy
 
-* **AcceptedOrderInfo**
+-   **AcceptedOrderInfo**
 
 ## Index
 
 ### Properties
 
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [isNew](#isnew)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [isNew](#isnew)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
 
 ## Properties
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *BigNumber*
+• **fillableTakerAssetAmount**: _BigNumber_
 
-*Defined in [types.ts:335](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L335)*
+_Defined in [types.ts:335](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L335)_
 
-___
+---
 
-###  isNew
+### isNew
 
-• **isNew**: *boolean*
+• **isNew**: _boolean_
 
-*Defined in [types.ts:336](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L336)*
+_Defined in [types.ts:336](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L336)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:333](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L333)*
+_Defined in [types.ts:333](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L333)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *SignedOrder*
+• **signedOrder**: _SignedOrder_
 
-*Defined in [types.ts:334](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L334)*
-
+_Defined in [types.ts:334](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L334)_
 
 <hr />
 
@@ -680,85 +673,84 @@ Source: https://github.com/theturtle32/WebSocket-Node/blob/master/docs/WebSocket
 
 ## Hierarchy
 
-* **ClientConfig**
+-   **ClientConfig**
 
 ## Index
 
 ### Properties
 
-* [assembleFragments](#optional-assemblefragments)
-* [closeTimeout](#optional-closetimeout)
-* [fragmentOutgoingMessages](#optional-fragmentoutgoingmessages)
-* [fragmentationThreshold](#optional-fragmentationthreshold)
-* [maxReceivedFrameSize](#optional-maxreceivedframesize)
-* [maxReceivedMessageSize](#optional-maxreceivedmessagesize)
-* [tlsOptions](#optional-tlsoptions)
-* [webSocketVersion](#optional-websocketversion)
+-   [assembleFragments](#optional-assemblefragments)
+-   [closeTimeout](#optional-closetimeout)
+-   [fragmentOutgoingMessages](#optional-fragmentoutgoingmessages)
+-   [fragmentationThreshold](#optional-fragmentationthreshold)
+-   [maxReceivedFrameSize](#optional-maxreceivedframesize)
+-   [maxReceivedMessageSize](#optional-maxreceivedmessagesize)
+-   [tlsOptions](#optional-tlsoptions)
+-   [webSocketVersion](#optional-websocketversion)
 
 ## Properties
 
 ### `Optional` assembleFragments
 
-• **assembleFragments**? : *undefined | false | true*
+• **assembleFragments**? : _undefined | false | true_
 
-*Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L16)*
+_Defined in [types.ts:16](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L16)_
 
-___
+---
 
 ### `Optional` closeTimeout
 
-• **closeTimeout**? : *undefined | number*
+• **closeTimeout**? : _undefined | number_
 
-*Defined in [types.ts:17](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L17)*
+_Defined in [types.ts:17](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L17)_
 
-___
+---
 
 ### `Optional` fragmentOutgoingMessages
 
-• **fragmentOutgoingMessages**? : *undefined | false | true*
+• **fragmentOutgoingMessages**? : _undefined | false | true_
 
-*Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L14)*
+_Defined in [types.ts:14](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L14)_
 
-___
+---
 
 ### `Optional` fragmentationThreshold
 
-• **fragmentationThreshold**? : *undefined | number*
+• **fragmentationThreshold**? : _undefined | number_
 
-*Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L15)*
+_Defined in [types.ts:15](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L15)_
 
-___
+---
 
 ### `Optional` maxReceivedFrameSize
 
-• **maxReceivedFrameSize**? : *undefined | number*
+• **maxReceivedFrameSize**? : _undefined | number_
 
-*Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L12)*
+_Defined in [types.ts:12](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L12)_
 
-___
+---
 
 ### `Optional` maxReceivedMessageSize
 
-• **maxReceivedMessageSize**? : *undefined | number*
+• **maxReceivedMessageSize**? : _undefined | number_
 
-*Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L13)*
+_Defined in [types.ts:13](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L13)_
 
-___
+---
 
 ### `Optional` tlsOptions
 
-• **tlsOptions**? : *any*
+• **tlsOptions**? : _any_
 
-*Defined in [types.ts:18](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L18)*
+_Defined in [types.ts:18](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L18)_
 
-___
+---
 
 ### `Optional` webSocketVersion
 
-• **webSocketVersion**? : *undefined | number*
+• **webSocketVersion**? : _undefined | number_
 
-*Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L11)*
-
+_Defined in [types.ts:11](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L11)_
 
 <hr />
 
@@ -766,85 +758,84 @@ ___
 
 ## Hierarchy
 
-* **ContractEvent**
+-   **ContractEvent**
 
 ## Index
 
 ### Properties
 
-* [address](#address)
-* [blockHash](#blockhash)
-* [isRemoved](#isremoved)
-* [kind](#kind)
-* [logIndex](#logindex)
-* [parameters](#parameters)
-* [txHash](#txhash)
-* [txIndex](#txindex)
+-   [address](#address)
+-   [blockHash](#blockhash)
+-   [isRemoved](#isremoved)
+-   [kind](#kind)
+-   [logIndex](#logindex)
+-   [parameters](#parameters)
+-   [txHash](#txhash)
+-   [txIndex](#txindex)
 
 ## Properties
 
-###  address
+### address
 
-• **address**: *string*
+• **address**: _string_
 
-*Defined in [types.ts:279](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L279)*
+_Defined in [types.ts:279](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L279)_
 
-___
+---
 
-###  blockHash
+### blockHash
 
-• **blockHash**: *string*
+• **blockHash**: _string_
 
-*Defined in [types.ts:274](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L274)*
+_Defined in [types.ts:274](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L274)_
 
-___
+---
 
-###  isRemoved
+### isRemoved
 
-• **isRemoved**: *string*
+• **isRemoved**: _string_
 
-*Defined in [types.ts:278](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L278)*
+_Defined in [types.ts:278](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L278)_
 
-___
+---
 
-###  kind
+### kind
 
-• **kind**: *[ContractEventKind](#enumeration-contracteventkind)*
+• **kind**: _[ContractEventKind](#enumeration-contracteventkind)_
 
-*Defined in [types.ts:280](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L280)*
+_Defined in [types.ts:280](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L280)_
 
-___
+---
 
-###  logIndex
+### logIndex
 
-• **logIndex**: *number*
+• **logIndex**: _number_
 
-*Defined in [types.ts:277](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L277)*
+_Defined in [types.ts:277](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L277)_
 
-___
+---
 
-###  parameters
+### parameters
 
-• **parameters**: *[ContractEventParameters](#contracteventparameters)*
+• **parameters**: _[ContractEventParameters](#contracteventparameters)_
 
-*Defined in [types.ts:281](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L281)*
+_Defined in [types.ts:281](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L281)_
 
-___
+---
 
-###  txHash
+### txHash
 
-• **txHash**: *string*
+• **txHash**: _string_
 
-*Defined in [types.ts:275](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L275)*
+_Defined in [types.ts:275](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L275)_
 
-___
+---
 
-###  txIndex
+### txIndex
 
-• **txIndex**: *number*
+• **txIndex**: _number_
 
-*Defined in [types.ts:276](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L276)*
-
+_Defined in [types.ts:276](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L276)_
 
 <hr />
 
@@ -852,40 +843,39 @@ ___
 
 ## Hierarchy
 
-* **ERC1155ApprovalForAllEvent**
+-   **ERC1155ApprovalForAllEvent**
 
 ## Index
 
 ### Properties
 
-* [approved](#approved)
-* [operator](#operator)
-* [owner](#owner)
+-   [approved](#approved)
+-   [operator](#operator)
+-   [owner](#owner)
 
 ## Properties
 
-###  approved
+### approved
 
-• **approved**: *boolean*
+• **approved**: _boolean_
 
-*Defined in [types.ts:144](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L144)*
+_Defined in [types.ts:144](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L144)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:143](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L143)*
+_Defined in [types.ts:143](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L143)_
 
-___
+---
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:142](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L142)*
-
+_Defined in [types.ts:142](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L142)_
 
 <hr />
 
@@ -893,58 +883,57 @@ ___
 
 ## Hierarchy
 
-* **ERC1155TransferBatchEvent**
+-   **ERC1155TransferBatchEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [ids](#ids)
-* [operator](#operator)
-* [to](#to)
-* [values](#values)
+-   [from](#from)
+-   [ids](#ids)
+-   [operator](#operator)
+-   [to](#to)
+-   [values](#values)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L127)*
+_Defined in [types.ts:127](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L127)_
 
-___
+---
 
-###  ids
+### ids
 
-• **ids**: *BigNumber[]*
+• **ids**: _BigNumber[]_
 
-*Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L129)*
+_Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L129)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L126)*
+_Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L126)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:128](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L128)*
+_Defined in [types.ts:128](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L128)_
 
-___
+---
 
-###  values
+### values
 
-• **values**: *BigNumber[]*
+• **values**: _BigNumber[]_
 
-*Defined in [types.ts:130](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L130)*
-
+_Defined in [types.ts:130](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L130)_
 
 <hr />
 
@@ -952,58 +941,57 @@ ___
 
 ## Hierarchy
 
-* **ERC1155TransferSingleEvent**
+-   **ERC1155TransferSingleEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [id](#id)
-* [operator](#operator)
-* [to](#to)
-* [value](#value)
+-   [from](#from)
+-   [id](#id)
+-   [operator](#operator)
+-   [to](#to)
+-   [value](#value)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L111)*
+_Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L111)_
 
-___
+---
 
-###  id
+### id
 
-• **id**: *BigNumber*
+• **id**: _BigNumber_
 
-*Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L113)*
+_Defined in [types.ts:113](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L113)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L110)*
+_Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L110)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L112)*
+_Defined in [types.ts:112](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L112)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *BigNumber*
+• **value**: _BigNumber_
 
-*Defined in [types.ts:114](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L114)*
-
+_Defined in [types.ts:114](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L114)_
 
 <hr />
 
@@ -1011,40 +999,39 @@ ___
 
 ## Hierarchy
 
-* **ERC20ApprovalEvent**
+-   **ERC20ApprovalEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [spender](#spender)
-* [value](#value)
+-   [owner](#owner)
+-   [spender](#spender)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:68](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L68)*
+_Defined in [types.ts:68](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L68)_
 
-___
+---
 
-###  spender
+### spender
 
-• **spender**: *string*
+• **spender**: _string_
 
-*Defined in [types.ts:69](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L69)*
+_Defined in [types.ts:69](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L69)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *BigNumber*
+• **value**: _BigNumber_
 
-*Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L70)*
-
+_Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L70)_
 
 <hr />
 
@@ -1052,40 +1039,39 @@ ___
 
 ## Hierarchy
 
-* **ERC20TransferEvent**
+-   **ERC20TransferEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [to](#to)
-* [value](#value)
+-   [from](#from)
+-   [to](#to)
+-   [value](#value)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L56)*
+_Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L56)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L57)*
+_Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L57)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *BigNumber*
+• **value**: _BigNumber_
 
-*Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L58)*
-
+_Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L58)_
 
 <hr />
 
@@ -1093,40 +1079,39 @@ ___
 
 ## Hierarchy
 
-* **ERC721ApprovalEvent**
+-   **ERC721ApprovalEvent**
 
 ## Index
 
 ### Properties
 
-* [approved](#approved)
-* [owner](#owner)
-* [tokenId](#tokenid)
+-   [approved](#approved)
+-   [owner](#owner)
+-   [tokenId](#tokenid)
 
 ## Properties
 
-###  approved
+### approved
 
-• **approved**: *string*
+• **approved**: _string_
 
-*Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L93)*
+_Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L93)_
 
-___
+---
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L92)*
+_Defined in [types.ts:92](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L92)_
 
-___
+---
 
-###  tokenId
+### tokenId
 
-• **tokenId**: *BigNumber*
+• **tokenId**: _BigNumber_
 
-*Defined in [types.ts:94](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L94)*
-
+_Defined in [types.ts:94](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L94)_
 
 <hr />
 
@@ -1134,40 +1119,39 @@ ___
 
 ## Hierarchy
 
-* **ERC721ApprovalForAllEvent**
+-   **ERC721ApprovalForAllEvent**
 
 ## Index
 
 ### Properties
 
-* [approved](#approved)
-* [operator](#operator)
-* [owner](#owner)
+-   [approved](#approved)
+-   [operator](#operator)
+-   [owner](#owner)
 
 ## Properties
 
-###  approved
+### approved
 
-• **approved**: *boolean*
+• **approved**: _boolean_
 
-*Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L106)*
+_Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L106)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L105)*
+_Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L105)_
 
-___
+---
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:104](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L104)*
-
+_Defined in [types.ts:104](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L104)_
 
 <hr />
 
@@ -1175,40 +1159,39 @@ ___
 
 ## Hierarchy
 
-* **ERC721TransferEvent**
+-   **ERC721TransferEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [to](#to)
-* [tokenId](#tokenid)
+-   [from](#from)
+-   [to](#to)
+-   [tokenId](#tokenid)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:80](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L80)*
+_Defined in [types.ts:80](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L80)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:81](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L81)*
+_Defined in [types.ts:81](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L81)_
 
-___
+---
 
-###  tokenId
+### tokenId
 
-• **tokenId**: *BigNumber*
+• **tokenId**: _BigNumber_
 
-*Defined in [types.ts:82](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L82)*
-
+_Defined in [types.ts:82](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L82)_
 
 <hr />
 
@@ -1216,67 +1199,66 @@ ___
 
 ## Hierarchy
 
-* **ExchangeCancelEvent**
+-   **ExchangeCancelEvent**
 
 ## Index
 
 ### Properties
 
-* [feeRecipientAddress](#feerecipientaddress)
-* [makerAddress](#makeraddress)
-* [makerAssetData](#makerassetdata)
-* [orderHash](#orderhash)
-* [senderAddress](#senderaddress)
-* [takerAssetData](#takerassetdata)
+-   [feeRecipientAddress](#feerecipientaddress)
+-   [makerAddress](#makeraddress)
+-   [makerAssetData](#makerassetdata)
+-   [orderHash](#orderhash)
+-   [senderAddress](#senderaddress)
+-   [takerAssetData](#takerassetdata)
 
 ## Properties
 
-###  feeRecipientAddress
+### feeRecipientAddress
 
-• **feeRecipientAddress**: *string*
+• **feeRecipientAddress**: _string_
 
-*Defined in [types.ts:178](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L178)*
+_Defined in [types.ts:178](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L178)_
 
-___
+---
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:176](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L176)*
+_Defined in [types.ts:176](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L176)_
 
-___
+---
 
-###  makerAssetData
+### makerAssetData
 
-• **makerAssetData**: *string*
+• **makerAssetData**: _string_
 
-*Defined in [types.ts:180](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L180)*
+_Defined in [types.ts:180](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L180)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:179](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L179)*
+_Defined in [types.ts:179](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L179)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:177](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L177)*
+_Defined in [types.ts:177](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L177)_
 
-___
+---
 
-###  takerAssetData
+### takerAssetData
 
-• **takerAssetData**: *string*
+• **takerAssetData**: _string_
 
-*Defined in [types.ts:181](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L181)*
-
+_Defined in [types.ts:181](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L181)_
 
 <hr />
 
@@ -1284,40 +1266,39 @@ ___
 
 ## Hierarchy
 
-* **ExchangeCancelUpToEvent**
+-   **ExchangeCancelUpToEvent**
 
 ## Index
 
 ### Properties
 
-* [makerAddress](#makeraddress)
-* [orderEpoch](#orderepoch)
-* [senderAddress](#senderaddress)
+-   [makerAddress](#makeraddress)
+-   [orderEpoch](#orderepoch)
+-   [senderAddress](#senderaddress)
 
 ## Properties
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:185](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L185)*
+_Defined in [types.ts:185](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L185)_
 
-___
+---
 
-###  orderEpoch
+### orderEpoch
 
-• **orderEpoch**: *BigNumber*
+• **orderEpoch**: _BigNumber_
 
-*Defined in [types.ts:187](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L187)*
+_Defined in [types.ts:187](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L187)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:186](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L186)*
-
+_Defined in [types.ts:186](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L186)_
 
 <hr />
 
@@ -1325,112 +1306,111 @@ ___
 
 ## Hierarchy
 
-* **ExchangeFillEvent**
+-   **ExchangeFillEvent**
 
 ## Index
 
 ### Properties
 
-* [feeRecipientAddress](#feerecipientaddress)
-* [makerAddress](#makeraddress)
-* [makerAssetData](#makerassetdata)
-* [makerAssetFilledAmount](#makerassetfilledamount)
-* [makerFeePaid](#makerfeepaid)
-* [orderHash](#orderhash)
-* [senderAddress](#senderaddress)
-* [takerAddress](#takeraddress)
-* [takerAssetData](#takerassetdata)
-* [takerAssetFilledAmount](#takerassetfilledamount)
-* [takerFeePaid](#takerfeepaid)
+-   [feeRecipientAddress](#feerecipientaddress)
+-   [makerAddress](#makeraddress)
+-   [makerAssetData](#makerassetdata)
+-   [makerAssetFilledAmount](#makerassetfilledamount)
+-   [makerFeePaid](#makerfeepaid)
+-   [orderHash](#orderhash)
+-   [senderAddress](#senderaddress)
+-   [takerAddress](#takeraddress)
+-   [takerAssetData](#takerassetdata)
+-   [takerAssetFilledAmount](#takerassetfilledamount)
+-   [takerFeePaid](#takerfeepaid)
 
 ## Properties
 
-###  feeRecipientAddress
+### feeRecipientAddress
 
-• **feeRecipientAddress**: *string*
+• **feeRecipientAddress**: _string_
 
-*Defined in [types.ts:151](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L151)*
+_Defined in [types.ts:151](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L151)_
 
-___
+---
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:148](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L148)*
+_Defined in [types.ts:148](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L148)_
 
-___
+---
 
-###  makerAssetData
+### makerAssetData
 
-• **makerAssetData**: *string*
+• **makerAssetData**: _string_
 
-*Defined in [types.ts:157](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L157)*
+_Defined in [types.ts:157](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L157)_
 
-___
+---
 
-###  makerAssetFilledAmount
+### makerAssetFilledAmount
 
-• **makerAssetFilledAmount**: *BigNumber*
+• **makerAssetFilledAmount**: _BigNumber_
 
-*Defined in [types.ts:152](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L152)*
+_Defined in [types.ts:152](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L152)_
 
-___
+---
 
-###  makerFeePaid
+### makerFeePaid
 
-• **makerFeePaid**: *BigNumber*
+• **makerFeePaid**: _BigNumber_
 
-*Defined in [types.ts:154](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L154)*
+_Defined in [types.ts:154](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L154)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:156](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L156)*
+_Defined in [types.ts:156](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L156)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:150](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L150)*
+_Defined in [types.ts:150](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L150)_
 
-___
+---
 
-###  takerAddress
+### takerAddress
 
-• **takerAddress**: *string*
+• **takerAddress**: _string_
 
-*Defined in [types.ts:149](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L149)*
+_Defined in [types.ts:149](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L149)_
 
-___
+---
 
-###  takerAssetData
+### takerAssetData
 
-• **takerAssetData**: *string*
+• **takerAssetData**: _string_
 
-*Defined in [types.ts:158](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L158)*
+_Defined in [types.ts:158](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L158)_
 
-___
+---
 
-###  takerAssetFilledAmount
+### takerAssetFilledAmount
 
-• **takerAssetFilledAmount**: *BigNumber*
+• **takerAssetFilledAmount**: _BigNumber_
 
-*Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L153)*
+_Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L153)_
 
-___
+---
 
-###  takerFeePaid
+### takerFeePaid
 
-• **takerFeePaid**: *BigNumber*
+• **takerFeePaid**: _BigNumber_
 
-*Defined in [types.ts:155](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L155)*
-
+_Defined in [types.ts:155](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L155)_
 
 <hr />
 
@@ -1438,40 +1418,30 @@ ___
 
 ## Hierarchy
 
-* **GetOrdersResponse**
+-   **GetOrdersResponse**
 
 ## Index
 
 ### Properties
 
-* [ordersInfos](#ordersinfos)
-* [snapshotID](#snapshotid)
-* [snapshotTimestamp](#snapshottimestamp)
+-   [ordersInfos](#ordersinfos)
+-   [timestamp](#timestamp)
 
 ## Properties
 
-###  ordersInfos
+### ordersInfos
 
-• **ordersInfos**: *[OrderInfo](#interface-orderinfo)[]*
+• **ordersInfos**: _[OrderInfo](#interface-orderinfo)[]_
 
-*Defined in [types.ts:415](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L415)*
+_Defined in [types.ts:413](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L413)_
 
-___
+---
 
-###  snapshotID
+### timestamp
 
-• **snapshotID**: *string*
+• **timestamp**: _number_
 
-*Defined in [types.ts:413](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L413)*
-
-___
-
-###  snapshotTimestamp
-
-• **snapshotTimestamp**: *number*
-
-*Defined in [types.ts:414](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L414)*
-
+_Defined in [types.ts:412](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L412)_
 
 <hr />
 
@@ -1479,139 +1449,138 @@ ___
 
 ## Hierarchy
 
-* **GetStatsResponse**
+-   **GetStatsResponse**
 
 ## Index
 
 ### Properties
 
-* [ethRPCRateLimitExpiredRequests](#ethrpcratelimitexpiredrequests)
-* [ethRPCRequestsSentInCurrentUTCDay](#ethrpcrequestssentincurrentutcday)
-* [ethereumChainID](#ethereumchainid)
-* [latestBlock](#latestblock)
-* [maxExpirationTime](#maxexpirationtime)
-* [numOrders](#numorders)
-* [numOrdersIncludingRemoved](#numordersincludingremoved)
-* [numPeers](#numpeers)
-* [numPinnedOrders](#numpinnedorders)
-* [peerID](#peerid)
-* [pubSubTopic](#pubsubtopic)
-* [rendezvous](#rendezvous)
-* [startOfCurrentUTCDay](#startofcurrentutcday)
-* [version](#version)
+-   [ethRPCRateLimitExpiredRequests](#ethrpcratelimitexpiredrequests)
+-   [ethRPCRequestsSentInCurrentUTCDay](#ethrpcrequestssentincurrentutcday)
+-   [ethereumChainID](#ethereumchainid)
+-   [latestBlock](#latestblock)
+-   [maxExpirationTime](#maxexpirationtime)
+-   [numOrders](#numorders)
+-   [numOrdersIncludingRemoved](#numordersincludingremoved)
+-   [numPeers](#numpeers)
+-   [numPinnedOrders](#numpinnedorders)
+-   [peerID](#peerid)
+-   [pubSubTopic](#pubsubtopic)
+-   [rendezvous](#rendezvous)
+-   [startOfCurrentUTCDay](#startofcurrentutcday)
+-   [version](#version)
 
 ## Properties
 
-###  ethRPCRateLimitExpiredRequests
+### ethRPCRateLimitExpiredRequests
 
-• **ethRPCRateLimitExpiredRequests**: *number*
+• **ethRPCRateLimitExpiredRequests**: _number_
 
-*Defined in [types.ts:442](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L442)*
+_Defined in [types.ts:440](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L440)_
 
-___
+---
 
-###  ethRPCRequestsSentInCurrentUTCDay
+### ethRPCRequestsSentInCurrentUTCDay
 
-• **ethRPCRequestsSentInCurrentUTCDay**: *number*
+• **ethRPCRequestsSentInCurrentUTCDay**: _number_
 
-*Defined in [types.ts:441](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L441)*
+_Defined in [types.ts:439](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L439)_
 
-___
+---
 
-###  ethereumChainID
+### ethereumChainID
 
-• **ethereumChainID**: *number*
+• **ethereumChainID**: _number_
 
-*Defined in [types.ts:433](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L433)*
+_Defined in [types.ts:431](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L431)_
 
-___
+---
 
-###  latestBlock
+### latestBlock
 
-• **latestBlock**: *[LatestBlock](#interface-latestblock)*
+• **latestBlock**: _[LatestBlock](#interface-latestblock)_
 
-*Defined in [types.ts:434](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L434)*
+_Defined in [types.ts:432](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L432)_
 
-___
+---
 
-###  maxExpirationTime
+### maxExpirationTime
 
-• **maxExpirationTime**: *string*
+• **maxExpirationTime**: _string_
 
-*Defined in [types.ts:439](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L439)*
+_Defined in [types.ts:437](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L437)_
 
-___
+---
 
-###  numOrders
+### numOrders
 
-• **numOrders**: *number*
+• **numOrders**: _number_
 
-*Defined in [types.ts:436](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L436)*
+_Defined in [types.ts:434](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L434)_
 
-___
+---
 
-###  numOrdersIncludingRemoved
+### numOrdersIncludingRemoved
 
-• **numOrdersIncludingRemoved**: *number*
+• **numOrdersIncludingRemoved**: _number_
 
-*Defined in [types.ts:437](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L437)*
+_Defined in [types.ts:435](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L435)_
 
-___
+---
 
-###  numPeers
+### numPeers
 
-• **numPeers**: *number*
+• **numPeers**: _number_
 
-*Defined in [types.ts:435](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L435)*
+_Defined in [types.ts:433](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L433)_
 
-___
+---
 
-###  numPinnedOrders
+### numPinnedOrders
 
-• **numPinnedOrders**: *number*
+• **numPinnedOrders**: _number_
 
-*Defined in [types.ts:438](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L438)*
+_Defined in [types.ts:436](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L436)_
 
-___
+---
 
-###  peerID
+### peerID
 
-• **peerID**: *string*
+• **peerID**: _string_
 
-*Defined in [types.ts:432](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L432)*
+_Defined in [types.ts:430](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L430)_
 
-___
+---
 
-###  pubSubTopic
+### pubSubTopic
 
-• **pubSubTopic**: *string*
+• **pubSubTopic**: _string_
 
-*Defined in [types.ts:430](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L430)*
+_Defined in [types.ts:428](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L428)_
 
-___
+---
 
-###  rendezvous
+### rendezvous
 
-• **rendezvous**: *string*
+• **rendezvous**: _string_
 
-*Defined in [types.ts:431](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L431)*
+_Defined in [types.ts:429](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L429)_
 
-___
+---
 
-###  startOfCurrentUTCDay
+### startOfCurrentUTCDay
 
-• **startOfCurrentUTCDay**: *string*
+• **startOfCurrentUTCDay**: _string_
 
-*Defined in [types.ts:440](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L440)*
+_Defined in [types.ts:438](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L438)_
 
-___
+---
 
-###  version
+### version
 
-• **version**: *string*
+• **version**: _string_
 
-*Defined in [types.ts:429](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L429)*
-
+_Defined in [types.ts:427](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L427)_
 
 <hr />
 
@@ -1619,31 +1588,30 @@ ___
 
 ## Hierarchy
 
-* **HeartbeatEventPayload**
+-   **HeartbeatEventPayload**
 
 ## Index
 
 ### Properties
 
-* [result](#result)
-* [subscription](#subscription)
+-   [result](#result)
+-   [subscription](#subscription)
 
 ## Properties
 
-###  result
+### result
 
-• **result**: *string*
+• **result**: _string_
 
-*Defined in [types.ts:304](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L304)*
+_Defined in [types.ts:304](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L304)_
 
-___
+---
 
-###  subscription
+### subscription
 
-• **subscription**: *string*
+• **subscription**: _string_
 
-*Defined in [types.ts:303](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L303)*
-
+_Defined in [types.ts:303](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L303)_
 
 <hr />
 
@@ -1651,31 +1619,30 @@ ___
 
 ## Hierarchy
 
-* **LatestBlock**
+-   **LatestBlock**
 
 ## Index
 
 ### Properties
 
-* [hash](#hash)
-* [number](#number)
+-   [hash](#hash)
+-   [number](#number)
 
 ## Properties
 
-###  hash
+### hash
 
-• **hash**: *string*
+• **hash**: _string_
 
-*Defined in [types.ts:425](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L425)*
+_Defined in [types.ts:423](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L423)_
 
-___
+---
 
-###  number
+### number
 
-• **number**: *number*
+• **number**: _number_
 
-*Defined in [types.ts:424](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L424)*
-
+_Defined in [types.ts:422](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L422)_
 
 <hr />
 
@@ -1683,67 +1650,66 @@ ___
 
 ## Hierarchy
 
-* **OrderEvent**
+-   **OrderEvent**
 
 ## Index
 
 ### Properties
 
-* [contractEvents](#contractevents)
-* [endState](#endstate)
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
-* [timestampMs](#timestampms)
+-   [contractEvents](#contractevents)
+-   [endState](#endstate)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
+-   [timestampMs](#timestampms)
 
 ## Properties
 
-###  contractEvents
+### contractEvents
 
-• **contractEvents**: *[ContractEvent](#interface-contractevent)[]*
+• **contractEvents**: _[ContractEvent](#interface-contractevent)[]_
 
-*Defined in [types.ts:322](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L322)*
+_Defined in [types.ts:322](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L322)_
 
-___
+---
 
-###  endState
+### endState
 
-• **endState**: *[OrderEventEndState](#enumeration-ordereventendstate)*
+• **endState**: _[OrderEventEndState](#enumeration-ordereventendstate)_
 
-*Defined in [types.ts:320](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L320)*
+_Defined in [types.ts:320](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L320)_
 
-___
+---
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *BigNumber*
+• **fillableTakerAssetAmount**: _BigNumber_
 
-*Defined in [types.ts:321](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L321)*
+_Defined in [types.ts:321](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L321)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:318](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L318)*
+_Defined in [types.ts:318](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L318)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *SignedOrder*
+• **signedOrder**: _SignedOrder_
 
-*Defined in [types.ts:319](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L319)*
+_Defined in [types.ts:319](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L319)_
 
-___
+---
 
-###  timestampMs
+### timestampMs
 
-• **timestampMs**: *number*
+• **timestampMs**: _number_
 
-*Defined in [types.ts:317](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L317)*
-
+_Defined in [types.ts:317](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L317)_
 
 <hr />
 
@@ -1751,31 +1717,30 @@ ___
 
 ## Hierarchy
 
-* **OrderEventPayload**
+-   **OrderEventPayload**
 
 ## Index
 
 ### Properties
 
-* [result](#result)
-* [subscription](#subscription)
+-   [result](#result)
+-   [subscription](#subscription)
 
 ## Properties
 
-###  result
+### result
 
-• **result**: *[RawOrderEvent](#interface-raworderevent)[]*
+• **result**: _[RawOrderEvent](#interface-raworderevent)[]_
 
-*Defined in [types.ts:299](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L299)*
+_Defined in [types.ts:299](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L299)_
 
-___
+---
 
-###  subscription
+### subscription
 
-• **subscription**: *string*
+• **subscription**: _string_
 
-*Defined in [types.ts:298](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L298)*
-
+_Defined in [types.ts:298](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L298)_
 
 <hr />
 
@@ -1783,40 +1748,39 @@ ___
 
 ## Hierarchy
 
-* **OrderInfo**
+-   **OrderInfo**
 
 ## Index
 
 ### Properties
 
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
 
 ## Properties
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *BigNumber*
+• **fillableTakerAssetAmount**: _BigNumber_
 
-*Defined in [types.ts:348](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L348)*
+_Defined in [types.ts:348](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L348)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:346](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L346)*
+_Defined in [types.ts:346](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L346)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *SignedOrder*
+• **signedOrder**: _SignedOrder_
 
-*Defined in [types.ts:347](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L347)*
-
+_Defined in [types.ts:347](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L347)_
 
 <hr />
 
@@ -1824,49 +1788,48 @@ ___
 
 ## Hierarchy
 
-* **RawAcceptedOrderInfo**
+-   **RawAcceptedOrderInfo**
 
 ## Index
 
 ### Properties
 
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [isNew](#isnew)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [isNew](#isnew)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
 
 ## Properties
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *string*
+• **fillableTakerAssetAmount**: _string_
 
-*Defined in [types.ts:328](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L328)*
+_Defined in [types.ts:328](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L328)_
 
-___
+---
 
-###  isNew
+### isNew
 
-• **isNew**: *boolean*
+• **isNew**: _boolean_
 
-*Defined in [types.ts:329](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L329)*
+_Defined in [types.ts:329](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L329)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:326](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L326)*
+_Defined in [types.ts:326](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L326)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
+• **signedOrder**: _[StringifiedSignedOrder](#interface-stringifiedsignedorder)_
 
-*Defined in [types.ts:327](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L327)*
-
+_Defined in [types.ts:327](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L327)_
 
 <hr />
 
@@ -1874,40 +1837,30 @@ ___
 
 ## Hierarchy
 
-* **RawGetOrdersResponse**
+-   **RawGetOrdersResponse**
 
 ## Index
 
 ### Properties
 
-* [ordersInfos](#ordersinfos)
-* [snapshotID](#snapshotid)
-* [snapshotTimestamp](#snapshottimestamp)
+-   [ordersInfos](#ordersinfos)
+-   [timestamp](#timestamp)
 
 ## Properties
 
-###  ordersInfos
+### ordersInfos
 
-• **ordersInfos**: *[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]*
+• **ordersInfos**: _[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]_
 
-*Defined in [types.ts:406](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L406)*
+_Defined in [types.ts:405](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L405)_
 
-___
+---
 
-###  snapshotID
+### timestamp
 
-• **snapshotID**: *string*
+• **timestamp**: _string_
 
-*Defined in [types.ts:404](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L404)*
-
-___
-
-###  snapshotTimestamp
-
-• **snapshotTimestamp**: *string*
-
-*Defined in [types.ts:405](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L405)*
-
+_Defined in [types.ts:404](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L404)_
 
 <hr />
 
@@ -1915,67 +1868,66 @@ ___
 
 ## Hierarchy
 
-* **RawOrderEvent**
+-   **RawOrderEvent**
 
 ## Index
 
 ### Properties
 
-* [contractEvents](#contractevents)
-* [endState](#endstate)
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
-* [timestamp](#timestamp)
+-   [contractEvents](#contractevents)
+-   [endState](#endstate)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
+-   [timestamp](#timestamp)
 
 ## Properties
 
-###  contractEvents
+### contractEvents
 
-• **contractEvents**: *[StringifiedContractEvent](#interface-stringifiedcontractevent)[]*
+• **contractEvents**: _[StringifiedContractEvent](#interface-stringifiedcontractevent)[]_
 
-*Defined in [types.ts:313](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L313)*
+_Defined in [types.ts:313](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L313)_
 
-___
+---
 
-###  endState
+### endState
 
-• **endState**: *[OrderEventEndState](#enumeration-ordereventendstate)*
+• **endState**: _[OrderEventEndState](#enumeration-ordereventendstate)_
 
-*Defined in [types.ts:311](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L311)*
+_Defined in [types.ts:311](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L311)_
 
-___
+---
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *string*
+• **fillableTakerAssetAmount**: _string_
 
-*Defined in [types.ts:312](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L312)*
+_Defined in [types.ts:312](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L312)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:309](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L309)*
+_Defined in [types.ts:309](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L309)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
+• **signedOrder**: _[StringifiedSignedOrder](#interface-stringifiedsignedorder)_
 
-*Defined in [types.ts:310](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L310)*
+_Defined in [types.ts:310](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L310)_
 
-___
+---
 
-###  timestamp
+### timestamp
 
-• **timestamp**: *string*
+• **timestamp**: _string_
 
-*Defined in [types.ts:308](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L308)*
-
+_Defined in [types.ts:308](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L308)_
 
 <hr />
 
@@ -1983,40 +1935,39 @@ ___
 
 ## Hierarchy
 
-* **RawOrderInfo**
+-   **RawOrderInfo**
 
 ## Index
 
 ### Properties
 
-* [fillableTakerAssetAmount](#fillabletakerassetamount)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
+-   [fillableTakerAssetAmount](#fillabletakerassetamount)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
 
 ## Properties
 
-###  fillableTakerAssetAmount
+### fillableTakerAssetAmount
 
-• **fillableTakerAssetAmount**: *string*
+• **fillableTakerAssetAmount**: _string_
 
-*Defined in [types.ts:342](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L342)*
+_Defined in [types.ts:342](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L342)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:340](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L340)*
+_Defined in [types.ts:340](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L340)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
+• **signedOrder**: _[StringifiedSignedOrder](#interface-stringifiedsignedorder)_
 
-*Defined in [types.ts:341](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L341)*
-
+_Defined in [types.ts:341](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L341)_
 
 <hr />
 
@@ -2024,49 +1975,48 @@ ___
 
 ## Hierarchy
 
-* **RawRejectedOrderInfo**
+-   **RawRejectedOrderInfo**
 
 ## Index
 
 ### Properties
 
-* [kind](#kind)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
-* [status](#status)
+-   [kind](#kind)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
+-   [status](#status)
 
 ## Properties
 
-###  kind
+### kind
 
-• **kind**: *[RejectedKind](#enumeration-rejectedkind)*
+• **kind**: _[RejectedKind](#enumeration-rejectedkind)_
 
-*Defined in [types.ts:382](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L382)*
+_Defined in [types.ts:382](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L382)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:380](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L380)*
+_Defined in [types.ts:380](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L380)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *[StringifiedSignedOrder](#interface-stringifiedsignedorder)*
+• **signedOrder**: _[StringifiedSignedOrder](#interface-stringifiedsignedorder)_
 
-*Defined in [types.ts:381](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L381)*
+_Defined in [types.ts:381](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L381)_
 
-___
+---
 
-###  status
+### status
 
-• **status**: *[RejectedStatus](#interface-rejectedstatus)*
+• **status**: _[RejectedStatus](#interface-rejectedstatus)_
 
-*Defined in [types.ts:383](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L383)*
-
+_Defined in [types.ts:383](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L383)_
 
 <hr />
 
@@ -2074,31 +2024,30 @@ ___
 
 ## Hierarchy
 
-* **RawValidationResults**
+-   **RawValidationResults**
 
 ## Index
 
 ### Properties
 
-* [accepted](#accepted)
-* [rejected](#rejected)
+-   [accepted](#accepted)
+-   [rejected](#rejected)
 
 ## Properties
 
-###  accepted
+### accepted
 
-• **accepted**: *[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]*
+• **accepted**: _[RawAcceptedOrderInfo](#interface-rawacceptedorderinfo)[]_
 
-*Defined in [types.ts:394](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L394)*
+_Defined in [types.ts:394](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L394)_
 
-___
+---
 
-###  rejected
+### rejected
 
-• **rejected**: *[RawRejectedOrderInfo](#interface-rawrejectedorderinfo)[]*
+• **rejected**: _[RawRejectedOrderInfo](#interface-rawrejectedorderinfo)[]_
 
-*Defined in [types.ts:395](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L395)*
-
+_Defined in [types.ts:395](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L395)_
 
 <hr />
 
@@ -2106,49 +2055,48 @@ ___
 
 ## Hierarchy
 
-* **RejectedOrderInfo**
+-   **RejectedOrderInfo**
 
 ## Index
 
 ### Properties
 
-* [kind](#kind)
-* [orderHash](#orderhash)
-* [signedOrder](#signedorder)
-* [status](#status)
+-   [kind](#kind)
+-   [orderHash](#orderhash)
+-   [signedOrder](#signedorder)
+-   [status](#status)
 
 ## Properties
 
-###  kind
+### kind
 
-• **kind**: *[RejectedKind](#enumeration-rejectedkind)*
+• **kind**: _[RejectedKind](#enumeration-rejectedkind)_
 
-*Defined in [types.ts:389](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L389)*
+_Defined in [types.ts:389](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L389)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:387](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L387)*
+_Defined in [types.ts:387](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L387)_
 
-___
+---
 
-###  signedOrder
+### signedOrder
 
-• **signedOrder**: *SignedOrder*
+• **signedOrder**: _SignedOrder_
 
-*Defined in [types.ts:388](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L388)*
+_Defined in [types.ts:388](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L388)_
 
-___
+---
 
-###  status
+### status
 
-• **status**: *[RejectedStatus](#interface-rejectedstatus)*
+• **status**: _[RejectedStatus](#interface-rejectedstatus)_
 
-*Defined in [types.ts:390](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L390)*
-
+_Defined in [types.ts:390](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L390)_
 
 <hr />
 
@@ -2156,31 +2104,30 @@ ___
 
 ## Hierarchy
 
-* **RejectedStatus**
+-   **RejectedStatus**
 
 ## Index
 
 ### Properties
 
-* [code](#code)
-* [message](#message)
+-   [code](#code)
+-   [message](#message)
 
 ## Properties
 
-###  code
+### code
 
-• **code**: *[RejectedCode](#enumeration-rejectedcode)*
+• **code**: _[RejectedCode](#enumeration-rejectedcode)_
 
-*Defined in [types.ts:375](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L375)*
+_Defined in [types.ts:375](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L375)_
 
-___
+---
 
-###  message
+### message
 
-• **message**: *string*
+• **message**: _string_
 
-*Defined in [types.ts:376](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L376)*
-
+_Defined in [types.ts:376](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L376)_
 
 <hr />
 
@@ -2188,85 +2135,84 @@ ___
 
 ## Hierarchy
 
-* **StringifiedContractEvent**
+-   **StringifiedContractEvent**
 
 ## Index
 
 ### Properties
 
-* [address](#address)
-* [blockHash](#blockhash)
-* [isRemoved](#isremoved)
-* [kind](#kind)
-* [logIndex](#logindex)
-* [parameters](#parameters)
-* [txHash](#txhash)
-* [txIndex](#txindex)
+-   [address](#address)
+-   [blockHash](#blockhash)
+-   [isRemoved](#isremoved)
+-   [kind](#kind)
+-   [logIndex](#logindex)
+-   [parameters](#parameters)
+-   [txHash](#txhash)
+-   [txIndex](#txindex)
 
 ## Properties
 
-###  address
+### address
 
-• **address**: *string*
+• **address**: _string_
 
-*Defined in [types.ts:253](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L253)*
+_Defined in [types.ts:253](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L253)_
 
-___
+---
 
-###  blockHash
+### blockHash
 
-• **blockHash**: *string*
+• **blockHash**: _string_
 
-*Defined in [types.ts:248](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L248)*
+_Defined in [types.ts:248](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L248)_
 
-___
+---
 
-###  isRemoved
+### isRemoved
 
-• **isRemoved**: *string*
+• **isRemoved**: _string_
 
-*Defined in [types.ts:252](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L252)*
+_Defined in [types.ts:252](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L252)_
 
-___
+---
 
-###  kind
+### kind
 
-• **kind**: *string*
+• **kind**: _string_
 
-*Defined in [types.ts:254](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L254)*
+_Defined in [types.ts:254](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L254)_
 
-___
+---
 
-###  logIndex
+### logIndex
 
-• **logIndex**: *number*
+• **logIndex**: _number_
 
-*Defined in [types.ts:251](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L251)*
+_Defined in [types.ts:251](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L251)_
 
-___
+---
 
-###  parameters
+### parameters
 
-• **parameters**: *[StringifiedContractEventParameters](#stringifiedcontracteventparameters)*
+• **parameters**: _[StringifiedContractEventParameters](#stringifiedcontracteventparameters)_
 
-*Defined in [types.ts:255](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L255)*
+_Defined in [types.ts:255](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L255)_
 
-___
+---
 
-###  txHash
+### txHash
 
-• **txHash**: *string*
+• **txHash**: _string_
 
-*Defined in [types.ts:249](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L249)*
+_Defined in [types.ts:249](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L249)_
 
-___
+---
 
-###  txIndex
+### txIndex
 
-• **txIndex**: *number*
+• **txIndex**: _number_
 
-*Defined in [types.ts:250](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L250)*
-
+_Defined in [types.ts:250](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L250)_
 
 <hr />
 
@@ -2274,58 +2220,57 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC1155TransferBatchEvent**
+-   **StringifiedERC1155TransferBatchEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [ids](#ids)
-* [operator](#operator)
-* [to](#to)
-* [values](#values)
+-   [from](#from)
+-   [ids](#ids)
+-   [operator](#operator)
+-   [to](#to)
+-   [values](#values)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:135](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L135)*
+_Defined in [types.ts:135](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L135)_
 
-___
+---
 
-###  ids
+### ids
 
-• **ids**: *string[]*
+• **ids**: _string[]_
 
-*Defined in [types.ts:137](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L137)*
+_Defined in [types.ts:137](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L137)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:134](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L134)*
+_Defined in [types.ts:134](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L134)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:136](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L136)*
+_Defined in [types.ts:136](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L136)_
 
-___
+---
 
-###  values
+### values
 
-• **values**: *string[]*
+• **values**: _string[]_
 
-*Defined in [types.ts:138](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L138)*
-
+_Defined in [types.ts:138](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L138)_
 
 <hr />
 
@@ -2333,58 +2278,57 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC1155TransferSingleEvent**
+-   **StringifiedERC1155TransferSingleEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [id](#id)
-* [operator](#operator)
-* [to](#to)
-* [value](#value)
+-   [from](#from)
+-   [id](#id)
+-   [operator](#operator)
+-   [to](#to)
+-   [value](#value)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L119)*
+_Defined in [types.ts:119](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L119)_
 
-___
+---
 
-###  id
+### id
 
-• **id**: *string*
+• **id**: _string_
 
-*Defined in [types.ts:121](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L121)*
+_Defined in [types.ts:121](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L121)_
 
-___
+---
 
-###  operator
+### operator
 
-• **operator**: *string*
+• **operator**: _string_
 
-*Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L118)*
+_Defined in [types.ts:118](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L118)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:120](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L120)*
+_Defined in [types.ts:120](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L120)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *string*
+• **value**: _string_
 
-*Defined in [types.ts:122](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L122)*
-
+_Defined in [types.ts:122](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L122)_
 
 <hr />
 
@@ -2392,40 +2336,39 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC20ApprovalEvent**
+-   **StringifiedERC20ApprovalEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [spender](#spender)
-* [value](#value)
+-   [owner](#owner)
+-   [spender](#spender)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:74](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L74)*
+_Defined in [types.ts:74](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L74)_
 
-___
+---
 
-###  spender
+### spender
 
-• **spender**: *string*
+• **spender**: _string_
 
-*Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L75)*
+_Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L75)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *string*
+• **value**: _string_
 
-*Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L76)*
-
+_Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L76)_
 
 <hr />
 
@@ -2433,40 +2376,39 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC20TransferEvent**
+-   **StringifiedERC20TransferEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [to](#to)
-* [value](#value)
+-   [from](#from)
+-   [to](#to)
+-   [value](#value)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:62](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L62)*
+_Defined in [types.ts:62](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L62)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:63](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L63)*
+_Defined in [types.ts:63](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L63)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *string*
+• **value**: _string_
 
-*Defined in [types.ts:64](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L64)*
-
+_Defined in [types.ts:64](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L64)_
 
 <hr />
 
@@ -2474,40 +2416,39 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC721ApprovalEvent**
+-   **StringifiedERC721ApprovalEvent**
 
 ## Index
 
 ### Properties
 
-* [approved](#approved)
-* [owner](#owner)
-* [tokenId](#tokenid)
+-   [approved](#approved)
+-   [owner](#owner)
+-   [tokenId](#tokenid)
 
 ## Properties
 
-###  approved
+### approved
 
-• **approved**: *string*
+• **approved**: _string_
 
-*Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L99)*
+_Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L99)_
 
-___
+---
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L98)*
+_Defined in [types.ts:98](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L98)_
 
-___
+---
 
-###  tokenId
+### tokenId
 
-• **tokenId**: *string*
+• **tokenId**: _string_
 
-*Defined in [types.ts:100](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L100)*
-
+_Defined in [types.ts:100](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L100)_
 
 <hr />
 
@@ -2515,40 +2456,39 @@ ___
 
 ## Hierarchy
 
-* **StringifiedERC721TransferEvent**
+-   **StringifiedERC721TransferEvent**
 
 ## Index
 
 ### Properties
 
-* [from](#from)
-* [to](#to)
-* [tokenId](#tokenid)
+-   [from](#from)
+-   [to](#to)
+-   [tokenId](#tokenid)
 
 ## Properties
 
-###  from
+### from
 
-• **from**: *string*
+• **from**: _string_
 
-*Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L86)*
+_Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L86)_
 
-___
+---
 
-###  to
+### to
 
-• **to**: *string*
+• **to**: _string_
 
-*Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L87)*
+_Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L87)_
 
-___
+---
 
-###  tokenId
+### tokenId
 
-• **tokenId**: *string*
+• **tokenId**: _string_
 
-*Defined in [types.ts:88](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L88)*
-
+_Defined in [types.ts:88](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L88)_
 
 <hr />
 
@@ -2556,40 +2496,39 @@ ___
 
 ## Hierarchy
 
-* **StringifiedExchangeCancelUpToEvent**
+-   **StringifiedExchangeCancelUpToEvent**
 
 ## Index
 
 ### Properties
 
-* [makerAddress](#makeraddress)
-* [orderEpoch](#orderepoch)
-* [senderAddress](#senderaddress)
+-   [makerAddress](#makeraddress)
+-   [orderEpoch](#orderepoch)
+-   [senderAddress](#senderaddress)
 
 ## Properties
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:191](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L191)*
+_Defined in [types.ts:191](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L191)_
 
-___
+---
 
-###  orderEpoch
+### orderEpoch
 
-• **orderEpoch**: *string*
+• **orderEpoch**: _string_
 
-*Defined in [types.ts:193](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L193)*
+_Defined in [types.ts:193](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L193)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:192](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L192)*
-
+_Defined in [types.ts:192](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L192)_
 
 <hr />
 
@@ -2597,112 +2536,111 @@ ___
 
 ## Hierarchy
 
-* **StringifiedExchangeFillEvent**
+-   **StringifiedExchangeFillEvent**
 
 ## Index
 
 ### Properties
 
-* [feeRecipientAddress](#feerecipientaddress)
-* [makerAddress](#makeraddress)
-* [makerAssetData](#makerassetdata)
-* [makerAssetFilledAmount](#makerassetfilledamount)
-* [makerFeePaid](#makerfeepaid)
-* [orderHash](#orderhash)
-* [senderAddress](#senderaddress)
-* [takerAddress](#takeraddress)
-* [takerAssetData](#takerassetdata)
-* [takerAssetFilledAmount](#takerassetfilledamount)
-* [takerFeePaid](#takerfeepaid)
+-   [feeRecipientAddress](#feerecipientaddress)
+-   [makerAddress](#makeraddress)
+-   [makerAssetData](#makerassetdata)
+-   [makerAssetFilledAmount](#makerassetfilledamount)
+-   [makerFeePaid](#makerfeepaid)
+-   [orderHash](#orderhash)
+-   [senderAddress](#senderaddress)
+-   [takerAddress](#takeraddress)
+-   [takerAssetData](#takerassetdata)
+-   [takerAssetFilledAmount](#takerassetfilledamount)
+-   [takerFeePaid](#takerfeepaid)
 
 ## Properties
 
-###  feeRecipientAddress
+### feeRecipientAddress
 
-• **feeRecipientAddress**: *string*
+• **feeRecipientAddress**: _string_
 
-*Defined in [types.ts:165](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L165)*
+_Defined in [types.ts:165](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L165)_
 
-___
+---
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:162](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L162)*
+_Defined in [types.ts:162](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L162)_
 
-___
+---
 
-###  makerAssetData
+### makerAssetData
 
-• **makerAssetData**: *string*
+• **makerAssetData**: _string_
 
-*Defined in [types.ts:171](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L171)*
+_Defined in [types.ts:171](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L171)_
 
-___
+---
 
-###  makerAssetFilledAmount
+### makerAssetFilledAmount
 
-• **makerAssetFilledAmount**: *string*
+• **makerAssetFilledAmount**: _string_
 
-*Defined in [types.ts:166](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L166)*
+_Defined in [types.ts:166](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L166)_
 
-___
+---
 
-###  makerFeePaid
+### makerFeePaid
 
-• **makerFeePaid**: *string*
+• **makerFeePaid**: _string_
 
-*Defined in [types.ts:168](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L168)*
+_Defined in [types.ts:168](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L168)_
 
-___
+---
 
-###  orderHash
+### orderHash
 
-• **orderHash**: *string*
+• **orderHash**: _string_
 
-*Defined in [types.ts:170](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L170)*
+_Defined in [types.ts:170](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L170)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:164](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L164)*
+_Defined in [types.ts:164](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L164)_
 
-___
+---
 
-###  takerAddress
+### takerAddress
 
-• **takerAddress**: *string*
+• **takerAddress**: _string_
 
-*Defined in [types.ts:163](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L163)*
+_Defined in [types.ts:163](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L163)_
 
-___
+---
 
-###  takerAssetData
+### takerAssetData
 
-• **takerAssetData**: *string*
+• **takerAssetData**: _string_
 
-*Defined in [types.ts:172](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L172)*
+_Defined in [types.ts:172](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L172)_
 
-___
+---
 
-###  takerAssetFilledAmount
+### takerAssetFilledAmount
 
-• **takerAssetFilledAmount**: *string*
+• **takerAssetFilledAmount**: _string_
 
-*Defined in [types.ts:167](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L167)*
+_Defined in [types.ts:167](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L167)_
 
-___
+---
 
-###  takerFeePaid
+### takerFeePaid
 
-• **takerFeePaid**: *string*
+• **takerFeePaid**: _string_
 
-*Defined in [types.ts:169](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L169)*
-
+_Defined in [types.ts:169](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L169)_
 
 <hr />
 
@@ -2710,139 +2648,138 @@ ___
 
 ## Hierarchy
 
-* **StringifiedSignedOrder**
+-   **StringifiedSignedOrder**
 
 ## Index
 
 ### Properties
 
-* [exchangeAddress](#exchangeaddress)
-* [expirationTimeSeconds](#expirationtimeseconds)
-* [feeRecipientAddress](#feerecipientaddress)
-* [makerAddress](#makeraddress)
-* [makerAssetAmount](#makerassetamount)
-* [makerAssetData](#makerassetdata)
-* [makerFee](#makerfee)
-* [salt](#salt)
-* [senderAddress](#senderaddress)
-* [signature](#signature)
-* [takerAddress](#takeraddress)
-* [takerAssetAmount](#takerassetamount)
-* [takerAssetData](#takerassetdata)
-* [takerFee](#takerfee)
+-   [exchangeAddress](#exchangeaddress)
+-   [expirationTimeSeconds](#expirationtimeseconds)
+-   [feeRecipientAddress](#feerecipientaddress)
+-   [makerAddress](#makeraddress)
+-   [makerAssetAmount](#makerassetamount)
+-   [makerAssetData](#makerassetdata)
+-   [makerFee](#makerfee)
+-   [salt](#salt)
+-   [senderAddress](#senderaddress)
+-   [signature](#signature)
+-   [takerAddress](#takeraddress)
+-   [takerAssetAmount](#takerassetamount)
+-   [takerAssetData](#takerassetdata)
+-   [takerFee](#takerfee)
 
 ## Properties
 
-###  exchangeAddress
+### exchangeAddress
 
-• **exchangeAddress**: *string*
+• **exchangeAddress**: _string_
 
-*Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L49)*
+_Defined in [types.ts:49](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L49)_
 
-___
+---
 
-###  expirationTimeSeconds
+### expirationTimeSeconds
 
-• **expirationTimeSeconds**: *string*
+• **expirationTimeSeconds**: _string_
 
-*Defined in [types.ts:51](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L51)*
+_Defined in [types.ts:51](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L51)_
 
-___
+---
 
-###  feeRecipientAddress
+### feeRecipientAddress
 
-• **feeRecipientAddress**: *string*
+• **feeRecipientAddress**: _string_
 
-*Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L50)*
+_Defined in [types.ts:50](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L50)_
 
-___
+---
 
-###  makerAddress
+### makerAddress
 
-• **makerAddress**: *string*
+• **makerAddress**: _string_
 
-*Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L40)*
+_Defined in [types.ts:40](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L40)_
 
-___
+---
 
-###  makerAssetAmount
+### makerAssetAmount
 
-• **makerAssetAmount**: *string*
+• **makerAssetAmount**: _string_
 
-*Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L44)*
+_Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L44)_
 
-___
+---
 
-###  makerAssetData
+### makerAssetData
 
-• **makerAssetData**: *string*
+• **makerAssetData**: _string_
 
-*Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L46)*
+_Defined in [types.ts:46](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L46)_
 
-___
+---
 
-###  makerFee
+### makerFee
 
-• **makerFee**: *string*
+• **makerFee**: _string_
 
-*Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L42)*
+_Defined in [types.ts:42](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L42)_
 
-___
+---
 
-###  salt
+### salt
 
-• **salt**: *string*
+• **salt**: _string_
 
-*Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L48)*
+_Defined in [types.ts:48](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L48)_
 
-___
+---
 
-###  senderAddress
+### senderAddress
 
-• **senderAddress**: *string*
+• **senderAddress**: _string_
 
-*Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L39)*
+_Defined in [types.ts:39](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L39)_
 
-___
+---
 
-###  signature
+### signature
 
-• **signature**: *string*
+• **signature**: _string_
 
-*Defined in [types.ts:52](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L52)*
+_Defined in [types.ts:52](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L52)_
 
-___
+---
 
-###  takerAddress
+### takerAddress
 
-• **takerAddress**: *string*
+• **takerAddress**: _string_
 
-*Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L41)*
+_Defined in [types.ts:41](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L41)_
 
-___
+---
 
-###  takerAssetAmount
+### takerAssetAmount
 
-• **takerAssetAmount**: *string*
+• **takerAssetAmount**: _string_
 
-*Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L45)*
+_Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L45)_
 
-___
+---
 
-###  takerAssetData
+### takerAssetData
 
-• **takerAssetData**: *string*
+• **takerAssetData**: _string_
 
-*Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L47)*
+_Defined in [types.ts:47](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L47)_
 
-___
+---
 
-###  takerFee
+### takerFee
 
-• **takerFee**: *string*
+• **takerFee**: _string_
 
-*Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L43)*
-
+_Defined in [types.ts:43](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L43)_
 
 <hr />
 
@@ -2850,31 +2787,30 @@ ___
 
 ## Hierarchy
 
-* **StringifiedWethDepositEvent**
+-   **StringifiedWethDepositEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [value](#value)
+-   [owner](#owner)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:212](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L212)*
+_Defined in [types.ts:212](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L212)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *string*
+• **value**: _string_
 
-*Defined in [types.ts:213](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L213)*
-
+_Defined in [types.ts:213](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L213)_
 
 <hr />
 
@@ -2882,31 +2818,30 @@ ___
 
 ## Hierarchy
 
-* **StringifiedWethWithdrawalEvent**
+-   **StringifiedWethWithdrawalEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [value](#value)
+-   [owner](#owner)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:202](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L202)*
+_Defined in [types.ts:202](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L202)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *string*
+• **value**: _string_
 
-*Defined in [types.ts:203](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L203)*
-
+_Defined in [types.ts:203](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L203)_
 
 <hr />
 
@@ -2914,31 +2849,30 @@ ___
 
 ## Hierarchy
 
-* **ValidationResults**
+-   **ValidationResults**
 
 ## Index
 
 ### Properties
 
-* [accepted](#accepted)
-* [rejected](#rejected)
+-   [accepted](#accepted)
+-   [rejected](#rejected)
 
 ## Properties
 
-###  accepted
+### accepted
 
-• **accepted**: *[AcceptedOrderInfo](#interface-acceptedorderinfo)[]*
+• **accepted**: _[AcceptedOrderInfo](#interface-acceptedorderinfo)[]_
 
-*Defined in [types.ts:399](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L399)*
+_Defined in [types.ts:399](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L399)_
 
-___
+---
 
-###  rejected
+### rejected
 
-• **rejected**: *[RejectedOrderInfo](#interface-rejectedorderinfo)[]*
+• **rejected**: _[RejectedOrderInfo](#interface-rejectedorderinfo)[]_
 
-*Defined in [types.ts:400](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L400)*
-
+_Defined in [types.ts:400](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L400)_
 
 <hr />
 
@@ -2946,31 +2880,30 @@ ___
 
 ## Hierarchy
 
-* **WethDepositEvent**
+-   **WethDepositEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [value](#value)
+-   [owner](#owner)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:207](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L207)*
+_Defined in [types.ts:207](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L207)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *BigNumber*
+• **value**: _BigNumber_
 
-*Defined in [types.ts:208](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L208)*
-
+_Defined in [types.ts:208](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L208)_
 
 <hr />
 
@@ -2978,31 +2911,30 @@ ___
 
 ## Hierarchy
 
-* **WethWithdrawalEvent**
+-   **WethWithdrawalEvent**
 
 ## Index
 
 ### Properties
 
-* [owner](#owner)
-* [value](#value)
+-   [owner](#owner)
+-   [value](#value)
 
 ## Properties
 
-###  owner
+### owner
 
-• **owner**: *string*
+• **owner**: _string_
 
-*Defined in [types.ts:197](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L197)*
+_Defined in [types.ts:197](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L197)_
 
-___
+---
 
-###  value
+### value
 
-• **value**: *BigNumber*
+• **value**: _BigNumber_
 
-*Defined in [types.ts:198](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L198)*
-
+_Defined in [types.ts:198](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L198)_
 
 <hr />
 
@@ -3010,31 +2942,30 @@ ___
 
 ## Hierarchy
 
-* **WSMessage**
+-   **WSMessage**
 
 ## Index
 
 ### Properties
 
-* [type](#type)
-* [utf8Data](#utf8data)
+-   [type](#type)
+-   [utf8Data](#utf8data)
 
 ## Properties
 
-###  type
+### type
 
-• **type**: *string*
+• **type**: _string_
 
-*Defined in [types.ts:419](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L419)*
+_Defined in [types.ts:417](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L417)_
 
-___
+---
 
-###  utf8Data
+### utf8Data
 
-• **utf8Data**: *string*
+• **utf8Data**: _string_
 
-*Defined in [types.ts:420](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L420)*
-
+_Defined in [types.ts:418](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L418)_
 
 <hr />
 
@@ -3050,58 +2981,56 @@ reconnectDelay: time in milliseconds after which to attempt to reconnect to WS s
 
 ## Hierarchy
 
-* **WSOpts**
+-   **WSOpts**
 
 ## Index
 
 ### Properties
 
-* [clientConfig](#optional-clientconfig)
-* [headers](#optional-headers)
-* [protocol](#optional-protocol)
-* [reconnectDelay](#optional-reconnectdelay)
-* [timeout](#optional-timeout)
+-   [clientConfig](#optional-clientconfig)
+-   [headers](#optional-headers)
+-   [protocol](#optional-protocol)
+-   [reconnectDelay](#optional-reconnectdelay)
+-   [timeout](#optional-timeout)
 
 ## Properties
 
 ### `Optional` clientConfig
 
-• **clientConfig**? : *[ClientConfig](#interface-clientconfig)*
+• **clientConfig**? : _[ClientConfig](#interface-clientconfig)_
 
-*Defined in [types.ts:34](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L34)*
+_Defined in [types.ts:34](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L34)_
 
-___
+---
 
 ### `Optional` headers
 
-• **headers**? : *undefined | __type*
+• **headers**? : _undefined | \_\_type_
 
-*Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L32)*
+_Defined in [types.ts:32](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L32)_
 
-___
+---
 
 ### `Optional` protocol
 
-• **protocol**? : *undefined | string*
+• **protocol**? : _undefined | string_
 
-*Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L33)*
+_Defined in [types.ts:33](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L33)_
 
-___
+---
 
 ### `Optional` reconnectDelay
 
-• **reconnectDelay**? : *undefined | number*
+• **reconnectDelay**? : _undefined | number_
 
-*Defined in [types.ts:35](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L35)*
+_Defined in [types.ts:35](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L35)_
 
-___
+---
 
 ### `Optional` timeout
 
-• **timeout**? : *undefined | number*
+• **timeout**? : _undefined | number_
 
-*Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/a929a43e/packages/rpc-client/src/types.ts#L31)*
-
+_Defined in [types.ts:31](https://github.com/0xProject/0x-mesh/blob/06584d8f/packages/mesh-rpc-client/src/types.ts#L31)_
 
 <hr />
-
