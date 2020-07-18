@@ -6,6 +6,8 @@ import (
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 )
@@ -35,6 +37,42 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 		Number: BigNumber(*latestBlock.Number),
 		Hash:   Hash(latestBlock.Hash),
 	}
+}
+
+func BigNumberToBigInt(bigNumber BigNumber) *big.Int {
+	bigInt := big.Int(bigNumber)
+	return &bigInt
+}
+
+func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
+	return &zeroex.SignedOrder{
+		Order: zeroex.Order{
+			ChainID:               BigNumberToBigInt(newOrder.ChainID),
+			ExchangeAddress:       common.Address(newOrder.ExchangeAddress),
+			MakerAddress:          common.Address(newOrder.MakerAddress),
+			MakerAssetData:        newOrder.MakerAssetData,
+			MakerFeeAssetData:     newOrder.MakerFeeAssetData,
+			MakerAssetAmount:      BigNumberToBigInt(newOrder.MakerAssetAmount),
+			MakerFee:              BigNumberToBigInt(newOrder.MakerFee),
+			TakerAddress:          common.Address(newOrder.TakerAddress),
+			TakerAssetData:        newOrder.TakerAssetData,
+			TakerFeeAssetData:     newOrder.TakerFeeAssetData,
+			TakerAssetAmount:      BigNumberToBigInt(newOrder.TakerAssetAmount),
+			TakerFee:              BigNumberToBigInt(newOrder.TakerFee),
+			SenderAddress:         common.Address(newOrder.SenderAddress),
+			FeeRecipientAddress:   common.Address(newOrder.FeeRecipientAddress),
+			ExpirationTimeSeconds: BigNumberToBigInt(newOrder.ExpirationTimeSeconds),
+			Salt:                  BigNumberToBigInt(newOrder.Salt),
+		},
+	}
+}
+
+func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
+	result := make([]*zeroex.SignedOrder, len(newOrders))
+	for i, newOrder := range newOrders {
+		result[i] = NewOrderToSignedOrder(newOrder)
+	}
+	return result
 }
 
 func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithMetadata {
@@ -67,6 +105,153 @@ func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadata) []*Orde
 		result[i] = OrderWithMetadataFromCommonType(order)
 	}
 	return result
+}
+
+func AddOrdersResultsFromValidationResults(validationResults *ordervalidator.ValidationResults) (*AddOrdersResults, error) {
+	rejected, err := RejectedOrderResultsFromOrderInfos(validationResults.Rejected)
+	if err != nil {
+		return nil, err
+	}
+	return &AddOrdersResults{
+		Accepted: AcceptedOrderResultsFromOrderInfos(validationResults.Accepted),
+		Rejected: rejected,
+	}, nil
+}
+
+func AcceptedOrderResultFromOrderInfo(info *ordervalidator.AcceptedOrderInfo) *AcceptedOrderResult {
+	return &AcceptedOrderResult{
+		Order: &OrderWithMetadata{
+			Hash:                     Hash(info.OrderHash),
+			ChainID:                  BigNumber(*info.SignedOrder.ChainID),
+			ExchangeAddress:          Address(info.SignedOrder.ExchangeAddress),
+			MakerAddress:             Address(info.SignedOrder.MakerAddress),
+			MakerAssetData:           Bytes(info.SignedOrder.MakerAssetData),
+			MakerFeeAssetData:        Bytes(info.SignedOrder.MakerFeeAssetData),
+			MakerAssetAmount:         BigNumber(*info.SignedOrder.MakerAssetAmount),
+			MakerFee:                 BigNumber(*info.SignedOrder.MakerFee),
+			TakerAddress:             Address(info.SignedOrder.TakerAddress),
+			TakerAssetData:           Bytes(info.SignedOrder.TakerAssetData),
+			TakerFeeAssetData:        Bytes(info.SignedOrder.TakerFeeAssetData),
+			TakerAssetAmount:         BigNumber(*info.SignedOrder.TakerAssetAmount),
+			TakerFee:                 BigNumber(*info.SignedOrder.TakerFee),
+			SenderAddress:            Address(info.SignedOrder.SenderAddress),
+			FeeRecipientAddress:      Address(info.SignedOrder.FeeRecipientAddress),
+			ExpirationTimeSeconds:    BigNumber(*info.SignedOrder.ExpirationTimeSeconds),
+			Salt:                     BigNumber(*info.SignedOrder.Salt),
+			Signature:                Bytes(info.SignedOrder.Signature),
+			FillableTakerAssetAmount: BigNumber(*info.FillableTakerAssetAmount),
+		},
+		IsNew: info.IsNew,
+	}
+}
+
+func AcceptedOrderResultsFromOrderInfos(infos []*ordervalidator.AcceptedOrderInfo) []*AcceptedOrderResult {
+	result := make([]*AcceptedOrderResult, len(infos))
+	for i, info := range infos {
+		result[i] = AcceptedOrderResultFromOrderInfo(info)
+	}
+	return result
+}
+
+func RejectedOrderResultFromOrderInfo(info *ordervalidator.RejectedOrderInfo) (*RejectedOrderResult, error) {
+	var hash *Hash
+	if info.OrderHash.Hex() != "0x" {
+		gqlHash := Hash(info.OrderHash)
+		hash = &gqlHash
+	}
+	code, err := RejectedCodeFromValidatorStatus(info.Status)
+	if err != nil {
+		return nil, err
+	}
+	return &RejectedOrderResult{
+		Hash: hash,
+		Order: &Order{
+			ChainID:               BigNumber(*info.SignedOrder.ChainID),
+			ExchangeAddress:       Address(info.SignedOrder.ExchangeAddress),
+			MakerAddress:          Address(info.SignedOrder.MakerAddress),
+			MakerAssetData:        Bytes(info.SignedOrder.MakerAssetData),
+			MakerFeeAssetData:     Bytes(info.SignedOrder.MakerFeeAssetData),
+			MakerAssetAmount:      BigNumber(*info.SignedOrder.MakerAssetAmount),
+			MakerFee:              BigNumber(*info.SignedOrder.MakerFee),
+			TakerAddress:          Address(info.SignedOrder.TakerAddress),
+			TakerAssetData:        Bytes(info.SignedOrder.TakerAssetData),
+			TakerFeeAssetData:     Bytes(info.SignedOrder.TakerFeeAssetData),
+			TakerAssetAmount:      BigNumber(*info.SignedOrder.TakerAssetAmount),
+			TakerFee:              BigNumber(*info.SignedOrder.TakerFee),
+			SenderAddress:         Address(info.SignedOrder.SenderAddress),
+			FeeRecipientAddress:   Address(info.SignedOrder.FeeRecipientAddress),
+			ExpirationTimeSeconds: BigNumber(*info.SignedOrder.ExpirationTimeSeconds),
+			Salt:                  BigNumber(*info.SignedOrder.Salt),
+			Signature:             Bytes(info.SignedOrder.Signature),
+		},
+		Code:    code,
+		Message: info.Status.Message,
+	}, nil
+}
+
+func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInfo) ([]*RejectedOrderResult, error) {
+	result := make([]*RejectedOrderResult, len(infos))
+	for i, info := range infos {
+		rejectedResult, err := RejectedOrderResultFromOrderInfo(info)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = rejectedResult
+	}
+	return result, nil
+}
+
+func RejectedCodeFromValidatorStatus(status ordervalidator.RejectedOrderStatus) (RejectedOrderCode, error) {
+	switch status.Code {
+	case ordervalidator.ROEthRPCRequestFailed.Code:
+		return RejectedOrderCodeEthRPCRequestFailed, nil
+	case ordervalidator.ROCoordinatorRequestFailed.Code:
+		return RejectedOrderCodeCoordinatorRequestFailed, nil
+	case ordervalidator.ROCoordinatorSoftCancelled.Code:
+		return RejectedOrderCodeCoordinatorSoftCancelled, nil
+	case ordervalidator.ROCoordinatorEndpointNotFound.Code:
+		return RejectedOrderCodeCoordinatorEndpointNotFound, nil
+	case ordervalidator.ROInvalidMakerAssetAmount.Code:
+		return RejectedOrderCodeOrderHasInvalidMakerAssetAmount, nil
+	case ordervalidator.ROInvalidTakerAssetAmount.Code:
+		return RejectedOrderCodeOrderHasInvalidTakerAssetAmount, nil
+	case ordervalidator.ROExpired.Code:
+		return RejectedOrderCodeOrderExpired, nil
+	case ordervalidator.ROFullyFilled.Code:
+		return RejectedOrderCodeOrderFullyFilled, nil
+	case ordervalidator.ROCancelled.Code:
+		return RejectedOrderCodeOrderCancelled, nil
+	case ordervalidator.ROUnfunded.Code:
+		return RejectedOrderCodeOrderUnfunded, nil
+	case ordervalidator.ROInvalidMakerAssetData.Code:
+		return RejectedOrderCodeOrderHasInvalidMakerAssetData, nil
+	case ordervalidator.ROInvalidMakerFeeAssetData.Code:
+		return RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, nil
+	case ordervalidator.ROInvalidTakerAssetData.Code:
+		return RejectedOrderCodeOrderHasInvalidTakerAssetData, nil
+	case ordervalidator.ROInvalidTakerFeeAssetData.Code:
+		return RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, nil
+	case ordervalidator.ROInvalidSignature.Code:
+		return RejectedOrderCodeOrderHasInvalidSignature, nil
+	case ordervalidator.ROMaxExpirationExceeded.Code:
+		return RejectedOrderCodeOrderMaxExpirationExceeded, nil
+	case ordervalidator.ROInternalError.Code:
+		return RejectedOrderCodeInternalError, nil
+	case ordervalidator.ROMaxOrderSizeExceeded.Code:
+		return RejectedOrderCodeMaxOrderSizeExceeded, nil
+	case ordervalidator.ROOrderAlreadyStoredAndUnfillable.Code:
+		return RejectedOrderCodeOrderAlreadyStoredAndUnfillable, nil
+	case ordervalidator.ROIncorrectChain.Code:
+		return RejectedOrderCodeOrderForIncorrectChain, nil
+	case ordervalidator.ROIncorrectExchangeAddress.Code:
+		return RejectedOrderCodeIncorrectExchangeAddress, nil
+	case ordervalidator.ROSenderAddressNotAllowed.Code:
+		return RejectedOrderCodeSenderAddressNotAllowed, nil
+	case ordervalidator.RODatabaseFullOfOrders.Code:
+		return RejectedOrderCodeDatabaseFullOfOrders, nil
+	default:
+		return "", fmt.Errorf("unexpected RejectedOrderStatus.Code: %q", status.Code)
+	}
 }
 
 func FilterKindToDBType(kind FilterKind) (db.FilterKind, error) {

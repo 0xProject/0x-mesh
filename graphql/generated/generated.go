@@ -977,7 +977,7 @@ type Stats {
     pubSubTopic: String!
     rendezvous: String!
     peerID: String!
-    ethereumChainID: BigNumber!
+    ethereumChainID: Int! # TODO(albrow): This should be BigNumber
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
@@ -1097,8 +1097,28 @@ for a list of all codes currently in use.
 """
 enum RejectedOrderCode {
     ETH_RPC_REQUEST_FAILED
-    INVALID_MAKER_ASSET_AMOUNT
-    INVALID_TAKER_ASSET_AMOUNT
+    COORDINATOR_REQUEST_FAILED
+    COORDINATOR_SOFT_CANCELLED
+    COORDINATOR_ENDPOINT_NOT_FOUND
+    ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT
+    ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT
+    ORDER_EXPIRED
+    ORDER_FULLY_FILLED
+    ORDER_CANCELLED
+    ORDER_UNFUNDED
+    ORDER_HAS_INVALID_MAKER_ASSET_DATA
+    ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA
+    ORDER_HAS_INVALID_TAKER_ASSET_DATA
+    ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA
+    ORDER_HAS_INVALID_SIGNATURE
+    ORDER_MAX_EXPIRATION_EXCEEDED
+    INTERNAL_ERROR
+    MAX_ORDER_SIZE_EXCEEDED
+    ORDER_ALREADY_STORED_AND_UNFILLABLE
+    ORDER_FOR_INCORRECT_CHAIN
+    INCORRECT_EXCHANGE_ADDRESS
+    SENDER_ADDRESS_NOT_ALLOWED
+    DATABASE_FULL_OF_ORDERS
 }
 
 type Mutation {
@@ -3704,9 +3724,9 @@ func (ec *executionContext) _Stats_ethereumChainID(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Stats_latestBlock(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {

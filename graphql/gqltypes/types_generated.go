@@ -172,7 +172,7 @@ type Stats struct {
 	PubSubTopic                       string       `json:"pubSubTopic"`
 	Rendezvous                        string       `json:"rendezvous"`
 	PeerID                            string       `json:"peerID"`
-	EthereumChainID                   BigNumber    `json:"ethereumChainID"`
+	EthereumChainID                   int          `json:"ethereumChainID"`
 	LatestBlock                       *LatestBlock `json:"latestBlock"`
 	NumPeers                          int          `json:"numPeers"`
 	NumOrders                         int          `json:"numOrders"`
@@ -382,20 +382,60 @@ func (e OrderField) MarshalGQL(w io.Writer) {
 type RejectedOrderCode string
 
 const (
-	RejectedOrderCodeEthRPCRequestFailed     RejectedOrderCode = "ETH_RPC_REQUEST_FAILED"
-	RejectedOrderCodeInvalidMakerAssetAmount RejectedOrderCode = "INVALID_MAKER_ASSET_AMOUNT"
-	RejectedOrderCodeInvalidTakerAssetAmount RejectedOrderCode = "INVALID_TAKER_ASSET_AMOUNT"
+	RejectedOrderCodeEthRPCRequestFailed              RejectedOrderCode = "ETH_RPC_REQUEST_FAILED"
+	RejectedOrderCodeCoordinatorRequestFailed         RejectedOrderCode = "COORDINATOR_REQUEST_FAILED"
+	RejectedOrderCodeCoordinatorSoftCancelled         RejectedOrderCode = "COORDINATOR_SOFT_CANCELLED"
+	RejectedOrderCodeCoordinatorEndpointNotFound      RejectedOrderCode = "COORDINATOR_ENDPOINT_NOT_FOUND"
+	RejectedOrderCodeOrderHasInvalidMakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT"
+	RejectedOrderCodeOrderHasInvalidTakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT"
+	RejectedOrderCodeOrderExpired                     RejectedOrderCode = "ORDER_EXPIRED"
+	RejectedOrderCodeOrderFullyFilled                 RejectedOrderCode = "ORDER_FULLY_FILLED"
+	RejectedOrderCodeOrderCancelled                   RejectedOrderCode = "ORDER_CANCELLED"
+	RejectedOrderCodeOrderUnfunded                    RejectedOrderCode = "ORDER_UNFUNDED"
+	RejectedOrderCodeOrderHasInvalidMakerAssetData    RejectedOrderCode = "ORDER_HAS_INVALID_MAKER_ASSET_DATA"
+	RejectedOrderCodeOrderHasInvalidMakerFeeAssetData RejectedOrderCode = "ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA"
+	RejectedOrderCodeOrderHasInvalidTakerAssetData    RejectedOrderCode = "ORDER_HAS_INVALID_TAKER_ASSET_DATA"
+	RejectedOrderCodeOrderHasInvalidTakerFeeAssetData RejectedOrderCode = "ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA"
+	RejectedOrderCodeOrderHasInvalidSignature         RejectedOrderCode = "ORDER_HAS_INVALID_SIGNATURE"
+	RejectedOrderCodeOrderMaxExpirationExceeded       RejectedOrderCode = "ORDER_MAX_EXPIRATION_EXCEEDED"
+	RejectedOrderCodeInternalError                    RejectedOrderCode = "INTERNAL_ERROR"
+	RejectedOrderCodeMaxOrderSizeExceeded             RejectedOrderCode = "MAX_ORDER_SIZE_EXCEEDED"
+	RejectedOrderCodeOrderAlreadyStoredAndUnfillable  RejectedOrderCode = "ORDER_ALREADY_STORED_AND_UNFILLABLE"
+	RejectedOrderCodeOrderForIncorrectChain           RejectedOrderCode = "ORDER_FOR_INCORRECT_CHAIN"
+	RejectedOrderCodeIncorrectExchangeAddress         RejectedOrderCode = "INCORRECT_EXCHANGE_ADDRESS"
+	RejectedOrderCodeSenderAddressNotAllowed          RejectedOrderCode = "SENDER_ADDRESS_NOT_ALLOWED"
+	RejectedOrderCodeDatabaseFullOfOrders             RejectedOrderCode = "DATABASE_FULL_OF_ORDERS"
 )
 
 var AllRejectedOrderCode = []RejectedOrderCode{
 	RejectedOrderCodeEthRPCRequestFailed,
-	RejectedOrderCodeInvalidMakerAssetAmount,
-	RejectedOrderCodeInvalidTakerAssetAmount,
+	RejectedOrderCodeCoordinatorRequestFailed,
+	RejectedOrderCodeCoordinatorSoftCancelled,
+	RejectedOrderCodeCoordinatorEndpointNotFound,
+	RejectedOrderCodeOrderHasInvalidMakerAssetAmount,
+	RejectedOrderCodeOrderHasInvalidTakerAssetAmount,
+	RejectedOrderCodeOrderExpired,
+	RejectedOrderCodeOrderFullyFilled,
+	RejectedOrderCodeOrderCancelled,
+	RejectedOrderCodeOrderUnfunded,
+	RejectedOrderCodeOrderHasInvalidMakerAssetData,
+	RejectedOrderCodeOrderHasInvalidMakerFeeAssetData,
+	RejectedOrderCodeOrderHasInvalidTakerAssetData,
+	RejectedOrderCodeOrderHasInvalidTakerFeeAssetData,
+	RejectedOrderCodeOrderHasInvalidSignature,
+	RejectedOrderCodeOrderMaxExpirationExceeded,
+	RejectedOrderCodeInternalError,
+	RejectedOrderCodeMaxOrderSizeExceeded,
+	RejectedOrderCodeOrderAlreadyStoredAndUnfillable,
+	RejectedOrderCodeOrderForIncorrectChain,
+	RejectedOrderCodeIncorrectExchangeAddress,
+	RejectedOrderCodeSenderAddressNotAllowed,
+	RejectedOrderCodeDatabaseFullOfOrders,
 }
 
 func (e RejectedOrderCode) IsValid() bool {
 	switch e {
-	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeInvalidMakerAssetAmount, RejectedOrderCodeInvalidTakerAssetAmount:
+	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeCoordinatorRequestFailed, RejectedOrderCodeCoordinatorSoftCancelled, RejectedOrderCodeCoordinatorEndpointNotFound, RejectedOrderCodeOrderHasInvalidMakerAssetAmount, RejectedOrderCodeOrderHasInvalidTakerAssetAmount, RejectedOrderCodeOrderExpired, RejectedOrderCodeOrderFullyFilled, RejectedOrderCodeOrderCancelled, RejectedOrderCodeOrderUnfunded, RejectedOrderCodeOrderHasInvalidMakerAssetData, RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, RejectedOrderCodeOrderHasInvalidTakerAssetData, RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, RejectedOrderCodeOrderHasInvalidSignature, RejectedOrderCodeOrderMaxExpirationExceeded, RejectedOrderCodeInternalError, RejectedOrderCodeMaxOrderSizeExceeded, RejectedOrderCodeOrderAlreadyStoredAndUnfillable, RejectedOrderCodeOrderForIncorrectChain, RejectedOrderCodeIncorrectExchangeAddress, RejectedOrderCodeSenderAddressNotAllowed, RejectedOrderCodeDatabaseFullOfOrders:
 		return true
 	}
 	return false

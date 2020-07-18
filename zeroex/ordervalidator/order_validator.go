@@ -683,6 +683,9 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 }
 
 func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
+	if len(signature) == 0 {
+		return false
+	}
 	signatureType := zeroex.SignatureType(signature[len(signature)-1])
 
 	switch signatureType {

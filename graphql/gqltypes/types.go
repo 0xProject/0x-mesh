@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/0xProject/0x-mesh/constants"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 )
@@ -47,10 +46,8 @@ func (a *Address) UnmarshalGQL(v interface{}) error {
 	if !ok {
 		return fmt.Errorf("Address must be a hex-encoded string")
 	}
+	// TODO(albrow): Check if valid hex.
 	address := common.HexToAddress(s)
-	if address == constants.NullAddress {
-		return fmt.Errorf("invalid Address value: %q", s)
-	}
 	(*a) = Address(address)
 
 	return nil
@@ -95,10 +92,8 @@ func (b *Bytes) UnmarshalGQL(v interface{}) error {
 	if !ok {
 		return fmt.Errorf("Bytes must be a hex-encoded string")
 	}
+	// TODO(albrow): Check if valid hex.
 	bytes := common.FromHex(s)
-	if len(bytes) == 0 {
-		return fmt.Errorf("invalid Bytes value: %q", s)
-	}
 	(*b) = Bytes(bytes)
 
 	return nil

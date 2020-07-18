@@ -13,7 +13,16 @@ import (
 )
 
 func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error) {
-	panic("not implemented")
+	isPinned := false
+	if pinned != nil {
+		isPinned = (*pinned)
+	}
+	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
+	results, err := r.app.AddOrders(ctx, signedOrders, isPinned)
+	if err != nil {
+		return nil, err
+	}
+	return gqltypes.AddOrdersResultsFromValidationResults(results)
 }
 
 func (r *queryResolver) Order(ctx context.Context, hash gqltypes.Hash) (*gqltypes.OrderWithMetadata, error) {
