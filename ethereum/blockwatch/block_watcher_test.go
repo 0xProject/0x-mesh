@@ -58,7 +58,7 @@ func TestNewWatcher(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, added, len(expectedMiniHeaders))
 
-	watcher, err := New(dbOpts.MaxMiniHeaders, config)
+	watcher, err := New(ctx, dbOpts.MaxMiniHeaders, config)
 	require.NoError(t, err)
 	actualMiniHeaders := watcher.stack.PeekAll()
 	for _, expectedMiniHeader := range expectedMiniHeaders {
@@ -85,7 +85,7 @@ func TestWatcher(t *testing.T) {
 	for i := 0; i < fakeClient.NumberOfTimesteps(); i++ {
 		scenarioLabel := fakeClient.GetScenarioLabel()
 
-		err := watcher.SyncToLatestBlock(ctx)
+		err := watcher.SyncToLatestBlock()
 		if strings.HasPrefix(scenarioLabel, "ERROR") {
 			require.Error(t, err)
 		} else {
@@ -125,7 +125,7 @@ func TestWatcherStartStop(t *testing.T) {
 	done := make(chan struct{})
 	defer cancel()
 	go func() {
-		require.NoError(t, watcher.Watch(ctx))
+		require.NoError(t, watcher.Watch())
 		done <- struct{}{}
 	}()
 
@@ -240,7 +240,7 @@ func TestFastSyncToLatestBlockLessThan128Missed(t *testing.T) {
 	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
-	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
+	blocksElapsed, err := watcher.FastSyncToLatestBlock()
 	require.NoError(t, err)
 	assert.Equal(t, 127, blocksElapsed)
 
@@ -267,7 +267,7 @@ func TestFastSyncToLatestBlockMoreThanOrExactly128Missed(t *testing.T) {
 	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
-	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
+	blocksElapsed, err := watcher.FastSyncToLatestBlock()
 	require.NoError(t, err)
 	assert.Equal(t, 128, blocksElapsed)
 
@@ -293,7 +293,7 @@ func TestFastSyncToLatestBlockNoneMissed(t *testing.T) {
 	err := watcher.stack.Push(lastBlockSeen)
 	require.NoError(t, err)
 
-	blocksElapsed, err := watcher.FastSyncToLatestBlock(ctx)
+	blocksElapsed, err := watcher.FastSyncToLatestBlock()
 	require.NoError(t, err)
 	assert.Equal(t, blocksElapsed, 0)
 
@@ -424,7 +424,7 @@ func TestFilterLogsRecursively(t *testing.T) {
 		require.NoError(t, err)
 		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
-		logs, err := watcher.filterLogsRecursively(ctx, from, to, []ethtypes.Log{})
+		logs, err := watcher.filterLogsRecursively(from, to, []ethtypes.Log{})
 		require.Equal(t, testCase.Err, err, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.rangeToFilterLogsResponse), fakeLogClient.Count())
@@ -526,7 +526,7 @@ func TestGetLogsInBlockRange(t *testing.T) {
 		require.NoError(t, err)
 		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
-		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(ctx, testCase.From, testCase.To)
+		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)
 		require.Equal(t, testCase.FurthestBlockProcessed, furthestBlockProcessed, testCase.Label)
 		require.Equal(t, testCase.Logs, logs, testCase.Label)
 		assert.Equal(t, len(testCase.RangeToFilterLogsResponse), fakeLogClient.Count())
@@ -557,7 +557,7 @@ func setupOrderWatcher(t *testing.T, ctx context.Context, client Client) *Watche
 	require.NoError(t, err)
 	config.Client = client
 	config.DB = database
-	watcher, err := New(blockRetentionLimit, config)
+	watcher, err := New(ctx, blockRetentionLimit, config)
 	require.NoError(t, err)
 	return watcher
 }

@@ -1,7 +1,6 @@
 package blockwatch
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -34,17 +33,17 @@ func newFakeLogClient(rangeToResponse map[string]filterLogsResponse) (*fakeLogCl
 }
 
 // HeaderByNumber fetches a block header by its number
-func (fc *fakeLogClient) HeaderByNumber(_ context.Context, number *big.Int) (*types.MiniHeader, error) {
+func (fc *fakeLogClient) HeaderByNumber(number *big.Int) (*types.MiniHeader, error) {
 	return nil, errors.New("NOT_IMPLEMENTED")
 }
 
 // HeaderByHash fetches a block header by its block hash
-func (fc *fakeLogClient) HeaderByHash(_ context.Context, hash common.Hash) (*types.MiniHeader, error) {
+func (fc *fakeLogClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) {
 	return nil, errors.New("NOT_IMPLEMENTED")
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query
-func (fc *fakeLogClient) FilterLogs(_ context.Context, q ethereum.FilterQuery) ([]ethtypes.Log, error) {
+func (fc *fakeLogClient) FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	// Add a slight delay to simulate an actual network request. This also gives
 	// BlockWatcher.getLogsInBlockRange multi-requests to hit the concurrent request
 	// limit semaphore and simulate more realistic conditions.
