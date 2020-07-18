@@ -19,7 +19,7 @@ func StatsFromCommonType(stats *types.Stats) *Stats {
 		Rendezvous:  stats.Rendezvous,
 		PeerID:      stats.PeerID,
 		// TODO(albrow): This should be a big.Int in core package.
-		// EthereumChainID:                   stats.EthereumChainID,
+		EthereumChainID: stats.EthereumChainID,
 		// TODO(albrow): LatestBlock should be a pointer in core package.
 		LatestBlock:                       LatestBlockFromCommonType(stats.LatestBlock),
 		NumPeers:                          stats.NumPeers,
@@ -199,6 +199,64 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 		result[i] = rejectedResult
 	}
 	return result, nil
+}
+
+func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
+	return &OrderEvent{
+		Order: &OrderWithMetadata{
+			Hash:                     Hash(event.OrderHash),
+			ChainID:                  BigNumber(*event.SignedOrder.ChainID),
+			ExchangeAddress:          Address(event.SignedOrder.ExchangeAddress),
+			MakerAddress:             Address(event.SignedOrder.MakerAddress),
+			MakerAssetData:           Bytes(event.SignedOrder.MakerAssetData),
+			MakerFeeAssetData:        Bytes(event.SignedOrder.MakerFeeAssetData),
+			MakerAssetAmount:         BigNumber(*event.SignedOrder.MakerAssetAmount),
+			MakerFee:                 BigNumber(*event.SignedOrder.MakerFee),
+			TakerAddress:             Address(event.SignedOrder.TakerAddress),
+			TakerAssetData:           Bytes(event.SignedOrder.TakerAssetData),
+			TakerFeeAssetData:        Bytes(event.SignedOrder.TakerFeeAssetData),
+			TakerAssetAmount:         BigNumber(*event.SignedOrder.TakerAssetAmount),
+			TakerFee:                 BigNumber(*event.SignedOrder.TakerFee),
+			SenderAddress:            Address(event.SignedOrder.SenderAddress),
+			FeeRecipientAddress:      Address(event.SignedOrder.FeeRecipientAddress),
+			ExpirationTimeSeconds:    BigNumber(*event.SignedOrder.ExpirationTimeSeconds),
+			Salt:                     BigNumber(*event.SignedOrder.Salt),
+			Signature:                Bytes(event.SignedOrder.Signature),
+			FillableTakerAssetAmount: BigNumber(*event.FillableTakerAssetAmount),
+		},
+		EndState:       OrderEndState(event.EndState),
+		Timestamp:      event.Timestamp,
+		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+	}
+}
+
+func OrderEventsFromZeroExType(orderEvents []*zeroex.OrderEvent) []*OrderEvent {
+	result := make([]*OrderEvent, len(orderEvents))
+	for i, event := range orderEvents {
+		result[i] = OrderEventFromZeroExType(event)
+	}
+	return result
+}
+
+func ContractEventFromZeroExType(event *zeroex.ContractEvent) *ContractEvent {
+	return &ContractEvent{
+		BlockHash:  Hash(event.BlockHash),
+		TxHash:     Hash(event.TxHash),
+		TxIndex:    int(event.TxIndex),
+		LogIndex:   int(event.LogIndex),
+		IsRemoved:  event.IsRemoved,
+		Address:    Address(event.Address),
+		Kind:       event.Kind,
+		Parameters: event.Parameters,
+	}
+}
+
+func ContractEventsFromZeroExType(events []*zeroex.ContractEvent) []*ContractEvent {
+	result := make([]*ContractEvent, len(events))
+	for i, event := range events {
+		result[i] = ContractEventFromZeroExType(event)
+	}
+	return result
 }
 
 func RejectedCodeFromValidatorStatus(status ordervalidator.RejectedOrderStatus) (RejectedOrderCode, error) {

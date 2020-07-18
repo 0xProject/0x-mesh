@@ -835,11 +835,7 @@ A time encoded as a string using the RFC3339 standard.
 """
 scalar Time
 """
-An arbitrary set of key-value pairs. Encoded as a JSON object.
-"""
-scalar Map
-"""
-Arbitrary value, typically a String or Int.
+Arbitrary value of any type.
 """
 scalar Any
 
@@ -1232,9 +1228,10 @@ type ContractEvent {
     """
     kind: String!
     """
-    The parameters for the event. The parameters are different for each event kind.
+    The parameters for the event. The parameters are different for each event kind, but will always
+    be a set of key-value pairs.
     """
-    parameters: Map!
+    parameters: Any!
 }
 
 type Subscription {
@@ -1770,9 +1767,9 @@ func (ec *executionContext) _ContractEvent_parameters(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(map[string]interface{})
+	res := resTmp.(interface{})
 	fc.Result = res
-	return ec.marshalNMap2map(ctx, field.Selections, res)
+	return ec.marshalNAny2interface(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LatestBlock_number(ctx context.Context, field graphql.CollectedField, obj *gqltypes.LatestBlock) (ret graphql.Marshaler) {
@@ -6389,29 +6386,6 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}
 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
 	res := graphql.MarshalInt(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-	}
-	return res
-}
-
-func (ec *executionContext) unmarshalNMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
-	if v == nil {
-		return nil, nil
-	}
-	return graphql.UnmarshalMap(v)
-}
-
-func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := graphql.MarshalMap(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")

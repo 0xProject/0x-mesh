@@ -43,8 +43,9 @@ type ContractEvent struct {
 	Address Address `json:"address"`
 	// The kind of event (e.g. "ERC20TransferEvent").
 	Kind string `json:"kind"`
-	// The parameters for the event. The parameters are different for each event kind.
-	Parameters map[string]interface{} `json:"parameters"`
+	// The parameters for the event. The parameters are different for each event kind, but will always
+	// be a set of key-value pairs.
+	Parameters interface{} `json:"parameters"`
 }
 
 // The block number and block hash for the latest block that has been processed by Mesh.

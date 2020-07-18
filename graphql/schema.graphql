@@ -19,11 +19,7 @@ A time encoded as a string using the RFC3339 standard.
 """
 scalar Time
 """
-An arbitrary set of key-value pairs. Encoded as a JSON object.
-"""
-scalar Map
-"""
-Arbitrary value, typically a String or Int.
+Arbitrary value of any type.
 """
 scalar Any
 
@@ -416,9 +412,10 @@ type ContractEvent {
     """
     kind: String!
     """
-    The parameters for the event. The parameters are different for each event kind.
+    The parameters for the event. The parameters are different for each event kind, but will always
+    be a set of key-value pairs.
     """
-    parameters: Map!
+    parameters: Any!
 }
 
 type Subscription {

@@ -9,7 +9,12 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/graphql/generated"
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+)
+
+const (
+	orderEventBufferSize = 100
 )
 
 func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error) {
@@ -92,7 +97,28 @@ func (r *queryResolver) Stats(ctx context.Context) (*gqltypes.Stats, error) {
 }
 
 func (r *subscriptionResolver) OrderEvents(ctx context.Context) (<-chan []*gqltypes.OrderEvent, error) {
-	panic("not implemented")
+	zeroExChan := make(chan []*zeroex.OrderEvent, orderEventBufferSize)
+	gqlChan := make(chan []*gqltypes.OrderEvent, orderEventBufferSize)
+	subscription := r.app.SubscribeToOrderEvents(zeroExChan)
+	// TODO(albrow): Call subscription.Unsubscribe for slow or disconnected clients.
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				subscription.Unsubscribe()
+				return
+			case err := <-subscription.Err():
+				// TODO(albrow): Can we handle this better?
+				if err != nil {
+					subscription.Unsubscribe()
+					panic(err)
+				}
+			case orderEvents := <-zeroExChan:
+				gqlChan <- gqltypes.OrderEventsFromZeroExType(orderEvents)
+			}
+		}
+	}()
+	return gqlChan, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
