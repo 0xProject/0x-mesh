@@ -5,6 +5,7 @@ package orderwatch
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -1671,6 +1672,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	validationResultsChan := make(chan *ordervalidator.ValidationResults)
 
 	go func() {
+		time.Sleep(750 * time.Millisecond)
 		err = blockWatcher.SyncToLatestBlock()
 		syncErrChan <- err
 	}()
@@ -1692,7 +1694,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		t.Error(err)
 	case validationResults := <-validationResultsChan:
 		require.Equal(t, len(validationResults.Accepted), 1)
-		require.Equal(t, len(validationResults.Rejected), 0)
+		assert.Equal(t, len(validationResults.Rejected), 0)
 		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
 	}
@@ -1714,6 +1716,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
+	fmt.Println("1")
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
 }

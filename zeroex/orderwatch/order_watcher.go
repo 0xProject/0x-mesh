@@ -30,29 +30,36 @@ const (
 	// were not caught by the event watcher process.
 	minCleanupInterval = 1 * time.Hour
 
-	// maxDeleteInterval specifies the maximum amount of time between calls to permanentlyDeleteStaleRemovedOrders
+	// maxDeleteInterval specifies the maximum amount of time between calls to
+	// permanentlyDeleteStaleRemovedOrders.
 	maxDeleteInterval = 5 * time.Minute
 
-	// checkDatabaseUtilizationThresholdInterval specifies the amount of time between calls to db.CountOrders. If the count is higher than a threshold, then permanentlyDeleteStaleRemovedOrders will be called, so this is the minimum interval between calls to permanentlyDeleteStaleRemovedOrders.
+	// checkDatabaseUtilizationThresholdInterval specifies the amount of time
+	// between calls to db.CountOrders. If the count is higher than a threshold,
+	// then permanentlyDeleteStaleRemovedOrders will be called, so this is the
+	// minimum interval between calls to permanentlyDeleteStaleRemovedOrders.
 	checkDatabaseUtilizationThresholdInterval = 5 * time.Second
 
-	// If, after a call to db.CountOrders, the database utilization exceeds databaseUtilizationThreshold, then permanentlyDeleteStaleRemovedOrders will be called.
+	// If, after a call to db.CountOrders, the database utilization exceeds
+	// databaseUtilizationThreshold, then permanentlyDeleteStaleRemovedOrders
+	// will be called.
 	databaseUtilizationThreshold = 0.5
 
-	// defaultLastUpdatedBuffer specifies how long it must have been since an order was
-	// last updated in order to be re-validated by the cleanup worker
+	// defaultLastUpdatedBuffer specifies how long it must have been since an
+	// order was last updated in order to be re-validated by the cleanup worker.
 	defaultLastUpdatedBuffer = 30 * time.Minute
 
-	// permanentlyDeleteAfter specifies how long after an order is marked as IsRemoved and not updated that
-	// it should be considered for permanent deletion. Blocks get mined on avg. every 12 sec, so 5 minutes
+	// permanentlyDeleteAfter specifies how long after an order is marked as
+	// IsRemoved and not updated that it should be considered for permanent
+	// deletion. Blocks get mined on avg. every 12 sec, so 5 minutes
 	// corresponds to a block depth of ~25.
 	permanentlyDeleteAfter = 5 * time.Minute
 
 	// defaultMaxOrders is the default max number of orders in storage.
 	defaultMaxOrders = 100000
 
-	// maxBlockEventsToHandle is the max number of block events we want to process in a single
-	// call to `handleBlockEvents`
+	// maxBlockEventsToHandle is the max number of block events we want to
+	// process in a single call to `handleBlockEvents`
 	maxBlockEventsToHandle = 500
 )
 
@@ -158,7 +165,11 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	namedLoops := []struct {
 		loop func(context.Context) error
 		name string
-	}{{w.mainLoop, "mainLoop"}, {w.cleanupLoop, "cleanupLoop"}, {w.removedCheckerLoop, "removedCheckerLoop"}}
+	}{
+		{w.mainLoop, "mainLoop"},
+		{w.cleanupLoop, "cleanupLoop"},
+		{w.removedCheckerLoop, "removedCheckerLoop"},
+	}
 	for _, namedLoop := range namedLoops {
 		namedLoop := namedLoop // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {
@@ -328,43 +339,61 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
 func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
+	logger.Info("handleBlockEvents")
+
 	if len(events) == 0 {
 		return nil
 	}
 
-	validationBlock := w.getLatestBlockFromEvents(events)
+	oldestBlock, validationBlock := w.getExtremeBlocksFromEvents(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 
-	// FIXME(jalextowle): This is not goroutine safe.
-	// THOUGHT(jalextowle): Run through the map one block at a time and add
-	// orders to the array that will be passed into `associateEventLogsWithOrders`
-	// var oldestRevalidationBlockNumber *big.Int
-	// revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
-	// for _, recentlyValidatedOrder := range w.recentlyValidatedOrders {
-	// 	lastValidatedBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
-	// 	if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
-	// 		continue
-	// 	}
-	// 	// If the oldestBlock in the list of block events is greater then
-	// 	// the last validated block of the recently validated orders, then
-	// 	// we are missing block events for this order.
-	// 	if oldestRevalidationBlockNumber == nil || lastValidatedBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
-	// 		oldestRevalidationBlockNumber = lastValidatedBlockNumber
-	// 	}
-	// 	revalidationBlockToOrder[lastValidatedBlockNumber] = append(
-	// 		revalidationBlockToOrder[lastValidatedBlockNumber],
-	// 		recentlyValidatedOrder,
-	// 	)
-	// }
-	//
-	// FIXME(jalextowle): Get the blocks that are not stored in the database in the range
-	// [oldestRevalidationBlockNumber, oldestBlock.Number)
-	// oldMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
-	// 	&db.MiniHeaderFilter{
-	//
-	// 	},
-	// })
+	var oldestRevalidationBlockNumber *big.Int
+	revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
+	for _, recentlyValidatedOrder := range w.recentlyValidatedOrders {
+		lastValidatedBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
+		if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
+			continue
+		}
+		// If the oldestBlock in the list of block events is greater then
+		// the last validated block of the recently validated orders, then
+		// we are missing block events for this order.
+		if oldestRevalidationBlockNumber == nil || lastValidatedBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
+			oldestRevalidationBlockNumber = lastValidatedBlockNumber
+		}
+		revalidationBlockToOrder[lastValidatedBlockNumber] = append(
+			revalidationBlockToOrder[lastValidatedBlockNumber],
+			recentlyValidatedOrder,
+		)
+	}
+
+	oldMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
+		Filters: []db.MiniHeaderFilter{
+			{
+				Field: db.MFNumber,
+				Kind:  db.Less,
+				Value: oldestBlock.Number,
+			},
+		},
+		Sort: []db.MiniHeaderSort{
+			{
+				Direction: db.Ascending,
+			},
+		},
+	})
+
+	var eventFilter map[common.Hash]bool
+	for _, header := range oldMiniHeaders {
+		for _, order := range revalidationBlockToOrder[header.Number] {
+			eventFilter[order.Hash] = true
+		}
+		for _, log := range header.Logs {
+			if err := w.associateEventLogsWithOrders(log, eventFilter, orderHashToDBOrder, orderHashToEvents); err != nil {
+				return err
+			}
+		}
+	}
 
 	for _, event := range events {
 		for _, log := range event.BlockHeader.Logs {
@@ -1310,6 +1339,8 @@ func (w *Watcher) generateOrderEventsIfChanged(
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+	logger.Info("ValidateAndStoreValidOrders")
+
 	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
 	if err != nil {
 		return nil, err
@@ -1769,19 +1800,21 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-func (w *Watcher) getLatestBlockFromEvents(events []*blockwatch.Event) *types.MiniHeader {
-	var latestBlock *types.MiniHeader
+func (w *Watcher) getExtremeBlocksFromEvents(events []*blockwatch.Event) (*types.MiniHeader, *types.MiniHeader) {
+	var oldestBlock, latestBlock *types.MiniHeader
 	for _, event := range events {
-		if latestBlock == nil {
+		if latestBlock == nil && oldestBlock == nil {
 			latestBlock = event.BlockHeader
+			oldestBlock = event.BlockHeader
 		} else {
-			comparison := event.BlockHeader.Number.Cmp(latestBlock.Number)
-			if comparison == 1 {
+			if event.BlockHeader.Number.Cmp(latestBlock.Number) == 1 {
 				latestBlock = event.BlockHeader
+			} else if event.BlockHeader.Number.Cmp(oldestBlock.Number) == -1 {
+				oldestBlock = event.BlockHeader
 			}
 		}
 	}
-	return latestBlock
+	return oldestBlock, latestBlock
 }
 
 // WaitForAtLeastOneBlockToBeProcessed waits until the OrderWatcher has processed its
