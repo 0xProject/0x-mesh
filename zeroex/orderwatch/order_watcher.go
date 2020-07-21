@@ -215,19 +215,17 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 
 func drainBlockEventsChan(blockEventsChan chan []*blockwatch.Event, max int) []*blockwatch.Event {
 	allEvents := []*blockwatch.Event{}
-Loop:
 	for {
 		select {
 		case moreEvents := <-blockEventsChan:
 			allEvents = append(allEvents, moreEvents...)
 			if len(allEvents) >= max {
-				break Loop
+				return allEvents
 			}
 		default:
-			break Loop
+			return allEvents
 		}
 	}
-	return allEvents
 }
 
 func (w *Watcher) cleanupLoop(ctx context.Context) error {
@@ -236,11 +234,10 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		// Wait minCleanupInterval before calling cleanup again. Since
+		// we only start sleeping _after_ cleanup completes, we will never
+		// have multiple calls to cleanup running in parallel
 		case <-time.After(minCleanupInterval - time.Since(start)):
-			// Wait minCleanupInterval before calling cleanup again. Since
-			// we only start sleeping _after_ cleanup completes, we will never
-			// have multiple calls to cleanup running in parallel
-			break
 		}
 
 		start = time.Now()
@@ -336,6 +333,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	return orderEvents, nil
 }
 
+// FIXME -- This doesn't handle re-validation for orders that were validated too long ago.
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
 func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
@@ -352,15 +350,20 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	var oldestRevalidationBlockNumber *big.Int
 	revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
 	for _, recentlyValidatedOrder := range w.recentlyValidatedOrders {
+		logger.WithFields(map[string]interface{}{
+			"order":                    recentlyValidatedOrder,
+			"oldestBlock":              oldestBlock.Number,
+			"lastValidatedBlockNumber": recentlyValidatedOrder.LastValidatedBlockNumber,
+		}).Info("Processed recently validated block")
 		lastValidatedBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
-		if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
-			continue
-		}
 		// If the oldestBlock in the list of block events is greater then
 		// the last validated block of the recently validated orders, then
 		// we are missing block events for this order.
 		if oldestRevalidationBlockNumber == nil || lastValidatedBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
 			oldestRevalidationBlockNumber = lastValidatedBlockNumber
+		}
+		if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
+			continue
 		}
 		revalidationBlockToOrder[lastValidatedBlockNumber] = append(
 			revalidationBlockToOrder[lastValidatedBlockNumber],
@@ -431,7 +434,12 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	return nil
 }
 
-func (w *Watcher) associateEventLogsWithOrders(log ethtypes.Log, filter map[common.Hash]bool, orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent) error {
+func (w *Watcher) associateEventLogsWithOrders(
+	log ethtypes.Log,
+	filter map[common.Hash]bool,
+	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
+	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+) error {
 	eventType, err := w.eventDecoder.FindEventType(log)
 	if err != nil {
 		switch err.(type) {
