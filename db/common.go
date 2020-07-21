@@ -205,6 +205,27 @@ type MiniHeaderFilter struct {
 	Value interface{}     `json:"value"`
 }
 
+// GetOldestMiniHeader is a helper method for getting the oldest MiniHeader.
+// It returns ErrNotFound if there are no MiniHeaders in the database.
+func (db *DB) GetOldestMiniHeader() (*types.MiniHeader, error) {
+	oldestMiniHeaders, err := db.FindMiniHeaders(&MiniHeaderQuery{
+		Sort: []MiniHeaderSort{
+			{
+				Field:     MFNumber,
+				Direction: Ascending,
+			},
+		},
+		Limit: 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(oldestMiniHeaders) == 0 {
+		return nil, ErrNotFound
+	}
+	return oldestMiniHeaders[0], nil
+}
+
 // GetLatestMiniHeader is a helper method for getting the latest MiniHeader.
 // It returns ErrNotFound if there are no MiniHeaders in the database.
 func (db *DB) GetLatestMiniHeader() (*types.MiniHeader, error) {

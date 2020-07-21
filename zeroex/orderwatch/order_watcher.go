@@ -80,6 +80,14 @@ type Watcher struct {
 	atLeastOneBlockProcessed   chan struct{}
 	atLeastOneBlockProcessedMu sync.Mutex
 	didProcessABlock           bool
+	// recentlyValidatedOrders is a list of orders that were added to the
+	// orderwatcher after the most recent call to `handleBlockEvents`. Order
+	// events may have been missed by the orderwatcher due to a rare edge case.
+	// These orders must be tracked and checked for any missing order events
+	// during the next call to `handleBlockEvents`.
+	// For more information, refer to this issue:
+	// https://github.com/0xProject/0x-mesh/issues/590
+	recentlyValidatedOrders []*types.OrderWithMetadata
 }
 
 type Config struct {
@@ -319,10 +327,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
-func (w *Watcher) handleBlockEvents(
-	ctx context.Context,
-	events []*blockwatch.Event,
-) error {
+func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -330,307 +335,41 @@ func (w *Watcher) handleBlockEvents(
 	validationBlock := w.getLatestBlockFromEvents(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
+
+	// FIXME(jalextowle): This is not goroutine safe.
+	// THOUGHT(jalextowle): Run through the map one block at a time and add
+	// orders to the array that will be passed into `associateEventLogsWithOrders`
+	// var oldestRevalidationBlockNumber *big.Int
+	// revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
+	// for _, recentlyValidatedOrder := range w.recentlyValidatedOrders {
+	// 	lastValidatedBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
+	// 	if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
+	// 		continue
+	// 	}
+	// 	// If the oldestBlock in the list of block events is greater then
+	// 	// the last validated block of the recently validated orders, then
+	// 	// we are missing block events for this order.
+	// 	if oldestRevalidationBlockNumber == nil || lastValidatedBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
+	// 		oldestRevalidationBlockNumber = lastValidatedBlockNumber
+	// 	}
+	// 	revalidationBlockToOrder[lastValidatedBlockNumber] = append(
+	// 		revalidationBlockToOrder[lastValidatedBlockNumber],
+	// 		recentlyValidatedOrder,
+	// 	)
+	// }
+	//
+	// FIXME(jalextowle): Get the blocks that are not stored in the database in the range
+	// [oldestRevalidationBlockNumber, oldestBlock.Number)
+	// oldMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
+	// 	&db.MiniHeaderFilter{
+	//
+	// 	},
+	// })
+
 	for _, event := range events {
 		for _, log := range event.BlockHeader.Logs {
-			eventType, err := w.eventDecoder.FindEventType(log)
-			if err != nil {
-				switch err.(type) {
-				case decoder.UntrackedTokenError:
-					continue
-				case decoder.UnsupportedEventError:
-					logger.WithFields(logger.Fields{
-						"topics":          err.(decoder.UnsupportedEventError).Topics,
-						"contractAddress": err.(decoder.UnsupportedEventError).ContractAddress,
-					}).Info("unsupported event found while trying to find its event type")
-					continue
-				default:
-					logger.WithFields(logger.Fields{
-						"error": err.Error(),
-					}).Error("unexpected event decoder error encountered")
-					return err
-				}
-			}
-			contractEvent := &zeroex.ContractEvent{
-				BlockHash: log.BlockHash,
-				TxHash:    log.TxHash,
-				TxIndex:   log.TxIndex,
-				LogIndex:  log.Index,
-				IsRemoved: log.Removed,
-				Address:   log.Address,
-				Kind:      eventType,
-			}
-			orders := []*types.OrderWithMetadata{}
-			switch eventType {
-			case "ERC20TransferEvent":
-				var transferEvent decoder.ERC20TransferEvent
-				err = w.eventDecoder.Decode(log, &transferEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, toOrders...)
-
-			case "ERC20ApprovalEvent":
-				var approvalEvent decoder.ERC20ApprovalEvent
-				err = w.eventDecoder.Decode(log, &approvalEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				// Ignores approvals set to anyone except the AssetProxy
-				if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
-					continue
-				}
-				contractEvent.Parameters = approvalEvent
-				orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address)
-				if err != nil {
-					return err
-				}
-
-			case "ERC721TransferEvent":
-				var transferEvent decoder.ERC721TransferEvent
-				err = w.eventDecoder.Decode(log, &transferEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, toOrders...)
-
-			case "ERC721ApprovalEvent":
-				var approvalEvent decoder.ERC721ApprovalEvent
-				err = w.eventDecoder.Decode(log, &approvalEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = approvalEvent
-				orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
-				if err != nil {
-					return err
-				}
-
-			case "ERC721ApprovalForAllEvent":
-				var approvalForAllEvent decoder.ERC721ApprovalForAllEvent
-				err = w.eventDecoder.Decode(log, &approvalForAllEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				// Ignores approvals set to anyone except the AssetProxy
-				if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
-					continue
-				}
-				contractEvent.Parameters = approvalForAllEvent
-				orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
-				if err != nil {
-					return err
-				}
-
-			case "ERC1155TransferSingleEvent":
-				var transferEvent decoder.ERC1155TransferSingleEvent
-				err = w.eventDecoder.Decode(log, &transferEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				// HACK(fabio): Currently we simply revalidate all orders involving assets in this
-				// ERC1155 contract from this particular maker. We could however revalidate fewer orders
-				// by also taking into account the `ID` of the assets affected. We punt on this for now
-				// in order to support Augur's use-case of a dummy ERC1155 contract. In their case, we
-				// need to revalidate all maker orders within the single ERC1155 contract and cannot optimize
-				// further. In the future, we might want to special-case this broader approach for the Augur
-				// contract address specifically.
-				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, toOrders...)
-
-			case "ERC1155TransferBatchEvent":
-				var transferEvent decoder.ERC1155TransferBatchEvent
-				err = w.eventDecoder.Decode(log, &transferEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = transferEvent
-				fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, fromOrders...)
-				toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
-				if err != nil {
-					return err
-				}
-				orders = append(orders, toOrders...)
-
-			case "ERC1155ApprovalForAllEvent":
-				var approvalForAllEvent decoder.ERC1155ApprovalForAllEvent
-				err = w.eventDecoder.Decode(log, &approvalForAllEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				// Ignores approvals set to anyone except the AssetProxy
-				if approvalForAllEvent.Operator != w.contractAddresses.ERC1155Proxy {
-					continue
-				}
-				contractEvent.Parameters = approvalForAllEvent
-				orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
-				if err != nil {
-					return err
-				}
-
-			case "WethWithdrawalEvent":
-				var withdrawalEvent decoder.WethWithdrawalEvent
-				err = w.eventDecoder.Decode(log, &withdrawalEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = withdrawalEvent
-				orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address)
-				if err != nil {
-					return err
-				}
-
-			case "WethDepositEvent":
-				var depositEvent decoder.WethDepositEvent
-				err = w.eventDecoder.Decode(log, &depositEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = depositEvent
-				orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address)
-				if err != nil {
-					return err
-				}
-
-			case "ExchangeFillEvent":
-				var exchangeFillEvent decoder.ExchangeFillEvent
-				err = w.eventDecoder.Decode(log, &exchangeFillEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = exchangeFillEvent
-
-				order := w.findOrder(exchangeFillEvent.OrderHash)
-				if order != nil {
-					orders = append(orders, order)
-				}
-
-			case "ExchangeCancelEvent":
-				var exchangeCancelEvent decoder.ExchangeCancelEvent
-				err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = exchangeCancelEvent
-				order := w.findOrder(exchangeCancelEvent.OrderHash)
-				if order != nil {
-					orders = append(orders, order)
-				}
-
-			case "ExchangeCancelUpToEvent":
-				var exchangeCancelUpToEvent decoder.ExchangeCancelUpToEvent
-				err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
-				if err != nil {
-					if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-						continue
-					}
-					return err
-				}
-				contractEvent.Parameters = exchangeCancelUpToEvent
-				cancelledOrders, err := w.db.FindOrders(&db.OrderQuery{
-					Filters: []db.OrderFilter{
-						{
-							Field: db.OFMakerAddress,
-							Kind:  db.Equal,
-							Value: exchangeCancelUpToEvent.MakerAddress,
-						},
-						{
-							Field: db.OFSalt,
-							Kind:  db.LessOrEqual,
-							Value: exchangeCancelUpToEvent.OrderEpoch,
-						},
-					},
-				})
-				if err != nil {
-					logger.WithFields(logger.Fields{
-						"error": err.Error(),
-					}).Error("unexpected query error encountered")
-					return err
-				}
-				orders = append(orders, cancelledOrders...)
-
-			default:
-				logger.WithFields(logger.Fields{
-					"eventType": eventType,
-					"log":       log,
-				}).Error("unknown eventType encountered")
+			if err := w.associateEventLogsWithOrders(log, nil, orderHashToDBOrder, orderHashToEvents); err != nil {
 				return err
-			}
-			for _, order := range orders {
-				orderHashToDBOrder[order.Hash] = order
-				if _, ok := orderHashToEvents[order.Hash]; !ok {
-					orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
-				} else {
-					orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
-				}
 			}
 		}
 	}
@@ -660,6 +399,317 @@ func (w *Watcher) handleBlockEvents(
 	}
 	w.atLeastOneBlockProcessedMu.Unlock()
 
+	return nil
+}
+
+func (w *Watcher) associateEventLogsWithOrders(log ethtypes.Log, filter map[common.Hash]bool, orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata, orderHashToEvents map[common.Hash][]*zeroex.ContractEvent) error {
+	eventType, err := w.eventDecoder.FindEventType(log)
+	if err != nil {
+		switch err.(type) {
+		case decoder.UntrackedTokenError:
+			return nil
+		case decoder.UnsupportedEventError:
+			logger.WithFields(logger.Fields{
+				"topics":          err.(decoder.UnsupportedEventError).Topics,
+				"contractAddress": err.(decoder.UnsupportedEventError).ContractAddress,
+			}).Info("unsupported event found while trying to find its event type")
+			return nil
+		default:
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+			}).Error("unexpected event decoder error encountered")
+			return err
+		}
+	}
+	contractEvent := &zeroex.ContractEvent{
+		BlockHash: log.BlockHash,
+		TxHash:    log.TxHash,
+		TxIndex:   log.TxIndex,
+		LogIndex:  log.Index,
+		IsRemoved: log.Removed,
+		Address:   log.Address,
+		Kind:      eventType,
+	}
+	orders := []*types.OrderWithMetadata{}
+	switch eventType {
+	case "ERC20TransferEvent":
+		var transferEvent decoder.ERC20TransferEvent
+		err = w.eventDecoder.Decode(log, &transferEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = transferEvent
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, fromOrders...)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, toOrders...)
+
+	case "ERC20ApprovalEvent":
+		var approvalEvent decoder.ERC20ApprovalEvent
+		err = w.eventDecoder.Decode(log, &approvalEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		// Ignores approvals set to anyone except the AssetProxy
+		if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
+			return nil
+		}
+		contractEvent.Parameters = approvalEvent
+		orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address)
+		if err != nil {
+			return err
+		}
+
+	case "ERC721TransferEvent":
+		var transferEvent decoder.ERC721TransferEvent
+		err = w.eventDecoder.Decode(log, &transferEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = transferEvent
+		fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, fromOrders...)
+		toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, toOrders...)
+
+	case "ERC721ApprovalEvent":
+		var approvalEvent decoder.ERC721ApprovalEvent
+		err = w.eventDecoder.Decode(log, &approvalEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = approvalEvent
+		orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
+		if err != nil {
+			return err
+		}
+
+	case "ERC721ApprovalForAllEvent":
+		var approvalForAllEvent decoder.ERC721ApprovalForAllEvent
+		err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		// Ignores approvals set to anyone except the AssetProxy
+		if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
+			return nil
+		}
+		contractEvent.Parameters = approvalForAllEvent
+		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
+		if err != nil {
+			return err
+		}
+
+	case "ERC1155TransferSingleEvent":
+		var transferEvent decoder.ERC1155TransferSingleEvent
+		err = w.eventDecoder.Decode(log, &transferEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		// HACK(fabio): Currently we simply revalidate all orders involving assets in this
+		// ERC1155 contract from this particular maker. We could however revalidate fewer orders
+		// by also taking into account the `ID` of the assets affected. We punt on this for now
+		// in order to support Augur's use-case of a dummy ERC1155 contract. In their case, we
+		// need to revalidate all maker orders within the single ERC1155 contract and cannot optimize
+		// further. In the future, we might want to special-case this broader approach for the Augur
+		// contract address specifically.
+		contractEvent.Parameters = transferEvent
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, fromOrders...)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, toOrders...)
+
+	case "ERC1155TransferBatchEvent":
+		var transferEvent decoder.ERC1155TransferBatchEvent
+		err = w.eventDecoder.Decode(log, &transferEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = transferEvent
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, fromOrders...)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		if err != nil {
+			return err
+		}
+		orders = append(orders, toOrders...)
+
+	case "ERC1155ApprovalForAllEvent":
+		var approvalForAllEvent decoder.ERC1155ApprovalForAllEvent
+		err = w.eventDecoder.Decode(log, &approvalForAllEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		// Ignores approvals set to anyone except the AssetProxy
+		if approvalForAllEvent.Operator != w.contractAddresses.ERC1155Proxy {
+			return nil
+		}
+		contractEvent.Parameters = approvalForAllEvent
+		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
+		if err != nil {
+			return err
+		}
+
+	case "WethWithdrawalEvent":
+		var withdrawalEvent decoder.WethWithdrawalEvent
+		err = w.eventDecoder.Decode(log, &withdrawalEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = withdrawalEvent
+		orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address)
+		if err != nil {
+			return err
+		}
+
+	case "WethDepositEvent":
+		var depositEvent decoder.WethDepositEvent
+		err = w.eventDecoder.Decode(log, &depositEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = depositEvent
+		orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address)
+		if err != nil {
+			return err
+		}
+
+	case "ExchangeFillEvent":
+		var exchangeFillEvent decoder.ExchangeFillEvent
+		err = w.eventDecoder.Decode(log, &exchangeFillEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = exchangeFillEvent
+
+		order := w.findOrder(exchangeFillEvent.OrderHash)
+		if order != nil {
+			orders = append(orders, order)
+		}
+
+	case "ExchangeCancelEvent":
+		var exchangeCancelEvent decoder.ExchangeCancelEvent
+		err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = exchangeCancelEvent
+		order := w.findOrder(exchangeCancelEvent.OrderHash)
+		if order != nil {
+			orders = append(orders, order)
+		}
+
+	case "ExchangeCancelUpToEvent":
+		var exchangeCancelUpToEvent decoder.ExchangeCancelUpToEvent
+		err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil
+			}
+			return err
+		}
+		contractEvent.Parameters = exchangeCancelUpToEvent
+		cancelledOrders, err := w.db.FindOrders(&db.OrderQuery{
+			Filters: []db.OrderFilter{
+				{
+					Field: db.OFMakerAddress,
+					Kind:  db.Equal,
+					Value: exchangeCancelUpToEvent.MakerAddress,
+				},
+				{
+					Field: db.OFSalt,
+					Kind:  db.LessOrEqual,
+					Value: exchangeCancelUpToEvent.OrderEpoch,
+				},
+			},
+		})
+		if err != nil {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+			}).Error("unexpected query error encountered")
+			return err
+		}
+		orders = append(orders, cancelledOrders...)
+
+	default:
+		logger.WithFields(logger.Fields{
+			"eventType": eventType,
+			"log":       log,
+		}).Error("unknown eventType encountered")
+		return err
+	}
+
+	for _, order := range orders {
+		found := true
+		if filter != nil {
+			_, found = filter[order.Hash]
+		}
+		if found {
+			orderHashToDBOrder[order.Hash] = order
+			if _, ok := orderHashToEvents[order.Hash]; !ok {
+				orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
+			} else {
+				orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
+			}
+		}
+	}
 	return nil
 }
 
@@ -1141,7 +1191,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
 			isOrderUnexpired := order.IsRemoved && expirationTimeIsValid
 
-			// We can tell that an order was previously expired if it was marked as removed with a non-zero fillable amount. There is no other explanation for this database state. The order is considered "unexpired" if it was previously expired but now has a valid expiration time based on the latest block timestamp.
+			// We can tell that an order was previously expired if it was marked as removed with a
+			// non-zero fillable amount. There is no other explanation for this database state. The
+			// order is considered "unexpired" if it was previously expired but now has a valid
+			// expiration time based on the latest block timestamp.
 			if isOrderUnexpired {
 				w.rewatchOrder(order, newFillableAmount, validationBlock)
 				orderEvent := &zeroex.OrderEvent{
@@ -1405,6 +1458,8 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
+		// FIXME(jalextowle): This if-statement seems unnecessary and the
+		// code doesn't appear to address the comment.
 		if err == nil {
 			// Only check the ExchangeAddress if we know the expected address for the
 			// given chainID/networkID. If we don't know it, the order could still be
@@ -1720,7 +1775,8 @@ func (w *Watcher) getLatestBlockFromEvents(events []*blockwatch.Event) *types.Mi
 		if latestBlock == nil {
 			latestBlock = event.BlockHeader
 		} else {
-			if event.BlockHeader.Number.Cmp(latestBlock.Number) == 1 {
+			comparison := event.BlockHeader.Number.Cmp(latestBlock.Number)
+			if comparison == 1 {
 				latestBlock = event.BlockHeader
 			}
 		}
