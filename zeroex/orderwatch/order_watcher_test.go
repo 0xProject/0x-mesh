@@ -5,7 +5,6 @@ package orderwatch
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -1640,7 +1639,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	validator, err := ordervalidator.New(
 		&SlowContractCaller{
 			caller:            ethRPCClient,
-			contractCallDelay: 5 * time.Second,
+			contractCallDelay: 1 * time.Second,
 		},
 		constants.TestChainID,
 		ethereumRPCMaxContentLength,
@@ -1726,6 +1725,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvents[1].EndState)
 }
 
+// TODO(jalextowle): De-duplicate the code in this test and the above test
 func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -1743,7 +1743,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	validator, err := ordervalidator.New(
 		&SlowContractCaller{
 			caller:            ethRPCClient,
-			contractCallDelay: 5 * time.Second,
+			contractCallDelay: 1 * time.Second,
 		},
 		constants.TestChainID,
 		ethereumRPCMaxContentLength,
@@ -1770,6 +1770,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
+	// TODO(jalextowle): Is there a better way to do this that takes less time?
 	// Create enough new orders for the block containing the cancellation to
 	// be missing from the database.
 	for i := 0; i < dbOpts.MaxMiniHeaders; i++ {
@@ -1836,7 +1837,6 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
-	fmt.Println("1")
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
 	// TODO(jalextowle): This event probably shouldn't be fired

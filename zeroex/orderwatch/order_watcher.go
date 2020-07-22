@@ -334,6 +334,8 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	return orderEvents, nil
 }
 
+// FIXME - Ensure that no missing block events can sneak through if the node has
+//         recently crashed.
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
 func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
@@ -360,8 +362,8 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
 		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
 		// If the oldestBlock in the list of block events is greater then
-		// the last validated block of the recently validated orders, then
-		// we are missing block events for this order.
+		// the last validated block of the recently validated orders, we
+		// are missing block events for this order.
 		if firstRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(firstRevalidationBlockNumber) == -1 {
 			firstRevalidationBlockNumber = previousValidationBlockNumber
 		}
@@ -372,7 +374,6 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		// of the oldest block in the blockwatcher, we must revalidate the
 		// order because we may be missing relevant block events.
 		if firstBlockInDB.Number.Cmp(previousValidationBlockNumber) == 1 {
-			logger.Info("Hit Breakpoint")
 			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
 			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
 		}
