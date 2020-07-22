@@ -5,6 +5,7 @@ package orderwatch
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -1631,7 +1632,6 @@ func TestMissingOrderEvents(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	// FIXME(jalextowle): Add timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
@@ -1655,6 +1655,8 @@ func TestMissingOrderEvents(t *testing.T) {
 	// Create a new order
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
 	// Cancel the order
@@ -1696,6 +1698,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		assert.Equal(t, len(validationResults.Rejected), 0)
 		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 	}
 
 	// Add new block events and then check to see if the order has been removed from the blockwatcher
@@ -1716,6 +1719,124 @@ func TestMissingOrderEvents(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	// TODO(jalextowle): This event probably shouldn't be fired
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvents[1].EndState)
+}
+
+func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	dbOpts := db.TestOptions()
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	validator, err := ordervalidator.New(
+		&SlowContractCaller{
+			caller:            ethRPCClient,
+			contractCallDelay: 5 * time.Second,
+		},
+		constants.TestChainID,
+		ethereumRPCMaxContentLength,
+		ganacheAddresses,
+	)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, validator)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	// Create enough new orders for the block containing the cancellation to
+	// be missing from the database.
+	for i := 0; i < dbOpts.MaxMiniHeaders; i++ {
+		dummyOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+		opts := &bind.TransactOpts{
+			From:   dummyOrder.MakerAddress,
+			Signer: scenario.GetTestSignerFn(dummyOrder.MakerAddress),
+		}
+		trimmedOrder := dummyOrder.Trim()
+		txn, err := exchange.CancelOrder(opts, trimmedOrder)
+		require.NoError(t, err)
+		waitTxnSuccessfullyMined(t, ethClient, txn)
+	}
+
+	syncErrChan := make(chan error)
+	validationErrChan := make(chan error)
+	validationResultsChan := make(chan *ordervalidator.ValidationResults)
+
+	go func() {
+		err = blockWatcher.SyncToLatestBlock()
+		syncErrChan <- err
+	}()
+
+	go func() {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			validationErrChan <- err
+			return
+		}
+		validationResultsChan <- validationResults
+	}()
+
+	err = <-syncErrChan
+	require.NoError(t, err)
+
+	select {
+	case err := <-validationErrChan:
+		t.Error(err)
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		hash, err := signedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		assert.Equal(t, hash, orderEvents[0].OrderHash)
+	}
+
+	// Add new block events and then check to see if the order has been removed from the blockwatcher
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &types.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
+	}
+	newBlockEvents := []*blockwatch.Event{
+		{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- newBlockEvents
+
+	// Await canceled event
+	fmt.Println("1")
 	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
 	// TODO(jalextowle): This event probably shouldn't be fired

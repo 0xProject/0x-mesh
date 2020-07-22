@@ -94,7 +94,8 @@ type Watcher struct {
 	// during the next call to `handleBlockEvents`.
 	// For more information, refer to this issue:
 	// https://github.com/0xProject/0x-mesh/issues/590
-	recentlyValidatedOrders []*types.OrderWithMetadata
+	recentlyValidatedOrdersMu sync.RWMutex
+	recentlyValidatedOrders   []*types.OrderWithMetadata
 }
 
 type Config struct {
@@ -333,7 +334,6 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	return orderEvents, nil
 }
 
-// FIXME -- This doesn't handle re-validation for orders that were validated too long ago.
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
 func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
@@ -341,42 +341,58 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		return nil
 	}
 
-	oldestBlock, validationBlock := w.getExtremeBlocksFromEvents(events)
+	firstBlockFromEvents, validationBlock := w.getExtremeBlocksFromEvents(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 
-	// FIXME - Improve name
-	var oldestRevalidationBlockNumber *big.Int
+	firstBlockInDB, err := w.db.GetOldestMiniHeader()
+	if err != nil {
+		return err
+	}
+
+	w.recentlyValidatedOrdersMu.Lock()
+	recentlyValidatedOrders := w.recentlyValidatedOrders
+	w.recentlyValidatedOrders = []*types.OrderWithMetadata{}
+	w.recentlyValidatedOrdersMu.Unlock()
+
+	var firstRevalidationBlockNumber *big.Int
 	revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
-	for _, recentlyValidatedOrder := range w.recentlyValidatedOrders {
-		lastValidatedBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
+	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
+		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
 		// If the oldestBlock in the list of block events is greater then
 		// the last validated block of the recently validated orders, then
 		// we are missing block events for this order.
-		if oldestRevalidationBlockNumber == nil || lastValidatedBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
-			oldestRevalidationBlockNumber = lastValidatedBlockNumber
+		if firstRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(firstRevalidationBlockNumber) == -1 {
+			firstRevalidationBlockNumber = previousValidationBlockNumber
 		}
-		if oldestBlock.Number.Cmp(lastValidatedBlockNumber) == -1 {
+		if firstBlockFromEvents.Number.Cmp(previousValidationBlockNumber) == -1 {
 			continue
 		}
-		revalidationBlockToOrder[lastValidatedBlockNumber] = append(
-			revalidationBlockToOrder[lastValidatedBlockNumber],
+		// If the previous validation block of the order is a predecessor
+		// of the oldest block in the blockwatcher, we must revalidate the
+		// order because we may be missing relevant block events.
+		if firstBlockInDB.Number.Cmp(previousValidationBlockNumber) == 1 {
+			logger.Info("Hit Breakpoint")
+			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
+			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
+		}
+		revalidationBlockToOrder[previousValidationBlockNumber] = append(
+			revalidationBlockToOrder[previousValidationBlockNumber],
 			recentlyValidatedOrder,
 		)
 	}
 
-	// FIXME - Improve name
-	oldMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
+	revalidationMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
 		Filters: []db.MiniHeaderFilter{
 			{
 				Field: db.MFNumber,
 				Kind:  db.Less,
-				Value: oldestBlock.Number,
+				Value: firstBlockFromEvents.Number,
 			},
 			{
 				Field: db.MFNumber,
 				Kind:  db.Greater,
-				Value: oldestRevalidationBlockNumber,
+				Value: firstRevalidationBlockNumber,
 			},
 		},
 		Sort: []db.MiniHeaderSort{
@@ -387,13 +403,11 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		},
 	})
 	if err != nil {
-		// FIXME - Improve log
-		logger.WithError(err).Error("error in handleBlockEvents")
 		return err
 	}
 
 	eventFilter := map[common.Hash]bool{}
-	for _, header := range oldMiniHeaders {
+	for _, header := range revalidationMiniHeaders {
 		for _, order := range revalidationBlockToOrder[header.Number] {
 			eventFilter[order.Hash] = true
 		}
@@ -915,8 +929,9 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			return orderEvents, err
 		}
 		addedMap[order.Hash] = order
-		// FIXME(jalextowle): Make this concurrency safe
+		w.recentlyValidatedOrdersMu.Lock()
 		w.recentlyValidatedOrders = append(w.recentlyValidatedOrders, order)
+		w.recentlyValidatedOrdersMu.Unlock()
 	}
 	for _, order := range removedOrders {
 		stoppedWatchingEvent := &zeroex.OrderEvent{
