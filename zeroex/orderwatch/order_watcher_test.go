@@ -5,7 +5,6 @@ package orderwatch
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -1625,8 +1624,6 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 }
 
 func TestMissingOrderEvents(t *testing.T) {
-	t.Skip("Skipping until fixed")
-
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
@@ -1634,7 +1631,8 @@ func TestMissingOrderEvents(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+	// FIXME(jalextowle): Add timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
@@ -1674,7 +1672,6 @@ func TestMissingOrderEvents(t *testing.T) {
 	validationResultsChan := make(chan *ordervalidator.ValidationResults)
 
 	go func() {
-		time.Sleep(750 * time.Millisecond)
 		err = blockWatcher.SyncToLatestBlock()
 		syncErrChan <- err
 	}()
@@ -1703,11 +1700,12 @@ func TestMissingOrderEvents(t *testing.T) {
 
 	// Add new block events and then check to see if the order has been removed from the blockwatcher
 	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
 	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
 		Hash:      common.HexToHash("0x1"),
 		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
-		Timestamp: time.Now(),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
 	}
 	newBlockEvents := []*blockwatch.Event{
 		{
@@ -1718,9 +1716,10 @@ func TestMissingOrderEvents(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
-	fmt.Println("1")
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	// TODO(jalextowle): This event probably shouldn't be fired
+	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvents[1].EndState)
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
