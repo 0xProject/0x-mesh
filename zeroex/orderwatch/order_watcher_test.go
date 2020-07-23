@@ -1639,7 +1639,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	validator, err := ordervalidator.New(
 		&SlowContractCaller{
 			caller:            ethRPCClient,
-			contractCallDelay: 1 * time.Second,
+			contractCallDelay: time.Second,
 		},
 		constants.TestChainID,
 		ethereumRPCMaxContentLength,
@@ -1743,7 +1743,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	validator, err := ordervalidator.New(
 		&SlowContractCaller{
 			caller:            ethRPCClient,
-			contractCallDelay: 1 * time.Second,
+			contractCallDelay: time.Second,
 		},
 		constants.TestChainID,
 		ethereumRPCMaxContentLength,

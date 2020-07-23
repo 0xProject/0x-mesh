@@ -334,8 +334,6 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	return orderEvents, nil
 }
 
-// FIXME - Ensure that no missing block events can sneak through if the node has
-//         recently crashed.
 // handleBlockEvents processes a set of block events into order events for a set of orders.
 // handleBlockEvents MUST only be called after acquiring a lock to the `handleBlockEventsMu` mutex.
 func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Event) error {
@@ -489,7 +487,11 @@ func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestMiniHeader)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestMiniHeader)
+	if err != nil {
+		return err
+	}
+	w.orderFeed.Send(orderEvents)
 	return nil
 }
 
@@ -1456,6 +1458,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	defer w.handleBlockEventsMu.RUnlock()
 
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
+
 	if err != nil {
 		return nil, err
 	}
@@ -1594,7 +1597,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		// FIXME(jalextowle): This if-statement seems unnecessary and the
+		// TODO(jalextowle): This if-statement seems unnecessary and the
 		// code doesn't appear to address the comment.
 		if err == nil {
 			// Only check the ExchangeAddress if we know the expected address for the

@@ -136,7 +136,7 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
 
 	blocksElapsed, latestBlockProcessedNumber, err := w.GetNumberOfBlocksBehind(ctx)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	if blocksElapsed == 0 {
@@ -318,7 +318,6 @@ func (w *Watcher) SyncToLatestBlock() error {
 		}
 		w.blockFeed.Send(allEvents)
 	}
-
 	return syncErr
 }
 
