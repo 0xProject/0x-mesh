@@ -3,13 +3,10 @@ package integrationtests
 const (
 	ethereumRPCURL  = "http://localhost:8545"
 	ethereumChainID = 1337
-	wsRPCPort       = 60501
-	httpRPCPort     = 60701
 
+	graphQLServerAddr                          = "localhost:60501"
+	graphQLServerURL                           = "http://localhost:60501/graphql"
 	browserIntegrationTestDataDir              = "./data/standalone-0"
-	standaloneWSRPCEndpointPrefix              = "ws://localhost:"
-	standaloneHTTPRPCEndpointPrefix            = "http://localhost:"
-	standaloneRPCAddrPrefix                    = "localhost:"
 	standaloneBlockPollingInterval             = "200ms"
 	standaloneEthereumRPCMaxRequestsPer24HrUtc = "550000"
 

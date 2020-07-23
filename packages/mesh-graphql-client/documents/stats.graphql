@@ -1,0 +1,20 @@
+query GetStats {
+    stats {
+        version
+        pubSubTopic
+        rendezvous
+        peerID
+        ethereumChainID
+        latestBlock {
+            number
+            hash
+        }
+        numPeers
+        numOrders
+        numOrdersIncludingRemoved
+        startOfCurrentUTCDay
+        ethRPCRequestsSentInCurrentUTCDay
+        ethRPCRateLimitExpiredRequests
+        maxExpirationTime
+    }
+}

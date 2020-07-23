@@ -162,8 +162,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, dataDir 
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"WS_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(wsRPCPort+nodeID),
-		"HTTP_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(httpRPCPort+nodeID),
+		"GRAPHQL_SERVER_ADDR="+graphQLServerAddr,
 		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
 		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
 	)

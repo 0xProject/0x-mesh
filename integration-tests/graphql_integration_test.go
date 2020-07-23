@@ -2,72 +2,96 @@
 
 package integrationtests
 
-// TODO(albrow): Update this for the new GaphQL API
+import (
+	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
 
-// func TestWSAddOrdersSuccess(t *testing.T) {
-// 	runAddOrdersSuccessTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
-// }
+	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
+	"github.com/0xProject/0x-mesh/scenario"
+	"github.com/0xProject/0x-mesh/scenario/orderopts"
+	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
-// func TestHTTPAddOrdersSuccess(t *testing.T) {
-// 	runAddOrdersSuccessTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
-// }
+func TestAddOrdersSuccess(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// func runAddOrdersSuccessTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
+	removeOldFiles(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
-// 	removeOldFiles(t, ctx)
-// 	buildStandaloneForTests(t, ctx)
+	// Start a standalone node with a wait group that is completed when the goroutine completes.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	logMessages := make(chan string, 1024)
+	count := int(atomic.AddInt32(&nodeCount, 1))
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
+	}()
 
-// 	// Start a standalone node with a wait group that is completed when the goroutine completes.
-// 	wg := &sync.WaitGroup{}
-// 	wg.Add(1)
-// 	logMessages := make(chan string, 1024)
-// 	count := int(atomic.AddInt32(&nodeCount, 1))
-// 	go func() {
-// 		defer wg.Done()
-// 		startStandaloneNode(t, ctx, count, "", "", logMessages)
-// 	}()
+	// Wait until the rpc server has been started, and then create an rpc client
+	// that connects to the rpc server.
+	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	client := gqlclient.New(graphQLServerURL)
 
-// 	// Wait until the rpc server has been started, and then create an rpc client
-// 	// that connects to the rpc server.
-// 	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
-// 	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
-// 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
-// 	require.NoError(t, err)
+	// Create a new valid order.
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 
-// 	// Create a new valid order.
-// 	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-// 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-// 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-// 	// in order for the order validation run at order submission to occur at a block number equal or higher then
-// 	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-// 	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-// 	time.Sleep(500 * time.Millisecond)
+	// Send the "AddOrders" request to the rpc server.
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	require.NoError(t, err)
 
-// 	// Send the "AddOrders" request to the rpc server.
-// 	validationResponse, err := client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
-// 	require.NoError(t, err)
+	// Ensure that the validation results contain only the order that was
+	// sent to the rpc server and that the order was marked as valid.
+	require.Len(t, validationResponse.Accepted, 1)
+	assert.Len(t, validationResponse.Rejected, 0)
+	accepted := validationResponse.Accepted[0]
+	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
+	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	require.NoError(t, err, "could not compute order hash for standalone order")
+	expectedAcceptedOrder := &gqlclient.OrderWithMetadata{
+		ChainID:                  signedTestOrder.ChainID,
+		ExchangeAddress:          signedTestOrder.ExchangeAddress,
+		MakerAddress:             signedTestOrder.MakerAddress,
+		MakerAssetData:           signedTestOrder.MakerAssetData,
+		MakerAssetAmount:         signedTestOrder.MakerAssetAmount,
+		MakerFeeAssetData:        signedTestOrder.MakerFeeAssetData,
+		MakerFee:                 signedTestOrder.MakerFee,
+		TakerAddress:             signedTestOrder.TakerAddress,
+		TakerAssetData:           signedTestOrder.TakerAssetData,
+		TakerAssetAmount:         signedTestOrder.TakerAssetAmount,
+		TakerFeeAssetData:        signedTestOrder.TakerFeeAssetData,
+		TakerFee:                 signedTestOrder.TakerFee,
+		SenderAddress:            signedTestOrder.SenderAddress,
+		FeeRecipientAddress:      signedTestOrder.FeeRecipientAddress,
+		ExpirationTimeSeconds:    signedTestOrder.ExpirationTimeSeconds,
+		Salt:                     signedTestOrder.Salt,
+		Signature:                signedTestOrder.Signature,
+		Hash:                     expectedOrderHash,
+		FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
+	}
+	assert.Equal(t, expectedAcceptedOrder, accepted.Order, "accepted.Order")
+	assert.Equal(t, true, accepted.IsNew, "accepted.IsNew")
 
-// 	// Ensure that the validation results contain only the order that was
-// 	// sent to the rpc server and that the order was marked as valid.
-// 	require.Len(t, validationResponse.Accepted, 1)
-// 	assert.Len(t, validationResponse.Rejected, 0)
-// 	acceptedOrderInfo := validationResponse.Accepted[0]
-// 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-// 	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-// 	require.NoError(t, err, "could not compute order hash for standalone order")
-// 	signedTestOrder.ResetHash()
-// 	assert.Equal(t, expectedFillableTakerAssetAmount, acceptedOrderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
-// 	assert.Equal(t, expectedOrderHash, acceptedOrderInfo.OrderHash, "orderHashes did not match")
-// 	assert.Equal(t, signedTestOrder, acceptedOrderInfo.SignedOrder, "signedOrder did not match")
-
-// 	cancel()
-// 	wg.Wait()
-// }
+	cancel()
+	wg.Wait()
+}
 
 // func TestWSGetOrders(t *testing.T) {
 // 	runGetOrdersTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)

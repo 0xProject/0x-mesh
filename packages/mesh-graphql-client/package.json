@@ -1,0 +1,32 @@
+{
+    "name": "@0x/mesh-graphql-client",
+    "version": "1.0.0",
+    "description": "A client for the Mesh GraphQL API",
+    "main": "./lib/index.js",
+    "license": "Apache-2.0",
+    "scripts": {
+        "build": "yarn build:codegen build:ts",
+        "build:ts": "tsc -b",
+        "build:codegen": "graphql-codegen --config codegen.yml",
+        "clean": "shx rm -r ./lib && shx rm tsconfig.tsbuildinfo || exit 0",
+        "watch:ts": "tsc -b -w",
+        "docs:md": "ts-doc-gen --sourceDir=./src --output=${npm_package_config_docsPath}",
+        "lint": "tslint --format stylish --project ."
+    },
+    "config": {
+        "docsPath": "../../docs/graphql-client"
+    },
+    "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.16",
+        "@graphql-codegen/cli": "1.17.0",
+        "@graphql-codegen/typescript": "1.17.0",
+        "@graphql-codegen/typescript-graphql-request": "^1.17.0",
+        "@graphql-codegen/typescript-operations": "1.17.0",
+        "shx": "^0.3.2",
+        "typedoc": "^0.15.0",
+        "typescript": "^3.9.3"
+    },
+    "dependencies": {
+        "graphql": "^15.3.0"
+    }
+}

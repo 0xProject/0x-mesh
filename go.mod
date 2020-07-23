@@ -61,6 +61,7 @@ require (
 	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/libp2p/go-tcp-transport v0.1.1
 	github.com/libp2p/go-ws-transport v0.2.0
+	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/moq v0.0.0-20200607124540-4638a53893e6 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
@@ -90,4 +91,5 @@ require (
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gotest.tools v2.2.0+incompatible
 )
