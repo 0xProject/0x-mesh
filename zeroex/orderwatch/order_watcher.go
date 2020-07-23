@@ -413,7 +413,7 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 			eventFilter[order.Hash] = true
 		}
 		for _, log := range header.Logs {
-			if err := w.associateEventLogsWithOrders(log, eventFilter, orderHashToDBOrder, orderHashToEvents); err != nil {
+			if err := w.findOrdersByEventWithFilter(log, eventFilter, orderHashToDBOrder, orderHashToEvents); err != nil {
 				return err
 			}
 		}
@@ -421,7 +421,7 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 
 	for _, event := range events {
 		for _, log := range event.BlockHeader.Logs {
-			if err := w.associateEventLogsWithOrders(log, nil, orderHashToDBOrder, orderHashToEvents); err != nil {
+			if err := w.findOrdersByEventWithFilter(log, nil, orderHashToDBOrder, orderHashToEvents); err != nil {
 				return err
 			}
 		}
@@ -455,28 +455,117 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	return nil
 }
 
-func (w *Watcher) associateEventLogsWithOrders(
+// RevalidateOrdersForMissingEvents checks all of the orders in the database for
+// any events in the miniheaders table that may have been missed. This should only
+// be used on startup, as there is a different mechanism that serves this purpose
+// during normal operation.
+//
+// NOTE(jalextowle): This function can miss block events if the blockwatcher was
+// behind by more than db.MaxMiniHeaders when `handleBlockEvents` was last called.
+// This is extremely unlikely, so we have decided not to implement more costly
+// mechanisms to prevent from this possibility from occuring.
+func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
+	if w.didProcessABlock {
+		return errors.New("RevalidateOrdersForMissingEvents can only be called before the orderwatcher has started")
+	}
+	miniHeaders, err := w.db.FindMiniHeaders(nil)
+	if err != nil {
+		return err
+	} else if len(miniHeaders) == 0 {
+		// There is no need to check for missing events if there are no
+		// miniheaders in the database.
+		return nil
+	}
+	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
+	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
+	for _, header := range miniHeaders {
+		for _, log := range header.Logs {
+			if err := w.findOrdersByEventWithLastValidatedBlockNumber(log, header.Number, orderHashToDBOrder, orderHashToEvents); err != nil {
+				return err
+			}
+		}
+	}
+	latestMiniHeader, err := w.db.GetLatestMiniHeader()
+	if err != nil {
+		return err
+	}
+	w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestMiniHeader)
+	return nil
+}
+
+func (w *Watcher) findOrdersByEventWithFilter(
 	log ethtypes.Log,
 	filter map[common.Hash]bool,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
 ) error {
+	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log)
+	if err != nil {
+		return err
+	}
+
+	for _, order := range orders {
+		found := true
+		if filter != nil {
+			_, found = filter[order.Hash]
+		}
+		if found {
+			orderHashToDBOrder[order.Hash] = order
+			if _, ok := orderHashToEvents[order.Hash]; !ok {
+				orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
+			} else {
+				orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
+			}
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) findOrdersByEventWithLastValidatedBlockNumber(
+	log ethtypes.Log,
+	logBlockNumber *big.Int,
+	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
+	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+) error {
+	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log)
+	if err != nil {
+		return err
+	}
+
+	for _, order := range orders {
+		if order.LastValidatedBlockNumber.Cmp(logBlockNumber) == -1 {
+			orderHashToDBOrder[order.Hash] = order
+			if _, ok := orderHashToEvents[order.Hash]; !ok {
+				orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
+			} else {
+				orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
+			}
+		}
+	}
+	return nil
+}
+
+// TODO(jalextowle): This could be optimized by taking functions as inputs that
+// abstract away functions like `findOrderByTakerAddress`. This could eliminate
+// unnecessary calls to the database and allow this function to be used in more
+// general settings.
+func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.ContractEvent, []*types.OrderWithMetadata, error) {
 	eventType, err := w.eventDecoder.FindEventType(log)
 	if err != nil {
 		switch err.(type) {
 		case decoder.UntrackedTokenError:
-			return nil
+			return nil, nil, nil
 		case decoder.UnsupportedEventError:
 			logger.WithFields(logger.Fields{
 				"topics":          err.(decoder.UnsupportedEventError).Topics,
 				"contractAddress": err.(decoder.UnsupportedEventError).ContractAddress,
 			}).Info("unsupported event found while trying to find its event type")
-			return nil
+			return nil, nil, nil
 		default:
 			logger.WithFields(logger.Fields{
 				"error": err.Error(),
 			}).Error("unexpected event decoder error encountered")
-			return err
+			return nil, nil, err
 		}
 	}
 	contractEvent := &zeroex.ContractEvent{
@@ -495,19 +584,19 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &transferEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
 		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
 		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, toOrders...)
 
@@ -516,18 +605,18 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &approvalEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		// Ignores approvals set to anyone except the AssetProxy
 		if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
-			return nil
+			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalEvent
 		orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "ERC721TransferEvent":
@@ -535,19 +624,19 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &transferEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
 		fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
 		toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, toOrders...)
 
@@ -556,14 +645,14 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &approvalEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = approvalEvent
 		orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "ERC721ApprovalForAllEvent":
@@ -571,18 +660,18 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &approvalForAllEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		// Ignores approvals set to anyone except the AssetProxy
 		if approvalForAllEvent.Operator != w.contractAddresses.ERC721Proxy {
-			return nil
+			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalForAllEvent
 		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "ERC1155TransferSingleEvent":
@@ -590,9 +679,9 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &transferEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		// HACK(fabio): Currently we simply revalidate all orders involving assets in this
 		// ERC1155 contract from this particular maker. We could however revalidate fewer orders
@@ -604,12 +693,12 @@ func (w *Watcher) associateEventLogsWithOrders(
 		contractEvent.Parameters = transferEvent
 		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
 		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, toOrders...)
 
@@ -618,19 +707,19 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &transferEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
 		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
 		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, toOrders...)
 
@@ -639,18 +728,18 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &approvalForAllEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		// Ignores approvals set to anyone except the AssetProxy
 		if approvalForAllEvent.Operator != w.contractAddresses.ERC1155Proxy {
-			return nil
+			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalForAllEvent
 		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "WethWithdrawalEvent":
@@ -658,14 +747,14 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &withdrawalEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = withdrawalEvent
 		orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "WethDepositEvent":
@@ -673,14 +762,14 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &depositEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = depositEvent
 		orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 	case "ExchangeFillEvent":
@@ -688,9 +777,9 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &exchangeFillEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = exchangeFillEvent
 
@@ -704,9 +793,9 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = exchangeCancelEvent
 		order := w.findOrder(exchangeCancelEvent.OrderHash)
@@ -719,9 +808,9 @@ func (w *Watcher) associateEventLogsWithOrders(
 		err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
-				return nil
+				return nil, nil, nil
 			}
-			return err
+			return nil, nil, err
 		}
 		contractEvent.Parameters = exchangeCancelUpToEvent
 		cancelledOrders, err := w.db.FindOrders(&db.OrderQuery{
@@ -742,7 +831,7 @@ func (w *Watcher) associateEventLogsWithOrders(
 			logger.WithFields(logger.Fields{
 				"error": err.Error(),
 			}).Error("unexpected query error encountered")
-			return err
+			return nil, nil, err
 		}
 		orders = append(orders, cancelledOrders...)
 
@@ -751,24 +840,10 @@ func (w *Watcher) associateEventLogsWithOrders(
 			"eventType": eventType,
 			"log":       log,
 		}).Error("unknown eventType encountered")
-		return err
+		return nil, nil, err
 	}
 
-	for _, order := range orders {
-		found := true
-		if filter != nil {
-			_, found = filter[order.Hash]
-		}
-		if found {
-			orderHashToDBOrder[order.Hash] = order
-			if _, ok := orderHashToEvents[order.Hash]; !ok {
-				orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
-			} else {
-				orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
-			}
-		}
-	}
-	return nil
+	return contractEvent, orders, nil
 }
 
 func (w *Watcher) getLatestBlock() (*types.MiniHeader, error) {

@@ -542,6 +542,16 @@ func (app *App) Start() error {
 		}
 	}()
 
+	// NOTE(jalextowle): If we are already more than 128 blocks behind, there is no need
+	// to check for missing .
+	preliminaryBlocksElapsed, _, err := app.blockWatcher.GetNumberOfBlocksBehind(innerCtx)
+	if preliminaryBlocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", preliminaryBlocksElapsed).Info("Checking for missing order events relating to orders stored (this can take a while)...")
+		if err := app.orderWatcher.RevalidateOrdersForMissingEvents(innerCtx); err != nil {
+			return err
+		}
+	}
+
 	// Note: this is a blocking call so we won't continue set up until its finished.
 	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
