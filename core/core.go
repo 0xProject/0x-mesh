@@ -56,12 +56,11 @@ const (
 	// for different Ethereum networks, but it should be good enough.
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
-	// FIXME - Change back to every 5 minutes
-	logStatsInterval = 1 * time.Minute
+	logStatsInterval = 5 * time.Minute
 	version          = "development"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
-	ordersyncMinPeers = 3
+	ordersyncMinPeers = 5
 	// ordersyncApproxDelay is the approximate amount of time to wait between each
 	// run of the ordersync protocol (as a requester). We always request orders
 	// immediately on startup. This delay only applies to subsequent runs.
@@ -635,14 +634,6 @@ func (app *App) Start() error {
 		if err := app.ordersyncService.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
 			orderSyncErrChan <- err
 		}
-		/* FIXME */
-		stats, err := app.GetStats()
-		if err != nil {
-			orderSyncErrChan <- err
-		}
-		log.WithField("stats", stats).Warn("After ordersync completion stats")
-		panic("Ended")
-		/* END FIXME */
 	}()
 
 	// Start the p2p node.
@@ -1066,7 +1057,6 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			log.WithError(err).Error("could not get stats")
 			continue
 		}
-		// FIXME - Change back to `Info`
 		log.WithFields(log.Fields{
 			"version":                           stats.Version,
 			"pubSubTopic":                       stats.PubSubTopic,
@@ -1081,7 +1071,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,
 			"ethRPCRequestsSentInCurrentUTCDay": stats.EthRPCRequestsSentInCurrentUTCDay,
 			"ethRPCRateLimitExpiredRequests":    stats.EthRPCRateLimitExpiredRequests,
-		}).Warn("current stats")
+		}).Info("current stats")
 	}
 }
 

@@ -45,9 +45,6 @@ const (
 	//    approxDelay * (1 - jitter) <= actualDelay < approxDelay * (1 + jitter)
 	//
 	ordersyncJitterAmount = 0.1
-	// maxRequestPeersInParallel is the largest number of peers that `GetOrders`
-	// will try to pull orders from at once.
-	maxRequestPeersInParallel = 10
 )
 
 var (
@@ -291,7 +288,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 
 		m := &sync.RWMutex{}
 		wg := &sync.WaitGroup{}
-		semaphore := make(chan struct{}, maxRequestPeersInParallel)
+		semaphore := make(chan struct{}, minPeers)
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
 		innerCtx, cancel := context.WithCancel(ctx)
@@ -308,40 +305,33 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				continue
 			}
 
-			// FIXME(jalextowle): Should be `Trace`
 			log.WithFields(log.Fields{
 				"provider": peerID.Pretty(),
-			}).Warn("requesting orders from neighbor via ordersync")
+			}).Trace("requesting orders from neighbor via ordersync")
+
+			select {
+			case <-innerCtx.Done():
+				break
+			case semaphore <- struct{}{}:
+			}
 
 			wg.Add(1)
 			go func(id peer.ID) {
-				// FIXME - Remove
-				log.WithFields(log.Fields{
-					"provider": id.Pretty(),
-				}).Warn("requesting orders from neighbor")
 				defer wg.Done()
-				select {
-				case <-innerCtx.Done():
-					// NOTE(jalextowle): In this case, we haven't written to the semaphore
-					// so we shouldn't read from it.
-					return
-				case semaphore <- struct{}{}:
-					defer func() { <-semaphore }()
-				}
 				if err := s.getOrdersFromPeer(innerCtx, id); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
 					}).Warn("could not get orders from peer via ordersync")
+					<-semaphore
 				} else {
-					// FIXME(jalextowle): Should be `Trace`
 					// TODO(albrow): Handle case where no orders were returned from this
 					// peer. This could be considered a valid response, depending on the implementation
 					// details of the subprotocol. We need to not try them again, but also not count
 					// them toward the number of peers we have successfully synced with.
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
-					}).Warn("succesfully got orders from peer via ordersync")
+					}).Trace("succesfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
 					successfullySyncedPeerLength := len(successfullySyncedPeers)
@@ -396,18 +386,16 @@ func (s *Service) PeriodicallyGetOrders(ctx context.Context, minPeers int, appro
 		if err := s.GetOrders(ctx, minPeers); err != nil {
 			return err
 		}
-		return nil
 
-		// FIXME
-		// // Note(albrow): The random jitter here helps smooth out the frequency of ordersync
-		// // requests and helps prevent a situation where a large number of nodes are requesting
-		// // orders at the same time.
-		// delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
-		// select {
-		// case <-ctx.Done():
-		// 	return ctx.Err()
-		// case <-time.After(delay):
-		// }
+		// Note(albrow): The random jitter here helps smooth out the frequency of ordersync
+		// requests and helps prevent a situation where a large number of nodes are requesting
+		// orders at the same time.
+		delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
 	}
 }
 
