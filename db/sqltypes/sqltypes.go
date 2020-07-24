@@ -369,6 +369,14 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 	}
 }
 
+func OrdersFromCommonType(orders []*types.OrderWithMetadata) []*Order {
+	result := make([]*Order, len(orders))
+	for i, order := range orders {
+		result[i] = OrderFromCommonType(order)
+	}
+	return result
+}
+
 func OrdersToCommonType(orders []*Order) []*types.OrderWithMetadata {
 	result := make([]*types.OrderWithMetadata, len(orders))
 	for i, order := range orders {
@@ -455,6 +463,14 @@ func MiniHeadersToCommonType(miniHeaders []*MiniHeader) []*types.MiniHeader {
 	result := make([]*types.MiniHeader, len(miniHeaders))
 	for i, miniHeader := range miniHeaders {
 		result[i] = MiniHeaderToCommonType(miniHeader)
+	}
+	return result
+}
+
+func MiniHeadersFromCommonType(miniHeaders []*types.MiniHeader) []*MiniHeader {
+	result := make([]*MiniHeader, len(miniHeaders))
+	for i, miniHeader := range miniHeaders {
+		result[i] = MiniHeaderFromCommonType(miniHeader)
 	}
 	return result
 }
