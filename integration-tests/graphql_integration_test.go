@@ -3,13 +3,17 @@
 package integrationtests
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/graphql/client"
 	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
@@ -93,114 +97,84 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
-// func TestWSGetOrders(t *testing.T) {
-// 	runGetOrdersTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
-// }
+func TestGetOrders(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// func TestHTTPGetOrders(t *testing.T) {
-// 	runGetOrdersTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
-// }
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// // TODO(jalextowle): Since the uuid creation process is inherently random, we
-// //                   can't meaningfully sanity check the returnedSnapshotID in
-// //                   this test. Unit testing should be implemented to verify that
-// //                   this logic is correct, if necessary.
-// func runGetOrdersTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	removeOldFiles(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
+	// Start a standalone node with a wait group that is completed when the goroutine completes.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	logMessages := make(chan string, 1024)
+	count := int(atomic.AddInt32(&nodeCount, 1))
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
+	}()
 
-// 	removeOldFiles(t, ctx)
-// 	buildStandaloneForTests(t, ctx)
+	// Wait until the rpc server has been started, and then create an rpc client
+	// that connects to the rpc server.
+	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	client := client.New(graphQLServerURL)
 
-// 	// Start a standalone node with a wait group that is completed when the goroutine completes.
-// 	wg := &sync.WaitGroup{}
-// 	wg.Add(1)
-// 	logMessages := make(chan string, 1024)
-// 	count := int(atomic.AddInt32(&nodeCount, 1))
-// 	go func() {
-// 		defer wg.Done()
-// 		startStandaloneNode(t, ctx, count, "", "", logMessages)
-// 	}()
+	// Create 10 new valid orders.
+	numOrders := 10
+	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+	signedTestOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
 
-// 	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
-// 	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
+	// Send the newly created order to "AddOrders." The order is valid, and this should
+	// be reflected in the validation results.
+	validationResponse, err := client.AddOrders(ctx, signedTestOrders)
+	require.NoError(t, err)
+	assert.Len(t, validationResponse.Accepted, numOrders)
+	assert.Len(t, validationResponse.Rejected, 0)
 
-// 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
-// 	require.NoError(t, err)
+	actualOrders, err := client.GetOrders(ctx)
+	require.NoError(t, err)
+	require.Len(t, actualOrders, 10)
+	expectedOrders := make([]*gqlclient.OrderWithMetadata, len(signedTestOrders))
+	for i, signedOrder := range signedTestOrders {
+		hash, err := signedOrder.ComputeOrderHash()
+		require.NoError(t, err)
+		expectedOrders[i] = &gqlclient.OrderWithMetadata{
+			ChainID:                  signedOrder.ChainID,
+			ExchangeAddress:          signedOrder.ExchangeAddress,
+			MakerAddress:             signedOrder.MakerAddress,
+			MakerAssetData:           signedOrder.MakerAssetData,
+			MakerAssetAmount:         signedOrder.MakerAssetAmount,
+			MakerFeeAssetData:        signedOrder.MakerFeeAssetData,
+			MakerFee:                 signedOrder.MakerFee,
+			TakerAddress:             signedOrder.TakerAddress,
+			TakerAssetData:           signedOrder.TakerAssetData,
+			TakerAssetAmount:         signedOrder.TakerAssetAmount,
+			TakerFeeAssetData:        signedOrder.TakerFeeAssetData,
+			TakerFee:                 signedOrder.TakerFee,
+			SenderAddress:            signedOrder.SenderAddress,
+			FeeRecipientAddress:      signedOrder.FeeRecipientAddress,
+			ExpirationTimeSeconds:    signedOrder.ExpirationTimeSeconds,
+			Salt:                     signedOrder.Salt,
+			Signature:                signedOrder.Signature,
+			Hash:                     hash,
+			FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
+		}
+	}
+	assertOrdersAreUnsortedEqual(t, expectedOrders, actualOrders)
 
-// 	// Create 10 new valid orders.
-// 	numOrders := 10
-// 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
-// 	signedTestOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
-// 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-// 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-// 	// in order for the order validation run at order submission to occur at a block number equal or higher then
-// 	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-// 	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-// 	time.Sleep(500 * time.Millisecond)
-
-// 	// Send the newly created order to "AddOrders." The order is valid, and this should
-// 	// be reflected in the validation results.
-// 	validationResponse, err := client.AddOrders(signedTestOrders)
-// 	require.NoError(t, err)
-// 	assert.Len(t, validationResponse.Accepted, numOrders)
-// 	assert.Len(t, validationResponse.Rejected, 0)
-
-// 	getOrdersResponse, err := client.GetOrders(10, common.Hash{})
-// 	require.NoError(t, err)
-// 	// NOTE(jalextowle) This statement holds true for many pagination algorithms, but it may be necessary
-// 	//                  to drop this requirement if the `GetOrders` endpoint changes dramatically.
-// 	require.Len(t, getOrdersResponse.OrdersInfos, 10)
-
-// 	// Make a new "GetOrders" request with different pagination parameters.
-// 	for _, testCase := range []struct {
-// 		ordersPerPage int
-// 	}{
-// 		{
-// 			ordersPerPage: -1,
-// 		},
-// 		{
-// 			ordersPerPage: 0,
-// 		},
-// 		{
-// 			ordersPerPage: 3,
-// 		},
-// 		{
-// 			ordersPerPage: 5,
-// 		},
-// 	} {
-// 		if testCase.ordersPerPage <= 0 {
-// 			_, err := client.GetOrders(testCase.ordersPerPage, common.Hash{})
-// 			require.EqualError(t, err, "perPage cannot be zero")
-// 		} else {
-// 			// Iterate through enough pages to get all of the orders in the mesh nodes database. Compare the
-// 			// responses to the orders that we expect to be in the database.
-// 			var responseOrders []*types.OrderInfo
-// 			currentMinHash := common.Hash{}
-// 			for {
-// 				expectedTimestamp := time.Now().UTC()
-// 				getOrdersResponse, err := client.GetOrders(testCase.ordersPerPage, currentMinHash)
-// 				assert.WithinDuration(t, expectedTimestamp, getOrdersResponse.Timestamp, time.Second)
-// 				require.NoError(t, err)
-// 				orderInfos := getOrdersResponse.OrdersInfos
-// 				assert.LessOrEqual(t, len(orderInfos), testCase.ordersPerPage, "response contained too many orders")
-// 				responseOrders = append(responseOrders, orderInfos...)
-// 				if len(orderInfos) > 0 {
-// 					currentMinHash = orderInfos[len(orderInfos)-1].OrderHash
-// 				} else {
-// 					break
-// 				}
-// 			}
-// 			assertSignedOrdersMatch(t, signedTestOrders, responseOrders)
-// 		}
-// 	}
-
-// 	cancel()
-// 	wg.Wait()
-// }
+	cancel()
+	wg.Wait()
+}
 
 // func TestWSGetStats(t *testing.T) {
 // 	runGetStatsTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
@@ -367,3 +341,40 @@ func TestAddOrdersSuccess(t *testing.T) {
 // 	heartbeat := <-heartbeatChan
 // 	assert.Equal(t, "tick", heartbeat)
 // }
+
+func assertOrdersAreUnsortedEqual(t *testing.T, expected, actual []*gqlclient.OrderWithMetadata) {
+	// Make a copy of the given orders so we don't mess up the original when sorting them.
+	expectedCopy := make([]*gqlclient.OrderWithMetadata, len(expected))
+	copy(expectedCopy, expected)
+	sortOrdersByHash(expectedCopy)
+	actualCopy := make([]*gqlclient.OrderWithMetadata, len(actual))
+	copy(actualCopy, actual)
+	sortOrdersByHash(actualCopy)
+	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
+}
+
+func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*gqlclient.OrderWithMetadata) {
+	assert.Equal(t, len(expected), len(actual), "wrong number of orders")
+	for i, expectedOrder := range expected {
+		if i >= len(actual) {
+			break
+		}
+		actualOrder := actual[i]
+		assert.Equal(t, expectedOrder, actualOrder)
+	}
+	if t.Failed() {
+		expectedJSON, err := json.MarshalIndent(expected, "", "  ")
+		require.NoError(t, err)
+		actualJSON, err := json.MarshalIndent(actual, "", "  ")
+		require.NoError(t, err)
+		t.Logf("\nexpected:\n%s\n\n", string(expectedJSON))
+		t.Logf("\nactual:\n%s\n\n", string(actualJSON))
+		assert.Equal(t, string(expectedJSON), string(actualJSON))
+	}
+}
+
+func sortOrdersByHash(orders []*gqlclient.OrderWithMetadata) {
+	sort.SliceStable(orders, func(i, j int) bool {
+		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
+	})
+}
