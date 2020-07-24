@@ -268,7 +268,7 @@ func (db *DB) migrate() error {
 	return convertErr(err)
 }
 
-// ReadWriteTransactionalContext acqires a write lock, executes the transaction, then immediately releases the lock.
+// ReadWriteTransactionalContext acquires a write lock, executes the transaction, then immediately releases the lock.
 func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOptions, f func(tx *sqlz.Tx) error) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
