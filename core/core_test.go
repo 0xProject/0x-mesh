@@ -236,7 +236,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 			defer wg.Done()
 			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				require.NoError(t, err)
+				panic(err)
 			}
 		}()
 
@@ -258,7 +258,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 			defer wg.Done()
 			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				require.NoError(t, err)
+				panic(err)
 			}
 		}()
 		<-newNode.started
