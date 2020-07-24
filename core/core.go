@@ -1041,8 +1041,6 @@ func (app *App) GetStats() (*types.Stats, error) {
 func (app *App) periodicallyLogStats(ctx context.Context) {
 	<-app.started
 
-	log.Warn("Periodically Log Stats has started")
-
 	ticker := time.NewTicker(logStatsInterval)
 	for {
 		select {

@@ -323,6 +323,15 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 						"error":    err.Error(),
 						"provider": id.Pretty(),
 					}).Warn("could not get orders from peer via ordersync")
+					// NOTE(jalextowle): If ordersync has completed unsuccessfully,
+					// we release the slot of the semaphore that was beind used by
+					// this goroutine because we need that slot for future tasks to
+					// successfully perform ordersync. In the case where ordersync
+					// completes successfully (in the else statement below), we DO
+					// NOT release access from the semaphore because we do not want
+					// extra tasks to be started. Releasing the slot can lead to a
+					// subtle bug that causes ordersyncing with peers with a small
+					// number of orders to end ordersync prematurely.
 					<-semaphore
 				} else {
 					// TODO(albrow): Handle case where no orders were returned from this
@@ -337,7 +346,6 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					successfullySyncedPeerLength := len(successfullySyncedPeers)
 					m.Unlock()
 					if successfullySyncedPeerLength >= minPeers {
-						log.WithField("successfullySyncedPeersLength", len(successfullySyncedPeers)).Info("Completed ordersync")
 						cancel()
 					}
 				}
@@ -348,7 +356,6 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		// cancelled, then we have successfully completed ordersync.
 		wg.Wait()
 		if innerCtx.Err() == context.Canceled {
-			log.WithField("successfullySyncedPeersLength", len(successfullySyncedPeers)).Warn("Completed ordersync")
 			return nil
 		}
 
