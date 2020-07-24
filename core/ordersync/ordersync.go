@@ -308,12 +308,17 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				continue
 			}
 
+			// FIXME(jalextowle): Should be `Trace`
 			log.WithFields(log.Fields{
 				"provider": peerID.Pretty(),
-			}).Trace("requesting orders from neighbor via ordersync")
+			}).Warn("requesting orders from neighbor via ordersync")
 
 			wg.Add(1)
 			go func(id peer.ID) {
+				// FIXME - Remove
+				log.WithFields(log.Fields{
+					"provider": id.Pretty(),
+				}).Warn("requesting orders from neighbor")
 				defer wg.Done()
 				select {
 				case <-innerCtx.Done():
@@ -329,18 +334,20 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 						"provider": id.Pretty(),
 					}).Warn("could not get orders from peer via ordersync")
 				} else {
+					// FIXME(jalextowle): Should be `Trace`
 					// TODO(albrow): Handle case where no orders were returned from this
 					// peer. This could be considered a valid response, depending on the implementation
 					// details of the subprotocol. We need to not try them again, but also not count
 					// them toward the number of peers we have successfully synced with.
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
-					}).Trace("succesfully got orders from peer via ordersync")
+					}).Warn("succesfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
 					successfullySyncedPeerLength := len(successfullySyncedPeers)
 					m.Unlock()
 					if successfullySyncedPeerLength >= minPeers {
+						log.WithField("successfullySyncedPeersLength", len(successfullySyncedPeers)).Info("Completed ordersync")
 						cancel()
 					}
 				}
@@ -351,6 +358,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		// cancelled, then we have successfully completed ordersync.
 		wg.Wait()
 		if innerCtx.Err() == context.Canceled {
+			log.WithField("successfullySyncedPeersLength", len(successfullySyncedPeers)).Warn("Completed ordersync")
 			return nil
 		}
 
@@ -388,16 +396,18 @@ func (s *Service) PeriodicallyGetOrders(ctx context.Context, minPeers int, appro
 		if err := s.GetOrders(ctx, minPeers); err != nil {
 			return err
 		}
+		return nil
 
-		// Note(albrow): The random jitter here helps smooth out the frequency of ordersync
-		// requests and helps prevent a situation where a large number of nodes are requesting
-		// orders at the same time.
-		delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
-		}
+		// FIXME
+		// // Note(albrow): The random jitter here helps smooth out the frequency of ordersync
+		// // requests and helps prevent a situation where a large number of nodes are requesting
+		// // orders at the same time.
+		// delay := calculateDelayWithJitter(approxDelay, ordersyncJitterAmount)
+		// select {
+		// case <-ctx.Done():
+		// 	return ctx.Err()
+		// case <-time.After(delay):
+		// }
 	}
 }
 
