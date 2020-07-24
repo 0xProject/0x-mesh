@@ -61,7 +61,7 @@ const (
 	version          = "development"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
-	ordersyncMinPeers = 5
+	ordersyncMinPeers = 3
 	// ordersyncApproxDelay is the approximate amount of time to wait between each
 	// run of the ordersync protocol (as a requester). We always request orders
 	// immediately on startup. This delay only applies to subsequent runs.
@@ -641,6 +641,7 @@ func (app *App) Start() error {
 			orderSyncErrChan <- err
 		}
 		log.WithField("stats", stats).Warn("After ordersync completion stats")
+		panic("Ended")
 		/* END FIXME */
 	}()
 
