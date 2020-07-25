@@ -288,14 +288,32 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
+		// NOTE(jalextowle): m, wg, and semaphore are used to synchronize
+		// requests to get orders from other peers during ordersync. m is
+		// used to guard the successfullySyncedPeers stringset from concurrent
+		// access. wg is used to ensure that all of the request for orders
+		// from other peers has ended before asking from new peers. Finally,
+		// semaphore is used to ensure that there are only ever minPeers
+		// requests being made at a given time.
 		m := &sync.RWMutex{}
 		wg := &sync.WaitGroup{}
 		semaphore := make(chan struct{}, minPeers)
+
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
+			// The loop will only advance when a new element can be
+			// added to the semaphore. This ensures that no more than
+			// minPeers goroutines will be active at a given time
+			// because the channel only has a capacity of minPeers.
+			select {
+			case <-innerCtx.Done():
+				break
+			case semaphore <- struct{}{}:
+			}
+
 			m.RLock()
 			successfullySyncedPeerLength := len(successfullySyncedPeers)
 			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
@@ -311,12 +329,6 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				"provider": peerID.Pretty(),
 			}).Trace("requesting orders from neighbor via ordersync")
 
-			select {
-			case <-innerCtx.Done():
-				break
-			case semaphore <- struct{}{}:
-			}
-
 			wg.Add(1)
 			go func(id peer.ID) {
 				defer func() {
@@ -327,7 +339,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
-					}).Warn("could not get orders from peer via ordersync")
+					}).Debug("could not get orders from peer via ordersync")
 				} else {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
@@ -339,8 +351,8 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			}(peerID)
 		}
 
-		// Wait for all goroutines to exit.
 		wg.Wait()
+		cancel()
 
 		m.RLock()
 		successfullySyncedPeerLength := len(successfullySyncedPeers)
@@ -449,12 +461,15 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 		Subprotocols: s.SupportedSubprotocols(),
 		Metadata:     nil,
 	}
-	nextReq, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+	var res *Response
+	nextReq, res, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 	if err != nil {
 		return err
 	}
-	if nextReq == nil {
+	if len(res.Orders) == 0 {
 		return ErrNoOrdersFromPeer
+	} else if nextReq == nil {
+		return nil
 	}
 
 	for {
@@ -463,7 +478,7 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return ctx.Err()
 		default:
 		}
-		nextReq, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+		nextReq, _, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 		if err != nil {
 			return err
 		}
@@ -473,58 +488,57 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 	}
 }
 
-// makeOrderSyncRequest handles the process of making an ordersync request with
-// a given subprotocol to a provider and the process of decoding the response and
-// creating the next raw request (if applicable).
+// makeOrderSyncRequest sends an ordersync request with the given subprotocol
+// to the provider, decodes the response, and returns the next raw request (if applicable).
 func (s *Service) makeOrderSyncRequest(
 	ctx context.Context,
 	rawReq *rawRequest,
 	stream network.Stream,
 	providerID peer.ID,
-) (*rawRequest, error) {
+) (*rawRequest, *Response, error) {
 	if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
-		return nil, err
+		return nil, nil, err
 	}
 
 	rawRes, err := waitForResponse(ctx, stream)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	s.handlePeerScoreEvent(providerID, psValidMessage)
 
 	subprotocol, found := s.subprotocols[rawRes.Subprotocol]
 	if !found {
 		s.handlePeerScoreEvent(providerID, psSubprotocolNegotiationFailed)
-		return nil, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
+		return nil, nil, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
 	}
 	selectedSubprotocol := subprotocol
 	res, err := parseResponseWithSubprotocol(subprotocol, providerID, rawRes)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psInvalidMessage)
-		return nil, err
+		return nil, nil, err
 	}
 
 	nextReq, err := subprotocol.HandleOrderSyncResponse(ctx, res)
 	if err != nil {
-		return nil, err
+		return nil, res, err
 	}
 	s.handlePeerScoreEvent(providerID, receivedOrders)
 
 	// If the result is marked as complete, no more requests should be made.
 	if rawRes.Complete {
-		return nil, nil
+		return nil, res, nil
 	}
 
 	encodedMetadata, err := json.Marshal(nextReq.Metadata)
 	if err != nil {
-		return nil, err
+		return nil, res, err
 	}
 	return &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: []string{selectedSubprotocol.Name()},
 		Metadata:     encodedMetadata,
-	}, nil
+	}, res, nil
 }
 
 // shufflePeers randomizes the order of the given list of peers.
