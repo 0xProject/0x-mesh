@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -141,6 +142,7 @@ func TestGetOrders(t *testing.T) {
 	assert.Len(t, validationResponse.Accepted, numOrders)
 	assert.Len(t, validationResponse.Rejected, 0)
 
+	// Get orders without any options.
 	actualOrders, err := client.GetOrders(ctx)
 	require.NoError(t, err)
 	require.Len(t, actualOrders, 10)
@@ -171,6 +173,35 @@ func TestGetOrders(t *testing.T) {
 		}
 	}
 	assertOrdersAreUnsortedEqual(t, expectedOrders, actualOrders)
+
+	// Get orders with filter, sort, and limit.
+	opts := gqlclient.GetOrdersOpts{
+		Filters: []gqlclient.OrderFilter{
+			{
+				Field: gqlclient.OrderFieldChainID,
+				Kind:  gqlclient.FilterKindEqual,
+				Value: signedTestOrders[0].ChainID,
+			},
+			{
+				Field: gqlclient.OrderFieldExpirationTimeSeconds,
+				Kind:  gqlclient.FilterKindGreaterOrEqual,
+				Value: big.NewInt(0),
+			},
+		},
+		Sort: []gqlclient.OrderSort{
+			{
+				Field:     gqlclient.OrderFieldHash,
+				Direction: gqlclient.SortDirectionDesc,
+			},
+		},
+		Limit: 5,
+	}
+	actualOrdersWithOpts, err := client.GetOrders(ctx, opts)
+	require.NoError(t, err)
+	require.Len(t, actualOrdersWithOpts, 5)
+	sortOrdersByHashDesc(expectedOrders)
+	expectedOrdersWithOpts := expectedOrders[:5]
+	assertOrderSlicesAreEqual(t, expectedOrdersWithOpts, actualOrdersWithOpts)
 
 	cancel()
 	wg.Wait()
@@ -346,10 +377,10 @@ func assertOrdersAreUnsortedEqual(t *testing.T, expected, actual []*gqlclient.Or
 	// Make a copy of the given orders so we don't mess up the original when sorting them.
 	expectedCopy := make([]*gqlclient.OrderWithMetadata, len(expected))
 	copy(expectedCopy, expected)
-	sortOrdersByHash(expectedCopy)
+	sortOrdersByHashAsc(expectedCopy)
 	actualCopy := make([]*gqlclient.OrderWithMetadata, len(actual))
 	copy(actualCopy, actual)
-	sortOrdersByHash(actualCopy)
+	sortOrdersByHashAsc(actualCopy)
 	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
 }
 
@@ -373,8 +404,14 @@ func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*gqlclient.Order
 	}
 }
 
-func sortOrdersByHash(orders []*gqlclient.OrderWithMetadata) {
+func sortOrdersByHashAsc(orders []*gqlclient.OrderWithMetadata) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
+	})
+}
+
+func sortOrdersByHashDesc(orders []*gqlclient.OrderWithMetadata) {
+	sort.SliceStable(orders, func(i, j int) bool {
+		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == 1
 	})
 }

@@ -152,7 +152,26 @@ type GetOrdersOpts struct {
 func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*OrderWithMetadata, error) {
 	req := NewRequest(ordersQuery)
 
-	// TODO(albrow): Pass in opts.
+	if len(opts) > 0 {
+		opts := opts[0]
+		if len(opts.Filters) > 0 {
+			// Convert each filter value from the native Go type to a JSON-compatible type.
+			for i, filter := range opts.Filters {
+				jsonCompatibleValue, err := gqltypes.FilterValueToJSON(filter)
+				if err != nil {
+					return nil, err
+				}
+				opts.Filters[i].Value = jsonCompatibleValue
+			}
+			req.Var("filters", opts.Filters)
+		}
+		if len(opts.Sort) > 0 {
+			req.Var("sort", opts.Sort)
+		}
+		if opts.Limit != 0 {
+			req.Var("limit", opts.Limit)
+		}
+	}
 
 	var resp struct {
 		Orders []*gqltypes.OrderWithMetadata `json:"orders"`
@@ -164,5 +183,3 @@ func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*Order
 }
 
 // func (c *Client) GetStats() (*GetStatsResponse, error)
-// func (c *Client) SubscribeToHeartbeat(ctx context.Context, ch chan<- string) (*rpc.ClientSubscription, error)
-// func (c *Client) SubscribeToOrders(ctx context.Context, ch chan<- []*zeroex.OrderEvent) (*rpc.ClientSubscription, error)

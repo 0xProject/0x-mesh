@@ -3,6 +3,7 @@ package gqltypes
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db"
@@ -362,22 +363,75 @@ func FilterKindToDBType(kind FilterKind) (db.FilterKind, error) {
 	}
 }
 
-func ConvertFilterValue(f *OrderFilter) (interface{}, error) {
+// FilterValueFromJSON converts the filter value from the JSON type to the
+// corresponding Go type. It returns an error if the JSON type does not match
+// what was expected based on the filter field.
+func FilterValueFromJSON(f OrderFilter) (interface{}, error) {
 	switch f.Field {
-	case "chainID", "makerAssetAmount", "makerFee", "takerAssetAmount", "takerFee", "expirationTimeSeconds", "salt", "fillableTakerAssetAmount":
+	case OrderFieldChainID, OrderFieldMakerAssetAmount, OrderFieldMakerFee, OrderFieldTakerAssetAmount, OrderFieldTakerFee, OrderFieldExpirationTimeSeconds, OrderFieldSalt, OrderFieldFillableTakerAssetAmount:
 		return stringToBigInt(f.Value)
-	case "hash":
+	case OrderFieldHash:
 		return stringToHash(f.Value)
-	case "exchangeAddress", "makerAddress", "takerAddress", "senderAddress", "feeRecipientAddress":
+	case OrderFieldExchangeAddress, OrderFieldMakerAddress, OrderFieldTakerAddress, OrderFieldSenderAddress, OrderFieldFeeRecipientAddress:
 		return stringToAddress(f.Value)
-	case "makerAssetData", "makerFeeAssetData", "takerAssetData", "takerFeeAssetData":
+	case OrderFieldMakerAssetData, OrderFieldMakerFeeAssetData, OrderFieldTakerAssetData, OrderFieldTakerFeeAssetData:
 		return stringToBytes(f.Value)
 	default:
 		return "", fmt.Errorf("invalid filter field: %q", f.Field)
 	}
 }
 
-func filterValueToString(value interface{}) (string, error) {
+// FilterValueToJSON converts the filter value from a native Go type to the
+// corresponding JSON value. It returns an error if the Go type does not match
+// what was expected based on the filter field.
+func FilterValueToJSON(f OrderFilter) (string, error) {
+	switch f.Field {
+	case OrderFieldChainID, OrderFieldMakerAssetAmount, OrderFieldMakerFee, OrderFieldTakerAssetAmount, OrderFieldTakerFee, OrderFieldExpirationTimeSeconds, OrderFieldSalt, OrderFieldFillableTakerAssetAmount:
+		return bigIntToString(f.Value)
+	case OrderFieldHash:
+		return hashToString(f.Value)
+	case OrderFieldExchangeAddress, OrderFieldMakerAddress, OrderFieldTakerAddress, OrderFieldSenderAddress, OrderFieldFeeRecipientAddress:
+		return addressToString(f.Value)
+	case OrderFieldMakerAssetData, OrderFieldMakerFeeAssetData, OrderFieldTakerAssetData, OrderFieldTakerFeeAssetData:
+		return bytesToString(f.Value)
+	default:
+		return "", fmt.Errorf("invalid filter field: %q", f.Field)
+	}
+}
+
+func bigIntToString(value interface{}) (string, error) {
+	bigInt, ok := value.(*big.Int)
+	if !ok {
+		return "", fmt.Errorf("invalid type for filter value (expected *big.Int but got %T)", value)
+	}
+	return bigInt.String(), nil
+}
+
+func hashToString(value interface{}) (string, error) {
+	hash, ok := value.(common.Hash)
+	if !ok {
+		return "", fmt.Errorf("invalid type for filter value (expected common.Hash but got %T)", value)
+	}
+	return hash.Hex(), nil
+}
+
+func addressToString(value interface{}) (string, error) {
+	address, ok := value.(common.Address)
+	if !ok {
+		return "", fmt.Errorf("invalid type for filter value (expected common.Address but got %T)", value)
+	}
+	return strings.ToLower(address.Hex()), nil
+}
+
+func bytesToString(value interface{}) (string, error) {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return "", fmt.Errorf("invalid type for filter value (expected []byte but got %T)", value)
+	}
+	return common.ToHex(bytes), nil
+}
+
+func filterValueAsString(value interface{}) (string, error) {
 	valueString, ok := value.(string)
 	if !ok {
 		return "", fmt.Errorf("invalid type for filter value (expected string but got %T)", value)
@@ -386,7 +440,7 @@ func filterValueToString(value interface{}) (string, error) {
 }
 
 func stringToBigInt(value interface{}) (*big.Int, error) {
-	valueString, err := filterValueToString(value)
+	valueString, err := filterValueAsString(value)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +452,7 @@ func stringToBigInt(value interface{}) (*big.Int, error) {
 }
 
 func stringToHash(value interface{}) (common.Hash, error) {
-	valueString, err := filterValueToString(value)
+	valueString, err := filterValueAsString(value)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -406,7 +460,7 @@ func stringToHash(value interface{}) (common.Hash, error) {
 }
 
 func stringToAddress(value interface{}) (common.Address, error) {
-	valueString, err := filterValueToString(value)
+	valueString, err := filterValueAsString(value)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -414,7 +468,7 @@ func stringToAddress(value interface{}) (common.Address, error) {
 }
 
 func stringToBytes(value interface{}) ([]byte, error) {
-	valueString, err := filterValueToString(value)
+	valueString, err := filterValueAsString(value)
 	if err != nil {
 		return nil, err
 	}

@@ -60,7 +60,7 @@ func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, 
 		if err != nil {
 			return nil, err
 		}
-		filterValue, err := gqltypes.ConvertFilterValue(filter)
+		filterValue, err := gqltypes.FilterValueFromJSON(*filter)
 		if err != nil {
 			return nil, err
 		}

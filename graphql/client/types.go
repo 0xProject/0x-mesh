@@ -115,18 +115,10 @@ type OrderEvent struct {
 }
 
 // A filter on orders. Can be used in queries to only return orders that meet certain criteria.
-type OrderFilter struct {
-	Field OrderField `json:"field"`
-	Kind  FilterKind `json:"kind"`
-	// value must match the type of the filter field.
-	Value interface{} `json:"value"`
-}
+type OrderFilter = gqltypes.OrderFilter
 
 // A sort ordering for orders. Can be used in queries to control the order in which results are returned.
-type OrderSort struct {
-	Field     OrderField    `json:"field"`
-	Direction SortDirection `json:"direction"`
-}
+type OrderSort = gqltypes.OrderSort
 
 // A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 type OrderWithMetadata struct {
@@ -289,3 +281,8 @@ var AllRejectedOrderCode = gqltypes.AllRejectedOrderCode
 type SortDirection = gqltypes.SortDirection
 
 var AllSortDirection = gqltypes.AllSortDirection
+
+const (
+	SortDirectionAsc  = gqltypes.SortDirectionAsc
+	SortDirectionDesc = gqltypes.SortDirectionDesc
+)
