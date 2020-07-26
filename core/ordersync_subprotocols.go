@@ -145,18 +145,18 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 // HandleOrderSyncResponse handles the orders for one page by validating them, storing them
 // in the database, and firing the appropriate events. It also returns the next request to
 // be sent. This is the implementation for the "requester" side of the subprotocol.
-func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, []*zeroex.SignedOrder, error) {
+func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, int, error) {
 	if res.Metadata == nil {
-		return nil, nil, errors.New("FilteredPaginationSubProtocolV0 received response with nil metadata")
+		return nil, 0, errors.New("FilteredPaginationSubProtocolV0 received response with nil metadata")
 	}
 	metadata, ok := res.Metadata.(*FilteredPaginationResponseMetadataV0)
 	if !ok {
-		return nil, nil, fmt.Errorf("FilteredPaginationSubProtocolV0 received response with wrong metadata type (got %T)", res.Metadata)
+		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV0 received response with wrong metadata type (got %T)", res.Metadata)
 	}
 	filteredOrders := []*zeroex.SignedOrder{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
-			return nil, nil, err
+			return nil, 0, err
 		} else if matches {
 			filteredOrders = append(filteredOrders, order)
 		} else if !matches {
@@ -165,7 +165,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 	}
 	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
 	if err != nil {
-		return nil, filteredOrders, err
+		return nil, len(filteredOrders), err
 	}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		if acceptedOrderInfo.IsNew {
@@ -188,7 +188,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 			Page:       metadata.Page + 1,
 			SnapshotID: metadata.SnapshotID,
 		},
-	}, filteredOrders, nil
+	}, len(filteredOrders), nil
 }
 
 func (p *FilteredPaginationSubProtocolV0) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
@@ -320,18 +320,18 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 // HandleOrderSyncResponse handles the orders for one page by validating them, storing them
 // in the database, and firing the appropriate events. It also returns the next request to
 // be sent. This is the implementation for the "requester" side of the subprotocol.
-func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, []*zeroex.SignedOrder, error) {
+func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Context, res *ordersync.Response) (*ordersync.Request, int, error) {
 	if res.Metadata == nil {
-		return nil, nil, errors.New("FilteredPaginationSubProtocolV1 received response with nil metadata")
+		return nil, 0, errors.New("FilteredPaginationSubProtocolV1 received response with nil metadata")
 	}
 	_, ok := res.Metadata.(*FilteredPaginationResponseMetadataV1)
 	if !ok {
-		return nil, nil, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
+		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
 	}
 	filteredOrders := []*zeroex.SignedOrder{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
-			return nil, nil, err
+			return nil, 0, err
 		} else if matches {
 			filteredOrders = append(filteredOrders, order)
 		} else if !matches {
@@ -340,7 +340,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	}
 	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
 	if err != nil {
-		return nil, filteredOrders, err
+		return nil, len(filteredOrders), err
 	}
 	for _, acceptedOrderInfo := range validationResults.Accepted {
 		if acceptedOrderInfo.IsNew {
@@ -364,7 +364,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	if len(res.Orders) > 0 {
 		hash, err := res.Orders[len(res.Orders)-1].ComputeOrderHash()
 		if err != nil {
-			return nil, filteredOrders, err
+			return nil, len(filteredOrders), err
 		}
 		nextMinOrderHash = hash
 	}
@@ -372,7 +372,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 		Metadata: &FilteredPaginationRequestMetadataV1{
 			MinOrderHash: nextMinOrderHash,
 		},
-	}, filteredOrders, nil
+	}, len(filteredOrders), nil
 }
 
 func (p *FilteredPaginationSubProtocolV1) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
