@@ -140,11 +140,12 @@ type Subprotocol interface {
 	// implementation for the "provider" side of the subprotocol.
 	HandleOrderSyncRequest(context.Context, *Request) (*Response, error)
 	// HandleOrderSyncResponse handles a response (e.g. typically by saving orders to
-	// the database) and if needed creates and returns the next request that
-	// should be sent. If nextRequest is nil, the ordersync protocol is
-	// considered finished. HandleOrderSyncResponse is the implementation for the
-	// "requester" side of the subprotocol.
-	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, err error)
+	// the database), returns the number of valid orders that were received,
+	// and, if needed, creates and returns the next request that should be sent.
+	// If nextRequest is nil, the ordersync protocol is considered finished.
+	// HandleOrderSyncResponse is the implementation for the "requester" side
+	// of the subprotocol.
+	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, numValidOrders int, err error)
 	// ParseRequestMetadata converts raw request metadata into a concrete type
 	// that the subprotocol expects.
 	ParseRequestMetadata(metadata json.RawMessage) (interface{}, error)
@@ -455,18 +456,19 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 		_ = stream.Close()
 	}()
 
-	// First request
+	totalValidOrders := 0
 	nextReq := &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: s.SupportedSubprotocols(),
 		Metadata:     nil,
 	}
-	var res *Response
-	nextReq, res, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+	var numValidOrders int
+	nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 	if err != nil {
 		return err
 	}
-	if len(res.Orders) == 0 {
+	totalValidOrders += numValidOrders
+	if totalValidOrders == 0 {
 		return ErrNoOrdersFromPeer
 	} else if nextReq == nil {
 		return nil
@@ -478,12 +480,17 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return ctx.Err()
 		default:
 		}
-		nextReq, _, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+		nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 		if err != nil {
 			return err
 		}
+		totalValidOrders += numValidOrders
 		if nextReq == nil {
-			return nil
+			err = nil
+			if totalValidOrders == 0 {
+				err = ErrNoOrdersFromPeer
+			}
+			return err
 		}
 	}
 }
@@ -495,50 +502,50 @@ func (s *Service) makeOrderSyncRequest(
 	rawReq *rawRequest,
 	stream network.Stream,
 	providerID peer.ID,
-) (*rawRequest, *Response, error) {
+) (*rawRequest, int, error) {
 	if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
-		return nil, nil, err
+		return nil, 0, err
 	}
 
 	rawRes, err := waitForResponse(ctx, stream)
 	if err != nil {
-		return nil, nil, err
+		return nil, 0, err
 	}
 	s.handlePeerScoreEvent(providerID, psValidMessage)
 
 	subprotocol, found := s.subprotocols[rawRes.Subprotocol]
 	if !found {
 		s.handlePeerScoreEvent(providerID, psSubprotocolNegotiationFailed)
-		return nil, nil, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
+		return nil, 0, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
 	}
 	selectedSubprotocol := subprotocol
 	res, err := parseResponseWithSubprotocol(subprotocol, providerID, rawRes)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psInvalidMessage)
-		return nil, nil, err
+		return nil, 0, err
 	}
 
-	nextReq, err := subprotocol.HandleOrderSyncResponse(ctx, res)
+	nextReq, numValidOrders, err := subprotocol.HandleOrderSyncResponse(ctx, res)
 	if err != nil {
-		return nil, res, err
+		return nil, 0, err
 	}
 	s.handlePeerScoreEvent(providerID, receivedOrders)
 
 	// If the result is marked as complete, no more requests should be made.
 	if rawRes.Complete {
-		return nil, res, nil
+		return nil, numValidOrders, nil
 	}
 
 	encodedMetadata, err := json.Marshal(nextReq.Metadata)
 	if err != nil {
-		return nil, res, err
+		return nil, numValidOrders, err
 	}
 	return &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: []string{selectedSubprotocol.Name()},
 		Metadata:     encodedMetadata,
-	}, res, nil
+	}, numValidOrders, nil
 }
 
 // shufflePeers randomizes the order of the given list of peers.
