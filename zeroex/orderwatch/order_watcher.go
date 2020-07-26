@@ -341,11 +341,11 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		return nil
 	}
 
-	firstBlockFromEvents, validationBlock := w.getExtremeBlocksFromEvents(events)
+	oldestBlockFromEvents, validationBlock := w.getExtremeBlocksFromEvents(events)
 	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{}
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{}
 
-	firstBlockInDB, err := w.db.GetOldestMiniHeader()
+	oldestBlockInDB, err := w.db.GetOldestMiniHeader()
 	if err != nil {
 		return err
 	}
@@ -355,23 +355,23 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	w.recentlyValidatedOrders = []*types.OrderWithMetadata{}
 	w.recentlyValidatedOrdersMu.Unlock()
 
-	var firstRevalidationBlockNumber *big.Int
+	var oldestRevalidationBlockNumber *big.Int
 	revalidationBlockToOrder := map[*big.Int][]*types.OrderWithMetadata{}
 	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
 		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
 		// If the oldestBlock in the list of block events is greater then
 		// the last validated block of the recently validated orders, we
-		// are missing block events for this order.
-		if firstRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(firstRevalidationBlockNumber) == -1 {
-			firstRevalidationBlockNumber = previousValidationBlockNumber
+		// may be missing block events for this order.
+		if oldestRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
+			oldestRevalidationBlockNumber = previousValidationBlockNumber
 		}
-		if firstBlockFromEvents.Number.Cmp(previousValidationBlockNumber) == -1 {
+		if oldestBlockFromEvents.Number.Cmp(previousValidationBlockNumber) == -1 {
 			continue
 		}
 		// If the previous validation block of the order is a predecessor
 		// of the oldest block in the blockwatcher, we must revalidate the
 		// order because we may be missing relevant block events.
-		if firstBlockInDB.Number.Cmp(previousValidationBlockNumber) == 1 {
+		if oldestBlockInDB.Number.Cmp(previousValidationBlockNumber) == 1 {
 			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
 			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
 		}
@@ -381,17 +381,21 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		)
 	}
 
+	// revalidationMiniHeaders is the set of blocks in between the latest
+	// LastValidatedBlockNumber in recentlyValidatedOrders and the oldest
+	// block in blockEvents. We need to check if any of these block events
+	// affected the orders in recentlyValidatedOrders.
 	revalidationMiniHeaders, err := w.db.FindMiniHeaders(&db.MiniHeaderQuery{
 		Filters: []db.MiniHeaderFilter{
 			{
 				Field: db.MFNumber,
 				Kind:  db.Less,
-				Value: firstBlockFromEvents.Number,
+				Value: oldestBlockFromEvents.Number,
 			},
 			{
 				Field: db.MFNumber,
 				Kind:  db.Greater,
-				Value: firstRevalidationBlockNumber,
+				Value: oldestRevalidationBlockNumber,
 			},
 		},
 		Sort: []db.MiniHeaderSort{
@@ -405,10 +409,17 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		return err
 	}
 
-	eventFilter := map[common.Hash]bool{}
+	// Figure out which orders were potentially affected by the block events
+	// and need to be re-validated.
+	// For recentlyValidatedOrders, we check the list of revalidation miniheaders
+	// for any block events that could change the validity of recently validated
+	// orders.
+	// For orders stored in the database, we check the list of new block events
+	// to see if the validity of an order that could be changed.
+	eventFilter := map[common.Hash]struct{}{}
 	for _, header := range revalidationMiniHeaders {
 		for _, order := range revalidationBlockToOrder[header.Number] {
-			eventFilter[order.Hash] = true
+			eventFilter[order.Hash] = struct{}{}
 		}
 		for _, log := range header.Logs {
 			if err := w.findOrdersByEventWithFilter(log, eventFilter, orderHashToDBOrder, orderHashToEvents); err != nil {
@@ -453,6 +464,55 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	return nil
 }
 
+// processRecentlyValidatedOrders creates a mapping from revalidation blocks to
+// orders in the list of recently validated orders and returns this mapping along
+// with the oldest revalidation block number. As it processes these orders, it
+// ignores any recently validated orders that are up-to-date with respect to contract
+// events in the orderwatcher and cannot possibly be missing relevant contract events.
+// Any orders that were validated in a block that is no longer stored in the database
+// must be revalidated in case the orderwatcher missed a contract event that is no
+// longer stored.
+//
+// NOTE(jalextowle): Provided that a recently validated order was not validated more
+// than 128 blocks ago, we could recover these block events to verify if it needs to
+// be revalidated. We choose not to currently because revalidation will likely be more
+// performant, but this may not always be the case.
+func processRecentlyValidatedOrders(
+	recentlyValidatedOrders []*types.OrderWithMetadata,
+	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
+	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+	oldestBlockNumberFromEvents *big.Int,
+	oldestBlockNumberInDB *big.Int,
+) (
+	revalidationBlockToOrder map[*big.Int][]*types.OrderWithMetadata,
+	oldestRevalidationBlockNumber *big.Int,
+) {
+	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
+		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
+		// If the oldestBlock in the list of block events is greater then
+		// the last validated block of the recently validated orders, we
+		// may be missing block events for this order.
+		if oldestRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
+			oldestRevalidationBlockNumber = previousValidationBlockNumber
+		}
+		if oldestBlockNumberFromEvents.Cmp(previousValidationBlockNumber) == -1 {
+			continue
+		}
+		// If the previous validation block of the order is a predecessor
+		// of the oldest block in the blockwatcher, we must revalidate the
+		// order because we may be missing relevant block events.
+		if oldestBlockNumberInDB.Cmp(previousValidationBlockNumber) == 1 {
+			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
+			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
+		}
+		revalidationBlockToOrder[previousValidationBlockNumber] = append(
+			revalidationBlockToOrder[previousValidationBlockNumber],
+			recentlyValidatedOrder,
+		)
+	}
+	return revalidationBlockToOrder, oldestRevalidationBlockNumber
+}
+
 // RevalidateOrdersForMissingEvents checks all of the orders in the database for
 // any events in the miniheaders table that may have been missed. This should only
 // be used on startup, as there is a different mechanism that serves this purpose
@@ -463,9 +523,6 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 // This is extremely unlikely, so we have decided not to implement more costly
 // mechanisms to prevent from this possibility from occuring.
 func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
-	if w.didProcessABlock {
-		return errors.New("RevalidateOrdersForMissingEvents can only be called before the orderwatcher has started")
-	}
 	miniHeaders, err := w.db.FindMiniHeaders(nil)
 	if err != nil {
 		return err
@@ -495,13 +552,18 @@ func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	return nil
 }
 
+// TODO(jalextowle): This could be made more efficient by only using the state from
+// memory to check for orders that need to be revalidated. Currently, this will
+// query for a number of orders in the database that do not need to be checked.
 func (w *Watcher) findOrdersByEventWithFilter(
 	log ethtypes.Log,
-	filter map[common.Hash]bool,
+	filter map[common.Hash]struct{},
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
 ) error {
-	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log)
+	// TODO(jalextowle): This should be optimized by not querying the database
+	// and instead just analyzing the list of recently validated orders.
+	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log, db.OrderFilter{})
 	if err != nil {
 		return err
 	}
@@ -529,19 +591,21 @@ func (w *Watcher) findOrdersByEventWithLastValidatedBlockNumber(
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
 ) error {
-	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log)
+	contractEvent, orders, err := w.findOrdersAffectedByContractEvents(log, db.OrderFilter{
+		Field: db.OFLastValidatedBlockNumber,
+		Kind:  db.GreaterOrEqual,
+		Value: logBlockNumber,
+	})
 	if err != nil {
 		return err
 	}
 
 	for _, order := range orders {
-		if order.LastValidatedBlockNumber.Cmp(logBlockNumber) == -1 {
-			orderHashToDBOrder[order.Hash] = order
-			if _, ok := orderHashToEvents[order.Hash]; !ok {
-				orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
-			} else {
-				orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
-			}
+		orderHashToDBOrder[order.Hash] = order
+		if _, ok := orderHashToEvents[order.Hash]; !ok {
+			orderHashToEvents[order.Hash] = []*zeroex.ContractEvent{contractEvent}
+		} else {
+			orderHashToEvents[order.Hash] = append(orderHashToEvents[order.Hash], contractEvent)
 		}
 	}
 	return nil
@@ -551,7 +615,7 @@ func (w *Watcher) findOrdersByEventWithLastValidatedBlockNumber(
 // abstract away functions like `findOrderByTakerAddress`. This could eliminate
 // unnecessary calls to the database and allow this function to be used in more
 // general settings.
-func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.ContractEvent, []*types.OrderWithMetadata, error) {
+func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db.OrderFilter) (*zeroex.ContractEvent, []*types.OrderWithMetadata, error) {
 	eventType, err := w.eventDecoder.FindEventType(log)
 	if err != nil {
 		switch err.(type) {
@@ -591,12 +655,12 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
-		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
-		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -616,7 +680,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalEvent
-		orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address)
+		orders, err = w.findOrdersByTokenAddress(approvalEvent.Owner, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -631,12 +695,12 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
-		fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId)
+		fromOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.From, log.Address, transferEvent.TokenId, filter)
 		if err != nil {
 			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
-		toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId)
+		toOrders, err := w.findOrdersByTokenAddressAndTokenID(transferEvent.To, log.Address, transferEvent.TokenId, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -652,7 +716,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = approvalEvent
-		orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId)
+		orders, err = w.findOrdersByTokenAddressAndTokenID(approvalEvent.Owner, log.Address, approvalEvent.TokenId, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -671,7 +735,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalForAllEvent
-		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
+		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -693,12 +757,12 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 		// further. In the future, we might want to special-case this broader approach for the Augur
 		// contract address specifically.
 		contractEvent.Parameters = transferEvent
-		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
-		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -714,12 +778,12 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = transferEvent
-		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address)
+		fromOrders, err := w.findOrdersByTokenAddress(transferEvent.From, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
 		orders = append(orders, fromOrders...)
-		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address)
+		toOrders, err := w.findOrdersByTokenAddress(transferEvent.To, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -739,7 +803,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalForAllEvent
-		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address)
+		orders, err = w.findOrdersByTokenAddress(approvalForAllEvent.Owner, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -754,7 +818,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = withdrawalEvent
-		orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address)
+		orders, err = w.findOrdersByTokenAddress(withdrawalEvent.Owner, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -769,7 +833,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log) (*zeroex.
 			return nil, nil, err
 		}
 		contractEvent.Parameters = depositEvent
-		orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address)
+		orders, err = w.findOrdersByTokenAddress(depositEvent.Owner, log.Address, filter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1165,32 +1229,37 @@ func (w *Watcher) findOrder(orderHash common.Hash) *types.OrderWithMetadata {
 // findOrdersByTokenAddressAndTokenID finds and returns all orders that have
 // either a makerAsset or a makerFeeAsset matching the given tokenAddress and
 // tokenID.
-func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int) ([]*types.OrderWithMetadata, error) {
-	ordersWithAffectedMakerAsset, err := w.db.FindOrders(&db.OrderQuery{
-		Filters: []db.OrderFilter{
-			{
-				Field: db.OFMakerAddress,
-				Kind:  db.Equal,
-				Value: makerAddress,
-			},
-			db.MakerAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID),
+func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress common.Address, tokenID *big.Int, filter db.OrderFilter) ([]*types.OrderWithMetadata, error) {
+	filters := []db.OrderFilter{
+		{
+			Field: db.OFMakerAddress,
+			Kind:  db.Equal,
+			Value: makerAddress,
 		},
-	})
+		db.MakerAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID),
+	}
+	if filter.Kind != "" {
+		filters = append(filters, filter)
+	}
+	ordersWithAffectedMakerAsset, err := w.db.FindOrders(&db.OrderQuery{Filters: filters})
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
-	ordersWithAffectedMakerFeeAsset, err := w.db.FindOrders(&db.OrderQuery{
-		Filters: []db.OrderFilter{
-			{
-				Field: db.OFMakerAddress,
-				Kind:  db.Equal,
-				Value: makerAddress,
-			},
-			db.MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID)},
-	})
+	filters = []db.OrderFilter{
+		{
+			Field: db.OFMakerAddress,
+			Kind:  db.Equal,
+			Value: makerAddress,
+		},
+		db.MakerFeeAssetIncludesTokenAddressAndTokenID(tokenAddress, tokenID),
+	}
+	if filter.Kind != "" {
+		filters = append(filters, filter)
+	}
+	ordersWithAffectedMakerFeeAsset, err := w.db.FindOrders(&db.OrderQuery{Filters: filters})
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
@@ -1204,32 +1273,37 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 // findOrdersByTokenAddress finds and returns all orders that have
 // either a makerAsset or a makerFeeAsset matching the given tokenAddress and
 // any tokenID (including null).
-func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Address) ([]*types.OrderWithMetadata, error) {
-	ordersWithAffectedMakerAsset, err := w.db.FindOrders(&db.OrderQuery{
-		Filters: []db.OrderFilter{
-			{
-				Field: db.OFMakerAddress,
-				Kind:  db.Equal,
-				Value: makerAddress,
-			},
-			db.MakerAssetIncludesTokenAddress(tokenAddress),
+func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Address, filter db.OrderFilter) ([]*types.OrderWithMetadata, error) {
+	filters := []db.OrderFilter{
+		{
+			Field: db.OFMakerAddress,
+			Kind:  db.Equal,
+			Value: makerAddress,
 		},
-	})
+		db.MakerAssetIncludesTokenAddress(tokenAddress),
+	}
+	if filter.Kind != "" {
+		filters = append(filters, filter)
+	}
+	ordersWithAffectedMakerAsset, err := w.db.FindOrders(&db.OrderQuery{Filters: filters})
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
-	ordersWithAffectedMakerFeeAsset, err := w.db.FindOrders(&db.OrderQuery{
-		Filters: []db.OrderFilter{
-			{
-				Field: db.OFMakerAddress,
-				Kind:  db.Equal,
-				Value: makerAddress,
-			},
-			db.MakerFeeAssetIncludesTokenAddress(tokenAddress)},
-	})
+	filters = []db.OrderFilter{
+		{
+			Field: db.OFMakerAddress,
+			Kind:  db.Equal,
+			Value: makerAddress,
+		},
+		db.MakerFeeAssetIncludesTokenAddress(tokenAddress),
+	}
+	if filter.Kind != "" {
+		filters = append(filters, filter)
+	}
+	ordersWithAffectedMakerFeeAsset, err := w.db.FindOrders(&db.OrderQuery{Filters: filters})
 	if err != nil {
 		logger.WithFields(logger.Fields{
 			"error": err.Error(),
@@ -1597,22 +1671,18 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		// TODO(jalextowle): This if-statement seems unnecessary and the
-		// code doesn't appear to address the comment.
-		if err == nil {
-			// Only check the ExchangeAddress if we know the expected address for the
-			// given chainID/networkID. If we don't know it, the order could still be
-			// valid.
-			expectedExchangeAddress := w.contractAddresses.Exchange
-			if order.ExchangeAddress != expectedExchangeAddress {
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshValidation,
-					Status:      ordervalidator.ROIncorrectExchangeAddress,
-				})
-				continue
-			}
+		// Only check the ExchangeAddress if we know the expected address for the
+		// given chainID/networkID. If we don't know it, the order could still be
+		// valid.
+		expectedExchangeAddress := w.contractAddresses.Exchange
+		if order.ExchangeAddress != expectedExchangeAddress {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROIncorrectExchangeAddress,
+			})
+			continue
 		}
 
 		if err := validateOrderSize(order); err != nil {
@@ -1908,8 +1978,7 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
-func (w *Watcher) getExtremeBlocksFromEvents(events []*blockwatch.Event) (*types.MiniHeader, *types.MiniHeader) {
-	var oldestBlock, latestBlock *types.MiniHeader
+func (w *Watcher) getExtremeBlocksFromEvents(events []*blockwatch.Event) (oldestBlock *types.MiniHeader, latestBlock *types.MiniHeader) {
 	for _, event := range events {
 		if latestBlock == nil && oldestBlock == nil {
 			latestBlock = event.BlockHeader

@@ -119,6 +119,7 @@ const (
 	OFIsPinned                 OrderField = "isPinned"
 	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
 	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
+	OFLastValidatedBlockNumber OrderField = "lastValidatedBlockNumber"
 )
 
 type OrderQuery struct {
