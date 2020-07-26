@@ -1527,10 +1527,6 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		return nil, err
 	}
 
-	// Lock down the processing of additional block events until we've validated and added these new orders
-	w.handleBlockEventsMu.RLock()
-	defer w.handleBlockEventsMu.RUnlock()
-
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
 
 	if err != nil {
