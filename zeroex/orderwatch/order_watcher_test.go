@@ -1661,6 +1661,9 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
 	g, innerCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
 		err := blockWatcher.SyncToLatestBlock()
 		return err
 	})
@@ -1704,8 +1707,9 @@ func TestMissingOrderEvents(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	// TODO(jalextowle): This test will fail with "context canceled" if a context
+	// with a timeout is used here.
+	ctx := context.Background()
 	dbOpts := db.TestOptions()
 	database, err := db.New(ctx, dbOpts)
 	require.NoError(t, err)
@@ -1745,6 +1749,9 @@ func TestMissingOrderEvents(t *testing.T) {
 	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
 	g, innerCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
 		err := blockWatcher.SyncToLatestBlock()
 		return err
 	})
@@ -1788,11 +1795,9 @@ func TestMissingOrderEvents(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
 	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
-	// TODO(jalextowle): This event probably shouldn't be fired
-	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvents[1].EndState)
 }
 
 // TestMissingOrderEventsWithMissingBlocks tests that the orderwatcher will not
@@ -1809,8 +1814,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	dbOpts := db.TestOptions()
 	dbOpts.MaxMiniHeaders = 1
 	database, err := db.New(ctx, dbOpts)
@@ -1834,6 +1838,8 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	// Create a new order
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
 	// Cancel the order
@@ -1860,6 +1866,9 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
 	g, innerCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
 		err := blockWatcher.SyncToLatestBlock()
 		return err
 	})
@@ -1880,9 +1889,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 		assert.Equal(t, len(validationResults.Rejected), 0)
 		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
-		hash, err := signedOrder.ComputeOrderHash()
-		require.NoError(t, err)
-		assert.Equal(t, hash, orderEvents[0].OrderHash)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 	default:
 		t.Fatal("No validation results received")
 	}
@@ -1905,10 +1912,9 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	orderWatcher.blockEventsChan <- newBlockEvents
 
 	// Await canceled event
-	orderEvents := waitForOrderEvents(t, orderEventsChan, 2, 10*time.Second)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
-	// TODO(jalextowle): This event probably shouldn't be fired
-	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvents[1].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 }
 
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {

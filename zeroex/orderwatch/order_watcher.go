@@ -1355,7 +1355,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 			{
 				Field: db.OFFillableTakerAssetAmount,
 				Kind:  db.NotEqual,
-				Value: 0,
+				Value: big.NewInt(0),
 			},
 		},
 	})
