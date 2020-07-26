@@ -144,7 +144,7 @@ type Subprotocol interface {
 	// should be sent. If nextRequest is nil, the ordersync protocol is
 	// considered finished. HandleOrderSyncResponse is the implementation for the
 	// "requester" side of the subprotocol.
-	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, err error)
+	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, filteredOrders []*zeroex.SignedOrder, err error)
 	// ParseRequestMetadata converts raw request metadata into a concrete type
 	// that the subprotocol expects.
 	ParseRequestMetadata(metadata json.RawMessage) (interface{}, error)
@@ -455,18 +455,19 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 		_ = stream.Close()
 	}()
 
-	// First request
+	totalFilteredOrders := 0
 	nextReq := &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: s.SupportedSubprotocols(),
 		Metadata:     nil,
 	}
-	var res *Response
-	nextReq, res, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+	var filteredOrders []*zeroex.SignedOrder
+	nextReq, filteredOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 	if err != nil {
 		return err
 	}
-	if len(res.Orders) == 0 {
+	totalFilteredOrders += len(filteredOrders)
+	if totalFilteredOrders == 0 {
 		return ErrNoOrdersFromPeer
 	} else if nextReq == nil {
 		return nil
@@ -478,12 +479,17 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			return ctx.Err()
 		default:
 		}
-		nextReq, _, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+		nextReq, filteredOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 		if err != nil {
 			return err
 		}
+		totalFilteredOrders += len(filteredOrders)
 		if nextReq == nil {
-			return nil
+			err = nil
+			if totalFilteredOrders == 0 {
+				err = ErrNoOrdersFromPeer
+			}
+			return err
 		}
 	}
 }
@@ -495,7 +501,7 @@ func (s *Service) makeOrderSyncRequest(
 	rawReq *rawRequest,
 	stream network.Stream,
 	providerID peer.ID,
-) (*rawRequest, *Response, error) {
+) (*rawRequest, []*zeroex.SignedOrder, error) {
 	if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
 		return nil, nil, err
@@ -519,26 +525,26 @@ func (s *Service) makeOrderSyncRequest(
 		return nil, nil, err
 	}
 
-	nextReq, err := subprotocol.HandleOrderSyncResponse(ctx, res)
+	nextReq, filteredOrders, err := subprotocol.HandleOrderSyncResponse(ctx, res)
 	if err != nil {
-		return nil, res, err
+		return nil, nil, err
 	}
 	s.handlePeerScoreEvent(providerID, receivedOrders)
 
 	// If the result is marked as complete, no more requests should be made.
 	if rawRes.Complete {
-		return nil, res, nil
+		return nil, filteredOrders, nil
 	}
 
 	encodedMetadata, err := json.Marshal(nextReq.Metadata)
 	if err != nil {
-		return nil, res, err
+		return nil, filteredOrders, err
 	}
 	return &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: []string{selectedSubprotocol.Name()},
 		Metadata:     encodedMetadata,
-	}, res, nil
+	}, filteredOrders, nil
 }
 
 // shufflePeers randomizes the order of the given list of peers.
