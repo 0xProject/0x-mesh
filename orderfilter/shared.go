@@ -3,10 +3,12 @@ package orderfilter
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	canonicaljson "github.com/gibson042/canonicaljson-go"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -109,7 +111,7 @@ func (f *Filter) ValidatePubSubMessage(ctx context.Context, sender peer.ID, msg 
 }
 
 func (f *Filter) generateEncodedSchema() string {
-	// Note(albrow): We use canonicaljson to elminate any differences in spacing,
+	// Note(albrow): We use canonicaljson to eliminate any differences in spacing,
 	// formatting, and the order of field names. This ensures that two filters
 	// that are semantically the same JSON object always encode to exactly the
 	// same canonical topic string.
@@ -132,4 +134,35 @@ func (f *Filter) generateEncodedSchema() string {
 	_ = canonicaljson.Unmarshal([]byte(f.rawCustomOrderSchema), &holder)
 	canonicalOrderSchemaJSON, _ := canonicaljson.Marshal(holder)
 	return base64.URLEncoding.EncodeToString(canonicalOrderSchemaJSON)
+}
+
+// NOTE(jalextowle): Due to the discrepancy between orderfilters used in browser
+// nodes and those used in standalone nodes, we cannot simply encode orderfilter.Filter.
+// Instead, we marshal a minimal representation of the filter, and then we recreate
+// the filter in the node that unmarshals the filter. This ensures that any node
+// that unmarshals the orderfilter will be capable of using the filter.
+type jsonMarshallerForFilter struct {
+	CustomOrderSchema string         `json:"customOrderSchema"`
+	ChainID           int            `json:"chainID"`
+	ExchangeAddress   common.Address `json:"exchangeAddress"`
+}
+
+func (f *Filter) MarshalJSON() ([]byte, error) {
+	j := jsonMarshallerForFilter{
+		CustomOrderSchema: f.rawCustomOrderSchema,
+		ChainID:           f.chainID,
+		ExchangeAddress:   f.exchangeAddress,
+	}
+	return json.Marshal(j)
+}
+
+func (f *Filter) UnmarshalJSON(data []byte) error {
+	j := jsonMarshallerForFilter{}
+	err := json.Unmarshal(data, &j)
+	filter, err := New(j.ChainID, j.CustomOrderSchema, ethereum.ContractAddresses{Exchange: j.ExchangeAddress})
+	if err != nil {
+		return err
+	}
+	*f = *filter
+	return nil
 }

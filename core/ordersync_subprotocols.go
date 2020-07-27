@@ -47,8 +47,9 @@ func NewFilteredPaginationSubprotocolV0(app *App, perPage int) ordersync.Subprot
 // FilteredPaginationSubProtocolV0. It keeps track of the current page and SnapshotID,
 // which is expected to be an empty string on the first request.
 type FilteredPaginationRequestMetadataV0 struct {
-	Page       int    `json:"page"`
-	SnapshotID string `json:"snapshotID"`
+	OrderFilter *orderfilter.Filter `json:"orderfilter"`
+	Page        int                 `json:"page"`
+	SnapshotID  string              `json:"snapshotID"`
 }
 
 // FilteredPaginationResponseMetadataV0 is the response metadata for the
@@ -114,10 +115,16 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 		}
 		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
 		// Filter the orders for this page.
-		for _, orderInfo := range ordersResp.OrdersInfos {
-			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
-				return nil, err
-			} else if matches {
+		if metadata.OrderFilter != nil {
+			for _, orderInfo := range ordersResp.OrdersInfos {
+				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+					return nil, err
+				} else if matches {
+					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+				}
+			}
+		} else {
+			for _, orderInfo := range ordersResp.OrdersInfos {
 				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
 			}
 		}
@@ -185,8 +192,9 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadataV0{
-			Page:       metadata.Page + 1,
-			SnapshotID: metadata.SnapshotID,
+			OrderFilter: p.app.orderFilter,
+			Page:        metadata.Page + 1,
+			SnapshotID:  metadata.SnapshotID,
 		},
 	}, len(filteredOrders), nil
 }
@@ -235,7 +243,8 @@ func NewFilteredPaginationSubprotocolV1(app *App, perPage int) ordersync.Subprot
 // FilteredPaginationSubProtocolV1. It keeps track of the current
 // minOrderHash, which is expected to be an empty string on the first request.
 type FilteredPaginationRequestMetadataV1 struct {
-	MinOrderHash common.Hash `json:"minOrderHash"`
+	OrderFilter  *orderfilter.Filter `json:"orderfilter"`
+	MinOrderHash common.Hash         `json:"minOrderHash"`
 }
 
 // FilteredPaginationResponseMetadataV1 is the response metadata for the
@@ -291,10 +300,16 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 		}
 		nextMinOrderHash = ordersResp.OrdersInfos[len(ordersResp.OrdersInfos)-1].OrderHash
 		// Filter the orders for this page.
-		for _, orderInfo := range ordersResp.OrdersInfos {
-			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
-				return nil, err
-			} else if matches {
+		if metadata.OrderFilter != nil {
+			for _, orderInfo := range ordersResp.OrdersInfos {
+				if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+					return nil, err
+				} else if matches {
+					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+				}
+			}
+		} else {
+			for _, orderInfo := range ordersResp.OrdersInfos {
 				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
 			}
 		}
@@ -370,6 +385,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	}
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadataV1{
+			OrderFilter:  p.app.orderFilter,
 			MinOrderHash: nextMinOrderHash,
 		},
 	}, len(filteredOrders), nil

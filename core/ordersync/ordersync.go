@@ -14,9 +14,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/albrow/stringset"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jpillora/backoff"
 	network "github.com/libp2p/go-libp2p-core/network"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
@@ -112,6 +114,7 @@ type rawResponse struct {
 // responding to and sending ordersync requests.
 type Service struct {
 	ctx          context.Context
+	orderFilter  *orderfilter.Filter
 	node         *p2p.Node
 	subprotocols map[string]Subprotocol
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
@@ -159,13 +162,14 @@ type Subprotocol interface {
 // them. New expects an array of subprotocols which the service will support, in the
 // order of preference. The service will automatically pick the most preferred protocol
 // that is supported by both peers for each request/response.
-func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Service {
+func New(ctx context.Context, orderfilter *orderfilter.Filter, node *p2p.Node, subprotocols []Subprotocol) *Service {
 	supportedSubprotocols := map[string]Subprotocol{}
 	for _, subp := range subprotocols {
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
 		ctx:                ctx,
+		orderFilter:        orderfilter,
 		node:               node,
 		subprotocols:       supportedSubprotocols,
 		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
@@ -458,6 +462,31 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
+type requestMetadataForAllSubprotocols struct {
+	OrderFilter  *orderfilter.Filter `json:"orderfilter"`
+	Page         int                 `json:"page"`
+	SnapshotID   string              `json:"snapshotID"`
+	MinOrderHash common.Hash         `json:"minOrderHash"`
+}
+
+func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
+	metadata := requestMetadataForAllSubprotocols{
+		OrderFilter:  s.orderFilter,
+		Page:         0,
+		SnapshotID:   "",
+		MinOrderHash: common.Hash{},
+	}
+	encodedMetadata, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+	return &rawRequest{
+		Type:         TypeRequest,
+		Subprotocols: s.SupportedSubprotocols(),
+		Metadata:     encodedMetadata,
+	}, nil
+}
+
 func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, firstRequest *rawRequest) (*rawRequest, error) {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
@@ -473,10 +502,9 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, fir
 	if firstRequest != nil {
 		nextReq = firstRequest
 	} else {
-		nextReq = &rawRequest{
-			Type:         TypeRequest,
-			Subprotocols: s.SupportedSubprotocols(),
-			Metadata:     nil,
+		nextReq, err = s.createFirstRequestForAllSubprotocols()
+		if err != nil {
+			return nil, err
 		}
 	}
 	var numValidOrders int
