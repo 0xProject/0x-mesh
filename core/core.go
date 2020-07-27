@@ -554,7 +554,7 @@ func (app *App) Start() error {
 	if err != nil {
 		return err
 	}
-	if preliminaryBlocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
+	if preliminaryBlocksElapsed > 0 && preliminaryBlocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", preliminaryBlocksElapsed).Info("Checking for missing order events relating to orders stored (this can take a while)...")
 		if err := app.orderWatcher.RevalidateOrdersForMissingEvents(innerCtx); err != nil {
 			return err
