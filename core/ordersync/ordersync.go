@@ -14,11 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/albrow/stringset"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jpillora/backoff"
 	network "github.com/libp2p/go-libp2p-core/network"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
@@ -114,7 +112,6 @@ type rawResponse struct {
 // responding to and sending ordersync requests.
 type Service struct {
 	ctx          context.Context
-	orderFilter  *orderfilter.Filter
 	node         *p2p.Node
 	subprotocols map[string]Subprotocol
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
@@ -155,6 +152,11 @@ type Subprotocol interface {
 	// ParseResponseMetadata converts raw response metadata into a concrete type
 	// that the subprotocol expects.
 	ParseResponseMetadata(metadata json.RawMessage) (interface{}, error)
+	// GenerateFirstRequestMetadata generates the metadata for the first request
+	// that should be made with this subprotocol and converts it into a map.
+	// NOTE(jalextowle): This returns a map so that all of the first requests
+	// from various subprotocols can be easily combined together.
+	GenerateFirstRequestMetadata() map[string]interface{}
 }
 
 // New creates and returns a new ordersync service, which is used for both
@@ -162,14 +164,13 @@ type Subprotocol interface {
 // them. New expects an array of subprotocols which the service will support, in the
 // order of preference. The service will automatically pick the most preferred protocol
 // that is supported by both peers for each request/response.
-func New(ctx context.Context, orderfilter *orderfilter.Filter, node *p2p.Node, subprotocols []Subprotocol) *Service {
+func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Service {
 	supportedSubprotocols := map[string]Subprotocol{}
 	for _, subp := range subprotocols {
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
 		ctx:                ctx,
-		orderFilter:        orderfilter,
 		node:               node,
 		subprotocols:       supportedSubprotocols,
 		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
@@ -462,21 +463,22 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
-type requestMetadataForAllSubprotocols struct {
-	OrderFilter  *orderfilter.Filter `json:"orderfilter"`
-	Page         int                 `json:"page"`
-	SnapshotID   string              `json:"snapshotID"`
-	MinOrderHash common.Hash         `json:"minOrderHash"`
-}
-
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
-	metadata := requestMetadataForAllSubprotocols{
-		OrderFilter:  s.orderFilter,
-		Page:         0,
-		SnapshotID:   "",
-		MinOrderHash: common.Hash{},
+	m := map[string]interface{}{}
+	for _, subprotocolString := range s.SupportedSubprotocols() {
+		subprotocol, found := s.subprotocols[subprotocolString]
+		if !found {
+			return nil, fmt.Errorf("cannot generate first request metadata for subprotocol %s", subprotocolString)
+		}
+		for k, v := range subprotocol.GenerateFirstRequestMetadata() {
+			// NOTE(jalextowle): This can overwrite the metadata from
+			// other subprotocols. Future subprotocols should try to
+			// avoid naming collisions when the values on the first
+			// request are distinct.
+			m[k] = v
+		}
 	}
-	encodedMetadata, err := json.Marshal(metadata)
+	encodedMetadata, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}

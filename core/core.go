@@ -637,7 +637,7 @@ func (app *App) Start() error {
 	for _, subprotocolFactory := range app.privateConfig.paginationSubprotocols {
 		ordersyncSubprotocols = append(ordersyncSubprotocols, subprotocolFactory(app, app.privateConfig.paginationSubprotocolPerPage))
 	}
-	app.ordersyncService = ordersync.New(innerCtx, app.orderFilter, app.node, ordersyncSubprotocols)
+	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
 	orderSyncErrChan := make(chan error, 1)
 	wg.Add(1)
 	go func() {

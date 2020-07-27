@@ -192,7 +192,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadataV0{
-			OrderFilter: p.app.orderFilter,
+			OrderFilter: p.orderFilter,
 			Page:        metadata.Page + 1,
 			SnapshotID:  metadata.SnapshotID,
 		},
@@ -213,6 +213,14 @@ func (p *FilteredPaginationSubProtocolV0) ParseResponseMetadata(metadata json.Ra
 		return nil, err
 	}
 	return &parsed, nil
+}
+
+func (p *FilteredPaginationSubProtocolV0) GenerateFirstRequestMetadata() map[string]interface{} {
+	return map[string]interface{}{
+		"orderfilter": p.orderFilter,
+		"page":        0,
+		"snapshotID":  "",
+	}
 }
 
 // Ensure that FilteredPaginationSubProtocolV1 implements the Subprotocol interface.
@@ -385,7 +393,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	}
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadataV1{
-			OrderFilter:  p.app.orderFilter,
+			OrderFilter:  p.orderFilter,
 			MinOrderHash: nextMinOrderHash,
 		},
 	}, len(filteredOrders), nil
@@ -405,6 +413,13 @@ func (p *FilteredPaginationSubProtocolV1) ParseResponseMetadata(metadata json.Ra
 		return nil, err
 	}
 	return &parsed, nil
+}
+
+func (p *FilteredPaginationSubProtocolV1) GenerateFirstRequestMetadata() map[string]interface{} {
+	return map[string]interface{}{
+		"orderfilter":  p.orderFilter,
+		"minOrderHash": common.Hash{},
+	}
 }
 
 // validateHexHash returns an error if s is not a valid hex hash. It supports
