@@ -8,6 +8,12 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 -   Upgraded to Go 1.14, which contains several WebAssembly performance improvements [#815](https://github.com/0xProject/0x-mesh/pull/815).
 
+## v9.4.1
+
+### Bug fixes 🐞
+
+-   Fixed a problem in the filtered pagination subprotocols of ordersync that caused the nodes to use the wrong orderfilter [#882](https://github.com/0xProject/0x-mesh/pull/882)
+
 ## v9.4.0
 
 ### Features ✅
