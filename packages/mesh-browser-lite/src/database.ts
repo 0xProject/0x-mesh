@@ -85,7 +85,7 @@ export interface Order {
 export interface StoredOrderStatus {
     isStored: boolean;
     isMarkedRemoved: boolean;
-    fillableTakerAssetAmount: string;
+    fillableTakerAssetAmount?: string;
 }
 
 export type OrderField = keyof Order;
@@ -237,7 +237,6 @@ export class Database {
                     statuses.push({
                         isStored: false,
                         isMarkedRemoved: false,
-                        fillableTakerAssetAmount: '0',
                     });
                 } else if (order.isRemoved) {
                     statuses.push({
