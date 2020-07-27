@@ -131,7 +131,7 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return dexietypes.OrderToCommonType(&dexieOrder), nil
 }
 
-func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []int, err error) {
+func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []StoredOrderStatus, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)
@@ -147,9 +147,15 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []int, err error)
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	statuses = make([]int, jsResults.Length())
+	statuses = make([]StoredOrderStatus, jsResults.Length())
 	for i := 0; i < len(statuses); i++ {
-		statuses[i] = jsResults.Index(i).Int()
+		jsStatus := jsResults.Index(i)
+		fillableTakerAssetAmount, _ := big.NewInt(0).SetString(jsStatus.Get("fillableTakerAssetAmount").String(), 10)
+		statuses[i] = StoredOrderStatus{
+			IsStored:                 jsStatus.Get("isStored").Bool(),
+			IsMarkedRemoved:          jsStatus.Get("isMarkedRemoved").Bool(),
+			FillableTakerAssetAmount: fillableTakerAssetAmount,
+		}
 	}
 	return statuses, nil
 }

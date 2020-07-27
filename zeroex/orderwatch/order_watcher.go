@@ -1458,10 +1458,10 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	for i, order := range validMeshOrders {
 		orderStatus := storedOrderStatuses[i]
 		orderHash := validOrderHashes[i]
-		switch orderStatus {
-		case 0:
+		if !orderStatus.IsStored {
+			// If not stored, add the order to a set of new orders.
 			newValidOrders = append(newValidOrders, order)
-		case 1:
+		} else if orderStatus.IsMarkedRemoved {
 			// If stored but marked as removed, reject the order.
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -1469,13 +1469,12 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				Kind:        ordervalidator.MeshValidation,
 				Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
 			})
-		case 2:
+		} else {
 			// If stored but not marked as removed, accept the order without re-validation
 			results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				// FIXME(albrow): return the actual FillableTakerAssetAmount.
-				FillableTakerAssetAmount: big.NewInt(0),
+				OrderHash:                orderHash,
+				SignedOrder:              order,
+				FillableTakerAssetAmount: orderStatus.FillableTakerAssetAmount,
 				IsNew:                    false,
 			})
 		}

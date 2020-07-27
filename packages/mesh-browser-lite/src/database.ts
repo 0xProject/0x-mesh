@@ -82,6 +82,12 @@ export interface Order {
     lastValidatedBlockHash: string;
 }
 
+export interface StoredOrderStatus {
+    isStored: boolean;
+    isMarkedRemoved: boolean;
+    fillableTakerAssetAmount: string;
+}
+
 export type OrderField = keyof Order;
 
 export type OrderQuery = Query<Order>;
@@ -221,21 +227,30 @@ export class Database {
         });
     }
 
-    // GetOrderStatuses(hashes []common.Hash) (statuses []int, err error)
-    public async getOrderStatusesAsync(hashes: string[]): Promise<number[]> {
-        const statuses: number[] = [];
+    // GetOrderStatuses(hashes []common.Hash) (statuses []StoredOrderStatus, err error)
+    public async getOrderStatusesAsync(hashes: string[]): Promise<StoredOrderStatus[]> {
+        const statuses: StoredOrderStatus[] = [];
         await this._db.transaction('rw!', this._orders, async () => {
             for (const hash of hashes) {
                 const order = await this._orders.get(hash);
                 if (order === undefined) {
-                    // 0 means not stored
-                    statuses.push(0);
+                    statuses.push({
+                        isStored: false,
+                        isMarkedRemoved: false,
+                        fillableTakerAssetAmount: '0',
+                    });
                 } else if (order.isRemoved) {
-                    // 1 means stored but marked as removed
-                    statuses.push(1);
+                    statuses.push({
+                        isStored: true,
+                        isMarkedRemoved: true,
+                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    });
                 } else {
-                    // 2 means store and not marked as removed
-                    statuses.push(2);
+                    statuses.push({
+                        isStored: true,
+                        isMarkedRemoved: false,
+                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    });
                 }
             }
         });

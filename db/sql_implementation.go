@@ -353,7 +353,7 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return sqltypes.OrderToCommonType(&foundOrder), nil
 }
 
-func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []int, err error) {
+func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []StoredOrderStatus, err error) {
 	return nil, errors.New("not yet implemented")
 }
 
