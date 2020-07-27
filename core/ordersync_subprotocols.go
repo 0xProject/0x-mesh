@@ -215,12 +215,12 @@ func (p *FilteredPaginationSubProtocolV0) ParseResponseMetadata(metadata json.Ra
 	return &parsed, nil
 }
 
-func (p *FilteredPaginationSubProtocolV0) GenerateFirstRequestMetadata() map[string]interface{} {
-	return map[string]interface{}{
-		"orderfilter": p.orderFilter,
-		"page":        0,
-		"snapshotID":  "",
-	}
+func (p *FilteredPaginationSubProtocolV0) GenerateFirstRequestMetadata() (json.RawMessage, error) {
+	return json.Marshal(FilteredPaginationRequestMetadataV0{
+		OrderFilter: p.orderFilter,
+		Page:        0,
+		SnapshotID:  "",
+	})
 }
 
 // Ensure that FilteredPaginationSubProtocolV1 implements the Subprotocol interface.
@@ -415,11 +415,11 @@ func (p *FilteredPaginationSubProtocolV1) ParseResponseMetadata(metadata json.Ra
 	return &parsed, nil
 }
 
-func (p *FilteredPaginationSubProtocolV1) GenerateFirstRequestMetadata() map[string]interface{} {
-	return map[string]interface{}{
-		"orderfilter":  p.orderFilter,
-		"minOrderHash": common.Hash{},
-	}
+func (p *FilteredPaginationSubProtocolV1) GenerateFirstRequestMetadata() (json.RawMessage, error) {
+	return json.Marshal(FilteredPaginationRequestMetadataV1{
+		OrderFilter:  p.orderFilter,
+		MinOrderHash: common.Hash{},
+	})
 }
 
 // validateHexHash returns an error if s is not a valid hex hash. It supports
