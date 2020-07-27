@@ -342,14 +342,14 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					wg.Done()
 					<-semaphore
 				}()
-				if nextRequest, err := s.getOrdersFromPeer(innerCtx, id, nextRequest); err != nil {
+				if nextFirstRequest, err := s.getOrdersFromPeer(innerCtx, id, nextRequest); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
 					}).Debug("could not get orders from peer via ordersync")
 					m.Lock()
 					if nextRequest != nil {
-						nextRequestForPeer[id] = nextRequest
+						nextRequestForPeer[id] = nextFirstRequest
 					}
 					m.Unlock()
 				} else {
@@ -458,7 +458,7 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
-func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nextRequest *rawRequest) (*rawRequest, error) {
+func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, firstRequest *rawRequest) (*rawRequest, error) {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
@@ -470,8 +470,8 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nex
 
 	totalValidOrders := 0
 	var nextReq *rawRequest
-	if nextRequest != nil {
-		nextReq = nextRequest
+	if firstRequest != nil {
+		nextReq = firstRequest
 	} else {
 		nextReq = &rawRequest{
 			Type:         TypeRequest,
@@ -490,17 +490,17 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nex
 	} else if nextReq == nil {
 		return nil, nil
 	}
-	lastNextReq := nextReq
+	nextFirstReq := nextReq
 
 	for {
 		select {
 		case <-ctx.Done():
-			return lastNextReq, ctx.Err()
+			return nextFirstReq, ctx.Err()
 		default:
 		}
 		nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 		if err != nil {
-			return lastNextReq, err
+			return nextFirstReq, err
 		}
 		totalValidOrders += numValidOrders
 		if nextReq == nil {
@@ -508,9 +508,9 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nex
 			if totalValidOrders == 0 {
 				err = ErrNoOrdersFromPeer
 			}
-			return lastNextReq, nil
+			return nextFirstReq, err
 		}
-		lastNextReq = nextReq
+		nextFirstReq = nextReq
 	}
 }
 
