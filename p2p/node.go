@@ -69,7 +69,7 @@ const (
 	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
 	// peer is allowed to send before failing the bandwidth check. It's set to
 	// roughly 100x expected usage based on real world measurements.
-	defaultMaxBytesPerSecond = 1048576 // 1 MiB.
+	defaultMaxBytesPerSecond = 5242880 // 5 MiB.
 	// defaultGlobalPubSubMessageLimit is the default value for
 	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
 	// case where 1000 peers are sending maxShareBatch messages per second. It may
@@ -163,6 +163,9 @@ type Config struct {
 	// according to this custom validator, which will be run in addition to the
 	// default validators.
 	CustomMessageValidator pubsub.Validator
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -192,6 +195,9 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 	if config.PerPeerPubSubMessageBurst == 0 {
 		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
+	}
+	if config.MaxBytesPerSecond == 0 {
+		config.MaxBytesPerSecond = defaultMaxBytesPerSecond
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -268,7 +274,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		Host:                   basicHost,
 		Filters:                filters,
 		BandwidthCounter:       bandwidthCounter,
-		MaxBytesPerSecond:      defaultMaxBytesPerSecond,
+		MaxBytesPerSecond:      config.MaxBytesPerSecond,
 		LogBandwidthUsageStats: true,
 	})
 
