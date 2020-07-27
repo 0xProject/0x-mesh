@@ -185,6 +185,7 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
                 },
                 ethereumRPCURL: 'http://localhost:8545',
                 web3Provider: provider,
+                maxBytesPerSecond: 1,
             }),
         ],
     );
