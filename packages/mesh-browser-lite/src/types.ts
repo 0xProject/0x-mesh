@@ -187,7 +187,7 @@ export interface Config {
     // requests instead of the default.
     web3Provider?: SupportedProvider;
     // The maximum number of bytes per second that a peer is allowed to send before
-    // failing the bandwidth check. Defaults to 1 MiB.
+    // failing the bandwidth check. Defaults to 5 MiB.
     maxBytesPerSecond?: number;
 }
 

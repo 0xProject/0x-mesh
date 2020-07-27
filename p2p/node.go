@@ -164,7 +164,7 @@ type Config struct {
 	// default validators.
 	CustomMessageValidator pubsub.Validator
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check. Defaults to 1 MiB.
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64
 }
 
