@@ -191,6 +191,10 @@ type Config struct {
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
 	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 1 MiB, which
+	// is roughly 100x expected usage based on real world measurements.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"1048576"`
 }
 
 type App struct {
@@ -622,6 +626,7 @@ func (app *App) Start() error {
 		BootstrapList:          bootstrapList,
 		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
 		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
+		MaxBytesPerSecond:      app.config.MaxBytesPerSecond,
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {

@@ -163,6 +163,10 @@ type Config struct {
 	// according to this custom validator, which will be run in addition to the
 	// default validators.
 	CustomMessageValidator pubsub.Validator
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 1 MiB, which
+	// is roughly 100x expected usage based on real world measurements.
+	MaxBytesPerSecond float64
 }
 
 func getPeerstoreDir(datadir string) string {
@@ -192,6 +196,9 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	}
 	if config.PerPeerPubSubMessageBurst == 0 {
 		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
+	}
+	if config.MaxBytesPerSecond == 0 {
+		config.MaxBytesPerSecond = defaultMaxBytesPerSecond
 	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
@@ -268,7 +275,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		Host:                   basicHost,
 		Filters:                filters,
 		BandwidthCounter:       bandwidthCounter,
-		MaxBytesPerSecond:      defaultMaxBytesPerSecond,
+		MaxBytesPerSecond:      config.MaxBytesPerSecond,
 		LogBandwidthUsageStats: true,
 	})
 
