@@ -282,6 +282,11 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		Factor: 2,                      // Factor to multiple each successive back-off
 	}
 
+	// nextRequestForPeer tracks the last meaningful "next request" that was
+	// provided by a peer during ordersync. This allows us to pick up where
+	// we left off if a peer disconnects rather than starting to ordersync
+	// from the beginning of the peer's database.
+	nextRequestForPeer := map[peer.ID]*rawRequest{}
 	for len(successfullySyncedPeers) < minPeers {
 		select {
 		case <-ctx.Done():
@@ -318,6 +323,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			m.RLock()
 			successfullySyncedPeerLength := len(successfullySyncedPeers)
 			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
+			nextRequest, _ := nextRequestForPeer[peerID]
 			m.RUnlock()
 			if successfullySyncedPeerLength >= minPeers {
 				return nil
@@ -336,17 +342,23 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					wg.Done()
 					<-semaphore
 				}()
-				if err := s.getOrdersFromPeer(innerCtx, id); err != nil {
+				if nextFirstRequest, err := s.getOrdersFromPeer(innerCtx, id, nextRequest); err != nil {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
 					}).Debug("could not get orders from peer via ordersync")
+					m.Lock()
+					if nextRequest != nil {
+						nextRequestForPeer[id] = nextFirstRequest
+					}
+					m.Unlock()
 				} else {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
 					}).Trace("succesfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
+					delete(nextRequestForPeer, id)
 					m.Unlock()
 				}
 			}(peerID)
@@ -446,43 +458,49 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
-func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) error {
+func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, firstRequest *rawRequest) (*rawRequest, error) {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = stream.Close()
 	}()
 
 	totalValidOrders := 0
-	nextReq := &rawRequest{
-		Type:         TypeRequest,
-		Subprotocols: s.SupportedSubprotocols(),
-		Metadata:     nil,
+	var nextReq *rawRequest
+	if firstRequest != nil {
+		nextReq = firstRequest
+	} else {
+		nextReq = &rawRequest{
+			Type:         TypeRequest,
+			Subprotocols: s.SupportedSubprotocols(),
+			Metadata:     nil,
+		}
 	}
 	var numValidOrders int
 	nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	totalValidOrders += numValidOrders
 	if totalValidOrders == 0 {
-		return ErrNoOrdersFromPeer
+		return nil, ErrNoOrdersFromPeer
 	} else if nextReq == nil {
-		return nil
+		return nil, nil
 	}
+	nextFirstReq := nextReq
 
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nextFirstReq, ctx.Err()
 		default:
 		}
 		nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
 		if err != nil {
-			return err
+			return nextFirstReq, err
 		}
 		totalValidOrders += numValidOrders
 		if nextReq == nil {
@@ -490,8 +508,9 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) err
 			if totalValidOrders == 0 {
 				err = ErrNoOrdersFromPeer
 			}
-			return err
+			return nextFirstReq, err
 		}
+		nextFirstReq = nextReq
 	}
 }
 
