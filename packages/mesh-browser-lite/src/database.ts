@@ -180,7 +180,7 @@ export class Database {
         const alreadyStored: string[] = [];
         const addedMap = new Map<string, Order>();
         const removed: Order[] = [];
-        await this._db.transaction('rw', this._orders, async () => {
+        await this._db.transaction('rw!', this._orders, async () => {
             for (const order of orders) {
                 try {
                     await this._orders.add(order);
@@ -222,7 +222,7 @@ export class Database {
 
     // GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
     public async getOrderAsync(hash: string): Promise<Order> {
-        return this._db.transaction('rw!', this._orders, async () => {
+        return this._db.transaction('r!', this._orders, async () => {
             const order = await this._orders.get(hash);
             if (order === undefined) {
                 throw newNotFoundError();
@@ -233,43 +233,44 @@ export class Database {
 
     // GetOrderStatuses(hashes []common.Hash) (statuses []StoredOrderStatus, err error)
     public async getOrderStatusesAsync(hashes: string[]): Promise<StoredOrderStatus[]> {
-        const statuses: StoredOrderStatus[] = [];
-        await this._db.transaction('rw!', this._orders, async () => {
-            for (const hash of hashes) {
-                const order = await this._orders.get(hash);
-                if (order === undefined) {
-                    statuses.push({
-                        isStored: false,
-                        isMarkedRemoved: false,
-                    });
-                } else if (order.isRemoved) {
-                    statuses.push({
-                        isStored: true,
-                        isMarkedRemoved: true,
-                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
-                    });
-                } else {
-                    statuses.push({
-                        isStored: true,
-                        isMarkedRemoved: false,
-                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
-                    });
-                }
-            }
+        let orders: Order[] = [];
+        await this._db.transaction('r!', this._orders, async () => {
+            orders = await this._orders.bulkGet(hashes);
         });
+        const statuses: StoredOrderStatus[] = [];
+        for (const order of orders) {
+            if (order === undefined) {
+                statuses.push({
+                    isStored: false,
+                    isMarkedRemoved: false,
+                });
+            } else if (order.isRemoved) {
+                statuses.push({
+                    isStored: true,
+                    isMarkedRemoved: true,
+                    fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                });
+            } else {
+                statuses.push({
+                    isStored: true,
+                    isMarkedRemoved: false,
+                    fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                });
+            }
+        }
         return statuses;
     }
 
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
-        return this._db.transaction('rw!', this._orders, async () => {
+        return this._db.transaction('r!', this._orders, async () => {
             return findRecordsAsync(this._orders, query);
         });
     }
 
     // CountOrders(opts *OrderQuery) (int, error)
     public async countOrdersAsync(query?: OrderQuery): Promise<number> {
-        return this._db.transaction('rw!', this._orders, async () => {
+        return this._db.transaction('r!', this._orders, async () => {
             if (!canUseNativeDexieIndexes(this._orders, query)) {
                 // As a fallback, implement the query inefficiently (in-memory).
                 // Note(albrow): If needed we can optimize specific common queries with compound indexes.
@@ -379,7 +380,7 @@ export class Database {
 
     // GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
     public async getMiniHeaderAsync(hash: string): Promise<MiniHeader> {
-        return this._db.transaction('rw!', this._miniHeaders, async () => {
+        return this._db.transaction('r!', this._miniHeaders, async () => {
             const miniHeader = await this._miniHeaders.get(hash);
             if (miniHeader === undefined) {
                 throw newNotFoundError();
@@ -390,7 +391,7 @@ export class Database {
 
     // FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)
     public async findMiniHeadersAsync(query: MiniHeaderQuery): Promise<MiniHeader[]> {
-        return this._db.transaction('rw!', this._miniHeaders, async () => {
+        return this._db.transaction('r!', this._miniHeaders, async () => {
             return findRecordsAsync(this._miniHeaders, query);
         });
     }
@@ -417,7 +418,7 @@ export class Database {
 
     // GetMetadata() (*types.Metadata, error)
     public async getMetadataAsync(): Promise<Metadata> {
-        return this._db.transaction('rw!', this._metadata, async () => {
+        return this._db.transaction('r!', this._metadata, async () => {
             return this._getMetadataAsync();
         });
     }
