@@ -97,6 +97,7 @@ export type OrderSort = SortOption<Order>;
 export type OrderFilter = FilterOption<Order>;
 
 export interface AddOrdersResult {
+    alreadyStored: string[];
     added: Order[];
     removed: Order[];
 }
@@ -174,8 +175,9 @@ export class Database {
         this._db.close();
     }
 
-    // AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
+    // AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
     public async addOrdersAsync(orders: Order[]): Promise<AddOrdersResult> {
+        const alreadyStored: string[] = [];
         const addedMap = new Map<string, Order>();
         const removed: Order[] = [];
         await this._db.transaction('rw', this._orders, async () => {
@@ -184,8 +186,9 @@ export class Database {
                     await this._orders.add(order);
                 } catch (e) {
                     if (e.name === 'ConstraintError') {
-                        // An order with this hash already exists. This is fine based on the semantics of
-                        // addOrders.
+                        // An order with this hash already exists. Add the order hash to the
+                        // array of alreadyStored
+                        alreadyStored.push(order.hash);
                         continue;
                     }
                     throw e;
@@ -211,6 +214,7 @@ export class Database {
         });
 
         return {
+            alreadyStored,
             added: Array.from(addedMap.values()),
             removed,
         };

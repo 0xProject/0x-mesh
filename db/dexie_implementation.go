@@ -90,7 +90,7 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 	}, nil
 }
 
-func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = recoverError(r)
@@ -100,23 +100,30 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 	defer logQueryIfSlow(start, fmt.Sprintf("AddOrders with %d orders", len(orders)))
 	jsOrders, err := jsutil.InefficientlyConvertToJS(dexietypes.OrdersFromCommonType(orders))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	jsResult, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("addOrdersAsync", jsOrders))
 	if err != nil {
-		return nil, nil, convertJSError(err)
+		return nil, nil, nil, convertJSError(err)
+	}
+	jsAlreadyStored := jsResult.Get("alreadyStored")
+	if !jsutil.IsNullOrUndefined(jsAlreadyStored) {
+		for i := 0; i < jsAlreadyStored.Length(); i++ {
+			hashString := jsAlreadyStored.Index(i).String()
+			alreadyStored = append(alreadyStored, common.HexToHash(hashString))
+		}
 	}
 	jsAdded := jsResult.Get("added")
 	var dexieAdded []*dexietypes.Order
 	if err := jsutil.InefficientlyConvertFromJS(jsAdded, &dexieAdded); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	jsRemoved := jsResult.Get("removed")
 	var dexieRemoved []*dexietypes.Order
 	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &dexieRemoved); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return dexietypes.OrdersToCommonType(dexieAdded), dexietypes.OrdersToCommonType(dexieRemoved), nil
+	return alreadyStored, dexietypes.OrdersToCommonType(dexieAdded), dexietypes.OrdersToCommonType(dexieRemoved), nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {

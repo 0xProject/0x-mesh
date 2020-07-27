@@ -1061,9 +1061,15 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	}
 
 	addedMap := map[common.Hash]*types.OrderWithMetadata{}
-	addedOrders, removedOrders, err := w.db.AddOrders(dbOrders)
+	alreadyStored, addedOrders, removedOrders, err := w.db.AddOrders(dbOrders)
+	alreadyStoredSet := map[common.Hash]struct{}{}
 	if err != nil {
 		return nil, err
+	}
+	for _, hash := range alreadyStored {
+		// Add each hash to a set of already stored hashes. This allows for faster
+		// lookups later on.
+		alreadyStoredSet[hash] = struct{}{}
 	}
 	for _, order := range addedOrders {
 		err = w.setupInMemoryOrderState(order)
@@ -1110,6 +1116,9 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	// watching it. This is not too far off from what really happened but is
 	// slightly inefficient.
 	//
+	// We can detect this by looking for orders that we should have added but
+	// are not included in either wasAdded map or the alreadyStored set.
+	//
 	// TODO(albrow): In the future, we should add an additional return value and
 	// then react to that differently depending on whether the order was
 	// received via RPC or from a peer. In the former case, we should return an
@@ -1118,7 +1127,8 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	// want to adjust the peer's score.
 	for _, orderToAdd := range orderInfos {
 		_, wasAdded := addedMap[orderToAdd.OrderHash]
-		if !wasAdded {
+		_, alreadyStored := alreadyStoredSet[orderToAdd.OrderHash]
+		if !wasAdded && !alreadyStored {
 			stoppedWatchingEvent := &zeroex.OrderEvent{
 				Timestamp:                now,
 				OrderHash:                orderToAdd.OrderHash,
