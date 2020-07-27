@@ -1257,14 +1257,13 @@ func (w *Watcher) generateOrderEventsIfChanged(
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+	if len(orders) == 0 {
+		return &ordervalidator.ValidationResults{}, nil
+	}
 	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
 	if err != nil {
 		return nil, err
 	}
-
-	// Lock down the processing of additional block events until we've validated and added these new orders
-	w.handleBlockEventsMu.RLock()
-	defer w.handleBlockEventsMu.RUnlock()
 
 	validationBlock, zeroexResults, err := w.onchainOrderValidation(ctx, validMeshOrders)
 	if err != nil {
@@ -1360,6 +1359,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		}
 	}
 
+	validOrderHashes := []common.Hash{}
 	for _, order := range orders {
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
@@ -1442,41 +1442,46 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			}
 		}
 
-		// Check if order is already stored in DB
-		dbOrder, err := w.db.GetOrder(orderHash)
-		if err != nil {
-			if err != db.ErrNotFound {
-				logger.WithField("error", err).Error("could not check if order was already stored")
-				return nil, nil, err
-			}
-			// If the error is db.ErrNotFound, it just means the order is not currently stored in
-			// the database. There's nothing else in the database to check, so we can continue.
-		} else {
-			// If stored but flagged for removal, reject it
-			if dbOrder.IsRemoved {
-				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshValidation,
-					Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
-				})
-				continue
-			} else {
-				// If stored but not flagged for removal, accept it without re-validation
-				results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
-					OrderHash:                orderHash,
-					SignedOrder:              order,
-					FillableTakerAssetAmount: dbOrder.FillableTakerAssetAmount,
-					IsNew:                    false,
-				})
-				continue
-			}
-		}
-
+		validOrderHashes = append(validOrderHashes, orderHash)
 		validMeshOrders = append(validMeshOrders, order)
 	}
 
-	return results, validMeshOrders, nil
+	newValidOrders := []*zeroex.SignedOrder{}
+	storedOrderStatuses, err := w.db.GetOrderStatuses(validOrderHashes)
+	if err != nil {
+		logger.WithField("error", err).Error("could not get stored order statuses")
+		return nil, nil, err
+	}
+	if len(storedOrderStatuses) != len(validOrderHashes) {
+		return nil, nil, errors.New("could not get stored order statuses for all orders")
+	}
+	for i, order := range validMeshOrders {
+		orderStatus := storedOrderStatuses[i]
+		orderHash := validOrderHashes[i]
+		switch orderStatus {
+		case 0:
+			newValidOrders = append(newValidOrders, order)
+		case 1:
+			// If stored but marked as removed, reject the order.
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
+			})
+		case 2:
+			// If stored but not marked as removed, accept the order without re-validation
+			results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				// FIXME(albrow): return the actual FillableTakerAssetAmount.
+				FillableTakerAssetAmount: big.NewInt(0),
+				IsNew:                    false,
+			})
+		}
+	}
+
+	return results, newValidOrders, nil
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
