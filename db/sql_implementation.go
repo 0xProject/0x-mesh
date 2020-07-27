@@ -275,7 +275,7 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 	return db.sqldb.TransactionalContext(ctx, opts, f)
 }
 
-func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -296,6 +296,8 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 			}
 			if affected > 0 {
 				addedMap[order.Hash] = orders[i]
+			} else {
+				alreadyStored = append(alreadyStored, order.Hash)
 			}
 		}
 
@@ -330,13 +332,13 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	for _, order := range addedMap {
 		added = append(added, order)
 	}
-	return added, sqltypes.OrdersToCommonType(sqlRemoved), nil
+	return alreadyStored, added, sqltypes.OrdersToCommonType(sqlRemoved), nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {

@@ -31,20 +31,28 @@ func TestAddOrders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
+	orderHashes := []common.Hash{}
 	orders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
-		orders = append(orders, newTestOrder())
+		order := newTestOrder()
+		orders = append(orders, order)
+		orderHashes = append(orderHashes, order.Hash)
 	}
 
 	{
-		added, removed, err := db.AddOrders(orders)
+		alreadyStored, added, removed, err := db.AddOrders(orders)
 		require.NoError(t, err)
+		assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 		assert.Len(t, removed, 0, "Expected no orders to be removed")
 		assertOrderSlicesAreUnsortedEqual(t, orders, added)
 	}
 	{
-		added, removed, err := db.AddOrders(orders)
+		alreadyStored, added, removed, err := db.AddOrders(orders)
 		require.NoError(t, err)
+		assert.Len(t, alreadyStored, 10, "Expected 10 orders to be already stored")
+		for _, expectedHash := range orderHashes {
+			assert.Contains(t, alreadyStored, expectedHash, "Expected already stored to contain order hash")
+		}
 		assert.Len(t, removed, 0, "Expected no orders to be removed")
 		assert.Len(t, added, 0, "Expected no orders to be added (they should already exist)")
 	}
@@ -68,8 +76,9 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 		originalOrders = append(originalOrders, testOrder)
 	}
 
-	added, removed, err := db.AddOrders(originalOrders)
+	alreadyStored, added, removed, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
+	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 	assert.Len(t, removed, 0, "Expected no orders to be removed")
 	assertOrderSlicesAreUnsortedEqual(t, originalOrders, added)
 
@@ -84,8 +93,9 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	orderWithShorterExpirationTime.IsPinned = false
 	orderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
 	newOrders := []*types.OrderWithMetadata{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
-	added, removed, err = db.AddOrders(newOrders)
+	alreadyStored, added, removed, err = db.AddOrders(newOrders)
 	require.NoError(t, err)
+	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{orderWithShorterExpirationTime}, added)
 	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{originalOrders[len(originalOrders)-1]}, removed)
 
@@ -105,8 +115,9 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 		testOrder.IsPinned = true
 		pinnedOrders = append(pinnedOrders, testOrder)
 	}
-	added, removed, err = db.AddOrders(pinnedOrders)
+	alreadyStored, added, removed, err = db.AddOrders(pinnedOrders)
 	require.NoError(t, err)
+	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 	assert.Len(t, removed, 10, "expected all non-pinned orders to be removed")
 	assertOrderSlicesAreUnsortedEqual(t, pinnedOrders, added)
 
@@ -122,8 +133,9 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	pinnedOrderWithShorterExpirationTime.IsPinned = true
 	pinnedOrderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
 	newPinnedOrders := []*types.OrderWithMetadata{pinnedOrderWithLongerExpirationTime, pinnedOrderWithShorterExpirationTime}
-	added, removed, err = db.AddOrders(newPinnedOrders)
+	alreadyStored, added, removed, err = db.AddOrders(newPinnedOrders)
 	require.NoError(t, err)
+	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrderWithShorterExpirationTime}, added)
 	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrders[len(pinnedOrders)-1]}, removed)
 
@@ -135,8 +147,9 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	assertOrderSlicesAreUnsortedEqual(t, expectedStoredOrders, actualStoredOrders)
 
 	// Try to re-add the original (non-pinned) orders. Non-pinned orders should never replace pinned orders.
-	added, removed, err = db.AddOrders(originalOrders)
+	alreadyStored, added, removed, err = db.AddOrders(originalOrders)
 	require.NoError(t, err)
+	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
 	assert.Len(t, removed, 0, "expected no pinned orders to be removed")
 	assert.Len(t, added, 0, "expected no non-pinned orders to be added")
 
@@ -151,7 +164,7 @@ func TestGetOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
+	_, added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 
@@ -172,7 +185,7 @@ func TestGetOrderStatuses(t *testing.T) {
 	removedOrder := newTestOrder()
 	removedOrder.IsRemoved = true
 	notRemovedOrder := newTestOrder()
-	_, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, notRemovedOrder})
+	_, _, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, notRemovedOrder})
 	require.NoError(t, err)
 
 	hashes := []common.Hash{
@@ -215,7 +228,7 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 		order.IsPinned = false
 		nonPinnedOrders = append(nonPinnedOrders, order)
 	}
-	_, _, err := db.AddOrders(nonPinnedOrders)
+	_, _, _, err := db.AddOrders(nonPinnedOrders)
 	require.NoError(t, err)
 
 	// Create some pinned orders with expiration times 0, 2, 4, etc.
@@ -226,7 +239,7 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 		order.IsPinned = true
 		pinnedOrders = append(pinnedOrders, order)
 	}
-	_, _, err = db.AddOrders(pinnedOrders)
+	_, _, _, err = db.AddOrders(pinnedOrders)
 	require.NoError(t, err)
 
 	expectedMaxExpirationTime := nonPinnedOrders[len(nonPinnedOrders)-1].ExpirationTimeSeconds
@@ -253,7 +266,7 @@ func TestUpdateOrder(t *testing.T) {
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
-	_, _, err = db.AddOrders(originalOrders)
+	_, _, _, err = db.AddOrders(originalOrders)
 	require.NoError(t, err)
 
 	orderToUpdate := originalOrders[0]
@@ -282,7 +295,7 @@ func TestFindOrders(t *testing.T) {
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
-	_, _, err := db.AddOrders(originalOrders)
+	_, _, _, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
 
 	foundOrders, err := db.FindOrders(nil)
@@ -312,7 +325,7 @@ func TestFindOrdersSort(t *testing.T) {
 		}
 		originalOrders = append(originalOrders, order)
 	}
-	_, _, err := db.AddOrders(originalOrders)
+	_, _, _, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
 
 	testCases := []findOrdersSortTestCase{
@@ -396,7 +409,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
-	_, _, err := db.AddOrders(originalOrders)
+	_, _, _, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
 	sortOrdersByHash(originalOrders)
 
@@ -550,7 +563,7 @@ func TestDeleteOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
+	_, added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 	require.NoError(t, db.DeleteOrder(originalOrder.Hash))
@@ -576,7 +589,7 @@ func TestDeleteOrdersLimitAndOffset(t *testing.T) {
 		testOrder.MakerAssetAmount = big.NewInt(int64(i))
 		originalOrders = append(originalOrders, testOrder)
 	}
-	_, _, err := db.AddOrders(originalOrders)
+	_, _, _, err := db.AddOrders(originalOrders)
 	require.NoError(t, err)
 
 	// Call DeleteOrders and make sure the return value is what we expect.
@@ -620,7 +633,7 @@ func runDeleteOrdersFilterTestCase(t *testing.T, db *DB, originalOrders []*types
 	return func(t *testing.T) {
 		defer func() {
 			// After each case, reset the state of the database by re-adding the original orders.
-			_, _, err := db.AddOrders(originalOrders)
+			_, _, _, err := db.AddOrders(originalOrders)
 			require.NoError(t, err)
 		}()
 
@@ -1312,7 +1325,7 @@ func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWith
 		order.ParsedMakerAssetData = parsedMakerAssetData
 		storedOrders = append(storedOrders, order)
 	}
-	_, _, err := db.AddOrders(storedOrders)
+	_, _, _, err := db.AddOrders(storedOrders)
 	require.NoError(t, err)
 	return storedOrders
 }
