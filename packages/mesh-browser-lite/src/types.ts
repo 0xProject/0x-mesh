@@ -186,6 +186,9 @@ export interface Config {
     // Offers the ability to use your own web3 provider for all Ethereum RPC
     // requests instead of the default.
     web3Provider?: SupportedProvider;
+    // The maximum number of bytes per second that a peer is allowed to send before
+    // failing the bandwidth check. Defaults to 1 MiB.
+    maxBytesPerSecond?: number;
 }
 
 export interface ContractAddresses {
@@ -252,6 +255,7 @@ export interface WrapperConfig {
     maxOrdersInStorage?: number;
     customOrderFilter?: string; // json-encoded string instead of Object
     web3Provider?: ZeroExProvider; // Standardized ZeroExProvider instead the more permissive SupportedProvider interface
+    maxBytesPerSecond?: number;
 }
 
 /**

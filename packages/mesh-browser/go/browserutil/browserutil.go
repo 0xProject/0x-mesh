@@ -37,6 +37,7 @@ func ConvertConfig(jsConfig js.Value) (core.Config, error) {
 		EnableEthereumRPCRateLimiting:    true,
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
+		MaxBytesPerSecond:                1048576,
 	}
 
 	// Required config options
@@ -85,6 +86,9 @@ func ConvertConfig(jsConfig js.Value) (core.Config, error) {
 	}
 	if web3Provider := jsConfig.Get("web3Provider"); !jsutil.IsNullOrUndefined(web3Provider) {
 		config.EthereumRPCClient = providerwrapper.NewRPCClient(web3Provider)
+	}
+	if maxBytesPerSecond := jsConfig.Get("maxBytesPerSecond"); !jsutil.IsNullOrUndefined(maxBytesPerSecond) {
+		config.MaxBytesPerSecond = maxBytesPerSecond.Float()
 	}
 
 	return config, nil

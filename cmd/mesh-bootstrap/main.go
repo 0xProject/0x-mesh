@@ -119,8 +119,7 @@ type Config struct {
 	// we reach PeerCountLow. Defaults to 110.
 	PeerCountHigh int `envvar:"PEER_COUNT_HIGH" default:"110"`
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check. Defaults to 1 MiB, which
-	// is roughly 100x expected usage based on real world measurements.
+	// allowed to send before failing the bandwidth check. Defaults to 1 MiB.
 	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"1048576"`
 }
 
