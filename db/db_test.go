@@ -164,6 +164,44 @@ func TestGetOrder(t *testing.T) {
 	assert.EqualError(t, err, ErrNotFound.Error(), "calling GetOrder with a hash that doesn't exist should return ErrNotFound")
 }
 
+func TestGetOrderStatuses(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	removedOrder := newTestOrder()
+	removedOrder.IsRemoved = true
+	notRemovedOrder := newTestOrder()
+	_, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, notRemovedOrder})
+	require.NoError(t, err)
+
+	hashes := []common.Hash{
+		common.HexToHash("0xace746910c6a8a4730878e6e8a4abb328844c0b58f0cdfbb5b6ad28ee0bae347"),
+		removedOrder.Hash,
+		notRemovedOrder.Hash,
+	}
+	actualStatuses, err := db.GetOrderStatuses(hashes)
+	require.NoError(t, err)
+	expectedStatuses := []*StoredOrderStatus{
+		{
+			IsStored:                 false,
+			IsMarkedRemoved:          false,
+			FillableTakerAssetAmount: nil,
+		},
+		{
+			IsStored:                 true,
+			IsMarkedRemoved:          true,
+			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
+		},
+		{
+			IsStored:                 true,
+			IsMarkedRemoved:          false,
+			FillableTakerAssetAmount: notRemovedOrder.FillableTakerAssetAmount,
+		},
+	}
+	assert.Equal(t, expectedStatuses, actualStatuses)
+}
+
 func TestGetCurrentMaxExpirationTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

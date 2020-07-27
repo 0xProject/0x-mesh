@@ -10,13 +10,25 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"syscall/js"
+	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/dexietypes"
 	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+)
+
+const (
+	// slowQueryDebugDuration is the minimum duration used to determine whether to log slow queries.
+	// Any query that takes longer than this will be logged at the Debug level.
+	slowQueryDebugDuration = 1 * time.Second
+	// slowQueryWarnDuration is the minimum duration used to determine whether to log slow queries.
+	// Any query that takes longer than this will be logged at the Warning level.
+	slowQueryWarnDuration = 5 * time.Second
 )
 
 var _ Database = (*DB)(nil)
@@ -84,6 +96,8 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (added []*types.Order
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("AddOrders with %d orders", len(orders)))
 	jsOrders, err := jsutil.InefficientlyConvertToJS(dexietypes.OrdersFromCommonType(orders))
 	if err != nil {
 		return nil, nil, err
@@ -111,6 +125,8 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "GetOrder")
 	jsOrder, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getOrderAsync", hash.Hex()))
 	if err != nil {
 		return nil, convertJSError(err)
@@ -122,6 +138,39 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return dexietypes.OrderToCommonType(&dexieOrder), nil
 }
 
+func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = recoverError(r)
+		}
+	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("GetOrderStatuses with %d hashes", len(hashes)))
+	stringHashes := make([]interface{}, len(hashes))
+	for i, hash := range hashes {
+		stringHashes[i] = hash.Hex()
+	}
+	jsResults, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getOrderStatusesAsync", stringHashes))
+	if err != nil {
+		return nil, convertJSError(err)
+	}
+	statuses = make([]*StoredOrderStatus, jsResults.Length())
+	for i := 0; i < len(statuses); i++ {
+		jsStatus := jsResults.Index(i)
+		var fillableAmount *big.Int
+		jsAmount := jsStatus.Get("fillableTakerAssetAmount")
+		if !jsutil.IsNullOrUndefined(jsAmount) {
+			fillableAmount, _ = big.NewInt(0).SetString(jsAmount.String(), 10)
+		}
+		statuses[i] = &StoredOrderStatus{
+			IsStored:                 jsStatus.Get("isStored").Bool(),
+			IsMarkedRemoved:          jsStatus.Get("isMarkedRemoved").Bool(),
+			FillableTakerAssetAmount: fillableAmount,
+		}
+	}
+	return statuses, nil
+}
+
 func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
 	if err := checkOrderQuery(query); err != nil {
 		return nil, err
@@ -131,6 +180,8 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("FindOrders %s", spew.Sdump(query)))
 	query = formatOrderQuery(query)
 	jsOrders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("findOrdersAsync", query))
 	if err != nil {
@@ -152,6 +203,8 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("CountOrders %s", spew.Sdump(query)))
 	query = formatOrderQuery(query)
 	jsCount, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("countOrdersAsync", query))
 	if err != nil {
@@ -166,6 +219,8 @@ func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "DeleteOrder")
 	_, jsErr := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteOrderAsync", hash.Hex()))
 	if jsErr != nil {
 		return convertJSError(jsErr)
@@ -182,6 +237,8 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("DeleteOrders %s", spew.Sdump(query)))
 	query = formatOrderQuery(query)
 	jsOrders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteOrdersAsync", query))
 	if err != nil {
@@ -200,6 +257,8 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "UpdateOrder")
 	jsUpdateFunc := js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		jsExistingOrder := args[0]
 		var dexieExistingOrder dexietypes.Order
@@ -231,6 +290,8 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("AddMiniHeaders with %d miniHeaders", len(miniHeaders)))
 	jsMiniHeaders := dexietypes.MiniHeadersFromCommonType(miniHeaders)
 	jsResult, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("addMiniHeadersAsync", jsMiniHeaders))
 	if err != nil {
@@ -249,6 +310,8 @@ func (db *DB) ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("ResetMiniHeaders with %d newMiniHeaders", len(newMiniHeaders)))
 	jsNewMiniHeaders := dexietypes.MiniHeadersFromCommonType(newMiniHeaders)
 	_, err = jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("resetMiniHeadersAsync", jsNewMiniHeaders))
 	if err != nil {
@@ -263,6 +326,8 @@ func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "GetMiniHeader")
 	jsMiniHeader, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getMiniHeaderAsync", hash.Hex()))
 	if err != nil {
 		return nil, convertJSError(err)
@@ -279,6 +344,8 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("FindMiniHeaders %s", spew.Sdump(query)))
 	query = formatMiniHeaderQuery(query)
 	jsMiniHeaders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("findMiniHeadersAsync", query))
 	if err != nil {
@@ -293,6 +360,8 @@ func (db *DB) DeleteMiniHeader(hash common.Hash) (err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "DeleteMiniHeader")
 	_, jsErr := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteMiniHeaderAsync", hash.Hex()))
 	if jsErr != nil {
 		return convertJSError(jsErr)
@@ -309,6 +378,8 @@ func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHe
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, fmt.Sprintf("DeleteMiniHeaders %s", spew.Sdump(query)))
 	query = formatMiniHeaderQuery(query)
 	jsMiniHeaders, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("deleteMiniHeadersAsync", query))
 	if err != nil {
@@ -323,6 +394,8 @@ func (db *DB) GetMetadata() (metadata *types.Metadata, err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "GetMetadata")
 	jsMetadata, err := jsutil.AwaitPromiseContext(db.ctx, db.dexie.Call("getMetadataAsync"))
 	if err != nil {
 		return nil, convertJSError(err)
@@ -340,6 +413,8 @@ func (db *DB) SaveMetadata(metadata *types.Metadata) (err error) {
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "SaveMetadata")
 	dexieMetadata := dexietypes.MetadataFromCommonType(metadata)
 	jsMetadata, err := jsutil.InefficientlyConvertToJS(dexieMetadata)
 	if err != nil {
@@ -358,6 +433,8 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 			err = recoverError(r)
 		}
 	}()
+	start := time.Now()
+	defer logQueryIfSlow(start, "UpdateMetadata")
 	jsUpdateFunc := js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		jsExistingMetadata := args[0]
 		var dexieExistingMetadata dexietypes.Metadata
@@ -459,5 +536,20 @@ func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress comm
 		Field: field,
 		Kind:  Contains,
 		Value: string(filterValueJSON),
+	}
+}
+
+func logQueryIfSlow(start time.Time, msg string) {
+	duration := time.Since(start)
+	if duration > slowQueryDebugDuration {
+		logWithFields := logrus.WithFields(logrus.Fields{
+			"message":  msg,
+			"duration": fmt.Sprint(duration),
+		})
+		if duration > slowQueryWarnDuration {
+			logWithFields.Warn("slow query")
+		} else {
+			logWithFields.Debug("slow query")
+		}
 	}
 }

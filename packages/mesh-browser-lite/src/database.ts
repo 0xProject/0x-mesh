@@ -82,6 +82,12 @@ export interface Order {
     lastValidatedBlockHash: string;
 }
 
+export interface StoredOrderStatus {
+    isStored: boolean;
+    isMarkedRemoved: boolean;
+    fillableTakerAssetAmount?: string;
+}
+
 export type OrderField = keyof Order;
 
 export type OrderQuery = Query<Order>;
@@ -219,6 +225,35 @@ export class Database {
             }
             return order;
         });
+    }
+
+    // GetOrderStatuses(hashes []common.Hash) (statuses []StoredOrderStatus, err error)
+    public async getOrderStatusesAsync(hashes: string[]): Promise<StoredOrderStatus[]> {
+        const statuses: StoredOrderStatus[] = [];
+        await this._db.transaction('rw!', this._orders, async () => {
+            for (const hash of hashes) {
+                const order = await this._orders.get(hash);
+                if (order === undefined) {
+                    statuses.push({
+                        isStored: false,
+                        isMarkedRemoved: false,
+                    });
+                } else if (order.isRemoved) {
+                    statuses.push({
+                        isStored: true,
+                        isMarkedRemoved: true,
+                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    });
+                } else {
+                    statuses.push({
+                        isStored: true,
+                        isMarkedRemoved: false,
+                        fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    });
+                }
+            }
+        });
+        return statuses;
     }
 
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)

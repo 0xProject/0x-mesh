@@ -33,6 +33,7 @@ var (
 type Database interface {
 	AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
 	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
+	GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error)
 	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 	CountOrders(opts *OrderQuery) (int, error)
 	DeleteOrder(hash common.Hash) error
@@ -138,6 +139,12 @@ type OrderFilter struct {
 	Field OrderField  `json:"field"`
 	Kind  FilterKind  `json:"kind"`
 	Value interface{} `json:"value"`
+}
+
+type StoredOrderStatus struct {
+	IsStored                 bool     `json:"isStored"`
+	IsMarkedRemoved          bool     `json:"isMarkedRemoved"`
+	FillableTakerAssetAmount *big.Int `json:"fillableTakerAssetAmount"`
 }
 
 // MakerAssetIncludesTokenAddressAndTokenID is a helper method which returns a filter that will match orders

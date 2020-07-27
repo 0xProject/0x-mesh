@@ -353,6 +353,47 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return sqltypes.OrderToCommonType(&foundOrder), nil
 }
 
+func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	orderStatuses := make([]*StoredOrderStatus, len(hashes))
+	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		for i, hash := range hashes {
+			var foundOrder sqltypes.Order
+			err := db.sqldb.GetContext(db.ctx, &foundOrder, "SELECT isRemoved, fillableTakerAssetAmount FROM orders WHERE hash = $1", hash)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					orderStatuses[i] = &StoredOrderStatus{
+						IsStored:                 false,
+						IsMarkedRemoved:          false,
+						FillableTakerAssetAmount: nil,
+					}
+				} else {
+					return err
+				}
+			} else if foundOrder.IsRemoved {
+				orderStatuses[i] = &StoredOrderStatus{
+					IsStored:                 true,
+					IsMarkedRemoved:          true,
+					FillableTakerAssetAmount: foundOrder.FillableTakerAssetAmount.Int,
+				}
+			} else {
+				orderStatuses[i] = &StoredOrderStatus{
+					IsStored:                 true,
+					IsMarkedRemoved:          false,
+					FillableTakerAssetAmount: foundOrder.FillableTakerAssetAmount.Int,
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return orderStatuses, nil
+}
+
 func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
@@ -386,7 +427,7 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 		return 0, err
 	}
 	db.mu.RLock()
-	gotCount, err := stmt.GetCount()
+	gotCount, err := stmt.GetCountContext(db.ctx)
 	db.mu.RUnlock()
 	if err != nil {
 		return 0, err
