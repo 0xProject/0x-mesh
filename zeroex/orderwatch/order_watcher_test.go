@@ -22,6 +22,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/davecgh/go-spew/spew"
+	geth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -30,6 +31,7 @@ import (
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -1515,7 +1517,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		Timestamp: blockTimestamp,
 	}
 	expiringBlockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type:        blockwatch.Added,
 			BlockHeader: nextBlock,
 		},
@@ -1533,7 +1535,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 
 	validationResults := ordervalidator.ValidationResults{
 		Accepted: []*ordervalidator.AcceptedOrderInfo{
-			&ordervalidator.AcceptedOrderInfo{
+			{
 				OrderHash:                orderHash,
 				SignedOrder:              signedOrder,
 				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrder.TakerAssetAmount, big.NewInt(2)),
@@ -1622,6 +1624,299 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 	require.Equal(t, allEvents[0], blockEventsOne[0])
 }
 
+func TestRevalidateOrdersForMissingEvents(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	err = orderWatcher.RevalidateOrdersForMissingEvents(ctx)
+	require.NoError(t, err)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
+// TestMissingOrderEventsWithMissingBlocks tests that the orderwatcher will not
+// miss block events for orders that were originally validated in a block that
+// currently exists in the database.
+func TestMissingOrderEvents(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	// TODO(jalextowle): This test will fail with "context canceled" if a context
+	// with a timeout is used here.
+	ctx := context.Background()
+	dbOpts := db.TestOptions()
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	validator, err := ordervalidator.New(
+		&SlowContractCaller{
+			caller:            ethRPCClient,
+			contractCallDelay: time.Second,
+		},
+		constants.TestChainID,
+		ethereumRPCMaxContentLength,
+		ganacheAddresses,
+	)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, dbOpts.MaxMiniHeaders, validator)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	// Add new block events and then check to see if the order has been removed from the blockwatcher
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &types.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
+	}
+	newBlockEvents := []*blockwatch.Event{
+		{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- newBlockEvents
+
+	// Await canceled event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
+// TestMissingOrderEventsWithMissingBlocks tests that the orderwatcher will not
+// miss block events for orders that were originally validated in a block that no
+// longer exists in the database. This covers an edge case where the blockwatcher
+// had to catch up a significant number of blocks during a previous call to
+// `handleBlockEvents`.
+// TODO(jalextowle): De-duplicate the code in this test and the above test
+func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx := context.Background()
+	dbOpts := db.TestOptions()
+	dbOpts.MaxMiniHeaders = 1
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	validator, err := ordervalidator.New(
+		&SlowContractCaller{
+			caller:            ethRPCClient,
+			contractCallDelay: time.Second,
+		},
+		constants.TestChainID,
+		ethereumRPCMaxContentLength,
+		ganacheAddresses,
+	)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, dbOpts.MaxMiniHeaders, validator)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	// Cancel a new order to remove old miniheaders from the database.
+	dummyOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	opts = &bind.TransactOpts{
+		From:   dummyOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(dummyOrder.MakerAddress),
+	}
+	trimmedOrder = dummyOrder.Trim()
+	txn, err = exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	// Add new block events and then check to see if the order has been removed from the blockwatcher
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &types.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
+	}
+	newBlockEvents := []*blockwatch.Event{
+		{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- newBlockEvents
+
+	// Await canceled event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
 func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
@@ -1648,6 +1943,12 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 }
 
 func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, database *db.DB) (*blockwatch.Watcher, *Watcher) {
+	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+	return setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, blockRetentionLimit, orderValidator)
+}
+
+func setupOrderWatcherWithValidator(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, database *db.DB, maxMiniHeaders int, v *ordervalidator.OrderValidator) (*blockwatch.Watcher, *Watcher) {
 	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
 	require.NoError(t, err)
 	topics := GetRelevantTopics()
@@ -1658,13 +1959,12 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, ganacheAddresses)
+	blockWatcher := blockwatch.New(maxMiniHeaders, blockWatcherConfig)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		DB:                database,
 		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
+		OrderValidator:    v,
 		ChainID:           constants.TestChainID,
 		ContractAddresses: ganacheAddresses,
 		MaxOrders:         1000,
@@ -1692,6 +1992,34 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	require.NoError(t, err)
 
 	return blockWatcher, orderWatcher
+}
+
+var _ bind.ContractCaller = &SlowContractCaller{}
+
+// SlowContractCaller satisfies the bind.ContractCall interface by wrapping another
+// contract caller and adding delays before the contract call.
+type SlowContractCaller struct {
+	caller            bind.ContractCaller
+	contractCallDelay time.Duration
+	codeAtDelay       time.Duration
+}
+
+func (s *SlowContractCaller) CallContract(ctx context.Context, call geth.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(s.contractCallDelay):
+	}
+	return s.caller.CallContract(ctx, call, blockNumber)
+}
+
+func (s *SlowContractCaller) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(s.codeAtDelay):
+	}
+	return s.caller.CodeAt(ctx, contract, blockNumber)
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {

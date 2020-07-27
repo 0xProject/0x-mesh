@@ -103,13 +103,30 @@ func New(retentionLimit int, config Config) *Watcher {
 	}
 }
 
+func (w *Watcher) GetNumberOfBlocksBehind(ctx context.Context) (int, int, error) {
+	latestBlockProcessed := w.stack.Peek()
+
+	// No previously stored block so no blocks have elapsed
+	if latestBlockProcessed == nil {
+		return 0, 0, nil
+	}
+
+	latestBlock, err := w.client.HeaderByNumber(nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
+	blocksElapsed := int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
+	return blocksElapsed, latestBlockProcessedNumber, err
+}
+
 // FastSyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
 // catches it back up. If less than 128 blocks passed, we are able to fetch all missing
 // block events and process them. If more than 128 blocks passed, we cannot catch up
 // without an archive Ethereum node (see: http://bit.ly/2D11Hr6) so we instead clear
 // previously tracked blocks so BlockWatcher starts again from the latest block. This
 // function blocks until complete or the context is  cancelled.
-func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
+func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
 	w.mu.Lock()
 	if w.wasStartedOnce {
 		w.mu.Unlock()
@@ -117,20 +134,11 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 	}
 	w.mu.Unlock()
 
-	latestBlockProcessed := w.stack.Peek()
-
-	// No previously stored block so no blocks have elapsed
-	if latestBlockProcessed == nil {
-		return 0, nil
-	}
-
-	latestBlock, err := w.client.HeaderByNumber(nil)
+	blocksElapsed, latestBlockProcessedNumber, err := w.GetNumberOfBlocksBehind(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
-	blocksElapsed = int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
 	if blocksElapsed == 0 {
 		return blocksElapsed, nil
 	} else if blocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
@@ -310,7 +318,6 @@ func (w *Watcher) SyncToLatestBlock() error {
 		}
 		w.blockFeed.Send(allEvents)
 	}
-
 	return syncErr
 }
 
