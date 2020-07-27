@@ -353,6 +353,10 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	return sqltypes.OrderToCommonType(&foundOrder), nil
 }
 
+func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []int, err error) {
+	return nil, errors.New("not yet implemented")
+}
+
 func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
@@ -386,7 +390,7 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 		return 0, err
 	}
 	db.mu.RLock()
-	gotCount, err := stmt.GetCount()
+	gotCount, err := stmt.GetCountContext(db.ctx)
 	db.mu.RUnlock()
 	if err != nil {
 		return 0, err

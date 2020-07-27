@@ -221,6 +221,27 @@ export class Database {
         });
     }
 
+    // GetOrderStatuses(hashes []common.Hash) (statuses []int, err error)
+    public async getOrderStatusesAsync(hashes: string[]): Promise<number[]> {
+        const statuses: number[] = [];
+        await this._db.transaction('rw!', this._orders, async () => {
+            for (const hash of hashes) {
+                const order = await this._orders.get(hash);
+                if (order === undefined) {
+                    // 0 means not stored
+                    statuses.push(0);
+                } else if (order.isRemoved) {
+                    // 1 means stored but marked as removed
+                    statuses.push(1);
+                } else {
+                    // 2 means store and not marked as removed
+                    statuses.push(2);
+                }
+            }
+        });
+        return statuses;
+    }
+
     // FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
     public async findOrdersAsync(query?: OrderQuery): Promise<Order[]> {
         return this._db.transaction('rw!', this._orders, async () => {

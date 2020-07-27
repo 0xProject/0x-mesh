@@ -33,6 +33,7 @@ var (
 type Database interface {
 	AddOrders(orders []*types.OrderWithMetadata) (added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
 	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
+	GetOrderStatuses(hashes []common.Hash) (statuses []int, err error)
 	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
 	CountOrders(opts *OrderQuery) (int, error)
 	DeleteOrder(hash common.Hash) error
