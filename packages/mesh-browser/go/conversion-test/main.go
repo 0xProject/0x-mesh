@@ -674,7 +674,7 @@ func setGlobals() {
 				MaxOrdersInStorage:               100000,
 				CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
 				EthereumChainID:                  1337,
-				MaxBytesPerSecond:                1048576,
+				MaxBytesPerSecond:                5242880,
 			}, "", false)
 			testConvertConfig("FullConfig", args[4], core.Config{
 				Verbosity:                        5,

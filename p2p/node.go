@@ -69,7 +69,7 @@ const (
 	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
 	// peer is allowed to send before failing the bandwidth check. It's set to
 	// roughly 100x expected usage based on real world measurements.
-	defaultMaxBytesPerSecond = 1048576 // 1 MiB.
+	defaultMaxBytesPerSecond = 5242880 // 5 MiB.
 	// defaultGlobalPubSubMessageLimit is the default value for
 	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
 	// case where 1000 peers are sending maxShareBatch messages per second. It may

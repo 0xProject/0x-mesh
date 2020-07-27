@@ -192,8 +192,8 @@ type Config struct {
 	// provided, EthereumRPCURL will be ignored.
 	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check. Defaults to 1 MiB.
-	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"1048576"`
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
 }
 
 type App struct {

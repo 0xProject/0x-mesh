@@ -37,7 +37,7 @@ func ConvertConfig(jsConfig js.Value) (core.Config, error) {
 		EnableEthereumRPCRateLimiting:    true,
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
-		MaxBytesPerSecond:                1048576,
+		MaxBytesPerSecond:                5242880, // 5 MiB
 	}
 
 	// Required config options
