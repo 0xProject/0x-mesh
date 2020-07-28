@@ -111,21 +111,14 @@ type rawResponse struct {
 // Service is the main entrypoint for running the ordersync protocol. It handles
 // responding to and sending ordersync requests.
 type Service struct {
-	ctx          context.Context
-	node         *p2p.Node
-	subprotocols map[string]Subprotocol
+	ctx  context.Context
+	node *p2p.Node
+	// preferredSubprotocols is the list of supported subprotocol IDs in order of preference.
+	preferredSubprotocols []string
+	subprotocolSet        map[string]Subprotocol
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
 	// shared between all peers.
 	requestRateLimiter *rate.Limiter
-}
-
-// SupportedSubprotocols returns the subprotocols that are supported by the service.
-func (s *Service) SupportedSubprotocols() []string {
-	sids := []string{}
-	for sid := range s.subprotocols {
-		sids = append(sids, sid)
-	}
-	return sids
 }
 
 // Subprotocol is a lower-level protocol which defines the details for the
@@ -163,15 +156,18 @@ type Subprotocol interface {
 // order of preference. The service will automatically pick the most preferred protocol
 // that is supported by both peers for each request/response.
 func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Service {
+	sids := []string{}
 	supportedSubprotocols := map[string]Subprotocol{}
 	for _, subp := range subprotocols {
+		sids = append(sids, subp.Name())
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
-		ctx:                ctx,
-		node:               node,
-		subprotocols:       supportedSubprotocols,
-		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
+		ctx:                   ctx,
+		node:                  node,
+		subprotocolSet:        supportedSubprotocols,
+		preferredSubprotocols: sids,
+		requestRateLimiter:    rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
 	}
 	s.node.SetStreamHandler(ID, s.HandleStream)
 	return s
@@ -181,7 +177,7 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 // based on the given request.
 func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, int, error) {
 	for i, protoID := range rawReq.Subprotocols {
-		subprotocol, found := s.subprotocols[protoID]
+		subprotocol, found := s.subprotocolSet[protoID]
 		if found {
 			return subprotocol, i, nil
 		}
@@ -189,7 +185,7 @@ func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, int, 
 
 	err := NoMatchingSubprotocolsError{
 		Requested: rawReq.Subprotocols,
-		Supported: s.SupportedSubprotocols(),
+		Supported: s.preferredSubprotocols,
 	}
 	return nil, 0, err
 }
@@ -241,7 +237,16 @@ func (s *Service) HandleStream(stream network.Stream) {
 		if len(rawReq.Subprotocols) > 1 {
 			firstRequests := FirstRequestsForSubprotocols{}
 			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
-			if err == nil {
+
+			// NOTE(jalextowle): Older versions of Mesh did not include
+			// metadata in the first ordersync request. In order to handle
+			// this in a backwards compatible way, we simply avoid updating
+			// the request metadata if there was an error decoding the
+			// metadata from the request or if the length of the
+			// MetadataForSubprotocol is too small (or empty). This latter
+			// check also ensures that the array is long enough for us
+			// to access the i-th element.
+			if err == nil && len(firstRequests.MetadataForSubprotocol) > i {
 				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
 			}
 		}
@@ -476,12 +481,9 @@ type FirstRequestsForSubprotocols struct {
 // contains metadata for all of the ordersync subprotocols.
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
-	for _, subprotocolString := range s.SupportedSubprotocols() {
-		subprotocol, found := s.subprotocols[subprotocolString]
-		if !found {
-			return nil, fmt.Errorf("cannot generate first request metadata for subprotocol %s", subprotocolString)
-		}
-		m, err := subprotocol.GenerateFirstRequestMetadata()
+	for _, sid := range s.preferredSubprotocols {
+		subp, _ := s.subprotocolSet[sid]
+		m, err := subp.GenerateFirstRequestMetadata()
 		if err != nil {
 			return nil, err
 		}
@@ -495,7 +497,7 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	}
 	return &rawRequest{
 		Type:         TypeRequest,
-		Subprotocols: s.SupportedSubprotocols(),
+		Subprotocols: s.preferredSubprotocols,
 		Metadata:     encodedMetadata,
 	}, nil
 }
@@ -574,7 +576,7 @@ func (s *Service) makeOrderSyncRequest(
 	}
 	s.handlePeerScoreEvent(providerID, psValidMessage)
 
-	subprotocol, found := s.subprotocols[rawRes.Subprotocol]
+	subprotocol, found := s.subprotocolSet[rawRes.Subprotocol]
 	if !found {
 		s.handlePeerScoreEvent(providerID, psSubprotocolNegotiationFailed)
 		return nil, 0, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
