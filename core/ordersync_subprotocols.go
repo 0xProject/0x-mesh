@@ -143,7 +143,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 		Complete: len(filteredOrders) == 0,
 		Metadata: &FilteredPaginationResponseMetadataV0{
 			// Note(albrow): Page isn't actually used. Included for backwards compatibility only.
-			Page:       metadata.Page + 1,
+			Page:       metadata.Page,
 			SnapshotID: nextMinOrderHash.Hex(),
 		},
 	}, nil
