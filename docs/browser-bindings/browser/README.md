@@ -1,4 +1,4 @@
-# @0x/mesh-browser - v9.4.0
+# @0x/mesh-browser - v9.4.1
 
 ## @0x/mesh-browser
 
