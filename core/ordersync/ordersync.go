@@ -113,8 +113,8 @@ type rawResponse struct {
 type Service struct {
 	ctx            context.Context
 	node           *p2p.Node
-	subprotocolSet map[string]Subprotocol
 	subprotocols   []string
+	subprotocolSet map[string]Subprotocol
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
 	// shared between all peers.
 	requestRateLimiter *rate.Limiter
@@ -169,7 +169,6 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 	for _, subp := range subprotocols {
 		sids = append(sids, subp.Name())
 		supportedSubprotocols[subp.Name()] = subp
-
 	}
 	s := &Service{
 		ctx:                ctx,
@@ -334,10 +333,6 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
-			if peerID.Pretty() != "16Uiu2HAmE9YZXp5zAwvexZGAKqfQyUSnRrAQ4sZ8jrxiMxJQ2uU1" {
-				continue
-			}
-
 			// The loop will only advance when a new element can be
 			// added to the semaphore. This ensures that no more than
 			// minPeers goroutines will be active at a given time
