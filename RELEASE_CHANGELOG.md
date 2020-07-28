@@ -1,11 +1,11 @@
 - [Docker image](https://hub.docker.com/r/0xorg/mesh/tags)
-- [README](https://github.com/0xProject/0x-mesh/blob/v9.4.0/README.md)
+- [README](https://github.com/0xProject/0x-mesh/blob/v9.4.1/README.md)
 
 ## Summary
 
-### Features ✅
+### Bug fixes 🐞
 
-- Improved the performance of validating order filters in the browser [#809](https://github.com/0xProject/0x-mesh/pull/809).
+-   Fixed a problem in the filtered pagination subprotocols of ordersync that caused the nodes to use the wrong orderfilter [#882](https://github.com/0xProject/0x-mesh/pull/882)
 
 
 

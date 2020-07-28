@@ -10,6 +10,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/packages/browser/go/jsutil"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Filter struct {
@@ -18,6 +19,7 @@ type Filter struct {
 	encodedSchema        string
 	chainID              int
 	rawCustomOrderSchema string
+	exchangeAddress      common.Address
 }
 
 func New(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
@@ -58,5 +60,6 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 		messageValidator:     messageValidator,
 		chainID:              chainID,
 		rawCustomOrderSchema: customOrderSchema,
+		exchangeAddress:      contractAddresses.Exchange,
 	}, nil
 }

@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-9.4.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-9.4.1-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 ## Deploying a Telemetry-Enabled Mesh Node
 
@@ -61,6 +61,12 @@ services:
 
     fluentbit:
         image: 0xorg/mesh-fluent-bit:latest
+        logging:
+            driver: json-file
+            # Configure maximum amount of logs stored
+            options:
+                max-size: "100M"
+                max-file: "3"
         links:
             - esproxy
         ports:
