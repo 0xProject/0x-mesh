@@ -241,8 +241,19 @@ func (s *Service) HandleStream(stream network.Stream) {
 		if len(rawReq.Subprotocols) > 1 {
 			firstRequests := FirstRequestsForSubprotocols{}
 			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
-			if err == nil {
+
+			// NOTE(jalextowle): Older versions of Mesh did not include
+			// metadata in the first ordersync request. Ensure that
+			// the array is long enough before accessing it to avoid
+			// crashing the node.
+			if err == nil && len(firstRequests.MetadataForSubprotocol) > i {
 				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
+			} else {
+				log.WithFields(log.Fields{
+					"subprotocols":           rawReq.Subprotocols,
+					"metadataForSubprotocol": firstRequests.MetadataForSubprotocol,
+					"error":                  err.Error(),
+				}).Debug("unable to decode first request metadata")
 			}
 		}
 		res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
