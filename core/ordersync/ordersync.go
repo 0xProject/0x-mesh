@@ -473,10 +473,7 @@ type FirstRequestsForSubprotocols struct {
 }
 
 // createFirstRequestForAllSubprotocols creates an initial ordersync request that
-// contains metadata for all of the ordersync subprotocols. This allows more guarantees
-// to be made about the types of orders that will be received from a given ordersync
-// subprotocol, and these guarantees allow ordersync connections to be pruned much
-// more aggressively.
+// contains metadata for all of the ordersync subprotocols.
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
 	for _, subprotocolString := range s.SupportedSubprotocols() {
