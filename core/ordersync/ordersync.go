@@ -152,6 +152,9 @@ type Subprotocol interface {
 	// ParseResponseMetadata converts raw response metadata into a concrete type
 	// that the subprotocol expects.
 	ParseResponseMetadata(metadata json.RawMessage) (interface{}, error)
+	// GenerateFirstRequestMetadata generates the metadata for the first request
+	// that should be made with this subprotocol.
+	GenerateFirstRequestMetadata() (json.RawMessage, error)
 }
 
 // New creates and returns a new ordersync service, which is used for both
@@ -176,11 +179,11 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 
 // GetMatchingSubprotocol returns the most preferred subprotocol to use
 // based on the given request.
-func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error) {
-	for _, protoID := range rawReq.Subprotocols {
+func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, int, error) {
+	for i, protoID := range rawReq.Subprotocols {
 		subprotocol, found := s.subprotocols[protoID]
 		if found {
-			return subprotocol, nil
+			return subprotocol, i, nil
 		}
 	}
 
@@ -188,7 +191,7 @@ func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, error
 		Requested: rawReq.Subprotocols,
 		Supported: s.SupportedSubprotocols(),
 	}
-	return nil, err
+	return nil, 0, err
 }
 
 // HandleStream is a stream handler that is used to handle incoming ordersync requests.
@@ -229,11 +232,18 @@ func (s *Service) HandleStream(stream network.Stream) {
 			s.handlePeerScoreEvent(requesterID, psInvalidMessage)
 			return
 		}
-		subprotocol, err := s.GetMatchingSubprotocol(rawReq)
+		subprotocol, i, err := s.GetMatchingSubprotocol(rawReq)
 		if err != nil {
 			log.WithError(err).Warn("GetMatchingSubprotocol returned error")
 			s.handlePeerScoreEvent(requesterID, psSubprotocolNegotiationFailed)
 			return
+		}
+		if len(rawReq.Subprotocols) > 1 {
+			firstRequests := FirstRequestsForSubprotocols{}
+			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
+			if err == nil {
+				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
+			}
 		}
 		res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
 		if err != nil {
@@ -458,6 +468,38 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
+type FirstRequestsForSubprotocols struct {
+	MetadataForSubprotocol []json.RawMessage `json:"metadata"`
+}
+
+// createFirstRequestForAllSubprotocols creates an initial ordersync request that
+// contains metadata for all of the ordersync subprotocols.
+func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
+	metadata := []json.RawMessage{}
+	for _, subprotocolString := range s.SupportedSubprotocols() {
+		subprotocol, found := s.subprotocols[subprotocolString]
+		if !found {
+			return nil, fmt.Errorf("cannot generate first request metadata for subprotocol %s", subprotocolString)
+		}
+		m, err := subprotocol.GenerateFirstRequestMetadata()
+		if err != nil {
+			return nil, err
+		}
+		metadata = append(metadata, m)
+	}
+	encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
+		MetadataForSubprotocol: metadata,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &rawRequest{
+		Type:         TypeRequest,
+		Subprotocols: s.SupportedSubprotocols(),
+		Metadata:     encodedMetadata,
+	}, nil
+}
+
 func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, firstRequest *rawRequest) (*rawRequest, error) {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
@@ -473,10 +515,9 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, fir
 	if firstRequest != nil {
 		nextReq = firstRequest
 	} else {
-		nextReq = &rawRequest{
-			Type:         TypeRequest,
-			Subprotocols: s.SupportedSubprotocols(),
-			Metadata:     nil,
+		nextReq, err = s.createFirstRequestForAllSubprotocols()
+		if err != nil {
+			return nil, err
 		}
 	}
 	var numValidOrders int
