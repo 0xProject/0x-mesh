@@ -363,7 +363,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 						"provider": id.Pretty(),
 					}).Debug("could not get orders from peer via ordersync")
 					m.Lock()
-					if nextRequest != nil {
+					if nextFirstRequest != nil {
 						nextRequestForPeer[id] = nextFirstRequest
 					}
 					m.Unlock()
