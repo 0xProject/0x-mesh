@@ -243,17 +243,15 @@ func (s *Service) HandleStream(stream network.Stream) {
 			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
 
 			// NOTE(jalextowle): Older versions of Mesh did not include
-			// metadata in the first ordersync request. Ensure that
-			// the array is long enough before accessing it to avoid
-			// crashing the node.
+			// metadata in the first ordersync request. In order to handle
+			// this in a backwards compatible way, we simply avoid updating
+			// the request metadata if there was an error decoding the
+			// metadata from the request or if the length of the
+			// MetadataForSubprotocol is too small (or empty). This latter
+			// check also ensures that the array is long enough for us
+			// to access the i-th element.
 			if err == nil && len(firstRequests.MetadataForSubprotocol) > i {
 				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
-			} else {
-				log.WithFields(log.Fields{
-					"subprotocols":           rawReq.Subprotocols,
-					"metadataForSubprotocol": firstRequests.MetadataForSubprotocol,
-					"error":                  err.Error(),
-				}).Debug("unable to decode first request metadata")
 			}
 		}
 		res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
@@ -331,6 +329,10 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for _, peerID := range currentNeighbors {
+			if peerID.Pretty() != "16Uiu2HAmE9YZXp5zAwvexZGAKqfQyUSnRrAQ4sZ8jrxiMxJQ2uU1" {
+				continue
+			}
+
 			// The loop will only advance when a new element can be
 			// added to the semaphore. This ensures that no more than
 			// minPeers goroutines will be active at a given time
