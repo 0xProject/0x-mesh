@@ -61,6 +61,12 @@ services:
 
     fluentbit:
         image: 0xorg/mesh-fluent-bit:latest
+        logging:
+            driver: json-file
+            # Configure maximum amount of logs stored
+            options:
+                max-size: "100M"
+                max-file: "3"
         links:
             - esproxy
         ports:
