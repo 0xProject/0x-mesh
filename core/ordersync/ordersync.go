@@ -111,22 +111,14 @@ type rawResponse struct {
 // Service is the main entrypoint for running the ordersync protocol. It handles
 // responding to and sending ordersync requests.
 type Service struct {
-	ctx            context.Context
-	node           *p2p.Node
-	subprotocols   []string
-	subprotocolSet map[string]Subprotocol
+	ctx  context.Context
+	node *p2p.Node
+	// preferredSubprotocols is the list of supported subprotocol IDs in order of preference.
+	preferredSubprotocols []string
+	subprotocolSet        map[string]Subprotocol
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
 	// shared between all peers.
 	requestRateLimiter *rate.Limiter
-}
-
-// SupportedSubprotocols returns the subprotocols that are supported by the service.
-func (s *Service) SupportedSubprotocols() []string {
-	sids := []string{}
-	for _, sid := range s.subprotocols {
-		sids = append(sids, sid)
-	}
-	return sids
 }
 
 // Subprotocol is a lower-level protocol which defines the details for the
@@ -171,11 +163,11 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 		supportedSubprotocols[subp.Name()] = subp
 	}
 	s := &Service{
-		ctx:                ctx,
-		node:               node,
-		subprotocolSet:     supportedSubprotocols,
-		subprotocols:       sids,
-		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
+		ctx:                   ctx,
+		node:                  node,
+		subprotocolSet:        supportedSubprotocols,
+		preferredSubprotocols: sids,
+		requestRateLimiter:    rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
 	}
 	s.node.SetStreamHandler(ID, s.HandleStream)
 	return s
@@ -193,7 +185,7 @@ func (s *Service) GetMatchingSubprotocol(rawReq *rawRequest) (Subprotocol, int, 
 
 	err := NoMatchingSubprotocolsError{
 		Requested: rawReq.Subprotocols,
-		Supported: s.SupportedSubprotocols(),
+		Supported: s.preferredSubprotocols,
 	}
 	return nil, 0, err
 }
@@ -489,12 +481,9 @@ type FirstRequestsForSubprotocols struct {
 // contains metadata for all of the ordersync subprotocols.
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
-	for _, subprotocolString := range s.SupportedSubprotocols() {
-		subprotocol, found := s.subprotocolSet[subprotocolString]
-		if !found {
-			return nil, fmt.Errorf("cannot generate first request metadata for subprotocol %s", subprotocolString)
-		}
-		m, err := subprotocol.GenerateFirstRequestMetadata()
+	for _, sid := range s.preferredSubprotocols {
+		subp, _ := s.subprotocolSet[sid]
+		m, err := subp.GenerateFirstRequestMetadata()
 		if err != nil {
 			return nil, err
 		}
@@ -508,7 +497,7 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	}
 	return &rawRequest{
 		Type:         TypeRequest,
-		Subprotocols: s.SupportedSubprotocols(),
+		Subprotocols: s.preferredSubprotocols,
 		Metadata:     encodedMetadata,
 	}, nil
 }
