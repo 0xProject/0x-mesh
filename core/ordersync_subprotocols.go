@@ -38,8 +38,9 @@ func NewFilteredPaginationSubprotocol(app *App, perPage int) *FilteredPagination
 // FilteredPaginationSubProtocol. It keeps track of the current page and SnapshotID,
 // which is expected to be an empty string on the first request.
 type FilteredPaginationRequestMetadata struct {
-	Page       int    `json:"page"`
-	SnapshotID string `json:"snapshotID"`
+	Page        int                 `json:"page"`
+	SnapshotID  string              `json:"snapshotID"`
+	OrderFilter *orderfilter.Filter `json:"orderfilter"`
 }
 
 // FilteredPaginationResponseMetadata is the response metadata for the
@@ -96,10 +97,16 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncRequest(ctx context.Conte
 			break
 		}
 		// Filter the orders for this page.
-		for _, orderInfo := range ordersResp.OrdersInfos {
-			if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
-				return nil, err
-			} else if matches {
+		if metadata.OrderFilter != nil {
+			for _, orderInfo := range ordersResp.OrdersInfos {
+				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+					return nil, err
+				} else if matches {
+					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+				}
+			}
+		} else {
+			for _, orderInfo := range ordersResp.OrdersInfos {
 				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
 			}
 		}
@@ -166,8 +173,9 @@ func (p *FilteredPaginationSubProtocol) HandleOrderSyncResponse(ctx context.Cont
 
 	return &ordersync.Request{
 		Metadata: &FilteredPaginationRequestMetadata{
-			Page:       metadata.Page + 1,
-			SnapshotID: metadata.SnapshotID,
+			OrderFilter: p.orderFilter,
+			Page:        metadata.Page + 1,
+			SnapshotID:  metadata.SnapshotID,
 		},
 	}, nil
 }
@@ -186,4 +194,12 @@ func (p *FilteredPaginationSubProtocol) ParseResponseMetadata(metadata json.RawM
 		return nil, err
 	}
 	return &parsed, nil
+}
+
+func (p *FilteredPaginationSubProtocol) GenerateFirstRequestMetadata() (json.RawMessage, error) {
+	return json.Marshal(FilteredPaginationRequestMetadata{
+		OrderFilter: p.orderFilter,
+		Page:        0,
+		SnapshotID:  "",
+	})
 }

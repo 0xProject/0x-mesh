@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	jsonschema "github.com/xeipuuv/gojsonschema"
 )
 
@@ -37,8 +38,11 @@ type Filter struct {
 	rawCustomOrderSchema string
 	orderSchema          *jsonschema.Schema
 	messageSchema        *jsonschema.Schema
+	exchangeAddress      common.Address
 }
 
+// TODO(jalextowle): We do not need `contractAddresses` since we only use `contractAddresses.Exchange`.
+// In a future refactor, we should update this interface.
 func New(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	orderLoader, err := newLoader(chainID, customOrderSchema, contractAddresses)
 	if err != nil {
@@ -62,6 +66,7 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 		rawCustomOrderSchema: customOrderSchema,
 		orderSchema:          compiledRootOrderSchema,
 		messageSchema:        compiledRootOrderMessageSchema,
+		exchangeAddress:      contractAddresses.Exchange,
 	}, nil
 }
 
