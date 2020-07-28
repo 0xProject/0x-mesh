@@ -239,10 +239,10 @@ func (s *Service) HandleStream(stream network.Stream) {
 			return
 		}
 		if len(rawReq.Subprotocols) > 1 {
-			metadataArray := []json.RawMessage{}
-			err := json.Unmarshal(rawReq.Metadata, &metadataArray)
+			firstRequests := FirstRequestsForSubprotocols{}
+			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
 			if err == nil {
-				rawReq.Metadata = metadataArray[i]
+				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
 			}
 		}
 		res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
@@ -468,6 +468,15 @@ func parseResponseWithSubprotocol(subprotocol Subprotocol, providerID peer.ID, r
 	}, nil
 }
 
+type FirstRequestsForSubprotocols struct {
+	MetadataForSubprotocol []json.RawMessage `json:"metadata"`
+}
+
+// createFirstRequestForAllSubprotocols creates an initial ordersync request that
+// contains metadata for all of the ordersync subprotocols. This allows more guarantees
+// to be made about the types of orders that will be received from a given ordersync
+// subprotocol, and these guarantees allow ordersync connections to be pruned much
+// more aggressively.
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
 	for _, subprotocolString := range s.SupportedSubprotocols() {
@@ -481,7 +490,9 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 		}
 		metadata = append(metadata, m)
 	}
-	encodedMetadata, err := json.Marshal(metadata)
+	encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
+		MetadataForSubprotocol: metadata,
+	})
 	if err != nil {
 		return nil, err
 	}
