@@ -10,11 +10,6 @@ import (
 	"github.com/machinebox/graphql"
 )
 
-type Request = graphql.Request
-
-// NewRequest can be used to run arbitrary GraphQL queries.
-var NewRequest func(q string) *Request = graphql.NewRequest
-
 // Client is a client for the 0x Mesh GraphQL API.
 type Client struct {
 	*graphql.Client
@@ -166,7 +161,7 @@ type AddOrdersOpts struct {
 
 // AddOrders adds orders to 0x Mesh and broadcasts them throughout the 0x Mesh network.
 func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*AddOrdersResults, error) {
-	req := NewRequest(addOrdersMutation)
+	req := graphql.NewRequest(addOrdersMutation)
 
 	// Set up args
 	newOrders := gqltypes.NewOrdersFromSignedOrders(orders)
@@ -187,7 +182,7 @@ func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, op
 }
 
 func (c *Client) GetOrder(ctx context.Context, hash common.Hash) (*OrderWithMetadata, error) {
-	req := NewRequest(orderQuery)
+	req := graphql.NewRequest(orderQuery)
 	req.Var("hash", hash.Hex())
 
 	var resp struct {
@@ -209,7 +204,7 @@ type GetOrdersOpts struct {
 }
 
 func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*OrderWithMetadata, error) {
-	req := NewRequest(ordersQuery)
+	req := graphql.NewRequest(ordersQuery)
 
 	if len(opts) > 0 {
 		opts := opts[0]
@@ -242,7 +237,7 @@ func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*Order
 }
 
 func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
-	req := NewRequest(statsQuery)
+	req := graphql.NewRequest(statsQuery)
 
 	var resp struct {
 		Stats *gqltypes.Stats `json:"stats"`
@@ -251,4 +246,9 @@ func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
 		return nil, err
 	}
 	return statsFromGQLType(resp.Stats), nil
+}
+
+func (c *Client) RawQuery(ctx context.Context, query string, response interface{}) error {
+	req := graphql.NewRequest(query)
+	return c.Run(ctx, req, response)
 }

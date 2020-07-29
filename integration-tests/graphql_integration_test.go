@@ -34,26 +34,8 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildStandaloneForTests(t, ctx)
-
-	// Start a standalone node with a wait group that is completed when the goroutine completes.
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(&nodeCount, 1))
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", "", logMessages)
-	}()
-
-	// Wait until the rpc server has been started, and then create an rpc client
-	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
-	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	time.Sleep(serverStartWaitTime)
-	client := gqlclient.New(graphQLServerURL)
+	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
 
 	// Create a new valid order.
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
@@ -110,26 +92,8 @@ func TestGetOrder(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildStandaloneForTests(t, ctx)
-
-	// Start a standalone node with a wait group that is completed when the goroutine completes.
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(&nodeCount, 1))
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", "", logMessages)
-	}()
-
-	// Wait until the rpc server has been started, and then create an rpc client
-	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
-	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	time.Sleep(serverStartWaitTime)
-	client := gqlclient.New(graphQLServerURL)
+	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
 
 	orderOptions := orderopts.SetupMakerState(true)
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
@@ -182,26 +146,8 @@ func TestGetOrders(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildStandaloneForTests(t, ctx)
-
-	// Start a standalone node with a wait group that is completed when the goroutine completes.
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(&nodeCount, 1))
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", "", logMessages)
-	}()
-
-	// Wait until the rpc server has been started, and then create an rpc client
-	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
-	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	time.Sleep(serverStartWaitTime)
-	client := gqlclient.New(graphQLServerURL)
+	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
 
 	// Create 10 new valid orders.
 	numOrders := 10
@@ -292,31 +238,9 @@ func TestGetStats(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	removeOldFiles(t, ctx)
-	buildStandaloneForTests(t, ctx)
-
-	// Start a standalone node with a wait group that is completed when the goroutine completes.
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	logMessages := make(chan string, 1024)
-	count := int(atomic.AddInt32(&nodeCount, 1))
-	go func() {
-		defer wg.Done()
-		startStandaloneNode(t, ctx, count, "", "", logMessages)
-	}()
+	client, peerID := buildAndStartGraphQLServer(t, ctx, wg)
 
-	// Wait for the GraphQL server to start and extract the PeerID from the log.
-	var jsonLog struct {
-		PeerID string `json:"myPeerID"`
-	}
-	log, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
-	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	err = json.Unmarshal([]byte(log), &jsonLog)
-	require.NoError(t, err)
-
-	time.Sleep(serverStartWaitTime)
-	client := gqlclient.New(graphQLServerURL)
 	actualStats, err := client.GetStats(ctx)
 	require.NoError(t, err)
 
@@ -329,7 +253,7 @@ func TestGetStats(t *testing.T) {
 		Version:         "development",
 		PubSubTopic:     "/0x-orders/version/3/chain/1337/schema/e30=",
 		Rendezvous:      "/0x-mesh/network/1337/version/2",
-		PeerID:          jsonLog.PeerID,
+		PeerID:          peerID,
 		EthereumChainID: 1337,
 		// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
 		//                   should be the latest block.
@@ -343,6 +267,41 @@ func TestGetStats(t *testing.T) {
 		EthRPCRateLimitExpiredRequests:    0,
 	}
 	assert.Equal(t, expectedStats, actualStats)
+
+	cancel()
+	wg.Wait()
+}
+
+type rawResponse struct {
+	Stats statsWithJustNumOrders `json:"stats"`
+}
+
+type statsWithJustNumOrders struct {
+	NumOrders int `json:"numOrders"`
+}
+
+func TestRawQuery(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	wg := &sync.WaitGroup{}
+	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
+
+	query := `{
+		stats {
+			numOrders
+		}
+	}`
+	var actualResponse rawResponse
+	require.NoError(t, client.RawQuery(ctx, query, &actualResponse))
+	expectedResponse := rawResponse{
+		Stats: statsWithJustNumOrders{
+			NumOrders: 0,
+		},
+	}
+	require.Equal(t, expectedResponse, actualResponse)
 
 	cancel()
 	wg.Wait()
@@ -389,4 +348,30 @@ func sortOrdersByHashDesc(orders []*gqlclient.OrderWithMetadata) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == 1
 	})
+}
+
+func buildAndStartGraphQLServer(t *testing.T, ctx context.Context, wg *sync.WaitGroup) (client *gqlclient.Client, peerID string) {
+	removeOldFiles(t, ctx)
+	buildStandaloneForTests(t, ctx)
+
+	// Start a standalone node with a wait group that is completed when the goroutine completes.
+	wg.Add(1)
+	logMessages := make(chan string, 1024)
+	count := int(atomic.AddInt32(&nodeCount, 1))
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
+	}()
+
+	// Wait for the GraphQL server to start and extract the PeerID from the log.
+	var jsonLog struct {
+		PeerID string `json:"myPeerID"`
+	}
+	log, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
+	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	err = json.Unmarshal([]byte(log), &jsonLog)
+	require.NoError(t, err)
+
+	time.Sleep(serverStartWaitTime)
+	return gqlclient.New(graphQLServerURL), jsonLog.PeerID
 }
