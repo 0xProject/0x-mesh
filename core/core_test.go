@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -94,10 +95,13 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 }
 
 func newTestApp(t *testing.T, ctx context.Context) *App {
-	return newTestAppWithPrivateConfig(t, ctx, defaultPrivateConfig())
+	return newTestAppWithPrivateConfig(t, ctx, "{}", defaultPrivateConfig())
 }
 
-func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, pConfig privateConfig) *App {
+func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderFilter string, pConfig privateConfig) *App {
+	if customOrderFilter == "" {
+		customOrderFilter = defaultOrderFilter
+	}
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,
@@ -114,7 +118,7 @@ func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, pConfig priv
 		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
 		EthereumRPCMaxRequestsPerSecond:  99999999999999,
 		MaxOrdersInStorage:               100000,
-		CustomOrderFilter:                "{}",
+		CustomOrderFilter:                customOrderFilter,
 	}
 	app, err := newWithPrivateConfig(ctx, config, pConfig)
 	require.NoError(t, err)
@@ -208,6 +212,37 @@ func TestOrderSync(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:              "makerAssetAmount orderfilter - match all orders",
+			customOrderFilter: `{"properties":{"makerAssetAmount":{"pattern":"^1$","type":"string"}}}`,
+			orderOptionsForAll: func(_ int) []orderopts.Option {
+				return []orderopts.Option{orderopts.MakerAssetAmount(big.NewInt(1))}
+			},
+			pConfig: privateConfig{
+				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+					NewFilteredPaginationSubprotocolV0,
+				},
+			},
+		},
+		{
+			name:              "makerAssetAmount OrderFilter - match no orders",
+			customOrderFilter: `{"properties":{"makerAssetAmount":{"pattern":"^1$","type":"string"}}}`,
+			orderOptionsForAll: func(i int) []orderopts.Option {
+				if i == 0 {
+					return []orderopts.Option{orderopts.MakerAssetAmount(big.NewInt(1))}
+				}
+				return []orderopts.Option{}
+			},
+			pConfig: privateConfig{
+				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+					NewFilteredPaginationSubprotocolV0,
+				},
+			},
+		},
 	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
@@ -216,9 +251,13 @@ func TestOrderSync(t *testing.T) {
 }
 
 type ordersyncTestCase struct {
-	name    string
-	pConfig privateConfig
+	name               string
+	customOrderFilter  string
+	orderOptionsForAll func(int) []orderopts.Option
+	pConfig            privateConfig
 }
+
+const defaultOrderFilter = "{}"
 
 func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -230,20 +269,26 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		wg := &sync.WaitGroup{}
-		originalNode := newTestAppWithPrivateConfig(t, ctx, testCase.pConfig)
+		originalNode := newTestAppWithPrivateConfig(t, ctx, defaultOrderFilter, testCase.pConfig)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				panic(err)
+				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()
 
 		// Manually add some orders to originalNode.
-		orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
+		orderOptionsForAll := func(i int) []orderopts.Option {
+			setupMakerStateOption := []orderopts.Option{orderopts.SetupMakerState(true)}
+			if testCase.orderOptionsForAll != nil {
+				return append(testCase.orderOptionsForAll(i), setupMakerStateOption...)
+			}
+			return setupMakerStateOption
+		}
 		numOrders := testCase.pConfig.paginationSubprotocolPerPage*3 + 1
-		originalOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
+		originalOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptionsForAll)
 
 		// We have to wait for latest block to be processed by the Mesh node.
 		time.Sleep(blockProcessingWaitTime)
@@ -252,13 +297,13 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		require.NoError(t, err)
 		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
-		newNode := newTestApp(t, ctx)
+		newNode := newTestAppWithPrivateConfig(t, ctx, testCase.customOrderFilter, defaultPrivateConfig())
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				panic(err)
+				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()
 		<-newNode.started
@@ -275,6 +320,17 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		})
 		require.NoError(t, err)
 
+		// Only the orders that satisfy the new node's orderfilter should
+		// be received during ordersync.
+		filteredOrders := []*zeroex.SignedOrder{}
+		for _, order := range originalOrders {
+			matches, err := newNode.orderFilter.MatchOrder(order)
+			require.NoError(t, err)
+			if matches {
+				filteredOrders = append(filteredOrders, order)
+			}
+		}
+
 		// Wait for newNode to get the orders via ordersync.
 		receivedAddedEvents := []*zeroex.OrderEvent{}
 	OrderEventLoop:
@@ -288,7 +344,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 						receivedAddedEvents = append(receivedAddedEvents, orderEvent)
 					}
 				}
-				if len(receivedAddedEvents) >= len(originalOrders) {
+				if len(receivedAddedEvents) >= len(filteredOrders) {
 					break OrderEventLoop
 				}
 			}
@@ -296,10 +352,10 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 
 		// Test that the orders are actually in the database and are returned by
 		// GetOrders.
-		newNodeOrdersResp, err := newNode.GetOrders(len(originalOrders), common.Hash{})
+		newNodeOrdersResp, err := newNode.GetOrders(len(filteredOrders), common.Hash{})
 		require.NoError(t, err)
-		assert.Len(t, newNodeOrdersResp.OrdersInfos, len(originalOrders), "new node should have %d orders", len(originalOrders))
-		for _, expectedOrder := range originalOrders {
+		assert.Len(t, newNodeOrdersResp.OrdersInfos, len(filteredOrders), "new node should have %d orders", len(originalOrders))
+		for _, expectedOrder := range filteredOrders {
 			orderHash, err := expectedOrder.ComputeOrderHash()
 			require.NoError(t, err)
 			expectedOrder.ResetHash()
