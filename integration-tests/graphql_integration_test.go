@@ -14,7 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xProject/0x-mesh/graphql/client"
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
@@ -22,6 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// serverStartWaitTime is the amount of time to wait after seeing the "starting GraphQL server"
+// log message before attempting to connect to the server.
+const serverStartWaitTime = 100 * time.Millisecond
 
 func TestAddOrdersSuccess(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
@@ -45,8 +50,9 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	// Wait until the rpc server has been started, and then create an rpc client
 	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
 	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	time.Sleep(serverStartWaitTime)
 	client := gqlclient.New(graphQLServerURL)
 
 	// Create a new valid order.
@@ -120,9 +126,10 @@ func TestGetOrder(t *testing.T) {
 
 	// Wait until the rpc server has been started, and then create an rpc client
 	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
 	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	client := client.New(graphQLServerURL)
+	time.Sleep(serverStartWaitTime)
+	client := gqlclient.New(graphQLServerURL)
 
 	orderOptions := orderopts.SetupMakerState(true)
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
@@ -191,9 +198,10 @@ func TestGetOrders(t *testing.T) {
 
 	// Wait until the rpc server has been started, and then create an rpc client
 	// that connects to the rpc server.
-	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	_, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
 	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
-	client := client.New(graphQLServerURL)
+	time.Sleep(serverStartWaitTime)
+	client := gqlclient.New(graphQLServerURL)
 
 	// Create 10 new valid orders.
 	numOrders := 10
@@ -278,171 +286,67 @@ func TestGetOrders(t *testing.T) {
 	wg.Wait()
 }
 
-// func TestWSGetStats(t *testing.T) {
-// 	runGetStatsTest(t, standaloneWSRPCEndpointPrefix, "WS", wsRPCPort)
-// }
+func TestGetStats(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
 
-// func TestHTTPGetStats(t *testing.T) {
-// 	runGetStatsTest(t, standaloneHTTPRPCEndpointPrefix, "HTTP", httpRPCPort)
-// }
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// func runGetStatsTest(t *testing.T, rpcEndpointPrefix, rpcServerType string, rpcPort int) {
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
+	removeOldFiles(t, ctx)
+	buildStandaloneForTests(t, ctx)
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-// 	defer cancel()
+	// Start a standalone node with a wait group that is completed when the goroutine completes.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	logMessages := make(chan string, 1024)
+	count := int(atomic.AddInt32(&nodeCount, 1))
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
+	}()
 
-// 	removeOldFiles(t, ctx)
-// 	buildStandaloneForTests(t, ctx)
+	// Wait for the GraphQL server to start and extract the PeerID from the log.
+	var jsonLog struct {
+		PeerID string `json:"myPeerID"`
+	}
+	log, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
+	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	err = json.Unmarshal([]byte(log), &jsonLog)
+	require.NoError(t, err)
 
-// 	// Start a standalone node with a wait group that is completed when the goroutine completes.
-// 	wg := &sync.WaitGroup{}
-// 	wg.Add(1)
-// 	logMessages := make(chan string, 1024)
-// 	count := int(atomic.AddInt32(&nodeCount, 1))
-// 	go func() {
-// 		defer wg.Done()
-// 		startStandaloneNode(t, ctx, count, "", "", logMessages)
-// 	}()
+	time.Sleep(serverStartWaitTime)
+	client := gqlclient.New(graphQLServerURL)
+	actualStats, err := client.GetStats(ctx)
+	require.NoError(t, err)
 
-// 	// Wait for the rpc server to start and get the peer ID of the node. Start the
-// 	// rpc client after the server has been started,
-// 	var jsonLog struct {
-// 		PeerID string `json:"myPeerID"`
-// 	}
-// 	log, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("started %s RPC server", rpcServerType))
-// 	require.NoError(t, err, fmt.Sprintf("%s RPC server didn't start", rpcServerType))
-// 	err = json.Unmarshal([]byte(log), &jsonLog)
-// 	require.NoError(t, err)
-// 	client, err := rpc.NewClient(rpcEndpointPrefix + strconv.Itoa(rpcPort+count))
-// 	require.NoError(t, err)
+	// Ensure that the "LatestBlock" in the stats response is non-nil and has a nonzero block number.
+	assert.NotNil(t, actualStats.LatestBlock)
+	assert.True(t, actualStats.LatestBlock.Number.String() != "0", "stats.LatestBlock.Number should not be 0")
+	assert.NotEmpty(t, actualStats.LatestBlock.Hash, "stats.LatestBlock.Hash should not be empty")
 
-// 	getStatsResponse, err := client.GetStats()
-// 	require.NoError(t, err)
+	expectedStats := &gqlclient.Stats{
+		Version:         "development",
+		PubSubTopic:     "/0x-orders/version/3/chain/1337/schema/e30=",
+		Rendezvous:      "/0x-mesh/network/1337/version/2",
+		PeerID:          jsonLog.PeerID,
+		EthereumChainID: 1337,
+		// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
+		//                   should be the latest block.
+		LatestBlock:                       actualStats.LatestBlock,
+		NumOrders:                         0,
+		NumOrdersIncludingRemoved:         0,
+		NumPeers:                          0,
+		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
+		StartOfCurrentUTCDay:              ratelimit.GetUTCMidnightOfDate(time.Now()),
+		EthRPCRequestsSentInCurrentUTCDay: 0,
+		EthRPCRateLimitExpiredRequests:    0,
+	}
+	assert.Equal(t, expectedStats, actualStats)
 
-// 	// Ensure that the "LatestBlock" in the stats response is non-nil and has a nonzero block number.
-// 	assert.NotNil(t, getStatsResponse.LatestBlock)
-// 	assert.True(t, getStatsResponse.LatestBlock.Number != "")
-
-// 	// NOTE(jalextowle): Since this test uses an actual mesh node, we can't know in advance which block
-// 	//                   should be the latest block.
-// 	getStatsResponse.LatestBlock = types.LatestBlock{}
-
-// 	// Ensure that the correct response was logged by "GetStats"
-// 	require.Equal(t, "/0x-orders/version/3/chain/1337/schema/e30=", getStatsResponse.PubSubTopic, "PubSubTopic")
-// 	require.Equal(t, "/0x-mesh/network/1337/version/2", getStatsResponse.Rendezvous, "Rendezvous")
-// 	require.Equal(t, []string{}, getStatsResponse.SecondaryRendezvous, "SecondaryRendezvous")
-// 	require.Equal(t, jsonLog.PeerID, getStatsResponse.PeerID, "PeerID")
-// 	require.Equal(t, 1337, getStatsResponse.EthereumChainID, "EthereumChainID")
-// 	require.Equal(t, types.LatestBlock{}, getStatsResponse.LatestBlock, "LatestBlock")
-// 	require.Equal(t, 0, getStatsResponse.NumOrders, "NumOrders")
-// 	require.Equal(t, 0, getStatsResponse.NumPeers, "NumPeers")
-// 	require.Equal(t, constants.UnlimitedExpirationTime.String(), getStatsResponse.MaxExpirationTime, "MaxExpirationTime")
-// 	require.Equal(t, ratelimit.GetUTCMidnightOfDate(time.Now()), getStatsResponse.StartOfCurrentUTCDay, "StartOfCurrentDay")
-
-// 	cancel()
-// 	wg.Wait()
-// }
-
-// func TestOrdersSubscription(t *testing.T) {
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
-
-// 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-// 	defer cancel()
-
-// 	removeOldFiles(t, ctx)
-// 	buildStandaloneForTests(t, ctx)
-
-// 	// Start a standalone node with a wait group that is completed when the goroutine completes.
-// 	wg := &sync.WaitGroup{}
-// 	wg.Add(1)
-// 	logMessages := make(chan string, 1024)
-// 	count := int(atomic.AddInt32(&nodeCount, 1))
-// 	go func() {
-// 		defer wg.Done()
-// 		startStandaloneNode(t, ctx, count, "", "", logMessages)
-// 	}()
-
-// 	// Wait for the rpc server to start and then start the rpc client.
-// 	_, err := waitForLogSubstring(ctx, logMessages, "started WS RPC server")
-// 	require.NoError(t, err, "WS RPC server didn't start")
-// 	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
-// 	require.NoError(t, err)
-
-// 	// Subscribe to order events through the rpc client and ensure that the subscription
-// 	// is valid.
-// 	orderEventChan := make(chan []*zeroex.OrderEvent, 1)
-// 	clientSubscription, err := client.SubscribeToOrders(ctx, orderEventChan)
-// 	require.NoError(t, err)
-// 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
-
-// 	// Create a valid order and send it to the rpc client's "AddOrders" endpoint.
-// 	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-// 	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-// 	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-// 	// in order for the order validation run at order submission to occur at a block number equal or higher then
-// 	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-// 	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-// 	time.Sleep(500 * time.Millisecond)
-// 	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-// 	require.NoError(t, err, "could not compute order hash for standalone order")
-// 	_, err = client.AddOrders([]*zeroex.SignedOrder{signedTestOrder})
-// 	require.NoError(t, err)
-
-// 	// Ensure that the "AddOrders" request triggered an order event that was
-// 	// passed through the subscription.
-// 	orderEvents := <-orderEventChan
-// 	signedTestOrder.ResetHash()
-// 	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-// 	assert.Len(t, orderEvents, 1)
-// 	orderEvent := orderEvents[0]
-// 	assert.Equal(t, expectedOrderHash, orderEvent.OrderHash)
-// 	assert.Equal(t, signedTestOrder, orderEvent.SignedOrder)
-// 	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
-// 	assert.Equal(t, expectedFillableTakerAssetAmount, orderEvent.FillableTakerAssetAmount)
-// 	assert.Equal(t, []*zeroex.ContractEvent{}, orderEvent.ContractEvents)
-// }
-
-// func TestHeartbeatSubscription(t *testing.T) {
-// 	teardownSubTest := setupSubTest(t)
-// 	defer teardownSubTest(t)
-
-// 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-// 	defer cancel()
-
-// 	removeOldFiles(t, ctx)
-// 	buildStandaloneForTests(t, ctx)
-
-// 	// Start a standalone node with a wait group that is completed when the goroutine completes.
-// 	wg := &sync.WaitGroup{}
-// 	wg.Add(1)
-// 	logMessages := make(chan string, 1024)
-// 	count := int(atomic.AddInt32(&nodeCount, 1))
-// 	go func() {
-// 		defer wg.Done()
-// 		startStandaloneNode(t, ctx, count, "", "", logMessages)
-// 	}()
-
-// 	// Wait for the rpc server to start and then start the rpc client
-// 	_, err := waitForLogSubstring(ctx, logMessages, "started WS RPC server")
-// 	require.NoError(t, err, "WS RPC server didn't start")
-// 	client, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
-// 	require.NoError(t, err)
-
-// 	// Send the "SubscribeToHeartbeat" request through the rpc client and assert
-// 	// that the subscription is not nil.
-// 	heartbeatChan := make(chan string)
-// 	clientSubscription, err := client.SubscribeToHeartbeat(ctx, heartbeatChan)
-// 	defer clientSubscription.Unsubscribe()
-// 	require.NoError(t, err)
-// 	assert.NotNil(t, clientSubscription, "clientSubscription not nil")
-
-// 	// Ensure that a valid heartbeat was received
-// 	heartbeat := <-heartbeatChan
-// 	assert.Equal(t, "tick", heartbeat)
-// }
+	cancel()
+	wg.Wait()
+}
 
 func assertOrdersAreUnsortedEqual(t *testing.T, expected, actual []*gqlclient.OrderWithMetadata) {
 	// Make a copy of the given orders so we don't mess up the original when sorting them.

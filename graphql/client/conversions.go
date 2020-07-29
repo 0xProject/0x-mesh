@@ -98,3 +98,28 @@ func ordersWithMetadataFromGQLType(orders []*gqltypes.OrderWithMetadata) []*Orde
 	}
 	return result
 }
+
+func statsFromGQLType(stats *gqltypes.Stats) *Stats {
+	return &Stats{
+		Version:                           stats.Version,
+		PubSubTopic:                       stats.PubSubTopic,
+		Rendezvous:                        stats.Rendezvous,
+		PeerID:                            stats.PeerID,
+		EthereumChainID:                   stats.EthereumChainID,
+		LatestBlock:                       latestBlockFromGQLType(stats.LatestBlock),
+		NumPeers:                          stats.NumPeers,
+		NumOrders:                         stats.NumOrders,
+		NumOrdersIncludingRemoved:         stats.NumOrdersIncludingRemoved,
+		StartOfCurrentUTCDay:              stats.StartOfCurrentUTCDay,
+		EthRPCRequestsSentInCurrentUTCDay: stats.EthRPCRequestsSentInCurrentUTCDay,
+		EthRPCRateLimitExpiredRequests:    stats.EthRPCRateLimitExpiredRequests,
+		MaxExpirationTime:                 gqltypes.BigNumberToBigInt(stats.MaxExpirationTime),
+	}
+}
+
+func latestBlockFromGQLType(latestBlock *gqltypes.LatestBlock) *LatestBlock {
+	return &LatestBlock{
+		Number: gqltypes.BigNumberToBigInt(latestBlock.Number),
+		Hash:   common.Hash(latestBlock.Hash),
+	}
+}

@@ -121,6 +121,27 @@ const (
 			fillableTakerAssetAmount
 		}
 	}`
+
+	statsQuery = `query Stats {
+		stats {
+			version
+			pubSubTopic
+			rendezvous
+			peerID
+			ethereumChainID
+			latestBlock {
+				number
+				hash
+			}
+			numPeers
+			numOrders
+			numOrdersIncludingRemoved
+			startOfCurrentUTCDay
+			ethRPCRequestsSentInCurrentUTCDay
+			ethRPCRateLimitExpiredRequests
+			maxExpirationTime
+		}
+	}`
 )
 
 // New creates a new client which points to the given URL.
@@ -220,4 +241,14 @@ func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*Order
 	return ordersWithMetadataFromGQLType(resp.Orders), nil
 }
 
-// func (c *Client) GetStats() (*GetStatsResponse, error)
+func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
+	req := NewRequest(statsQuery)
+
+	var resp struct {
+		Stats *gqltypes.Stats `json:"stats"`
+	}
+	if err := c.Run(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+	return statsFromGQLType(resp.Stats), nil
+}
