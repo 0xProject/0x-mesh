@@ -6,6 +6,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/machinebox/graphql"
 )
 
@@ -96,6 +97,30 @@ const (
 			fillableTakerAssetAmount
 		}
 	}`
+
+	orderQuery = `query Order($hash: Hash!) {
+		order(hash: $hash) {
+			hash
+			chainId
+			exchangeAddress
+			makerAddress
+			makerAssetData
+			makerAssetAmount
+			makerFeeAssetData
+			makerFee
+			takerAddress
+			takerAssetData
+			takerAssetAmount
+			takerFeeAssetData
+			takerFee
+			senderAddress
+			feeRecipientAddress
+			expirationTimeSeconds
+			salt
+			signature
+			fillableTakerAssetAmount
+		}
+	}`
 )
 
 // New creates a new client which points to the given URL.
@@ -138,6 +163,19 @@ func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, op
 		return nil, err
 	}
 	return addOrdersResultsFromGQLType(&resp.AddOrders), nil
+}
+
+func (c *Client) GetOrder(ctx context.Context, hash common.Hash) (*OrderWithMetadata, error) {
+	req := NewRequest(orderQuery)
+	req.Var("hash", hash.Hex())
+
+	var resp struct {
+		Order *gqltypes.OrderWithMetadata `json:"order"`
+	}
+	if err := c.Run(ctx, req, &resp); err != nil {
+		return nil, err
+	}
+	return orderWithMetadataFromGQLType(resp.Order), nil
 }
 
 // GetOrdersOpts is a set of options for the GetOrders method. They can

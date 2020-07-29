@@ -98,6 +98,77 @@ func TestAddOrdersSuccess(t *testing.T) {
 	wg.Wait()
 }
 
+func TestGetOrder(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	removeOldFiles(t, ctx)
+	buildStandaloneForTests(t, ctx)
+
+	// Start a standalone node with a wait group that is completed when the goroutine completes.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	logMessages := make(chan string, 1024)
+	count := int(atomic.AddInt32(&nodeCount, 1))
+	go func() {
+		defer wg.Done()
+		startStandaloneNode(t, ctx, count, "", "", logMessages)
+	}()
+
+	// Wait until the rpc server has been started, and then create an rpc client
+	// that connects to the rpc server.
+	_, err := waitForLogSubstring(ctx, logMessages, fmt.Sprintf("starting GraphQL server"))
+	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	client := client.New(graphQLServerURL)
+
+	orderOptions := orderopts.SetupMakerState(true)
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
+	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
+	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
+	// in order for the order validation run at order submission to occur at a block number equal or higher then
+	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
+	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
+	time.Sleep(500 * time.Millisecond)
+
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	require.NoError(t, err)
+	assert.Len(t, validationResponse.Accepted, 1)
+	assert.Len(t, validationResponse.Rejected, 0)
+
+	expectedHash, err := signedTestOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	expectedOrder := &gqlclient.OrderWithMetadata{
+		ChainID:                  signedTestOrder.ChainID,
+		ExchangeAddress:          signedTestOrder.ExchangeAddress,
+		MakerAddress:             signedTestOrder.MakerAddress,
+		MakerAssetData:           signedTestOrder.MakerAssetData,
+		MakerAssetAmount:         signedTestOrder.MakerAssetAmount,
+		MakerFeeAssetData:        signedTestOrder.MakerFeeAssetData,
+		MakerFee:                 signedTestOrder.MakerFee,
+		TakerAddress:             signedTestOrder.TakerAddress,
+		TakerAssetData:           signedTestOrder.TakerAssetData,
+		TakerAssetAmount:         signedTestOrder.TakerAssetAmount,
+		TakerFeeAssetData:        signedTestOrder.TakerFeeAssetData,
+		TakerFee:                 signedTestOrder.TakerFee,
+		SenderAddress:            signedTestOrder.SenderAddress,
+		FeeRecipientAddress:      signedTestOrder.FeeRecipientAddress,
+		ExpirationTimeSeconds:    signedTestOrder.ExpirationTimeSeconds,
+		Salt:                     signedTestOrder.Salt,
+		Signature:                signedTestOrder.Signature,
+		Hash:                     expectedHash,
+		FillableTakerAssetAmount: signedTestOrder.TakerAssetAmount,
+	}
+	actualOrder, err := client.GetOrder(ctx, expectedHash)
+	require.NoError(t, err)
+	require.Equal(t, expectedOrder, actualOrder)
+
+	cancel()
+	wg.Wait()
+}
+
 func TestGetOrders(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
