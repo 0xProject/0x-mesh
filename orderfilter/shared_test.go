@@ -18,7 +18,7 @@ import (
 // then unmarshals the orderfilter before performing validation. This provides a
 // sanity check that order filters work properly after being encoded and then
 // decoded. More rigorous testing of these properties is tested in integration
-// tests (FIXME(jalextowle): Name the test once they are written).
+// tests of ordersync.
 func TestMarshalAndUnmarshalFilter(t *testing.T) {
 	t.Parallel()
 
