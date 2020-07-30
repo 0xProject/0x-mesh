@@ -498,17 +498,16 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 		}
 		metadata = append(metadata, m)
 	}
-	// encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
-	// 	MetadataForSubprotocol: metadata,
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
+	encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
+		MetadataForSubprotocol: metadata,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: s.preferredSubprotocols,
-		// FIXME
-		// Metadata:     encodedMetadata,
+		Metadata:     encodedMetadata,
 	}, nil
 }
 
