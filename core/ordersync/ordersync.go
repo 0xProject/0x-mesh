@@ -162,6 +162,8 @@ func New(ctx context.Context, node *p2p.Node, subprotocols []Subprotocol) *Servi
 		sids = append(sids, subp.Name())
 		supportedSubprotocols[subp.Name()] = subp
 	}
+	// TODO(jalextowle): We should ensure that there were no duplicates -- there
+	// is no reason to support this.
 	s := &Service{
 		ctx:                   ctx,
 		node:                  node,
@@ -223,50 +225,9 @@ func (s *Service) HandleStream(stream network.Stream) {
 		log.WithFields(log.Fields{
 			"requester": stream.Conn().RemotePeer().Pretty(),
 		}).Trace("received ordersync request")
-		if rawReq.Type != TypeRequest {
-			log.WithField("gotType", rawReq.Type).Warn("wrong type for Request")
-			s.handlePeerScoreEvent(requesterID, psInvalidMessage)
+		rawRes := s.handleRawRequest(rawReq, requesterID)
+		if rawRes == nil {
 			return
-		}
-		subprotocol, i, err := s.GetMatchingSubprotocol(rawReq)
-		if err != nil {
-			log.WithError(err).Warn("GetMatchingSubprotocol returned error")
-			s.handlePeerScoreEvent(requesterID, psSubprotocolNegotiationFailed)
-			return
-		}
-		if len(rawReq.Subprotocols) > 1 {
-			firstRequests := FirstRequestsForSubprotocols{}
-			err := json.Unmarshal(rawReq.Metadata, &firstRequests)
-
-			// NOTE(jalextowle): Older versions of Mesh did not include
-			// metadata in the first ordersync request. In order to handle
-			// this in a backwards compatible way, we simply avoid updating
-			// the request metadata if there was an error decoding the
-			// metadata from the request or if the length of the
-			// MetadataForSubprotocol is too small (or empty). This latter
-			// check also ensures that the array is long enough for us
-			// to access the i-th element.
-			if err == nil && len(firstRequests.MetadataForSubprotocol) > i {
-				rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
-			}
-		}
-		res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
-		if err != nil {
-			log.WithError(err).Warn("subprotocol returned error")
-			return
-		}
-		encodedMetadata, err := json.Marshal(res.Metadata)
-		if err != nil {
-			log.WithError(err).Error("could not encode raw metadata")
-			return
-		}
-		s.handlePeerScoreEvent(requesterID, psValidMessage)
-		rawRes := rawResponse{
-			Type:        TypeResponse,
-			Subprotocol: subprotocol.Name(),
-			Orders:      res.Orders,
-			Complete:    res.Complete,
-			Metadata:    encodedMetadata,
 		}
 		if err := json.NewEncoder(stream).Encode(rawRes); err != nil {
 			log.WithFields(log.Fields{
@@ -276,7 +237,7 @@ func (s *Service) HandleStream(stream network.Stream) {
 			s.handlePeerScoreEvent(requesterID, psUnexpectedDisconnect)
 			return
 		}
-		if res.Complete {
+		if rawRes.Complete {
 			return
 		}
 	}
@@ -441,6 +402,54 @@ func calculateDelayWithJitter(approxDelay time.Duration, jitterAmount float64) t
 	return approxDelay + time.Duration(delta)
 }
 
+func (s *Service) handleRawRequest(rawReq *rawRequest, requesterID peer.ID) *rawResponse {
+	if rawReq.Type != TypeRequest {
+		log.WithField("gotType", rawReq.Type).Warn("wrong type for Request")
+		s.handlePeerScoreEvent(requesterID, psInvalidMessage)
+		return nil
+	}
+	subprotocol, i, err := s.GetMatchingSubprotocol(rawReq)
+	if err != nil {
+		log.WithError(err).Warn("GetMatchingSubprotocol returned error")
+		s.handlePeerScoreEvent(requesterID, psSubprotocolNegotiationFailed)
+		return nil
+	}
+	if len(rawReq.Subprotocols) > 1 {
+		firstRequests := FirstRequestsForSubprotocols{}
+		err := json.Unmarshal(rawReq.Metadata, &firstRequests)
+
+		// NOTE(jalextowle): Older versions of Mesh did not include
+		// metadata in the first ordersync request. In order to handle
+		// this in a backwards compatible way, we simply avoid updating
+		// the request metadata if there was an error decoding the
+		// metadata from the request or if the length of the
+		// MetadataForSubprotocol is too small (or empty). This latter
+		// check also ensures that the array is long enough for us
+		// to access the i-th element.
+		if err == nil && len(firstRequests.MetadataForSubprotocol) > i {
+			rawReq.Metadata = firstRequests.MetadataForSubprotocol[i]
+		}
+	}
+	res, err := handleRequestWithSubprotocol(s.ctx, subprotocol, requesterID, rawReq)
+	if err != nil {
+		log.WithError(err).Warn("subprotocol returned error")
+		return nil
+	}
+	encodedMetadata, err := json.Marshal(res.Metadata)
+	if err != nil {
+		log.WithError(err).Error("could not encode raw metadata")
+		return nil
+	}
+	s.handlePeerScoreEvent(requesterID, psValidMessage)
+	return &rawResponse{
+		Type:        TypeResponse,
+		Subprotocol: subprotocol.Name(),
+		Orders:      res.Orders,
+		Complete:    res.Complete,
+		Metadata:    encodedMetadata,
+	}
+}
+
 func handleRequestWithSubprotocol(ctx context.Context, subprotocol Subprotocol, requesterID peer.ID, rawReq *rawRequest) (*Response, error) {
 	req, err := parseRequestWithSubprotocol(subprotocol, requesterID, rawReq)
 	if err != nil {
@@ -489,16 +498,17 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 		}
 		metadata = append(metadata, m)
 	}
-	encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
-		MetadataForSubprotocol: metadata,
-	})
-	if err != nil {
-		return nil, err
-	}
+	// encodedMetadata, err := json.Marshal(FirstRequestsForSubprotocols{
+	// 	MetadataForSubprotocol: metadata,
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return &rawRequest{
 		Type:         TypeRequest,
 		Subprotocols: s.preferredSubprotocols,
-		Metadata:     encodedMetadata,
+		// FIXME
+		// Metadata:     encodedMetadata,
 	}, nil
 }
 

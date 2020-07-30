@@ -199,6 +199,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 	}, len(filteredOrders), nil
 }
 
+// FIXME(jalextowle): Do these need to handle a `nil` value for metadata?
 func (p *FilteredPaginationSubProtocolV0) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
 	var parsed FilteredPaginationRequestMetadataV0
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
