@@ -1,0 +1,17 @@
+overwrite: true
+schema: '/Users/alex/programming/gomod/0x-mesh/graphql/schema.graphql'
+documents: './documents/**/*.graphql'
+generates:
+    src/generated/graphql.ts:
+        plugins:
+            - typescript
+            - typescript-operations
+            - typescript-graphql-request
+config:
+    scalars:
+        Hash: string
+        Address: string
+        BigNumber: string
+        Bytes: string
+        Time: Date
+        Any: any
