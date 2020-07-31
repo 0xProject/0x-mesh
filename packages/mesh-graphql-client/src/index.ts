@@ -1,7 +1,6 @@
 import { BigNumber } from '@0x/utils';
-import { GraphQLClient } from 'graphql-request';
-
-import { getSdk, LatestBlock as GeneratedLatestBlock, Sdk, Stats as GeneratedStats } from './generated/graphql';
+import { ApolloClient, ApolloQueryResult, gql, InMemoryCache, NormalizedCacheObject } from '@apollo/client/core';
+import * as R from 'ramda';
 
 export interface Stats {
     version: string;
@@ -19,30 +18,62 @@ export interface Stats {
     maxExpirationTime: BigNumber;
 }
 
+interface StatsResponse {
+    stats: Stats;
+}
+
 export interface LatestBlock {
     number: BigNumber;
     hash: string;
 }
 
+const statsQuery = gql`
+    query Stats {
+        stats {
+            version
+            pubSubTopic
+            rendezvous
+            peerID
+            ethereumChainID
+            latestBlock {
+                number
+                hash
+            }
+            numPeers
+            numOrders
+            numOrdersIncludingRemoved
+            startOfCurrentUTCDay
+            ethRPCRequestsSentInCurrentUTCDay
+            ethRPCRateLimitExpiredRequests
+            maxExpirationTime
+        }
+    }
+`;
+
 export class MeshGraphQLClient {
-    private readonly _sdk: Sdk;
-    private readonly _client: GraphQLClient;
+    private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(url: string) {
-        this._client = new GraphQLClient(url);
-        this._sdk = getSdk(this._client);
+        this._client = new ApolloClient({ uri: url, cache: new InMemoryCache() });
     }
 
     public async getStatsAsync(): Promise<Stats> {
-        const resp = await this._sdk.getStats();
-        const latestBlock = resp.stats.latestBlock
+        const resp: ApolloQueryResult<StatsResponse> = await this._client.query({
+            query: statsQuery,
+            errorPolicy: 'none',
+        });
+        if (resp.data === undefined) {
+            throw new Error('received no data');
+        }
+        const stats = resp.data.stats;
+        const latestBlock = stats.latestBlock
             ? {
-                  ...resp.stats.latestBlock,
-                  number: new BigNumber(resp.stats.latestBlock.number),
+                  ...stats.latestBlock,
+                  number: new BigNumber(stats.latestBlock.number),
               }
             : undefined;
         return {
-            ...resp.stats,
-            maxExpirationTime: new BigNumber(resp.stats.maxExpirationTime),
+            ...R.omit(['__typename'], stats),
+            maxExpirationTime: new BigNumber(stats.maxExpirationTime),
             latestBlock,
         };
     }
