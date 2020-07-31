@@ -21,6 +21,14 @@ var (
 	contractAddresses                  = ethereum.GanacheAddresses
 )
 
+// NOTE(jalextowle): The way that orderfilters are encoded into JSON is unique due
+// to the fact that orderfilters work differently in the native and WebAssembly
+// environments, so we make an effort to test these encoding and decoding functions
+// rigorously. To accomplish this, all of the orderfilter tests are run twice. The
+// first time they are executed, orderfilter.New is used to create the orderfilter
+// that will be tested. The second time the tests are executed, we use this function
+// to create an orderfilter, encode the orderfilter into JSON, and then return a
+// freshly decoded orderfilter.
 func generateDecodedFilter(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	filter, err := New(chainID, customOrderSchema, contractAddresses)
 	if err != nil {
