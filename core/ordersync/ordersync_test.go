@@ -33,16 +33,16 @@ func TestHandleRawRequest(t *testing.T) {
 	n, err := p2p.New(
 		context.Background(),
 		p2p.Config{
-			MessageHandler:   &simpleMessageHandler{},
+			MessageHandler:   &noopMessageHandler{},
 			RendezvousPoints: []string{"/test-rendezvous-point"},
 			DataDir:          "/tmp",
 		},
 	)
 	require.NoError(t, err)
-	subp0 := &simpleOrderSyncSubprotocol0{
+	subp0 := &oneOrderSubprotocol{
 		myPeerID: n.ID(),
 	}
-	subp1 := &simpleOrderSyncSubprotocol1{
+	subp1 := &hostedSubprotocol{
 		myPeerID: n.ID(),
 		hostSubp: subp0,
 	}
@@ -65,9 +65,9 @@ func TestHandleRawRequest(t *testing.T) {
 	// in JSON, the value of `res.Metadata` will not be equal to `rawReq.Metadata`.
 	// We simply ensure that `res.Metadata` unmarshals to an empty request metadata
 	// object.
-	var metadata simpleOrderSyncSubprotocolRequestMetadata0
+	var metadata oneOrderSubprotocolRequestMetadata
 	err = json.Unmarshal(res.Metadata, &metadata)
-	assert.Equal(t, simpleOrderSyncSubprotocolRequestMetadata0{}, metadata)
+	assert.Equal(t, oneOrderSubprotocolRequestMetadata{}, metadata)
 
 	// Test handling a request from a node that is using the new first request
 	// encoding scheme.
@@ -80,60 +80,60 @@ func TestHandleRawRequest(t *testing.T) {
 	assert.Equal(t, res.Metadata, rawReq.Metadata)
 }
 
-var _ p2p.MessageHandler = &simpleMessageHandler{}
+var _ p2p.MessageHandler = &noopMessageHandler{}
 
-// simpleMessageHandler is a dummy message handler that allows a p2p node to be
+// noopMessageHandler is a dummy message handler that allows a p2p node to be
 // instantiated easily in these tests.
-type simpleMessageHandler struct{}
+type noopMessageHandler struct{}
 
-func (s *simpleMessageHandler) HandleMessages(context.Context, []*p2p.Message) error {
+func (*noopMessageHandler) HandleMessages(context.Context, []*p2p.Message) error {
 	return nil
 }
 
-var _ Subprotocol = &simpleOrderSyncSubprotocol0{}
+var _ Subprotocol = &oneOrderSubprotocol{}
 
-// simpleOrderSyncSubprotocol0 is an ordersync subprotocol that is used for testing
+// oneOrderSubprotocol is an ordersync subprotocol that is used for testing
 // ordersync. This subprotocol will always respond with a single random test order
 // and will duplicate the request metadata in the response.
-type simpleOrderSyncSubprotocol0 struct {
+type oneOrderSubprotocol struct {
 	myPeerID peer.ID
 }
 
-type simpleOrderSyncSubprotocolRequestMetadata0 struct {
+type oneOrderSubprotocolRequestMetadata struct {
 	SomeValue interface{} `json:"someValue"`
 }
 
-type simpleOrderSyncSubprotocolResponseMetadata0 struct {
+type oneOrderSubprotocolResponseMetadata struct {
 	SomeValue interface{} `json:"someValue"`
 }
 
-func (s *simpleOrderSyncSubprotocol0) Name() string {
+func (s *oneOrderSubprotocol) Name() string {
 	return "/simple-order-sync-subprotocol/v0"
 }
 
-func (s *simpleOrderSyncSubprotocol0) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
+func (s *oneOrderSubprotocol) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
 	if metadata == nil {
 		return nil, nil
 	}
-	var parsed simpleOrderSyncSubprotocolRequestMetadata0
+	var parsed oneOrderSubprotocolRequestMetadata
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
 		return nil, err
 	}
 	return &parsed, nil
 }
 
-func (s *simpleOrderSyncSubprotocol0) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
+func (s *oneOrderSubprotocol) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
 	if metadata == nil {
 		return nil, nil
 	}
-	var parsed simpleOrderSyncSubprotocolResponseMetadata0
+	var parsed oneOrderSubprotocolResponseMetadata
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
 		return nil, err
 	}
 	return &parsed, nil
 }
 
-func (s *simpleOrderSyncSubprotocol0) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
+func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
 	order := &zeroex.Order{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
@@ -164,67 +164,67 @@ func (s *simpleOrderSyncSubprotocol0) HandleOrderSyncRequest(ctx context.Context
 	}, nil
 }
 
-func (s *simpleOrderSyncSubprotocol0) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
+func (s *oneOrderSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return &Request{
 		RequesterID: s.myPeerID,
 		Metadata:    res.Metadata,
 	}, len(res.Orders), nil
 }
 
-func (s *simpleOrderSyncSubprotocol0) GenerateFirstRequestMetadata() (json.RawMessage, error) {
-	return json.Marshal(simpleOrderSyncSubprotocolRequestMetadata0{
+func (s *oneOrderSubprotocol) GenerateFirstRequestMetadata() (json.RawMessage, error) {
+	return json.Marshal(oneOrderSubprotocolRequestMetadata{
 		SomeValue: 0,
 	})
 }
 
-var _ Subprotocol = &simpleOrderSyncSubprotocol1{}
+var _ Subprotocol = &hostedSubprotocol{}
 
-// simpleOrderSyncSubprotocol1 is an ordersync subprotocol that is used for testing
-// ordersync. This subprotocol uses simpleOrderSyncSubprotocol0 as a "host" subprotocol
+// hostedSubprotocol is an ordersync subprotocol that is used for testing
+// ordersync. This subprotocol uses oneOrderSubprotocol as a "host" subprotocol
 // and delegates the handling of requests and responses to this host.
-type simpleOrderSyncSubprotocol1 struct {
+type hostedSubprotocol struct {
 	myPeerID peer.ID
-	hostSubp *simpleOrderSyncSubprotocol0
+	hostSubp *oneOrderSubprotocol
 }
 
-type simpleOrderSyncSubprotocolRequestMetadata1 struct {
+type hostedSubprotocolRequestMetadata struct {
 	AnotherValue interface{} `json:"anotherValue"`
 }
 
-type simpleOrderSyncSubprotocolResponseMetadata1 struct {
+type hostedSubprotocolResponseMetadata struct {
 	AnotherValue interface{} `json:"anotherValue"`
 }
 
-func (s *simpleOrderSyncSubprotocol1) Name() string {
+func (s *hostedSubprotocol) Name() string {
 	return "/simple-order-sync-subprotocol/v1"
 }
 
-func (s *simpleOrderSyncSubprotocol1) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
-	var parsed simpleOrderSyncSubprotocolRequestMetadata1
+func (s *hostedSubprotocol) ParseRequestMetadata(metadata json.RawMessage) (interface{}, error) {
+	var parsed hostedSubprotocolRequestMetadata
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
 		return nil, err
 	}
 	return &parsed, nil
 }
 
-func (s *simpleOrderSyncSubprotocol1) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
-	var parsed simpleOrderSyncSubprotocolResponseMetadata1
+func (s *hostedSubprotocol) ParseResponseMetadata(metadata json.RawMessage) (interface{}, error) {
+	var parsed hostedSubprotocolResponseMetadata
 	if err := json.Unmarshal(metadata, &parsed); err != nil {
 		return nil, err
 	}
 	return &parsed, nil
 }
 
-func (s *simpleOrderSyncSubprotocol1) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
+func (s *hostedSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
 	return s.hostSubp.HandleOrderSyncRequest(ctx, req)
 }
 
-func (s *simpleOrderSyncSubprotocol1) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
+func (s *hostedSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return s.hostSubp.HandleOrderSyncResponse(ctx, res)
 }
 
-func (s *simpleOrderSyncSubprotocol1) GenerateFirstRequestMetadata() (json.RawMessage, error) {
-	return json.Marshal(simpleOrderSyncSubprotocolRequestMetadata1{
+func (s *hostedSubprotocol) GenerateFirstRequestMetadata() (json.RawMessage, error) {
+	return json.Marshal(hostedSubprotocolRequestMetadata{
 		AnotherValue: 1,
 	})
 }
