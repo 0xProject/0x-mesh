@@ -215,7 +215,7 @@ func TestOrderSync(t *testing.T) {
 		{
 			name:              "makerAssetAmount orderfilter - match all orders",
 			customOrderFilter: `{"properties":{"makerAssetAmount":{"pattern":"^1$","type":"string"}}}`,
-			orderOptionsForAll: func(_ int) []orderopts.Option {
+			orderOptionsForIndex: func(_ int) []orderopts.Option {
 				return []orderopts.Option{orderopts.MakerAssetAmount(big.NewInt(1))}
 			},
 			pConfig: privateConfig{
@@ -229,7 +229,7 @@ func TestOrderSync(t *testing.T) {
 		{
 			name:              "makerAssetAmount OrderFilter - matches one order",
 			customOrderFilter: `{"properties":{"makerAssetAmount":{"pattern":"^1$","type":"string"}}}`,
-			orderOptionsForAll: func(i int) []orderopts.Option {
+			orderOptionsForIndex: func(i int) []orderopts.Option {
 				if i == 0 {
 					return []orderopts.Option{orderopts.MakerAssetAmount(big.NewInt(1))}
 				}
@@ -251,10 +251,10 @@ func TestOrderSync(t *testing.T) {
 }
 
 type ordersyncTestCase struct {
-	name               string
-	customOrderFilter  string
+	name                 string
+	customOrderFilter    string
 	orderOptionsForIndex func(int) []orderopts.Option
-	pConfig            privateConfig
+	pConfig              privateConfig
 }
 
 const defaultOrderFilter = "{}"
@@ -282,13 +282,13 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		// Manually add some orders to originalNode.
 		orderOptionsForIndex := func(i int) []orderopts.Option {
 			orderOptions := []orderopts.Option{orderopts.SetupMakerState(true)}
-			if testCase.orderOptionsForAll != nil {
-				return append(testCase.orderOptionsForAll(i), setupMakerStateOption...)
+			if testCase.orderOptionsForIndex != nil {
+				return append(testCase.orderOptionsForIndex(i), orderOptions...)
 			}
-			return setupMakerStateOption
+			return orderOptions
 		}
 		numOrders := testCase.pConfig.paginationSubprotocolPerPage*3 + 1
-		originalOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptionsForAll)
+		originalOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptionsForIndex)
 
 		// We have to wait for latest block to be processed by the Mesh node.
 		time.Sleep(blockProcessingWaitTime)
