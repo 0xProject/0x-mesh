@@ -95,7 +95,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 }
 
 func newTestApp(t *testing.T, ctx context.Context) *App {
-	return newTestAppWithPrivateConfig(t, ctx, "{}", defaultPrivateConfig())
+	return newTestAppWithPrivateConfig(t, ctx, defaultOrderFilter, defaultPrivateConfig())
 }
 
 func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderFilter string, pConfig privateConfig) *App {
@@ -227,7 +227,7 @@ func TestOrderSync(t *testing.T) {
 			},
 		},
 		{
-			name:              "makerAssetAmount OrderFilter - match no orders",
+			name:              "makerAssetAmount OrderFilter - matches one order",
 			customOrderFilter: `{"properties":{"makerAssetAmount":{"pattern":"^1$","type":"string"}}}`,
 			orderOptionsForAll: func(i int) []orderopts.Option {
 				if i == 0 {
@@ -253,7 +253,7 @@ func TestOrderSync(t *testing.T) {
 type ordersyncTestCase struct {
 	name               string
 	customOrderFilter  string
-	orderOptionsForAll func(int) []orderopts.Option
+	orderOptionsForIndex func(int) []orderopts.Option
 	pConfig            privateConfig
 }
 
@@ -280,8 +280,8 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		}()
 
 		// Manually add some orders to originalNode.
-		orderOptionsForAll := func(i int) []orderopts.Option {
-			setupMakerStateOption := []orderopts.Option{orderopts.SetupMakerState(true)}
+		orderOptionsForIndex := func(i int) []orderopts.Option {
+			orderOptions := []orderopts.Option{orderopts.SetupMakerState(true)}
 			if testCase.orderOptionsForAll != nil {
 				return append(testCase.orderOptionsForAll(i), setupMakerStateOption...)
 			}
