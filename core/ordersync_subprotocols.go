@@ -310,7 +310,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 		// Filter the orders for this page.
 		if metadata.OrderFilter != nil {
 			for _, orderInfo := range ordersResp.OrdersInfos {
-				if matches, err := p.orderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
 					return nil, err
 				} else if matches {
 					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)

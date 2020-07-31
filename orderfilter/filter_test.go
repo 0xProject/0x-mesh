@@ -21,9 +21,39 @@ var (
 	contractAddresses                  = ethereum.GanacheAddresses
 )
 
+// NOTE(jalextowle): The way that orderfilters are encoded into JSON is unique due
+// to the fact that orderfilters work differently in the native and WebAssembly
+// environments, so we make an effort to test these encoding and decoding functions
+// rigorously. To accomplish this, all of the orderfilter tests are run twice. The
+// first time they are executed, orderfilter.New is used to create the orderfilter
+// that will be tested. The second time the tests are executed, we use this function
+// to create an orderfilter, encode the orderfilter into JSON, and then return a
+// freshly decoded orderfilter.
+func generateDecodedFilter(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+	filter, err := New(chainID, customOrderSchema, contractAddresses)
+	if err != nil {
+		return nil, err
+	}
+	marshalledFilter, err := filter.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	newFilter := &Filter{}
+	err = newFilter.UnmarshalJSON(marshalledFilter)
+	if err != nil {
+		return nil, err
+	}
+	return newFilter, nil
+}
+
 func TestFilterValidateOrder(t *testing.T) {
 	t.Parallel()
 
+	testFilterValidateOrder(t, New)
+	testFilterValidateOrder(t, generateDecodedFilter)
+}
+
+func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethereum.ContractAddresses) (*Filter, error)) {
 	testCases := []struct {
 		note              string
 		chainID           int
@@ -149,7 +179,7 @@ func TestFilterValidateOrder(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
+		filter, err := generateFilter(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		signedOrder, err := zeroex.SignTestOrder(tc.order)
 		require.NoError(t, err)
@@ -174,6 +204,11 @@ func TestFilterValidateOrder(t *testing.T) {
 func TestFilterValidateOrderJSON(t *testing.T) {
 	t.Parallel()
 
+	testFilterValidateOrderJSON(t, New)
+	testFilterValidateOrderJSON(t, generateDecodedFilter)
+}
+
+func testFilterValidateOrderJSON(t *testing.T, generateFilter func(int, string, ethereum.ContractAddresses) (*Filter, error)) {
 	testCases := []struct {
 		note              string
 		chainID           int
@@ -236,7 +271,7 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
+		filter, err := generateFilter(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tc.customOrderSchema)
@@ -259,6 +294,11 @@ func TestFilterValidateOrderJSON(t *testing.T) {
 func TestFilterMatchOrderMessageJSON(t *testing.T) {
 	t.Parallel()
 
+	testFilterMatchOrderMessageJSON(t, New)
+	testFilterMatchOrderMessageJSON(t, generateDecodedFilter)
+}
+
+func testFilterMatchOrderMessageJSON(t *testing.T, generateFilter func(int, string, ethereum.ContractAddresses) (*Filter, error)) {
 	testCases := []struct {
 		note              string
 		chainID           int
@@ -326,7 +366,7 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s\nnote: %s", i, tc.chainID, tc.customOrderSchema, tc.note)
-		filter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
+		filter, err := generateFilter(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err)
 		actualResult, err := filter.MatchOrderMessageJSON(tc.orderMessageJSON)
 		require.NoError(t, err, tc.customOrderSchema)
@@ -335,6 +375,11 @@ func TestFilterMatchOrderMessageJSON(t *testing.T) {
 }
 
 func TestFilterTopic(t *testing.T) {
+	testFilterTopic(t, New)
+	testFilterTopic(t, generateDecodedFilter)
+}
+
+func testFilterTopic(t *testing.T, generateFilter func(int, string, ethereum.ContractAddresses) (*Filter, error)) {
 	testCases := []struct {
 		chainID           int
 		customOrderSchema string
@@ -366,7 +411,7 @@ func TestFilterTopic(t *testing.T) {
 
 	for i, tc := range testCases {
 		tcInfo := fmt.Sprintf("test case %d\nchainID: %d\nschema: %s", i, tc.chainID, tc.customOrderSchema)
-		originalFilter, err := New(tc.chainID, tc.customOrderSchema, contractAddresses)
+		originalFilter, err := generateFilter(tc.chainID, tc.customOrderSchema, contractAddresses)
 		require.NoError(t, err, tcInfo)
 		result, err := originalFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
