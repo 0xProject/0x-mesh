@@ -2,6 +2,13 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v9.4.2
+
+### Bug fixes 🐞
+
+-   Fixes a bug that would cause Mesh nodes to crash upon receiving requests from legacy Mesh nodes [#888](https://github.com/0xProject/0x-mesh/pull/888).
+
+
 ## v9.4.1
 
 ### Bug fixes 🐞
