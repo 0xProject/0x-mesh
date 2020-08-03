@@ -1,4 +1,4 @@
-# @0x/mesh-browser-lite - v9.4.2
+# @0x/mesh-browser-lite - v10.0.0-unstable-7
 
 ## @0x/mesh-browser-lite
 

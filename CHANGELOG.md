@@ -8,13 +8,11 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 -   Upgraded to Go 1.14, which contains several WebAssembly performance improvements [#815](https://github.com/0xProject/0x-mesh/pull/815).
 
-
 ## v9.4.2
 
 ### Bug fixes 🐞
 
 -   Fixes a bug that would cause Mesh nodes to crash upon receiving requests from legacy Mesh nodes [#888](https://github.com/0xProject/0x-mesh/pull/888).
-
 
 ## v9.4.1
 

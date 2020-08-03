@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-9.4.2-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-10.0.0--unstable--7-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh JSON-RPC API Documentation
 
