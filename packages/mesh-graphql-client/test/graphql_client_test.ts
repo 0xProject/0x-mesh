@@ -168,6 +168,29 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
+        describe('#getOrderAsync', async () => {
+            it('gets an order by its hash', async () => {
+                const order = await orderFactory.newSignedOrderAsync({});
+                const validationResults = await deployment.client.addOrdersAsync([order]);
+                expect(validationResults.accepted.length).to.be.eq(1);
+
+                const orderHash = orderHashUtils.getOrderHashHex(order);
+                const foundOrder = await deployment.client.getOrderAsync(orderHash);
+                const expectedOrder = {
+                    ...order,
+                    hash: orderHash,
+                    fillableTakerAssetAmount: order.takerAssetAmount,
+                };
+                expect(foundOrder).to.be.deep.eq(expectedOrder);
+            });
+            it('returns null when the order does not exist', async () => {
+                await sleepAsync(1000);
+                const nonExistentOrderHash = '0xabcd46910c6a8a4730878e6e8a4abb328844c0b58f0cdfbb5b6ad28ee0bae347';
+                const foundOrder = await deployment.client.getOrderAsync(nonExistentOrderHash);
+                expect(foundOrder).to.be.null();
+            });
+        });
+
         //     describe('#getOrdersAsync', async () => {
         //         it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
         //             const ordersLength = 10;

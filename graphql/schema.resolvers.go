@@ -33,6 +33,9 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 func (r *queryResolver) Order(ctx context.Context, hash gqltypes.Hash) (*gqltypes.OrderWithMetadata, error) {
 	order, err := r.app.GetOrder(common.Hash(hash))
 	if err != nil {
+		if err == db.ErrNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return gqltypes.OrderWithMetadataFromCommonType(order), nil

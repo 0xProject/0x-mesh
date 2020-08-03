@@ -53,6 +53,10 @@ interface AddOrdersResponse {
     addOrders: StringifiedAddOrdersResults;
 }
 
+interface OrderResponse {
+    order: StringifiedOrderWithMetadata | null;
+}
+
 interface OrderEventResponse {
     orderEvents: OrderEvent[];
 }
@@ -201,6 +205,32 @@ const addOrdersMutation = gql`
     }
 `;
 
+const orderQuery = gql`
+    query Order($hash: Hash!) {
+        order(hash: $hash) {
+            hash
+            chainId
+            exchangeAddress
+            makerAddress
+            makerAssetData
+            makerAssetAmount
+            makerFeeAssetData
+            makerFee
+            takerAddress
+            takerAssetData
+            takerAssetAmount
+            takerFeeAssetData
+            takerFee
+            senderAddress
+            feeRecipientAddress
+            expirationTimeSeconds
+            salt
+            signature
+            fillableTakerAssetAmount
+        }
+    }
+`;
+
 const orderEventsSubscription = gql`
     subscription {
         orderEvents {
@@ -259,7 +289,7 @@ export class MeshGraphQLClient {
                     if (err) {
                         console.error(err);
                     } else {
-                        console.log('successfully connected');
+                        // console.log('successfully connected');
                     }
                 },
             },
@@ -323,8 +353,24 @@ export class MeshGraphQLClient {
             throw new Error('received no data');
         }
         const results = resp.data.addOrders;
-        // TODO(albrow): Convert response type.
         return fromStringifiedAddOrdersResults(results);
+    }
+
+    public async getOrderAsync(hash: string): Promise<OrderWithMetadata | null> {
+        const resp: FetchResult<OrderResponse> = await this._client.mutate({
+            mutation: orderQuery,
+            variables: {
+                hash,
+            },
+            errorPolicy: 'none',
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        if (resp.data.order == null) {
+            return null;
+        }
+        return fromStringifiedOrderWithMetadata(resp.data.order);
     }
 
     public onOrderEvents(): Observable<OrderEvent[]> {
