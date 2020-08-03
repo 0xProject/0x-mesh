@@ -58,12 +58,7 @@ interface OrderResponse {
 }
 
 interface OrderEventResponse {
-    orderEvents: OrderEvent[];
-}
-
-export interface OrderEvent {
-    timestamp: Date;
-    endState: string;
+    orderEvents: StringifiedOrderEvent[];
 }
 
 export interface OrderWithMetadata extends SignedOrder {
@@ -125,6 +120,68 @@ export enum RejectedOrderCode {
     IncorrectExchangeAddress = 'INCORRECT_EXCHANGE_ADDRESS',
     SenderAddressNotAllowed = 'SENDER_ADDRESS_NOT_ALLOWED',
     DatabaseFullOfOrders = 'DATABASE_FULL_OF_ORDERS',
+}
+
+export interface OrderEvent {
+    timestampMs: number;
+    order: OrderWithMetadata;
+    endState: OrderEventEndState;
+    contractEvents: ContractEvent[];
+}
+
+export interface ContractEvent {
+    blockHash: string;
+    txHash: string;
+    txIndex: number;
+    logIndex: number;
+    isRemoved: boolean;
+    address: string;
+    // TODO(albrow): Use an enum type for kind?
+    kind: string;
+    // TODO(albrow): Use a union type for parameters?
+    parameters: any;
+}
+
+export enum ContractEventKind {
+    ERC20TransferEvent = 'ERC20TransferEvent',
+    ERC20ApprovalEvent = 'ERC20ApprovalEvent',
+    ERC721TransferEvent = 'ERC721TransferEvent',
+    ERC721ApprovalEvent = 'ERC721ApprovalEvent',
+    ERC721ApprovalForAllEvent = 'ERC721ApprovalForAllEvent',
+    ERC1155ApprovalForAllEvent = 'ERC1155ApprovalForAllEvent',
+    ERC1155TransferSingleEvent = 'ERC1155TransferSingleEvent',
+    ERC1155TransferBatchEvent = 'ERC1155TransferBatchEvent',
+    ExchangeFillEvent = 'ExchangeFillEvent',
+    ExchangeCancelEvent = 'ExchangeCancelEvent',
+    ExchangeCancelUpToEvent = 'ExchangeCancelUpToEvent',
+    WethDepositEvent = 'WethDepositEvent',
+    WethWithdrawalEvent = 'WethWithdrawalEvent',
+}
+
+export enum OrderEventEndState {
+    // The order was successfully validated and added to the Mesh node. The order is now being watched and any changes to
+    // the fillability will result in subsequent order events.
+    Added = 'ADDED',
+    // The order was filled for a partial amount. The order is still fillable up to the fillableTakerAssetAmount.
+    Filled = 'FILLED',
+    // The order was fully filled and its remaining fillableTakerAssetAmount is 0. The order is no longer fillable.
+    FullyFilled = 'FULLY_FILLED',
+    // The order was cancelled and is no longer fillable.
+    Cancelled = 'CANCELLED',
+    // The order expired and is no longer fillable.
+    Expired = 'EXPIRED',
+    // The order was previously expired, but due to a block re-org it is no longer considered expired (should be rare).
+    Unexpired = 'UNEXPIRED',
+    // The order has become unfunded and is no longer fillable. This can happen if the maker makes a transfer or changes their allowance.
+    Unfunded = 'UNFUNDED',
+    // The fillability of the order has increased. This can happen if a previously processed fill event gets reverted due to a block re-org,
+    // or if a maker makes a transfer or changes their allowance.
+    FillabilityIncreased = 'FILLABILITY_INCREASED',
+    // The order is potentially still valid but was removed for a different reason (e.g.
+    // the database is full or the peer that sent the order was misbehaving). The order will no longer be watched
+    // and no further events for this order will be emitted. In some cases, the order may be re-added in the
+    // future.
+    StoppedWatching = 'STOPPED_WATCHING',
 }
 
 const statsQuery = gql`
@@ -384,7 +441,7 @@ export class MeshGraphQLClient {
             if (result.data === undefined || result.data === null) {
                 throw new Error('no data received');
             }
-            return result.data.orderEvents;
+            return result.data.orderEvents.map(fromStringifiedOrderEvent);
         });
     }
 }
@@ -525,5 +582,21 @@ function fromStringifiedRejectedOrderResult(rejectedResult: StringifiedRejectedO
     return {
         ...rejectedResult,
         order: fromStringifiedSignedOrder(rejectedResult.order),
+    };
+}
+
+interface StringifiedOrderEvent {
+    timestamp: string;
+    order: StringifiedOrderWithMetadata;
+    endState: OrderEventEndState;
+    fillableTakerAssetAmount: BigNumber;
+    contractEvents: ContractEvent[];
+}
+
+function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEvent {
+    return {
+        ...event,
+        timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
+        order: fromStringifiedOrderWithMetadata(event.order),
     };
 }

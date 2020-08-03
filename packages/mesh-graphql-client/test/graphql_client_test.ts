@@ -12,7 +12,7 @@ import 'mocha';
 // import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
-import { MeshGraphQLClient, RejectedOrderCode } from '../src/index';
+import { OrderEvent, OrderEventEndState, RejectedOrderCode } from '../src/index';
 // import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
 // import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
@@ -279,228 +279,221 @@ blockchainTests.resets('GraphQLClient', env => {
         //         });
         //     });
 
-        //     describe('#subscribeToOrdersAsync', async () => {
-        //         it('should receive subscription updates about added orders', (done: DoneCallback) => {
-        //             (async () => {
-        //                 // Create orders to add to the mesh node.
-        //                 const ordersLength = 10;
-        //                 const orders = [] as SignedOrder[];
-        //                 for (let i = 0; i < ordersLength; i++) {
-        //                     orders[i] = await orderFactory.newSignedOrderAsync({});
-        //                 }
+        describe('#subscribeToOrdersAsync', async () => {
+            it('should receive subscription updates about added orders', (done: DoneCallback) => {
+                (async () => {
+                    // Create orders to add to the mesh node.
+                    const ordersLength = 10;
+                    const orders = [] as SignedOrder[];
+                    for (let i = 0; i < ordersLength; i++) {
+                        orders[i] = await orderFactory.newSignedOrderAsync({});
+                    }
 
-        //                 // Subscribe to orders and wait for order events.
-        //                 let now: number;
-        //                 const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
-        //                     expect(orderEvents.length).to.be.eq(orders.length);
-        //                     for (const orderEvent of orderEvents) {
-        //                         expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
-        //                         // tslint:disable-next-line:custom-no-magic-numbers
-        //                         assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(10));
-        //                     }
+                    // Subscribe to orders and wait for order events.
+                    const orderEvents = deployment.client.onOrderEvents();
+                    orderEvents.subscribe({
+                        error: err => {
+                            throw err;
+                        },
+                        next: (events: OrderEvent[]) => {
+                            expect(events.length).to.be.eq(orders.length);
+                            for (const orderEvent of events) {
+                                expect(orderEvent.endState).to.be.eq(OrderEventEndState.Added);
+                                const now = new Date().getUTCMilliseconds();
+                                // tslint:disable-next-line:custom-no-magic-numbers
+                                assertRoughlyEquals(now, orderEvent.timestampMs, secondsToMs(10));
+                            }
 
-        //                     // Ensure that all of the orders that were added had an associated order event emitted.
-        //                     for (const order of orders) {
-        //                         const orderHash = orderHashUtils.getOrderHashHex(order);
-        //                         let hasSeenMatch = false;
-        //                         for (const orderEvent of orderEvents) {
-        //                             if (orderHash === orderEvent.orderHash) {
-        //                                 hasSeenMatch = true;
-        //                                 expect(orderEvent.signedOrder).to.be.deep.eq(order);
-        //                                 expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(
-        //                                     order.takerAssetAmount,
-        //                                 );
-        //                                 break;
-        //                             }
-        //                         }
-        //                         expect(hasSeenMatch).to.be.true();
-        //                     }
-        //                     done();
-        //                 });
-        //                 now = Date.now();
-        //                 const validationResults = await deployment.client.addOrdersAsync(orders);
-        //                 expect(validationResults.accepted.length).to.be.eq(ordersLength);
-        //                 await subscription;
-        //             })().catch(done);
-        //         });
+                            // Ensure that all of the orders that were added had an associated order event emitted.
+                            for (const order of orders) {
+                                const orderHash = orderHashUtils.getOrderHashHex(order);
+                                let hasSeenMatch = false;
+                                for (const event of events) {
+                                    if (orderHash === event.order.hash) {
+                                        hasSeenMatch = true;
+                                        const expectedOrder = {
+                                            ...order,
+                                            hash: orderHash,
+                                            fillableTakerAssetAmount: order.takerAssetAmount,
+                                        };
+                                        expect(event.order).to.be.deep.eq(expectedOrder);
+                                        break;
+                                    }
+                                }
+                                expect(hasSeenMatch).to.be.true();
+                            }
+                            done();
+                        },
+                    });
+                    const validationResults = await deployment.client.addOrdersAsync(orders);
+                    expect(validationResults.accepted.length).to.be.eq(ordersLength);
+                })().catch(done);
+            });
 
-        //         it('should receive subscription updates about cancelled orders', (done: DoneCallback) => {
-        //             (async () => {
-        //                 // Add an order and then cancel it.
-        //                 const order = await orderFactory.newSignedOrderAsync({});
-        //                 const validationResults = await deployment.client.addOrdersAsync([order]);
-        //                 expect(validationResults.accepted.length).to.be.eq(1);
+            it('should receive subscription updates about cancelled orders', (done: DoneCallback) => {
+                (async () => {
+                    // Add an order and then cancel it.
+                    const order = await orderFactory.newSignedOrderAsync({});
+                    const validationResults = await deployment.client.addOrdersAsync([order]);
+                    expect(validationResults.accepted.length).to.be.eq(1);
 
-        //                 // Subscribe to order events and assert that only a single cancel event was received.
-        //                 const now = new Date(Date.now()).getTime();
-        //                 const subscription = deployment.client.subscribeToOrdersAsync((orderEvents: OrderEvent[]) => {
-        //                     // Ensure that the correct cancel event was logged.
-        //                     expect(orderEvents.length).to.be.eq(1);
-        //                     const [orderEvent] = orderEvents;
-        //                     expect(orderEvent.endState).to.be.eq(OrderEventEndState.Cancelled);
-        //                     expect(orderEvent.fillableTakerAssetAmount).to.be.bignumber.eq(constants.ZERO_AMOUNT);
-        //                     expect(orderEvent.signedOrder).to.be.deep.eq(order);
-        //                     assertRoughlyEquals(orderEvent.timestampMs, now, secondsToMs(2));
-        //                     expect(orderEvent.contractEvents.length).to.be.eq(1);
+                    // Subscribe to order events and assert that only a single cancel event was received.
+                    const orderEvents = deployment.client.onOrderEvents();
+                    orderEvents.subscribe({
+                        error: err => {
+                            throw err;
+                        },
+                        next: (events: OrderEvent[]) => {
+                            // Ensure that the correct cancel event was logged.
+                            expect(events.length).to.be.eq(1);
+                            const [orderEvent] = events;
+                            expect(orderEvent.endState).to.be.eq(OrderEventEndState.Cancelled);
+                            const expectedOrder = {
+                                ...order,
+                                hash: orderHashUtils.getOrderHashHex(order),
+                                fillableTakerAssetAmount: constants.ZERO_AMOUNT,
+                            };
+                            expect(orderEvent.order).to.be.deep.eq(expectedOrder);
+                            const now = new Date().getUTCMilliseconds();
+                            assertRoughlyEquals(orderEvent.timestampMs, now, secondsToMs(2));
+                            expect(orderEvent.contractEvents.length).to.be.eq(1);
 
-        //                     // Ensure that the contract event is correct.
-        //                     const [contractEvent] = orderEvent.contractEvents;
-        //                     expect(contractEvent.address).to.be.eq(exchangeAddress);
-        //                     expect(contractEvent.kind).to.be.equal(ContractEventKind.ExchangeCancelEvent);
-        //                     expect(contractEvent.logIndex).to.be.eq(0);
-        //                     expect(contractEvent.isRemoved).to.be.false();
-        //                     expect(contractEvent.txIndex).to.be.eq(0);
-        //                     const hashLength = 66;
-        //                     expect(contractEvent.blockHash.length).to.be.eq(hashLength);
-        //                     expect(contractEvent.blockHash).to.not.be.eq(constants.NULL_BYTES32);
-        //                     expect(contractEvent.txHash.length).to.be.eq(hashLength);
-        //                     const parameters = contractEvent.parameters;
-        //                     parameters.makerAddress = parameters.makerAddress.toLowerCase();
-        //                     parameters.senderAddress = parameters.makerAddress;
-        //                     expect(parameters.feeRecipientAddress.toLowerCase()).to.be.eq(order.feeRecipientAddress);
-        //                     expect(parameters.makerAddress.toLowerCase()).to.be.eq(makerAddress);
-        //                     expect(parameters.makerAssetData).to.be.eq(order.makerAssetData);
-        //                     expect(parameters.orderHash).to.be.eq(orderHashUtils.getOrderHashHex(order));
-        //                     expect(parameters.senderAddress.toLowerCase()).to.be.eq(makerAddress);
-        //                     expect(parameters.takerAssetData).to.be.eq(order.takerAssetData);
-        //                     done();
-        //                 });
+                            // Ensure that the contract event is correct.
+                            const [contractEvent] = orderEvent.contractEvents;
+                            expect(contractEvent.address).to.be.eq(exchangeAddress);
+                            expect(contractEvent.kind).to.be.equal('ExchangeCancelEvent');
+                            expect(contractEvent.logIndex).to.be.eq(0);
+                            expect(contractEvent.isRemoved).to.be.false();
+                            expect(contractEvent.txIndex).to.be.eq(0);
+                            const hashLength = 66;
+                            expect(contractEvent.blockHash.length).to.be.eq(hashLength);
+                            expect(contractEvent.blockHash).to.not.be.eq(constants.NULL_BYTES32);
+                            expect(contractEvent.txHash.length).to.be.eq(hashLength);
+                            const parameters = contractEvent.parameters;
+                            parameters.makerAddress = parameters.makerAddress.toLowerCase();
+                            parameters.senderAddress = parameters.makerAddress;
+                            expect(parameters.feeRecipientAddress.toLowerCase()).to.be.eq(order.feeRecipientAddress);
+                            expect(parameters.makerAddress.toLowerCase()).to.be.eq(makerAddress);
+                            expect(parameters.makerAssetData).to.be.eq(order.makerAssetData);
+                            expect(parameters.orderHash).to.be.eq(orderHashUtils.getOrderHashHex(order));
+                            expect(parameters.senderAddress.toLowerCase()).to.be.eq(makerAddress);
+                            expect(parameters.takerAssetData).to.be.eq(order.takerAssetData);
+                            done();
+                        },
+                    });
 
-        //                 // Cancel an order and then wait for the emitted order event.
-        //                 await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
-        //                 await subscription;
-        //             })().catch(done);
-        //         });
-        //     });
-
-        //     describe('#unsubscribeAsync', async () => {
-        //         it('should unsubscribe successfully', async () => {
-        //             // tslint:disable-next-line:no-empty
-        //             const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
-        //             await deployment.client.unsubscribeAsync(subscriptionID);
-        //         });
-
-        //         it('should throw an error after unsubscribing redundantly', async () => {
-        //             // tslint:disable-next-line:no-empty
-        //             const subscriptionID = await deployment.client.subscribeToOrdersAsync(() => {});
-        //             await deployment.client.unsubscribeAsync(subscriptionID);
-        //             let thrownError: Error = new Error('');
-        //             try {
-        //                 await deployment.client.unsubscribeAsync(subscriptionID);
-        //             } catch (error) {
-        //                 thrownError = error;
-        //             }
-        //             expect(thrownError.name).to.be.eq('Error');
-        //             expect(thrownError.message).to.be.eq('Node error: {"code":-32000,"message":"subscription not found"}');
-        //         });
-        //     });
-        // });
-
-        // describe('unit tests', () => {
-        //     describe('#onClose', () => {
-        //         it('should trigger when connection is closed', (done: DoneCallback) => {
-        //             // tslint:disable-next-line:no-floating-promises
-        //             (async () => {
-        //                 const wsServer = await setupServerAsync();
-        //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
-        //                     // tslint:disable-next-line:custom-no-magic-numbers
-        //                     await sleepAsync(100);
-        //                     connection.close();
-        //                 });
-
-        //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-        //                 client.onClose(() => {
-        //                     client.destroy();
-        //                     stopServer();
-        //                     done();
-        //                 });
-        //             })().catch(done);
-        //         });
-        //     });
-        //     describe('#onReconnected', async () => {
-        //         it('should trigger the callback when reconnected', (done: DoneCallback) => {
-        //             // tslint:disable-next-line:no-floating-promises
-        //             (async () => {
-        //                 const wsServer = await setupServerAsync();
-        //                 let connectionNum = 0;
-        //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
-        //                     let requestNum = 0;
-        //                     connectionNum++;
-        //                     connection.on('message', (async (message: WSMessage) => {
-        //                         const jsonRpcRequest = JSON.parse(message.utf8Data);
-        //                         if (requestNum === 0) {
-        //                             const response = `
-        //                                 {
-        //                                     "id": "${jsonRpcRequest.id}",
-        //                                     "jsonrpc": "2.0",
-        //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-        //                                 }
-        //                             `;
-        //                             connection.sendUTF(response);
-        //                             if (connectionNum === 1) {
-        //                                 // tslint:disable-next-line:custom-no-magic-numbers
-        //                                 await sleepAsync(100);
-        //                                 const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
-        //                                 const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
-        //                                 connection.drop(reasonCode, description);
-        //                             }
-        //                         }
-        //                         requestNum++;
-        //                     }) as any);
-        //                 });
-
-        //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
-        //                 client.onReconnected(async () => {
-        //                     // We need to add a sleep here so that we leave time for the client
-        //                     // to get connected before destroying it.
-        //                     // tslint:disable-next-line:custom-no-magic-numbers
-        //                     await sleepAsync(100);
-        //                     client.destroy();
-        //                     stopServer();
-        //                     done();
-        //                 });
-        //             })().catch(done);
-        //         });
-        //     });
-        //     describe('#destroy', async () => {
-        //         it('should unsubscribe and trigger onClose when close() is called', (done: DoneCallback) => {
-        //             // tslint:disable-next-line:no-floating-promises
-        //             (async () => {
-        //                 const wsServer = await setupServerAsync();
-        //                 let hasReceivedUnsubscribeMessage = false;
-        //                 wsServer.on('connect', (connection: WebSocket.connection) => {
-        //                     connection.on('message', async (message: WebSocket.IMessage) => {
-        //                         const wsMessage = message as WSMessage;
-        //                         const jsonRpcRequest = JSON.parse(wsMessage.utf8Data);
-        //                         if (jsonRpcRequest.method === 'mesh_subscribe') {
-        //                             const response = `
-        //                                 {
-        //                                     "id": "${jsonRpcRequest.id}",
-        //                                     "jsonrpc": "2.0",
-        //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-        //                                 }
-        //                             `;
-        //                             connection.sendUTF(response);
-        //                         } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
-        //                             hasReceivedUnsubscribeMessage = true;
-        //                         }
-        //                     });
-        //                 });
-
-        //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-        //                 client.onClose(() => {
-        //                     expect(hasReceivedUnsubscribeMessage).to.be.equal(true);
-        //                     done();
-        //                 });
-        //                 // We need to add a sleep here so that we leave time for the client
-        //                 // to get connected before destroying it.
-        //                 // tslint:disable-next-line:custom-no-magic-numbers
-        //                 await sleepAsync(100);
-        //                 client.destroy();
-        //             })().catch(done);
-        //         });
-        //     });
+                    // Cancel an order and then wait for the emitted order event.
+                    // tslint:disable-next-line: await-promise
+                    await exchange.cancelOrder(order).awaitTransactionSuccessAsync({ from: makerAddress });
+                })().catch(done);
+            });
+        });
     });
+
+    // describe('unit tests', () => {
+    //     describe('#onClose', () => {
+    //         it('should trigger when connection is closed', (done: DoneCallback) => {
+    //             // tslint:disable-next-line:no-floating-promises
+    //             (async () => {
+    //                 const wsServer = await setupServerAsync();
+    //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
+    //                     // tslint:disable-next-line:custom-no-magic-numbers
+    //                     await sleepAsync(100);
+    //                     connection.close();
+    //                 });
+
+    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+    //                 client.onClose(() => {
+    //                     client.destroy();
+    //                     stopServer();
+    //                     done();
+    //                 });
+    //             })().catch(done);
+    //         });
+    //     });
+    //     describe('#onReconnected', async () => {
+    //         it('should trigger the callback when reconnected', (done: DoneCallback) => {
+    //             // tslint:disable-next-line:no-floating-promises
+    //             (async () => {
+    //                 const wsServer = await setupServerAsync();
+    //                 let connectionNum = 0;
+    //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
+    //                     let requestNum = 0;
+    //                     connectionNum++;
+    //                     connection.on('message', (async (message: WSMessage) => {
+    //                         const jsonRpcRequest = JSON.parse(message.utf8Data);
+    //                         if (requestNum === 0) {
+    //                             const response = `
+    //                                 {
+    //                                     "id": "${jsonRpcRequest.id}",
+    //                                     "jsonrpc": "2.0",
+    //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+    //                                 }
+    //                             `;
+    //                             connection.sendUTF(response);
+    //                             if (connectionNum === 1) {
+    //                                 // tslint:disable-next-line:custom-no-magic-numbers
+    //                                 await sleepAsync(100);
+    //                                 const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
+    //                                 const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
+    //                                 connection.drop(reasonCode, description);
+    //                             }
+    //                         }
+    //                         requestNum++;
+    //                     }) as any);
+    //                 });
+
+    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
+    //                 client.onReconnected(async () => {
+    //                     // We need to add a sleep here so that we leave time for the client
+    //                     // to get connected before destroying it.
+    //                     // tslint:disable-next-line:custom-no-magic-numbers
+    //                     await sleepAsync(100);
+    //                     client.destroy();
+    //                     stopServer();
+    //                     done();
+    //                 });
+    //             })().catch(done);
+    //         });
+    //     });
+    //     describe('#destroy', async () => {
+    //         it('should unsubscribe and trigger onClose when close() is called', (done: DoneCallback) => {
+    //             // tslint:disable-next-line:no-floating-promises
+    //             (async () => {
+    //                 const wsServer = await setupServerAsync();
+    //                 let hasReceivedUnsubscribeMessage = false;
+    //                 wsServer.on('connect', (connection: WebSocket.connection) => {
+    //                     connection.on('message', async (message: WebSocket.IMessage) => {
+    //                         const wsMessage = message as WSMessage;
+    //                         const jsonRpcRequest = JSON.parse(wsMessage.utf8Data);
+    //                         if (jsonRpcRequest.method === 'mesh_subscribe') {
+    //                             const response = `
+    //                                 {
+    //                                     "id": "${jsonRpcRequest.id}",
+    //                                     "jsonrpc": "2.0",
+    //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
+    //                                 }
+    //                             `;
+    //                             connection.sendUTF(response);
+    //                         } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
+    //                             hasReceivedUnsubscribeMessage = true;
+    //                         }
+    //                     });
+    //                 });
+
+    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
+    //                 client.onClose(() => {
+    //                     expect(hasReceivedUnsubscribeMessage).to.be.equal(true);
+    //                     done();
+    //                 });
+    //                 // We need to add a sleep here so that we leave time for the client
+    //                 // to get connected before destroying it.
+    //                 // tslint:disable-next-line:custom-no-magic-numbers
+    //                 await sleepAsync(100);
+    //                 client.destroy();
+    //             })().catch(done);
+    //         });
+    //     });
 });
 
 function assertRoughlyEquals(a: number, b: number, delta: number): void {
