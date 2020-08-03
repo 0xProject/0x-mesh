@@ -44,6 +44,8 @@
         "websocket": "^1.0.31"
     },
     "dependencies": {
+        "@0x/mesh-browser-lite": "^9.4.2",
+        "@0x/types": "^3.2.0",
         "@0x/utils": "^5.4.0",
         "@apollo/client": "^3.1.1",
         "@types/ws": "^7.2.6",

@@ -12,7 +12,7 @@ import 'mocha';
 // import * as uuidValidate from 'uuid-validate';
 import * as WebSocket from 'websocket';
 
-import { MeshGraphQLClient } from '../src/index';
+import { MeshGraphQLClient, RejectedOrderCode } from '../src/index';
 // import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
 // import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
@@ -63,11 +63,15 @@ blockchainTests.resets('GraphQLClient', env => {
             const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
             const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
             const mintAmount = new BigNumber('100e18');
+            // tslint:disable-next-line: await-promise
             await makerToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
             await feeToken.mint(mintAmount).awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
             await makerToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
@@ -84,45 +88,44 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
-        // describe('#addOrdersAsync', async () => {
-        //     it('accepts valid order', async () => {
-        //         const order = await orderFactory.newSignedOrderAsync({});
-        //         const validationResults = await deployment.client.addOrdersAsync([order]);
-        //         expect(validationResults).to.be.deep.eq({
-        //             accepted: [
-        //                 {
-        //                     fillableTakerAssetAmount: order.takerAssetAmount,
-        //                     isNew: true,
-        //                     orderHash: orderHashUtils.getOrderHashHex(order),
-        //                     signedOrder: order,
-        //                 },
-        //             ],
-        //             rejected: [],
-        //         });
-        //     });
+        describe('#addOrdersAsync', async () => {
+            it('accepts valid order', async () => {
+                const order = await orderFactory.newSignedOrderAsync({});
+                const validationResults = await deployment.client.addOrdersAsync([order]);
+                expect(validationResults).to.be.deep.eq({
+                    accepted: [
+                        {
+                            isNew: true,
+                            order: {
+                                ...order,
+                                hash: orderHashUtils.getOrderHashHex(order),
+                                fillableTakerAssetAmount: order.takerAssetAmount,
+                            },
+                        },
+                    ],
+                    rejected: [],
+                });
+            });
 
-        //     it('rejects order with invalid signature', async () => {
-        //         const invalidOrder = {
-        //             ...(await orderFactory.newSignedOrderAsync({})),
-        //             signature: hexUtils.hash('0x0'),
-        //         };
-        //         const validationResults = await deployment.client.addOrdersAsync([invalidOrder]);
-        //         expect(validationResults).to.be.deep.eq({
-        //             accepted: [],
-        //             rejected: [
-        //                 {
-        //                     kind: RejectedKind.ZeroexValidation,
-        //                     orderHash: orderHashUtils.getOrderHashHex(invalidOrder),
-        //                     signedOrder: invalidOrder,
-        //                     status: {
-        //                         code: 'OrderHasInvalidSignature',
-        //                         message: 'order signature must be valid',
-        //                     },
-        //                 },
-        //             ],
-        //         });
-        //     });
-        // });
+            it('rejects order with invalid signature', async () => {
+                const invalidOrder = {
+                    ...(await orderFactory.newSignedOrderAsync({})),
+                    signature: hexUtils.hash('0x0'),
+                };
+                const validationResults = await deployment.client.addOrdersAsync([invalidOrder]);
+                expect(validationResults).to.be.deep.eq({
+                    accepted: [],
+                    rejected: [
+                        {
+                            hash: orderHashUtils.getOrderHashHex(invalidOrder),
+                            order: invalidOrder,
+                            code: RejectedOrderCode.OrderHasInvalidSignature,
+                            message: 'order signature must be valid',
+                        },
+                    ],
+                });
+            });
+        });
 
         describe('#getStats', () => {
             it('Ensure that the stats are correct when no orders have been added', async () => {
@@ -157,7 +160,7 @@ blockchainTests.resets('GraphQLClient', env => {
                     numOrders: 0,
                     numOrdersIncludingRemoved: 0,
                     maxExpirationTime: constants.MAX_UINT256,
-                    startOfCurrentUTCDay: expectedStartOfCurrentUTCDay,
+                    startOfCurrentUTCDay: new Date(expectedStartOfCurrentUTCDay),
                     ethRPCRequestsSentInCurrentUTCDay: 0,
                     ethRPCRateLimitExpiredRequests: 0,
                 };
