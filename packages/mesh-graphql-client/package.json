@@ -17,8 +17,6 @@
         "docsPath": "../../docs/graphql-client"
     },
     "devDependencies": {
-        "@types/ramda": "^0.27.14",
-        "@types/websocket": "^1.0.1",
         "@0x/contract-addresses": "^4.11.0",
         "@0x/contracts-erc20": "^3.2.1",
         "@0x/contracts-exchange": "^3.2.7",
@@ -30,7 +28,9 @@
         "@0x/types": "^3.2.0",
         "@0x/web3-wrapper": "^7.2.0",
         "@types/jsonstream": "^0.8.30",
+        "@types/ramda": "^0.27.14",
         "@types/rimraf": "^3.0.0",
+        "@types/websocket": "^1.0.1",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
         "chai-bignumber": "^3.0.0",
@@ -46,8 +46,12 @@
     "dependencies": {
         "@0x/utils": "^5.4.0",
         "@apollo/client": "^3.1.1",
+        "@types/ws": "^7.2.6",
         "graphql": "^15.3.0",
         "ramda": "^0.27.1",
-        "react": "*"
+        "react": "*",
+        "subscriptions-transport-ws": "^0.9.17",
+        "ws": "^7.3.1",
+        "zen-observable": "^0.8.15"
     }
 }

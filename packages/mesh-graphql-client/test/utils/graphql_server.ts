@@ -47,7 +47,10 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     const mesh = new MeshHarness();
     const log = await mesh.waitForPatternAsync(/starting GraphQL server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
-    const client = new MeshGraphQLClient(`http://localhost:${mesh._graphQLServerPort}/graphql`);
+    const client = new MeshGraphQLClient(
+        `http://localhost:${mesh._graphQLServerPort}/graphql`,
+        `ws://localhost:${mesh._graphQLServerPort}/graphql`,
+    );
     return {
         client,
         mesh,
