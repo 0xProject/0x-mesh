@@ -7,11 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,18 +22,16 @@ const (
 	// grantTimingTolerance is the maximum allowed difference between the expected
 	// time for a request to be granted and the actual time it is granted. Used
 	// throughout these tests to account for subtle timing differences.
-	grantTimingTolerance = 50 * time.Millisecond
+	grantTimingTolerance = 60 * time.Millisecond
 )
-
-var contractAddresses = ethereum.GanacheAddresses
 
 // Scenario1: If the 24 hour limit has *not* been hit, requests should be
 // granted based on the per second limiter.
 func TestScenario1(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
-	initMetadata(t, meshDB)
+	initMetadata(t, database)
 
 	// Set up some constants for this test.
 	const maxRequestsPer24Hrs = 100000
@@ -45,9 +41,8 @@ func TestScenario1(t *testing.T) {
 	aClock := clock.NewMock()
 	aClock.Set(GetUTCMidnightOfDate(time.Now()))
 
-	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(maxRequestsPer24Hrs, maxRequestsPerSecond, database, aClock)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -69,9 +64,9 @@ func TestScenario1(t *testing.T) {
 // Scenario 2: Max requests per 24 hours used up. Subsequent calls to Wait
 // should return an error.
 func TestScenario2(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	now := time.Now()
 	startOfCurrentUTCDay := GetUTCMidnightOfDate(now)
@@ -79,13 +74,12 @@ func TestScenario2(t *testing.T) {
 	requestsSentInCurrentDay := defaultMaxRequestsPer24Hrs - requestsRemainingInCurrentDay
 
 	// Set metadata to just short of maximum requests per 24 hours.
-	metadata := &meshdb.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
-		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              startOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: requestsSentInCurrentDay,
 	}
-	err = meshDB.SaveMetadata(metadata)
+	err = database.SaveMetadata(metadata)
 	require.NoError(t, err)
 
 	// Start a new rate limiter and set time to a few hours past midnight.
@@ -93,10 +87,9 @@ func TestScenario2(t *testing.T) {
 	// what we're trying to test.
 	aClock := clock.NewMock()
 	aClock.Set(startOfCurrentUTCDay.Add(3 * time.Hour))
-	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, math.MaxFloat64, database, aClock)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -126,9 +119,9 @@ func TestScenario2(t *testing.T) {
 // RateLimiter is instantiated. They then get updated after the checkpoint
 // interval elapses.
 func TestScenario3(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
@@ -136,18 +129,17 @@ func TestScenario3(t *testing.T) {
 
 	// Set metadata to include an outdated `StartOfCurrentUTCDay` and an associated
 	// non-zero `EthRPCRequestsSentInCurrentUTCDay`
-	metadata := &meshdb.Metadata{
+	metadata := &types.Metadata{
 		EthereumChainID:                   1337,
-		MaxExpirationTime:                 constants.UnlimitedExpirationTime,
 		StartOfCurrentUTCDay:              yesterdayMidnightUTC,
 		EthRPCRequestsSentInCurrentUTCDay: 5000,
 	}
-	err = meshDB.SaveMetadata(metadata)
+	err = database.SaveMetadata(metadata)
 	require.NoError(t, err)
 
 	aClock := clock.NewMock()
 	aClock.Set(now)
-	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, meshDB, aClock)
+	rateLimiter, err := New(defaultMaxRequestsPer24Hrs, defaultMaxRequestsPerSecond, database, aClock)
 	require.NoError(t, err)
 
 	// Check that grant count and currentUTCCheckpoint were reset during instantiation
@@ -156,7 +148,6 @@ func TestScenario3(t *testing.T) {
 	assert.Equal(t, expectedCurrentUTCCheckpoint, rateLimiter.getCurrentUTCCheckpoint())
 
 	// Start the rateLimiter
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -178,7 +169,7 @@ func TestScenario3(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Check metadata was stored in DB
-	metadata, err = meshDB.GetMetadata()
+	metadata, err = database.GetMetadata()
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedCurrentUTCCheckpoint, metadata.StartOfCurrentUTCDay)
@@ -188,17 +179,16 @@ func TestScenario3(t *testing.T) {
 	wg.Wait()
 }
 
-func initMetadata(t *testing.T, meshDB *meshdb.MeshDB) {
-	metadata := &meshdb.Metadata{
-		EthereumChainID:   1337,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
+func initMetadata(t *testing.T, database *db.DB) {
+	metadata := &types.Metadata{
+		EthereumChainID: 1337,
 	}
-	err := meshDB.SaveMetadata(metadata)
+	err := database.SaveMetadata(metadata)
 	require.NoError(t, err)
 }
 
 // expectRequestsGranted calls ratelimiter.Wait until the given number of
-// reqeusts are allowed. It returns an error if it waits for less than
+// requests are allowed. It returns an error if it waits for less than
 // minDelay or longer than maxDelay for any single request.
 func expectRequestsGranted(t *testing.T, rateLimiter RateLimiter, numRequests int, minDelay time.Duration, maxDelay time.Duration) {
 	for i := 0; i < numRequests; i++ {

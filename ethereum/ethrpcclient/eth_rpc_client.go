@@ -6,20 +6,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // Client defines the methods needed to satisfy the subsdet of ETH JSON-RPC client
 // methods used by Mesh
 type Client interface {
-	HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)
-	HeaderByNumber(ctx context.Context, number *big.Int) (*miniheader.MiniHeader, error)
-	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
+	HeaderByHash(ctx context.Context, hash common.Hash) (*ethtypes.Header, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*types.MiniHeader, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]ethtypes.Log, error)
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
@@ -72,7 +72,7 @@ func (ec *client) CallContext(ctx context.Context, result interface{}, method st
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*ethtypes.Header, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
@@ -89,7 +89,7 @@ func (ec *client) HeaderByHash(ctx context.Context, hash common.Hash) (*types.He
 	return header, nil
 }
 
-func (ec *client) HeaderByNumber(ctx context.Context, number *big.Int) (*miniheader.MiniHeader, error) {
+func (ec *client) HeaderByNumber(ctx context.Context, number *big.Int) (*types.MiniHeader, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)
@@ -101,7 +101,7 @@ func (ec *client) HeaderByNumber(ctx context.Context, number *big.Int) (*minihea
 	if err != nil {
 		return nil, err
 	}
-	miniHeader := &miniheader.MiniHeader{
+	miniHeader := &types.MiniHeader{
 		Hash:      header.Hash(),
 		Parent:    header.ParentHash,
 		Number:    header.Number,
@@ -140,7 +140,7 @@ func (ec *client) CallContract(ctx context.Context, call ethereum.CallMsg, block
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
-func (ec *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+func (ec *client) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	err := ec.rateLimiter.Wait(ctx)
 	if err != nil {
 		atomic.AddInt64(&ec.rateLimitDroppedRequests, 1)

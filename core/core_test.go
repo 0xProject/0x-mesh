@@ -12,15 +12,16 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/common"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,23 +34,22 @@ const (
 	ordersyncWaitTime = 2 * time.Second
 )
 
-var contractAddresses = ethereum.GanacheAddresses
-
 func TestEthereumChainDetection(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/meshdb_testing/"+uuid.New().String(), contractAddresses)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-	defer meshDB.Close()
 
 	// simulate starting up on mainnet
-	_, err = initMetadata(1, meshDB)
+	_, err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// simulate restart on same chain
-	_, err = initMetadata(1, meshDB)
+	_, err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// should error when attempting to start on different chain
-	_, err = initMetadata(2, meshDB)
+	_, err = initMetadata(2, database)
 	assert.Error(t, err)
 }
 
@@ -79,13 +79,13 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                "{}",
 	}
-	app, err := New(config)
+	app, err := New(ctx, config)
 	require.NoError(t, err)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := app.Start(ctx)
+		err := app.Start()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "ChainID mismatch")
 	}()
@@ -120,7 +120,7 @@ func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderF
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilter:                customOrderFilter,
 	}
-	app, err := newWithPrivateConfig(config, pConfig)
+	app, err := newWithPrivateConfig(ctx, config, pConfig)
 	require.NoError(t, err)
 	return app
 }
@@ -151,6 +151,8 @@ func init() {
 }
 
 func TestRepeatedAppInitialization(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	dataDir := "/tmp/test_node/" + uuid.New().String()
 	config := Config{
 		Verbosity:                        2,
@@ -170,10 +172,9 @@ func TestRepeatedAppInitialization(t *testing.T) {
 		CustomOrderFilter:                "{}",
 		CustomContractAddresses:          `{"exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788","devUtils":"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1","erc20Proxy":"0x1dc4c1cefef38a777b15aa20260a54e584b16c48","erc721Proxy":"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401","erc1155Proxy":"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"}`,
 	}
-	app, err := New(config)
+	_, err := New(ctx, config)
 	require.NoError(t, err)
-	app.db.Close()
-	_, err = New(config)
+	_, err = New(ctx, config)
 	require.NoError(t, err)
 }
 
@@ -187,18 +188,28 @@ func TestOrderSync(t *testing.T) {
 			name: "FilteredPaginationSubprotocol version 0",
 			pConfig: privateConfig{
 				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV0,
+				},
 			},
 		},
 		{
 			name: "FilteredPaginationSubprotocol version 1",
 			pConfig: privateConfig{
 				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+				},
 			},
 		},
 		{
 			name: "FilteredPaginationSubprotocol version 1 and version 0",
 			pConfig: privateConfig{
 				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+					NewFilteredPaginationSubprotocolV0,
+				},
 			},
 		},
 		{
@@ -209,6 +220,10 @@ func TestOrderSync(t *testing.T) {
 			},
 			pConfig: privateConfig{
 				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+					NewFilteredPaginationSubprotocolV0,
+				},
 			},
 		},
 		{
@@ -222,6 +237,10 @@ func TestOrderSync(t *testing.T) {
 			},
 			pConfig: privateConfig{
 				paginationSubprotocolPerPage: 10,
+				paginationSubprotocols: []ordersyncSubprotocolFactory{
+					NewFilteredPaginationSubprotocolV1,
+					NewFilteredPaginationSubprotocolV0,
+				},
 			},
 		},
 	}
@@ -254,7 +273,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := originalNode.Start(ctx); err != nil && err != context.Canceled {
+			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
@@ -282,7 +301,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := newNode.Start(ctx); err != nil && err != context.Canceled {
+			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
@@ -329,23 +348,20 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 					break OrderEventLoop
 				}
 			}
-			if len(receivedAddedEvents) >= len(originalOrders) {
-				break OrderEventLoop
-			}
 		}
 
 		// Test that the orders are actually in the database and are returned by
 		// GetOrders.
-		newNodeOrdersResp, err := newNode.GetOrders(0, len(filteredOrders), "")
+		newNodeOrdersResp, err := newNode.GetOrders(len(filteredOrders), common.Hash{})
 		require.NoError(t, err)
 		assert.Len(t, newNodeOrdersResp.OrdersInfos, len(filteredOrders), "new node should have %d orders", len(originalOrders))
 		for _, expectedOrder := range filteredOrders {
 			orderHash, err := expectedOrder.ComputeOrderHash()
 			require.NoError(t, err)
 			expectedOrder.ResetHash()
-			var dbOrder meshdb.Order
-			require.NoError(t, newNode.db.Orders.FindByID(orderHash.Bytes(), &dbOrder))
-			actualOrder := dbOrder.SignedOrder
+			dbOrder, err := newNode.db.GetOrder(orderHash)
+			require.NoError(t, err)
+			actualOrder := dbOrder.SignedOrder()
 			assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
 		}
 

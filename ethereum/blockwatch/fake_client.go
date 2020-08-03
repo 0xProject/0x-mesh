@@ -7,20 +7,20 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // fixtureTimestep holds the JSON-RPC data available at every timestep of the simulation.
 type fixtureTimestep struct {
-	GetLatestBlock   miniheader.MiniHeader                 `json:"getLatestBlock"  gencodec:"required"`
-	GetBlockByNumber map[uint64]miniheader.MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
-	GetBlockByHash   map[common.Hash]miniheader.MiniHeader `json:"getBlockByHash"  gencodec:"required"`
-	GetCorrectChain  []*miniheader.MiniHeader              `json:"getCorrectChain" gencodec:"required"`
-	BlockEvents      []*Event                          `json:"blockEvents" gencodec:"required"`
-	ScenarioLabel    string                            `json:"scenarioLabel" gencodec:"required"`
+	GetLatestBlock   types.MiniHeader                 `json:"getLatestBlock"  gencodec:"required"`
+	GetBlockByNumber map[uint64]types.MiniHeader      `json:"getBlockByNumber"  gencodec:"required"`
+	GetBlockByHash   map[common.Hash]types.MiniHeader `json:"getBlockByHash"  gencodec:"required"`
+	GetCorrectChain  []*types.MiniHeader              `json:"getCorrectChain" gencodec:"required"`
+	BlockEvents      []*Event                         `json:"blockEvents" gencodec:"required"`
+	ScenarioLabel    string                           `json:"scenarioLabel" gencodec:"required"`
 }
 
 // fakeClient is a fake Client for testing purposes.
@@ -46,11 +46,11 @@ func newFakeClient(fixtureFilePath string) (*fakeClient, error) {
 
 // HeaderByNumber fetches a block header by its number. If no `number` is supplied, it will return the latest
 // block header. If no block exists with this number it will return a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, error) {
+func (fc *fakeClient) HeaderByNumber(number *big.Int) (*types.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
-	var miniHeader miniheader.MiniHeader
+	var miniHeader types.MiniHeader
 	var ok bool
 	if number == nil {
 		miniHeader = timestep.GetLatestBlock
@@ -65,7 +65,7 @@ func (fc *fakeClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, e
 
 // HeaderByHash fetches a block header by its block hash. If no block exists with this number it will return
 // a `ethereum.NotFound` error.
-func (fc *fakeClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, error) {
+func (fc *fakeClient) HeaderByHash(hash common.Hash) (*types.MiniHeader, error) {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	timestep := fc.fixtureData[fc.currentTimestep]
@@ -77,10 +77,10 @@ func (fc *fakeClient) HeaderByHash(hash common.Hash) (*miniheader.MiniHeader, er
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
-func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]types.Log, error) {
+func (fc *fakeClient) FilterLogs(q ethereum.FilterQuery) ([]ethtypes.Log, error) {
 	// IMPLEMENTED WITH A CANNED RESPONSE. FOR MORE ELABORATE TESTING, SEE `fakeLogClient`
-	return []types.Log{
-		types.Log{
+	return []ethtypes.Log{
+		{
 			Address: common.HexToAddress("0x21ab6c9fac80c59d401b37cb43f81ea9dde7fe34"),
 			Topics: []common.Hash{
 				common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
@@ -111,7 +111,7 @@ func (fc *fakeClient) NumberOfTimesteps() int {
 }
 
 // ExpectedRetainedBlocks returns the expected retained blocks at the current timestep.
-func (fc *fakeClient) ExpectedRetainedBlocks() []*miniheader.MiniHeader {
+func (fc *fakeClient) ExpectedRetainedBlocks() []*types.MiniHeader {
 	fc.fixtureMut.Lock()
 	defer fc.fixtureMut.Unlock()
 	return fc.fixtureData[fc.currentTimestep].GetCorrectChain

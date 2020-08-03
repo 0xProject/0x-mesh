@@ -20,7 +20,6 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -28,7 +27,7 @@ var (
 )
 
 // CoordinatorRegistryABI is the input ABI used to generate the binding from.
-const CoordinatorRegistryABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"name\":\"setCoordinatorEndpoint\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"coordinatorOperator\",\"type\":\"address\"}],\"name\":\"getCoordinatorEndpoint\",\"outputs\":[{\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"coordinatorOperator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"name\":\"CoordinatorEndpointSet\",\"type\":\"event\"}]"
+const CoordinatorRegistryABI = "[{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"coordinatorOperator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"name\":\"CoordinatorEndpointSet\",\"type\":\"event\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"coordinatorOperator\",\"type\":\"address\"}],\"name\":\"getCoordinatorEndpoint\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"string\",\"name\":\"coordinatorEndpoint\",\"type\":\"string\"}],\"name\":\"setCoordinatorEndpoint\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
 // CoordinatorRegistry is an auto generated Go binding around an Ethereum contract.
 type CoordinatorRegistry struct {
@@ -174,7 +173,7 @@ func (_CoordinatorRegistry *CoordinatorRegistryTransactorRaw) Transact(opts *bin
 
 // GetCoordinatorEndpoint is a free data retrieval call binding the contract method 0x6c90fedb.
 //
-// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) constant returns(string coordinatorEndpoint)
+// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) view returns(string coordinatorEndpoint)
 func (_CoordinatorRegistry *CoordinatorRegistryCaller) GetCoordinatorEndpoint(opts *bind.CallOpts, coordinatorOperator common.Address) (string, error) {
 	var (
 		ret0 = new(string)
@@ -186,14 +185,14 @@ func (_CoordinatorRegistry *CoordinatorRegistryCaller) GetCoordinatorEndpoint(op
 
 // GetCoordinatorEndpoint is a free data retrieval call binding the contract method 0x6c90fedb.
 //
-// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) constant returns(string coordinatorEndpoint)
+// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) view returns(string coordinatorEndpoint)
 func (_CoordinatorRegistry *CoordinatorRegistrySession) GetCoordinatorEndpoint(coordinatorOperator common.Address) (string, error) {
 	return _CoordinatorRegistry.Contract.GetCoordinatorEndpoint(&_CoordinatorRegistry.CallOpts, coordinatorOperator)
 }
 
 // GetCoordinatorEndpoint is a free data retrieval call binding the contract method 0x6c90fedb.
 //
-// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) constant returns(string coordinatorEndpoint)
+// Solidity: function getCoordinatorEndpoint(address coordinatorOperator) view returns(string coordinatorEndpoint)
 func (_CoordinatorRegistry *CoordinatorRegistryCallerSession) GetCoordinatorEndpoint(coordinatorOperator common.Address) (string, error) {
 	return _CoordinatorRegistry.Contract.GetCoordinatorEndpoint(&_CoordinatorRegistry.CallOpts, coordinatorOperator)
 }
@@ -340,4 +339,15 @@ func (_CoordinatorRegistry *CoordinatorRegistryFilterer) WatchCoordinatorEndpoin
 			}
 		}
 	}), nil
+}
+
+// ParseCoordinatorEndpointSet is a log parse operation binding the contract event 0xd060052768902f3eecb84b8eae9d3a2608a1a9e60811a33968b46b8d552f266e.
+//
+// Solidity: event CoordinatorEndpointSet(address coordinatorOperator, string coordinatorEndpoint)
+func (_CoordinatorRegistry *CoordinatorRegistryFilterer) ParseCoordinatorEndpointSet(log types.Log) (*CoordinatorRegistryCoordinatorEndpointSet, error) {
+	event := new(CoordinatorRegistryCoordinatorEndpointSet)
+	if err := _CoordinatorRegistry.contract.UnpackLog(event, "CoordinatorEndpointSet", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }

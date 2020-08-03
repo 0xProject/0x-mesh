@@ -9,14 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
+	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	log "github.com/sirupsen/logrus"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 // go-ethereum client `ethereum.NotFound` error type message
@@ -29,7 +30,7 @@ const rpcClientNotFoundError = "not found"
 var maxBlocksInGetLogsQuery = 60
 
 // warningLevelErrorMessages are certain blockwatch.Watch errors that we want to report as warnings
-// because they do not represent a bug or issue with Mesh and are expected to happen from time to time
+// because they do not represent a bug or issue with Mesh and are expected to happen from time to time.
 var warningLevelErrorMessages = []string{
 	constants.GethFilterUnknownBlock,
 	rpcClientNotFoundError,
@@ -50,19 +51,7 @@ const (
 // Event describes a block event emitted by a Watcher
 type Event struct {
 	Type        EventType
-	BlockHeader *miniheader.MiniHeader
-}
-
-// Stack defines the interface a stack must implement in order to be used by
-// OrderWatcher for block header storage
-type Stack interface {
-	Pop() (*miniheader.MiniHeader, error)
-	Push(*miniheader.MiniHeader) error
-	Peek() (*miniheader.MiniHeader, error)
-	PeekAll() ([]*miniheader.MiniHeader, error)
-	Clear() error
-	Checkpoint() (int, error)
-	Reset(int) error
+	BlockHeader *types.MiniHeader
 }
 
 // TooMayBlocksBehindError is an error returned if the BlockWatcher has fallen too many blocks behind
@@ -78,7 +67,7 @@ func (e TooMayBlocksBehindError) Error() string {
 
 // Config holds some configuration options for an instance of BlockWatcher.
 type Config struct {
-	Stack           Stack
+	DB              *db.DB
 	PollingInterval time.Duration
 	WithLogs        bool
 	Topics          []common.Hash
@@ -89,7 +78,8 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
-	stack               Stack
+	stack               *simplestack.SimpleStack
+	db                  *db.DB
 	client              Client
 	blockFeed           event.Feed
 	blockScope          event.SubscriptionScope // Subscription scope tracking current live listeners
@@ -102,14 +92,32 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(config Config) *Watcher {
+func New(retentionLimit int, config Config) *Watcher {
 	return &Watcher{
 		pollingInterval: config.PollingInterval,
-		stack:           config.Stack,
+		db:              config.DB,
+		stack:           simplestack.New(retentionLimit, []*types.MiniHeader{}),
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
 	}
+}
+
+func (w *Watcher) GetNumberOfBlocksBehind(ctx context.Context) (int, int, error) {
+	latestBlockProcessed := w.stack.Peek()
+
+	// No previously stored block so no blocks have elapsed
+	if latestBlockProcessed == nil {
+		return 0, 0, nil
+	}
+
+	latestBlock, err := w.client.HeaderByNumber(nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
+	blocksElapsed := int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
+	return blocksElapsed, latestBlockProcessedNumber, err
 }
 
 // FastSyncToLatestBlock checks if the BlockWatcher is behind the latest block, and if so,
@@ -118,7 +126,7 @@ func New(config Config) *Watcher {
 // without an archive Ethereum node (see: http://bit.ly/2D11Hr6) so we instead clear
 // previously tracked blocks so BlockWatcher starts again from the latest block. This
 // function blocks until complete or the context is  cancelled.
-func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int, err error) {
+func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
 	w.mu.Lock()
 	if w.wasStartedOnce {
 		w.mu.Unlock()
@@ -126,22 +134,11 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 	}
 	w.mu.Unlock()
 
-	latestBlockProcessed, err := w.stack.Peek()
-	if err != nil {
-		return 0, err
-	}
-	// No previously stored block so no blocks have elapsed
-	if latestBlockProcessed == nil {
-		return 0, nil
-	}
-
-	latestBlock, err := w.client.HeaderByNumber(nil)
+	blocksElapsed, latestBlockProcessedNumber, err := w.GetNumberOfBlocksBehind(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
-	blocksElapsed = int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
 	if blocksElapsed == 0 {
 		return blocksElapsed, nil
 	} else if blocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
@@ -151,13 +148,19 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (blocksElapsed int,
 			return blocksElapsed, err
 		}
 		if len(events) > 0 {
+			newMiniHeaders := w.stack.PeekAll()
+			if err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
+				return blocksElapsed, err
+			}
 			w.blockFeed.Send(events)
 		}
 	} else {
-		// Clear all block headers from stack so BlockWatcher starts again from latest block
-		if err := w.stack.Clear(); err != nil {
+		// Clear all block headers from stack and database so BlockWatcher
+		// starts again from latest block
+		if _, err := w.db.DeleteMiniHeaders(nil); err != nil {
 			return blocksElapsed, err
 		}
+		w.stack.Clear()
 	}
 
 	return blocksElapsed, nil
@@ -179,7 +182,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	// Sync immediately when `Watch()` is called instead of waiting for the
 	// first Ticker tick
 	if err := w.SyncToLatestBlock(); err != nil {
-		if err == leveldb.ErrClosed {
+		if err == db.ErrClosed {
 			// We can't continue if the database is closed. Stop the watcher and
 			// return an error.
 			return err
@@ -200,7 +203,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.SyncToLatestBlock(); err != nil {
-				if err == leveldb.ErrClosed {
+				if err == db.ErrClosed {
 					// We can't continue if the database is closed. Stop the watcher and
 					// return an error.
 					ticker.Stop()
@@ -236,25 +239,19 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 }
 
 // SyncToLatestBlock syncs our local state of the chain to the latest block found via
-// Ethereum RPC
+// Ethereum RPC.
 func (w *Watcher) SyncToLatestBlock() error {
 	w.syncToLatestBlockMu.Lock()
 	defer w.syncToLatestBlockMu.Unlock()
 
-	checkpointID, err := w.stack.Checkpoint()
-	if err != nil {
-		return err
-	}
+	checkpoint := w.stack.Checkpoint()
 
 	latestHeader, err := w.client.HeaderByNumber(nil)
 	if err != nil {
 		return err
 	}
 	latestBlockNumber := latestHeader.Number.Int64()
-	lastStoredHeader, err := w.stack.Peek()
-	if err != nil {
-		return err
-	}
+	lastStoredHeader := w.stack.Peek()
 	var lastStoredBlockNumber int64
 	if lastStoredHeader != nil {
 		lastStoredBlockNumber = lastStoredHeader.Number.Int64()
@@ -289,11 +286,7 @@ func (w *Watcher) SyncToLatestBlock() error {
 		// stored and fetch it
 		nextHeader := latestHeader
 		if numBlocksToFetch != 1 {
-			lastStoredHeader, err := w.stack.Peek()
-			if err != nil {
-				syncErr = err
-				break
-			}
+			lastStoredHeader := w.stack.Peek()
 			nextBlockNumber := big.NewInt(0).Add(lastStoredHeader.Number, big.NewInt(1))
 			nextHeader, err = w.client.HeaderByNumber(nextBlockNumber)
 			if err != nil {
@@ -314,21 +307,21 @@ func (w *Watcher) SyncToLatestBlock() error {
 		return syncErr
 	}
 	if w.shouldRevertChanges(lastStoredHeader, allEvents) {
-		if err := w.stack.Reset(checkpointID); err != nil {
+		if err := w.stack.Reset(checkpoint); err != nil {
 			return err
 		}
 	} else {
-		_, err = w.stack.Checkpoint()
-		if err != nil {
+		w.stack.Checkpoint()
+		newMiniHeaders := w.stack.PeekAll()
+		if err := w.db.ResetMiniHeaders(newMiniHeaders); err != nil {
 			return err
 		}
 		w.blockFeed.Send(allEvents)
 	}
-
 	return syncErr
 }
 
-func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, events []*Event) bool {
+func (w *Watcher) shouldRevertChanges(lastStoredHeader *types.MiniHeader, events []*Event) bool {
 	if len(events) == 0 || lastStoredHeader == nil {
 		return false
 	}
@@ -339,11 +332,8 @@ func (w *Watcher) shouldRevertChanges(lastStoredHeader *miniheader.MiniHeader, e
 	return newLatestHeader.Number.Cmp(lastStoredHeader.Number) <= 0
 }
 
-func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events []*Event) ([]*Event, error) {
-	latestHeader, err := w.stack.Peek()
-	if err != nil {
-		return nil, err
-	}
+func (w *Watcher) buildCanonicalChain(nextHeader *types.MiniHeader, events []*Event) ([]*Event, error) {
+	latestHeader := w.stack.Peek()
 	// Is the stack empty or is it the next block?
 	if latestHeader == nil || nextHeader.Parent == latestHeader.Hash {
 		nextHeader, err := w.addLogs(nextHeader)
@@ -362,9 +352,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	}
 
 	// Pop latestHeader from the stack. We already have a reference to it.
-	if _, err := w.stack.Pop(); err != nil {
-		return events, err
-	}
+	w.stack.Pop()
 	events = append(events, &Event{
 		Type:        Removed,
 		BlockHeader: latestHeader,
@@ -394,7 +382,7 @@ func (w *Watcher) buildCanonicalChain(nextHeader *miniheader.MiniHeader, events 
 	return events, nil
 }
 
-func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader, error) {
+func (w *Watcher) addLogs(header *types.MiniHeader) (*types.MiniHeader, error) {
 	if !w.withLogs {
 		return header, nil
 	}
@@ -409,7 +397,7 @@ func (w *Watcher) addLogs(header *miniheader.MiniHeader) (*miniheader.MiniHeader
 	return header, nil
 }
 
-// getMissedEventsToBackfill finds missed events that might have occured while the Mesh node was
+// getMissedEventsToBackfill finds missed events that might have occurred while the Mesh node was
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
@@ -423,9 +411,8 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
 		// Doing so will cause the BlockWatcher to start from that furthestBlockProcessed.
-		if err := w.stack.Clear(); err != nil {
-			return events, err
-		}
+		w.stack.Clear()
+
 		// Add furthest block processed into the DB
 		latestHeader, err := w.client.HeaderByNumber(big.NewInt(int64(furthestBlockProcessed)))
 		if err != nil {
@@ -443,20 +430,20 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 
 		// Create the block events from all the logs found by grouping
 		// them into blockHeaders
-		hashToBlockHeader := map[common.Hash]*miniheader.MiniHeader{}
+		hashToBlockHeader := map[common.Hash]*types.MiniHeader{}
 		for _, log := range logs {
-			blockHeader, ok := hashToBlockHeader[log.BlockHash]
-			if !ok {
+			blockHeader, found := hashToBlockHeader[log.BlockHash]
+			if !found {
 				blockNumber := big.NewInt(0).SetUint64(log.BlockNumber)
 				header, err := w.client.HeaderByNumber(blockNumber)
 				if err != nil {
 					return events, err
 				}
-				blockHeader = &miniheader.MiniHeader{
+				blockHeader = &types.MiniHeader{
 					Hash:      log.BlockHash,
 					Parent:    header.Parent,
 					Number:    blockNumber,
-					Logs:      []types.Log{},
+					Logs:      []ethtypes.Log{},
 					Timestamp: header.Timestamp,
 				}
 				hashToBlockHeader[log.BlockHash] = blockHeader
@@ -478,11 +465,11 @@ func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed i
 type logRequestResult struct {
 	From int
 	To   int
-	Logs []types.Log
+	Logs []ethtypes.Log
 	Err  error
 }
 
-// getLogsRequestChunkSize is the number of `eth_getLogs` JSON RPC to send concurrently in each batch fetch
+// getLogsRequestChunkSize is the number of `eth_getLogs` JSON RPC to send concurrently in each batch fetch.
 const getLogsRequestChunkSize = 3
 
 // getLogsInBlockRange attempts to fetch all logs in the block range supplied. It implements a
@@ -490,7 +477,7 @@ const getLogsRequestChunkSize = 3
 // the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
 // batch requests are not sent. Instead, it returns all the logs it found up until the error was
 // encountered, along with the block number after which no further logs were retrieved.
-func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]types.Log, int) {
+func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]ethtypes.Log, int) {
 	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
 	numChunks := 0
@@ -498,7 +485,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 	for len(blockRanges) != 0 {
 		var chunk []*blockRange
 		if len(blockRanges) < getLogsRequestChunkSize {
-			chunk = blockRanges[:len(blockRanges)]
+			chunk = blockRanges
 		} else {
 			chunk = blockRanges[:getLogsRequestChunkSize]
 		}
@@ -512,7 +499,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 
 	didAPreviousRequestFail := false
 	furthestBlockProcessed := from - 1
-	allLogs := []types.Log{}
+	allLogs := []ethtypes.Log{}
 
 	for i := 0; i < numChunks; i++ {
 		// Add one to the semaphore chan. If it already has a value, the chunk blocks here until one frees up.
@@ -542,13 +529,13 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]type
 						From: b.FromBlock,
 						To:   b.ToBlock,
 						Err:  errors.New("context was canceled"),
-						Logs: []types.Log{},
+						Logs: []ethtypes.Log{},
 					}
 					return
 				default:
 				}
 
-				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []types.Log{})
+				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []ethtypes.Log{})
 				if err != nil {
 					log.WithFields(map[string]interface{}{
 						"error":     err,
@@ -598,48 +585,26 @@ type blockRange struct {
 // blocks' logs twice.
 func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 	chunks := []*blockRange{}
-	numBlocksLeft := to - from
-	if numBlocksLeft < rangeSize {
+	for ; from+rangeSize-1 < to; from += rangeSize {
 		chunks = append(chunks, &blockRange{
 			FromBlock: from,
-			ToBlock:   to,
+			ToBlock:   from + rangeSize - 1,
 		})
-	} else {
-		blocks := []int{}
-		for i := 0; i <= numBlocksLeft; i++ {
-			blocks = append(blocks, from+i)
-		}
-		numChunks := len(blocks) / rangeSize
-		remainder := len(blocks) % rangeSize
-		if remainder > 0 {
-			numChunks = numChunks + 1
-		}
-
-		for i := 0; i < numChunks; i = i + 1 {
-			fromIndex := i * rangeSize
-			toIndex := fromIndex + rangeSize
-			if toIndex > len(blocks) {
-				toIndex = len(blocks)
-			}
-			bs := blocks[fromIndex:toIndex]
-			blockRange := &blockRange{
-				FromBlock: bs[0],
-				ToBlock:   bs[len(bs)-1],
-			}
-			chunks = append(chunks, blockRange)
-		}
 	}
-	return chunks
+	return append(chunks, &blockRange{
+		FromBlock: from,
+		ToBlock:   to,
+	})
 }
 
 const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
-func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]types.Log, error) {
+func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []ethtypes.Log) ([]ethtypes.Log, error) {
 	log.WithFields(map[string]interface{}{
 		"from": from,
 		"to":   to,
 	}).Trace("Fetching block logs")
-	numBlocks := to - from
+	numBlocks := to - from + 1
 	topics := [][]common.Hash{}
 	if len(w.topics) > 0 {
 		topics = append(topics, w.topics)
@@ -662,14 +627,7 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 				return allLogs, fmt.Errorf("Unable to get the logs for block #%d, because it contains too many logs", from)
 			}
 
-			r := numBlocks % 2
-			firstBatchSize := numBlocks / 2
-			secondBatchSize := firstBatchSize
-			if r == 1 {
-				secondBatchSize = secondBatchSize + 1
-			}
-
-			endFirstHalf := from + firstBatchSize
+			endFirstHalf := from + numBlocks/2
 			startSecondHalf := endFirstHalf + 1
 			allLogs, err := w.filterLogsRecurisively(from, endFirstHalf, allLogs)
 			if err != nil {
@@ -686,11 +644,6 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []types.Log) ([]t
 	}
 	allLogs = append(allLogs, logs...)
 	return allLogs, nil
-}
-
-// getAllRetainedBlocks returns the blocks retained in-memory by the Watcher.
-func (w *Watcher) getAllRetainedBlocks() ([]*miniheader.MiniHeader, error) {
-	return w.stack.PeekAll()
 }
 
 func isWarning(err error) bool {

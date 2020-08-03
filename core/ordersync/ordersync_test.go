@@ -164,11 +164,11 @@ func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *R
 	}, nil
 }
 
-func (s *oneOrderSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, error) {
+func (s *oneOrderSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return &Request{
 		RequesterID: s.myPeerID,
 		Metadata:    res.Metadata,
-	}, nil
+	}, len(res.Orders), nil
 }
 
 func (s *oneOrderSubprotocol) GenerateFirstRequestMetadata() (json.RawMessage, error) {
@@ -219,7 +219,7 @@ func (s *hostedSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Req
 	return s.hostSubp.HandleOrderSyncRequest(ctx, req)
 }
 
-func (s *hostedSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, error) {
+func (s *hostedSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return s.hostSubp.HandleOrderSyncResponse(ctx, res)
 }
 

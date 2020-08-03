@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/p2p"
@@ -53,6 +54,8 @@ var (
 	// the entire network, or that there are peers that have the orders we're
 	// looking for, but they are refusing to give them to us.
 	ErrNoOrders = errors.New("no orders where received from any known peers")
+	// ErrNoOrderFromPeer is returned when a peer returns no orders during ordersync.
+	ErrNoOrdersFromPeer = errors.New("no orders received from peer")
 )
 
 // NoMatchingSubprotocolsError is returned whenever two peers attempting to use
@@ -130,11 +133,12 @@ type Subprotocol interface {
 	// implementation for the "provider" side of the subprotocol.
 	HandleOrderSyncRequest(context.Context, *Request) (*Response, error)
 	// HandleOrderSyncResponse handles a response (e.g. typically by saving orders to
-	// the database) and if needed creates and returns the next request that
-	// should be sent. If nextRequest is nil, the ordersync protocol is
-	// considered finished. HandleOrderSyncResponse is the implementation for the
-	// "requester" side of the subprotocol.
-	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, err error)
+	// the database), returns the number of valid orders that were received,
+	// and, if needed, creates and returns the next request that should be sent.
+	// If nextRequest is nil, the ordersync protocol is considered finished.
+	// HandleOrderSyncResponse is the implementation for the "requester" side
+	// of the subprotocol.
+	HandleOrderSyncResponse(context.Context, *Response) (nextRequest *Request, numValidOrders int, err error)
 	// ParseRequestMetadata converts raw request metadata into a concrete type
 	// that the subprotocol expects.
 	ParseRequestMetadata(metadata json.RawMessage) (interface{}, error)
@@ -254,6 +258,11 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		Factor: 2,                      // Factor to multiple each successive back-off
 	}
 
+	// nextRequestForPeer tracks the last meaningful "next request" that was
+	// provided by a peer during ordersync. This allows us to pick up where
+	// we left off if a peer disconnects rather than starting to ordersync
+	// from the beginning of the peer's database.
+	nextRequestForPeer := map[peer.ID]*rawRequest{}
 	for len(successfullySyncedPeers) < minPeers {
 		select {
 		case <-ctx.Done():
@@ -261,59 +270,102 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		default:
 		}
 
-		// TODO(albrow): As a performance optimization, do this for loop
-		// partly in parallel.
+		// NOTE(jalextowle): m, wg, and semaphore are used to synchronize
+		// requests to get orders from other peers during ordersync. m is
+		// used to guard the successfullySyncedPeers stringset from concurrent
+		// access. wg is used to ensure that all of the request for orders
+		// from other peers has ended before asking from new peers. Finally,
+		// semaphore is used to ensure that there are only ever minPeers
+		// requests being made at a given time.
+		m := &sync.RWMutex{}
+		wg := &sync.WaitGroup{}
+		semaphore := make(chan struct{}, minPeers)
+
 		currentNeighbors := s.node.Neighbors()
 		shufflePeers(currentNeighbors)
+		innerCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
 		for _, peerID := range currentNeighbors {
-			if len(successfullySyncedPeers) >= minPeers {
+			// The loop will only advance when a new element can be
+			// added to the semaphore. This ensures that no more than
+			// minPeers goroutines will be active at a given time
+			// because the channel only has a capacity of minPeers.
+			select {
+			case <-innerCtx.Done():
+				break
+			case semaphore <- struct{}{}:
+			}
+
+			m.RLock()
+			successfullySyncedPeerLength := len(successfullySyncedPeers)
+			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
+			nextRequest, _ := nextRequestForPeer[peerID]
+			m.RUnlock()
+			if successfullySyncedPeerLength >= minPeers {
 				return nil
 			}
-			if successfullySyncedPeers.Contains(peerID.Pretty()) {
+			if successfullySynced {
 				continue
 			}
 
 			log.WithFields(log.Fields{
 				"provider": peerID.Pretty(),
 			}).Trace("requesting orders from neighbor via ordersync")
+
+			wg.Add(1)
+			go func(id peer.ID) {
+				defer func() {
+					wg.Done()
+					<-semaphore
+				}()
+				if nextFirstRequest, err := s.getOrdersFromPeer(innerCtx, id, nextRequest); err != nil {
+					log.WithFields(log.Fields{
+						"error":    err.Error(),
+						"provider": id.Pretty(),
+					}).Debug("could not get orders from peer via ordersync")
+					m.Lock()
+					if nextFirstRequest != nil {
+						nextRequestForPeer[id] = nextFirstRequest
+					}
+					m.Unlock()
+				} else {
+					log.WithFields(log.Fields{
+						"provider": id.Pretty(),
+					}).Trace("succesfully got orders from peer via ordersync")
+					m.Lock()
+					successfullySyncedPeers.Add(id.Pretty())
+					delete(nextRequestForPeer, id)
+					m.Unlock()
+				}
+			}(peerID)
+		}
+
+		wg.Wait()
+		cancel()
+
+		m.RLock()
+		successfullySyncedPeerLength := len(successfullySyncedPeers)
+		m.RUnlock()
+
+		if successfullySyncedPeerLength < minPeers {
+			delayBeforeNextRetry := retryBackoff.Duration()
+			log.WithFields(log.Fields{
+				"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
+				"minPeers":                minPeers,
+				"successfullySyncedPeers": successfullySyncedPeerLength,
+			}).Debug("ordersync could not get orders from enough peers (trying again soon)")
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			default:
-			}
-
-			if err := s.getOrdersFromPeer(ctx, peerID); err != nil {
-				log.WithFields(log.Fields{
-					"error":    err.Error(),
-					"provider": peerID.Pretty(),
-				}).Warn("could not get orders from peer via ordersync")
+			case <-time.After(delayBeforeNextRetry):
 				continue
-			} else {
-				// TODO(albrow): Handle case where no orders were returned from this
-				// peer. This could be considered a valid response, depending on the implementation
-				// details of the subprotocol. We need to not try them again, but also not count
-				// them toward the number of peers we have successfully synced with.
-				log.WithFields(log.Fields{
-					"provider": peerID.Pretty(),
-				}).Trace("succesfully got orders from peer via ordersync")
-				successfullySyncedPeers.Add(peerID.Pretty())
 			}
-		}
-
-		delayBeforeNextRetry := retryBackoff.Duration()
-		log.WithFields(log.Fields{
-			"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
-			"minPeers":                minPeers,
-			"successfullySyncedPeers": len(successfullySyncedPeers),
-		}).Debug("ordersync could not get orders from enough peers (trying again soon)")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delayBeforeNextRetry):
-			continue
 		}
 	}
-
+	log.WithFields(log.Fields{
+		"minPeers":                minPeers,
+		"successfullySyncedPeers": len(successfullySyncedPeers),
+	}).Info("completed a round of ordersync")
 	return nil
 }
 
@@ -459,77 +511,112 @@ func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	}, nil
 }
 
-func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID) error {
+func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, firstRequest *rawRequest) (*rawRequest, error) {
 	stream, err := s.node.NewStream(ctx, providerID, ID)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = stream.Close()
 	}()
 
-	var nextReq *Request
-	var selectedSubprotocol Subprotocol
+	totalValidOrders := 0
+	var nextReq *rawRequest
+	if firstRequest != nil {
+		nextReq = firstRequest
+	} else {
+		nextReq, err = s.createFirstRequestForAllSubprotocols()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var numValidOrders int
+	nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+	if err != nil {
+		return nil, err
+	}
+	totalValidOrders += numValidOrders
+	if totalValidOrders == 0 {
+		return nil, ErrNoOrdersFromPeer
+	} else if nextReq == nil {
+		return nil, nil
+	}
+	nextFirstReq := nextReq
+
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nextFirstReq, ctx.Err()
 		default:
 		}
-
-		var rawReq *rawRequest
+		nextReq, numValidOrders, err = s.makeOrderSyncRequest(ctx, nextReq, stream, providerID)
+		if err != nil {
+			return nextFirstReq, err
+		}
+		totalValidOrders += numValidOrders
 		if nextReq == nil {
-			// First request
-			rawReq, err = s.createFirstRequestForAllSubprotocols()
-			if err != nil {
-				return err
+			err = nil
+			if totalValidOrders == 0 {
+				err = ErrNoOrdersFromPeer
 			}
-		} else {
-			encodedMetadata, err := json.Marshal(nextReq.Metadata)
-			if err != nil {
-				return err
-			}
-			rawReq = &rawRequest{
-				Type:         TypeRequest,
-				Subprotocols: []string{selectedSubprotocol.Name()},
-				Metadata:     encodedMetadata,
-			}
+			return nextFirstReq, err
 		}
-
-		if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
-			s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
-			return err
-		}
-
-		rawRes, err := waitForResponse(ctx, stream)
-		if err != nil {
-			return err
-		}
-		s.handlePeerScoreEvent(providerID, psValidMessage)
-
-		subprotocol, found := s.subprotocolSet[rawRes.Subprotocol]
-		if !found {
-			s.handlePeerScoreEvent(providerID, psSubprotocolNegotiationFailed)
-			return fmt.Errorf("unsupported subprotocol: %s", subprotocol)
-		}
-		selectedSubprotocol = subprotocol
-		res, err := parseResponseWithSubprotocol(subprotocol, providerID, rawRes)
-		if err != nil {
-			s.handlePeerScoreEvent(providerID, psInvalidMessage)
-			return err
-		}
-
-		nextReq, err = subprotocol.HandleOrderSyncResponse(ctx, res)
-		if err != nil {
-			return err
-		}
-		s.handlePeerScoreEvent(providerID, receivedOrders)
-
-		if rawRes.Complete {
-			return nil
-		}
+		nextFirstReq = nextReq
 	}
+}
+
+// makeOrderSyncRequest sends an ordersync request with the given subprotocol
+// to the provider, decodes the response, and returns the next raw request (if applicable).
+func (s *Service) makeOrderSyncRequest(
+	ctx context.Context,
+	rawReq *rawRequest,
+	stream network.Stream,
+	providerID peer.ID,
+) (*rawRequest, int, error) {
+	if err := json.NewEncoder(stream).Encode(rawReq); err != nil {
+		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
+		return nil, 0, err
+	}
+
+	rawRes, err := waitForResponse(ctx, stream)
+	if err != nil {
+		return nil, 0, err
+	}
+	s.handlePeerScoreEvent(providerID, psValidMessage)
+
+	subprotocol, found := s.subprotocolSet[rawRes.Subprotocol]
+	if !found {
+		s.handlePeerScoreEvent(providerID, psSubprotocolNegotiationFailed)
+		return nil, 0, fmt.Errorf("unsupported subprotocol: %s", subprotocol)
+	}
+	selectedSubprotocol := subprotocol
+	res, err := parseResponseWithSubprotocol(subprotocol, providerID, rawRes)
+	if err != nil {
+		s.handlePeerScoreEvent(providerID, psInvalidMessage)
+		return nil, 0, err
+	}
+
+	nextReq, numValidOrders, err := subprotocol.HandleOrderSyncResponse(ctx, res)
+	if err != nil {
+		return nil, 0, err
+	}
+	s.handlePeerScoreEvent(providerID, receivedOrders)
+
+	// If the result is marked as complete, no more requests should be made.
+	if rawRes.Complete {
+		return nil, numValidOrders, nil
+	}
+
+	encodedMetadata, err := json.Marshal(nextReq.Metadata)
+	if err != nil {
+		return nil, numValidOrders, err
+	}
+	return &rawRequest{
+		Type:         TypeRequest,
+		Subprotocols: []string{selectedSubprotocol.Name()},
+		Metadata:     encodedMetadata,
+	}, numValidOrders, nil
 }
 
 // shufflePeers randomizes the order of the given list of peers.

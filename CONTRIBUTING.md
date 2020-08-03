@@ -10,7 +10,7 @@ _outside_ of your `GOPATH`.
 0x Mesh uses two main branches:
 
 1. The `development` branch contains the latest (possibly unreleased) changes
-	and is not guaranteed to be stable.
+   and is not guaranteed to be stable.
 2. The `master` branch contains the latest stable release.
 
 If you intend to fork 0x Mesh and open a PR, you should work off of the
@@ -30,10 +30,10 @@ the dropdown menu in the GitHub UI to select `development`.
 ## Prerequisites
 
 -   [GNU Make](https://www.gnu.org/software/make/) If you are using a Unix-like OS, you probably already have this.
--   [Go version 1.13.x](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g)).
+-   [Go version 1.14.x](https://golang.org/dl/) (or use [the version manager called "g"](https://github.com/stefanmaric/g)).
 -   [Node.js version >=11](https://nodejs.org/en/download/) (or use the [nvm version manager](https://github.com/creationix/nvm)).
 -   [Yarn package manager](https://yarnpkg.com/en/).
--   [golangci-lint version 1.22.2](https://github.com/golangci/golangci-lint#install).
+-   [golangci-lint version 1.27.0](https://github.com/golangci/golangci-lint#install-golangci-lint).
 -   [Python](https://www.python.org/downloads/). (Many OSes already have this).
 -   [Google Chrome](https://www.google.com/chrome/). If you already have Google Chrome you typically don't need to do anything. On Ubuntu you can run `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install`.
 -   A C compiler such as [GCC](https://gcc.gnu.org/) or [Clang](https://clang.llvm.org/). Some OSes will already have this. On Ubuntu you can run `sudo apt-get install build-essential`.
@@ -43,6 +43,20 @@ the dropdown menu in the GitHub UI to select `development`.
 ```
 make deps
 ```
+
+## Building TypeScript packages
+
+Mesh contains some TypeScript packages, all of which are contained in a small monorepo in the **packages/** directory. Some
+packages are published, and some are only used internally for development and testing.
+
+To build all the TypeScript packages:
+
+```
+yarn build
+```
+
+You can also run `yarn build` inside of individual packages in order to just build that package and its dependencies. However,
+changing any Go code will require running `yarn build` at the root of the project again.
 
 ## Running Tests
 
@@ -77,6 +91,7 @@ make test-all
 ```
 
 ### Potential Issues
+
 The default maximum number of open files is too low in some operating systems
 for the tests to be run successfully. If an error that reads like "Too many open files,"
 it may be necessary to increase this limit. On Unix-like operating systems, the `ulimit`
@@ -97,6 +112,20 @@ available linters, run:
 
 ```
 make lint
+```
+
+## Running prettier
+
+0x Mesh uses a tool called [prettier](https://prettier.io/), which is a tool that
+enforces a consistent style across the Typescript codebase. The continuous integration
+pipeline will fail if Typescript code is not "prettified," so `prettier` must be run
+to ensure that the code is properly formatted.
+
+The prettier tool can be run using the following command from the top-level of the
+0x-Mesh repository (outside of a directory inside **packages/**):
+
+```bash
+yarn prettier
 ```
 
 ## Managing Dependencies
@@ -144,3 +173,13 @@ following to your editor config:
 	// ...
 }
 ```
+
+### Prettier
+
+Prettier configurations for most popular text editors can be found
+[here](https://prettier.io/docs/en/editors.html).
+
+### TSLint
+
+TSLint configurations for most popular text editors can be found
+[here](https://palantir.github.io/tslint/usage/third-party-tools/).

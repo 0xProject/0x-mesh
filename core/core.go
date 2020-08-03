@@ -22,11 +22,8 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/ethereum/simplestack"
-	"github.com/0xProject/0x-mesh/expirationwatch"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -38,7 +35,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -47,6 +43,7 @@ import (
 )
 
 const (
+	blockRetentionLimit           = 20
 	ethereumRPCRequestTimeout     = 30 * time.Second
 	peerConnectTimeout            = 60 * time.Second
 	checkNewAddrInterval          = 20 * time.Second
@@ -74,11 +71,16 @@ const (
 // within the core package. Intended for testing purposes.
 type privateConfig struct {
 	paginationSubprotocolPerPage int
+	paginationSubprotocols       []ordersyncSubprotocolFactory
 }
 
 func defaultPrivateConfig() privateConfig {
 	return privateConfig{
 		paginationSubprotocolPerPage: 500,
+		paginationSubprotocols: []ordersyncSubprotocolFactory{
+			NewFilteredPaginationSubprotocolV1,
+			NewFilteredPaginationSubprotocolV0,
+		},
 	}
 }
 
@@ -189,33 +191,28 @@ type Config struct {
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
 	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
-}
-
-type snapshotInfo struct {
-	Snapshot            *db.Snapshot
-	CreatedAt           time.Time
-	ExpirationTimestamp time.Time
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
 }
 
 type App struct {
-	config                    Config
-	privateConfig             privateConfig
-	peerID                    peer.ID
-	privKey                   p2pcrypto.PrivKey
-	node                      *p2p.Node
-	chainID                   int
-	blockWatcher              *blockwatch.Watcher
-	orderWatcher              *orderwatch.Watcher
-	orderValidator            *ordervalidator.OrderValidator
-	orderFilter               *orderfilter.Filter
-	snapshotExpirationWatcher *expirationwatch.Watcher
-	muIdToSnapshotInfo        sync.Mutex
-	idToSnapshotInfo          map[string]snapshotInfo
-	ethRPCRateLimiter         ratelimit.RateLimiter
-	ethRPCClient              ethrpcclient.Client
-	db                        *meshdb.MeshDB
-	ordersyncService          *ordersync.Service
-	contractAddresses         *ethereum.ContractAddresses
+	ctx               context.Context
+	config            Config
+	privateConfig     privateConfig
+	peerID            peer.ID
+	privKey           p2pcrypto.PrivKey
+	node              *p2p.Node
+	chainID           int
+	blockWatcher      *blockwatch.Watcher
+	orderWatcher      *orderwatch.Watcher
+	orderValidator    *ordervalidator.OrderValidator
+	orderFilter       *orderfilter.Filter
+	ethRPCRateLimiter ratelimit.RateLimiter
+	ethRPCClient      ethrpcclient.Client
+	db                *db.DB
+	ordersyncService  *ordersync.Service
+	contractAddresses *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -224,11 +221,11 @@ type App struct {
 
 var setupLoggerOnce = &sync.Once{}
 
-func New(config Config) (*App, error) {
-	return newWithPrivateConfig(config, defaultPrivateConfig())
+func New(ctx context.Context, config Config) (*App, error) {
+	return newWithPrivateConfig(ctx, config, defaultPrivateConfig())
 }
 
-func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
+func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateConfig) (*App, error) {
 	// Configure logger
 	// TODO(albrow): Don't use global variables for log settings.
 	setupLoggerOnce.Do(func() {
@@ -281,14 +278,13 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	}
 
 	// Initialize db
-	databasePath := filepath.Join(config.DataDir, "db")
-	meshDB, err := meshdb.New(databasePath, contractAddresses)
+	database, err := newDB(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize metadata and check stored chain id (if any).
-	metadata, err := initMetadata(config.EthereumChainID, meshDB)
+	_, err = initMetadata(config.EthereumChainID, database)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +296,7 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	} else {
 		clock := clock.New()
 		var err error
-		ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, meshDB, clock)
+		ethRPCRateLimiter, err = ratelimit.New(config.EthereumRPCMaxRequestsPer24HrUTC, config.EthereumRPCMaxRequestsPerSecond, database, clock)
 		if err != nil {
 			return nil, err
 		}
@@ -333,44 +329,15 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 		return nil, err
 	}
 
-	// Remove any old mini headers that might be lingering in the database.
-	// See https://github.com/0xProject/0x-mesh/issues/667 and https://github.com/0xProject/0x-mesh/pull/716
-	// We need to leave this in place becuase:
-	//
-	// 1. It is still necessary for anyone upgrading from older versions to >= 9.0.1 in the future.
-	// 2. There's still a chance there are old MiniHeaders in the database (e.g. due to a sudden
-	//    unexpected shut down).
-	//
-	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
-	if err != nil {
-		return nil, err
-	}
-	miniHeadersToRemove := totalMiniHeaders - meshDB.MiniHeaderRetentionLimit
-	if miniHeadersToRemove > 0 {
-		log.WithFields(log.Fields{
-			"numHeadersToRemove": miniHeadersToRemove,
-			"totalHeadersStored": totalMiniHeaders,
-		}).Warn("Removing outdated block headers in database (this can take a while)")
-	}
-	err = meshDB.PruneMiniHeadersAboveRetentionLimit()
-	if err != nil {
-		return nil, err
-	}
-
 	topics := orderwatch.GetRelevantTopics()
-	miniHeaders, err := meshDB.FindAllMiniHeadersSortedByNumber()
-	if err != nil {
-		return nil, err
-	}
-	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, miniHeaders)
 	blockWatcherConfig := blockwatch.Config{
-		Stack:           stack,
+		DB:              database,
 		PollingInterval: config.BlockPollingInterval,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
+	blockWatcher := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
 
 	// Initialize the order validator
 	orderValidator, err := ordervalidator.New(
@@ -385,13 +352,12 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 
 	// Initialize order watcher (but don't start it yet).
 	orderWatcher, err := orderwatch.New(orderwatch.Config{
-		MeshDB:            meshDB,
+		DB:                database,
 		BlockWatcher:      blockWatcher,
 		OrderValidator:    orderValidator,
 		ChainID:           config.EthereumChainID,
 		ContractAddresses: contractAddresses,
 		MaxOrders:         config.MaxOrdersInStorage,
-		MaxExpirationTime: metadata.MaxExpirationTime,
 	})
 	if err != nil {
 		return nil, err
@@ -403,26 +369,22 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
 
-	// Initialize remaining fields.
-	snapshotExpirationWatcher := expirationwatch.New()
-
 	app := &App{
-		started:                   make(chan struct{}),
-		config:                    config,
-		privateConfig:             pConfig,
-		privKey:                   privKey,
-		peerID:                    peerID,
-		chainID:                   config.EthereumChainID,
-		blockWatcher:              blockWatcher,
-		orderWatcher:              orderWatcher,
-		orderValidator:            orderValidator,
-		orderFilter:               orderFilter,
-		snapshotExpirationWatcher: snapshotExpirationWatcher,
-		idToSnapshotInfo:          map[string]snapshotInfo{},
-		ethRPCRateLimiter:         ethRPCRateLimiter,
-		ethRPCClient:              ethClient,
-		db:                        meshDB,
-		contractAddresses:         &contractAddresses,
+		ctx:               ctx,
+		started:           make(chan struct{}),
+		config:            config,
+		privateConfig:     pConfig,
+		privKey:           privKey,
+		peerID:            peerID,
+		chainID:           config.EthereumChainID,
+		blockWatcher:      blockWatcher,
+		orderWatcher:      orderWatcher,
+		orderValidator:    orderValidator,
+		orderFilter:       orderFilter,
+		ethRPCRateLimiter: ethRPCRateLimiter,
+		ethRPCClient:      ethClient,
+		db:                database,
+		contractAddresses: &contractAddresses,
 	}
 
 	log.WithFields(map[string]interface{}{
@@ -497,16 +459,15 @@ func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
 	return nil, err
 }
 
-func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) {
-	metadata, err := meshDB.GetMetadata()
+func initMetadata(chainID int, database *db.DB) (*types.Metadata, error) {
+	metadata, err := database.GetMetadata()
 	if err != nil {
-		if _, ok := err.(db.NotFoundError); ok {
+		if err == db.ErrNotFound {
 			// No stored metadata found (first startup)
-			metadata = &meshdb.Metadata{
-				EthereumChainID:   chainID,
-				MaxExpirationTime: constants.UnlimitedExpirationTime,
+			metadata = &types.Metadata{
+				EthereumChainID: chainID,
 			}
-			if err := meshDB.SaveMetadata(metadata); err != nil {
+			if err := database.SaveMetadata(metadata); err != nil {
 				return nil, err
 			}
 			return metadata, nil
@@ -523,7 +484,7 @@ func initMetadata(chainID int, meshDB *meshdb.MeshDB) (*meshdb.Metadata, error) 
 	return metadata, nil
 }
 
-func (app *App) Start(ctx context.Context) error {
+func (app *App) Start() error {
 	// Get the publish topics depending on our custom order filter.
 	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
@@ -532,24 +493,13 @@ func (app *App) Start(ctx context.Context) error {
 
 	// Create a child context so that we can preemptively cancel if there is an
 	// error.
-	innerCtx, cancel := context.WithCancel(ctx)
+	innerCtx, cancel := context.WithCancel(app.ctx)
 	defer cancel()
 
 	// Below, we will start several independent goroutines. We use separate
 	// channels to communicate errors and a waitgroup to wait for all goroutines
 	// to exit.
 	wg := &sync.WaitGroup{}
-
-	// Close the database when the context is canceled.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			log.Debug("closing app.db")
-		}()
-		<-innerCtx.Done()
-		app.db.Close()
-	}()
 
 	// Start rateLimiter
 	ethRPCRateLimiterErrChan := make(chan error, 1)
@@ -560,29 +510,6 @@ func (app *App) Start(ctx context.Context) error {
 			log.Debug("closing eth RPC rate limiter")
 		}()
 		ethRPCRateLimiterErrChan <- app.ethRPCRateLimiter.Start(innerCtx, rateLimiterCheckpointInterval)
-	}()
-
-	// Set up the snapshot expiration watcher pruning logic
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer func() {
-			log.Debug("closing snapshot expiration watcher")
-		}()
-		ticker := time.NewTicker(expirationPollingInterval)
-		for {
-			select {
-			case <-innerCtx.Done():
-				return
-			case now := <-ticker.C:
-				expiredSnapshots := app.snapshotExpirationWatcher.Prune(now)
-				for _, expiredSnapshot := range expiredSnapshots {
-					app.muIdToSnapshotInfo.Lock()
-					delete(app.idToSnapshotInfo, expiredSnapshot.ID)
-					app.muIdToSnapshotInfo.Unlock()
-				}
-			}
-		}
 	}()
 
 	// Start the order watcher.
@@ -618,6 +545,22 @@ func (app *App) Start(ctx context.Context) error {
 		}
 	}()
 
+	// NOTE(jalextowle): If we are already more than `MaxBlocksStoredInNonArchiveNode`
+	// blocks behind, there is no need to check for missing order events. In this
+	// case, we cannot use the `GetBlockByNumber` RPC call with a non-archival
+	// Ethereum node, so we already have to revalidate all of the orders in the
+	// database, and we skip revalidation here to avoid doing redundant work.
+	preliminaryBlocksElapsed, _, err := app.blockWatcher.GetNumberOfBlocksBehind(innerCtx)
+	if err != nil {
+		return err
+	}
+	if preliminaryBlocksElapsed > 0 && preliminaryBlocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
+		log.WithField("blocksElapsed", preliminaryBlocksElapsed).Info("Checking for missing order events relating to orders stored (this can take a while)...")
+		if err := app.orderWatcher.RevalidateOrdersForMissingEvents(innerCtx); err != nil {
+			return err
+		}
+	}
+
 	// Note: this is a blocking call so we won't continue set up until its finished.
 	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
 	if err != nil {
@@ -641,7 +584,7 @@ func (app *App) Start(ctx context.Context) error {
 	// so that Mesh does not validate any orders at outdated block heights
 	isCaughtUp := app.IsCaughtUpToLatestBlock(innerCtx)
 	if !isCaughtUp {
-		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(ctx); err != nil {
+		if err := app.orderWatcher.WaitForAtLeastOneBlockToBeProcessed(innerCtx); err != nil {
 			return err
 		}
 	}
@@ -682,6 +625,7 @@ func (app *App) Start(ctx context.Context) error {
 		BootstrapList:          bootstrapList,
 		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
 		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
+		MaxBytesPerSecond:      app.config.MaxBytesPerSecond,
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
@@ -689,8 +633,9 @@ func (app *App) Start(ctx context.Context) error {
 	}
 
 	// Register and start ordersync service.
-	ordersyncSubprotocols := []ordersync.Subprotocol{
-		NewFilteredPaginationSubprotocol(app, app.privateConfig.paginationSubprotocolPerPage),
+	var ordersyncSubprotocols []ordersync.Subprotocol
+	for _, subprotocolFactory := range app.privateConfig.paginationSubprotocols {
+		ordersyncSubprotocols = append(ordersyncSubprotocols, subprotocolFactory(app, app.privateConfig.paginationSubprotocolPerPage))
 	}
 	app.ordersyncService = ordersync.New(innerCtx, app.node, ordersyncSubprotocols)
 	orderSyncErrChan := make(chan error, 1)
@@ -852,11 +797,21 @@ func (e ErrPerPageZero) Error() string {
 	return "perPage cannot be zero"
 }
 
-// GetOrders retrieves paginated orders from the Mesh DB at a specific snapshot in time. Passing an empty
-// string as `snapshotID` creates a new snapshot and returns the first set of results. To fetch all orders,
-// continue to make requests supplying the `snapshotID` returned from the first request. After 1 minute of not
-// received further requests referencing a specific snapshot, the snapshot expires and can no longer be used.
-func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrdersResponse, error) {
+// GetOrders retrieves perPage orders from the database with an order hash greater than
+// minOrderHash (exclusive). The orders in the response are sorted by hash. In order to
+// paginate through all orders:
+//
+//     1. First call GetOrders with an empty minOrderHash.
+//     2. On subsequent calls, use the maximum hash of the orders from the previous response as the next minOrderHash.
+//     3. When no orders are returned, pagination is complete.
+//
+// When following this process, GetOrders offers the following guarantees:
+//
+//    1. Any order that was present before pagination started *and* was present after pagination ended will be included in a response.
+//    2. No order will be included in more than one response.
+//    3. Orders that were added or deleted during pagination may or may not be included in a response.
+//
+func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrdersResponse, error) {
 	<-app.started
 
 	if perPage <= 0 {
@@ -864,66 +819,43 @@ func (app *App) GetOrders(page, perPage int, snapshotID string) (*types.GetOrder
 	}
 
 	ordersInfos := []*types.OrderInfo{}
-	var snapshot *db.Snapshot
-	var createdAt time.Time
-	if snapshotID == "" {
-		// Create a new snapshot
-		snapshotID = uuid.New().String()
-		var err error
-		snapshot, err = app.db.Orders.GetSnapshot()
-		if err != nil {
-			return nil, err
-		}
-		createdAt = time.Now().UTC()
-		expirationTimestamp := time.Now().Add(1 * time.Minute)
-		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-		app.muIdToSnapshotInfo.Lock()
-		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-			Snapshot:            snapshot,
-			CreatedAt:           createdAt,
-			ExpirationTimestamp: expirationTimestamp,
-		}
-		app.muIdToSnapshotInfo.Unlock()
-	} else {
-		// Try and find an existing snapshot
-		app.muIdToSnapshotInfo.Lock()
-		info, ok := app.idToSnapshotInfo[snapshotID]
-		if !ok {
-			app.muIdToSnapshotInfo.Unlock()
-			return nil, ErrSnapshotNotFound{id: snapshotID}
-		}
-		snapshot = info.Snapshot
-		createdAt = info.CreatedAt
-		// Reset the snapshot's expiry
-		app.snapshotExpirationWatcher.Remove(info.ExpirationTimestamp, snapshotID)
-		expirationTimestamp := time.Now().Add(1 * time.Minute)
-		app.snapshotExpirationWatcher.Add(expirationTimestamp, snapshotID)
-		app.idToSnapshotInfo[snapshotID] = snapshotInfo{
-			Snapshot:            snapshot,
-			CreatedAt:           createdAt,
-			ExpirationTimestamp: expirationTimestamp,
-		}
-		app.muIdToSnapshotInfo.Unlock()
+	query := &db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+			{
+				Field: db.OFHash,
+				Kind:  db.Greater,
+				Value: minOrderHash,
+			},
+		},
+		Sort: []db.OrderSort{
+			{
+				Field:     db.OFHash,
+				Direction: db.Ascending,
+			},
+		},
+		Limit: uint(perPage),
 	}
 
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	var selectedOrders []*meshdb.Order
-	err := snapshot.NewQuery(notRemovedFilter).Offset(page * perPage).Max(perPage).Run(&selectedOrders)
+	orders, err := app.db.FindOrders(query)
 	if err != nil {
 		return nil, err
 	}
-	for _, order := range selectedOrders {
+	for _, order := range orders {
 		ordersInfos = append(ordersInfos, &types.OrderInfo{
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder,
+			SignedOrder:              order.SignedOrder(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 		})
 	}
 
 	getOrdersResponse := &types.GetOrdersResponse{
-		SnapshotID:        snapshotID,
-		SnapshotTimestamp: createdAt,
-		OrdersInfos:       ordersInfos,
+		Timestamp:   time.Now(),
+		OrdersInfos: ordersInfos,
 	}
 
 	return getOrdersResponse, nil
@@ -1053,24 +985,43 @@ func (app *App) AddPeer(peerInfo peerstore.PeerInfo) error {
 func (app *App) GetStats() (*types.Stats, error) {
 	<-app.started
 
-	latestBlockHeader, err := app.db.FindLatestMiniHeader()
+	var latestBlock types.LatestBlock
+	latestMiniHeader, err := app.db.GetLatestMiniHeader()
+	if err != nil {
+		if err != db.ErrNotFound {
+			// ErrNotFound is okay. For any other error, return it.
+			return nil, err
+		}
+	}
+	if latestMiniHeader != nil {
+		latestBlock.Number = int(latestMiniHeader.Number.Int64())
+		latestBlock.Hash = latestMiniHeader.Hash
+	}
+	numOrders, err := app.db.CountOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
-	latestBlock := types.LatestBlock{
-		Number: int(latestBlockHeader.Number.Int64()),
-		Hash:   latestBlockHeader.Hash,
-	}
-	notRemovedFilter := app.db.Orders.IsRemovedIndex.ValueFilter([]byte{0})
-	numOrders, err := app.db.Orders.NewQuery(notRemovedFilter).Count()
+	numOrdersIncludingRemoved, err := app.db.CountOrders(nil)
 	if err != nil {
 		return nil, err
 	}
-	numOrdersIncludingRemoved, err := app.db.Orders.Count()
-	if err != nil {
-		return nil, err
-	}
-	numPinnedOrders, err := app.db.CountPinnedOrders()
+	numPinnedOrders, err := app.db.CountOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFIsPinned,
+				Kind:  db.Equal,
+				Value: true,
+			},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1079,6 +1030,10 @@ func (app *App) GetStats() (*types.Stats, error) {
 		return nil, err
 	}
 	rendezvousPoints, err := app.getRendezvousPoints()
+	if err != nil {
+		return nil, err
+	}
+	maxExpirationTime, err := app.db.GetCurrentMaxExpirationTime()
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1050,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 		NumPeers:                          app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
 		NumPinnedOrders:                   numPinnedOrders,
-		MaxExpirationTime:                 app.orderWatcher.MaxExpirationTime().String(),
+		MaxExpirationTime:                 maxExpirationTime.String(),
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),
@@ -1148,9 +1103,10 @@ func (app *App) SubscribeToOrderEvents(sink chan<- []*zeroex.OrderEvent) event.S
 // IsCaughtUpToLatestBlock returns whether or not the latest block stored by Mesh corresponds
 // to the latest block retrieved from it's Ethereum RPC endpoint
 func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
-	latestBlockStored, err := app.db.FindLatestMiniHeader()
+	latestStoredBlock, err := app.db.GetLatestMiniHeader()
 	if err != nil {
-		if _, ok := err.(meshdb.MiniHeaderCollectionEmptyError); ok {
+		if err == db.ErrNotFound {
+			// This just means there are no MiniHeaders stored.
 			return false
 		}
 		log.WithFields(map[string]interface{}{
@@ -1158,14 +1114,14 @@ func (app *App) IsCaughtUpToLatestBlock(ctx context.Context) bool {
 		}).Warn("failed to fetch the latest miniHeader from DB")
 		return false
 	}
-	latestBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
+	latestRPCBlock, err := app.ethRPCClient.HeaderByNumber(ctx, nil)
 	if err != nil {
 		log.WithFields(map[string]interface{}{
 			"err": err.Error(),
 		}).Warn("failed to fetch the latest block header via Ethereum RPC")
 		return false
 	}
-	return latestBlock.Number.Cmp(latestBlockStored.Number) == 0
+	return latestRPCBlock.Number.Cmp(latestStoredBlock.Number) == 0
 }
 
 func parseAndValidateCustomContractAddresses(chainID int, encodedContractAddresses string) (ethereum.ContractAddresses, error) {

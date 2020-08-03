@@ -54,12 +54,12 @@ test-browser-integration:
 
 .PHONY: test-browser-conversion
 test-browser-conversion:
-	go test ./packages/browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
+	go test ./packages/mesh-browser/go/conversion-test -timeout 185s --enable-browser-conversion-tests -run BrowserConversions
 
 
 .PHONY: test-wasm-browser
 test-wasm-browser:
-	WASM_INIT_FILE="$$(pwd)/packages/test-wasm/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
+	WASM_INIT_FILE="$$(pwd)/packages/mesh-browser-shim/dist/browser_shim.js" GOOS=js GOARCH=wasm go test -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest" ./...
 
 
 .PHONY: test-ts
@@ -68,18 +68,21 @@ test-ts:
 
 
 .PHONY: lint
-lint: lint-go lint-ts
+lint: lint-go lint-ts lint-prettier
 
 
 .PHONY: lint-go
 lint-go:
-	golangci-lint run
+	golangci-lint run --timeout 2m 
 
 
 .PHONY: lint-ts
 lint-ts:
 	yarn lint
 
+.PHONY: lint-prettier
+lint-prettier:
+	yarn prettier:ci
 
 .PHONY: mesh
 mesh:
