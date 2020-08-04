@@ -9,8 +9,6 @@ import { DoneCallback, SignedOrder } from '@0x/types';
 import { BigNumber, hexUtils } from '@0x/utils';
 import { Web3Wrapper } from '@0x/web3-wrapper';
 import 'mocha';
-// import * as uuidValidate from 'uuid-validate';
-// import * as WebSocket from 'websocket';
 
 import {
     FilterKind,
@@ -20,9 +18,7 @@ import {
     RejectedOrderCode,
     SortDirection,
 } from '../src/index';
-// import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
-// import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
 import { MeshDeployment, startServerAndClientAsync } from './utils/graphql_server';
 
 blockchainTests.resets('GraphQLClient', env => {
@@ -249,66 +245,6 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
-        //     describe('#getOrdersForPageAsync', async () => {
-        //         it('properly makes paginated request and returns signedOrders', async () => {
-        //             const ordersLength = 10;
-        //             const orders = [];
-        //             for (let i = 0; i < ordersLength; i++) {
-        //                 orders[i] = await orderFactory.newSignedOrderAsync({});
-        //             }
-        //             const validationResults = await deployment.client.addOrdersAsync(orders);
-        //             expect(validationResults.accepted.length).to.be.eq(ordersLength);
-
-        //             // NOTE(jalextowle): The time returned by Date uses milliseconds, but
-        //             // the mesh timestamp only uses second. Multiplying the seconds timestamp
-        //             // by 1000 gives us a comparable value. We only try to ensure that this
-        //             // timestamp is approximately equal (within 1 second) because the server
-        //             // will receive the request slightly after it is sent.
-        //             const now = new Date(Date.now()).getTime();
-        //             let page = 0;
-        //             const perPage = 5;
-        //             // First request for page index 0
-        //             let response = await deployment.client.getOrdersForPageAsync(page, perPage);
-        //             assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
-        //             expect(uuidValidate(response.snapshotID)).to.be.true();
-
-        //             let responseOrders = response.ordersInfos;
-
-        //             // Second request for page index 1
-        //             page = 1;
-        //             response = await deployment.client.getOrdersForPageAsync(page, perPage, response.snapshotID);
-        //             expect(uuidValidate(response.snapshotID)).to.be.true();
-
-        //             // Combine orders found in first and second paginated requests
-        //             responseOrders = [...responseOrders, ...response.ordersInfos];
-
-        //             // Verify that all of the orders that were added to the mesh node
-        //             // were returned in the two `getOrders` rpc response
-        //             expectContainsOrders(orders, responseOrders);
-        //         });
-        //     });
-
-        //     describe('#_subscribeToHeartbeatAsync', async () => {
-        //         it('should receive subscription updates', (done: DoneCallback) => {
-        //             (async () => {
-        //                 const expectToBeCalledOnce = true;
-        //                 const callback = callbackErrorReporter.reportNoErrorCallbackErrors(
-        //                     done,
-        //                     expectToBeCalledOnce,
-        //                 )(async (ack: string) => {
-        //                     expect(ack).to.be.equal('tick');
-        //                 });
-        //                 // NOTE(jalextowle): We use string literal access here to
-        //                 // avoid casting `deployment.client` to `any` (this method
-        //                 // preserves most types of type-checking) and to allow us to
-        //                 // access the private method `_subscribeToHeartbeatAsync`.
-        //                 // Source: https://stackoverflow.com/a/35991491
-        //                 // tslint:disable-next-line:no-string-literal
-        //                 await deployment.client['_subscribeToHeartbeatAsync'](callback);
-        //             })().catch(done);
-        //         });
-        //     });
-
         describe('#subscribeToOrdersAsync', async () => {
             it('should receive subscription updates about added orders', (done: DoneCallback) => {
                 (async () => {
@@ -419,111 +355,6 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
     });
-
-    // describe('unit tests', () => {
-    //     describe('#onClose', () => {
-    //         it('should trigger when connection is closed', (done: DoneCallback) => {
-    //             // tslint:disable-next-line:no-floating-promises
-    //             (async () => {
-    //                 const wsServer = await setupServerAsync();
-    //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
-    //                     // tslint:disable-next-line:custom-no-magic-numbers
-    //                     await sleepAsync(100);
-    //                     connection.close();
-    //                 });
-
-    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-    //                 client.onClose(() => {
-    //                     client.destroy();
-    //                     stopServer();
-    //                     done();
-    //                 });
-    //             })().catch(done);
-    //         });
-    //     });
-    //     describe('#onReconnected', async () => {
-    //         it('should trigger the callback when reconnected', (done: DoneCallback) => {
-    //             // tslint:disable-next-line:no-floating-promises
-    //             (async () => {
-    //                 const wsServer = await setupServerAsync();
-    //                 let connectionNum = 0;
-    //                 wsServer.on('connect', async (connection: WebSocket.connection) => {
-    //                     let requestNum = 0;
-    //                     connectionNum++;
-    //                     connection.on('message', (async (message: WSMessage) => {
-    //                         const jsonRpcRequest = JSON.parse(message.utf8Data);
-    //                         if (requestNum === 0) {
-    //                             const response = `
-    //                                 {
-    //                                     "id": "${jsonRpcRequest.id}",
-    //                                     "jsonrpc": "2.0",
-    //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-    //                                 }
-    //                             `;
-    //                             connection.sendUTF(response);
-    //                             if (connectionNum === 1) {
-    //                                 // tslint:disable-next-line:custom-no-magic-numbers
-    //                                 await sleepAsync(100);
-    //                                 const reasonCode = WebSocket.connection.CLOSE_REASON_PROTOCOL_ERROR;
-    //                                 const description = (WebSocket.connection as any).CLOSE_DESCRIPTIONS[reasonCode];
-    //                                 connection.drop(reasonCode, description);
-    //                             }
-    //                         }
-    //                         requestNum++;
-    //                     }) as any);
-    //                 });
-
-    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`, { reconnectDelay: 100 });
-    //                 client.onReconnected(async () => {
-    //                     // We need to add a sleep here so that we leave time for the client
-    //                     // to get connected before destroying it.
-    //                     // tslint:disable-next-line:custom-no-magic-numbers
-    //                     await sleepAsync(100);
-    //                     client.destroy();
-    //                     stopServer();
-    //                     done();
-    //                 });
-    //             })().catch(done);
-    //         });
-    //     });
-    //     describe('#destroy', async () => {
-    //         it('should unsubscribe and trigger onClose when close() is called', (done: DoneCallback) => {
-    //             // tslint:disable-next-line:no-floating-promises
-    //             (async () => {
-    //                 const wsServer = await setupServerAsync();
-    //                 let hasReceivedUnsubscribeMessage = false;
-    //                 wsServer.on('connect', (connection: WebSocket.connection) => {
-    //                     connection.on('message', async (message: WebSocket.IMessage) => {
-    //                         const wsMessage = message as WSMessage;
-    //                         const jsonRpcRequest = JSON.parse(wsMessage.utf8Data);
-    //                         if (jsonRpcRequest.method === 'mesh_subscribe') {
-    //                             const response = `
-    //                                 {
-    //                                     "id": "${jsonRpcRequest.id}",
-    //                                     "jsonrpc": "2.0",
-    //                                     "result": "0xab1a3e8af590364c09d0fa6a12103ada"
-    //                                 }
-    //                             `;
-    //                             connection.sendUTF(response);
-    //                         } else if (jsonRpcRequest.method === 'mesh_unsubscribe') {
-    //                             hasReceivedUnsubscribeMessage = true;
-    //                         }
-    //                     });
-    //                 });
-
-    //                 const client = new WSClient(`ws://localhost:${SERVER_PORT}`);
-    //                 client.onClose(() => {
-    //                     expect(hasReceivedUnsubscribeMessage).to.be.equal(true);
-    //                     done();
-    //                 });
-    //                 // We need to add a sleep here so that we leave time for the client
-    //                 // to get connected before destroying it.
-    //                 // tslint:disable-next-line:custom-no-magic-numbers
-    //                 await sleepAsync(100);
-    //                 client.destroy();
-    //             })().catch(done);
-    //         });
-    //     });
 });
 
 function assertRoughlyEquals(a: number, b: number, delta: number): void {
