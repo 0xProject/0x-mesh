@@ -2,7 +2,7 @@ import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { DummyERC20TokenContract } from '@0x/contracts-erc20';
 import { ExchangeContract } from '@0x/contracts-exchange';
 import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
-import { BlockchainLifecycle, callbackErrorReporter, Web3Config, web3Factory } from '@0x/dev-utils';
+import { BlockchainLifecycle, Web3Config, web3Factory } from '@0x/dev-utils';
 import { assetDataUtils } from '@0x/order-utils';
 import { Web3ProviderEngine } from '@0x/subproviders';
 import { DoneCallback, SignedOrder } from '@0x/types';
@@ -10,7 +10,7 @@ import { BigNumber, hexUtils } from '@0x/utils';
 import { Web3Wrapper } from '@0x/web3-wrapper';
 import 'mocha';
 // import * as uuidValidate from 'uuid-validate';
-import * as WebSocket from 'websocket';
+// import * as WebSocket from 'websocket';
 
 import { OrderEvent, OrderEventEndState, RejectedOrderCode } from '../src/index';
 // import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
@@ -184,7 +184,6 @@ blockchainTests.resets('GraphQLClient', env => {
                 expect(foundOrder).to.be.deep.eq(expectedOrder);
             });
             it('returns null when the order does not exist', async () => {
-                await sleepAsync(1000);
                 const nonExistentOrderHash = '0xabcd46910c6a8a4730878e6e8a4abb328844c0b58f0cdfbb5b6ad28ee0bae347';
                 const foundOrder = await deployment.client.getOrderAsync(nonExistentOrderHash);
                 expect(foundOrder).to.be.null();
@@ -507,10 +506,6 @@ function leftPad(a: number, paddingDigits: number = 2): string {
 function secondsToMs(seconds: number): number {
     const msPerSecond = 1000;
     return seconds * msPerSecond;
-}
-
-async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
-    return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
 }
 
 // Verify that all of the orders that were added to the mesh node

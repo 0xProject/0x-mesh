@@ -35,6 +35,10 @@ export interface MeshDeployment {
     peerID: string;
 }
 
+// The amount of time to wait after seeing the "starting GraphQL server" log message
+// before attempting to connect to the GraphQL server.
+const serverStartWaitTimeMs = 100;
+
 /**
  * Start a RPC client connected to a RPC server that is ready for use.
  * @return A mesh deployment including a RPC client, mesh manager, and the
@@ -47,6 +51,7 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     const mesh = new MeshHarness();
     const log = await mesh.waitForPatternAsync(/starting GraphQL server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
+    await sleepAsync(serverStartWaitTimeMs);
     const client = new MeshGraphQLClient(
         `http://localhost:${mesh._graphQLServerPort}/graphql`,
         `ws://localhost:${mesh._graphQLServerPort}/graphql`,
@@ -109,4 +114,8 @@ export class MeshHarness {
             throw new Error(`${error.name} - ${error.message}`);
         });
     }
+}
+
+async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
+    return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
 }

@@ -12,7 +12,6 @@ import {
 import { onError } from '@apollo/client/link/error';
 import { WebSocketLink } from '@apollo/client/link/ws';
 import { getMainDefinition } from '@apollo/client/utilities';
-import * as R from 'ramda';
 import { SubscriptionClient } from 'subscriptions-transport-ws';
 import * as ws from 'ws';
 import * as Observable from 'zen-observable';
@@ -329,7 +328,7 @@ const orderEventsSubscription = gql`
 `;
 
 export class MeshGraphQLClient {
-    private readonly _subscriptionClient: SubscriptionClient;
+    // private readonly _subscriptionClient: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(httpUrl: string, webSocketUrl: string) {
         // Set up an apollo client with WebSocket and HTTP links. This allows
@@ -344,7 +343,7 @@ export class MeshGraphQLClient {
                 reconnect: true,
                 connectionCallback: err => {
                     if (err) {
-                        console.error(err);
+                        // console.error(err);
                     } else {
                         // console.log('successfully connected');
                     }
@@ -365,17 +364,17 @@ export class MeshGraphQLClient {
             httpLink,
         );
         const errorLink = onError(({ graphQLErrors, networkError }) => {
-            if (graphQLErrors) {
-                graphQLErrors.map(({ message, locations, path }) =>
-                    console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`),
-                );
-            }
-            if (networkError) {
-                console.log(`[Network error]: ${networkError}`);
-            }
+            // if (graphQLErrors) {
+            //     graphQLErrors.map(({ message, locations, path }) =>
+            //         console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`),
+            //     );
+            // }
+            // if (networkError) {
+            //     console.log(`[Network error]: ${networkError}`);
+            // }
         });
         const link = from([errorLink, splitLink]);
-        this._subscriptionClient = wsSubClient;
+        // this._subscriptionClient = wsSubClient;
         this._client = new ApolloClient({
             cache: new InMemoryCache({
                 // Stop apollo client from injecting `__typenme` fields.
@@ -600,3 +599,5 @@ function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEvent {
         order: fromStringifiedOrderWithMetadata(event.order),
     };
 }
+
+// tslint:disable-next-line: max-file-line-count
