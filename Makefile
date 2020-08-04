@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-ts wasmbrowsertest go-bindata
+deps: deps-ts wasmbrowsertest gqlgen
 
 
 .PHONY: deps-ts
@@ -13,11 +13,11 @@ gobin:
 	GO111MODULE=off go get -u github.com/myitcv/gobin
 
 
-# go-bindata is a tool for embedding files so that they are included in binaries.
+# gqlgen is a tool for embedding files so that they are included in binaries.
 # This installs the CLI for go-bindata.
-.PHONY: go-bindata
-go-bindata: gobin
-	gobin github.com/go-bindata/go-bindata/v3/go-bindata@v3.1.3
+.PHONY: gqlgen
+gqlgen: gobin
+	gobin github.com/99designs/gqlgen@v0.11.3
 
 
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
@@ -28,7 +28,7 @@ wasmbrowsertest: gobin
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest go-bindata
+deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest gqlgen
 
 
 .PHONY: deps-ts-no-lockfile
@@ -95,6 +95,7 @@ lint-prettier:
 .PHONY: generate
 generate:
 	go generate ./...
+
 
 .PHONY: mesh
 mesh: generate
