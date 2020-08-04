@@ -16,17 +16,16 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/chromedp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBrowserIntegration(t *testing.T) {
-	// TODO(albrow): Re-enable this test.
-	t.Skip("Temporarily disabling integration tests until after GraphQL client+server are implemented")
-
 	if !browserIntegrationTestsEnabled {
 		t.Skip("Browser integration tests are disabled. You can enable them with the --enable-browser-integration-tests flag")
 	}
@@ -95,16 +94,15 @@ func TestBrowserIntegration(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// TODO(albrow): Update this to use the new GraphQL API.
 		// Wait for the WS RPC server to start before sending the order.
-		// _, err := waitForLogSubstring(ctx, standaloneLogMessages, "started WS RPC server")
-		// require.NoError(t, err, "WS RPC server didn't start")
-		// rpcClient, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
-		// require.NoError(t, err)
-		// results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
-		// require.NoError(t, err)
-		// assert.Len(t, results.Accepted, 1, "Expected 1 order to be accepted over RPC")
-		// assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected over RPC")
+		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "starting GraphQL server")
+		require.NoError(t, err, "GraphQL server didn't start")
+		graphQLClient := gqlclient.New(graphQLServerURL)
+		require.NoError(t, err)
+		results, err := graphQLClient.AddOrders(ctx, []*zeroex.SignedOrder{standaloneOrder})
+		require.NoError(t, err)
+		assert.Len(t, results.Accepted, 1, "Expected 1 order to be accepted via GraphQL API")
+		assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected via GraphQL API")
 	}()
 
 	// Start a simple HTTP server to serve the web page for the browser node.
