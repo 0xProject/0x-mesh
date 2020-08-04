@@ -12,7 +12,14 @@ import 'mocha';
 // import * as uuidValidate from 'uuid-validate';
 // import * as WebSocket from 'websocket';
 
-import { OrderEvent, OrderEventEndState, RejectedOrderCode } from '../src/index';
+import {
+    FilterKind,
+    OrderEvent,
+    OrderEventEndState,
+    OrderWithMetadata,
+    RejectedOrderCode,
+    SortDirection,
+} from '../src/index';
 // import { ContractEventKind, ExchangeCancelEvent, OrderInfo, RejectedKind, WSMessage } from '../src/types';
 
 // import { SERVER_PORT, setupServerAsync, stopServer } from './utils/mock_ws_server';
@@ -190,33 +197,57 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
-        //     describe('#getOrdersAsync', async () => {
-        //         it('properly makes multiple paginated requests under-the-hood and returns all signedOrders', async () => {
-        //             const ordersLength = 10;
-        //             const orders = [];
-        //             for (let i = 0; i < ordersLength; i++) {
-        //                 orders[i] = await orderFactory.newSignedOrderAsync({});
-        //             }
-        //             const validationResults = await deployment.client.addOrdersAsync(orders);
-        //             expect(validationResults.accepted.length).to.be.eq(ordersLength);
+        describe('#getOrdersAsync', async () => {
+            it('returns all orders when no options are provided', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({});
+                }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
 
-        //             // NOTE(jalextowle): The time returned by Date uses milliseconds, but
-        //             // the mesh timestamp only uses second. Multiplying the seconds timestamp
-        //             // by 1000 gives us a comparable value. We only try to ensure that this
-        //             // timestamp is approximately equal (within 1 second) because the server
-        //             // will receive the request slightly after it is sent.
-        //             const now = new Date(Date.now()).getTime();
-        //             const perPage = ordersLength / 2;
-        //             const response = await deployment.client.getOrdersAsync(perPage);
-        //             assertRoughlyEquals(now, response.snapshotTimestamp * secondsToMs(1), secondsToMs(2));
-        //             // Verify that snapshot ID in the response meets the expected schema.
-        //             expect(uuidValidate(response.snapshotID)).to.be.true();
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                const gotOrders = await deployment.client.getOrdersAsync();
+                const expectedOrders = orders.map(order => ({
+                    ...order,
+                    hash: orderHashUtils.getOrderHashHex(order),
+                    fillableTakerAssetAmount: order.takerAssetAmount,
+                }));
+                expectContainsOrders(gotOrders, expectedOrders);
+            });
+            it('returns orders that match a given query', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                // Create some orders with makerAssetamount = 1, 2, 3, etc.
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({
+                        makerAssetAmount: new BigNumber(i + 1),
+                    });
+                }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
 
-        //             // Verify that all of the orders that were added to the mesh node
-        //             // were returned in the `getOrders` rpc response
-        //             expectContainsOrders(orders, response.ordersInfos);
-        //         });
-        //     });
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                const gotOrders = await deployment.client.getOrdersAsync({
+                    filters: [{ field: 'makerAssetAmount', kind: FilterKind.LessOrEqual, value: new BigNumber(7) }],
+                    sort: [{ field: 'makerAssetAmount', direction: SortDirection.Desc }],
+                    limit: 5,
+                });
+                // We expect 5 orders sorted in descending order by makerAssetAmount starting at 7.
+                // I.e. orders with makerAmounts of 7, 6, 5, 4, and 3.
+                const expectedOrders = orders.map(order => ({
+                    ...order,
+                    hash: orderHashUtils.getOrderHashHex(order),
+                    fillableTakerAssetAmount: order.takerAssetAmount,
+                }));
+                const sortedExpectedOrders = sortOrdersByMakerAssetAmount(expectedOrders).reverse();
+                // tslint:disable-next-line: custom-no-magic-numbers
+                expect(gotOrders).to.be.deep.eq(sortedExpectedOrders.slice(3, 8));
+            });
+        });
 
         //     describe('#getOrdersForPageAsync', async () => {
         //         it('properly makes paginated request and returns signedOrders', async () => {
@@ -508,19 +539,30 @@ function secondsToMs(seconds: number): number {
     return seconds * msPerSecond;
 }
 
+function sortOrdersByMakerAssetAmount(orders: OrderWithMetadata[]): OrderWithMetadata[] {
+    return orders.sort((a, b) => {
+        if (a.makerAssetAmount.gt(b.makerAssetAmount)) {
+            return 1;
+        } else if (a.makerAssetAmount.lt(b.makerAssetAmount)) {
+            return -1;
+        }
+        return 0;
+    });
+}
+
 // Verify that all of the orders that were added to the mesh node
 // were returned in the `getOrders` rpc response
-// function expectContainsOrders(expectedOrders: SignedOrder[], ordersInfos: OrderInfo[]): void {
-//     for (const order of expectedOrders) {
-//         let hasSeenMatch = false;
-//         for (const responseOrder of ordersInfos) {
-//             if (orderHashUtils.getOrderHashHex(order) === responseOrder.orderHash) {
-//                 hasSeenMatch = true;
-//                 expect(order).to.be.deep.eq(responseOrder.signedOrder);
-//                 break;
-//             }
-//         }
-//         expect(hasSeenMatch).to.be.true();
-//     }
-// }
+function expectContainsOrders(gotOrders: OrderWithMetadata[], expectedOrders: OrderWithMetadata[]): void {
+    for (const expectedOrder of expectedOrders) {
+        let hasSeenMatch = false;
+        for (const gotOrder of gotOrders) {
+            if (expectedOrder.hash === gotOrder.hash) {
+                hasSeenMatch = true;
+                expect(gotOrder).to.be.deep.eq(expectedOrder);
+                break;
+            }
+        }
+        expect(hasSeenMatch).to.be.true();
+    }
+}
 // tslint:disable-line:max-file-line-count

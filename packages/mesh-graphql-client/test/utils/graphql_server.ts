@@ -83,6 +83,7 @@ export class MeshHarness {
         return new Promise<string>((resolve, reject) => {
             const stream = jsonstream.parse(true);
             stream.on('data', data => {
+                // Note(albrow): Uncomment this if you need to see the output from the server.
                 // console.log(data);
                 const dataString = JSON.stringify(data);
                 if (pattern.test(dataString)) {

@@ -16,6 +16,8 @@ import { SubscriptionClient } from 'subscriptions-transport-ws';
 import * as ws from 'ws';
 import * as Observable from 'zen-observable';
 
+const defaultOrderQueryLimit = 100;
+
 export interface Stats {
     version: string;
     pubSubTopic: string;
@@ -54,6 +56,10 @@ interface AddOrdersResponse {
 
 interface OrderResponse {
     order: StringifiedOrderWithMetadata | null;
+}
+
+interface OrdersResponse {
+    orders: StringifiedOrderWithMetadata[];
 }
 
 interface OrderEventResponse {
@@ -287,6 +293,36 @@ const orderQuery = gql`
     }
 `;
 
+const ordersQuery = gql`
+    query Orders(
+        $filters: [OrderFilter!] = []
+        $sort: [OrderSort!] = [{ field: hash, direction: ASC }]
+        $limit: Int = 100
+    ) {
+        orders(filters: $filters, sort: $sort, limit: $limit) {
+            hash
+            chainId
+            exchangeAddress
+            makerAddress
+            makerAssetData
+            makerAssetAmount
+            makerFeeAssetData
+            makerFee
+            takerAddress
+            takerAssetData
+            takerAssetAmount
+            takerFeeAssetData
+            takerFee
+            senderAddress
+            feeRecipientAddress
+            expirationTimeSeconds
+            salt
+            signature
+            fillableTakerAssetAmount
+        }
+    }
+`;
+
 const orderEventsSubscription = gql`
     subscription {
         orderEvents {
@@ -327,6 +363,39 @@ const orderEventsSubscription = gql`
     }
 `;
 
+export type OrderField = Extract<keyof OrderWithMetadata, string>;
+
+export enum SortDirection {
+    Asc = 'ASC',
+    Desc = 'DESC',
+}
+
+export enum FilterKind {
+    Equal = 'EQUAL',
+    NotEqual = 'NOT_EQUAL',
+    Greater = 'GREATER',
+    GreaterOrEqual = 'GREATER_OR_EQUAL',
+    Less = 'LESS',
+    LessOrEqual = 'LESS_OR_EQUAL',
+}
+
+export interface OrderSort {
+    field: OrderField;
+    direction: SortDirection;
+}
+
+export interface OrderFilter {
+    field: OrderField;
+    kind: FilterKind;
+    value: OrderWithMetadata[OrderField];
+}
+
+export interface OrderQuery {
+    filters?: OrderFilter[];
+    sort?: OrderSort[];
+    limit?: number;
+}
+
 export class MeshGraphQLClient {
     // private readonly _subscriptionClient: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
@@ -364,14 +433,17 @@ export class MeshGraphQLClient {
             httpLink,
         );
         const errorLink = onError(({ graphQLErrors, networkError }) => {
-            // if (graphQLErrors) {
-            //     graphQLErrors.map(({ message, locations, path }) =>
-            //         console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`),
-            //     );
-            // }
-            // if (networkError) {
-            //     console.log(`[Network error]: ${networkError}`);
-            // }
+            if (graphQLErrors != null && graphQLErrors.length > 0) {
+                // Throw the first error.
+                // TODO(albrow): Is there a clean way to include all the errors?
+                const firstErr = graphQLErrors[0];
+                throw new Error(
+                    `[GraphQL error]: Message: ${firstErr.message}, Location: ${firstErr.locations}, Path: ${firstErr.path}`,
+                );
+            }
+            if (networkError != null) {
+                throw new Error(`[Network error]: ${networkError}`);
+            }
         });
         const link = from([errorLink, splitLink]);
         // this._subscriptionClient = wsSubClient;
@@ -387,7 +459,6 @@ export class MeshGraphQLClient {
     public async getStatsAsync(): Promise<Stats> {
         const resp: ApolloQueryResult<StatsResponse> = await this._client.query({
             query: statsQuery,
-            errorPolicy: 'none',
         });
         if (resp.data === undefined) {
             throw new Error('received no data');
@@ -403,7 +474,6 @@ export class MeshGraphQLClient {
                 orders: orders.map(toStringifiedSignedOrder),
                 pinned,
             },
-            errorPolicy: 'none',
         });
         if (resp.data == null) {
             throw new Error('received no data');
@@ -413,12 +483,11 @@ export class MeshGraphQLClient {
     }
 
     public async getOrderAsync(hash: string): Promise<OrderWithMetadata | null> {
-        const resp: FetchResult<OrderResponse> = await this._client.mutate({
-            mutation: orderQuery,
+        const resp: ApolloQueryResult<OrderResponse> = await this._client.query({
+            query: orderQuery,
             variables: {
                 hash,
             },
-            errorPolicy: 'none',
         });
         if (resp.data == null) {
             throw new Error('received no data');
@@ -427,6 +496,23 @@ export class MeshGraphQLClient {
             return null;
         }
         return fromStringifiedOrderWithMetadata(resp.data.order);
+    }
+
+    public async getOrdersAsync(
+        query: OrderQuery = { sort: [], filters: [], limit: defaultOrderQueryLimit },
+    ): Promise<OrderWithMetadata[]> {
+        const resp: ApolloQueryResult<OrdersResponse> = await this._client.query({
+            query: ordersQuery,
+            variables: {
+                sort: query.sort || [],
+                filters: query.filters?.map(convertFilterValue) || [],
+                limit: query.limit || defaultOrderQueryLimit,
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        return resp.data.orders.map(fromStringifiedOrderWithMetadata);
     }
 
     public onOrderEvents(): Observable<OrderEvent[]> {
@@ -597,6 +683,14 @@ function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEvent {
         ...event,
         timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
         order: fromStringifiedOrderWithMetadata(event.order),
+    };
+}
+
+// converts any filter.value of type BigNumber to string.
+function convertFilterValue(filter: OrderFilter): OrderFilter {
+    return {
+        ...filter,
+        value: BigNumber.isBigNumber(filter.value) ? filter.value.toString() : filter.value,
     };
 }
 
