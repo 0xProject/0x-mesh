@@ -5,6 +5,8 @@ import * as rimraf from 'rimraf';
 
 import { MeshGraphQLClient } from '../../src';
 
+const dataDir = '/tmp/mesh-graphql-integration-testing/data/';
+
 async function buildBinaryAsync(): Promise<void> {
     const cwd = join(__dirname, '../../../../../').normalize();
     const build = spawn('make', ['mesh'], { cwd });
@@ -20,7 +22,7 @@ async function buildBinaryAsync(): Promise<void> {
 
 async function cleanupAsync(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-        rimraf('./0x_mesh', err => {
+        rimraf(dataDir, err => {
             if (err != null) {
                 reject(err);
             }
@@ -106,9 +108,11 @@ export class MeshHarness {
     public constructor() {
         const env = Object.create(process.env);
         this._graphQLServerPort = MeshHarness._serverPort++;
+        env.DATA_DIR = dataDir;
         env.ETHEREUM_RPC_URL = 'http://localhost:8545';
         env.ETHEREUM_CHAIN_ID = '1337';
         env.VERBOSITY = '5';
+        env.USE_BOOTSTRAP_LIST = false;
         env.GRAPHQL_SERVER_ADDR = `localhost:${this._graphQLServerPort}`;
         this._mesh = spawn('mesh', [], { env });
         this._mesh.stderr.on('error', error => {
