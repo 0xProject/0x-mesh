@@ -8,6 +8,7 @@ import { Web3ProviderEngine } from '@0x/subproviders';
 import { DoneCallback, SignedOrder } from '@0x/types';
 import { BigNumber, hexUtils } from '@0x/utils';
 import { Web3Wrapper } from '@0x/web3-wrapper';
+import { gql } from '@apollo/client';
 import 'mocha';
 
 import {
@@ -130,7 +131,7 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
-        describe('#getStats', () => {
+        describe('#getStatsAsync', () => {
             it('Ensure that the stats are correct when no orders have been added', async () => {
                 const stats = await deployment.client.getStatsAsync();
 
@@ -242,6 +243,30 @@ blockchainTests.resets('GraphQLClient', env => {
                 const sortedExpectedOrders = sortOrdersByMakerAssetAmount(expectedOrders).reverse();
                 // tslint:disable-next-line: custom-no-magic-numbers
                 expect(gotOrders).to.be.deep.eq(sortedExpectedOrders.slice(3, 8));
+            });
+        });
+
+        describe('#rawQueryAsync', async () => {
+            it('runs a raw query and returns raw results', async () => {
+                const response = await deployment.client.rawQueryAsync({
+                    query: gql`
+                        {
+                            stats {
+                                numOrders
+                            }
+                        }
+                    `,
+                });
+                const expectedResponse = {
+                    data: {
+                        stats: {
+                            numOrders: 0,
+                        },
+                    },
+                    loading: false,
+                    networkStatus: 7,
+                };
+                expect(response).to.be.deep.eq(expectedResponse);
             });
         });
 

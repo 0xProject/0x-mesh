@@ -8,6 +8,8 @@ import {
     gql,
     InMemoryCache,
     NormalizedCacheObject,
+    OperationVariables,
+    QueryOptions,
 } from '@apollo/client/core';
 import { onError } from '@apollo/client/link/error';
 import { WebSocketLink } from '@apollo/client/link/ws';
@@ -528,6 +530,12 @@ export class MeshGraphQLClient {
             }
             return result.data.orderEvents.map(fromStringifiedOrderEvent);
         });
+    }
+
+    public async rawQueryAsync<T = any, TVariables = OperationVariables>(
+        options: QueryOptions<TVariables>,
+    ): Promise<ApolloQueryResult<T>> {
+        return this._client.query(options);
     }
 }
 
