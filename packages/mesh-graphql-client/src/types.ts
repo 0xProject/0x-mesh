@@ -1,6 +1,26 @@
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 
+export interface StatsResponse {
+    stats: StringifiedStats;
+}
+
+export interface AddOrdersResponse {
+    addOrders: StringifiedAddOrdersResults;
+}
+
+export interface OrderResponse {
+    order: StringifiedOrderWithMetadata | null;
+}
+
+export interface OrdersResponse {
+    orders: StringifiedOrderWithMetadata[];
+}
+
+export interface OrderEventResponse {
+    orderEvents: StringifiedOrderEvent[];
+}
+
 export interface Stats {
     version: string;
     pubSubTopic: string;
@@ -22,31 +42,6 @@ export interface Stats {
 export interface LatestBlock {
     number: BigNumber;
     hash: string;
-}
-
-export interface StringifiedLatestBlock {
-    number: string;
-    hash: string;
-}
-
-export interface StatsResponse {
-    stats: StringifiedStats;
-}
-
-export interface AddOrdersResponse {
-    addOrders: StringifiedAddOrdersResults;
-}
-
-export interface OrderResponse {
-    order: StringifiedOrderWithMetadata | null;
-}
-
-export interface OrdersResponse {
-    orders: StringifiedOrderWithMetadata[];
-}
-
-export interface OrderEventResponse {
-    orderEvents: StringifiedOrderEvent[];
 }
 
 export interface OrderWithMetadata extends SignedOrder {
@@ -205,6 +200,11 @@ export interface OrderQuery {
     limit?: number;
 }
 
+export interface StringifiedLatestBlock {
+    number: string;
+    hash: string;
+}
+
 export interface StringifiedStats {
     version: string;
     pubSubTopic: string;
@@ -221,22 +221,6 @@ export interface StringifiedStats {
     startOfCurrentUTCDay: string;
     ethRPCRequestsSentInCurrentUTCDay: number;
     ethRPCRateLimitExpiredRequests: number;
-}
-
-export function fromStringifiedStats(stats: StringifiedStats): Stats {
-    return {
-        ...stats,
-        latestBlock: fromStringifiedLatestBlock(stats.latestBlock),
-        maxExpirationTime: new BigNumber(stats.maxExpirationTime),
-        startOfCurrentUTCDay: new Date(stats.startOfCurrentUTCDay),
-    };
-}
-
-export function fromStringifiedLatestBlock(latestBlock: StringifiedLatestBlock): LatestBlock {
-    return {
-        ...latestBlock,
-        number: new BigNumber(latestBlock.number),
-    };
 }
 
 export interface StringifiedSignedOrder {
@@ -259,51 +243,9 @@ export interface StringifiedSignedOrder {
     signature: string;
 }
 
-export function toStringifiedSignedOrder(order: SignedOrder): StringifiedSignedOrder {
-    return {
-        ...order,
-        chainId: order.chainId.toString(),
-        makerAssetAmount: order.makerAssetAmount.toString(),
-        takerAssetAmount: order.takerAssetAmount.toString(),
-        makerFee: order.makerFee.toString(),
-        takerFee: order.takerFee.toString(),
-        expirationTimeSeconds: order.expirationTimeSeconds.toString(),
-        salt: order.salt.toString(),
-    };
-}
-
 export interface StringifiedOrderWithMetadata extends StringifiedSignedOrder {
     hash: string;
     fillableTakerAssetAmount: string;
-}
-
-export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMetadata): OrderWithMetadata {
-    return {
-        ...order,
-        // tslint:disable-next-line: custom-no-magic-numbers
-        chainId: Number.parseInt(order.chainId, 10),
-        makerAssetAmount: new BigNumber(order.makerAssetAmount),
-        takerAssetAmount: new BigNumber(order.takerAssetAmount),
-        makerFee: new BigNumber(order.makerFee),
-        takerFee: new BigNumber(order.takerFee),
-        expirationTimeSeconds: new BigNumber(order.expirationTimeSeconds),
-        salt: new BigNumber(order.salt),
-        fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
-    };
-}
-
-export function fromStringifiedSignedOrder(order: StringifiedSignedOrder): SignedOrder {
-    return {
-        ...order,
-        // tslint:disable-next-line: custom-no-magic-numbers
-        chainId: Number.parseInt(order.chainId, 10),
-        makerAssetAmount: new BigNumber(order.makerAssetAmount),
-        takerAssetAmount: new BigNumber(order.takerAssetAmount),
-        makerFee: new BigNumber(order.makerFee),
-        takerFee: new BigNumber(order.takerFee),
-        expirationTimeSeconds: new BigNumber(order.expirationTimeSeconds),
-        salt: new BigNumber(order.salt),
-    };
 }
 
 export interface StringifiedAddOrdersResults {
@@ -323,6 +265,90 @@ export interface StringifiedRejectedOrderResult {
     message: string;
 }
 
+export interface StringifiedOrderEvent {
+    timestamp: string;
+    order: StringifiedOrderWithMetadata;
+    endState: OrderEventEndState;
+    fillableTakerAssetAmount: BigNumber;
+    contractEvents: ContractEvent[];
+}
+
+/**
+ * Converts StringifiedStats to Stats
+ */
+export function fromStringifiedStats(stats: StringifiedStats): Stats {
+    return {
+        ...stats,
+        latestBlock: fromStringifiedLatestBlock(stats.latestBlock),
+        maxExpirationTime: new BigNumber(stats.maxExpirationTime),
+        startOfCurrentUTCDay: new Date(stats.startOfCurrentUTCDay),
+    };
+}
+
+/**
+ * Converts StringifiedLatestBlock to LatestBlock
+ */
+export function fromStringifiedLatestBlock(latestBlock: StringifiedLatestBlock): LatestBlock {
+    return {
+        ...latestBlock,
+        number: new BigNumber(latestBlock.number),
+    };
+}
+
+/**
+ * Converts SignedOrder to StringifiedSignedOrder
+ */
+export function toStringifiedSignedOrder(order: SignedOrder): StringifiedSignedOrder {
+    return {
+        ...order,
+        chainId: order.chainId.toString(),
+        makerAssetAmount: order.makerAssetAmount.toString(),
+        takerAssetAmount: order.takerAssetAmount.toString(),
+        makerFee: order.makerFee.toString(),
+        takerFee: order.takerFee.toString(),
+        expirationTimeSeconds: order.expirationTimeSeconds.toString(),
+        salt: order.salt.toString(),
+    };
+}
+
+/**
+ * Converts StringifiedOrderWithMetadata to OrderWithMetadata
+ */
+export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMetadata): OrderWithMetadata {
+    return {
+        ...order,
+        // tslint:disable-next-line: custom-no-magic-numbers
+        chainId: Number.parseInt(order.chainId, 10),
+        makerAssetAmount: new BigNumber(order.makerAssetAmount),
+        takerAssetAmount: new BigNumber(order.takerAssetAmount),
+        makerFee: new BigNumber(order.makerFee),
+        takerFee: new BigNumber(order.takerFee),
+        expirationTimeSeconds: new BigNumber(order.expirationTimeSeconds),
+        salt: new BigNumber(order.salt),
+        fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
+    };
+}
+
+/**
+ * Converts StringifiedSignedOrder to SignedOrder
+ */
+export function fromStringifiedSignedOrder(order: StringifiedSignedOrder): SignedOrder {
+    return {
+        ...order,
+        // tslint:disable-next-line: custom-no-magic-numbers
+        chainId: Number.parseInt(order.chainId, 10),
+        makerAssetAmount: new BigNumber(order.makerAssetAmount),
+        takerAssetAmount: new BigNumber(order.takerAssetAmount),
+        makerFee: new BigNumber(order.makerFee),
+        takerFee: new BigNumber(order.takerFee),
+        expirationTimeSeconds: new BigNumber(order.expirationTimeSeconds),
+        salt: new BigNumber(order.salt),
+    };
+}
+
+/**
+ * Converts StringifiedAddOrdersResults to AddOrdersResults
+ */
 export function fromStringifiedAddOrdersResults(results: StringifiedAddOrdersResults): AddOrdersResults {
     return {
         accepted: results.accepted.map(fromStringifiedAcceptedOrderResult),
@@ -330,6 +356,9 @@ export function fromStringifiedAddOrdersResults(results: StringifiedAddOrdersRes
     };
 }
 
+/**
+ * Converts StringifiedAcceptedOrderResult to AcceptedOrderResult
+ */
 export function fromStringifiedAcceptedOrderResult(
     acceptedResult: StringifiedAcceptedOrderResult,
 ): AcceptedOrderResult {
@@ -339,6 +368,9 @@ export function fromStringifiedAcceptedOrderResult(
     };
 }
 
+/**
+ * Converts StringifiedRejectedOrderResult to RejectedOrderResult
+ */
 export function fromStringifiedRejectedOrderResult(
     rejectedResult: StringifiedRejectedOrderResult,
 ): RejectedOrderResult {
@@ -348,14 +380,9 @@ export function fromStringifiedRejectedOrderResult(
     };
 }
 
-export interface StringifiedOrderEvent {
-    timestamp: string;
-    order: StringifiedOrderWithMetadata;
-    endState: OrderEventEndState;
-    fillableTakerAssetAmount: BigNumber;
-    contractEvents: ContractEvent[];
-}
-
+/**
+ * Converts StringifiedOrderEvent to OrderEvent
+ */
 export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEvent {
     return {
         ...event,
@@ -364,7 +391,9 @@ export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEv
     };
 }
 
-// converts any filter.value of type BigNumber to string.
+/**
+ * Converts filter.value the the appropriate JSON/GraphQL type (e.g. BigNumber gets converted to string).
+ */
 export function convertFilterValue(filter: OrderFilter): OrderFilter {
     return {
         ...filter,
