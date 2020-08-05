@@ -18,14 +18,19 @@ import (
 // standaloneConfig contains configuration options specific to running 0x Mesh
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
+	// EnableGraphQLServer determines whether or not to enable the GraphQL server.
+	// If enabled, GraphQL queries can be sent to GraphQLServerAddr at the /graphql
+	// URL. By default, the GraphQL server is disabled.
+	EnableGraphQLServer bool `envvar:"ENABLE_GRAPHQL_SERVER" default:"false"`
 	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
-	// By default, 0x Mesh will listen on localhost and port 60557.
-	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"localhost:60557"`
-	// EnableGraphiQL determines whether or not to enable GraphiQL, an interactive
-	// GraphQL IDE which can be accessed by visiting /graphiql in a browser. See
-	// https://github.com/graphql/graphiql for more information. By default, GraphiQL
+	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and
+	// port 60557.
+	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"0.0.0.0:60557"`
+	// EnableGraphQLPlayground determines whether or not to enable GraphiQL, an interactive
+	// GraphQL playground which can be accessed by visiting GraphQLServerAddr in a browser.
+	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
 	// is disabled.
-	EnableGraphiQL bool `envvar:"ENABLE_GRAPHIQL" default:"false"`
+	EnableGraphQLPlayground bool `envvar:"ENABLE_GRAPHQL_PLAYGROUND" default:"false"`
 }
 
 func main() {
@@ -61,16 +66,18 @@ func main() {
 		}
 	}()
 
-	// Start GraphQL server.
 	graphQLErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
-		if err := serveGraphQL(ctx, app, config.GraphQLServerAddr, config.EnableGraphiQL); err != nil {
-			graphQLErrChan <- err
-		}
-	}()
+	if config.EnableGraphQLServer {
+		// Start GraphQL server.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
+			if err := serveGraphQL(ctx, app, config.GraphQLServerAddr, config.EnableGraphQLPlayground); err != nil {
+				graphQLErrChan <- err
+			}
+		}()
+	}
 
 	// Block until there is an error or the app is closed.
 	select {

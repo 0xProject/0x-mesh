@@ -113,6 +113,7 @@ export class MeshHarness {
         env.ETHEREUM_CHAIN_ID = '1337';
         env.VERBOSITY = '5';
         env.USE_BOOTSTRAP_LIST = false;
+        env.ENABLE_GRAPHQL_SERVER = true;
         env.GRAPHQL_SERVER_ADDR = `localhost:${this._graphQLServerPort}`;
         this._mesh = spawn('mesh', [], { env });
         this._mesh.stderr.on('error', error => {
