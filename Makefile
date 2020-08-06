@@ -146,4 +146,5 @@ docker-mesh-fluent-bit:
 
 .PHONY: docker-mesh-bridge
 docker-mesh-bridge: generate
-	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
+	@echo 'WARN: mesh-bridge is currently disabled since it has not been updated to use the new GraphQL API' 
+	# docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
