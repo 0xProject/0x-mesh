@@ -5,7 +5,9 @@
 //to flow to another
 package main
 
-// TODO(albrow): Update this to use the new GraphQL API.
+// Note(albrow): If we want to use mesh-bridge in the future we will need to update it to
+// use the new GraphQL API. Considered low-priority as of the time of writing this comment.
+
 // import (
 // 	"context"
 // 	"time"
