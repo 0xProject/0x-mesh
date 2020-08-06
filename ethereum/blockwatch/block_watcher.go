@@ -92,15 +92,19 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(retentionLimit int, config Config) *Watcher {
+func New(retentionLimit int, config Config) (*Watcher, error) {
+	existingMiniHeaders, err := config.DB.FindMiniHeaders(nil)
+	if err != nil {
+		return nil, err
+	}
 	return &Watcher{
 		pollingInterval: config.PollingInterval,
 		db:              config.DB,
-		stack:           simplestack.New(retentionLimit, []*types.MiniHeader{}),
+		stack:           simplestack.New(retentionLimit, existingMiniHeaders),
 		client:          config.Client,
 		withLogs:        config.WithLogs,
 		topics:          config.Topics,
-	}
+	}, nil
 }
 
 func (w *Watcher) GetNumberOfBlocksBehind(ctx context.Context) (int, int, error) {

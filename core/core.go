@@ -337,7 +337,10 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// Initialize the order validator
 	orderValidator, err := ordervalidator.New(

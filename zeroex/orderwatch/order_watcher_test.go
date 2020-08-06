@@ -1959,7 +1959,7 @@ func setupOrderWatcherWithValidator(ctx context.Context, t *testing.T, ethRPCCli
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(maxMiniHeaders, blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(maxMiniHeaders, blockWatcherConfig)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		DB:                database,

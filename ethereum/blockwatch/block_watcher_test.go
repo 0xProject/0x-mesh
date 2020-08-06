@@ -519,7 +519,9 @@ func setupOrderWatcher(t *testing.T, ctx context.Context, client Client) *Watche
 	require.NoError(t, err)
 	config.Client = client
 	config.DB = database
-	return New(blockRetentionLimit, config)
+	watcher, err := New(blockRetentionLimit, config)
+	require.NoError(t, err)
+	return watcher
 }
 
 func aRange(from, to int) string {
