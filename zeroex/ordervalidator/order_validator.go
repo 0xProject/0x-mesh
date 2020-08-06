@@ -280,7 +280,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 			// goroutine to begin processing.
 			case semaphoreChan <- struct{}{}:
 				defer func() { <-semaphoreChan }()
-				o.BatchOnchainValidation(ctx, signedOrders, validationBlock, areNewOrders, validationResults)
+				o.batchOnchainValidation(ctx, signedOrders, validationBlock, areNewOrders, validationResults)
 			}
 		}(signedOrders)
 	}
@@ -403,11 +403,11 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 	return offchainValidSignedOrders, rejectedOrderInfos
 }
 
-// BatchOnchainValidation validates a list of signed orders using the deployed
+// batchOnchainValidation validates a list of signed orders using the deployed
 // DevUtils contract. This validation performs signature validation, checks balances
 // and allowances, and identifies other issues in asset data (for example, DevUtils
 // will invalidate MultiAssetProxy orders that contain duplicate ERC721 asset data).
-func (o *OrderValidator) BatchOnchainValidation(
+func (o *OrderValidator) batchOnchainValidation(
 	ctx context.Context,
 	signedOrders []*zeroex.SignedOrder,
 	validationBlock *types.MiniHeader,
