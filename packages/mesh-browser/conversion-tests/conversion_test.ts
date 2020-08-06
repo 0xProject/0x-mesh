@@ -1043,11 +1043,10 @@ function testValidationResults(validationResults: WrapperValidationResults[]): v
             '0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33',
     );
     printer('rejected.kind', validationResults[3].rejected[0].kind === 'MESH_ERROR');
-    printer('rejected.status.code', validationResults[3].rejected[0].status.code === 'CoordinatorEndpointNotFound');
+    printer('rejected.status.code', validationResults[3].rejected[0].status.code === 'EthRPCRequestFailed');
     printer(
         'rejected.status.message',
-        validationResults[3].rejected[0].status.message ===
-            'corresponding coordinator endpoint not found in CoordinatorRegistry contract',
+        validationResults[3].rejected[0].status.message === 'network request to Ethereum RPC endpoint failed',
     );
 }
 

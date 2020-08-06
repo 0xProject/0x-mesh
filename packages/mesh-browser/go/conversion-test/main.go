@@ -647,7 +647,7 @@ func setGlobals() {
 								Signature: common.FromHex("0x012761a3ed31b43c8780e905a260a35faefcc527be7516aa11c0256729b5b351bc33"),
 							},
 							Kind:   ordervalidator.MeshError,
-							Status: ordervalidator.ROCoordinatorEndpointNotFound,
+							Status: ordervalidator.ROEthRPCRequestFailed,
 						},
 					},
 				},

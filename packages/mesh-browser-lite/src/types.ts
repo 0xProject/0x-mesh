@@ -197,8 +197,6 @@ export interface ContractAddresses {
     erc20Proxy: string;
     erc721Proxy: string;
     erc1155Proxy: string;
-    coordinator?: string;
-    coordinatorRegistry?: string;
     weth9?: string;
     zrxToken?: string;
 }
@@ -629,7 +627,6 @@ export enum RejectedOrderKind {
     ZeroExValidation = 'ZEROEX_VALIDATION',
     MeshError = 'MESH_ERROR',
     MeshValidation = 'MESH_VALIDATION',
-    CoordinatorError = 'COORDINATOR_ERROR',
 }
 
 /**
