@@ -35,6 +35,31 @@ func dbOptions() *db.Options {
 	return options
 }
 
+// TestNewWatcher ensures that any existing blocks in the database are added to
+// simplestack when New is called.
+func TestNewWatcher(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+	config.DB = database
+
+	miniHeader := &types.MiniHeader{
+		Hash:   common.Hash{},
+		Number: big.NewInt(1),
+	}
+	added, _, err := database.AddMiniHeaders([]*types.MiniHeader{miniHeader})
+	require.NoError(t, err)
+	require.Len(t, added, 1)
+
+	watcher, err := New(db.TestOptions().MaxMiniHeaders, config)
+	require.NoError(t, err)
+
+	miniHeaders := watcher.stack.PeekAll()
+	assert.Len(t, miniHeaders, 1)
+	assert.Equal(t, miniHeader, miniHeaders[0])
+}
+
 func TestWatcher(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
