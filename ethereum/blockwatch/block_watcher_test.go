@@ -69,7 +69,7 @@ func TestNewWatcher(t *testing.T) {
 				found = true
 			}
 		}
-		assert.True(t, found)
+		assert.True(t, found, "miniHeader with hash %q was not stored in watcher.stack", expectedMiniHeader.Hash.Hex())
 	}
 }
 
