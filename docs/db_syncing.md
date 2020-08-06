@@ -39,7 +39,7 @@ Since there might also be orders added to the database that Mesh doesn't know ab
 
 | Code                                                                                                                                                                                                                    | Reason                        | Should be retried? |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------ |
-| EthRPCRequestFailed, CoordinatorRequestFailed, CoordinatorEndpointNotFound, InternalError                                                                                                                               | Failure to validate the order | Yes                |
+| EthRPCRequestFailed, InternalError                                                                                                                                                                                      | Failure to validate the order | Yes                |
 | MaxOrderSizeExceeded, OrderMaxExpirationExceeded, OrderForIncorrectChain, SenderAddressNotAllowed                                                                                                                       | Failed Mesh-specific criteria | No                 |
 | OrderHasInvalidMakerAssetData, OrderHasInvalidTakerAssetData, OrderHasInvalidSignature, OrderUnfunded, OrderCancelled, OrderFullyFilled, OrderHasInvalidMakerAssetAmount, OrderHasInvalidTakerAssetAmount, OrderExpired | Invalid or unfillable order   | No                 |
 

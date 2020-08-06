@@ -10,8 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -20,16 +18,13 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -193,6 +188,39 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
 }
 
+func TestBatchOffchainValidateZeroFeeAmount(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	makerFeeAssetData := common.Hex2Bytes("deadbeef")
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedOrders := []*zeroex.SignedOrder{
+		signedTestOrder,
+	}
+
+	rateLimiter := ratelimit.NewUnlimited()
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
+	require.NoError(t, err)
+
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+
+	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	assert.Len(t, accepted, 1)
+	require.Len(t, rejected, 0)
+	signedTestOrder.ResetHash()
+	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	actualOrderHash, err := accepted[0].ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, expectedOrderHash, actualOrderHash)
+}
+
 func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -202,7 +230,11 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	defer teardownSubTest(t)
 	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
 	makerFeeAssetData := common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000")
-	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedTestOrder := scenario.NewSignedTestOrder(
+		t,
+		orderopts.MakerFeeAssetData(makerFeeAssetData),
+		orderopts.MakerFee(big.NewInt(1)),
+	)
 	signedOrders := []*zeroex.SignedOrder{
 		signedTestOrder,
 	}
@@ -319,90 +351,6 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
-	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-}
-
-func TestBatchValidateUnregisteredCoordinator(t *testing.T) {
-	// FeeRecipientAddress is an address for which there is no entry in the Coordinator registry
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SenderAddress(ganacheAddresses.Coordinator), orderopts.FeeRecipientAddress(constants.GanacheAccount4))
-	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
-	orderHash, err := signedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	signedOrders := []*zeroex.SignedOrder{
-		signedOrder,
-	}
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
-	assert.Len(t, validationResults.Accepted, 0)
-	require.Len(t, validationResults.Rejected, 1)
-	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
-	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-}
-
-func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	signedOrder := scenario.NewSignedTestOrder(t,
-		orderopts.SenderAddress(ganacheAddresses.Coordinator),
-		orderopts.SetupMakerState(true),
-		orderopts.FeeRecipientAddress(constants.GanacheAccount3),
-	)
-	orderHash, err := signedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	signedOrders := []*zeroex.SignedOrder{
-		signedOrder,
-	}
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	// generate a test server so we can capture and inspect the request
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(200)
-		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
-		require.NoError(t, err)
-	}))
-	defer testServer.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	opts := &bind.TransactOpts{
-		From:    signedOrder.FeeRecipientAddress,
-		Context: ctx,
-		Signer: func(s types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			testSigner := signer.NewTestSigner()
-			signature, err := testSigner.(*signer.TestSigner).SignTx(s.Hash(tx).Bytes(), address)
-			if err != nil {
-				return nil, err
-			}
-			return tx.WithSignature(s, signature)
-		},
-	}
-
-	coordinatorRegistryAddress := ganacheAddresses.CoordinatorRegistry
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
-	require.NoError(t, err)
-	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
-	require.NoError(t, err)
-
-	ctx = context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
-	assert.Len(t, validationResults.Accepted, 0)
-	require.Len(t, validationResults.Rejected, 1)
-	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
