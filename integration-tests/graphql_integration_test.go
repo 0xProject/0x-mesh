@@ -46,12 +46,12 @@ func TestAddOrdersSuccess(t *testing.T) {
 	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
 	time.Sleep(500 * time.Millisecond)
 
-	// Send the "AddOrders" request to the rpc server.
+	// Send the "AddOrders" request to the GraphQL server.
 	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
 	require.NoError(t, err)
 
 	// Ensure that the validation results contain only the order that was
-	// sent to the rpc server and that the order was marked as valid.
+	// sent to the GraphQL server and that the order was marked as valid.
 	require.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
 	accepted := validationResponse.Accepted[0]

@@ -308,7 +308,7 @@ func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.Signed
 }
 
 // A holder type for parsing logged OrderEvents. These are received by either
-// an RPC subscription or in the TypeScript bindings and are not usually logged
+// a GraphQL subscription or in the TypeScript bindings and are not usually logged
 // by Mesh. They need to be explicitly logged.
 type orderEventLog struct {
 	OrderHash string `json:"orderHash"`

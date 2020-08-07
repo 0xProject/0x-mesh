@@ -53,8 +53,8 @@ services:
         environment:
             - VERBOSITY=5
             - ETHEREUM_CHAIN_ID=1
-            - WS_RPC_ADDR=mesh:60557
-            - HTTP_RPC_ADDR=mesh:60556
+            - ENABLE_GRAPHQL_SERVER=true
+            - GRAPHQL_SERVER_ADDR=mesh:60557
             # Set your backing Ethereum JSON RPC endpoint below
             - ETHEREUM_RPC_URL=
             - BLOCK_POLLING_INTERVAL=5s
@@ -90,37 +90,38 @@ services:
 
 In most cases, the only change you need to make to the **docker-compose.yml**
 file is to set `ETHEREUM_RPC_URL` to your own Ethereum JSON RPC endpoint. The
-`WS_RPC_ADDR` and `HTTP_RPC_ADDR` above will allow any Docker containers running in the same Docker
-Compose file to access the Mesh RPC API via
+`GRAPHQL_SERVER_ADDR` above will allow any Docker containers running in the same Docker
+Compose file to access the Mesh GraphQL API via
 [links](https://docs.docker.com/compose/networking/#links). To use this feature,
 be sure to add the following line to any containers you wish to access the Mesh
-RPC API from:
+GraphQL API from:
 
 ```
 links:
     - mesh
 ```
 
-You can then use the URL `ws://mesh:60557` to access the RPC API.
+You can then use the URL `http://mesh:60557/graphql` or `ws://mesh:60557/graphql`
+to access the GraphQL API.
 
-Alternatively, if you want to open up your Mesh RPC API to the public internet,
-you can set `WS_RPC_ADDR=0.0.0.0:60557` and `HTTP_RPC_ADDR=0.0.0.0:60556`. If
-you choose to go this route, we strongly recommend using an external firewall
-to restrict who can access your RPC API.
+Alternatively, if you want to open up your Mesh GraphQL API to the public internet,
+you can set `GRAPHQL_SERVER_ADDR=0.0.0.0:60557` If you choose to go this route,
+we strongly recommend using a firewall or VPC to restrict who can access your
+GraphQL API.
 
 ### Deploying with Docker Machine
 
 We are now ready to deploy our instance. Before we can continue, you will need
 to set up an account with the cloud hosting provider of your choice, and
 retrieve your access token/key/secret. We will use them to create a new machine
-with name `mesh-beta`. Docker has great documentation on doing all of that for
+with name `mesh-node`. Docker has great documentation on doing all of that for
 [DigitalOcean](https://docs.docker.com/machine/examples/ocean/) and
 [AWS](https://docs.docker.com/machine/examples/aws/). Instead of naming the
-machine `docker-sandbox` as in those examples, let's name ours `mesh-beta` as
+machine `docker-sandbox` as in those examples, let's name ours `mesh-node` as
 shown below.
 
 ```bash
-docker-machine create --driver digitalocean --digitalocean-access-token xxxxx mesh-beta
+docker-machine create --driver digitalocean --digitalocean-access-token xxxxx mesh-node
 ```
 
 Make sure you replaced `xxxxx` with your access token. This command will spin up
@@ -135,15 +136,15 @@ docker-machine ls
 You should see something like:
 
 ```
-mesh-beta     -        digitalocean   Running   tcp://162.31.121.332:2376            v18.09.7
+mesh-node     -        digitalocean   Running   tcp://162.31.121.332:2376            v18.09.7
 ```
 
 Now comes the Docker Machine magic. By running the following commands, we can
 ask Docker Machine to let us execute any Docker command in our local shell AS IF
-we were executing them directly on the `mesh-beta` machine:
+we were executing them directly on the `mesh-node` machine:
 
 ```bash
-eval $(docker-machine env mesh-beta)
+eval $(docker-machine env mesh-node)
 ```
 
 Presto! We are now ready to spin up our telemetry-enabled Mesh node! We do this
@@ -163,6 +164,12 @@ docker logs <fluent-bit-container-id> -f
 
 Instead of reading them from the `0xorg/mesh` container.
 
+If you need to see the IP address of your Mesh node, use:
+
+```
+docker-machine ip mesh-node
+```
+
 Finally, in order to prevent our log aggregation stack from getting overloaded,
 we whitelist the peers that are allowed to send us logs. Look for a field in the
 logs called `myPeerID`:
@@ -174,16 +181,10 @@ logs called `myPeerID`:
 ```
 
 Ping us in [Discord](https://discord.gg/HF7fHwk) and let us know your peer ID.
-You can DM `fabio#1058`, `Alex Browne | 0x#2975` or `ovrmrrw#0454` and we'll
+You can DM `alex_towle#0282` or `ovrmrrw#0454` and we'll
 whitelist your node :)
 
 I hope that was easy enough! If you ran into any issues, please ping us in the
 `#mesh` channel on [Discord](https://discord.gg/HF7fHwk). To learn more about
-connecting to your Mesh node's JSON RPC interface, check out the
-[JSON-RPC API Documentation](rpc_api.md). Your node's JSON RPC endpoint
-should be available at `ws://<your-ip-address>:60557` and you can discover your
-machine's IP address by running:
-
-```
-docker-machine ip mesh-beta
-```
+connecting to your Mesh node's GraphQL API, check out the
+[GraphQL API Documentation](graphql_api.md).

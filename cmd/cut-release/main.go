@@ -98,15 +98,14 @@ func updateHardCodedVersions(version string) {
 	newBrowserLiteDependencyString := fmt.Sprintf(`"@0x/mesh-browser-lite": "^%s"`, version)
 	newBrowserDependencyString := fmt.Sprintf(`"@0x/mesh-browser": "^%s"`, version)
 
-	// TODO(albrow): Update this to point to the new GraphQL package.
-	// Update `packages/mesh-rpc-client/package.json`
-	// tsClientPackageJSONPath := "packages/mesh-rpc-client/package.json"
-	// regex := `"version": "(.*)"`
-	// updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
+	// Update `packages/mesh-graphql-client/package.json`
+	tsClientPackageJSONPath := "packages/mesh-graphql-client/package.json"
+	regex := `"version": "(.*)"`
+	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
 	// Update `packages/mesh-browser-lite/package.json`
 	browserLitePackageJSONPath := "packages/mesh-browser-lite/package.json"
-	regex := `"version": "(.*)"`
+	regex = `"version": "(.*)"`
 	updateFileWithRegex(browserLitePackageJSONPath, regex, newVersionString)
 
 	// Update `packages/mesh-browser/package.json`

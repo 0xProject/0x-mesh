@@ -89,12 +89,12 @@ func TestBrowserIntegration(t *testing.T) {
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
-	// In a separate goroutine, send standaloneOrder through the RPC endpoint for
+	// In a separate goroutine, send standaloneOrder through the GraphQL API for
 	// the standalone node.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Wait for the WS RPC server to start before sending the order.
+		// Wait for the GraphQL server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "starting GraphQL server")
 		require.NoError(t, err, "GraphQL server didn't start")
 		graphQLClient := gqlclient.New(graphQLServerURL)

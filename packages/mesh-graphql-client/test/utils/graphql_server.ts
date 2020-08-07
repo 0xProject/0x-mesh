@@ -42,8 +42,8 @@ export interface MeshDeployment {
 const serverStartWaitTimeMs = 100;
 
 /**
- * Start a RPC client connected to a RPC server that is ready for use.
- * @return A mesh deployment including a RPC client, mesh manager, and the
+ * Start a GraphQL client connected to a GraphQL server that is ready for use.
+ * @return A mesh deployment including a GraphQL client, mesh manager, and the
  *         peer ID of the mesh process that is running in the mesh manager.
  */
 export async function startServerAndClientAsync(): Promise<MeshDeployment> {

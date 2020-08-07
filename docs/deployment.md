@@ -14,36 +14,57 @@ node.
 -   Rinkeby
 -   [Ganache snapshot](https://cloud.docker.com/u/0xorg/repository/docker/0xorg/ganache-cli)
 
-## Running Mesh
+## Enabling Telemetry
 
-If you would like to participate in the Mesh Beta, check out [this guide](deployment_with_telemetry.md) to deploying a telemetry-enabled Mesh node.
+You can optionally help us develop and maintain Mesh by automatically sending your logs, which
+requires a few extra steps. If you are interested in enabling telemetery, check out
+[this guide](deployment_with_telemetry.md).
+
+## Running Mesh
 
 Make sure you have Docker installed. Then run:
 
 ```bash
 docker run \
 --restart unless-stopped \
--p 60557:60557 \
 -p 60558:60558 \
 -p 60559:60559 \
 -e ETHEREUM_CHAIN_ID="1" \
 -e ETHEREUM_RPC_URL="{your_ethereum_rpc_url}" \
 -e VERBOSITY=5 \
 -v {local_path_on_host_machine}/0x_mesh:/usr/mesh/0x_mesh \
-0xorg/mesh:latest
+0xorg/mesh:{version}
 ```
 
-You should replace `{your_ethereum_rpc_url}` with the RPC endpoint for an
-Ethereum node and `{local_path_on_host_machine}` with a directory on your host
-machine where all Mesh-related data will be stored.
+1. Replace `{your_ethereum_rpc_url}` with the RPC endpoint for an Ethereum node (e.g. Infura or Alchemy).
+2. Replace and `{local_path_on_host_machine}` with a directory on your host machine where all Mesh-related data will be stored.
+3. Replace `{version}` with [the latest version](https://github.com/0xProject/0x-mesh/releases) of Mesh.
 
 **Notes:**
 
--   Ports 60557, 60558, and 60559 are the default ports used for the JSON RPC endpoint, communicating with peers over TCP, and communicating with peers over WebSockets, respectively.
+-   Ports 60558 and 60559 are the default ports used for communicating with other peers in the network.
 -   In order to disable P2P order discovery and sharing, set `USE_BOOTSTRAP_LIST` to `false`.
--   Running a VPN may interfere with Mesh. If you are having difficulty connecting to peers, disable your VPN.
 -   If you are running against a POA testnet (e.g., Kovan), you might want to shorten the `BLOCK_POLLING_INTERVAL` since blocks are mined more frequently then on mainnet. If you do this, your node will use more Ethereum RPC calls, so you will also need to adjust the `ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC` upwards (_warning:_ changing this setting can exceed the limits of your Ethereum RPC provider).
 -   If you want to run the mesh in "detached" mode, add the `-d` switch to the docker run command so that your console doesn't get blocked.
+
+## Enabling the GraphQL API
+
+In order to enable the GraphQL API, you just need to add these additional arguments
+
+```bash
+-p 60557:60557 \
+-e ENABLE_GRAPHQL_SERVER=true \
+```
+
+Additionally, to enable the GraphQL playground, just add:
+
+```
+-e ENABLE_GRAPHQL_PLAYGROUND=true \
+```
+
+Note that the GraphQL API is intended to be _private_. If you enable the GraphQL API on
+a production server, we recommend using a firewall or VPC to prevent unauthorized access.
+See [the GraphQL API page](graphql_api.md) for more information.
 
 ## Persisting State
 
@@ -61,7 +82,6 @@ struct. They are copied here for convenience, although the source code is
 authoritative.
 
 ```go
-type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"2"`
 	// DataDir is the directory to use for persisting all data, including the
@@ -122,14 +142,15 @@ type Config struct {
 	// is typically only needed for testing on custom chains/networks. The given
 	// addresses are added to the default list of addresses for known chains/networks and
 	// overriding any contract addresses for known chains/networks is not allowed. The
-	// addresses for exchange, devUtils, erc20Proxy, and erc721Proxy are required
+	// addresses for exchange, devUtils, erc20Proxy, erc721Proxy and erc1155Proxy are required
 	// for each chain/network. For example:
 	//
 	//    {
 	//        "exchange":"0x48bacb9266a570d521063ef5dd96e61686dbe788",
 	//        "devUtils": "0x38ef19fdf8e8415f18c307ed71967e19aac28ba1",
 	//        "erc20Proxy": "0x1dc4c1cefef38a777b15aa20260a54e584b16c48",
-	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"
+	//        "erc721Proxy": "0x1d7022f5b17d2f8b695918fb48fa1089c9f85401",
+	//        "erc1155Proxy": "0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"
 	//    }
 	//
 	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
@@ -158,18 +179,30 @@ type Config struct {
 	// all the required fields) are automatically included. For more information
 	// on JSON Schemas, see https://json-schema.org/
 	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
-}
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
 ```
 
-There is one additional environment variable in the [main entrypoint for the
+There are some additional environment variable in the [main entrypoint for the
 Mesh executable](../cmd/mesh/main.go):
 
 ```go
+// standaloneConfig contains configuration options specific to running 0x Mesh
+// in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
-	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
-	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
-	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
-	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
-	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`}
+	// EnableGraphQLServer determines whether or not to enable the GraphQL server.
+	// If enabled, GraphQL queries can be sent to GraphQLServerAddr at the /graphql
+	// URL. By default, the GraphQL server is disabled.
+	EnableGraphQLServer bool `envvar:"ENABLE_GRAPHQL_SERVER" default:"false"`
+	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
+	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and
+	// port 60557.
+	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"0.0.0.0:60557"`
+	// EnableGraphQLPlayground determines whether or not to enable GraphiQL, an interactive
+	// GraphQL playground which can be accessed by visiting GraphQLServerAddr in a browser.
+	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
+	// is disabled.
+	EnableGraphQLPlayground bool `envvar:"ENABLE_GRAPHQL_PLAYGROUND" default:"false"`
+}
 ```

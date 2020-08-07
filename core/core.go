@@ -970,7 +970,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 
 		log.WithFields(log.Fields{
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
-		}).Debug("added new valid order via RPC or browser callback")
+		}).Debug("added new valid order via GraphQL or browser callback")
 
 		// Share the order with our peers.
 		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {

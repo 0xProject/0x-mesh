@@ -1,8 +1,8 @@
 // +build !js
 
 // package mesh is a standalone 0x Mesh node that can be run from the command
-// line. It uses environment variables for configuration and exposes a JSON RPC
-// endpoint over WebSockets.
+// line. It uses environment variables for configuration and optionally exposes
+// a GraphQL API for developers to interact with.
 package main
 
 import (

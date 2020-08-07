@@ -39,12 +39,12 @@ in the network and begin receiving orders from and sending orders to them. You
 do not need to know the identities (e.g., IP address or domain name) of any
 peers in the network ahead of time and they do not need to know about you.
 
-Developers can use the JSON-RPC API to interact with a Mesh node that they
-control. The API allows you to send orders into the network, receive any new
-orders, and get notified when the status of an existing order changes (e.g. when
-it is filled, canceled, or expired). Under the hood, Mesh performs efficient
-order validation and order book pruning, which takes out a lot of the hard work
-for developers.
+Developers can use the GraphQL API to interact with a Mesh node that they
+control. The API allows you to send orders into the network, query for existing
+orders, and get notified when an order is added or the status of an existing
+order changes (e.g. when it is filled, canceled, or expired). Under the hood,
+Mesh performs efficient order validation and order book pruning, which takes out
+a lot of the hard work for developers.
 
 ## Documentation
 
