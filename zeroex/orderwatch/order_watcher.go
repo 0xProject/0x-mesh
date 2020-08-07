@@ -132,7 +132,6 @@ func New(config Config) (*Watcher, error) {
 		blockEventsChan:            make(chan []*blockwatch.Event, 100),
 		atLeastOneBlockProcessed:   make(chan struct{}),
 		didProcessABlock:           false,
-		recentlyValidatedOrders:    []*types.OrderWithMetadata{},
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
