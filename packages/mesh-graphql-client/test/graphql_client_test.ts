@@ -63,7 +63,8 @@ blockchainTests.resets('GraphQLClient', env => {
             const erc20ProxyAddress = getContractAddressesForChainOrThrow(chainId).erc20Proxy;
 
             // Configure two tokens and an order factory with a maker address so
-            // that valid orders can be created easily in the tests.
+            // that valid orders can be created easily in the tests. The two dummy tokens are
+            // used in the makerToken and feeToken fields.
             const makerToken = new DummyERC20TokenContract('0x34d402f14d58e001d8efbe6585051bf9706aa064', provider);
             const feeToken = new DummyERC20TokenContract('0xcdb594a32b1cc3479d8746279712c39d18a07fc0', provider);
             const mintAmount = new BigNumber('100e18');
@@ -140,7 +141,7 @@ blockchainTests.resets('GraphQLClient', env => {
                 // the block number of the stats in this test a priori.
                 expect(stats.latestBlock).to.not.be.undefined();
                 // tslint:disable-next-line:no-non-null-assertion
-                // expect(stats.latestBlock!.number).to.be.greaterThan(0);
+                expect(stats.latestBlock.number).to.be.greaterThan(0);
                 stats.latestBlock = {
                     number: new BigNumber(0),
                     hash: '',
@@ -217,7 +218,7 @@ blockchainTests.resets('GraphQLClient', env => {
             it('returns orders that match a given query', async () => {
                 const ordersLength = 10;
                 const orders = [];
-                // Create some orders with makerAssetamount = 1, 2, 3, etc.
+                // Create some orders with makerAssetAmount = 1, 2, 3, etc.
                 for (let i = 0; i < ordersLength; i++) {
                     orders[i] = await orderFactory.newSignedOrderAsync({
                         makerAssetAmount: new BigNumber(i + 1),

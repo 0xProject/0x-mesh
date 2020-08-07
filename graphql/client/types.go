@@ -53,27 +53,6 @@ type LatestBlock struct {
 	Hash   common.Hash `json:"hash"`
 }
 
-// A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
-type NewOrder struct {
-	ChainID               *big.Int       `json:"chainId"`
-	ExchangeAddress       common.Address `json:"exchangeAddress"`
-	MakerAddress          common.Address `json:"makerAddress"`
-	MakerAssetData        []byte         `json:"makerAssetData"`
-	MakerAssetAmount      *big.Int       `json:"makerAssetAmount"`
-	MakerFeeAssetData     []byte         `json:"makerFeeAssetData"`
-	MakerFee              *big.Int       `json:"makerFee"`
-	TakerAddress          common.Address `json:"takerAddress"`
-	TakerAssetData        []byte         `json:"takerAssetData"`
-	TakerAssetAmount      *big.Int       `json:"takerAssetAmount"`
-	TakerFeeAssetData     []byte         `json:"takerFeeAssetData"`
-	TakerFee              *big.Int       `json:"takerFee"`
-	SenderAddress         common.Address `json:"senderAddress"`
-	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
-	Salt                  *big.Int       `json:"salt"`
-	Signature             []byte         `json:"signature"`
-}
-
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 type Order struct {
 	ChainID               *big.Int       `json:"chainId"`
@@ -109,7 +88,7 @@ type OrderEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Contains all the contract events that triggered the order to be re-validated.
 	// All events that _may_ have affected the state of the order are included here.
-	// It is gauranteed that at least one of the events included here will have affected
+	// It is guaranteed that at least one of the events included here will have affected
 	// the order's state, but there may also be some false positives.
 	ContractEvents []*ContractEvent `json:"contractEvents"`
 }

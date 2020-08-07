@@ -156,7 +156,7 @@ func updateHardCodedVersions(version string) {
 	updateFileWithRegex(changelog, regex, newChangelogSection)
 
 	// Update badge in README.md
-	pathToMDFilesWithBadges := []string{"README.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
+	pathToMDFilesWithBadges := []string{"README.md", "docs/graphql_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
 	regex = `version-(.*)-orange.svg`

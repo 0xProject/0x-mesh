@@ -110,7 +110,7 @@ type OrderEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Contains all the contract events that triggered the order to be re-validated.
 	// All events that _may_ have affected the state of the order are included here.
-	// It is gauranteed that at least one of the events included here will have affected
+	// It is guaranteed that at least one of the events included here will have affected
 	// the order's state, but there may also be some false positives.
 	ContractEvents []*ContractEvent `json:"contractEvents"`
 }

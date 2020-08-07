@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -142,8 +141,6 @@ const (
 // New creates a new client which points to the given URL.
 func New(url string) *Client {
 	client := graphql.NewClient(url)
-	// TODO(albrow): Remove this.
-	client.Log = func(s string) { fmt.Println(s) }
 	return &Client{
 		Client: client,
 	}
