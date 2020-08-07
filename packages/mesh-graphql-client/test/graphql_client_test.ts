@@ -140,8 +140,7 @@ blockchainTests.resets('GraphQLClient', env => {
                 // stats is valid and then clear the field since we don't know
                 // the block number of the stats in this test a priori.
                 expect(stats.latestBlock).to.not.be.undefined();
-                // tslint:disable-next-line:no-non-null-assertion
-                expect(stats.latestBlock.number).to.be.greaterThan(0);
+                expect(stats.latestBlock.number).to.be.bignumber.greaterThan(0);
                 stats.latestBlock = {
                     number: new BigNumber(0),
                     hash: '',
@@ -274,6 +273,9 @@ blockchainTests.resets('GraphQLClient', env => {
         describe('#subscribeToOrdersAsync', async () => {
             it('should receive subscription updates about added orders', (done: DoneCallback) => {
                 (async () => {
+                    // Keep track of whether or not the test is complete. Used to determine
+                    // whether WebSocket errors should be considered test failures.
+                    let isDone = false;
                     // Create orders to add to the mesh node.
                     const ordersLength = 10;
                     const orders = [] as SignedOrder[];
@@ -285,7 +287,12 @@ blockchainTests.resets('GraphQLClient', env => {
                     const orderEvents = deployment.client.onOrderEvents();
                     orderEvents.subscribe({
                         error: err => {
-                            throw err;
+                            if (isDone && err.message === 'WebSocket connection lost') {
+                                // This error is expected to happen after the server is shut down.
+                            } else {
+                                // Other errors are not expected.
+                                throw err;
+                            }
                         },
                         next: (events: OrderEvent[]) => {
                             expect(events.length).to.be.eq(orders.length);
@@ -314,6 +321,7 @@ blockchainTests.resets('GraphQLClient', env => {
                                 }
                                 expect(hasSeenMatch).to.be.true();
                             }
+                            isDone = true;
                             done();
                         },
                     });
@@ -324,6 +332,9 @@ blockchainTests.resets('GraphQLClient', env => {
 
             it('should receive subscription updates about cancelled orders', (done: DoneCallback) => {
                 (async () => {
+                    // Keep track of whether or not the test is complete. Used to determine
+                    // whether WebSocket errors should be considered test failures.
+                    let isDone = false;
                     // Add an order and then cancel it.
                     const order = await orderFactory.newSignedOrderAsync({});
                     const validationResults = await deployment.client.addOrdersAsync([order]);
@@ -333,7 +344,12 @@ blockchainTests.resets('GraphQLClient', env => {
                     const orderEvents = deployment.client.onOrderEvents();
                     orderEvents.subscribe({
                         error: err => {
-                            throw err;
+                            if (isDone && err.message === 'WebSocket connection lost') {
+                                // This error is expected to happen after the server is shut down.
+                            } else {
+                                // Other errors are not expected.
+                                throw err;
+                            }
                         },
                         next: (events: OrderEvent[]) => {
                             // Ensure that the correct cancel event was logged.
@@ -370,6 +386,7 @@ blockchainTests.resets('GraphQLClient', env => {
                             expect(parameters.orderHash).to.be.eq(orderHashUtils.getOrderHashHex(order));
                             expect(parameters.senderAddress.toLowerCase()).to.be.eq(makerAddress);
                             expect(parameters.takerAssetData).to.be.eq(order.takerAssetData);
+                            isDone = true;
                             done();
                         },
                     });
