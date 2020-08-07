@@ -81,9 +81,6 @@ export interface RejectedOrderResult {
 
 export enum RejectedOrderCode {
     EthRpcRequestFailed = 'ETH_RPC_REQUEST_FAILED',
-    CoordinatorRequestFailed = 'COORDINATOR_REQUEST_FAILED',
-    CoordinatorSoftCancelled = 'COORDINATOR_SOFT_CANCELLED',
-    CoordinatorEndpointNotFound = 'COORDINATOR_ENDPOINT_NOT_FOUND',
     OrderHasInvalidMakerAssetAmount = 'ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT',
     OrderHasInvalidTakerAssetAmount = 'ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT',
     OrderExpired = 'ORDER_EXPIRED',

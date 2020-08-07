@@ -250,9 +250,6 @@ type RejectedOrderCode = gqltypes.RejectedOrderCode
 
 const (
 	RejectedOrderCodeEthRPCRequestFailed              RejectedOrderCode = "ETH_RPC_REQUEST_FAILED"
-	RejectedOrderCodeCoordinatorRequestFailed         RejectedOrderCode = "COORDINATOR_REQUEST_FAILED"
-	RejectedOrderCodeCoordinatorSoftCancelled         RejectedOrderCode = "COORDINATOR_SOFT_CANCELLED"
-	RejectedOrderCodeCoordinatorEndpointNotFound      RejectedOrderCode = "COORDINATOR_ENDPOINT_NOT_FOUND"
 	RejectedOrderCodeOrderHasInvalidMakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT"
 	RejectedOrderCodeOrderHasInvalidTakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT"
 	RejectedOrderCodeOrderExpired                     RejectedOrderCode = "ORDER_EXPIRED"

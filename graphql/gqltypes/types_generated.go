@@ -384,9 +384,6 @@ type RejectedOrderCode string
 
 const (
 	RejectedOrderCodeEthRPCRequestFailed              RejectedOrderCode = "ETH_RPC_REQUEST_FAILED"
-	RejectedOrderCodeCoordinatorRequestFailed         RejectedOrderCode = "COORDINATOR_REQUEST_FAILED"
-	RejectedOrderCodeCoordinatorSoftCancelled         RejectedOrderCode = "COORDINATOR_SOFT_CANCELLED"
-	RejectedOrderCodeCoordinatorEndpointNotFound      RejectedOrderCode = "COORDINATOR_ENDPOINT_NOT_FOUND"
 	RejectedOrderCodeOrderHasInvalidMakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT"
 	RejectedOrderCodeOrderHasInvalidTakerAssetAmount  RejectedOrderCode = "ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT"
 	RejectedOrderCodeOrderExpired                     RejectedOrderCode = "ORDER_EXPIRED"
@@ -410,9 +407,6 @@ const (
 
 var AllRejectedOrderCode = []RejectedOrderCode{
 	RejectedOrderCodeEthRPCRequestFailed,
-	RejectedOrderCodeCoordinatorRequestFailed,
-	RejectedOrderCodeCoordinatorSoftCancelled,
-	RejectedOrderCodeCoordinatorEndpointNotFound,
 	RejectedOrderCodeOrderHasInvalidMakerAssetAmount,
 	RejectedOrderCodeOrderHasInvalidTakerAssetAmount,
 	RejectedOrderCodeOrderExpired,
@@ -436,7 +430,7 @@ var AllRejectedOrderCode = []RejectedOrderCode{
 
 func (e RejectedOrderCode) IsValid() bool {
 	switch e {
-	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeCoordinatorRequestFailed, RejectedOrderCodeCoordinatorSoftCancelled, RejectedOrderCodeCoordinatorEndpointNotFound, RejectedOrderCodeOrderHasInvalidMakerAssetAmount, RejectedOrderCodeOrderHasInvalidTakerAssetAmount, RejectedOrderCodeOrderExpired, RejectedOrderCodeOrderFullyFilled, RejectedOrderCodeOrderCancelled, RejectedOrderCodeOrderUnfunded, RejectedOrderCodeOrderHasInvalidMakerAssetData, RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, RejectedOrderCodeOrderHasInvalidTakerAssetData, RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, RejectedOrderCodeOrderHasInvalidSignature, RejectedOrderCodeOrderMaxExpirationExceeded, RejectedOrderCodeInternalError, RejectedOrderCodeMaxOrderSizeExceeded, RejectedOrderCodeOrderAlreadyStoredAndUnfillable, RejectedOrderCodeOrderForIncorrectChain, RejectedOrderCodeIncorrectExchangeAddress, RejectedOrderCodeSenderAddressNotAllowed, RejectedOrderCodeDatabaseFullOfOrders:
+	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeOrderHasInvalidMakerAssetAmount, RejectedOrderCodeOrderHasInvalidTakerAssetAmount, RejectedOrderCodeOrderExpired, RejectedOrderCodeOrderFullyFilled, RejectedOrderCodeOrderCancelled, RejectedOrderCodeOrderUnfunded, RejectedOrderCodeOrderHasInvalidMakerAssetData, RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, RejectedOrderCodeOrderHasInvalidTakerAssetData, RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, RejectedOrderCodeOrderHasInvalidSignature, RejectedOrderCodeOrderMaxExpirationExceeded, RejectedOrderCodeInternalError, RejectedOrderCodeMaxOrderSizeExceeded, RejectedOrderCodeOrderAlreadyStoredAndUnfillable, RejectedOrderCodeOrderForIncorrectChain, RejectedOrderCodeIncorrectExchangeAddress, RejectedOrderCodeSenderAddressNotAllowed, RejectedOrderCodeDatabaseFullOfOrders:
 		return true
 	}
 	return false

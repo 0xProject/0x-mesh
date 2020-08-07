@@ -295,12 +295,6 @@ func RejectedCodeFromValidatorStatus(status ordervalidator.RejectedOrderStatus) 
 	switch status.Code {
 	case ordervalidator.ROEthRPCRequestFailed.Code:
 		return RejectedOrderCodeEthRPCRequestFailed, nil
-	case ordervalidator.ROCoordinatorRequestFailed.Code:
-		return RejectedOrderCodeCoordinatorRequestFailed, nil
-	case ordervalidator.ROCoordinatorSoftCancelled.Code:
-		return RejectedOrderCodeCoordinatorSoftCancelled, nil
-	case ordervalidator.ROCoordinatorEndpointNotFound.Code:
-		return RejectedOrderCodeCoordinatorEndpointNotFound, nil
 	case ordervalidator.ROInvalidMakerAssetAmount.Code:
 		return RejectedOrderCodeOrderHasInvalidMakerAssetAmount, nil
 	case ordervalidator.ROInvalidTakerAssetAmount.Code:
