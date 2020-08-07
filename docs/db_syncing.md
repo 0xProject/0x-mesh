@@ -20,7 +20,7 @@ your database is very similar.
 If you are running a standalone node, you will interact with it via the [GraphQL API](graphql_api.md).
 
 If you are running Mesh directly in the browser via the `@0x/mesh-browser` or `@0x/mesh-browser-lite`
-packages, you will interact with it using the [TypeScript/JavaScript API](). <!-- FIXME(albrow) put the correct link here -->
+packages, you will interact with it using the [TypeScript/JavaScript API](browser-bindings/browser/reference.md).
 
 ## Initial sync
 
@@ -29,12 +29,12 @@ order-relevant state stored. We do this with the following steps:
 
 #### 1. Subscribe to Mesh
 
-Subscribe to the Mesh node's `orderEvents` subscription over a WS connection. This can be done using
-our [Typescript/Javascript](graphql_clients/typescript/README.md) GraphQL client or any other GraphQL
-client which supports subscriptions.
+Subscribe to the Mesh node's [`orderEvents` subscription](graphql_api.md#subscribing-to-order-events).
 
-If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can subscribe to order
-events directly via the [`onOrderEvents` callback](). <!-- FIXME(albrow) put the correct link here -->
+If you are using our TypeScript GraphQL client, you can use the [`onOrderEvents`](browser-bindings/browser/reference.md#onorderevents) method.
+
+If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you use the method by
+by the same name, [`onOrderEvents`](browser-bindings/browser/reference.md#onorderevents).
 
 Whenever you receive an order event from this subscription, make the appropriate updates to your DB. Each
 order event has an associated [OrderEventEndState](https://godoc.org/github.com/0xProject/0x-mesh/zeroex#pkg-constants).
@@ -51,10 +51,13 @@ for an order we do not find in our database, we ignore the event and noop.
 
 There might have been orders stored in Mesh that your DB doesn't know about at this time. Because
 of this, you should fetch all currently stored orders in the Mesh node and upsert them in the database.
-This can be done using the [orders](graphql_api.md#querying-and-filtering-orders) GraphQL query. If you
-are using our TypeScript GraphQL client, you can use the [`getOrdersAsync`]() <!-- FIXME(albrow) put the correct link here -->
-method. If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can use
-the method by the same name, [`getordersAsync`](). <!-- FIXME(albrow) put the correct link here -->
+This can be done using the [orders](graphql_api.md#querying-and-filtering-orders) GraphQL query.
+
+If you are using our TypeScript GraphQL client, you can use the
+[`getOrdersAsync`](graphql_clients/typescript/reference.md#getordersasync) method.
+
+If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can use
+the method by the same name, [`getordersAsync`](browser-bindings/browser/reference.md#getordersasync).
 
 Orders may be added or removed while you are getting existing orders from the Mesh DB. For this reason,
 it is important to account for any order events received from step (1) while or after you get the existing
@@ -68,9 +71,13 @@ that does the multiple paginated requests for you under-the-hood. You can simply
 
 Since there might also be orders in your database that Mesh doesn't know about, you should also
 add those orders to Mesh. We can do this using the [addOrders](graphql_api.md#adding-orders)
-GraphQL mutation. If you are using our TypeScript GraphQL client, you can use the [`addOrdersAsync`]() <!-- FIXME(albrow) put the correct link here -->
-method. If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can use
-the method by the same name, [`addOrdersAsync`](). <!-- FIXME(albrow) put the correct link here -->
+GraphQL mutation.
+
+If you are using our TypeScript GraphQL client, you can use the
+[`addOrdersAsync`](graphql_clients/typescript/reference.md#addordersasync) method.
+
+If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can use
+the method by the same name, [`addOrdersAsync`](browser-bindings/browser/reference.md#addordersasync).
 
 This method accepts an array of signed 0x orders and returns which have been accepted
 and rejected. The accepted orders are returned with their `fillableTakerAssetAmount` and so these
