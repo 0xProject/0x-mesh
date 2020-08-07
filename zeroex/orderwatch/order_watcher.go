@@ -132,6 +132,7 @@ func New(config Config) (*Watcher, error) {
 		blockEventsChan:            make(chan []*blockwatch.Event, 100),
 		atLeastOneBlockProcessed:   make(chan struct{}),
 		didProcessABlock:           false,
+		recentlyValidatedOrders:    []*types.OrderWithMetadata{},
 	}
 
 	// Pre-populate the OrderWatcher with all orders already stored in the DB
@@ -1667,6 +1668,23 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				SignedOrder: order,
 				Kind:        ordervalidator.MeshValidation,
 				Status:      ordervalidator.ROSenderAddressNotAllowed,
+			})
+			continue
+		}
+		// NOTE(jalextowle): Orders with a taker address are only accessible to
+		// one taker, which complicates more sophisticated pruning technology.
+		// With this in mind, we only allow whitelisted taker addresses to be
+		// propogated throughout the network. This whitelist should only include
+		// addresses that correspond to contracts allow anyone to fill these
+		// orders.
+		// TODO(jalextowle): If any other addresses are whitelisted, create
+		// a isTakerAddressWhitelisted function.
+		if order.TakerAddress != constants.NullAddress && order.TakerAddress != w.contractAddresses.ExchangeProxyFlashWallet {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROTakerAddressNotAllowed,
 			})
 			continue
 		}

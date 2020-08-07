@@ -118,6 +118,68 @@ func init() {
 	}
 }
 
+func TestOrderWatcherTakerWhitelist(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	require.NoError(t, err)
+
+	testCases := []*struct {
+		order                     *zeroex.SignedOrder
+		isTakerAddressWhitelisted bool
+	}{
+		{
+			scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true)),
+			true,
+		},
+		{
+			scenario.NewSignedTestOrder(
+				t,
+				orderopts.SetupMakerState(true),
+				orderopts.TakerAddress(ganacheAddresses.ExchangeProxyFlashWallet),
+			),
+			true,
+		},
+		{
+			scenario.NewSignedTestOrder(
+				t,
+				orderopts.SetupMakerState(true),
+				orderopts.TakerAddress(common.HexToAddress("0x1")),
+			),
+			false,
+		},
+	}
+
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	for _, testCase := range testCases {
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, false, constants.TestChainID)
+		require.NoError(t, err)
+		if testCase.isTakerAddressWhitelisted {
+			orderHash, err := testCase.order.ComputeOrderHash()
+			require.NoError(t, err)
+			assert.Len(t, results.Rejected, 0)
+			require.Len(t, results.Accepted, 1)
+			assert.Equal(t, results.Accepted[0].OrderHash, orderHash)
+		} else {
+			orderHash, err := testCase.order.ComputeOrderHash()
+			require.NoError(t, err)
+			assert.Len(t, results.Accepted, 0)
+			require.Len(t, results.Rejected, 1)
+			assert.Equal(t, results.Rejected[0].OrderHash, orderHash)
+			assert.Equal(t, results.Rejected[0].Kind, ordervalidator.MeshValidation)
+			assert.Equal(t, results.Rejected[0].Status, ordervalidator.ROTakerAddressNotAllowed)
+		}
+	}
+}
+
 func TestOrderWatcherStoresValidOrders(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")

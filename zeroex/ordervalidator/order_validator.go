@@ -170,6 +170,10 @@ var (
 		Code:    "DatabaseFullOfOrders",
 		Message: "database is full of pinned orders and no orders can be deleted to make space (consider increasing MAX_ORDERS_IN_STORAGE)",
 	}
+	ROTakerAddressNotAllowed = RejectedOrderStatus{
+		Code:    "TakerAddressNotAllowed",
+		Message: "the taker address is not a whitelisted address",
+	}
 )
 
 // ROInvalidSchemaCode is the RejectedOrderStatus emitted if an order doesn't conform to the order schema

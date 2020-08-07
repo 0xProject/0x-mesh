@@ -92,6 +92,13 @@ func SenderAddress(address common.Address) Option {
 	}
 }
 
+func TakerAddress(address common.Address) Option {
+	return func(cfg *Config) error {
+		cfg.Order.TakerAddress = address
+		return nil
+	}
+}
+
 func FeeRecipientAddress(address common.Address) Option {
 	return func(cfg *Config) error {
 		cfg.Order.FeeRecipientAddress = address
