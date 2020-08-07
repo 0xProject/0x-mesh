@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +34,43 @@ const (
 func dbOptions() *db.Options {
 	options := db.TestOptions()
 	return options
+}
+
+// TestNewWatcher ensures that any existing blocks in the database are added to
+// simplestack when New is called.
+func TestNewWatcher(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dbOpts := dbOptions()
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+	config.DB = database
+
+	expectedMiniHeaders := make([]*types.MiniHeader, dbOpts.MaxMiniHeaders)
+	for i := range expectedMiniHeaders {
+		expectedMiniHeaders[i] = &types.MiniHeader{
+			Hash:   common.HexToHash(strconv.Itoa(i)),
+			Number: big.NewInt(int64(i)),
+		}
+
+	}
+	added, _, err := database.AddMiniHeaders(expectedMiniHeaders)
+	require.NoError(t, err)
+	require.Len(t, added, len(expectedMiniHeaders))
+
+	watcher, err := New(dbOpts.MaxMiniHeaders, config)
+	require.NoError(t, err)
+	actualMiniHeaders := watcher.stack.PeekAll()
+	for _, expectedMiniHeader := range expectedMiniHeaders {
+		found := false
+		for _, actualMiniHeader := range actualMiniHeaders {
+			if expectedMiniHeader.Number.Cmp(actualMiniHeader.Number) == 0 {
+				assert.Equal(t, expectedMiniHeader, actualMiniHeader)
+				found = true
+			}
+		}
+		assert.True(t, found, "miniHeader with hash %q was not stored in watcher.stack", expectedMiniHeader.Hash.Hex())
+	}
 }
 
 func TestWatcher(t *testing.T) {
@@ -519,7 +557,9 @@ func setupOrderWatcher(t *testing.T, ctx context.Context, client Client) *Watche
 	require.NoError(t, err)
 	config.Client = client
 	config.DB = database
-	return New(blockRetentionLimit, config)
+	watcher, err := New(blockRetentionLimit, config)
+	require.NoError(t, err)
+	return watcher
 }
 
 func aRange(from, to int) string {
