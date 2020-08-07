@@ -231,7 +231,7 @@ const orderEventsSubscription = gql`
 `;
 
 export class MeshGraphQLClient {
-    // private readonly _subscriptionClient: SubscriptionClient;
+    private readonly _subscriptionClient: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(httpUrl: string, webSocketUrl: string) {
         // Set up an apollo client with WebSocket and HTTP links. This allows
@@ -242,21 +242,11 @@ export class MeshGraphQLClient {
         const wsSubClient = new SubscriptionClient(
             webSocketUrl,
             {
-                reconnectionAttempts: 3,
-                reconnect: true,
-                connectionCallback: err => {
-                    if (err) {
-                        // console.error(err);
-                    } else {
-                        // console.log('successfully connected');
-                    }
-                },
+                reconnect: false,
             },
             // Use ws in Node.js and native WebSocket in browsers.
             (process as any).browser ? undefined : ws,
         );
-        // wsSubClient.onError(err => console.error(err));
-        // wsSubClient.onDisconnected(() => console.error('detected disconnect'));
         const wsLink = new WebSocketLink(wsSubClient);
         const splitLink = split(
             ({ query }) => {
@@ -280,10 +270,23 @@ export class MeshGraphQLClient {
             }
         });
         const link = from([errorLink, splitLink]);
-        // this._subscriptionClient = wsSubClient;
+        this._subscriptionClient = wsSubClient;
         this._client = new ApolloClient({
             cache: new InMemoryCache({
-                // Stop apollo client from injecting `__typenme` fields.
+                // This custom merge function is required for our orderEvents subscription.
+                // See https://www.apollographql.com/docs/react/caching/cache-field-behavior/#the-merge-function
+                typePolicies: {
+                    Subscription: {
+                        fields: {
+                            orderEvents: {
+                                merge(existing: OrderEvent[] = [], incoming: OrderEvent[]): OrderEvent[] {
+                                    return [...existing, ...incoming];
+                                },
+                            },
+                        },
+                    },
+                },
+                // Stop apollo client from injecting `__typename` fields. These extra fields mess up our tests.
                 addTypename: false,
             }),
             link,
@@ -350,18 +353,38 @@ export class MeshGraphQLClient {
     }
 
     public onOrderEvents(): Observable<OrderEvent[]> {
-        const observable = this._client.subscribe({
+        // We handle incomingObservable and return a new outgoingObservable. This
+        // can be thought of as "wrapping" the observable and we do it for two reasons:
+        //
+        // 1. Convert FetchResult<OrderEventResponse> to OrderEvent[]
+        // 2. Handle errors and disconnects from the underlying websocket transport. If we don't
+        //    do this, Apollo Client just ignores them completely and acts like everything is fine :(
+        //
+        const incomingObservable = this._client.subscribe({
             query: orderEventsSubscription,
         }) as Observable<FetchResult<OrderEventResponse>>;
-        return observable.map(result => {
-            if (result.errors != null && result.errors.length > 0) {
-                throw new Error(result.errors[0].message);
-            }
-            if (result.data === undefined || result.data === null) {
-                throw new Error('no data received');
-            }
-            return result.data.orderEvents.map(fromStringifiedOrderEvent);
+        const outgoingObservable = new Observable<OrderEvent[]>(observer => {
+            this._subscriptionClient.onError((err: ErrorEvent) => {
+                observer.error(new Error(err.message));
+            });
+            this._subscriptionClient.onDisconnected((event: Event) => {
+                observer.error(new Error('WebSocket connection lost'));
+            });
+            incomingObservable.subscribe({
+                next: (result: FetchResult<OrderEventResponse>) => {
+                    if (result.errors != null && result.errors.length > 0) {
+                        result.errors.forEach(err => observer.error(err));
+                    } else if (result.data == null) {
+                        observer.error(new Error('received no data'));
+                    } else {
+                        observer.next(result.data.orderEvents.map(fromStringifiedOrderEvent));
+                    }
+                },
+                error: err => observer.error(err),
+                complete: () => observer.complete(),
+            });
         });
+        return outgoingObservable;
     }
 
     public async rawQueryAsync<T = any, TVariables = OperationVariables>(
