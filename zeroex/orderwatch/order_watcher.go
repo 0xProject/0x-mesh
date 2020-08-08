@@ -1670,6 +1670,23 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
+		// NOTE(jalextowle): Orders with a taker address are only accessible to
+		// one taker, which complicates more sophisticated pruning technology.
+		// With this in mind, we only allow whitelisted taker addresses to be
+		// propogated throughout the network. This whitelist should only include
+		// addresses that correspond to contracts allow anyone to fill these
+		// orders.
+		// TODO(jalextowle): If any other addresses are whitelisted, create
+		// a isTakerAddressWhitelisted function.
+		if order.TakerAddress != constants.NullAddress && order.TakerAddress != w.contractAddresses.ExchangeProxyFlashWallet {
+			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
+				OrderHash:   orderHash,
+				SignedOrder: order,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      ordervalidator.ROTakerAddressNotAllowed,
+			})
+			continue
+		}
 		if order.ChainID.Cmp(big.NewInt(int64(chainID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
