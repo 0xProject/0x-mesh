@@ -116,8 +116,7 @@ export interface ContractEvent {
     logIndex: number;
     isRemoved: boolean;
     address: string;
-    // TODO(albrow): Use an enum type for kind?
-    kind: string;
+    kind: ContractEventKind;
     // TODO(albrow): Use a union type for parameters?
     parameters: any;
 }

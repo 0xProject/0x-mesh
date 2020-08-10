@@ -377,9 +377,7 @@ func (e OrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-// A set of all possible codes included in RejectedOrderResult. Note that more codes will be added
-// to the final spec. See the [current Mesh docs](https://godoc.org/github.com/0xProject/0x-mesh/zeroex/ordervalidator#pkg-variables)
-// for a list of all codes currently in use.
+// A set of all possible codes included in RejectedOrderResult.
 type RejectedOrderCode string
 
 const (

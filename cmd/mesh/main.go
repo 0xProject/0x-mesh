@@ -20,7 +20,10 @@ import (
 type standaloneConfig struct {
 	// EnableGraphQLServer determines whether or not to enable the GraphQL server.
 	// If enabled, GraphQL queries can be sent to GraphQLServerAddr at the /graphql
-	// URL. By default, the GraphQL server is disabled.
+	// URL. By default, the GraphQL server is disabled. Please be aware that the GraphQL
+	// API is intended to be a *private* API. If you enable the GraphQL server in
+	// production we recommend using a firewall/VPC or an authenticated proxy to restrict
+	// public access.
 	EnableGraphQLServer bool `envvar:"ENABLE_GRAPHQL_SERVER" default:"false"`
 	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
 	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and

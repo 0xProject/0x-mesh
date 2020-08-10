@@ -17,7 +17,7 @@ node.
 ## Enabling Telemetry
 
 You can optionally help us develop and maintain Mesh by automatically sending your logs, which
-requires a few extra steps. If you are interested in enabling telemetery, check out
+requires a few extra steps. If you are interested in enabling telemetry, check out
 [this guide](deployment_with_telemetry.md).
 
 ## Running Mesh
@@ -82,6 +82,7 @@ struct. They are copied here for convenience, although the source code is
 authoritative.
 
 ```go
+type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
 	Verbosity int `envvar:"VERBOSITY" default:"2"`
 	// DataDir is the directory to use for persisting all data, including the
@@ -182,18 +183,20 @@ authoritative.
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
+}
 ```
 
 There are some additional environment variable in the [main entrypoint for the
 Mesh executable](../cmd/mesh/main.go):
 
 ```go
-// standaloneConfig contains configuration options specific to running 0x Mesh
-// in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
 	// EnableGraphQLServer determines whether or not to enable the GraphQL server.
 	// If enabled, GraphQL queries can be sent to GraphQLServerAddr at the /graphql
-	// URL. By default, the GraphQL server is disabled.
+	// URL. By default, the GraphQL server is disabled. Please be aware that the GraphQL
+	// API is intended to be a *private* API. If you enable the GraphQL server in
+	// production we recommend using a firewall/VPC or an authenticated proxy to restrict
+	// public access.
 	EnableGraphQLServer bool `envvar:"ENABLE_GRAPHQL_SERVER" default:"false"`
 	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
 	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and

@@ -80,12 +80,7 @@ func TestBrowserIntegration(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1000)),
 	)
 
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(blockProcessingWaitTime)
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
@@ -97,6 +92,7 @@ func TestBrowserIntegration(t *testing.T) {
 		// Wait for the GraphQL server to start before sending the order.
 		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "starting GraphQL server")
 		require.NoError(t, err, "GraphQL server didn't start")
+		time.Sleep(serverStartWaitTime)
 		graphQLClient := gqlclient.New(graphQLServerURL)
 		require.NoError(t, err)
 		results, err := graphQLClient.AddOrders(ctx, []*zeroex.SignedOrder{standaloneOrder})

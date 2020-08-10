@@ -57,7 +57,7 @@ If you are using our TypeScript GraphQL client, you can use the
 [`getOrdersAsync`](graphql_clients/typescript/reference.md#getordersasync) method.
 
 If you are using the `@0x/mesh-browser` or `@0x/mesh-browser-lite` packages, you can use
-the method by the same name, [`getordersAsync`](browser-bindings/browser/reference.md#getordersasync).
+the method by the same name, [`getOrdersAsync`](browser-bindings/browser/reference.md#getordersasync).
 
 Orders may be added or removed while you are getting existing orders from the Mesh DB. For this reason,
 it is important to account for any order events received from step (1) while or after you get the existing

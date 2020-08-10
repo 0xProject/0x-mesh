@@ -24,10 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// serverStartWaitTime is the amount of time to wait after seeing the "starting GraphQL server"
-// log message before attempting to connect to the server.
-const serverStartWaitTime = 100 * time.Millisecond
-
 func TestAddOrdersSuccess(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
@@ -39,12 +35,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 
 	// Create a new valid order.
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(blockProcessingWaitTime)
 
 	// Send the "AddOrders" request to the GraphQL server.
 	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
@@ -97,12 +88,7 @@ func TestGetOrder(t *testing.T) {
 
 	orderOptions := orderopts.SetupMakerState(true)
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(blockProcessingWaitTime)
 
 	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
 	require.NoError(t, err)
@@ -153,12 +139,7 @@ func TestGetOrders(t *testing.T) {
 	numOrders := 10
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedTestOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(blockProcessingWaitTime)
 
 	// Send the newly created order to "AddOrders." The order is valid, and this should
 	// be reflected in the validation results.

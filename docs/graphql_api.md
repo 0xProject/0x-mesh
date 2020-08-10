@@ -23,8 +23,8 @@ PubSub mechanism (usually this is not something you need to worry about).
 
 ## Playground Environment
 
-We have deployed a playground environment for exploring the GraphQL API. You can access the playground
-at [https://meshmock.spaceship.0x.org/](https://meshmock.spaceship.0x.org/). It supports autocompletion,
+We have deployed a public playground environment for exploring the GraphQL API. You can access the playground
+at [https://meshmock.spaceship.0x.org/](https://meshmock.spaceship.0x.org/). It supports auto-completion,
 syntax highlighting, and subscriptions. In addition, interactive documentation for the API can be found
 by clicking the "docs" button on the righthand side of the screen. See the Example Queries section below
 for some queries to try.
@@ -76,7 +76,8 @@ You can get the details for any order by its hash:
 
 ### Querying and Filtering Orders
 
-You can get all orders via the `orders` query. By default, it will return up to 100 orders at a time sorted by their hash.
+You can get all orders via the `orders` query. By default, it will return up to 100 orders at a time sorted by their hash. You can
+also change the number of orders returned via the `limit` argument.
 
 ```graphql
 {
