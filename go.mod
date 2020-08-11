@@ -15,7 +15,7 @@ replace (
 )
 
 require (
-	github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115
+	github.com/0xProject/sql-datastore v0.0.0-20200812212451-239b36c67c16
 	github.com/99designs/gqlgen v0.11.3
 	github.com/agnivade/levenshtein v1.1.0 // indirect
 	github.com/albrow/stringset v2.1.0+incompatible

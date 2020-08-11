@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -81,6 +81,8 @@ func (n *testNotifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream)
 func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *Node {
 	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
 	require.NoError(t, err)
+	db, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	config := Config{
 		SubscribeTopic:   testTopic,
 		PublishTopics:    []string{testTopic},
@@ -88,7 +90,7 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousPoints: testRendezvousPoints,
 		UseBootstrapList: false,
-		DataDir:          "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:               db,
 	}
 
 	return newTestNodeWithConfig(t, ctx, notifee, config)
@@ -400,6 +402,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 		streams: make(chan p2pnet.Stream),
 	}
 
+	db0, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node0Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -408,10 +412,12 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db0,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
+	db1, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node1Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -420,10 +426,12 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db1,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
+	db2, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node2Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -432,7 +440,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db2,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
@@ -487,6 +495,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		streams: make(chan p2pnet.Stream),
 	}
 
+	db0, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node0Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -495,10 +505,12 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db0,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}
+	db1, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node1Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -507,10 +519,12 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db1,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}
+	db2, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node2Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -519,7 +533,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db2,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/scenario"
@@ -30,12 +31,14 @@ func TestCalculateDelayWithJitters(t *testing.T) {
 }
 
 func TestHandleRawRequest(t *testing.T) {
+	db, err := db.New(context.Background(), db.TestOptions())
+	require.NoError(t, err)
 	n, err := p2p.New(
 		context.Background(),
 		p2p.Config{
 			MessageHandler:   &noopMessageHandler{},
 			RendezvousPoints: []string{"/test-rendezvous-point"},
-			DataDir:          "/tmp",
+			DB:               db,
 		},
 	)
 	require.NoError(t, err)

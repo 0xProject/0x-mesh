@@ -10,6 +10,8 @@ github.com/0xProject/goleveldb v1.0.1-0.20200602173211-6ee893c9b83a/go.mod h1:1J
 github.com/0xProject/qunit v0.0.0-20190730000255-81c18fdf7752/go.mod h1:Onz5mS+Tpffz0tyRWdHDrqKcQ1ZFNeRhYHrNAkaMgeQ=
 github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115 h1:OHq6PP4Y8Pjmhm9UB3RtYWQSgxJBQplojLCDZZLrVDg=
 github.com/0xProject/sql-datastore v0.0.0-20200129193319-32397013f115/go.mod h1:7icquWqYm+GkgQsUyBs0C0N1SyCHXQYBnoHaazVYDQ0=
+github.com/0xProject/sql-datastore v0.0.0-20200812212451-239b36c67c16 h1:bgRTbK0Yv/zemVIIyoDD1MWCg6Ru7eVtE7+XfDVkxos=
+github.com/0xProject/sql-datastore v0.0.0-20200812212451-239b36c67c16/go.mod h1:7icquWqYm+GkgQsUyBs0C0N1SyCHXQYBnoHaazVYDQ0=
 github.com/99designs/gqlgen v0.11.3 h1:oFSxl1DFS9X///uHV3y6CEfpcXWrDUxVblR4Xib2bs4=
 github.com/99designs/gqlgen v0.11.3/go.mod h1:RgX5GRRdDWNkh4pBrdzNpNPFVsdoUFY2+adM6nb1N+4=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=

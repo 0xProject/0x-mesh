@@ -246,7 +246,7 @@ func TestOrderSync(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		testCaseName := fmt.Sprintf("%s (test case %d)", testCase.name, i)
-		t.Run(testCaseName, runOrdersyncTestCase(t, testCase))
+		t.Run(testCaseName, runOrdersyncTestCase(testCase))
 	}
 }
 
@@ -259,7 +259,7 @@ type ordersyncTestCase struct {
 
 const defaultOrderFilter = "{}"
 
-func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *testing.T) {
+func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 		defer teardownSubTest(t)
@@ -275,6 +275,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 			defer wg.Done()
 			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
+				fmt.Println("OrderSync Test: Checkpoint 1")
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()
@@ -303,6 +304,7 @@ func runOrdersyncTestCase(t *testing.T, testCase ordersyncTestCase) func(t *test
 			defer wg.Done()
 			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
+				fmt.Println("OrderSync Test: Checkpoint 2")
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()

@@ -172,7 +172,12 @@ func main() {
 		newDHT = func(h host.Host) (routing.PeerRouting, error) {
 			var err error
 			dhtDir := getDHTDir(config)
-			kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
+			// Set up the DHT to use LevelDB.
+			store, err := leveldbStore.NewDatastore(dhtDir, nil)
+			if err != nil {
+				return nil, err
+			}
+			kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 			if err != nil {
 				log.WithField("error", err).Fatal("could not create DHT")
 			}
