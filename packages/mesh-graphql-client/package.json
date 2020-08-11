@@ -1,0 +1,58 @@
+{
+    "name": "@0x/mesh-graphql-client",
+    "version": "1.0.0",
+    "description": "A client for the Mesh GraphQL API",
+    "main": "./lib/index.js",
+    "license": "Apache-2.0",
+    "scripts": {
+        "build": "yarn build:ts",
+        "build:ts": "tsc -b",
+        "test": "mocha --require source-map-support/register --require make-promises-safe lib/test/**/*_test.js --timeout 200000 --exit",
+        "clean": "shx rm -r ./lib && shx rm tsconfig.tsbuildinfo || exit 0",
+        "watch:ts": "tsc -b -w",
+        "docs:md": "ts-doc-gen --sourceDir=./src --output=${npm_package_config_docsPath}",
+        "lint": "tslint --format stylish --project ."
+    },
+    "config": {
+        "docsPath": "../../docs/graphql-client"
+    },
+    "devDependencies": {
+        "@0x/contract-addresses": "^4.11.0",
+        "@0x/contracts-erc20": "^3.2.1",
+        "@0x/contracts-exchange": "^3.2.7",
+        "@0x/contracts-test-utils": "^5.3.4",
+        "@0x/dev-utils": "^3.3.0",
+        "@0x/order-utils": "^10.3.0",
+        "@0x/subproviders": "^6.1.1",
+        "@0x/ts-doc-gen": "^0.0.16",
+        "@0x/types": "^3.2.0",
+        "@0x/web3-wrapper": "^7.2.0",
+        "@types/jsonstream": "^0.8.30",
+        "@types/ramda": "^0.27.14",
+        "@types/rimraf": "^3.0.0",
+        "@types/websocket": "^1.0.1",
+        "chai": "^4.2.0",
+        "chai-as-promised": "^7.1.1",
+        "chai-bignumber": "^3.0.0",
+        "dirty-chai": "^2.0.1",
+        "jsonstream": "^1.0.3",
+        "mocha": "^8.1.0",
+        "rimraf": "^3.0.2",
+        "shx": "^0.3.2",
+        "typedoc": "^0.15.0",
+        "typescript": "^3.9.3",
+        "websocket": "^1.0.31"
+    },
+    "dependencies": {
+        "@0x/mesh-browser-lite": "^9.4.2",
+        "@0x/types": "^3.2.0",
+        "@0x/utils": "^5.4.0",
+        "@apollo/client": "^3.1.1",
+        "@types/ws": "^7.2.6",
+        "graphql": "^15.3.0",
+        "react": "*",
+        "subscriptions-transport-ws": "^0.9.17",
+        "ws": "^7.3.1",
+        "zen-observable": "^0.8.15"
+    }
+}

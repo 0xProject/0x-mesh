@@ -118,8 +118,8 @@ func (c ContractEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
-// when calling JSON-RPC method `mesh_subscribe`
+// OrderEvent is the order event emitted by the Mesh GraphQL API or the SubScribeToOrderEvents
+// method in core.
 type OrderEvent struct {
 	// Timestamp is an order event timestamp that can be used for bookkeeping purposes.
 	// If the OrderEvent represents a Mesh-specific event (e.g., ADDED, STOPPED_WATCHING),

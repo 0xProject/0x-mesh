@@ -2,6 +2,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -784,13 +785,14 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 	}
 }
 
-// ErrSnapshotNotFound is the error returned when a snapshot not found with a particular id
-type ErrSnapshotNotFound struct {
-	id string
+func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.GetOrder(hash)
 }
 
-func (e ErrSnapshotNotFound) Error() string {
-	return fmt.Sprintf("No snapshot found with id: %s. To create a new snapshot, send a request with an empty snapshotID", e.id)
+func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.FindOrders(query)
 }
 
 // ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
@@ -865,11 +867,24 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
-// and if they are valid, will store and eventually broadcast the orders to
-// peers. If pinned is true, the orders will be marked as pinned, which means
-// they will only be removed if they become unfillable and will not be removed
-// due to having a high expiration time or any incentive mechanisms.
-func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+// and if they are valid, will store and broadcast the orders to peers. If pinned
+// is true, the orders will be marked as pinned, which means they will only be
+// removed if they become unfillable and will not be removed due to having a high
+// expiration time or any incentive mechanisms.
+func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, error) {
+	signedOrdersRaw := []*json.RawMessage{}
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
+		return nil, err
+	}
+	if err := json.NewDecoder(buf).Decode(&signedOrdersRaw); err != nil {
+		return nil, err
+	}
+	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned)
+}
+
+// AddOrdersRaw is like AddOrders but accepts raw JSON messages.
+func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -955,7 +970,7 @@ func (app *App) AddOrders(ctx context.Context, signedOrdersRaw []*json.RawMessag
 
 		log.WithFields(log.Fields{
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
-		}).Debug("added new valid order via RPC or browser callback")
+		}).Debug("added new valid order via GraphQL or browser callback")
 
 		// Share the order with our peers.
 		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
@@ -997,7 +1012,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 		}
 	}
 	if latestMiniHeader != nil {
-		latestBlock.Number = int(latestMiniHeader.Number.Int64())
+		latestBlock.Number = latestMiniHeader.Number
 		latestBlock.Hash = latestMiniHeader.Hash
 	}
 	numOrders, err := app.db.CountOrders(&db.OrderQuery{
@@ -1053,7 +1068,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 		NumPeers:                          app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
 		NumPinnedOrders:                   numPinnedOrders,
-		MaxExpirationTime:                 maxExpirationTime.String(),
+		MaxExpirationTime:                 maxExpirationTime,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,
 		EthRPCRateLimitExpiredRequests:    app.ethRPCClient.GetRateLimitDroppedRequests(),

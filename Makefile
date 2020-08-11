@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-ts wasmbrowsertest
+deps: deps-ts wasmbrowsertest gqlgen
 
 
 .PHONY: deps-ts
@@ -13,6 +13,13 @@ gobin:
 	GO111MODULE=off go get -u github.com/myitcv/gobin
 
 
+# gqlgen is a tool for embedding files so that they are included in binaries.
+# This installs the CLI for go-bindata.
+.PHONY: gqlgen
+gqlgen: gobin
+	gobin github.com/99designs/gqlgen@v0.11.3
+
+
 # wasmbrowsertest is required for running WebAssembly tests in the browser.
 .PHONY: wasmbrowsertest
 wasmbrowsertest: gobin
@@ -21,7 +28,7 @@ wasmbrowsertest: gobin
 
 # Installs dependencies without updating Gopkg.lock or yarn.lock
 .PHONY: deps-no-lockfile
-deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest
+deps-no-lockfile: deps-ts-no-lockfile wasmbrowsertest gqlgen
 
 
 .PHONY: deps-ts-no-lockfile
@@ -34,7 +41,7 @@ test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser
 
 
 .PHONY: test-go
-test-go: test-go-parallel test-go-serial
+test-go: generate test-go-parallel test-go-serial
 
 
 .PHONY: test-go-parallel
@@ -84,8 +91,14 @@ lint-ts:
 lint-prettier:
 	yarn prettier:ci
 
+
+.PHONY: generate
+generate:
+	go generate ./...
+
+
 .PHONY: mesh
-mesh:
+mesh: generate
 	go install ./cmd/mesh
 
 
@@ -105,7 +118,7 @@ db-integrity-check:
 
 
 .PHONY: cut-release
-cut-release:
+cut-release: generate
 	go run ./cmd/cut-release/main.go
 
 
@@ -117,7 +130,7 @@ all: mesh mesh-keygen mesh-bootstrap db-integrity-check
 
 
 .PHONY: docker-mesh
-docker-mesh:
+docker-mesh: generate
 	docker build . -t 0xorg/mesh -f ./dockerfiles/mesh/Dockerfile
 
 
@@ -132,5 +145,6 @@ docker-mesh-fluent-bit:
 
 
 .PHONY: docker-mesh-bridge
-docker-mesh-bridge:
-	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
+docker-mesh-bridge: generate
+	@echo 'WARN: mesh-bridge is currently disabled since it has not been updated to use the new GraphQL API' 
+	# docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile

@@ -1,8 +1,8 @@
 // +build !js
 
 // package mesh is a standalone 0x Mesh node that can be run from the command
-// line. It uses environment variables for configuration and exposes a JSON RPC
-// endpoint over WebSockets.
+// line. It uses environment variables for configuration and optionally exposes
+// a GraphQL API for developers to interact with.
 package main
 
 import (
@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/0xProject/0x-mesh/core"
-	"github.com/0xProject/0x-mesh/rpc"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,12 +18,22 @@ import (
 // standaloneConfig contains configuration options specific to running 0x Mesh
 // in standalone mode (i.e. not in a browser).
 type standaloneConfig struct {
-	// WSRPCAddr is the interface and port to use for the JSON-RPC API over
-	// WebSockets. By default, 0x Mesh will listen on localhost and port 60557.
-	WSRPCAddr string `envvar:"WS_RPC_ADDR" default:"localhost:60557"`
-	// HTTPRPCAddr is the interface and port to use for the JSON-RPC API over
-	// HTTP. By default, 0x Mesh will listen on localhost and port 60556.
-	HTTPRPCAddr string `envvar:"HTTP_RPC_ADDR" default:"localhost:60556"`
+	// EnableGraphQLServer determines whether or not to enable the GraphQL server.
+	// If enabled, GraphQL queries can be sent to GraphQLServerAddr at the /graphql
+	// URL. By default, the GraphQL server is disabled. Please be aware that the GraphQL
+	// API is intended to be a *private* API. If you enable the GraphQL server in
+	// production we recommend using a firewall/VPC or an authenticated proxy to restrict
+	// public access.
+	EnableGraphQLServer bool `envvar:"ENABLE_GRAPHQL_SERVER" default:"false"`
+	// GraphQLServerAddr is the interface and port to use for the GraphQL API.
+	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and
+	// port 60557.
+	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"0.0.0.0:60557"`
+	// EnableGraphQLPlayground determines whether or not to enable GraphiQL, an interactive
+	// GraphQL playground which can be accessed by visiting GraphQLServerAddr in a browser.
+	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
+	// is disabled.
+	EnableGraphQLPlayground bool `envvar:"ENABLE_GRAPHQL_PLAYGROUND" default:"false"`
 }
 
 func main() {
@@ -60,43 +69,18 @@ func main() {
 		}
 	}()
 
-	// Start WS RPC server.
-	wsRPCErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.WithField("ws_rpc_addr", config.WSRPCAddr).Info("starting WS RPC server")
-		rpcServer := instantiateServer(ctx, app, config.WSRPCAddr)
+	graphQLErrChan := make(chan error, 1)
+	if config.EnableGraphQLServer {
+		// Start GraphQL server.
+		wg.Add(1)
 		go func() {
-			selectedRPCAddr, err := waitForSelectedAddress(ctx, rpcServer)
-			if err != nil {
-				log.WithError(err).Warn("WS RPC server did not start")
+			defer wg.Done()
+			log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
+			if err := serveGraphQL(ctx, app, config.GraphQLServerAddr, config.EnableGraphQLPlayground); err != nil {
+				graphQLErrChan <- err
 			}
-			log.WithField("address", selectedRPCAddr).Info("started WS RPC server")
 		}()
-		if err := rpcServer.Listen(ctx, rpc.WSHandler); err != nil {
-			wsRPCErrChan <- err
-		}
-	}()
-
-	// Start HTTP RPC server.
-	httpRPCErrChan := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.WithField("http_rpc_addr", config.HTTPRPCAddr).Info("starting HTTP RPC server")
-		rpcServer := instantiateServer(ctx, app, config.HTTPRPCAddr)
-		go func() {
-			selectedRPCAddr, err := waitForSelectedAddress(ctx, rpcServer)
-			if err != nil {
-				log.WithError(err).Warn("HTTP RPC server did not start")
-			}
-			log.WithField("address", selectedRPCAddr).Info("started HTTP RPC server")
-		}()
-		if err := rpcServer.Listen(ctx, rpc.HTTPHandler); err != nil {
-			httpRPCErrChan <- err
-		}
-	}()
+	}
 
 	// Block until there is an error or the app is closed.
 	select {
@@ -108,12 +92,9 @@ func main() {
 	case err := <-coreErrChan:
 		cancel()
 		log.WithField("error", err.Error()).Error("core app exited with error")
-	case err := <-wsRPCErrChan:
+	case err := <-graphQLErrChan:
 		cancel()
-		log.WithField("error", err.Error()).Error("WS RPC server returned error")
-	case err := <-httpRPCErrChan:
-		cancel()
-		log.WithField("error", err.Error()).Error("HTTP RPC server returned error")
+		log.WithField("error", err.Error()).Error("GraphQL server returned error")
 	}
 
 	// If we reached here it means there was an error. Wait for all goroutines

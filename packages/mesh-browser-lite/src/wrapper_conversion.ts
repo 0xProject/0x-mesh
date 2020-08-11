@@ -19,6 +19,7 @@ import {
     ERC721ApprovalForAllEvent,
     ExchangeCancelEvent,
     GetOrdersResponse,
+    LatestBlock,
     OrderEvent,
     OrderInfo,
     RejectedOrderInfo,
@@ -36,6 +37,7 @@ import {
     WrapperExchangeCancelUpToEvent,
     WrapperExchangeFillEvent,
     WrapperGetOrdersResponse,
+    WrapperLatestBlock,
     WrapperOrderEvent,
     WrapperOrderInfo,
     WrapperRejectedOrderInfo,
@@ -274,8 +276,16 @@ export function wrapperRejectedOrderInfoToRejectedOrderInfo(
 export function wrapperStatsToStats(wrapperStats: WrapperStats): Stats {
     return {
         ...wrapperStats,
+        latestBlock: wrapperLatestBlockToLatestBlock(wrapperStats.latestBlock),
         startOfCurrentUTCDay: new Date(wrapperStats.startOfCurrentUTCDay),
         maxExpirationTime: new BigNumber(wrapperStats.maxExpirationTime),
+    };
+}
+
+export function wrapperLatestBlockToLatestBlock(wrapperLatestBlock: WrapperLatestBlock): LatestBlock {
+    return {
+        ...wrapperLatestBlock,
+        number: new BigNumber(wrapperLatestBlock.number),
     };
 }
 

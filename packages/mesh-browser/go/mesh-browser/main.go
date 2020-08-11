@@ -146,7 +146,7 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, err
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.app.AddOrders(cw.ctx, rawMessages, pinned)
+	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, pinned)
 	if err != nil {
 		return js.Undefined(), err
 	}

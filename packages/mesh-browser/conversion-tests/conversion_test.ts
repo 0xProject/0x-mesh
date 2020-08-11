@@ -632,7 +632,7 @@ function testOrderEvents(orderEvents: WrapperOrderEvent[]): void {
     printer('contractEvents.txHash', orderEvents[1].contractEvents[0].txHash === hexUtils.leftPad('0x2', 32));
     printer('contractEvents.txIndex', orderEvents[1].contractEvents[0].txIndex === 123);
     printer('contractEvents.logIndex', orderEvents[1].contractEvents[0].logIndex === 321);
-    printer('contractEvents.isRemoved', orderEvents[1].contractEvents[0].isRemoved === false);
+    printer('contractEvents.isRemoved', !orderEvents[1].contractEvents[0].isRemoved);
     printer('contractEvents.address', orderEvents[1].contractEvents[0].address === hexUtils.leftPad('0x5', 20));
     printer('contractEvents.kind', orderEvents[1].contractEvents[0].kind === 'ExchangeFillEvent');
 }
@@ -707,7 +707,7 @@ function testStats(stats: WrapperStats[]): void {
     printer('peerID', stats[0].peerID === '16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7');
     printer('ethereumChainID', stats[0].ethereumChainID === 1337);
     printer('latestBlock | hash', stats[0].latestBlock.hash === hexUtils.leftPad('0x1', 32));
-    printer('latestBlock | number', stats[0].latestBlock.number === 1500);
+    printer('latestBlock | number', stats[0].latestBlock.number === '1500');
     printer('numOrders', stats[0].numOrders === 100000);
     printer('numPeers', stats[0].numPeers === 200);
     printer('numOrdersIncludingRemoved', stats[0].numOrdersIncludingRemoved === 200000);

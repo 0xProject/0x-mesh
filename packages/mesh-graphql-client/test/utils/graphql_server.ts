@@ -3,7 +3,9 @@ import * as jsonstream from 'jsonstream';
 import { join } from 'path';
 import * as rimraf from 'rimraf';
 
-import { WSClient } from '../../src';
+import { MeshGraphQLClient } from '../../src';
+
+const dataDir = '/tmp/mesh-graphql-integration-testing/data/';
 
 async function buildBinaryAsync(): Promise<void> {
     const cwd = join(__dirname, '../../../../../').normalize();
@@ -20,7 +22,7 @@ async function buildBinaryAsync(): Promise<void> {
 
 async function cleanupAsync(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-        rimraf('./0x_mesh', err => {
+        rimraf(dataDir, err => {
             if (err != null) {
                 reject(err);
             }
@@ -30,14 +32,18 @@ async function cleanupAsync(): Promise<void> {
 }
 
 export interface MeshDeployment {
-    client: WSClient;
+    client: MeshGraphQLClient;
     mesh: MeshHarness;
     peerID: string;
 }
 
+// The amount of time to wait after seeing the "starting GraphQL server" log message
+// before attempting to connect to the GraphQL server.
+const serverStartWaitTimeMs = 100;
+
 /**
- * Start a RPC client connected to a RPC server that is ready for use.
- * @return A mesh deployment including a RPC client, mesh manager, and the
+ * Start a GraphQL client connected to a GraphQL server that is ready for use.
+ * @return A mesh deployment including a GraphQL client, mesh manager, and the
  *         peer ID of the mesh process that is running in the mesh manager.
  */
 export async function startServerAndClientAsync(): Promise<MeshDeployment> {
@@ -45,9 +51,13 @@ export async function startServerAndClientAsync(): Promise<MeshDeployment> {
     await buildBinaryAsync();
 
     const mesh = new MeshHarness();
-    const log = await mesh.waitForPatternAsync(/started WS RPC server/);
+    const log = await mesh.waitForPatternAsync(/starting GraphQL server/);
     const peerID = JSON.parse(log.toString()).myPeerID;
-    const client = new WSClient(`ws://localhost:${mesh.wsPort}`);
+    await sleepAsync(serverStartWaitTimeMs);
+    const client = new MeshGraphQLClient(
+        `http://localhost:${mesh._graphQLServerPort}/graphql`,
+        `ws://localhost:${mesh._graphQLServerPort}/graphql`,
+    );
     return {
         client,
         mesh,
@@ -59,7 +69,7 @@ export class MeshHarness {
     public static readonly DEFAULT_TIMEOUT = 1000;
     protected static _serverPort = 64321;
 
-    public readonly wsPort: number;
+    public readonly _graphQLServerPort: number;
     private readonly _mesh: ChildProcessWithoutNullStreams;
     private _killed = false;
 
@@ -75,6 +85,8 @@ export class MeshHarness {
         return new Promise<string>((resolve, reject) => {
             const stream = jsonstream.parse(true);
             stream.on('data', data => {
+                // Note(albrow): Uncomment this if you need to see the output from the server.
+                // console.log(data);
                 const dataString = JSON.stringify(data);
                 if (pattern.test(dataString)) {
                     resolve(dataString);
@@ -95,14 +107,21 @@ export class MeshHarness {
 
     public constructor() {
         const env = Object.create(process.env);
-        this.wsPort = MeshHarness._serverPort++;
+        this._graphQLServerPort = MeshHarness._serverPort++;
+        env.DATA_DIR = dataDir;
         env.ETHEREUM_RPC_URL = 'http://localhost:8545';
         env.ETHEREUM_CHAIN_ID = '1337';
         env.VERBOSITY = '5';
-        env.WS_RPC_ADDR = `localhost:${this.wsPort}`;
+        env.USE_BOOTSTRAP_LIST = false;
+        env.ENABLE_GRAPHQL_SERVER = true;
+        env.GRAPHQL_SERVER_ADDR = `localhost:${this._graphQLServerPort}`;
         this._mesh = spawn('mesh', [], { env });
         this._mesh.stderr.on('error', error => {
             throw new Error(`${error.name} - ${error.message}`);
         });
     }
+}
+
+async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
+    return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
 }

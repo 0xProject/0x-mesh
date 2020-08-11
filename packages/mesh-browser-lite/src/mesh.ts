@@ -217,8 +217,6 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
 
-        // TODO(albrow): De-dupe this code with the method by the same name
-        // in the TypeScript RPC client.
         let getOrdersResponse = await this.getOrdersForPageAsync(perPage);
         let ordersInfos = getOrdersResponse.ordersInfos;
         let allOrderInfos: OrderInfo[] = [];

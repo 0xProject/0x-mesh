@@ -98,8 +98,8 @@ func updateHardCodedVersions(version string) {
 	newBrowserLiteDependencyString := fmt.Sprintf(`"@0x/mesh-browser-lite": "^%s"`, version)
 	newBrowserDependencyString := fmt.Sprintf(`"@0x/mesh-browser": "^%s"`, version)
 
-	// Update `packages/mesh-rpc-client/package.json`
-	tsClientPackageJSONPath := "packages/mesh-rpc-client/package.json"
+	// Update `packages/mesh-graphql-client/package.json`
+	tsClientPackageJSONPath := "packages/mesh-graphql-client/package.json"
 	regex := `"version": "(.*)"`
 	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
 
@@ -156,7 +156,7 @@ func updateHardCodedVersions(version string) {
 	updateFileWithRegex(changelog, regex, newChangelogSection)
 
 	// Update badge in README.md
-	pathToMDFilesWithBadges := []string{"README.md", "docs/rpc_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
+	pathToMDFilesWithBadges := []string{"README.md", "docs/graphql_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
 	regex = `version-(.*)-orange.svg`

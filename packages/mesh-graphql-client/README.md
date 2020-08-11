@@ -1,11 +1,11 @@
-## @0x/mesh-rpc-client
+## @0x/mesh-graphql-client
 
-A Javascript library for interacting with the Mesh JSON RPC API over WebSockets.
+A client for the Mesh GraphQL API.
 
 ## Installation
 
 ```bash
-yarn add @0x/mesh-rpc-client
+yarn add @0x/mesh-graphql-client
 ```
 
 If your project is in [TypeScript](https://www.typescriptlang.org/), add the following to your `tsconfig.json`:

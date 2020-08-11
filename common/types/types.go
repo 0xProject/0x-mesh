@@ -14,8 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// Stats is the return value for core.GetStats. Also used in the browser and RPC
-// interface.
+// Stats is the return value for core.GetStats. Also used in the browser interface.
 type Stats struct {
 	Version                           string      `json:"version"`
 	PubSubTopic                       string      `json:"pubSubTopic"`
@@ -28,7 +27,7 @@ type Stats struct {
 	NumOrders                         int         `json:"numOrders"`
 	NumOrdersIncludingRemoved         int         `json:"numOrdersIncludingRemoved"`
 	NumPinnedOrders                   int         `json:"numPinnedOrders"`
-	MaxExpirationTime                 string      `json:"maxExpirationTime"`
+	MaxExpirationTime                 *big.Int    `json:"maxExpirationTime"`
 	StartOfCurrentUTCDay              time.Time   `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int         `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int64       `json:"ethRPCRateLimitExpiredRequests"`
@@ -36,19 +35,19 @@ type Stats struct {
 
 // LatestBlock is the latest block processed by the Mesh node.
 type LatestBlock struct {
-	Number int         `json:"number"`
+	Number *big.Int    `json:"number"`
 	Hash   common.Hash `json:"hash"`
 }
 
 // GetOrdersResponse is the return value for core.GetOrders. Also used in the
-// browser and RPC interface.
+// browser interface.
 type GetOrdersResponse struct {
 	Timestamp   time.Time    `json:"timestamp"`
 	OrdersInfos []*OrderInfo `json:"ordersInfos"`
 }
 
 // AddOrdersOpts is a set of options for core.AddOrders. Also used in the
-// browser and RPC interface.
+// browser interface.
 type AddOrdersOpts struct {
 	// Pinned determines whether or not the added orders should be pinned. Pinned
 	// orders will not be affected by any DDoS prevention or incentive mechanisms

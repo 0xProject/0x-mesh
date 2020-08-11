@@ -22,7 +22,7 @@ func (r GetOrdersResponse) JSValue() js.Value {
 
 func (l LatestBlock) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"number": l.Number,
+		"number": l.Number.String(),
 		"hash":   l.Hash.String(),
 	})
 }
@@ -44,7 +44,7 @@ func (s Stats) JSValue() js.Value {
 		"numOrders":                         s.NumOrders,
 		"numOrdersIncludingRemoved":         s.NumOrdersIncludingRemoved,
 		"numPinnedOrders":                   s.NumPinnedOrders,
-		"maxExpirationTime":                 s.MaxExpirationTime,
+		"maxExpirationTime":                 s.MaxExpirationTime.String(),
 		"startOfCurrentUTCDay":              s.StartOfCurrentUTCDay.String(),
 		"ethRPCRequestsSentInCurrentUTCDay": s.EthRPCRequestsSentInCurrentUTCDay,
 		"ethRPCRateLimitExpiredRequests":    s.EthRPCRateLimitExpiredRequests,

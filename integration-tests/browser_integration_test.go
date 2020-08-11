@@ -10,14 +10,13 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/rpc"
+	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -81,29 +80,25 @@ func TestBrowserIntegration(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1000)),
 	)
 
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(blockProcessingWaitTime)
 	standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 
-	// In a separate goroutine, send standaloneOrder through the RPC endpoint for
+	// In a separate goroutine, send standaloneOrder through the GraphQL API for
 	// the standalone node.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Wait for the WS RPC server to start before sending the order.
-		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "started WS RPC server")
-		require.NoError(t, err, "WS RPC server didn't start")
-		rpcClient, err := rpc.NewClient(standaloneWSRPCEndpointPrefix + strconv.Itoa(wsRPCPort+count))
+		// Wait for the GraphQL server to start before sending the order.
+		_, err := waitForLogSubstring(ctx, standaloneLogMessages, "starting GraphQL server")
+		require.NoError(t, err, "GraphQL server didn't start")
+		time.Sleep(serverStartWaitTime)
+		graphQLClient := gqlclient.New(graphQLServerURL)
 		require.NoError(t, err)
-		results, err := rpcClient.AddOrders([]*zeroex.SignedOrder{standaloneOrder})
+		results, err := graphQLClient.AddOrders(ctx, []*zeroex.SignedOrder{standaloneOrder})
 		require.NoError(t, err)
-		assert.Len(t, results.Accepted, 1, "Expected 1 order to be accepted over RPC")
-		assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected over RPC")
+		assert.Len(t, results.Accepted, 1, "Expected 1 order to be accepted via GraphQL API")
+		assert.Len(t, results.Rejected, 0, "Expected 0 orders to be rejected via GraphQL API")
 	}()
 
 	// Start a simple HTTP server to serve the web page for the browser node.

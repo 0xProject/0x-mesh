@@ -18,6 +18,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 )
 
 const (
@@ -491,13 +492,13 @@ func setGlobals() {
 					EthereumChainID:     1337,
 					LatestBlock: types.LatestBlock{
 						Hash:   common.HexToHash("0x1"),
-						Number: 1500,
+						Number: big.NewInt(1500),
 					},
 					NumPeers:                          200,
 					NumOrders:                         100000,
 					NumOrdersIncludingRemoved:         200000,
 					NumPinnedOrders:                   400,
-					MaxExpirationTime:                 "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+					MaxExpirationTime:                 math.MaxBig256,
 					StartOfCurrentUTCDay:              time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
 					EthRPCRequestsSentInCurrentUTCDay: 100000,
 					EthRPCRateLimitExpiredRequests:    5000,

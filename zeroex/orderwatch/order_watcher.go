@@ -1111,7 +1111,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	// orders in orderInfos were actually not added. This should not happen
 	// often. For now, we respond by emitting an ADDED event (above) immediately
 	// followed by a STOPPED_WATCHING event. If this order was submitted via
-	// RPC, the RPC client will see a response that indicates the order was
+	// GraphQL, the GraphQL client will see a response that indicates the order was
 	// successfully added, and then it will look like we immediately stopped
 	// watching it. This is not too far off from what really happened but is
 	// slightly inefficient.
@@ -1121,8 +1121,8 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	//
 	// TODO(albrow): In the future, we should add an additional return value and
 	// then react to that differently depending on whether the order was
-	// received via RPC or from a peer. In the former case, we should return an
-	// RPC error response indicating that the order was not in fact added. In
+	// received via GraphQL or from a peer. In the former case, we should return an
+	// GraphQL error response indicating that the order was not in fact added. In
 	// the latter case, we should not emit any order events but might potentially
 	// want to adjust the peer's score.
 	for _, orderToAdd := range orderInfos {

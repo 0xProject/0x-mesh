@@ -162,8 +162,8 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, dataDir 
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"WS_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(wsRPCPort+nodeID),
-		"HTTP_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(httpRPCPort+nodeID),
+		"ENABLE_GRAPHQL_SERVER=true",
+		"GRAPHQL_SERVER_ADDR="+graphQLServerAddr,
 		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
 		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
 	)
@@ -308,7 +308,7 @@ func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.Signed
 }
 
 // A holder type for parsing logged OrderEvents. These are received by either
-// an RPC subscription or in the TypeScript bindings and are not usually logged
+// a GraphQL subscription or in the TypeScript bindings and are not usually logged
 // by Mesh. They need to be explicitly logged.
 type orderEventLog struct {
 	OrderHash string `json:"orderHash"`
