@@ -258,15 +258,11 @@ export class MeshGraphQLClient {
         );
         const errorLink = onError(({ graphQLErrors, networkError }) => {
             if (graphQLErrors != null && graphQLErrors.length > 0) {
-                // Throw the first error.
-                // TODO(albrow): Is there a clean way to include all the errors?
-                const firstErr = graphQLErrors[0];
-                throw new Error(
-                    `[GraphQL error]: Message: ${firstErr.message}, Location: ${firstErr.locations}, Path: ${firstErr.path}`,
-                );
+                const allMessages = graphQLErrors.map(err => err.message).join('\n');
+                throw new Error(`GraphQL error(s): ${allMessages}`);
             }
             if (networkError != null) {
-                throw new Error(`[Network error]: ${networkError}`);
+                throw new Error(`Network error: ${networkError.message}`);
             }
         });
         const link = from([errorLink, splitLink]);
