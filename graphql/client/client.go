@@ -92,7 +92,7 @@ const (
 		}
 	}`
 
-	orderQuery = `query Order($hash: Hash!) {
+	orderQuery = `query Order($hash: String!) {
 		order(hash: $hash) {
 			hash
 			chainId
@@ -188,6 +188,9 @@ func (c *Client) GetOrder(ctx context.Context, hash common.Hash) (*OrderWithMeta
 	if err := c.Run(ctx, req, &resp); err != nil {
 		return nil, err
 	}
+	if resp.Order == nil {
+		return nil, nil
+	}
 	return orderWithMetadataFromGQLType(resp.Order), nil
 }
 
@@ -242,7 +245,7 @@ func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
 	if err := c.Run(ctx, req, &resp); err != nil {
 		return nil, err
 	}
-	return statsFromGQLType(resp.Stats), nil
+	return statsFromGQLType(resp.Stats)
 }
 
 func (c *Client) RawQuery(ctx context.Context, query string, response interface{}) error {

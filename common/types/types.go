@@ -181,3 +181,21 @@ type Metadata struct {
 	EthRPCRequestsSentInCurrentUTCDay int
 	StartOfCurrentUTCDay              time.Time
 }
+
+// HexToBytes converts the the given hex string (with or without the "0x" prefix)
+// to a slice of bytes. If the string is "0x" it returns nil.
+func HexToBytes(s string) []byte {
+	if s == "0x" {
+		return nil
+	}
+	return common.FromHex(s)
+}
+
+// BytesToHex converts the given slice of bytes to a hex string with a "0x" prefix.
+// If b is nil or has length 0, it returns "0x".
+func BytesToHex(b []byte) string {
+	if len(b) == 0 {
+		return "0x"
+	}
+	return common.ToHex(b)
+}

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/99designs/gqlgen/graphql"
@@ -126,7 +125,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Order  func(childComplexity int, hash gqltypes.Hash) int
+		Order  func(childComplexity int, hash string) int
 		Orders func(childComplexity int, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) int
 		Stats  func(childComplexity int) int
 	}
@@ -163,7 +162,7 @@ type MutationResolver interface {
 	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
-	Order(ctx context.Context, hash gqltypes.Hash) (*gqltypes.OrderWithMetadata, error)
+	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
 	Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error)
 	Stats(ctx context.Context) (*gqltypes.Stats, error)
 }
@@ -586,7 +585,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Order(childComplexity, args["hash"].(gqltypes.Hash)), true
+		return e.complexity.Query.Order(childComplexity, args["hash"].(string)), true
 
 	case "Query.orders":
 		if e.complexity.Query.Orders == nil {
@@ -815,26 +814,6 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	&ast.Source{Name: "graphql/schema.graphql", Input: `"""
-A 32-byte Keccak256 hash encoded as a hexadecimal string.
-"""
-scalar Hash
-"""
-An Ethereum address encoded as a hexadecimal string.
-"""
-scalar Address
-"""
-A BigNumber or uint256 value encoded as a numerical string.
-"""
-scalar BigNumber
-"""
-An array of arbitrary bytes encoded as a hexadecimal string.
-"""
-scalar Bytes
-"""
-A time encoded as a string using the RFC3339 standard.
-"""
-scalar Time
-"""
 Arbitrary value of any type.
 """
 scalar Any
@@ -843,54 +822,54 @@ scalar Any
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
 type Order {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
 }
 
 """
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
 type OrderWithMetadata {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
     """
-    The hash, which can be used to uniquely identify an order.
+    The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
     """
-    hash: Hash!
+    hash: String!
     """
-    The remaining amount of the maker asset which has not yet been filled.
+    The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
     """
-    fillableTakerAssetAmount: BigNumber!
+    fillableTakerAssetAmount: String!
 }
 
 """
@@ -961,8 +940,14 @@ input OrderSort {
 The block number and block hash for the latest block that has been processed by Mesh.
 """
 type LatestBlock {
-    number: BigNumber!
-    hash: Hash!
+    """
+    The block number encoded as a numerical string.
+    """
+    number: String!
+    """
+    The block hash encoded as a hexadecimal string.
+    """
+    hash: String!
 }
 
 """
@@ -973,22 +958,26 @@ type Stats {
     pubSubTopic: String!
     rendezvous: String!
     peerID: String!
-    ethereumChainID: Int! # TODO(albrow): This should be BigNumber
+    ethereumChainID: Int! # TODO(albrow): This should be String
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
     numOrdersIncludingRemoved: Int!
-    startOfCurrentUTCDay: Time!
+    startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
-    maxExpirationTime: BigNumber!
+    """
+    The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
+    Any order with an expiration time greater than this maximum will be rejected by Mesh.
+    """
+    maxExpirationTime: String!
 }
 
 type Query {
     """
     Returns the order with the specified hash, or null if no order is found with that hash.
     """
-    order(hash: Hash!): OrderWithMetadata
+    order(hash: String!): OrderWithMetadata
     """
     Returns an array of orders that satisfy certain criteria.
     """
@@ -1018,23 +1007,23 @@ type Query {
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
 input NewOrder {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
 }
 
 """
@@ -1069,7 +1058,7 @@ type RejectedOrderResult {
     """
     The hash of the order. May be null if the hash could not be computed.
     """
-    hash: Hash
+    hash: String
     """
     The order that was rejected.
     """
@@ -1136,7 +1125,7 @@ type OrderEvent {
     was re-validated. Otherwise (e.g., for ADDED, STOPPED_WATCHING), the timestamp corresponds
     when the event was generated on the server side.
     """
-    timestamp: Time!
+    timestamp: String!
     """
     Contains all the contract events that triggered the order to be re-validated.
     All events that _may_ have affected the state of the order are included here.
@@ -1197,11 +1186,11 @@ type ContractEvent {
     """
     The hash of the block where the event was generated.
     """
-    blockHash: Hash!
+    blockHash: String!
     """
     The hash of the transaction where the event was generated.
     """
-    txHash: Hash!
+    txHash: String!
     """
     The index of the transaction where the event was generated.
     """
@@ -1217,7 +1206,7 @@ type ContractEvent {
     """
     The address of the contract that generated the event.
     """
-    address: Address!
+    address: String!
     """
     The kind of event (e.g. "ERC20TransferEvent").
     """
@@ -1282,9 +1271,9 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_order_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 gqltypes.Hash
+	var arg0 string
 	if tmp, ok := rawArgs["hash"]; ok {
-		arg0, err = ec.unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1524,9 +1513,9 @@ func (ec *executionContext) _ContractEvent_blockHash(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Hash)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ContractEvent_txHash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
@@ -1558,9 +1547,9 @@ func (ec *executionContext) _ContractEvent_txHash(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Hash)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ContractEvent_txIndex(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
@@ -1694,9 +1683,9 @@ func (ec *executionContext) _ContractEvent_address(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ContractEvent_kind(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
@@ -1796,9 +1785,9 @@ func (ec *executionContext) _LatestBlock_number(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LatestBlock_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.LatestBlock) (ret graphql.Marshaler) {
@@ -1830,9 +1819,9 @@ func (ec *executionContext) _LatestBlock_hash(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Hash)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1905,9 +1894,9 @@ func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -1939,9 +1928,9 @@ func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -1973,9 +1962,9 @@ func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2007,9 +1996,9 @@ func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2041,9 +2030,9 @@ func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2075,9 +2064,9 @@ func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2109,9 +2098,9 @@ func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2143,9 +2132,9 @@ func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2177,9 +2166,9 @@ func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2211,9 +2200,9 @@ func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2245,9 +2234,9 @@ func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2279,9 +2268,9 @@ func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2313,9 +2302,9 @@ func (ec *executionContext) _Order_senderAddress(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2347,9 +2336,9 @@ func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2381,9 +2370,9 @@ func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2415,9 +2404,9 @@ func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -2449,9 +2438,9 @@ func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -2551,9 +2540,9 @@ func (ec *executionContext) _OrderEvent_timestamp(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(time.Time)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_contractEvents(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -2619,9 +2608,9 @@ func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2653,9 +2642,9 @@ func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Conte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2687,9 +2676,9 @@ func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2721,9 +2710,9 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2755,9 +2744,9 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2789,9 +2778,9 @@ func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2823,9 +2812,9 @@ func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2857,9 +2846,9 @@ func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2891,9 +2880,9 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2925,9 +2914,9 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2959,9 +2948,9 @@ func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -2993,9 +2982,9 @@ func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3027,9 +3016,9 @@ func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3061,9 +3050,9 @@ func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Address)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3095,9 +3084,9 @@ func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3129,9 +3118,9 @@ func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3163,9 +3152,9 @@ func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Bytes)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3197,9 +3186,9 @@ func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.Hash)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderWithMetadata_fillableTakerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
@@ -3231,9 +3220,9 @@ func (ec *executionContext) _OrderWithMetadata_fillableTakerAssetAmount(ctx cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_order(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3260,7 +3249,7 @@ func (ec *executionContext) _Query_order(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Order(rctx, args["hash"].(gqltypes.Hash))
+		return ec.resolvers.Query().Order(rctx, args["hash"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3444,9 +3433,9 @@ func (ec *executionContext) _RejectedOrderResult_hash(ctx context.Context, field
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.Hash)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RejectedOrderResult_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
@@ -3883,9 +3872,9 @@ func (ec *executionContext) _Stats_startOfCurrentUTCDay(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(time.Time)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Stats_ethRPCRequestsSentInCurrentUTCDay(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
@@ -3985,9 +3974,9 @@ func (ec *executionContext) _Stats_maxExpirationTime(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqltypes.BigNumber)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Subscription_orderEvents(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
@@ -5097,103 +5086,103 @@ func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj inte
 		switch k {
 		case "chainId":
 			var err error
-			it.ChainID, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.ChainID, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "exchangeAddress":
 			var err error
-			it.ExchangeAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
+			it.ExchangeAddress, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAddress":
 			var err error
-			it.MakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
+			it.MakerAddress, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAssetData":
 			var err error
-			it.MakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
+			it.MakerAssetData, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerAssetAmount":
 			var err error
-			it.MakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.MakerAssetAmount, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerFeeAssetData":
 			var err error
-			it.MakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
+			it.MakerFeeAssetData, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "makerFee":
 			var err error
-			it.MakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.MakerFee, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAddress":
 			var err error
-			it.TakerAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
+			it.TakerAddress, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAssetData":
 			var err error
-			it.TakerAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
+			it.TakerAssetData, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerAssetAmount":
 			var err error
-			it.TakerAssetAmount, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.TakerAssetAmount, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerFeeAssetData":
 			var err error
-			it.TakerFeeAssetData, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
+			it.TakerFeeAssetData, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "takerFee":
 			var err error
-			it.TakerFee, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.TakerFee, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "senderAddress":
 			var err error
-			it.SenderAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
+			it.SenderAddress, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "feeRecipientAddress":
 			var err error
-			it.FeeRecipientAddress, err = ec.unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx, v)
+			it.FeeRecipientAddress, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "expirationTimeSeconds":
 			var err error
-			it.ExpirationTimeSeconds, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.ExpirationTimeSeconds, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "salt":
 			var err error
-			it.Salt, err = ec.unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx, v)
+			it.Salt, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "signature":
 			var err error
-			it.Signature, err = ec.unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx, v)
+			it.Signature, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -6242,15 +6231,6 @@ func (ec *executionContext) marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProject
 	return ec._AddOrdersResults(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx context.Context, v interface{}) (gqltypes.Address, error) {
-	var res gqltypes.Address
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNAddress2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddress(ctx context.Context, sel ast.SelectionSet, v gqltypes.Address) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNAny2interface(ctx context.Context, v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
@@ -6274,15 +6254,6 @@ func (ec *executionContext) marshalNAny2interface(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) unmarshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx context.Context, v interface{}) (gqltypes.BigNumber, error) {
-	var res gqltypes.BigNumber
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNBigNumber2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBigNumber(ctx context.Context, sel ast.SelectionSet, v gqltypes.BigNumber) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -6295,15 +6266,6 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx context.Context, v interface{}) (gqltypes.Bytes, error) {
-	var res gqltypes.Bytes
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNBytes2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐBytes(ctx context.Context, sel ast.SelectionSet, v gqltypes.Bytes) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNContractEvent2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEvent(ctx context.Context, sel ast.SelectionSet, v gqltypes.ContractEvent) graphql.Marshaler {
@@ -6363,15 +6325,6 @@ func (ec *executionContext) unmarshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0x�
 }
 
 func (ec *executionContext) marshalNFilterKind2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐFilterKind(ctx context.Context, sel ast.SelectionSet, v gqltypes.FilterKind) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (gqltypes.Hash, error) {
-	var res gqltypes.Hash
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v gqltypes.Hash) graphql.Marshaler {
 	return v
 }
 
@@ -6676,20 +6629,6 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
-	return graphql.UnmarshalTime(v)
-}
-
-func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
-	res := graphql.MarshalTime(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
 	return ec.___Directive(ctx, sel, &v)
 }
@@ -6937,30 +6876,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
-}
-
-func (ec *executionContext) unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (gqltypes.Hash, error) {
-	var res gqltypes.Hash
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v gqltypes.Hash) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, v interface{}) (*gqltypes.Hash, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOHash2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalOHash2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐHash(ctx context.Context, sel ast.SelectionSet, v *gqltypes.Hash) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
