@@ -48,11 +48,11 @@ type OrderWithMetadata {
     salt: String!
     signature: String!
     """
-    The hash, which can be used to uniquely identify an order.
+    The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
     """
     hash: String!
     """
-    The remaining amount of the maker asset which has not yet been filled.
+    The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
     """
     fillableTakerAssetAmount: String!
 }
@@ -125,7 +125,13 @@ input OrderSort {
 The block number and block hash for the latest block that has been processed by Mesh.
 """
 type LatestBlock {
+    """
+    The block number encoded as a numerical string.
+    """
     number: String!
+    """
+    The block hash encoded as a hexadecimal string.
+    """
     hash: String!
 }
 
@@ -145,6 +151,10 @@ type Stats {
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
+    """
+    The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
+    Any order with an expiration time greater than this maximum will be rejected by Mesh.
+    """
     maxExpirationTime: String!
 }
 

@@ -49,8 +49,10 @@ type ContractEvent struct {
 
 // The block number and block hash for the latest block that has been processed by Mesh.
 type LatestBlock struct {
+	// The block number encoded as a numerical string.
 	Number string `json:"number"`
-	Hash   string `json:"hash"`
+	// The block hash encoded as a hexadecimal string.
+	Hash string `json:"hash"`
 }
 
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
@@ -147,9 +149,9 @@ type OrderWithMetadata struct {
 	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
 	Salt                  string `json:"salt"`
 	Signature             string `json:"signature"`
-	// The hash, which can be used to uniquely identify an order.
+	// The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
 	Hash string `json:"hash"`
-	// The remaining amount of the maker asset which has not yet been filled.
+	// The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
 	FillableTakerAssetAmount string `json:"fillableTakerAssetAmount"`
 }
 
@@ -180,7 +182,9 @@ type Stats struct {
 	StartOfCurrentUTCDay              string       `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int          `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int          `json:"ethRPCRateLimitExpiredRequests"`
-	MaxExpirationTime                 string       `json:"maxExpirationTime"`
+	// The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
+	// Any order with an expiration time greater than this maximum will be rejected by Mesh.
+	MaxExpirationTime string `json:"maxExpirationTime"`
 }
 
 // The kind of comparison to be used in a filter.
