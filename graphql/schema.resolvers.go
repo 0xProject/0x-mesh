@@ -26,8 +26,8 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 	return gqltypes.AddOrdersResultsFromValidationResults(results)
 }
 
-func (r *queryResolver) Order(ctx context.Context, hash gqltypes.Hash) (*gqltypes.OrderWithMetadata, error) {
-	order, err := r.app.GetOrder(common.Hash(hash))
+func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error) {
+	order, err := r.app.GetOrder(common.HexToHash(hash))
 	if err != nil {
 		if err == db.ErrNotFound {
 			return nil, nil

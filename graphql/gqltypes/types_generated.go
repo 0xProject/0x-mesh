@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"time"
 )
 
 type AcceptedOrderResult struct {
@@ -30,9 +29,9 @@ type AddOrdersResults struct {
 // An on-chain contract event.
 type ContractEvent struct {
 	// The hash of the block where the event was generated.
-	BlockHash Hash `json:"blockHash"`
+	BlockHash string `json:"blockHash"`
 	// The hash of the transaction where the event was generated.
-	TxHash Hash `json:"txHash"`
+	TxHash string `json:"txHash"`
 	// The index of the transaction where the event was generated.
 	TxIndex int `json:"txIndex"`
 	// The index of the event log.
@@ -40,7 +39,7 @@ type ContractEvent struct {
 	// True when this was an event that was removed due to a block-reorg. False otherwise.
 	IsRemoved bool `json:"isRemoved"`
 	// The address of the contract that generated the event.
-	Address Address `json:"address"`
+	Address string `json:"address"`
 	// The kind of event (e.g. "ERC20TransferEvent").
 	Kind string `json:"kind"`
 	// The parameters for the event. The parameters are different for each event kind, but will always
@@ -50,50 +49,50 @@ type ContractEvent struct {
 
 // The block number and block hash for the latest block that has been processed by Mesh.
 type LatestBlock struct {
-	Number BigNumber `json:"number"`
-	Hash   Hash      `json:"hash"`
+	Number string `json:"number"`
+	Hash   string `json:"hash"`
 }
 
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 type NewOrder struct {
-	ChainID               BigNumber `json:"chainId"`
-	ExchangeAddress       Address   `json:"exchangeAddress"`
-	MakerAddress          Address   `json:"makerAddress"`
-	MakerAssetData        Bytes     `json:"makerAssetData"`
-	MakerAssetAmount      BigNumber `json:"makerAssetAmount"`
-	MakerFeeAssetData     Bytes     `json:"makerFeeAssetData"`
-	MakerFee              BigNumber `json:"makerFee"`
-	TakerAddress          Address   `json:"takerAddress"`
-	TakerAssetData        Bytes     `json:"takerAssetData"`
-	TakerAssetAmount      BigNumber `json:"takerAssetAmount"`
-	TakerFeeAssetData     Bytes     `json:"takerFeeAssetData"`
-	TakerFee              BigNumber `json:"takerFee"`
-	SenderAddress         Address   `json:"senderAddress"`
-	FeeRecipientAddress   Address   `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds BigNumber `json:"expirationTimeSeconds"`
-	Salt                  BigNumber `json:"salt"`
-	Signature             Bytes     `json:"signature"`
+	ChainID               string `json:"chainId"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFeeAssetData     string `json:"makerFeeAssetData"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFeeAssetData     string `json:"takerFeeAssetData"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
 }
 
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 type Order struct {
-	ChainID               BigNumber `json:"chainId"`
-	ExchangeAddress       Address   `json:"exchangeAddress"`
-	MakerAddress          Address   `json:"makerAddress"`
-	MakerAssetData        Bytes     `json:"makerAssetData"`
-	MakerAssetAmount      BigNumber `json:"makerAssetAmount"`
-	MakerFeeAssetData     Bytes     `json:"makerFeeAssetData"`
-	MakerFee              BigNumber `json:"makerFee"`
-	TakerAddress          Address   `json:"takerAddress"`
-	TakerAssetData        Bytes     `json:"takerAssetData"`
-	TakerAssetAmount      BigNumber `json:"takerAssetAmount"`
-	TakerFeeAssetData     Bytes     `json:"takerFeeAssetData"`
-	TakerFee              BigNumber `json:"takerFee"`
-	SenderAddress         Address   `json:"senderAddress"`
-	FeeRecipientAddress   Address   `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds BigNumber `json:"expirationTimeSeconds"`
-	Salt                  BigNumber `json:"salt"`
-	Signature             Bytes     `json:"signature"`
+	ChainID               string `json:"chainId"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFeeAssetData     string `json:"makerFeeAssetData"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFeeAssetData     string `json:"takerFeeAssetData"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
 }
 
 type OrderEvent struct {
@@ -107,7 +106,7 @@ type OrderEvent struct {
 	// UNFUNDED, CANCELED), then it is set to the latest block timestamp at which the order
 	// was re-validated. Otherwise (e.g., for ADDED, STOPPED_WATCHING), the timestamp corresponds
 	// when the event was generated on the server side.
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp string `json:"timestamp"`
 	// Contains all the contract events that triggered the order to be re-validated.
 	// All events that _may_ have affected the state of the order are included here.
 	// It is guaranteed that at least one of the events included here will have affected
@@ -131,32 +130,32 @@ type OrderSort struct {
 
 // A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 type OrderWithMetadata struct {
-	ChainID               BigNumber `json:"chainId"`
-	ExchangeAddress       Address   `json:"exchangeAddress"`
-	MakerAddress          Address   `json:"makerAddress"`
-	MakerAssetData        Bytes     `json:"makerAssetData"`
-	MakerAssetAmount      BigNumber `json:"makerAssetAmount"`
-	MakerFeeAssetData     Bytes     `json:"makerFeeAssetData"`
-	MakerFee              BigNumber `json:"makerFee"`
-	TakerAddress          Address   `json:"takerAddress"`
-	TakerAssetData        Bytes     `json:"takerAssetData"`
-	TakerAssetAmount      BigNumber `json:"takerAssetAmount"`
-	TakerFeeAssetData     Bytes     `json:"takerFeeAssetData"`
-	TakerFee              BigNumber `json:"takerFee"`
-	SenderAddress         Address   `json:"senderAddress"`
-	FeeRecipientAddress   Address   `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds BigNumber `json:"expirationTimeSeconds"`
-	Salt                  BigNumber `json:"salt"`
-	Signature             Bytes     `json:"signature"`
+	ChainID               string `json:"chainId"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFeeAssetData     string `json:"makerFeeAssetData"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFeeAssetData     string `json:"takerFeeAssetData"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
 	// The hash, which can be used to uniquely identify an order.
-	Hash Hash `json:"hash"`
+	Hash string `json:"hash"`
 	// The remaining amount of the maker asset which has not yet been filled.
-	FillableTakerAssetAmount BigNumber `json:"fillableTakerAssetAmount"`
+	FillableTakerAssetAmount string `json:"fillableTakerAssetAmount"`
 }
 
 type RejectedOrderResult struct {
 	// The hash of the order. May be null if the hash could not be computed.
-	Hash *Hash `json:"hash"`
+	Hash *string `json:"hash"`
 	// The order that was rejected.
 	Order *Order `json:"order"`
 	// A machine-readable code indicating why the order was rejected. This code is designed to
@@ -178,10 +177,10 @@ type Stats struct {
 	NumPeers                          int          `json:"numPeers"`
 	NumOrders                         int          `json:"numOrders"`
 	NumOrdersIncludingRemoved         int          `json:"numOrdersIncludingRemoved"`
-	StartOfCurrentUTCDay              time.Time    `json:"startOfCurrentUTCDay"`
+	StartOfCurrentUTCDay              string       `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int          `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int          `json:"ethRPCRateLimitExpiredRequests"`
-	MaxExpirationTime                 BigNumber    `json:"maxExpirationTime"`
+	MaxExpirationTime                 string       `json:"maxExpirationTime"`
 }
 
 // The kind of comparison to be used in a filter.

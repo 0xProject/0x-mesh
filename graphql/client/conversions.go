@@ -1,8 +1,11 @@
 package client
 
 import (
+	"time"
+
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 )
 
 func addOrdersResultsFromGQLType(results *gqltypes.AddOrdersResults) *AddOrdersResults {
@@ -30,29 +33,29 @@ func acceptedOrderResultsFromGQLType(results []*gqltypes.AcceptedOrderResult) []
 func rejectedOrderResultFromGQLType(result *gqltypes.RejectedOrderResult) *RejectedOrderResult {
 	var hash *common.Hash
 	if result.Hash != nil {
-		h := common.Hash(*result.Hash)
+		h := common.HexToHash(*result.Hash)
 		hash = &h
 	}
 	return &RejectedOrderResult{
 		Hash: hash,
 		Order: &Order{
-			ChainID:               gqltypes.BigNumberToBigInt(result.Order.ChainID),
-			ExchangeAddress:       common.Address(result.Order.ExchangeAddress),
-			MakerAddress:          common.Address(result.Order.MakerAddress),
-			MakerAssetData:        result.Order.MakerAssetData,
-			MakerFeeAssetData:     result.Order.MakerFeeAssetData,
-			MakerAssetAmount:      gqltypes.BigNumberToBigInt(result.Order.MakerAssetAmount),
-			MakerFee:              gqltypes.BigNumberToBigInt(result.Order.MakerFee),
-			TakerAddress:          common.Address(result.Order.TakerAddress),
-			TakerAssetData:        result.Order.TakerAssetData,
-			TakerFeeAssetData:     result.Order.TakerFeeAssetData,
-			TakerAssetAmount:      gqltypes.BigNumberToBigInt(result.Order.TakerAssetAmount),
-			TakerFee:              gqltypes.BigNumberToBigInt(result.Order.TakerFee),
-			SenderAddress:         common.Address(result.Order.SenderAddress),
-			FeeRecipientAddress:   common.Address(result.Order.FeeRecipientAddress),
-			ExpirationTimeSeconds: gqltypes.BigNumberToBigInt(result.Order.ExpirationTimeSeconds),
-			Salt:                  gqltypes.BigNumberToBigInt(result.Order.Salt),
-			Signature:             result.Order.Signature,
+			ChainID:               math.MustParseBig256(result.Order.ChainID),
+			ExchangeAddress:       common.HexToAddress(result.Order.ExchangeAddress),
+			MakerAddress:          common.HexToAddress(result.Order.MakerAddress),
+			MakerAssetData:        common.FromHex(result.Order.MakerAssetData),
+			MakerFeeAssetData:     common.FromHex(result.Order.MakerFeeAssetData),
+			MakerAssetAmount:      math.MustParseBig256(result.Order.MakerAssetAmount),
+			MakerFee:              math.MustParseBig256(result.Order.MakerFee),
+			TakerAddress:          common.HexToAddress(result.Order.TakerAddress),
+			TakerAssetData:        common.FromHex(result.Order.TakerAssetData),
+			TakerFeeAssetData:     common.FromHex(result.Order.TakerFeeAssetData),
+			TakerAssetAmount:      math.MustParseBig256(result.Order.TakerAssetAmount),
+			TakerFee:              math.MustParseBig256(result.Order.TakerFee),
+			SenderAddress:         common.HexToAddress(result.Order.SenderAddress),
+			FeeRecipientAddress:   common.HexToAddress(result.Order.FeeRecipientAddress),
+			ExpirationTimeSeconds: math.MustParseBig256(result.Order.ExpirationTimeSeconds),
+			Salt:                  math.MustParseBig256(result.Order.Salt),
+			Signature:             common.FromHex(result.Order.Signature),
 		},
 		Code:    result.Code,
 		Message: result.Message,
@@ -69,25 +72,25 @@ func rejectedOrderResultsFromGQLType(results []*gqltypes.RejectedOrderResult) []
 
 func orderWithMetadataFromGQLType(order *gqltypes.OrderWithMetadata) *OrderWithMetadata {
 	return &OrderWithMetadata{
-		Hash:                     common.Hash(order.Hash),
-		ChainID:                  gqltypes.BigNumberToBigInt(order.ChainID),
-		ExchangeAddress:          common.Address(order.ExchangeAddress),
-		MakerAddress:             common.Address(order.MakerAddress),
-		MakerAssetData:           order.MakerAssetData,
-		MakerFeeAssetData:        order.MakerFeeAssetData,
-		MakerAssetAmount:         gqltypes.BigNumberToBigInt(order.MakerAssetAmount),
-		MakerFee:                 gqltypes.BigNumberToBigInt(order.MakerFee),
-		TakerAddress:             common.Address(order.TakerAddress),
-		TakerAssetData:           order.TakerAssetData,
-		TakerFeeAssetData:        order.TakerFeeAssetData,
-		TakerAssetAmount:         gqltypes.BigNumberToBigInt(order.TakerAssetAmount),
-		TakerFee:                 gqltypes.BigNumberToBigInt(order.TakerFee),
-		SenderAddress:            common.Address(order.SenderAddress),
-		FeeRecipientAddress:      common.Address(order.FeeRecipientAddress),
-		ExpirationTimeSeconds:    gqltypes.BigNumberToBigInt(order.ExpirationTimeSeconds),
-		Salt:                     gqltypes.BigNumberToBigInt(order.Salt),
-		Signature:                order.Signature,
-		FillableTakerAssetAmount: gqltypes.BigNumberToBigInt(order.FillableTakerAssetAmount),
+		Hash:                     common.HexToHash(order.Hash),
+		ChainID:                  math.MustParseBig256(order.ChainID),
+		ExchangeAddress:          common.HexToAddress(order.ExchangeAddress),
+		MakerAddress:             common.HexToAddress(order.MakerAddress),
+		MakerAssetData:           common.FromHex(order.MakerAssetData),
+		MakerFeeAssetData:        common.FromHex(order.MakerFeeAssetData),
+		MakerAssetAmount:         math.MustParseBig256(order.MakerAssetAmount),
+		MakerFee:                 math.MustParseBig256(order.MakerFee),
+		TakerAddress:             common.HexToAddress(order.TakerAddress),
+		TakerAssetData:           common.FromHex(order.TakerAssetData),
+		TakerFeeAssetData:        common.FromHex(order.TakerFeeAssetData),
+		TakerAssetAmount:         math.MustParseBig256(order.TakerAssetAmount),
+		TakerFee:                 math.MustParseBig256(order.TakerFee),
+		SenderAddress:            common.HexToAddress(order.SenderAddress),
+		FeeRecipientAddress:      common.HexToAddress(order.FeeRecipientAddress),
+		ExpirationTimeSeconds:    math.MustParseBig256(order.ExpirationTimeSeconds),
+		Salt:                     math.MustParseBig256(order.Salt),
+		Signature:                common.FromHex(order.Signature),
+		FillableTakerAssetAmount: math.MustParseBig256(order.FillableTakerAssetAmount),
 	}
 }
 
@@ -99,7 +102,11 @@ func ordersWithMetadataFromGQLType(orders []*gqltypes.OrderWithMetadata) []*Orde
 	return result
 }
 
-func statsFromGQLType(stats *gqltypes.Stats) *Stats {
+func statsFromGQLType(stats *gqltypes.Stats) (*Stats, error) {
+	startOfCurrentUTCDay, err := time.Parse(time.RFC3339, stats.StartOfCurrentUTCDay)
+	if err != nil {
+		return nil, err
+	}
 	return &Stats{
 		Version:                           stats.Version,
 		PubSubTopic:                       stats.PubSubTopic,
@@ -110,16 +117,16 @@ func statsFromGQLType(stats *gqltypes.Stats) *Stats {
 		NumPeers:                          stats.NumPeers,
 		NumOrders:                         stats.NumOrders,
 		NumOrdersIncludingRemoved:         stats.NumOrdersIncludingRemoved,
-		StartOfCurrentUTCDay:              stats.StartOfCurrentUTCDay,
+		StartOfCurrentUTCDay:              startOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: stats.EthRPCRequestsSentInCurrentUTCDay,
 		EthRPCRateLimitExpiredRequests:    stats.EthRPCRateLimitExpiredRequests,
-		MaxExpirationTime:                 gqltypes.BigNumberToBigInt(stats.MaxExpirationTime),
-	}
+		MaxExpirationTime:                 math.MustParseBig256(stats.MaxExpirationTime),
+	}, nil
 }
 
 func latestBlockFromGQLType(latestBlock *gqltypes.LatestBlock) *LatestBlock {
 	return &LatestBlock{
-		Number: gqltypes.BigNumberToBigInt(latestBlock.Number),
-		Hash:   common.Hash(latestBlock.Hash),
+		Number: math.MustParseBig256(latestBlock.Number),
+		Hash:   common.HexToHash(latestBlock.Hash),
 	}
 }

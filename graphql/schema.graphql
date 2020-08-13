@@ -1,24 +1,4 @@
 """
-A 32-byte Keccak256 hash encoded as a hexadecimal string.
-"""
-scalar Hash
-"""
-An Ethereum address encoded as a hexadecimal string.
-"""
-scalar Address
-"""
-A BigNumber or uint256 value encoded as a numerical string.
-"""
-scalar BigNumber
-"""
-An array of arbitrary bytes encoded as a hexadecimal string.
-"""
-scalar Bytes
-"""
-A time encoded as a string using the RFC3339 standard.
-"""
-scalar Time
-"""
 Arbitrary value of any type.
 """
 scalar Any
@@ -27,54 +7,54 @@ scalar Any
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
 type Order {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
 }
 
 """
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
 type OrderWithMetadata {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
     """
     The hash, which can be used to uniquely identify an order.
     """
-    hash: Hash!
+    hash: String!
     """
     The remaining amount of the maker asset which has not yet been filled.
     """
-    fillableTakerAssetAmount: BigNumber!
+    fillableTakerAssetAmount: String!
 }
 
 """
@@ -145,8 +125,8 @@ input OrderSort {
 The block number and block hash for the latest block that has been processed by Mesh.
 """
 type LatestBlock {
-    number: BigNumber!
-    hash: Hash!
+    number: String!
+    hash: String!
 }
 
 """
@@ -157,22 +137,22 @@ type Stats {
     pubSubTopic: String!
     rendezvous: String!
     peerID: String!
-    ethereumChainID: Int! # TODO(albrow): This should be BigNumber
+    ethereumChainID: Int! # TODO(albrow): This should be String
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
     numOrdersIncludingRemoved: Int!
-    startOfCurrentUTCDay: Time!
+    startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
-    maxExpirationTime: BigNumber!
+    maxExpirationTime: String!
 }
 
 type Query {
     """
     Returns the order with the specified hash, or null if no order is found with that hash.
     """
-    order(hash: Hash!): OrderWithMetadata
+    order(hash: String!): OrderWithMetadata
     """
     Returns an array of orders that satisfy certain criteria.
     """
@@ -202,23 +182,23 @@ type Query {
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
 input NewOrder {
-    chainId: BigNumber!
-    exchangeAddress: Address!
-    makerAddress: Address!
-    makerAssetData: Bytes!
-    makerAssetAmount: BigNumber!
-    makerFeeAssetData: Bytes!
-    makerFee: BigNumber!
-    takerAddress: Address!
-    takerAssetData: Bytes!
-    takerAssetAmount: BigNumber!
-    takerFeeAssetData: Bytes!
-    takerFee: BigNumber!
-    senderAddress: Address!
-    feeRecipientAddress: Address!
-    expirationTimeSeconds: BigNumber!
-    salt: BigNumber!
-    signature: Bytes!
+    chainId: String!
+    exchangeAddress: String!
+    makerAddress: String!
+    makerAssetData: String!
+    makerAssetAmount: String!
+    makerFeeAssetData: String!
+    makerFee: String!
+    takerAddress: String!
+    takerAssetData: String!
+    takerAssetAmount: String!
+    takerFeeAssetData: String!
+    takerFee: String!
+    senderAddress: String!
+    feeRecipientAddress: String!
+    expirationTimeSeconds: String!
+    salt: String!
+    signature: String!
 }
 
 """
@@ -253,7 +233,7 @@ type RejectedOrderResult {
     """
     The hash of the order. May be null if the hash could not be computed.
     """
-    hash: Hash
+    hash: String
     """
     The order that was rejected.
     """
@@ -320,7 +300,7 @@ type OrderEvent {
     was re-validated. Otherwise (e.g., for ADDED, STOPPED_WATCHING), the timestamp corresponds
     when the event was generated on the server side.
     """
-    timestamp: Time!
+    timestamp: String!
     """
     Contains all the contract events that triggered the order to be re-validated.
     All events that _may_ have affected the state of the order are included here.
@@ -381,11 +361,11 @@ type ContractEvent {
     """
     The hash of the block where the event was generated.
     """
-    blockHash: Hash!
+    blockHash: String!
     """
     The hash of the transaction where the event was generated.
     """
-    txHash: Hash!
+    txHash: String!
     """
     The index of the transaction where the event was generated.
     """
@@ -401,7 +381,7 @@ type ContractEvent {
     """
     The address of the contract that generated the event.
     """
-    address: Address!
+    address: String!
     """
     The kind of event (e.g. "ERC20TransferEvent").
     """
