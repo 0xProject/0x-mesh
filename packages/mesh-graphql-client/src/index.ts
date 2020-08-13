@@ -135,7 +135,7 @@ const addOrdersMutation = gql`
 `;
 
 const orderQuery = gql`
-    query Order($hash: Hash!) {
+    query Order($hash: String!) {
         order(hash: $hash) {
             hash
             chainId
