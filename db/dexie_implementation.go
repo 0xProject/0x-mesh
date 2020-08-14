@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/sirupsen/logrus"
 )
 
@@ -88,6 +89,22 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 		dexie: dexie,
 		opts:  opts,
 	}, nil
+}
+
+func (db *DB) PeerStore() ds.Batching {
+	dexieStore := db.dexie.Call("peerStore")
+	return &Datastore{
+		ctx:        db.ctx,
+		dexieStore: dexieStore,
+	}
+}
+
+func (db *DB) DHTStore() ds.Batching {
+	dexieStore := db.dexie.Call("dhtStore")
+	return &Datastore{
+		ctx:        db.ctx,
+		dexieStore: dexieStore,
+	}
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
