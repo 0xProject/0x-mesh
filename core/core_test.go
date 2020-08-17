@@ -275,7 +275,6 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 			defer wg.Done()
 			if err := originalNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				fmt.Println("OrderSync Test: Checkpoint 1")
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()
@@ -304,7 +303,6 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 			defer wg.Done()
 			if err := newNode.Start(); err != nil && err != context.Canceled {
 				// context.Canceled is expected. For any other error, fail the test.
-				fmt.Println("OrderSync Test: Checkpoint 2")
 				panic(fmt.Sprintf("%s %s", testCase.name, err))
 			}
 		}()

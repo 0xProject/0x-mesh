@@ -46,6 +46,5 @@ func getPubSubOptions() []pubsub.Option {
 // NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh
 // in browser environments.
 func NewDHT(ctx context.Context, db *db.DB, host host.Host) (*dht.IpfsDHT, error) {
-	// FIXME - Add a key value to Dexie datastore
 	return dht.New(ctx, host, dhtopts.Client(true), dhtopts.Datastore(db.DHTStore()), dhtopts.Protocols(DHTProtocolID))
 }

@@ -63,7 +63,6 @@ func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error)
 	}
 	advertiseAddrs := []ma.Multiaddr{tcpAdvertiseAddr, wsAdvertiseAddr}
 
-	// FIXME(Replace Comment) - Set up the peerstore to use LevelDB.
 	pstore, err := pstoreds.NewPeerstore(ctx, config.DB.PeerStore(), pstoreds.DefaultOpts())
 	if err != nil {
 		return nil, err

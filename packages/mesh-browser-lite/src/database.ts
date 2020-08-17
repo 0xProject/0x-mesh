@@ -11,7 +11,7 @@
 
 import Dexie from 'dexie';
 
-import { BatchingDatastore } from './key_value_store';
+import { BatchingDatastore } from './datastore';
 
 export type Record = Order | MiniHeader | Metadata;
 
