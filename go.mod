@@ -3,7 +3,6 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
-	github.com/0xProject/sql-datastore => /Users/alextowle/sql-datastore
 	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm-support
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3
@@ -16,7 +15,6 @@ replace (
 )
 
 require (
-	github.com/0xProject/sql-datastore v0.0.0-20200812212451-239b36c67c16
 	github.com/99designs/gqlgen v0.11.3
 	github.com/agnivade/levenshtein v1.1.0 // indirect
 	github.com/albrow/stringset v2.1.0+incompatible
@@ -38,14 +36,15 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ido50/sqlz v0.0.0-20200308174337-487b8faf612c
-	github.com/ipfs/go-datastore v0.3.1
+	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-leveldb v0.4.0
+	github.com/ipfs/go-ds-sql v0.2.0
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karlseguin/expect v1.0.1 // indirect
-	github.com/lib/pq v1.2.0
+	github.com/lib/pq v1.3.0
 	github.com/libp2p/go-libp2p v0.5.1
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.4

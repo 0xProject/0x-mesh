@@ -12,12 +12,13 @@ import (
 	"strings"
 	"time"
 
+	meshdb "github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	sqlds "github.com/0xProject/sql-datastore"
 	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
+	sqlds "github.com/ipfs/go-ds-sql"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -208,7 +209,7 @@ func main() {
 
 		newDHT = func(h host.Host) (routing.PeerRouting, error) {
 			var err error
-			dstore := sqlds.NewDatastore(db, sqlds.NewPostgreSQLQueriesForTable(dhtTableName))
+			dstore := sqlds.NewDatastore(db, meshdb.NewPostgreSQLQueriesForTable(dhtTableName))
 
 			kadDHT, err = NewDHTWithDatastore(ctx, dstore, h)
 			if err != nil {
@@ -218,7 +219,7 @@ func main() {
 			return kadDHT, err
 		}
 
-		pstore := sqlds.NewDatastore(db, sqlds.NewPostgreSQLQueriesForTable(peerStoreTableName))
+		pstore := sqlds.NewDatastore(db, meshdb.NewPostgreSQLQueriesForTable(peerStoreTableName))
 		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreds.DefaultOpts())
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create peerStore")

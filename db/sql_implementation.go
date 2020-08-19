@@ -15,12 +15,12 @@ import (
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db/sqltypes"
-	"github.com/0xProject/sql-datastore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-ds-sql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -99,11 +99,11 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 }
 
 func (db *DB) DHTStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewSqliteQueriesForTable("dhtstore"))
+	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("dhtstore"))
 }
 
 func (db *DB) PeerStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewSqliteQueriesForTable("peerstore"))
+	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("peerstore"))
 }
 
 // TODO(albrow): Use a proper migration tool. We don't technically need this

@@ -20,11 +20,30 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	dstest "github.com/ipfs/go-datastore/test"
+	"github.com/plaid/go-envvar/envvar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var contractAddresses = ethereum.GanacheAddresses
+
+// Since the key value store tests take a very long time to run, we disable them
+// by default. These tests can be enabled with the `ENABLE_KEY_VALUE_TESTS`
+// environment variable.
+var keyValueTestsEnabled bool
+
+type TestingFlags struct {
+	EnableKeyValueTests bool `envvar:"ENABLE_KEY_VALUE_TESTS" default:"false"`
+}
+
+func init() {
+	var flags TestingFlags
+	if err := envvar.Parse(&flags); err != nil {
+		panic(fmt.Sprintf("could not parse environment variables: %s", err.Error()))
+	}
+	keyValueTestsEnabled = flags.EnableKeyValueTests
+	testing.Init()
+}
 
 func TestAddOrders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1819,14 +1838,11 @@ func makeMiniHeaderFilterTestCases(t *testing.T, db *DB) ([]*types.MiniHeader, [
 	return storedMiniHeaders, testCases
 }
 
-// FIXME - Remove this
-func randValue() []byte {
-	value := make([]byte, 64)
-	rand.Read(value)
-	return value
-}
+func TestPeerStoreBasic(t *testing.T) {
+	if !keyValueTestsEnabled {
+		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
+	}
 
-func TestPeerStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	db := newTestDB(t, ctx)
@@ -1835,36 +1851,52 @@ func TestPeerStore(t *testing.T) {
 	for _, test := range dstest.BasicSubtests {
 		test(t, peerstore)
 	}
+}
+
+func TestPeerStoreBatch(t *testing.T) {
+	if !keyValueTestsEnabled {
+		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	peerstore := db.PeerStore()
 
 	for _, test := range dstest.BatchSubtests {
 		test(t, peerstore)
 	}
 }
 
-// func TestDHTStore(t *testing.T) {
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-// 	db := newTestDB(t, ctx)
-// 	dhtstore := db.DHTStore()
-//
-// 	bytes := make([]byte, 64)
-//
-// 	dhtstore.Put()
-//
-// 	// for _, test := range dstest.BasicSubtests {
-// 	// 	test(t, dhtstore)
-// 	// 	if t.Failed() {
-// 	// 		t.FailNow()
-// 	// 	}
-// 	// }
-//
-// 	// for _, test := range dstest.BatchSubtests {
-// 	// 	test(t, dhtstore)
-// 	// 	if t.Failed() {
-// 	// 		t.FailNow()
-// 	// 	}
-// 	// }
-// }
+func TestDHTStoreBasic(t *testing.T) {
+	if !keyValueTestsEnabled {
+		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	dhtstore := db.DHTStore()
+
+	for _, test := range dstest.BasicSubtests {
+		test(t, dhtstore)
+	}
+}
+
+func TestDHTStoreBatch(t *testing.T) {
+	if !keyValueTestsEnabled {
+		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	dhtstore := db.DHTStore()
+
+	for _, test := range dstest.BatchSubtests {
+		test(t, dhtstore)
+	}
+}
 
 // safeSubsliceOrders returns a (shallow) subslice of orders without modifying
 // the original slice. Uses the same semantics as slice expressions: low is
