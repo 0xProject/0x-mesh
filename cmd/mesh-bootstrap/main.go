@@ -208,7 +208,7 @@ func main() {
 
 		newDHT = func(h host.Host) (routing.PeerRouting, error) {
 			var err error
-			dstore := sqlds.NewDatastore(db, sqlds.NewQueriesForTable(dhtTableName))
+			dstore := sqlds.NewDatastore(db, sqlds.NewPostgreSQLQueriesForTable(dhtTableName))
 
 			kadDHT, err = NewDHTWithDatastore(ctx, dstore, h)
 			if err != nil {
@@ -218,7 +218,7 @@ func main() {
 			return kadDHT, err
 		}
 
-		pstore := sqlds.NewDatastore(db, sqlds.NewQueriesForTable(peerStoreTableName))
+		pstore := sqlds.NewDatastore(db, sqlds.NewPostgreSQLQueriesForTable(peerStoreTableName))
 		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreds.DefaultOpts())
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create peerStore")

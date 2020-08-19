@@ -512,6 +512,8 @@ func convertJSError(e error) error {
 			return ErrMetadataAlreadyExists
 		case ErrDBFilledWithPinnedOrders.Error():
 			return ErrDBFilledWithPinnedOrders
+		case ds.ErrNotFound.Error():
+			return ds.ErrNotFound
 		}
 	}
 	return e

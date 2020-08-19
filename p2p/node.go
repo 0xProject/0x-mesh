@@ -137,7 +137,8 @@ type Config struct {
 	// BootstrapList is a list of multiaddress strings to use for bootstrapping
 	// the DHT. If empty, the default list will be used.
 	BootstrapList []string
-	// DB FIXME
+	// DB is a database instance that provides access to key value stores for
+	// the peerstore and the dht store.
 	DB *db.DB
 	// GlobalPubSubMessageLimit is the maximum number of messages per second that
 	// will be forwarded through GossipSub on behalf of other peers. It is an

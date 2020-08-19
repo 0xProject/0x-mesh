@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	dstest "github.com/ipfs/go-datastore/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1817,6 +1818,53 @@ func makeMiniHeaderFilterTestCases(t *testing.T, db *DB) ([]*types.MiniHeader, [
 
 	return storedMiniHeaders, testCases
 }
+
+// FIXME - Remove this
+func randValue() []byte {
+	value := make([]byte, 64)
+	rand.Read(value)
+	return value
+}
+
+func TestPeerStore(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	peerstore := db.PeerStore()
+
+	for _, test := range dstest.BasicSubtests {
+		test(t, peerstore)
+	}
+
+	for _, test := range dstest.BatchSubtests {
+		test(t, peerstore)
+	}
+}
+
+// func TestDHTStore(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
+// 	db := newTestDB(t, ctx)
+// 	dhtstore := db.DHTStore()
+//
+// 	bytes := make([]byte, 64)
+//
+// 	dhtstore.Put()
+//
+// 	// for _, test := range dstest.BasicSubtests {
+// 	// 	test(t, dhtstore)
+// 	// 	if t.Failed() {
+// 	// 		t.FailNow()
+// 	// 	}
+// 	// }
+//
+// 	// for _, test := range dstest.BatchSubtests {
+// 	// 	test(t, dhtstore)
+// 	// 	if t.Failed() {
+// 	// 		t.FailNow()
+// 	// 	}
+// 	// }
+// }
 
 // safeSubsliceOrders returns a (shallow) subslice of orders without modifying
 // the original slice. Uses the same semantics as slice expressions: low is

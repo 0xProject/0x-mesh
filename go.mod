@@ -3,6 +3,7 @@ module github.com/0xProject/0x-mesh
 go 1.14
 
 replace (
+	github.com/0xProject/sql-datastore => /Users/alextowle/sql-datastore
 	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm-support
 	github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425
 	github.com/libp2p/go-flow-metrics => github.com/libp2p/go-flow-metrics v0.0.3

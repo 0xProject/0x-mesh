@@ -4,6 +4,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"syscall/js"
 
 	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
@@ -20,16 +21,15 @@ func (d *Datastore) Close() error {
 	return nil
 }
 
-// NOTE(jalextowle): Sync is not needed in this implementation since operations
+// NOTE(jalextowle): Sync is a noop in this implementation. Operations
 // such as Put and Delete are completed before a result is returned.
 func (d *Datastore) Sync(ds.Key) error {
 	return nil
 }
 
 // Datastore provides a Dexie implementation of the ds.Batching interface. The
-// corresponding javascript bindings can be found in
-// packages/mesh-browser-lite/src/datastore.ts, which is where the bulk of the
-// implementation can be found.
+// corresponding Javascript bindings can be found in
+// packages/mesh-browser-lite/src/datastore.ts.
 type Datastore struct {
 	db         *DB
 	ctx        context.Context
@@ -54,10 +54,12 @@ type Operation struct {
 }
 
 func (o *Operation) JSValue() js.Value {
+	uint8Array := js.Global().Get("Uint8Array").New(len(o.value))
+	js.CopyBytesToJS(uint8Array, o.value)
 	return js.ValueOf(map[string]interface{}{
 		"operationType": int(o.operationType),
 		"key":           o.key.String(),
-		"value":         string(o.value),
+		"value":         uint8Array,
 	})
 }
 
@@ -108,11 +110,22 @@ func (b *Batch) Commit() error {
 }
 
 func (d *Datastore) Get(key ds.Key) ([]byte, error) {
-	jsResult, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("getAsync", key.String()))
+	// FIXME - Remove Defer
+	var jsResult js.Value
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(jsResult.String())
+			panic(r)
+		}
+	}()
+	var err error
+	jsResult, err = jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("getAsync", key.String()))
 	if err != nil {
 		return nil, convertJSError(err)
 	}
-	return []byte(jsResult.String()), nil
+	result := make([]byte, jsResult.Get("length").Int())
+	js.CopyBytesToGo(result, jsResult)
+	return result, nil
 }
 
 func (d *Datastore) Has(key ds.Key) (bool, error) {
@@ -123,30 +136,27 @@ func (d *Datastore) Has(key ds.Key) (bool, error) {
 	return jsResult.Bool(), nil
 }
 
-func (d *Datastore) GetSize(key ds.Key) (int, error) {
+func (d *Datastore) GetSize(key ds.Key) (size int, err error) {
 	jsResult, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("getSizeAsync", key.String()))
 	if err != nil {
-		return 0, convertJSError(err)
+		return -1, convertJSError(err)
 	}
 	return jsResult.Int(), nil
 }
 
 func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
-	jsQuery := js.ValueOf(map[string]interface{}{
-		"prefix": q.Prefix,
-		"offset": q.Offset,
-		"limit":  q.Limit,
-	})
-	jsResults, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("queryAsync", jsQuery))
+	jsResults, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("queryAsync", q.Prefix))
 	if err != nil {
 		return nil, convertJSError(err)
 	}
 	entries := make([]dsq.Entry, jsResults.Get("length").Int())
 	for i := 0; i < jsResults.Get("length").Int(); i++ {
 		jsResult := jsResults.Index(i)
+		value := make([]byte, jsResult.Get("size").Int())
+		js.CopyBytesToGo(value, jsResult.Get("value"))
 		entries[i] = dsq.Entry{
 			Key:   jsResult.Get("key").String(),
-			Value: []byte(jsResult.Get("value").String()),
+			Value: value,
 			Size:  jsResult.Get("size").Int(),
 		}
 	}
@@ -163,12 +173,22 @@ func (d *Datastore) Query(q dsq.Query) (dsq.Results, error) {
 			filteredEntries = append(filteredEntries, entry)
 		}
 	}
-	dsq.Sort(q.Orders, entries)
-	return dsq.ResultsWithEntries(q, entries), nil
+	dsq.Sort(q.Orders, filteredEntries)
+	if q.Offset > 0 && q.Offset <= len(filteredEntries) {
+		filteredEntries = filteredEntries[q.Offset:]
+	} else if q.Offset > len(filteredEntries) {
+		filteredEntries = []dsq.Entry{}
+	}
+	if q.Limit > 0 && q.Limit <= len(filteredEntries) {
+		filteredEntries = filteredEntries[:q.Limit]
+	}
+	return dsq.ResultsWithEntries(q, filteredEntries), nil
 }
 
 func (d *Datastore) Put(key ds.Key, value []byte) error {
-	_, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("putAsync", key.String(), string(value)))
+	uint8Array := js.Global().Get("Uint8Array").New(len(value))
+	js.CopyBytesToJS(uint8Array, value)
+	_, err := jsutil.AwaitPromiseContext(d.ctx, d.dexieStore.Call("putAsync", key.String(), uint8Array))
 	if err != nil {
 		return convertJSError(err)
 	}

@@ -98,14 +98,12 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	return db, nil
 }
 
-// FIXME
 func (db *DB) DHTStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewQueriesForTable("dhtstore"))
+	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewSqliteQueriesForTable("dhtstore"))
 }
 
-// FIXME
 func (db *DB) PeerStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewQueriesForTable("peerstore"))
+	return sqlds.NewDatastore(db.sqldb.DB.DB, sqlds.NewSqliteQueriesForTable("peerstore"))
 }
 
 // TODO(albrow): Use a proper migration tool. We don't technically need this

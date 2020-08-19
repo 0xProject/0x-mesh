@@ -12,6 +12,7 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gibson042/canonicaljson-go"
+	ds "github.com/ipfs/go-datastore"
 )
 
 const (
@@ -48,6 +49,8 @@ type Database interface {
 	GetMetadata() (*types.Metadata, error)
 	SaveMetadata(metadata *types.Metadata) error
 	UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) error
+	PeerStore() ds.Batching
+	DHTStore() ds.Batching
 }
 
 type Options struct {
