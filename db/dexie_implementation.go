@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"path/filepath"
-	"runtime/debug"
 	"syscall/js"
 	"time"
 
@@ -66,7 +65,7 @@ func New(ctx context.Context, opts *Options) (database *DB, err error) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	newDexieDatabase := js.Global().Get("__mesh_dexie_newDatabase__")
@@ -110,7 +109,7 @@ func (db *DB) DHTStore() ds.Batching {
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -146,7 +145,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -165,7 +164,7 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -201,7 +200,7 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -224,7 +223,7 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -240,7 +239,7 @@ func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
 func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -258,7 +257,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -278,7 +277,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -311,7 +310,7 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -331,7 +330,7 @@ func (db *DB) AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.Mi
 func (db *DB) ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -347,7 +346,7 @@ func (db *DB) ResetMiniHeaders(newMiniHeaders []*types.MiniHeader) (err error) {
 func (db *DB) GetMiniHeader(hash common.Hash) (miniHeader *types.MiniHeader, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -365,7 +364,7 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -381,7 +380,7 @@ func (db *DB) FindMiniHeaders(query *MiniHeaderQuery) (miniHeaders []*types.Mini
 func (db *DB) DeleteMiniHeader(hash common.Hash) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -399,7 +398,7 @@ func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHe
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -415,7 +414,7 @@ func (db *DB) DeleteMiniHeaders(query *MiniHeaderQuery) (deleted []*types.MiniHe
 func (db *DB) GetMetadata() (metadata *types.Metadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -434,7 +433,7 @@ func (db *DB) GetMetadata() (metadata *types.Metadata, err error) {
 func (db *DB) SaveMetadata(metadata *types.Metadata) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -454,7 +453,7 @@ func (db *DB) SaveMetadata(metadata *types.Metadata) (err error) {
 func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMetadata *types.Metadata)) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = recoverError(r)
+			err = jsutil.RecoverError(r)
 		}
 	}()
 	start := time.Now()
@@ -479,20 +478,6 @@ func (db *DB) UpdateMetadata(updateFunc func(oldmetadata *types.Metadata) (newMe
 		return convertJSError(jsErr)
 	}
 	return nil
-}
-
-func recoverError(e interface{}) error {
-	if e != nil {
-		debug.PrintStack()
-	}
-	switch e := e.(type) {
-	case error:
-		return e
-	case string:
-		return errors.New(e)
-	default:
-		return fmt.Errorf("unexpected JavaScript error: (%T) %v", e, e)
-	}
 }
 
 func convertJSError(e error) error {
