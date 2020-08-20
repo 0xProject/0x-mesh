@@ -1,6 +1,6 @@
 module github.com/0xProject/0x-mesh
 
-go 1.14
+go 1.15
 
 replace (
 	// github.com/ethereum/go-ethereum => github.com/0xProject/go-ethereum wasm-support
