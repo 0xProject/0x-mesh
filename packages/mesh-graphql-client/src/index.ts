@@ -331,7 +331,7 @@ export class MeshGraphQLClient {
         return fromStringifiedOrderWithMetadata(resp.data.order);
     }
 
-    public async getOrdersAsync(
+    public async findOrdersAsync(
         query: OrderQuery = { sort: [], filters: [], limit: defaultOrderQueryLimit },
     ): Promise<OrderWithMetadata[]> {
         const resp: ApolloQueryResult<OrdersResponse> = await this._client.query({

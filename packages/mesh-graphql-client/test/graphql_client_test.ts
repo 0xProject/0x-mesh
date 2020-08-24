@@ -194,7 +194,7 @@ blockchainTests.resets('GraphQLClient', env => {
             });
         });
 
-        describe('#getOrdersAsync', async () => {
+        describe('#findOrdersAsync', async () => {
             it('returns all orders when no options are provided', async () => {
                 const ordersLength = 10;
                 const orders = [];
@@ -206,7 +206,7 @@ blockchainTests.resets('GraphQLClient', env => {
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the response.
-                const gotOrders = await deployment.client.getOrdersAsync();
+                const gotOrders = await deployment.client.findOrdersAsync();
                 const expectedOrders = orders.map(order => ({
                     ...order,
                     hash: orderHashUtils.getOrderHashHex(order),
@@ -228,7 +228,7 @@ blockchainTests.resets('GraphQLClient', env => {
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the response.
-                const gotOrders = await deployment.client.getOrdersAsync({
+                const gotOrders = await deployment.client.findOrdersAsync({
                     filters: [{ field: 'makerAssetAmount', kind: FilterKind.LessOrEqual, value: new BigNumber(7) }],
                     sort: [{ field: 'makerAssetAmount', direction: SortDirection.Desc }],
                     limit: 5,
