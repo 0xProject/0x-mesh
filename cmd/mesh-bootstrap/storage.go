@@ -3,9 +3,6 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -31,40 +28,6 @@ func getDHTDir(config Config) string {
 
 func getPeerstoreDir(config Config) string {
 	return filepath.Join(config.LevelDBDataDir, "p2p", "peerstore")
-}
-
-func getSQLDatabase(config Config) (*sql.DB, error) {
-	// Currently we only support the postgres driver.
-	if config.SQLDBEngine != "postgres" {
-		return nil, errors.New("sqld currently only supports postgres driver")
-	}
-
-	if config.SQLDBConnectionString != "" {
-		return sql.Open(config.SQLDBEngine, config.SQLDBConnectionString)
-	}
-
-	fmtStr := "postgresql:///%s?host=%s&port=%s&user=%s&password=%s&sslmode=disable"
-	connstr := fmt.Sprintf(fmtStr, config.SQLDBName, config.SQLDBHost, config.SQLDBPort, config.SQLDBUser, config.SQLDBPassword)
-
-	return sql.Open(config.SQLDBEngine, connstr)
-}
-
-func prepareSQLDatabase(db *sql.DB) error {
-	createTableString := "CREATE TABLE IF NOT EXISTS %s (key TEXT NOT NULL UNIQUE, data BYTEA NOT NULL)"
-	createDHTTable := fmt.Sprintf(createTableString, dhtTableName)
-	createPeerStoreTable := fmt.Sprintf(createTableString, peerStoreTableName)
-
-	_, err := db.Exec(createDHTTable)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(createPeerStoreTable)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {

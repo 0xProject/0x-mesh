@@ -12,13 +12,11 @@ import (
 	"strings"
 	"time"
 
-	meshdb "github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
-	sqlds "github.com/ipfs/go-ds-sql"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -30,7 +28,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	filter "github.com/libp2p/go-maddr-filter"
@@ -78,29 +75,6 @@ type Config struct {
 	DataStoreType string `envvar:"DATA_STORE_TYPE" default:"leveldb"`
 	// LevelDBDataDir is the directory used for storing data when using leveldb as data store type.
 	LevelDBDataDir string `envvar:"LEVELDB_DATA_DIR" default:"0x_mesh"`
-	// SQLDBConnectionString is the connection URL used to connect to the
-	// database.
-	// NOTE: When set it has precedence over SQL_DB_HOST, SQL_DB_PORT etc.
-	SQLDBConnectionString string `envvar:"SQL_DB_CONNECTION_STRING" default:"" json:"-"`
-	// SQLDBHost is the database host used to connect to the database when
-	// using postgres as data store type.
-	SQLDBHost string `envvar:"SQL_DB_HOST" default:"localhost" json:"-"`
-	// SQLDBPort is the database port used to connect to the database when
-	// using postgres as data store type.
-	SQLDBPort string `envvar:"SQL_DB_PORT" default:"5432" json:"-"`
-	// SQLDBUser is the database user used to connect to the database when
-	// using postgres as data store type.
-	SQLDBUser string `envvar:"SQL_DB_USER" default:"postgres" json:"-"`
-	// SQLDBPassword is the database password used to connect to the database when
-	// using postgres as data store type.
-	SQLDBPassword string `envvar:"SQL_DB_PASSWORD" default:"" json:"-"`
-	// SQLDBName is the database name to connect to when using
-	// postgres as data store type.
-	SQLDBName string `envvar:"SQL_DB_NAME" default:"datastore" json:"-"`
-	// SQLDBEngine is the underyling database engine to use as the
-	// database driver.
-	// NOTE: Currently only `postgres` driver is supported.
-	SQLDBEngine string `envvar:"SQL_DB_ENGINE" default:"postgres"`
 	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
@@ -163,71 +137,30 @@ func main() {
 	var kadDHT *dht.IpfsDHT
 	var newDHT func(h host.Host) (routing.PeerRouting, error)
 
-	var peerStore peerstore.Peerstore
-
-	// TODO(oskar) - Figure out why returning an anonymous function from
-	// getNewDHT() is making kadDHT.runBootstrap panicing.
-	// When solved this big switch case can be removed from main()
-	switch config.DataStoreType {
-	case leveldbDataStore:
-		newDHT = func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			dhtDir := getDHTDir(config)
-			// Set up the DHT to use LevelDB.
-			store, err := leveldbStore.NewDatastore(dhtDir, nil)
-			if err != nil {
-				return nil, err
-			}
-			kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-			return kadDHT, err
-		}
-
-		// Set up the peerstore to use LevelDB.
-		store, err := leveldbStore.NewDatastore(getPeerstoreDir(config), nil)
+	newDHT = func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		dhtDir := getDHTDir(config)
+		// Set up the DHT to use LevelDB.
+		store, err := leveldbStore.NewDatastore(dhtDir, nil)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
-
-		peerStore, err = pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+		kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 		if err != nil {
-			log.Fatal(err)
+			log.WithField("error", err).Fatal("could not create DHT")
 		}
+		return kadDHT, err
+	}
 
-	case sqlDataStore:
-		db, err := getSQLDatabase(config)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not create SQL database")
-		}
+	// Set up the peerstore to use LevelDB.
+	store, err := leveldbStore.NewDatastore(getPeerstoreDir(config), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		err = prepareSQLDatabase(db)
-		if err != nil {
-			log.WithField("error", err).Fatal("failed to repare SQL tables for datastores")
-		}
-
-		newDHT = func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			dstore := sqlds.NewDatastore(db, meshdb.NewPostgreSQLQueriesForTable(dhtTableName))
-
-			kadDHT, err = NewDHTWithDatastore(ctx, dstore, h)
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-
-			return kadDHT, err
-		}
-
-		pstore := sqlds.NewDatastore(db, meshdb.NewPostgreSQLQueriesForTable(peerStoreTableName))
-		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreds.DefaultOpts())
-		if err != nil {
-			log.WithField("error", err).Fatal("could not create peerStore")
-		}
-
-	default:
-		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, sqlDataStore)
-
+	peerStore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Parse multiaddresses given in the config

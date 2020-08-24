@@ -23,8 +23,8 @@ enum OperationType {
 
 interface Operation {
     operationType: OperationType;
-    key: Uint8Array;
-    value?: string;
+    key: string;
+    value?: Uint8Array;
 }
 
 // This implements the subset of the ds.Batching interface that should be implemented
@@ -35,11 +35,11 @@ interface Operation {
 // Go functions into Javascript functions.
 export class BatchingDatastore {
     private readonly _db: Dexie;
-    private readonly _table: Dexie.Table;
+    private readonly _table: Dexie.Table<{ key: string; value: Uint8Array }, string>;
 
     constructor(db: Dexie, tableName: string) {
         this._db = db;
-        this._table = this._db._allTables[tableName];
+        this._table = this._db._allTables[tableName] as Dexie.Table<{ key: string; value: Uint8Array }, string>;
         if (this._table === undefined) {
             throw new Error('BatchingDatastore: Attempting to use undefined table');
         }
@@ -90,11 +90,15 @@ export class BatchingDatastore {
     }
 
     // NOTE(jalextowle): This function only filters the database based on prefix
-    // and generates entries for each row of the database. All of the other query
-    // operations are implemented in db/dexie_datastore.go for performance reasons.
+    // and generates entries for each row of the database. All of the other
+    // query operations are implemented in db/dexie_datastore.go for performance
+    // reasons. The prefixes are interpreted as regular expressions to satisfy
+    // the ds.Datastore interface.
     public async queryAsync(prefix: string): Promise<Entry[]> {
         return this._db.transaction('rw!', this._table, async () => {
-            const col = prefix !== '' ? this._table.where('key').startsWith(prefix) : this._table.toCollection();
+            const prefixRegExp = new RegExp(prefix);
+            const col =
+                prefix !== '' ? this._table.filter(entry => prefixRegExp.test(entry.key)) : this._table.toCollection();
             return (await col.toArray()).map(entry => {
                 return {
                     key: entry.key,

@@ -1842,6 +1842,7 @@ func TestPeerStoreBasic(t *testing.T) {
 	if !keyValueTestsEnabled {
 		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
 	}
+	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1857,6 +1858,7 @@ func TestPeerStoreBatch(t *testing.T) {
 	if !keyValueTestsEnabled {
 		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
 	}
+	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1872,6 +1874,7 @@ func TestDHTStoreBasic(t *testing.T) {
 	if !keyValueTestsEnabled {
 		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
 	}
+	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1887,6 +1890,7 @@ func TestDHTStoreBatch(t *testing.T) {
 	if !keyValueTestsEnabled {
 		t.Skip("Key-value store tests are disabled. You can enable them with the ENABLE_KEY_VALUE_TESTS environment variable")
 	}
+	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

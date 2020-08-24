@@ -60,7 +60,7 @@ test-key-value-stores-go:
 
 .PHONY: test-key-value-stores-wasm
 test-key-value-stores-wasm:
-	WASM_INIT_FILE="$$(pwd)/packages/mesh-browser-shim/dist/browser_shim.js" GOOS=js GOARCH=wasm ENABLE_KEY_VALUE_TESTS=true go test ./db -timeout 20m -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest"
+	WASM_INIT_FILE="$$(pwd)/packages/mesh-browser-shim/dist/browser_shim.js" GOOS=js GOARCH=wasm ENABLE_KEY_VALUE_TESTS=true go test ./db -timeout 30m -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest"
 
 
 .PHONY: test-go-serial
