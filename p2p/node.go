@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	"github.com/0xProject/0x-mesh/p2p/validatorset"
@@ -136,8 +137,9 @@ type Config struct {
 	// BootstrapList is a list of multiaddress strings to use for bootstrapping
 	// the DHT. If empty, the default list will be used.
 	BootstrapList []string
-	// DataDir is the directory to use for storing data.
-	DataDir string
+	// DB is a database instance that provides access to key value stores for
+	// the peerstore and the dht store.
+	DB *db.DB
 	// GlobalPubSubMessageLimit is the maximum number of messages per second that
 	// will be forwarded through GossipSub on behalf of other peers. It is an
 	// important mechanism for limiting our own upload bandwidth. Without a global
@@ -205,8 +207,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		dhtDir := getDHTDir(config.DataDir)
-		kadDHT, err = NewDHT(ctx, dhtDir, h)
+		kadDHT, err = NewDHT(ctx, config.DB, h)
 		if err != nil {
 			log.WithField("error", err).Error("could not create DHT")
 		}

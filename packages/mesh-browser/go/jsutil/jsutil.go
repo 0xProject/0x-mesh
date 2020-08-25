@@ -7,9 +7,42 @@ package jsutil
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"runtime/debug"
 	"syscall/js"
 )
+
+func CopyBytesToJS(bytes []byte) (jsBytes js.Value, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = RecoverError(r)
+		}
+	}()
+
+	jsBytes = js.Global().Get("Uint8Array").New(len(bytes))
+	copied := js.CopyBytesToJS(jsBytes, bytes)
+	if copied != len(bytes) {
+		return js.Undefined(), fmt.Errorf("should have copied %d bytes to JS but only copied %d", len(bytes), copied)
+	}
+	return jsBytes, nil
+}
+
+func CopyBytesToGo(jsBytes js.Value) (bytes []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = RecoverError(r)
+		}
+	}()
+
+	jsBytesLength := jsBytes.Get("length").Int()
+	bytes = make([]byte, jsBytesLength)
+	copied := js.CopyBytesToGo(bytes, jsBytes)
+	if copied != jsBytesLength {
+		return nil, fmt.Errorf("should have copied %d bytes to Go but only copied %d", jsBytesLength, copied)
+	}
+	return bytes, nil
+}
 
 // ErrorToJS converts a Go error to a JavaScript Error.
 func ErrorToJS(err error) js.Value {
@@ -122,4 +155,20 @@ func InefficientlyConvertFromJS(jsValue js.Value, value interface{}) (err error)
 	}()
 	jsonString := js.Global().Get("JSON").Call("stringify", jsValue)
 	return json.Unmarshal([]byte(jsonString.String()), value)
+}
+
+// RecoverError allows a function to recover from a thrown Javascript error if
+// called inside of a deferred function with a recover statement.
+func RecoverError(e interface{}) error {
+	if e != nil {
+		debug.PrintStack()
+	}
+	switch e := e.(type) {
+	case error:
+		return e
+	case string:
+		return errors.New(e)
+	default:
+		return fmt.Errorf("unexpected JavaScript error: (%T) %v", e, e)
+	}
 }

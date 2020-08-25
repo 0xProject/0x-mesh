@@ -19,6 +19,8 @@ import (
 	"github.com/gibson042/canonicaljson-go"
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-ds-sql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -96,6 +98,14 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	return db, nil
 }
 
+func (db *DB) DHTStore() ds.Batching {
+	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("dhtstore"))
+}
+
+func (db *DB) PeerStore() ds.Batching {
+	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("peerstore"))
+}
+
 // TODO(albrow): Use a proper migration tool. We don't technically need this
 // now but it will be necessary if we ever change the database schema.
 // Note(albrow): If needed, we can optimize this by adding indexes to the
@@ -142,6 +152,16 @@ CREATE TABLE IF NOT EXISTS metadata (
 	ethereumChainID                   BIGINT NOT NULL,
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
 	startOfCurrentUTCDay              DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS peerstore (
+	key  TEXT NOT NULL UNIQUE,
+	data BYTEA NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dhtstore (
+	key  TEXT NOT NULL UNIQUE,
+	data BYTEA NOT NULL
 );
 `
 

@@ -49,6 +49,20 @@ test-go-parallel:
 	go test ./... -race -timeout 30s
 
 
+.PHONY: test-key-value-stores
+test-key-value-stores: test-key-value-stores-go test-key-value-stores-wasm
+
+
+.PHONY: test-key-value-stores-go
+test-key-value-stores-go:
+	ENABLE_KEY_VALUE_TESTS=true go test ./db
+
+
+.PHONY: test-key-value-stores-wasm
+test-key-value-stores-wasm:
+	WASM_INIT_FILE="$$(pwd)/packages/mesh-browser-shim/dist/browser_shim.js" GOOS=js GOARCH=wasm ENABLE_KEY_VALUE_TESTS=true go test ./db -timeout 30m -tags=browser -exec="$$GOPATH/bin/wasmbrowsertest"
+
+
 .PHONY: test-go-serial
 test-go-serial:
 	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial

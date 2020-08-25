@@ -5,6 +5,7 @@ package p2p
 import (
 	"context"
 
+	"github.com/0xProject/0x-mesh/db"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -44,6 +45,6 @@ func getPubSubOptions() []pubsub.Option {
 
 // NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh
 // in browser environments.
-func NewDHT(ctx context.Context, storageDir string, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Client(true), dhtopts.Protocols(DHTProtocolID))
+func NewDHT(ctx context.Context, db *db.DB, host host.Host) (*dht.IpfsDHT, error) {
+	return dht.New(ctx, host, dhtopts.Client(true), dhtopts.Datastore(db.DHTStore()), dhtopts.Protocols(DHTProtocolID))
 }

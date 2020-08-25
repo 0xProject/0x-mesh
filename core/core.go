@@ -627,7 +627,7 @@ func (app *App) Start() error {
 		RendezvousPoints:       rendezvousPoints,
 		UseBootstrapList:       app.config.UseBootstrapList,
 		BootstrapList:          bootstrapList,
-		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
+		DB:                     app.db,
 		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
 		MaxBytesPerSecond:      app.config.MaxBytesPerSecond,
 	}

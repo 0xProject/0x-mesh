@@ -11,6 +11,8 @@
 
 import Dexie from 'dexie';
 
+import { BatchingDatastore } from './datastore';
+
 export type Record = Order | MiniHeader | Metadata;
 
 export interface Options {
@@ -153,6 +155,8 @@ export class Database {
     private readonly _orders: Dexie.Table<Order, string>;
     private readonly _miniHeaders: Dexie.Table<MiniHeader, string>;
     private readonly _metadata: Dexie.Table<Metadata, number>;
+    private readonly _dhtstore: BatchingDatastore;
+    private readonly _peerstore: BatchingDatastore;
 
     constructor(opts: Options) {
         this._db = new Dexie(opts.dataSourceName);
@@ -164,11 +168,23 @@ export class Database {
                 '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
+            dhtstore: '&key,data',
+            peerstore: '&key,data',
         });
 
         this._orders = this._db.table('orders');
         this._miniHeaders = this._db.table('miniHeaders');
         this._metadata = this._db.table('metadata');
+        this._dhtstore = new BatchingDatastore(this._db, 'dhtstore');
+        this._peerstore = new BatchingDatastore(this._db, 'peerstore');
+    }
+
+    public dhtStore(): BatchingDatastore {
+        return this._dhtstore;
+    }
+
+    public peerStore(): BatchingDatastore {
+        return this._peerstore;
     }
 
     public close(): void {
