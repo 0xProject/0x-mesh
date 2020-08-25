@@ -90,10 +90,10 @@ export class BatchingDatastore {
     }
 
     // NOTE(jalextowle): This function only filters the database based on prefix
-    // and generates entries for each row of the database. All of the other
-    // query operations are implemented in db/dexie_datastore.go for performance
-    // reasons. The prefixes are interpreted as regular expressions to satisfy
-    // the ds.Datastore interface.
+    // and generates entries for each row of the database. The other query
+    // operations (filtering, sorting, etc.) are implemented in
+    // db/dexie_datastore.go for performance reasons. The prefixes are
+    // interpreted as regular expressions to satisfy the ds.Datastore interface.
     public async queryAsync(prefix: string): Promise<Entry[]> {
         return this._db.transaction('rw!', this._table, async () => {
             const prefixRegExp = new RegExp(prefix);
