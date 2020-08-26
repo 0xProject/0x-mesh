@@ -10,6 +10,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -197,5 +198,5 @@ func BytesToHex(b []byte) string {
 	if len(b) == 0 {
 		return "0x"
 	}
-	return common.ToHex(b)
+	return hexutil.Encode(b)
 }
