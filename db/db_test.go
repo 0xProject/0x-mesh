@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -2140,16 +2139,4 @@ func assertMetadatasAreEqual(t *testing.T, expected, actual *types.Metadata) {
 	}
 	// We can compare the rest of the fields normally.
 	assert.Equal(t, expected, actual)
-}
-
-// NOTE(jalextowle): This function is only used in tests, so it must be defined
-// here to prevent the `deadcode` linter from emitting an error.
-func checkMiniHeaderQuery(query *MiniHeaderQuery) error {
-	if query == nil {
-		return nil
-	}
-	if query.Offset != 0 && query.Limit == 0 {
-		return errors.New("can't use Offset without Limit")
-	}
-	return nil
 }

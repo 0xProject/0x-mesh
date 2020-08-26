@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const limit = 10
-
 var (
 	miniHeaderOne = &types.MiniHeader{
 		Number:    big.NewInt(1),

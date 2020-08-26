@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -167,14 +166,6 @@ type Config struct {
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64
-}
-
-func getPeerstoreDir(datadir string) string {
-	return filepath.Join(datadir, "peerstore")
-}
-
-func getDHTDir(datadir string) string {
-	return filepath.Join(datadir, "dht")
 }
 
 // New creates a new Node with the given context and config. The Node will stop

@@ -14,7 +14,6 @@ import (
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
@@ -39,9 +38,6 @@ const (
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
-	// DataStoreType constants
-	leveldbDataStore = "leveldb"
-	sqlDataStore     = "sqldb"
 )
 
 // Config contains configuration options for a Node.
@@ -293,10 +289,4 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
-}
-
-// NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
-// as the persistent storage interface.
-func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 }

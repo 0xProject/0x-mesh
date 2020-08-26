@@ -13,11 +13,6 @@ import (
 	_ "github.com/lib/pq" // postgres driver
 )
 
-const (
-	dhtTableName       = "dhtkv"
-	peerStoreTableName = "peerStore"
-)
-
 func getPrivateKeyPath(config Config) string {
 	return filepath.Join(config.LevelDBDataDir, "keys", "privkey")
 }

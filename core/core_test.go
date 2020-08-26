@@ -92,10 +92,6 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 	wg.Wait()
 }
 
-func newTestApp(t *testing.T, ctx context.Context) *App {
-	return newTestAppWithPrivateConfig(t, ctx, defaultOrderFilter, defaultPrivateConfig())
-}
-
 func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderFilter string, pConfig privateConfig) *App {
 	if customOrderFilter == "" {
 		customOrderFilter = defaultOrderFilter

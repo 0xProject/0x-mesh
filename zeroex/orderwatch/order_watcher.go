@@ -461,55 +461,6 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	return nil
 }
 
-// processRecentlyValidatedOrders creates a mapping from revalidation blocks to
-// orders in the list of recently validated orders and returns this mapping along
-// with the oldest revalidation block number. As it processes these orders, it
-// ignores any recently validated orders that are up-to-date with respect to contract
-// events in the orderwatcher and cannot possibly be missing relevant contract events.
-// Any orders that were validated in a block that is no longer stored in the database
-// must be revalidated in case the orderwatcher missed a contract event that is no
-// longer stored.
-//
-// NOTE(jalextowle): Provided that a recently validated order was not validated more
-// than 128 blocks ago, we could recover these block events to verify if it needs to
-// be revalidated. We choose not to currently because revalidation will likely be more
-// performant, but this may not always be the case.
-func processRecentlyValidatedOrders(
-	recentlyValidatedOrders []*types.OrderWithMetadata,
-	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
-	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	oldestBlockNumberFromEvents *big.Int,
-	oldestBlockNumberInDB *big.Int,
-) (
-	revalidationBlockToOrder map[*big.Int][]*types.OrderWithMetadata,
-	oldestRevalidationBlockNumber *big.Int,
-) {
-	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
-		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
-		// If the oldestBlock in the list of block events is greater then
-		// the last validated block of the recently validated orders, we
-		// may be missing block events for this order.
-		if oldestRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
-			oldestRevalidationBlockNumber = previousValidationBlockNumber
-		}
-		if oldestBlockNumberFromEvents.Cmp(previousValidationBlockNumber) == -1 {
-			continue
-		}
-		// If the previous validation block of the order is a predecessor
-		// of the oldest block in the blockwatcher, we must revalidate the
-		// order because we may be missing relevant block events.
-		if oldestBlockNumberInDB.Cmp(previousValidationBlockNumber) == 1 {
-			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
-			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
-		}
-		revalidationBlockToOrder[previousValidationBlockNumber] = append(
-			revalidationBlockToOrder[previousValidationBlockNumber],
-			recentlyValidatedOrder,
-		)
-	}
-	return revalidationBlockToOrder, oldestRevalidationBlockNumber
-}
-
 // RevalidateOrdersForMissingEvents checks all of the orders in the database for
 // any events in the miniheaders table that may have been missed. This should only
 // be used on startup, as there is a different mechanism that serves this purpose
