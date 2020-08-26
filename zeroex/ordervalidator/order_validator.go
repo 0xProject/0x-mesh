@@ -400,7 +400,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			}
 		}
 
-		isSupportedSignature := isSupportedSignature(signedOrder.Signature, orderHash)
+		isSupportedSignature := isSupportedSignature(signedOrder.Signature)
 		if !isSupportedSignature {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -696,7 +696,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 	return chunkSizes
 }
 
-func isSupportedSignature(signature []byte, orderHash common.Hash) bool {
+func isSupportedSignature(signature []byte) bool {
 	if len(signature) == 0 {
 		return false
 	}

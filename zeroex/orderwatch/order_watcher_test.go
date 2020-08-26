@@ -194,7 +194,7 @@ func TestOrderWatcherStoresValidOrders(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 	)
-	setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	setupOrderWatcherScenario(ctx, t, database, signedOrder)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 
@@ -233,7 +233,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -291,7 +291,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -347,7 +347,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -404,7 +404,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy. We do this by setting the
 	// operator/spender to the null address.
@@ -460,7 +460,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's ERC1155 approval to ERC1155Proxy
 	opts := &bind.TransactOpts{
@@ -517,7 +517,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Reduce Maker's ERC1155 balance
 	opts := &bind.TransactOpts{
@@ -570,7 +570,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
 	opts := &bind.TransactOpts{
@@ -624,7 +624,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -712,7 +712,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	latestStoredBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
@@ -782,7 +782,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Withdraw maker's WETH (i.e. decrease WETH balance)
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
@@ -869,7 +869,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Cancel order
 	opts := &bind.TransactOpts{
@@ -920,7 +920,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Cancel order with epoch
 	opts := &bind.TransactOpts{
@@ -975,7 +975,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Fill order
 	opts := &bind.TransactOpts{
@@ -1031,7 +1031,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	)
 	expectedOrderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, database, signedOrder)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Partially fill order
 	opts := &bind.TransactOpts{
@@ -1976,7 +1976,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 }
 
-func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
+func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Start watching an order
