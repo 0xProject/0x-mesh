@@ -78,6 +78,7 @@ type Config struct {
 // supplied stack) handling block re-orgs and network disruptions gracefully. It can be started from
 // any arbitrary block height, and will emit both block added and removed events.
 type Watcher struct {
+	ctx                 context.Context
 	stack               *simplestack.SimpleStack
 	db                  *db.DB
 	client              Client
@@ -92,12 +93,13 @@ type Watcher struct {
 }
 
 // New creates a new Watcher instance.
-func New(retentionLimit int, config Config) (*Watcher, error) {
+func New(ctx context.Context, retentionLimit int, config Config) (*Watcher, error) {
 	existingMiniHeaders, err := config.DB.FindMiniHeaders(nil)
 	if err != nil {
 		return nil, err
 	}
 	return &Watcher{
+		ctx:             ctx,
 		pollingInterval: config.PollingInterval,
 		db:              config.DB,
 		stack:           simplestack.New(retentionLimit, existingMiniHeaders),
@@ -130,7 +132,7 @@ func (w *Watcher) GetNumberOfBlocksBehind(ctx context.Context) (int, int, error)
 // without an archive Ethereum node (see: http://bit.ly/2D11Hr6) so we instead clear
 // previously tracked blocks so BlockWatcher starts again from the latest block. This
 // function blocks until complete or the context is  cancelled.
-func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
+func (w *Watcher) FastSyncToLatestBlock() (blocksElapsed int, err error) {
 	w.mu.Lock()
 	if w.wasStartedOnce {
 		w.mu.Unlock()
@@ -138,16 +140,24 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
 	}
 	w.mu.Unlock()
 
-	blocksElapsed, latestBlockProcessedNumber, err := w.GetNumberOfBlocksBehind(ctx)
+	latestBlockProcessed := w.stack.Peek()
+	// No previously stored block so no blocks have elapsed
+	if latestBlockProcessed == nil {
+		return 0, nil
+	}
+
+	latestBlock, err := w.client.HeaderByNumber(nil)
 	if err != nil {
 		return 0, err
 	}
 
+	latestBlockProcessedNumber := int(latestBlockProcessed.Number.Int64())
+	blocksElapsed = int(latestBlock.Number.Int64()) - latestBlockProcessedNumber
 	if blocksElapsed == 0 {
 		return blocksElapsed, nil
 	} else if blocksElapsed < constants.MaxBlocksStoredInNonArchiveNode {
 		log.WithField("blocksElapsed", blocksElapsed).Info("Some blocks have elapsed since last boot. Backfilling block events (this can take a while)...")
-		events, err := w.getMissedEventsToBackfill(ctx, blocksElapsed, latestBlockProcessedNumber)
+		events, err := w.getMissedEventsToBackfill(blocksElapsed, latestBlockProcessedNumber)
 		if err != nil {
 			return blocksElapsed, err
 		}
@@ -174,7 +184,7 @@ func (w *Watcher) FastSyncToLatestBlock(ctx context.Context) (int, error) {
 // until there is a critical error or the given context is canceled. Typically,
 // you want to call Watch inside a goroutine. For non-critical errors, callers
 // must receive them from the Errors channel.
-func (w *Watcher) Watch(ctx context.Context) error {
+func (w *Watcher) Watch() error {
 	w.mu.Lock()
 	if w.wasStartedOnce {
 		w.mu.Unlock()
@@ -202,7 +212,7 @@ func (w *Watcher) Watch(ctx context.Context) error {
 	ticker := time.NewTicker(w.pollingInterval)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-w.ctx.Done():
 			ticker.Stop()
 			return nil
 		case <-ticker.C:
@@ -243,7 +253,7 @@ func (w *Watcher) Subscribe(sink chan<- []*Event) event.Subscription {
 }
 
 // SyncToLatestBlock syncs our local state of the chain to the latest block found via
-// Ethereum RPC.
+// Ethereum RPC
 func (w *Watcher) SyncToLatestBlock() error {
 	w.syncToLatestBlockMu.Lock()
 	defer w.syncToLatestBlockMu.Unlock()
@@ -405,12 +415,12 @@ func (w *Watcher) addLogs(header *types.MiniHeader) (*types.MiniHeader, error) {
 // offline. It does this by comparing the last block stored with the latest block discoverable via RPC.
 // If the stored block is older then the latest block, it batch fetches the events for missing blocks,
 // re-sets the stored blocks and returns the block events found.
-func (w *Watcher) getMissedEventsToBackfill(ctx context.Context, blocksElapsed int, latestRetainedBlockNumber int) ([]*Event, error) {
+func (w *Watcher) getMissedEventsToBackfill(blocksElapsed int, latestRetainedBlockNumber int) ([]*Event, error) {
 	events := []*Event{}
 
 	startBlockNum := latestRetainedBlockNumber + 1
 	endBlockNum := latestRetainedBlockNumber + blocksElapsed
-	logs, furthestBlockProcessed := w.getLogsInBlockRange(ctx, startBlockNum, endBlockNum)
+	logs, furthestBlockProcessed := w.getLogsInBlockRange(startBlockNum, endBlockNum)
 	if furthestBlockProcessed > latestRetainedBlockNumber {
 		// If we have processed blocks further then the latestRetainedBlock in the DB, we
 		// want to remove all blocks from the DB and insert the furthestBlockProcessed
@@ -481,7 +491,7 @@ const getLogsRequestChunkSize = 3
 // the next batch of requests to be sent. If an error is encountered in a batch, all subsequent
 // batch requests are not sent. Instead, it returns all the logs it found up until the error was
 // encountered, along with the block number after which no further logs were retrieved.
-func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]ethtypes.Log, int) {
+func (w *Watcher) getLogsInBlockRange(from, to int) ([]ethtypes.Log, int) {
 	blockRanges := w.getSubBlockRanges(from, to, maxBlocksInGetLogsQuery)
 
 	numChunks := 0
@@ -528,7 +538,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]etht
 				defer wg.Done()
 
 				select {
-				case <-ctx.Done():
+				case <-w.ctx.Done():
 					indexToLogResult[index] = logRequestResult{
 						From: b.FromBlock,
 						To:   b.ToBlock,
@@ -539,7 +549,7 @@ func (w *Watcher) getLogsInBlockRange(ctx context.Context, from, to int) ([]etht
 				default:
 				}
 
-				logs, err := w.filterLogsRecurisively(b.FromBlock, b.ToBlock, []ethtypes.Log{})
+				logs, err := w.filterLogsRecursively(b.FromBlock, b.ToBlock, []ethtypes.Log{})
 				if err != nil {
 					log.WithFields(map[string]interface{}{
 						"error":     err,
@@ -603,7 +613,7 @@ func (w *Watcher) getSubBlockRanges(from, to, rangeSize int) []*blockRange {
 
 const infuraTooManyResultsErrMsg = "query returned more than 10000 results"
 
-func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []ethtypes.Log) ([]ethtypes.Log, error) {
+func (w *Watcher) filterLogsRecursively(from, to int, allLogs []ethtypes.Log) ([]ethtypes.Log, error) {
 	log.WithFields(map[string]interface{}{
 		"from": from,
 		"to":   to,
@@ -633,11 +643,11 @@ func (w *Watcher) filterLogsRecurisively(from, to int, allLogs []ethtypes.Log) (
 
 			endFirstHalf := from + numBlocks/2
 			startSecondHalf := endFirstHalf + 1
-			allLogs, err := w.filterLogsRecurisively(from, endFirstHalf, allLogs)
+			allLogs, err := w.filterLogsRecursively(from, endFirstHalf, allLogs)
 			if err != nil {
 				return nil, err
 			}
-			allLogs, err = w.filterLogsRecurisively(startSecondHalf, to, allLogs)
+			allLogs, err = w.filterLogsRecursively(startSecondHalf, to, allLogs)
 			if err != nil {
 				return nil, err
 			}

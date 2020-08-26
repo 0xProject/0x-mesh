@@ -18,6 +18,8 @@ type filterLogsResponse struct {
 	Err  error
 }
 
+var _ Client = &fakeLogClient{}
+
 // fakeLogClient is a fake Client for testing code calling the `FilterLogs` method.
 // It allows the instatiator to specify `FilterLogs` responses for several block ranges.
 type fakeLogClient struct {

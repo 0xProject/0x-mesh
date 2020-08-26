@@ -23,6 +23,8 @@ type fixtureTimestep struct {
 	ScenarioLabel    string                           `json:"scenarioLabel" gencodec:"required"`
 }
 
+var _ Client = &fakeClient{}
+
 // fakeClient is a fake Client for testing purposes.
 type fakeClient struct {
 	currentTimestep uint

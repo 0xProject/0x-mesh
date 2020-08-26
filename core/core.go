@@ -325,10 +325,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 	}
 
 	// Initialize block watcher (but don't start it yet).
-	blockWatcherClient, err := blockwatch.NewRpcClient(ethClient)
-	if err != nil {
-		return nil, err
-	}
+	blockWatcherClient := blockwatch.NewRpcClient(ctx, ethClient)
 
 	topics := orderwatch.GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{
@@ -338,7 +335,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher, err := blockwatch.New(blockRetentionLimit, blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(ctx, blockRetentionLimit, blockWatcherConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +563,7 @@ func (app *App) Start() error {
 	}
 
 	// Note: this is a blocking call so we won't continue set up until its finished.
-	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock(innerCtx)
+	blocksElapsed, err := app.blockWatcher.FastSyncToLatestBlock()
 	if err != nil {
 		return err
 	}
@@ -580,7 +577,7 @@ func (app *App) Start() error {
 			log.Debug("closing block watcher")
 		}()
 		log.Info("starting block watcher")
-		blockWatcherErrChan <- app.blockWatcher.Watch(innerCtx)
+		blockWatcherErrChan <- app.blockWatcher.Watch()
 	}()
 
 	// If Mesh is not caught up with the latest block found via Ethereum RPC, ensure orderWatcher

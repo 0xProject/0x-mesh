@@ -2011,8 +2011,7 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 }
 
 func setupOrderWatcherWithValidator(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, database *db.DB, maxMiniHeaders int, v *ordervalidator.OrderValidator) (*blockwatch.Watcher, *Watcher) {
-	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
-	require.NoError(t, err)
+	blockWatcherClient := blockwatch.NewRpcClient(ctx, ethRPCClient)
 	topics := GetRelevantTopics()
 	blockWatcherConfig := blockwatch.Config{
 		DB:              database,
@@ -2021,7 +2020,7 @@ func setupOrderWatcherWithValidator(ctx context.Context, t *testing.T, ethRPCCli
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher, err := blockwatch.New(maxMiniHeaders, blockWatcherConfig)
+	blockWatcher, err := blockwatch.New(ctx, maxMiniHeaders, blockWatcherConfig)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
 		DB:                database,
