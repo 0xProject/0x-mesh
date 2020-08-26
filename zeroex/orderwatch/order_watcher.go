@@ -469,7 +469,7 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 // NOTE(jalextowle): This function can miss block events if the blockwatcher was
 // behind by more than db.MaxMiniHeaders when `handleBlockEvents` was last called.
 // This is extremely unlikely, so we have decided not to implement more costly
-// mechanisms to prevent from this possibility from occuring.
+// mechanisms to prevent from this possibility from occurring.
 func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	miniHeaders, err := w.db.FindMiniHeaders(nil)
 	if err != nil {

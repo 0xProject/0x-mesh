@@ -58,7 +58,7 @@ func TestHandleRawRequest(t *testing.T) {
 	// This request has multiple subprotocols included and nil metadata. This
 	// has the same structure as requests that would have been sent by older
 	// versions of Mesh, and allows us to test that newer Mesh nodes provide
-	// backwards compatability as ordersync providers.
+	// backwards compatibility as ordersync providers.
 	res := s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)
