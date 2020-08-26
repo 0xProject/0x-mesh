@@ -70,11 +70,13 @@ func TestHandleRawRequest(t *testing.T) {
 	// object.
 	var metadata oneOrderSubprotocolRequestMetadata
 	err = json.Unmarshal(res.Metadata, &metadata)
+	require.NoError(t, err)
 	assert.Equal(t, oneOrderSubprotocolRequestMetadata{}, metadata)
 
 	// Test handling a request from a node that is using the new first request
 	// encoding scheme.
 	rawReq, err = s.createFirstRequestForAllSubprotocols()
+	require.NoError(t, err)
 	res = s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)
