@@ -116,9 +116,7 @@ func main() {
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
-	var newDHT func(h host.Host) (routing.PeerRouting, error)
-
-	newDHT = func(h host.Host) (routing.PeerRouting, error) {
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
 		dhtDir := getDHTDir(config)
 		// Set up the DHT to use LevelDB.

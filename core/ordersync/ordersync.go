@@ -299,7 +299,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			m.RLock()
 			successfullySyncedPeerLength := len(successfullySyncedPeers)
 			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
-			nextRequest, _ := nextRequestForPeer[peerID]
+			nextRequest := nextRequestForPeer[peerID]
 			m.RUnlock()
 			if successfullySyncedPeerLength >= minPeers {
 				return nil
@@ -491,7 +491,7 @@ type FirstRequestsForSubprotocols struct {
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
 	for _, sid := range s.preferredSubprotocols {
-		subp, _ := s.subprotocolSet[sid]
+		subp := s.subprotocolSet[sid]
 		m, err := subp.GenerateFirstRequestMetadata()
 		if err != nil {
 			return nil, err

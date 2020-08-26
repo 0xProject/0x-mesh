@@ -566,13 +566,13 @@ func (w *Watcher) findOrdersByEventWithLastValidatedBlockNumber(
 func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db.OrderFilter) (*zeroex.ContractEvent, []*types.OrderWithMetadata, error) {
 	eventType, err := w.eventDecoder.FindEventType(log)
 	if err != nil {
-		switch err.(type) {
+		switch err := err.(type) {
 		case decoder.UntrackedTokenError:
 			return nil, nil, nil
 		case decoder.UnsupportedEventError:
 			logger.WithFields(logger.Fields{
-				"topics":          err.(decoder.UnsupportedEventError).Topics,
-				"contractAddress": err.(decoder.UnsupportedEventError).ContractAddress,
+				"topics":          err.Topics,
+				"contractAddress": err.ContractAddress,
 			}).Info("unsupported event found while trying to find its event type")
 			return nil, nil, nil
 		default:
