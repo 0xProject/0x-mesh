@@ -694,6 +694,7 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
     );
 }
 
+// tslint:disable:no-non-null-assertion
 function testStats(stats: WrapperStats[]): void {
     const printer = prettyPrintTestCase('stats', 'RealisticStats');
     printer('version', stats[0].version === 'development');
@@ -701,8 +702,8 @@ function testStats(stats: WrapperStats[]): void {
     printer('rendezvous', stats[0].rendezvous === '/0x-mesh/network/1337/version/2');
     printer(
         'secondaryRendezvous',
-        stats[0].secondaryRendezvous.length === 1 &&
-            stats[0].secondaryRendezvous[0] === '/0x-custom-filter-rendezvous/version/2/chain/1337/schema/someTopic',
+        stats[0].secondaryRendezvous!.length === 1 &&
+            stats[0].secondaryRendezvous![0] === '/0x-custom-filter-rendezvous/version/2/chain/1337/schema/someTopic',
     );
     printer('peerID', stats[0].peerID === '16Uiu2HAmGd949LwaV4KNvK2WDSiMVy7xEmW983VH75CMmefmMpP7');
     printer('ethereumChainID', stats[0].ethereumChainID === 1337);
@@ -720,6 +721,7 @@ function testStats(stats: WrapperStats[]): void {
     printer('ethRPCRequestsSentInCurrentUTCDay', stats[0].ethRPCRequestsSentInCurrentUTCDay === 100000);
     printer('ethRPCRateLimitExpiredRequests', stats[0].ethRPCRateLimitExpiredRequests === 5000);
 }
+// tslint:enable:no-non-null-assertion
 
 function testValidationResults(validationResults: WrapperValidationResults[]): void {
     let printer = prettyPrintTestCase('validationResults', 'EmptyValidationResults');

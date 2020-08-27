@@ -1,10 +1,17 @@
-import { SignedOrder } from '@0x/order-utils';
+import { Order, SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
 import { SupportedProvider, ZeroExProvider } from 'ethereum-types';
 
-export { SignedOrder } from '@0x/order-utils';
+export { Order, SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
+
+// FIXME - Should this be renamed to GQLOrderWithMetadata?:w
+/** @ignore */
+export interface WrapperOrderWithMetadata extends WrapperSignedOrder {
+    hash: string;
+    fillableTakerAssetAmount: string;
+}
 
 /** @ignore */
 export interface WrapperGetOrdersResponse {
@@ -232,6 +239,16 @@ export interface MeshWrapper {
     getStatsAsync(): Promise<WrapperStats>;
     getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
+
+    // GraphQL API
+    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperAddOrderResults>;
+    gqlGetOrderAsync(orderHash: string): Promise<WrapperOrderWithMetadata>;
+    gqlFindOrdersAsync(
+        sort: WrapperOrderSort[],
+        filters: WrapperOrderFilter[],
+        limit: number,
+    ): Promise<WrapperOrderWithMetadata[]>;
+    gqlGetStatsAsync(): Promise<WrapperStats>; // This will not populate the `secondaryRendevous` field
 }
 
 /**
@@ -256,13 +273,8 @@ export interface WrapperConfig {
     maxBytesPerSecond?: number;
 }
 
-/**
- * The type for signed orders exposed by MeshWrapper. Unlike other types, the
- * analog isn't defined here. Instead we re-use the definition in
- * @0x/order-utils.
- * @ignore
- */
-export interface WrapperSignedOrder {
+/** @ignore */
+export interface WrapperOrder {
     makerAddress: string;
     makerAssetData: string;
     makerAssetAmount: string;
@@ -277,9 +289,13 @@ export interface WrapperSignedOrder {
     feeRecipientAddress: string;
     expirationTimeSeconds: string;
     salt: string;
-    signature: string;
     exchangeAddress: string;
     chainId: number;
+}
+
+/** @ignore */
+export interface WrapperSignedOrder extends WrapperOrder {
+    signature: string;
 }
 
 export interface ERC20TransferEvent {
@@ -570,6 +586,47 @@ export interface OrderEvent {
 }
 
 /** @ignore */
+export interface WrapperAddOrderResults {
+    accepted: WrapperAcceptedOrderResult[];
+    rejected: WrapperRejectedOrderResult[];
+}
+
+/** @ignore */
+export interface WrapperAcceptedOrderResult {
+    order: WrapperOrderWithMetadata;
+    isNew: boolean;
+}
+
+/** @ignore */
+export interface WrapperRejectedOrderResult {
+    hash: string;
+    order: WrapperOrder;
+    code: string;
+    message: string;
+}
+
+// I don't think this is needed since the GraphQL client will call the MeshWrapper
+// directly instead of going through the Mesh class.
+/*
+export interface AddOrderResults {
+    accepted: AcceptedOrderResult[];
+    rejected: RejectedOrderResult[];
+}
+
+export interface AcceptedOrderResult {
+    order: OrderWithMetadata;
+    isNew: boolean;
+}
+
+export interface RejectedOrderResult {
+    hash: string;
+    order: Order;
+    code: string;
+    message: string;
+}
+*/
+
+/** @ignore */
 export interface WrapperValidationResults {
     accepted: WrapperAcceptedOrderInfo[];
     rejected: WrapperRejectedOrderInfo[];
@@ -653,7 +710,7 @@ export interface WrapperStats {
     version: string;
     pubSubTopic: string;
     rendezvous: string;
-    secondaryRendezvous: string[];
+    secondaryRendezvous?: string[];
     peerID: string;
     ethereumChainID: number;
     latestBlock: WrapperLatestBlock;
@@ -671,7 +728,7 @@ export interface Stats {
     version: string;
     pubSubTopic: string;
     rendezvous: string;
-    secondaryRendezvous: string[];
+    secondaryRendezvous?: string[];
     peerID: string;
     ethereumChainID: number;
     latestBlock?: LatestBlock;
@@ -683,5 +740,20 @@ export interface Stats {
     startOfCurrentUTCDay: Date;
     ethRPCRequestsSentInCurrentUTCDay: number;
     ethRPCRateLimitExpiredRequests: number;
+}
+
+// FIXME - Use the types defined in @0x/mesh-graphql-client
+
+/** @ignore */
+export interface WrapperOrderSort {
+    field: string;
+    direction: string;
+}
+
+/** @ignore */
+export interface WrapperOrderFilter {
+    field: string;
+    kind: string;
+    value: any;
 }
 // tslint:disable-next-line:max-file-line-count
