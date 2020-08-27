@@ -42,10 +42,7 @@ const areNewOrders = false
 const emptyGetOrderRelevantStatesCallDataStringLength = 268
 
 const (
-	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = 1000.0
-	defaultCheckpointInterval   = 1 * time.Minute
-	defaultEthRPCTimeout        = 5 * time.Second
+	defaultEthRPCTimeout = 5 * time.Second
 )
 
 var (
@@ -104,41 +101,41 @@ func init() {
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
-		testCase{
+		{
 			SignedOrder: scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(multiAssetAssetData)),
 			IsValid:     true,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 signedOrderWithCustomSignature(t, malformedSignature),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
@@ -455,8 +452,4 @@ func signedOrderWithCustomSignature(t *testing.T, signature []byte) *zeroex.Sign
 	signedOrder := scenario.NewSignedTestOrder(t)
 	signedOrder.Signature = signature
 	return signedOrder
-}
-
-func copyOrder(order zeroex.Order) zeroex.Order {
-	return order
 }

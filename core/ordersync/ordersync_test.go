@@ -13,7 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +58,7 @@ func TestHandleRawRequest(t *testing.T) {
 	// This request has multiple subprotocols included and nil metadata. This
 	// has the same structure as requests that would have been sent by older
 	// versions of Mesh, and allows us to test that newer Mesh nodes provide
-	// backwards compatability as ordersync providers.
+	// backwards compatibility as ordersync providers.
 	res := s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)
@@ -70,11 +70,13 @@ func TestHandleRawRequest(t *testing.T) {
 	// object.
 	var metadata oneOrderSubprotocolRequestMetadata
 	err = json.Unmarshal(res.Metadata, &metadata)
+	require.NoError(t, err)
 	assert.Equal(t, oneOrderSubprotocolRequestMetadata{}, metadata)
 
 	// Test handling a request from a node that is using the new first request
 	// encoding scheme.
 	rawReq, err = s.createFirstRequestForAllSubprotocols()
+	require.NoError(t, err)
 	res = s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)

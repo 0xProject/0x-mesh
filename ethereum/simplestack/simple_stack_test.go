@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const limit = 10
-
 var (
 	miniHeaderOne = &types.MiniHeader{
 		Number:    big.NewInt(1),
@@ -184,7 +182,7 @@ func TestSimpleStackCheckpointThenReset(t *testing.T) {
 	assert.Len(t, stack.miniHeaders, 1)
 	assert.Len(t, stack.updates, 1)
 
-	checkpointID = stack.Checkpoint()
+	stack.Checkpoint()
 
 	assert.Len(t, stack.miniHeaders, 1)
 	assert.Len(t, stack.updates, 0)
@@ -195,7 +193,7 @@ func TestSimpleStackCheckpointThenReset(t *testing.T) {
 	assert.Len(t, stack.miniHeaders, 0)
 	assert.Len(t, stack.updates, 1)
 
-	checkpointID = stack.Checkpoint()
+	stack.Checkpoint()
 
 	assert.Len(t, stack.miniHeaders, 0)
 	assert.Len(t, stack.updates, 0)

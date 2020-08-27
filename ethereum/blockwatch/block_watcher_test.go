@@ -420,8 +420,8 @@ func TestFilterLogsRecursively(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		fakeLogClient, err := newFakeLogClient(testCase.rangeToFilterLogsResponse)
-		require.NoError(t, err)
+
+		fakeLogClient := newFakeLogClient(testCase.rangeToFilterLogsResponse)
 		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
 		logs, err := watcher.filterLogsRecursively(from, to, []ethtypes.Log{})
@@ -522,8 +522,8 @@ func TestGetLogsInBlockRange(t *testing.T) {
 	for _, testCase := range testCases {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		fakeLogClient, err := newFakeLogClient(testCase.RangeToFilterLogsResponse)
-		require.NoError(t, err)
+
+		fakeLogClient := newFakeLogClient(testCase.RangeToFilterLogsResponse)
 		watcher := setupOrderWatcher(t, ctx, fakeLogClient)
 
 		logs, furthestBlockProcessed := watcher.getLogsInBlockRange(testCase.From, testCase.To)

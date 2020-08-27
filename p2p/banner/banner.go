@@ -54,7 +54,7 @@ func New(ctx context.Context, config Config) *Banner {
 		violations:   newViolationsTracker(ctx),
 	}
 	if config.LogBandwidthUsageStats {
-		go banner.continuouslyLogBandwidthUsage(ctx)
+		banner.continuouslyLogBandwidthUsage(ctx)
 	}
 	return banner
 }
@@ -129,36 +129,39 @@ func (banner *Banner) unbanIPNet(ipNet net.IPNet) {
 }
 
 func (banner *Banner) continuouslyLogBandwidthUsage(ctx context.Context) {
-	logTicker := time.Tick(logBandwidthUsageInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-logTicker:
-			// Log the bandwidth used by each peer.
-			for _, remotePeerID := range banner.config.Host.Network().Peers() {
-				stats := banner.config.BandwidthCounter.GetBandwidthForPeer(remotePeerID)
-				log.WithFields(log.Fields{
-					"remotePeerID":      remotePeerID.String(),
-					"bytesPerSecondIn":  stats.RateIn,
-					"totalBytesIn":      stats.TotalIn,
-					"bytesPerSecondOut": stats.RateOut,
-					"totalBytesOut":     stats.TotalOut,
-				}).Debug("bandwidth used by peer")
-			}
+	go func() {
+		logTicker := time.NewTicker(logBandwidthUsageInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				logTicker.Stop()
+				return
+			case <-logTicker.C:
+				// Log the bandwidth used by each peer.
+				for _, remotePeerID := range banner.config.Host.Network().Peers() {
+					stats := banner.config.BandwidthCounter.GetBandwidthForPeer(remotePeerID)
+					log.WithFields(log.Fields{
+						"remotePeerID":      remotePeerID.String(),
+						"bytesPerSecondIn":  stats.RateIn,
+						"totalBytesIn":      stats.TotalIn,
+						"bytesPerSecondOut": stats.RateOut,
+						"totalBytesOut":     stats.TotalOut,
+					}).Debug("bandwidth used by peer")
+				}
 
-			// Log the bandwidth used by each protocol.
-			for protocolID, stats := range banner.config.BandwidthCounter.GetBandwidthByProtocol() {
-				log.WithFields(log.Fields{
-					"protocolID":        protocolID,
-					"bytesPerSecondIn":  stats.RateIn,
-					"totalBytesIn":      stats.TotalIn,
-					"bytesPerSecondOut": stats.RateOut,
-					"totalBytesOut":     stats.TotalOut,
-				}).Debug("bandwidth used by protocol")
+				// Log the bandwidth used by each protocol.
+				for protocolID, stats := range banner.config.BandwidthCounter.GetBandwidthByProtocol() {
+					log.WithFields(log.Fields{
+						"protocolID":        protocolID,
+						"bytesPerSecondIn":  stats.RateIn,
+						"totalBytesIn":      stats.TotalIn,
+						"bytesPerSecondOut": stats.RateOut,
+						"totalBytesOut":     stats.TotalOut,
+					}).Debug("bandwidth used by protocol")
+				}
 			}
 		}
-	}
+	}()
 }
 
 // CheckBandwidthUsage checks the amount of data sent by each connected peer and

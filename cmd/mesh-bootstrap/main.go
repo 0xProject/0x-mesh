@@ -8,14 +8,12 @@ package main
 import (
 	"context"
 	"fmt"
-	mathrand "math/rand"
 	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
@@ -40,23 +38,6 @@ const (
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
-	// defaultNetworkTimeout is the default timeout for network requests (e.g.
-	// connecting to a new peer).
-	defaultNetworkTimeout = 30 * time.Second
-	// checkBandwidthLoopInterval is how often to potentially check bandwidth usage
-	// for peers.
-	checkBandwidthLoopInterval = 5 * time.Second
-	// chanceToCheckBandwidthUsage is the approximate ratio of (number of check
-	// bandwidth loop iterations in which we check bandwidth usage) to (total
-	// number of check bandwidth loop iterations). We check bandwidth
-	// non-deterministically in order to prevent spammers from avoiding detection
-	// by carefully timing their bandwidth usage. So on each iteration of the
-	// check bandwidth loop we generate a number between 0 and 1. If its less than
-	// chanceToCheckBandiwdthUsage, we perform a bandwidth check.
-	chanceToCheckBandwidthUsage = 0.1
-	// DataStoreType constants
-	leveldbDataStore = "leveldb"
-	sqlDataStore     = "sqldb"
 )
 
 // Config contains configuration options for a Node.
@@ -135,9 +116,7 @@ func main() {
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
-	var newDHT func(h host.Host) (routing.PeerRouting, error)
-
-	newDHT = func(h host.Host) (routing.PeerRouting, error) {
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
 		dhtDir := getDHTDir(config)
 		// Set up the DHT to use LevelDB.
@@ -308,25 +287,4 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
-}
-
-func continuoslyCheckBandwidth(ctx context.Context, banner *banner.Banner) error {
-	ticker := time.NewTicker(checkBandwidthLoopInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			// Check bandwidth usage non-deterministically
-			if mathrand.Float64() <= chanceToCheckBandwidthUsage {
-				banner.CheckBandwidthUsage()
-			}
-		}
-	}
-}
-
-// NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
-// as the persistant storage interface.
-func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 }

@@ -550,6 +550,16 @@ func assetDataIncludesTokenAddressAndTokenID(field OrderField, tokenAddress comm
 	}
 }
 
+func checkMiniHeaderQuery(query *MiniHeaderQuery) error {
+	if query == nil {
+		return nil
+	}
+	if query.Offset != 0 && query.Limit == 0 {
+		return errors.New("can't use Offset without Limit")
+	}
+	return nil
+}
+
 func logQueryIfSlow(start time.Time, msg string) {
 	duration := time.Since(start)
 	if duration > slowQueryDebugDuration {

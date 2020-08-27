@@ -80,10 +80,8 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 
 	// Automatically close the database connection when the context is canceled.
 	go func() {
-		select {
-		case <-ctx.Done():
-			_ = sqldb.Close()
-		}
+		<-ctx.Done()
+		_ = sqldb.Close()
 	}()
 
 	db := &DB{

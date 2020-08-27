@@ -35,12 +35,10 @@ func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQ
 	// Start the server
 	server := &http.Server{Addr: addr, Handler: handler}
 	go func() {
-		select {
-		case <-ctx.Done():
-			shutdownContext, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
-			defer cancel()
-			_ = server.Shutdown(shutdownContext)
-		}
+		<-ctx.Done()
+		shutdownContext, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
+		defer cancel()
+		_ = server.Shutdown(shutdownContext)
 	}()
 	return server.ListenAndServe()
 }

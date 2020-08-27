@@ -30,8 +30,6 @@ const (
 	// blockProcessingWaitTime is the amount of time to wait for Mesh to process
 	// new blocks that have been mined.
 	blockProcessingWaitTime = 1 * time.Second
-	// ordersyncWaitTime is the amount of time to wait for ordersync to run.
-	ordersyncWaitTime = 2 * time.Second
 )
 
 func TestEthereumChainDetection(t *testing.T) {
@@ -41,15 +39,15 @@ func TestEthereumChainDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	// simulate starting up on mainnet
-	_, err = initMetadata(1, database)
+	err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// simulate restart on same chain
-	_, err = initMetadata(1, database)
+	err = initMetadata(1, database)
 	require.NoError(t, err)
 
 	// should error when attempting to start on different chain
-	_, err = initMetadata(2, database)
+	err = initMetadata(2, database)
 	assert.Error(t, err)
 }
 
@@ -92,10 +90,6 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 
 	// Wait for nodes to exit without error.
 	wg.Wait()
-}
-
-func newTestApp(t *testing.T, ctx context.Context) *App {
-	return newTestAppWithPrivateConfig(t, ctx, defaultOrderFilter, defaultPrivateConfig())
 }
 
 func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderFilter string, pConfig privateConfig) *App {

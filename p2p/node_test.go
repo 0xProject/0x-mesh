@@ -28,10 +28,7 @@ const (
 )
 
 var (
-	// Counter used for config.RandSeed. Atomically incremented each time a new Node
-	// is created.
-	counter              int64 = -1
-	testRendezvousPoints       = []string{"0x-mesh-testing-rendezvous"}
+	testRendezvousPoints = []string{"0x-mesh-testing-rendezvous"}
 )
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
@@ -171,7 +168,7 @@ func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 	for _, msg := range messages {
 		found := false
 		for _, existing := range mh.messages {
-			if bytes.Compare(existing.Data, msg.Data) == 0 {
+			if bytes.Equal(existing.Data, msg.Data) {
 				found = true
 				break
 			}

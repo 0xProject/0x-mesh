@@ -1,5 +1,11 @@
 linters:
-  disable-all: true
+  disable-all: false
   enable:
-    - errcheck
-    - govet
+      # Finds repeated strings that could be made constants
+      - goconst
+      # Ensures that the code was formatted with `gofmt -s`
+      - gofmt
+      # Identifies commonly misspelled words
+      - misspell
+      # Identifies unused function parameters
+      - unparam

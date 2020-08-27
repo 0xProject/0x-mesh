@@ -55,9 +55,6 @@ const (
 	// corresponds to a block depth of ~25.
 	permanentlyDeleteAfter = 5 * time.Minute
 
-	// defaultMaxOrders is the default max number of orders in storage.
-	defaultMaxOrders = 100000
-
 	// maxBlockEventsToHandle is the max number of block events we want to
 	// process in a single call to `handleBlockEvents`
 	maxBlockEventsToHandle = 500
@@ -249,7 +246,7 @@ func (w *Watcher) cleanupLoop(ctx context.Context) error {
 }
 
 func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
-	if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+	if err := w.permanentlyDeleteStaleRemovedOrders(); err != nil {
 		return err
 	}
 	lastDeleted := time.Now()
@@ -266,7 +263,7 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 			databaseUtilization := float64(count) / float64(w.maxOrders)
 
 			if time.Since(lastDeleted) > maxDeleteInterval || databaseUtilization > databaseUtilizationThreshold {
-				if err := w.permanentlyDeleteStaleRemovedOrders(ctx); err != nil {
+				if err := w.permanentlyDeleteStaleRemovedOrders(); err != nil {
 					return err
 				}
 				lastDeleted = time.Now()
@@ -464,55 +461,6 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	return nil
 }
 
-// processRecentlyValidatedOrders creates a mapping from revalidation blocks to
-// orders in the list of recently validated orders and returns this mapping along
-// with the oldest revalidation block number. As it processes these orders, it
-// ignores any recently validated orders that are up-to-date with respect to contract
-// events in the orderwatcher and cannot possibly be missing relevant contract events.
-// Any orders that were validated in a block that is no longer stored in the database
-// must be revalidated in case the orderwatcher missed a contract event that is no
-// longer stored.
-//
-// NOTE(jalextowle): Provided that a recently validated order was not validated more
-// than 128 blocks ago, we could recover these block events to verify if it needs to
-// be revalidated. We choose not to currently because revalidation will likely be more
-// performant, but this may not always be the case.
-func processRecentlyValidatedOrders(
-	recentlyValidatedOrders []*types.OrderWithMetadata,
-	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
-	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	oldestBlockNumberFromEvents *big.Int,
-	oldestBlockNumberInDB *big.Int,
-) (
-	revalidationBlockToOrder map[*big.Int][]*types.OrderWithMetadata,
-	oldestRevalidationBlockNumber *big.Int,
-) {
-	for _, recentlyValidatedOrder := range recentlyValidatedOrders {
-		previousValidationBlockNumber := recentlyValidatedOrder.LastValidatedBlockNumber
-		// If the oldestBlock in the list of block events is greater then
-		// the last validated block of the recently validated orders, we
-		// may be missing block events for this order.
-		if oldestRevalidationBlockNumber == nil || previousValidationBlockNumber.Cmp(oldestRevalidationBlockNumber) == -1 {
-			oldestRevalidationBlockNumber = previousValidationBlockNumber
-		}
-		if oldestBlockNumberFromEvents.Cmp(previousValidationBlockNumber) == -1 {
-			continue
-		}
-		// If the previous validation block of the order is a predecessor
-		// of the oldest block in the blockwatcher, we must revalidate the
-		// order because we may be missing relevant block events.
-		if oldestBlockNumberInDB.Cmp(previousValidationBlockNumber) == 1 {
-			orderHashToDBOrder[recentlyValidatedOrder.Hash] = recentlyValidatedOrder
-			orderHashToEvents[recentlyValidatedOrder.Hash] = []*zeroex.ContractEvent{}
-		}
-		revalidationBlockToOrder[previousValidationBlockNumber] = append(
-			revalidationBlockToOrder[previousValidationBlockNumber],
-			recentlyValidatedOrder,
-		)
-	}
-	return revalidationBlockToOrder, oldestRevalidationBlockNumber
-}
-
 // RevalidateOrdersForMissingEvents checks all of the orders in the database for
 // any events in the miniheaders table that may have been missed. This should only
 // be used on startup, as there is a different mechanism that serves this purpose
@@ -521,7 +469,7 @@ func processRecentlyValidatedOrders(
 // NOTE(jalextowle): This function can miss block events if the blockwatcher was
 // behind by more than db.MaxMiniHeaders when `handleBlockEvents` was last called.
 // This is extremely unlikely, so we have decided not to implement more costly
-// mechanisms to prevent from this possibility from occuring.
+// mechanisms to prevent from this possibility from occurring.
 func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	miniHeaders, err := w.db.FindMiniHeaders(nil)
 	if err != nil {
@@ -618,13 +566,13 @@ func (w *Watcher) findOrdersByEventWithLastValidatedBlockNumber(
 func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db.OrderFilter) (*zeroex.ContractEvent, []*types.OrderWithMetadata, error) {
 	eventType, err := w.eventDecoder.FindEventType(log)
 	if err != nil {
-		switch err.(type) {
+		switch err := err.(type) {
 		case decoder.UntrackedTokenError:
 			return nil, nil, nil
 		case decoder.UnsupportedEventError:
 			logger.WithFields(logger.Fields{
-				"topics":          err.(decoder.UnsupportedEventError).Topics,
-				"contractAddress": err.(decoder.UnsupportedEventError).ContractAddress,
+				"topics":          err.Topics,
+				"contractAddress": err.ContractAddress,
 			}).Info("unsupported event found while trying to find its event type")
 			return nil, nil, nil
 		default:
@@ -978,7 +926,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	return nil
 }
 
-func (w *Watcher) permanentlyDeleteStaleRemovedOrders(ctx context.Context) error {
+func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 	// TODO(albrow): This could be optimized by using a single query to delete
 	// stale orders instead of finding them and deleting one-by-one. Limited by
 	// the fact that we need to update in-memory state. When we remove in-memory
@@ -1837,10 +1785,6 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	}
 }
 
-type orderDeleter interface {
-	Delete(id []byte) error
-}
-
 func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 	if err := w.db.DeleteOrder(order.Hash); err != nil {
 		return err
@@ -2034,9 +1978,4 @@ func (w *Watcher) WaitForAtLeastOneBlockToBeProcessed(ctx context.Context) error
 	case <-time.After(60 * time.Second):
 		return errors.New("timed out waiting for first block to be processed by Mesh node. Check your backing Ethereum RPC endpoint")
 	}
-}
-
-type logWithType struct {
-	Type string
-	Log  ethtypes.Log
 }

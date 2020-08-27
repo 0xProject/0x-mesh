@@ -19,8 +19,8 @@ import (
 	"github.com/albrow/stringset"
 	"github.com/jpillora/backoff"
 	network "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	peer "github.com/libp2p/go-libp2p-peer"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )
@@ -299,7 +299,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 			m.RLock()
 			successfullySyncedPeerLength := len(successfullySyncedPeers)
 			successfullySynced := successfullySyncedPeers.Contains(peerID.Pretty())
-			nextRequest, _ := nextRequestForPeer[peerID]
+			nextRequest := nextRequestForPeer[peerID]
 			m.RUnlock()
 			if successfullySyncedPeerLength >= minPeers {
 				return nil
@@ -331,7 +331,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				} else {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
-					}).Trace("succesfully got orders from peer via ordersync")
+					}).Trace("successfully got orders from peer via ordersync")
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
 					delete(nextRequestForPeer, id)
@@ -491,7 +491,7 @@ type FirstRequestsForSubprotocols struct {
 func (s *Service) createFirstRequestForAllSubprotocols() (*rawRequest, error) {
 	metadata := []json.RawMessage{}
 	for _, sid := range s.preferredSubprotocols {
-		subp, _ := s.subprotocolSet[sid]
+		subp := s.subprotocolSet[sid]
 		m, err := subp.GenerateFirstRequestMetadata()
 		if err != nil {
 			return nil, err

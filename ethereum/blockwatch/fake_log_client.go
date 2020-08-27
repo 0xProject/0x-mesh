@@ -28,8 +28,8 @@ type fakeLogClient struct {
 }
 
 // newFakeLogClient instantiates a fakeLogClient for testing log fetching
-func newFakeLogClient(rangeToResponse map[string]filterLogsResponse) (*fakeLogClient, error) {
-	return &fakeLogClient{count: 0, rangeToResponse: rangeToResponse}, nil
+func newFakeLogClient(rangeToResponse map[string]filterLogsResponse) *fakeLogClient {
+	return &fakeLogClient{count: 0, rangeToResponse: rangeToResponse}
 }
 
 // HeaderByNumber fetches a block header by its number

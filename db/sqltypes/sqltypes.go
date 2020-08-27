@@ -206,7 +206,7 @@ func (s *ParsedAssetData) Value() (driver.Value, error) {
 
 func (s *ParsedAssetData) Scan(value interface{}) error {
 	if value == nil {
-		s = nil
+		*s = nil
 		return nil
 	}
 	switch v := value.(type) {

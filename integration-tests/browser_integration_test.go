@@ -39,7 +39,7 @@ func TestBrowserIntegration(t *testing.T) {
 	ctx, _ = chromedp.NewContext(ctx, chromedp.WithErrorf(t.Errorf))
 	defer cancel()
 
-	removeOldFiles(t, ctx)
+	removeOldFiles(t)
 	buildForTests(t, ctx)
 
 	// wg is a WaitGroup for the entire tests. We won't exit until wg is done.

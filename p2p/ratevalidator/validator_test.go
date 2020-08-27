@@ -23,7 +23,7 @@ var peerIDs []peer.ID
 
 func init() {
 	for _, peerIDString := range peerIDStrings {
-		peerID, _ := peer.IDB58Decode(peerIDString)
+		peerID, _ := peer.Decode(peerIDString)
 		peerIDs = append(peerIDs, peerID)
 	}
 }

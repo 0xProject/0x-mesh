@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"sort"
 	"sync"
@@ -332,7 +331,7 @@ func sortOrdersByHashDesc(orders []*gqlclient.OrderWithMetadata) {
 }
 
 func buildAndStartGraphQLServer(t *testing.T, ctx context.Context, wg *sync.WaitGroup) (client *gqlclient.Client, peerID string) {
-	removeOldFiles(t, ctx)
+	removeOldFiles(t)
 	buildStandaloneForTests(t, ctx)
 
 	// Start a standalone node with a wait group that is completed when the goroutine completes.
@@ -349,7 +348,7 @@ func buildAndStartGraphQLServer(t *testing.T, ctx context.Context, wg *sync.Wait
 		PeerID string `json:"myPeerID"`
 	}
 	log, err := waitForLogSubstring(ctx, logMessages, "starting GraphQL server")
-	require.NoError(t, err, fmt.Sprintf("GraphQL server didn't start"))
+	require.NoError(t, err, "GraphQL server didn't start")
 	err = json.Unmarshal([]byte(log), &jsonLog)
 	require.NoError(t, err)
 

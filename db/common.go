@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	// The default miniHeaderRetentionLimit used by Mesh. This default only gets overwritten in tests.
-	defaultMiniHeaderRetentionLimit = 20
-	// The maximum MiniHeaders to query per page when deleting MiniHeaders
-	miniHeadersMaxPerPage = 1000
 	// The amount of time to wait before timing out when connecting to the database for the first time.
 	connectTimeout = 10 * time.Second
 )
@@ -391,14 +387,5 @@ func checkOrderQuery(query *OrderQuery) error {
 		return errors.New("can't use Offset without Limit")
 	}
 	return nil
-}
 
-func checkMiniHeaderQuery(query *MiniHeaderQuery) error {
-	if query == nil {
-		return nil
-	}
-	if query.Offset != 0 && query.Limit == 0 {
-		return errors.New("can't use Offset without Limit")
-	}
-	return nil
 }
