@@ -176,6 +176,26 @@ func (cw *MeshWrapper) GetOrders(perPage int, minOrderHash string) (js.Value, er
 	return js.ValueOf(ordersResponse), nil
 }
 
+// FIXME - Implement this
+func (cw *MeshWrapper) GQLAddOrders(_ js.Value, _ bool) (js.Value, error) {
+	return js.Undefined(), nil
+}
+
+// FIXME - Implement this
+func (cw *MeshWrapper) GQLGetOrder(hash common.Hash) (js.Value, error) {
+	return js.Undefined(), nil
+}
+
+// FIXME - Implement this
+func (cw *MeshWrapper) GQLFindOrders(_ js.Value, _ js.Value, limit int) (js.Value, error) {
+	return js.Undefined(), nil
+}
+
+// FIXME - Implement this
+func (cw *MeshWrapper) GQLGetStats() (js.Value, error) {
+	return js.Undefined(), nil
+}
+
 // JSValue satisfies the js.Wrapper interface. The return value is a JavaScript
 // object consisting of named functions. They act like methods by capturing the
 // MeshWrapper through a closure.
@@ -217,10 +237,34 @@ func (cw *MeshWrapper) JSValue() js.Value {
 				return cw.GetOrders(args[0].Int(), minOrderHash)
 			})
 		}),
-		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
+		// addOrdersAsync(orders: SignedOrder[], pinned: boolean): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return cw.AddOrders(args[0], args[1].Bool())
+			})
+		}),
+		// gqlAddOrdersAsync(newOrders: SignedOrder[], pinned: boolean): Promise<AddOrderResults>
+		"gqlAddOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLAddOrders(args[0], args[1].Bool())
+			})
+		}),
+		// gqlGetOrderAsync(orderHash: string): Promise<OrderWithMetadata>
+		"gqlGetOrderAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLGetOrder(common.HexToHash(args[0].String()))
+			})
+		}),
+		// gqlFindOrdersAsync(sort: OrderSort[], filters: OrderFilter[], limit: number): Promise<OrderWithMetadata[]>
+		"gqlFindOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLFindOrders(args[0], args[1], args[2].Int())
+			})
+		}),
+		// gqlGetStatsAsync(): Promise<Stats>
+		"gqlGetStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GetStats()
 			})
 		}),
 	})
