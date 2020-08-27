@@ -6,6 +6,7 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ### Features ✅
 
+-   Upgraded to Go 1.15 to fix fatal errors in the WebAssembly runtime [#911]
 -   Upgraded to Go 1.14, which contains several WebAssembly performance improvements [#815](https://github.com/0xProject/0x-mesh/pull/815).
 -   Reject orders that have taker addresses that are non-zero and are not whitelisted. [#896](https://github.com/0xProject/0x-mesh/pull/896).
 
