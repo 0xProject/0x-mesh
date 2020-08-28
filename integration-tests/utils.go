@@ -26,12 +26,16 @@ import (
 
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
-var browserIntegrationTestsEnabled bool
+var (
+	browserLegacyIntegrationTestsEnabled  bool
+	browserGraphQLIntegrationTestsEnabled bool
+)
 
 var nodeCount int32
 
 func init() {
-	flag.BoolVar(&browserIntegrationTestsEnabled, "enable-browser-integration-tests", false, "enable browser integration tests")
+	flag.BoolVar(&browserLegacyIntegrationTestsEnabled, "enable-browser-legacy-integration-tests", false, "enable browser legacy integration tests")
+	flag.BoolVar(&browserGraphQLIntegrationTestsEnabled, "enable-browser-graphql-integration-tests", false, "enable browser graphql integration tests")
 	testing.Init()
 	flag.Parse()
 }

@@ -72,10 +72,18 @@ test-key-value-stores-wasm:
 test-go-serial:
 	go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial
 
-
 .PHONY: test-browser-integration
-test-browser-integration:
-	go test ./integration-tests -timeout 185s --enable-browser-integration-tests -run BrowserIntegration
+test-browser-integration: test-browser-legacy-integration test-browser-graphql-integration
+
+
+.PHONY: test-browser-legacy-integration
+test-browser-legacy-integration:
+	go test ./integration-tests -timeout 60s --enable-browser-legacy-integration-tests -run BrowserLegacyIntegration
+
+
+.PHONY: test-browser-graphql-integration
+test-browser-graphql-integration:
+	go test ./integration-tests -timeout 60s --enable-browser-graphql-integration-tests -run BrowserGraphQLIntegration
 
 
 .PHONY: test-browser-conversion

@@ -25,9 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBrowserIntegration(t *testing.T) {
-	if !browserIntegrationTestsEnabled {
-		t.Skip("Browser integration tests are disabled. You can enable them with the --enable-browser-integration-tests flag")
+func TestBrowserLegacyIntegration(t *testing.T) {
+	if !browserLegacyIntegrationTestsEnabled {
+		t.Skip("Browser legacy integration tests are disabled. You can enable them with the --enable-browser-legacy-integration-tests flag")
 	}
 
 	teardownSubTest := setupSubTest(t)
@@ -102,7 +102,7 @@ func TestBrowserIntegration(t *testing.T) {
 	}()
 
 	// Start a simple HTTP server to serve the web page for the browser node.
-	ts := httptest.NewServer(http.FileServer(http.Dir("../packages/mesh-integration-tests/dist")))
+	ts := httptest.NewServer(http.FileServer(http.Dir("../packages/mesh-integration-tests/legacy-dist")))
 	defer ts.Close()
 
 	// browserLogMessages is a channel through which log messages from the
