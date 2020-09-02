@@ -89,7 +89,7 @@ func defaultPrivateConfig() privateConfig {
 // Config is a set of configuration options for 0x Mesh.
 type Config struct {
 	// Verbosity is the logging verbosity: 0=panic, 1=fatal, 2=error, 3=warn, 4=info, 5=debug 6=trace
-	Verbosity int `envvar:"VERBOSITY" default:"2"`
+	Verbosity int `envvar:"VERBOSITY" default:"2" json:"verbosity"`
 	// DataDir is the directory to use for persisting all data, including the
 	// database and private key files.
 	DataDir string `envvar:"DATA_DIR" default:"0x_mesh"`
@@ -101,30 +101,30 @@ type Config struct {
 	P2PWebSocketsPort int `envvar:"P2P_WEBSOCKETS_PORT" default:"60559"`
 	// EthereumRPCURL is the URL of an Etheruem node which supports the JSON RPC
 	// API.
-	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"-"`
+	EthereumRPCURL string `envvar:"ETHEREUM_RPC_URL" json:"ethereumRPCURL"`
 	// EthereumChainID is the chain ID specifying which Ethereum chain you wish to
 	// run your Mesh node for
-	EthereumChainID int `envvar:"ETHEREUM_CHAIN_ID"`
+	EthereumChainID int `envvar:"ETHEREUM_CHAIN_ID" json:"ethereumChainID"`
 	// UseBootstrapList is whether to bootstrap the DHT by connecting to a
 	// specific set of peers.
-	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
+	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true" json:"useBootstrapList"`
 	// BootstrapList is a comma-separated list of multiaddresses to use for
 	// bootstrapping the DHT (e.g.,
 	// "/ip4/3.214.190.67/tcp/60558/ipfs/16Uiu2HAmGx8Z6gdq5T5AQE54GMtqDhDFhizywTy1o28NJbAMMumF").
 	// If empty, the default bootstrap list will be used.
-	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:""`
+	BootstrapList string `envvar:"BOOTSTRAP_LIST" default:"" json:"bootstrapList"`
 	// BlockPollingInterval is the polling interval to wait before checking for a new Ethereum block
 	// that might contain transactions that impact the fillability of orders stored by Mesh. Different
 	// chains have different block producing intervals: POW chains are typically slower (e.g., Mainnet)
 	// and POA chains faster (e.g., Kovan) so one should adjust the polling interval accordingly.
-	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s"`
+	BlockPollingInterval time.Duration `envvar:"BLOCK_POLLING_INTERVAL" default:"5s" json:"blockPollingIntervalSeconds"`
 	// EthereumRPCMaxContentLength is the maximum request Content-Length accepted by the backing Ethereum RPC
 	// endpoint used by Mesh. Geth & Infura both limit a request's content length to 1024 * 512 Bytes. Parity
 	// and Alchemy have much higher limits. When batch validating 0x orders, we will fit as many orders into a
 	// request without crossing the max content length. The default value is appropriate for operators using Geth
 	// or Infura. If using Alchemy or Parity, feel free to double the default max in order to reduce the
 	// number of RPC calls made by Mesh.
-	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288"`
+	EthereumRPCMaxContentLength int `envvar:"ETHEREUM_RPC_MAX_CONTENT_LENGTH" default:"524288" json:"ethereumRPCMaxContentLength"`
 	// EnableEthereumRPCRateLimiting determines whether or not Mesh should limit
 	// the number of Ethereum RPC requests it sends. It defaults to true.
 	// Disabling Ethereum RPC rate limiting can reduce latency for receiving order
@@ -132,16 +132,16 @@ type Config struct {
 	// costs or other rate limiting issues outside of Mesh, depending on your
 	// Ethereum RPC provider. If set to false, ethereumRPCMaxRequestsPer24HrUTC
 	// and ethereumRPCMaxRequestsPerSecond will have no effect.
-	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true"`
+	EnableEthereumRPCRateLimiting bool `envvar:"ENABLE_ETHEREUM_RPC_RATE_LIMITING" default:"true" json:"enableEthereumRPCRateLimiting"`
 	// EthereumRPCMaxRequestsPer24HrUTC caps the number of Ethereum JSON-RPC requests a Mesh node will make
 	// per 24hr UTC time window (time window starts and ends at midnight UTC). It defaults to 200k but
 	// can be increased well beyond this limit depending on your infrastructure or Ethereum RPC provider.
-	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"200000"`
+	EthereumRPCMaxRequestsPer24HrUTC int `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC" default:"200000" json:"ethereumRPCMaxRequestsPer24HrUTC"`
 	// EthereumRPCMaxRequestsPerSecond caps the number of Ethereum JSON-RPC requests a Mesh node will make per
 	// second. This limits the concurrency of these requests and prevents the Mesh node from getting rate-limited.
 	// It defaults to the recommended 30 rps for Infura's free tier, and can be increased to 100 rpc for pro users,
 	// and potentially higher on alternative infrastructure.
-	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30"`
+	EthereumRPCMaxRequestsPerSecond float64 `envvar:"ETHEREUM_RPC_MAX_REQUESTS_PER_SECOND" default:"30" json:"ethereumRPCMaxRequestsPerSecond"`
 	// CustomContractAddresses is a JSON-encoded string representing a set of
 	// custom addresses to use for the configured chain ID. The contract
 	// addresses for most common chains/networks are already included by default, so this
@@ -159,12 +159,12 @@ type Config struct {
 	//        "erc1155Proxy": "0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"
 	//    }
 	//
-	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:""`
+	CustomContractAddresses string `envvar:"CUSTOM_CONTRACT_ADDRESSES" default:"" json:"customContractAddresses"`
 	// MaxOrdersInStorage is the maximum number of orders that Mesh will keep in
 	// storage. As the number of orders in storage grows, Mesh will begin
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
-	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
+	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000" json:"maxOrdersInStorage"`
 	// CustomOrderFilter is a stringified JSON Schema which will be used for
 	// validating incoming orders. If provided, Mesh will only receive orders from
 	// other peers in the network with the same filter.
@@ -184,7 +184,7 @@ type Config struct {
 	// application in the filter. The default requirements for a valid order (e.g.
 	// all the required fields) are automatically included. For more information
 	// on JSON Schemas, see https://json-schema.org/
-	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
+	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}" json:"customOrderFilter"`
 	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
