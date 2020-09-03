@@ -22,12 +22,12 @@ provider.start();
         makerAddress: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
         makerAssetData: '0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
         makerFeeAssetData: '0x',
-        makerAssetAmount: new BigNumber('1001'),
+        makerAssetAmount: new BigNumber('1000'),
         makerFee: new BigNumber('0'),
         takerAddress: '0x0000000000000000000000000000000000000000',
         takerAssetData: '0xf47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082',
         takerFeeAssetData: '0x',
-        takerAssetAmount: new BigNumber('5001'),
+        takerAssetAmount: new BigNumber('5000'),
         takerFee: new BigNumber('0'),
         senderAddress: '0x0000000000000000000000000000000000000000',
         exchangeAddress: '0x48bacb9266a570d521063ef5dd96e61686dbe788',
@@ -57,30 +57,35 @@ provider.start();
         web3Provider: provider,
     });
 
-    const client = new MeshGraphQLClient({ mesh });
+    let client: MeshGraphQLClient;
 
     // This handler will be called whenver there is a critical error.
     mesh.onError((err: Error) => {
         console.error(err);
     });
 
-    // FIXME - This might need to change
+    // FIXME - Remove most console statements
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled. We will check for certain events to be logged in the
     // integration tests.
     mesh.onOrderEvents((events: OrderEvent[]) => {
         (async () => {
             for (const event of events) {
-                // Ensure that there are three orders in the Mesh database. Make
-                // sure that one of the orders has the orderHash of the order
-                // added in this test.
-                const findOrdersResponse = await client.findOrdersAsync();
-                console.log(JSON.stringify(findOrdersResponse));
+                // Check the happy path for findOrdersAsync. There should
+                // be two orders. (just make sure it doesn't throw/reject).
+                const firstOrdersResponse = await client.findOrdersAsync();
+                if (firstOrdersResponse.length !== 2) {
+                    throw new Error(
+                        'browser-graphql-integration-test: wrong number of orders returned by "findOrdersAsync"',
+                    );
+                }
+                for (const foundOrder of firstOrdersResponse) {
+                    console.log(JSON.stringify(order));
+                }
 
                 // Check the happy path for getOrders (just make sure it
                 // doesn't throw/reject).
-                const getOrderResponse = await client.getOrderAsync(orderHash);
-                console.log(JSON.stringify(getOrderResponse));
+                await client.getOrderAsync(orderHash);
 
                 // Log the event. The Go code will be watching the logs for
                 // this.
@@ -91,6 +96,7 @@ provider.start();
 
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
+    client = new MeshGraphQLClient({ meshWrapper: mesh.wrapper });
 
     // HACK(albrow): Wait for GossipSub to initialize. We could remove this if we adjust
     // how we are waiting for the order (what log message we look for). As the test is

@@ -3,78 +3,91 @@ import { Observable } from '@apollo/client';
 import { ApolloLink, FetchResult, Operation } from '@apollo/client/link/core';
 
 export class BrowserLink extends ApolloLink {
-    // FIXME - This should be a required parameter
-    constructor(private readonly _meshWrapper?: MeshWrapper) {
+    constructor(private readonly _meshWrapper: MeshWrapper) {
         super();
     }
 
     public request(operation: Operation): Observable<FetchResult> | null {
-        // FIXME: We probably want to do some basic sanity checks on these operations.
-        // This could include checking that `AddOrders` is a mutation and a few
-        // other things.
+        // FIXME - Don't use the `any` type and possibly do more input sanitation
         switch (operation.operationName) {
             case 'AddOrders':
-                // FIXME - Remove `if-statement` once testing is done
-                if (this._meshWrapper) {
-                    // FIXME - Is this how observables should be used?
-                    return new Observable(async () => {
-                        return {
-                            // tslint:disable-next-line:no-non-null-assertion
-                            data: await this._meshWrapper!.gqlAddOrdersAsync(
-                                operation.variables.orders,
-                                operation.variables.pinned,
-                            ),
-                        };
-                    });
-                } else {
-                    console.log(operation.variables);
-                }
-                break;
+                console.log('browser-graphql-integration-test: called AddOrders');
+                return new Observable((observer: any) => {
+                    this._meshWrapper
+                        .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
+                        .then(addOrders => {
+                            observer.next({ data: { addOrders } });
+                            observer.complete();
+                            return { data: { addOrders } };
+                        })
+                        .catch(err => {
+                            throw err;
+                        });
+                });
             case 'Order':
-                if (this._meshWrapper) {
-                    // FIXME - Is this how observables should be used?
-                    return new Observable(async () => {
-                        return {
-                            // tslint:disable-next-line:no-non-null-assertion
-                            data: await this._meshWrapper!.gqlGetOrderAsync(operation.variables.hash),
-                        };
-                    });
-                } else {
-                    console.log(operation.variables);
-                }
-                break;
+                console.log('browser-graphql-integration-test: called GetOrder');
+                return new Observable((observer: any) => {
+                    this._meshWrapper
+                        .gqlGetOrderAsync(operation.variables.hash)
+                        .then(order => {
+                            console.log('browser-graphql-integration-test: resolved GetOrder promise');
+                            observer.next({ data: { order } });
+                            observer.complete();
+                            return { data: { order } };
+                        })
+                        .catch(err => {
+                            throw err;
+                        });
+                });
             case 'Orders':
-                if (this._meshWrapper) {
-                    // FIXME - Is this how observables should be used?
-                    return new Observable(async () => {
-                        return {
-                            // tslint:disable-next-line:no-non-null-assertion
-                            data: await this._meshWrapper!.gqlFindOrdersAsync(
-                                operation.variables.sort,
-                                operation.variables.filters,
-                                operation.variables.limit,
-                            ),
-                        };
-                    });
-                } else {
-                    console.log(operation.variables);
-                }
-                break;
+                console.log('browser-graphql-integration-test: called FindOrders');
+                return new Observable((observer: any) => {
+                    this._meshWrapper
+                        .gqlFindOrdersAsync(
+                            operation.variables.sort,
+                            operation.variables.filters,
+                            operation.variables.limit,
+                        )
+                        .then(orders => {
+                            console.log('browser-graphql-integration-test: resolved FindOrders promise');
+                            observer.next({
+                                data: {
+                                    orders,
+                                },
+                            });
+                            observer.complete();
+                            return {
+                                data: {
+                                    orders,
+                                },
+                            };
+                        })
+                        .catch(err => {
+                            throw err;
+                        });
+                });
             case 'Stats':
-                if (this._meshWrapper) {
-                    // FIXME - Is this how observables should be used?
-                    return new Observable(async () => {
-                        return {
-                            // tslint:disable-next-line:no-non-null-assertion
-                            data: await this._meshWrapper!.gqlGetStatsAsync(),
-                        };
-                    });
-                } else {
-                    console.log(operation);
-                }
-                break;
-            // FIXME - A few of the operations do not populate the operationName
-            // field
+                console.log('browser-graphql-integration-test: called GetStats');
+                return new Observable((observer: any) => {
+                    this._meshWrapper
+                        .gqlGetStatsAsync()
+                        .then(stats => {
+                            observer.next({
+                                data: {
+                                    stats,
+                                },
+                            });
+                            observer.complete();
+                            return {
+                                data: {
+                                    stats,
+                                },
+                            };
+                        })
+                        .catch(err => {
+                            throw err;
+                        });
+                });
             default:
                 throw new Error('browser link: unrecognized operation name');
         }

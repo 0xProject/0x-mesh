@@ -160,8 +160,6 @@ func TestBrowserGraphQLIntegration(t *testing.T) {
 		}
 		_, err = waitForOrderEventLog(ctx, browserLogMessages, expectedOrderEventLog)
 		assert.NoError(t, err, "Browser node did not receive order sent by standalone node")
-
-		time.Sleep(20 * time.Second)
 	}()
 
 	// Start a goroutine to wait for the log messages we expect from the

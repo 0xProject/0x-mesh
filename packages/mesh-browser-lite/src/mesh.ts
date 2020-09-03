@@ -127,7 +127,7 @@ window.addEventListener(loadEventName, () => {
 // tslint:disable-next-line max-classes-per-file
 export class Mesh {
     private readonly _config: Config;
-    private _wrapper?: MeshWrapper;
+    public wrapper?: MeshWrapper;
     private _errHandler?: (err: Error) => void;
     private _orderEventsHandler?: (events: WrapperOrderEvent[]) => void;
 
@@ -151,8 +151,8 @@ export class Mesh {
      */
     public onError(handler: (err: Error) => void): void {
         this._errHandler = handler;
-        if (this._wrapper !== undefined) {
-            this._wrapper.onError(this._errHandler);
+        if (this.wrapper !== undefined) {
+            this.wrapper.onError(this._errHandler);
         }
     }
 
@@ -166,8 +166,8 @@ export class Mesh {
      */
     public onOrderEvents(handler: (events: OrderEvent[]) => void): void {
         this._orderEventsHandler = orderEventsHandlerToWrapperOrderEventsHandler(handler);
-        if (this._wrapper !== undefined) {
-            this._wrapper.onOrderEvents(this._orderEventsHandler);
+        if (this.wrapper !== undefined) {
+            this.wrapper.onOrderEvents(this._orderEventsHandler);
         }
     }
 
@@ -177,14 +177,14 @@ export class Mesh {
      */
     public async startAsync(): Promise<void> {
         await waitForLoadAsync();
-        this._wrapper = await zeroExMesh.newWrapperAsync(configToWrapperConfig(this._config));
+        this.wrapper = await zeroExMesh.newWrapperAsync(configToWrapperConfig(this._config));
         if (this._orderEventsHandler !== undefined) {
-            this._wrapper.onOrderEvents(this._orderEventsHandler);
+            this.wrapper.onOrderEvents(this._orderEventsHandler);
         }
         if (this._errHandler !== undefined) {
-            this._wrapper.onError(this._errHandler);
+            this.wrapper.onError(this._errHandler);
         }
-        return this._wrapper.startAsync();
+        return this.wrapper.startAsync();
     }
 
     /**
@@ -193,13 +193,13 @@ export class Mesh {
      */
     public async getStatsAsync(): Promise<Stats> {
         await waitForLoadAsync();
-        if (this._wrapper === undefined) {
-            // If this is called after startAsync, this._wrapper is always
+        if (this.wrapper === undefined) {
+            // If this is called after startAsync, this.wrapper is always
             // defined. This check is here just in case and satisfies the
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
-        const wrapperStats = await this._wrapper.getStatsAsync();
+        const wrapperStats = await this.wrapper.getStatsAsync();
         return wrapperStatsToStats(wrapperStats);
     }
 
@@ -210,8 +210,8 @@ export class Mesh {
      */
     public async getOrdersAsync(perPage: number = 200): Promise<GetOrdersResponse> {
         await waitForLoadAsync();
-        if (this._wrapper === undefined) {
-            // If this is called after startAsync, this._wrapper is always
+        if (this.wrapper === undefined) {
+            // If this is called after startAsync, this.wrapper is always
             // defined. This check is here just in case and satisfies the
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
@@ -243,14 +243,14 @@ export class Mesh {
      */
     public async getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<GetOrdersResponse> {
         await waitForLoadAsync();
-        if (this._wrapper === undefined) {
-            // If this is called after startAsync, this._wrapper is always
+        if (this.wrapper === undefined) {
+            // If this is called after startAsync, this.wrapper is always
             // defined. This check is here just in case and satisfies the
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
 
-        const wrapperOrderResponse = await this._wrapper.getOrdersForPageAsync(perPage, minOrderHash);
+        const wrapperOrderResponse = await this.wrapper.getOrdersForPageAsync(perPage, minOrderHash);
         return wrapperGetOrdersResponseToGetOrdersResponse(wrapperOrderResponse);
     }
 
@@ -272,14 +272,14 @@ export class Mesh {
      */
     public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
         await waitForLoadAsync();
-        if (this._wrapper === undefined) {
-            // If this is called after startAsync, this._wrapper is always
+        if (this.wrapper === undefined) {
+            // If this is called after startAsync, this.wrapper is always
             // defined. This check is here just in case and satisfies the
             // compiler.
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
         const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
-        const meshResults = await this._wrapper.addOrdersAsync(meshOrders, pinned);
+        const meshResults = await this.wrapper.addOrdersAsync(meshOrders, pinned);
         return wrapperValidationResultsToValidationResults(meshResults);
     }
 }

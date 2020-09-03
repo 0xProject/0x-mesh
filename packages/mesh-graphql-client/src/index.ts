@@ -1,4 +1,4 @@
-import { Mesh } from '@0x/mesh-browser-lite';
+import { MeshWrapper } from '@0x/mesh-browser-lite/lib/types';
 import { SignedOrder } from '@0x/types';
 import { from, HttpLink, split } from '@apollo/client';
 import {
@@ -236,7 +236,7 @@ const orderEventsSubscription = gql`
 export interface LinkConfig {
     httpUrl?: string;
     webSocketUrl?: string;
-    mesh?: Mesh;
+    meshWrapper?: MeshWrapper;
 }
 
 export class MeshGraphQLClient {
@@ -245,57 +245,56 @@ export class MeshGraphQLClient {
     private readonly _subscriptionClient?: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(linkConfig: LinkConfig) {
-        // FIXME - Uncomment this after BrowserLink is properly implemented
-        // let link: ApolloLink;
-        // if (linkConfig.mesh) {
-        //     if (linkConfig.httpUrl || linkConfig.webSocketUrl) {
-        //         throw new Error(
-        //             'mesh-graphql-client: "httpUrl" and "webSocketUrl" cannot be provided if a browser link is used',
-        //         );
-        //     }
+        let link: ApolloLink;
+        if (linkConfig.meshWrapper) {
+            if (linkConfig.httpUrl || linkConfig.webSocketUrl) {
+                throw new Error(
+                    'mesh-graphql-client: "httpUrl" and "webSocketUrl" cannot be provided if a browser link is used',
+                );
+            }
 
-        //     link = new BrowserLink(linkConfig.mesh);
-        // } else {
-        //     if (!linkConfig.httpUrl || !linkConfig.webSocketUrl) {
-        //         throw new Error(
-        //             'mesh-graphql-client: Both "httpUrl" and "webSocketUrl" must be provided in "linkConfig" if a network link is used',
-        //         );
-        //     }
+            link = new BrowserLink(linkConfig.meshWrapper);
+        } else {
+            if (!linkConfig.httpUrl || !linkConfig.webSocketUrl) {
+                throw new Error(
+                    'mesh-graphql-client: Both "httpUrl" and "webSocketUrl" must be provided in "linkConfig" if a network link is used',
+                );
+            }
 
-        //     // Set up an apollo client with WebSocket and HTTP links. This allows
-        //     // us to use the appropriate transport based on the type of the query.
-        //     const httpLink = new HttpLink({
-        //         uri: linkConfig.httpUrl,
-        //     });
-        //     const wsSubClient = new SubscriptionClient(
-        //         linkConfig.webSocketUrl,
-        //         {
-        //             reconnect: false,
-        //         },
-        //         // Use ws in Node.js and native WebSocket in browsers.
-        //         (process as any).browser ? undefined : ws,
-        //     );
-        //     const wsLink = new WebSocketLink(wsSubClient);
-        //     const splitLink = split(
-        //         ({ query }) => {
-        //             const definition = getMainDefinition(query);
-        //             return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
-        //         },
-        //         wsLink,
-        //         httpLink,
-        //     );
-        //     const errorLink = onError(({ graphQLErrors, networkError }) => {
-        //         if (graphQLErrors != null && graphQLErrors.length > 0) {
-        //             const allMessages = graphQLErrors.map(err => err.message).join('\n');
-        //             throw new Error(`GraphQL error(s): ${allMessages}`);
-        //         }
-        //         if (networkError != null) {
-        //             throw new Error(`Network error: ${networkError.message}`);
-        //         }
-        //     });
-        //     link = from([errorLink, splitLink]);
-        //     this._subscriptionClient = wsSubClient;
-        // }
+            // Set up an apollo client with WebSocket and HTTP links. This allows
+            // us to use the appropriate transport based on the type of the query.
+            const httpLink = new HttpLink({
+                uri: linkConfig.httpUrl,
+            });
+            const wsSubClient = new SubscriptionClient(
+                linkConfig.webSocketUrl,
+                {
+                    reconnect: false,
+                },
+                // Use ws in Node.js and native WebSocket in browsers.
+                (process as any).browser ? undefined : ws,
+            );
+            const wsLink = new WebSocketLink(wsSubClient);
+            const splitLink = split(
+                ({ query }) => {
+                    const definition = getMainDefinition(query);
+                    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
+                },
+                wsLink,
+                httpLink,
+            );
+            const errorLink = onError(({ graphQLErrors, networkError }) => {
+                if (graphQLErrors != null && graphQLErrors.length > 0) {
+                    const allMessages = graphQLErrors.map(err => err.message).join('\n');
+                    throw new Error(`GraphQL error(s): ${allMessages}`);
+                }
+                if (networkError != null) {
+                    throw new Error(`Network error: ${networkError.message}`);
+                }
+            });
+            link = from([errorLink, splitLink]);
+            this._subscriptionClient = wsSubClient;
+        }
         this._client = new ApolloClient({
             cache: new InMemoryCache({
                 // This custom merge function is required for our orderEvents subscription.
@@ -314,8 +313,7 @@ export class MeshGraphQLClient {
                 // Stop apollo client from injecting `__typename` fields. These extra fields mess up our tests.
                 addTypename: false,
             }),
-            // link,
-            link: new BrowserLink(),
+            link,
         });
     }
 
