@@ -73,6 +73,7 @@ type MeshWrapper struct {
 	orderEvents             chan []*zeroex.OrderEvent
 	orderEventsSubscription event.Subscription
 	orderEventsHandler      js.Value
+	resolver                *graphql.Resolver
 }
 
 // NewMeshWrapper creates a new wrapper from the given config.
@@ -83,9 +84,10 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 		return nil, err
 	}
 	return &MeshWrapper{
-		app:    app,
-		ctx:    ctx,
-		cancel: cancel,
+		app:      app,
+		ctx:      ctx,
+		cancel:   cancel,
+		resolver: graphql.NewResolver(app),
 	}, nil
 }
 
@@ -183,9 +185,7 @@ func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, 
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &newOrders); err != nil {
 		return js.Undefined(), err
 	}
-	// FIXME - DRY this up into NewMeshWrapper
-	mutation := graphql.NewResolver(cw.app).Mutation()
-	results, err := mutation.AddOrders(cw.ctx, newOrders, &pinned)
+	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &pinned)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -198,9 +198,7 @@ func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, 
 }
 
 func (cw *MeshWrapper) GQLGetOrder(hash string) (js.Value, error) {
-	// FIXME - DRY this up into NewMeshWrapper
-	query := graphql.NewResolver(cw.app).Query()
-	order, err := query.Order(cw.ctx, hash)
+	order, err := cw.resolver.Query().Order(cw.ctx, hash)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -221,9 +219,7 @@ func (cw *MeshWrapper) GQLFindOrders(rawSort js.Value, rawFilter js.Value, limit
 	if err := jsutil.InefficientlyConvertFromJS(rawFilter, &filter); err != nil {
 		return js.Undefined(), err
 	}
-	// FIXME - DRY this up into NewMeshWrapper
-	query := graphql.NewResolver(cw.app).Query()
-	orders, err := query.Orders(cw.ctx, sort, filter, &limit)
+	orders, err := cw.resolver.Query().Orders(cw.ctx, sort, filter, &limit)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -236,9 +232,7 @@ func (cw *MeshWrapper) GQLFindOrders(rawSort js.Value, rawFilter js.Value, limit
 }
 
 func (cw *MeshWrapper) GQLGetStats() (js.Value, error) {
-	// FIXME - DRY this up into NewMeshWrapper
-	query := graphql.NewResolver(cw.app).Query()
-	stats, err := query.Stats(cw.ctx)
+	stats, err := cw.resolver.Query().Stats(cw.ctx)
 	if err != nil {
 		return js.Undefined(), err
 	}

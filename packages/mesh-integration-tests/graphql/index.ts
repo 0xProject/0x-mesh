@@ -64,7 +64,6 @@ provider.start();
         console.error(err);
     });
 
-    // FIXME - Remove most console statements
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled. We will check for certain events to be logged in the
     // integration tests.
@@ -73,13 +72,8 @@ provider.start();
             for (const event of events) {
                 // Check the happy path for findOrdersAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
-                const firstOrdersResponse = await client.findOrdersAsync();
-                if (firstOrdersResponse.length !== 2) {
-                    throw new Error(
-                        'browser-graphql-integration-test: wrong number of orders returned by "findOrdersAsync"',
-                    );
-                }
-                for (const foundOrder of firstOrdersResponse) {
+                const findOrdersResponse = await client.findOrdersAsync();
+                for (const foundOrder of findOrdersResponse) {
                     console.log(JSON.stringify(order));
                 }
 

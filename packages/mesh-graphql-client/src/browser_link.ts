@@ -11,7 +11,6 @@ export class BrowserLink extends ApolloLink {
         // FIXME - Don't use the `any` type and possibly do more input sanitation
         switch (operation.operationName) {
             case 'AddOrders':
-                console.log('browser-graphql-integration-test: called AddOrders');
                 return new Observable((observer: any) => {
                     this._meshWrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
@@ -25,12 +24,10 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Order':
-                console.log('browser-graphql-integration-test: called GetOrder');
                 return new Observable((observer: any) => {
                     this._meshWrapper
                         .gqlGetOrderAsync(operation.variables.hash)
                         .then(order => {
-                            console.log('browser-graphql-integration-test: resolved GetOrder promise');
                             observer.next({ data: { order } });
                             observer.complete();
                             return { data: { order } };
@@ -40,7 +37,6 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Orders':
-                console.log('browser-graphql-integration-test: called FindOrders');
                 return new Observable((observer: any) => {
                     this._meshWrapper
                         .gqlFindOrdersAsync(
@@ -49,7 +45,6 @@ export class BrowserLink extends ApolloLink {
                             operation.variables.limit,
                         )
                         .then(orders => {
-                            console.log('browser-graphql-integration-test: resolved FindOrders promise');
                             observer.next({
                                 data: {
                                     orders,
@@ -67,7 +62,6 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Stats':
-                console.log('browser-graphql-integration-test: called GetStats');
                 return new Observable((observer: any) => {
                     this._meshWrapper
                         .gqlGetStatsAsync()

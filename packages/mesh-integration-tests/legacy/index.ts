@@ -64,8 +64,10 @@ provider.start();
     // This handler will be called whenever an order is added, expired,
     // canceled, or filled. We will check for certain events to be logged in the
     // integration tests.
+    let count = 0;
     mesh.onOrderEvents((events: OrderEvent[]) => {
         (async () => {
+            console.log(`browser-graphql-integration-test: order event callback count: ${count++}`);
             for (const event of events) {
                 // Check the happy path for getOrdersForPageAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
@@ -84,6 +86,7 @@ provider.start();
                 // this.
                 console.log(JSON.stringify(event));
             }
+            console.log(`browser-graphql-integration-test: finished order event callback`);
         })().catch(err => console.error(err));
     });
 
