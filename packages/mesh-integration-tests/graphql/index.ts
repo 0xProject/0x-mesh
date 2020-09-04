@@ -69,6 +69,9 @@ provider.start();
     // integration tests.
     mesh.onOrderEvents((events: OrderEvent[]) => {
         (async () => {
+            // FIXME - If this fixes the issue, I'll need to rethink how things
+            // work.
+            client = new MeshGraphQLClient({ meshWrapper: mesh.wrapper });
             for (const event of events) {
                 // Check the happy path for findOrdersAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
@@ -85,7 +88,9 @@ provider.start();
                 // this.
                 console.log(JSON.stringify(event));
             }
-        })().catch(err => console.error(err));
+        })().catch(err => {
+            console.error(err);
+        });
     });
 
     // Start Mesh *after* we set up the handlers.
@@ -123,11 +128,12 @@ provider.start();
     finishedDiv.setAttribute('id', 'jsFinished');
     document.body.appendChild(finishedDiv);
 })().catch(err => {
-    if (err instanceof Error) {
-        console.error(`${err.name}: ${err.message}`);
-    } else {
-        console.error(err.toString());
-    }
+    throw err;
+    // if (err instanceof Error) {
+    //     console.error(`${err.name}: ${err.message}`);
+    // } else {
+    //     console.error(err.toString());
+    // }
 });
 // tslint:enable:no-console
 
