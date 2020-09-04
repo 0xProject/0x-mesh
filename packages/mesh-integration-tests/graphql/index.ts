@@ -128,12 +128,11 @@ provider.start();
     finishedDiv.setAttribute('id', 'jsFinished');
     document.body.appendChild(finishedDiv);
 })().catch(err => {
-    throw err;
-    // if (err instanceof Error) {
-    //     console.error(`${err.name}: ${err.message}`);
-    // } else {
-    //     console.error(err.toString());
-    // }
+    if (err instanceof Error) {
+        console.error(`${err.name}: ${err.message}`);
+    } else {
+        console.error(err.toString());
+    }
 });
 // tslint:enable:no-console
 

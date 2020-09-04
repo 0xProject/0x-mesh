@@ -6,8 +6,5 @@
         "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"]
     },
     "include": ["./src/**/*", "./test/**/*"],
-    "references": [
-        { "path": "../mesh-browser" },
-        { "path": "../mesh-graphql-client" }
-    ]
+    "references": [{ "path": "../mesh-browser" }, { "path": "../mesh-graphql-client" }]
 }

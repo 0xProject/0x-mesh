@@ -1,8 +1,8 @@
-import { Order, SignedOrder } from '@0x/order-utils';
+import { SignedOrder } from '@0x/order-utils';
 import { BigNumber } from '@0x/utils';
 import { SupportedProvider, ZeroExProvider } from 'ethereum-types';
 
-export { Order, SignedOrder } from '@0x/order-utils';
+export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
 

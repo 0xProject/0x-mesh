@@ -126,8 +126,8 @@ window.addEventListener(loadEventName, () => {
  */
 // tslint:disable-next-line max-classes-per-file
 export class Mesh {
-    private readonly _config: Config;
     public wrapper?: MeshWrapper;
+    private readonly _config: Config;
     private _errHandler?: (err: Error) => void;
     private _orderEventsHandler?: (events: WrapperOrderEvent[]) => void;
 
