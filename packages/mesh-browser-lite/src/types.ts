@@ -710,7 +710,7 @@ export interface WrapperStats {
     version: string;
     pubSubTopic: string;
     rendezvous: string;
-    secondaryRendezvous?: string[];
+    secondaryRendezvous: string[];
     peerID: string;
     ethereumChainID: number;
     latestBlock: WrapperLatestBlock;
@@ -728,7 +728,7 @@ export interface Stats {
     version: string;
     pubSubTopic: string;
     rendezvous: string;
-    secondaryRendezvous?: string[];
+    secondaryRendezvous: string[];
     peerID: string;
     ethereumChainID: number;
     latestBlock?: LatestBlock;

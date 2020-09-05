@@ -149,6 +149,7 @@ type ComplexityRoot struct {
 		PeerID                            func(childComplexity int) int
 		PubSubTopic                       func(childComplexity int) int
 		Rendezvous                        func(childComplexity int) int
+		SecondaryRendezvous               func(childComplexity int) int
 		StartOfCurrentUTCDay              func(childComplexity int) int
 		Version                           func(childComplexity int) int
 	}
@@ -711,6 +712,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stats.Rendezvous(childComplexity), true
 
+	case "Stats.secondaryRendezvous":
+		if e.complexity.Stats.SecondaryRendezvous == nil {
+			break
+		}
+
+		return e.complexity.Stats.SecondaryRendezvous(childComplexity), true
+
 	case "Stats.startOfCurrentUTCDay":
 		if e.complexity.Stats.StartOfCurrentUTCDay == nil {
 			break
@@ -966,6 +974,7 @@ type Stats {
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
+    secondaryRendezvous: [String!]!
     """
     The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
     Any order with an expiration time greater than this maximum will be rejected by Mesh.
@@ -3945,6 +3954,40 @@ func (ec *executionContext) _Stats_ethRPCRateLimitExpiredRequests(ctx context.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Stats_secondaryRendezvous(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SecondaryRendezvous, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Stats_maxExpirationTime(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5885,6 +5928,11 @@ func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "secondaryRendezvous":
+			out.Values[i] = ec._Stats_secondaryRendezvous(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "maxExpirationTime":
 			out.Values[i] = ec._Stats_maxExpirationTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -6627,6 +6675,35 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
