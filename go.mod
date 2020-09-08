@@ -19,7 +19,7 @@ require (
 	github.com/agnivade/levenshtein v1.1.0 // indirect
 	github.com/albrow/stringset v2.1.0+incompatible
 	github.com/aristanetworks/goarista v0.0.0-20190712234253-ed1100a1c015 // indirect
-	github.com/benbjohnson/clock v0.0.0-20161215174838-7dc76406b6d3
+	github.com/benbjohnson/clock v1.0.2
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/chromedp/cdproto v0.0.0-20190827000638-b5ac1e37ce90
 	github.com/chromedp/chromedp v0.4.0
@@ -30,40 +30,43 @@ require (
 	github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/gibson042/canonicaljson-go v1.0.3
-	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ido50/sqlz v0.0.0-20200308174337-487b8faf612c
-	github.com/ipfs/go-datastore v0.4.4
-	github.com/ipfs/go-ds-leveldb v0.4.0
+	github.com/ipfs/go-datastore v0.4.5
+	github.com/ipfs/go-ds-leveldb v0.4.2
 	github.com/ipfs/go-ds-sql v0.2.0
+	github.com/ipfs/go-todocounter v0.0.2 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/lib/pq v1.3.0
-	github.com/libp2p/go-libp2p v0.5.1
-	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
-	github.com/libp2p/go-libp2p-circuit v0.1.4
-	github.com/libp2p/go-libp2p-connmgr v0.2.1
-	github.com/libp2p/go-libp2p-core v0.3.0
-	github.com/libp2p/go-libp2p-discovery v0.2.0
-	github.com/libp2p/go-libp2p-kad-dht v0.5.0
+	github.com/libp2p/go-libp2p v0.11.0
+	github.com/libp2p/go-libp2p-autonat-svc v0.2.0
+	github.com/libp2p/go-libp2p-circuit v0.3.1
+	github.com/libp2p/go-libp2p-connmgr v0.2.4
+	github.com/libp2p/go-libp2p-core v0.6.1
+	github.com/libp2p/go-libp2p-discovery v0.5.0
+	github.com/libp2p/go-libp2p-kad-dht v0.10.0
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-pubsub v0.2.5
-	github.com/libp2p/go-libp2p-swarm v0.2.2
-	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/libp2p/go-tcp-transport v0.1.1
-	github.com/libp2p/go-ws-transport v0.2.0
+	github.com/libp2p/go-libp2p-peerstore v0.2.6
+	github.com/libp2p/go-libp2p-pubsub v0.3.3
+	github.com/libp2p/go-libp2p-pubsub-router v0.3.1 // indirect
+	github.com/libp2p/go-libp2p-routing v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-swarm v0.2.8
+	github.com/libp2p/go-maddr-filter v0.1.0
+	github.com/libp2p/go-mplex v0.1.3 // indirect
+	github.com/libp2p/go-tcp-transport v0.2.1
+	github.com/libp2p/go-ws-transport v0.3.1
 	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/is v1.4.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
-	github.com/multiformats/go-multiaddr v0.2.1
+	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709
 	github.com/pkg/errors v0.9.1 // indirect
@@ -73,9 +76,10 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48 // indirect
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.6.1
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/vektah/gqlparser/v2 v2.0.1
+	github.com/whyrusleeping/go-notifier v0.0.0-20170827234753-097c5d47330f // indirect
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190809123943-df4f5c81cb3b // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
