@@ -131,3 +131,7 @@ docker-mesh-fluent-bit:
 .PHONY: docker-mesh-bridge
 docker-mesh-bridge:
 	docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
+
+.PHONY: docker-mesh-wasm-runner
+docker-mesh-wasm-runner:
+	docker build . -t 0xorg/mesh-wasm-runner -f ./dockerfiles/mesh-wasm-runner/Dockerfile
