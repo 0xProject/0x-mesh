@@ -115,5 +115,5 @@ func getPublicIP() (string, error) {
 // in native (pure Go) environments. Standalone nodes use a SQL key value store
 // to persist data and browser nodes use a Dexie key value store.
 func NewDHT(ctx context.Context, db *db.DB, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(db.DHTStore()), dhtopts.Protocols(DHTProtocolID))
+	return dht.New(ctx, host, dhtopts.Datastore(db.DHTStore()), dht.V1ProtocolOverride(DHTProtocolID))
 }

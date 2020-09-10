@@ -29,6 +29,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p-secio"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -223,7 +224,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
 		libp2p.BandwidthReporter(bandwidthCounter),
-		Filters(filters),
+		libp2p.Filters(filters),
+		libp2p.Security(secio.ID, secio.New),
 	}...)
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)

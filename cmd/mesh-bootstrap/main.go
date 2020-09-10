@@ -124,7 +124,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
+		kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dht.V1ProtocolOverride(p2p.DHTProtocolID))
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}
@@ -167,7 +167,7 @@ func main() {
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.BandwidthReporter(bandwidthCounter),
 		libp2p.Peerstore(peerStore),
-		p2p.Filters(filters),
+		libp2p.Filters(filters),
 	}
 
 	if config.EnableRelayHost {
@@ -184,7 +184,8 @@ func main() {
 	basicHost.Network().Notify(&notifee{})
 
 	// Enable AutoNAT service.
-	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
+	// FIXME - Should this be force enabled?
+	if _, err := autonat.NewAutoNATService(ctx, basicHost, true); err != nil {
 		log.WithField("error", err).Fatal("could not enable AutoNAT service")
 	}
 

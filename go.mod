@@ -52,11 +52,12 @@ require (
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.10.0
-	github.com/libp2p/go-libp2p-peer v0.2.0
+	github.com/libp2p/go-libp2p-peer v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.3
 	github.com/libp2p/go-libp2p-pubsub-router v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-routing v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-swarm v0.2.8
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/libp2p/go-mplex v0.1.3 // indirect
