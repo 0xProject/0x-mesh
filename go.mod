@@ -61,6 +61,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.8
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/libp2p/go-mplex v0.1.3 // indirect
+	github.com/libp2p/go-netroute v0.1.4 // indirect
 	github.com/libp2p/go-tcp-transport v0.2.1
 	github.com/libp2p/go-ws-transport v0.3.1
 	github.com/machinebox/graphql v0.2.2

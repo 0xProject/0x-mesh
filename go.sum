@@ -629,6 +629,8 @@ github.com/libp2p/go-nat v0.0.5/go.mod h1:B7NxsVNPZmRLvMOwiEO1scOSyjA56zxYAGv1yQ
 github.com/libp2p/go-netroute v0.1.2/go.mod h1:jZLDV+1PE8y5XxBySEBgbuVAXbhtuHSdmLPL2n9MKbk=
 github.com/libp2p/go-netroute v0.1.3 h1:1ngWRx61us/EpaKkdqkMjKk/ufr/JlIFYQAxV2XX8Ig=
 github.com/libp2p/go-netroute v0.1.3/go.mod h1:jZLDV+1PE8y5XxBySEBgbuVAXbhtuHSdmLPL2n9MKbk=
+github.com/libp2p/go-netroute v0.1.4 h1:47V0+hJfYaqj1WO0A+cDkRc9xr9qKiK7i8zaoGv8Mmo=
+github.com/libp2p/go-netroute v0.1.4/go.mod h1:jZLDV+1PE8y5XxBySEBgbuVAXbhtuHSdmLPL2n9MKbk=
 github.com/libp2p/go-openssl v0.0.2/go.mod h1:v8Zw2ijCSWBQi8Pq5GAixw6DbFfa9u6VIYDXnvOXkc0=
 github.com/libp2p/go-openssl v0.0.3 h1:wjlG7HvQkt4Fq4cfH33Ivpwp0omaElYEi9z26qaIkIk=
 github.com/libp2p/go-openssl v0.0.3/go.mod h1:unDrJpgy3oFr+rqXsarWifmJuNnJR4chtO1HmaZjggc=
