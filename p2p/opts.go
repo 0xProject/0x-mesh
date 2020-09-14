@@ -13,7 +13,6 @@ import (
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -115,5 +114,5 @@ func getPublicIP() (string, error) {
 // in native (pure Go) environments. Standalone nodes use a SQL key value store
 // to persist data and browser nodes use a Dexie key value store.
 func NewDHT(ctx context.Context, db *db.DB, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(db.DHTStore()), dht.V1ProtocolOverride(DHTProtocolID), dht.Mode(dht.ModeAutoServer))
+	return dht.New(ctx, host, dht.Datastore(db.DHTStore()), dht.V1ProtocolOverride(DHTProtocolID), dht.Mode(dht.ModeAutoServer))
 }

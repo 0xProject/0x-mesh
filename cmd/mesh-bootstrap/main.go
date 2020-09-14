@@ -25,7 +25,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p-secio"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
@@ -125,7 +124,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dht.V1ProtocolOverride(p2p.DHTProtocolID), dht.Mode(dht.ModeServer))
+		kadDHT, err = dht.New(ctx, h, dht.Datastore(store), dht.V1ProtocolOverride(p2p.DHTProtocolID), dht.Mode(dht.ModeServer))
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}
@@ -168,7 +167,9 @@ func main() {
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.BandwidthReporter(bandwidthCounter),
 		libp2p.Peerstore(peerStore),
-		libp2p.Filters(filters),
+		// TODO(jalextowle): This should be changed to libp2p.ConnectionGater
+		// after v10
+		libp2p.Filters(filters), //nolint:staticcheck
 		libp2p.Security(secio.ID, secio.New),
 	}
 

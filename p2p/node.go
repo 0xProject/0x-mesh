@@ -224,7 +224,9 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
 		libp2p.BandwidthReporter(bandwidthCounter),
-		libp2p.Filters(filters),
+		// TODO(jalextowle): This should be replaced with libp2p.ConnectionGater
+		// after v10 is released
+		libp2p.Filters(filters), //nolint:staticcheck
 		libp2p.Security(secio.ID, secio.New),
 	}...)
 	if config.Insecure {
