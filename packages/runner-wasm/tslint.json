@@ -1,0 +1,5 @@
+{
+    "extends": [
+        "@0x/tslint-config"
+    ]
+}
