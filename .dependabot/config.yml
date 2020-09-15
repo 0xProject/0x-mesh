@@ -1,8 +1,0 @@
-version: 1
-update_configs:
-  # Keep package.json (& lockfiles) secure and up-to-date,
-  # batching pull requests as security updates arrive.
-  - package_manager: "javascript"
-    directory: "/"
-    update_schedule: "live"
-    target_branch: "development"
