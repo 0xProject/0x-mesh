@@ -4,11 +4,35 @@ This changelog is a work in progress and may contain notes for versions which ha
 
 ## v10.0.0
 
+### Breaking changes 🛠
+
+-   Reject orders that have taker addresses that are non-zero and are not whitelisted. [#896](https://github.com/0xProject/0x-mesh/pull/896).
+-   Removed support for Coordinator orders. [#895](https://github.com/0xProject/0x-mesh/pull/895).
+-   The JSON-RPC is no longer supported by Mesh nodes. Only a GraphQL API is supported. [#858](https://github.com/0xProject/0x-mesh/pull/858)
+
 ### Features ✅
 
--   Upgraded to Go 1.15 to fix fatal errors in the WebAssembly runtime [#911]
--   Upgraded to Go 1.14, which contains several WebAssembly performance improvements [#815](https://github.com/0xProject/0x-mesh/pull/815).
--   Reject orders that have taker addresses that are non-zero and are not whitelisted. [#896](https://github.com/0xProject/0x-mesh/pull/896).
+-   Upgraded to Go 1.15, which contains several WebAssembly performance improvements [#911](https://github.com/0xProject/0x-mesh/pull/911).
+-   Made MAX_BYTES_PER_SECOND configurable for non-bootstrap Mesh nodes. [#879](https://github.com/0xProject/0x-mesh/pull/879).
+-   Added the ability for ordersync requestors to track the progress of individual ordersync connections in case connection is broken temporarily. [#877](https://github.com/0xProject/0x-mesh/pull/877)
+-   Implemented parallelization of ordersync requests. [#848](https://github.com/0xProject/0x-mesh/pull/848).
+-   Optimized the computation of optimal eth_call batch sizes for order validation. [#846](https://github.com/0xProject/0x-mesh/pull/846).
+-   Implemented more aggressive pruning for "removed" orders when database utilization is high [#839](https://github.com/0xProject/0x-mesh/pull/839).
+-   Optimizes conversions from Golang to Javascript. [#820](https://github.com/0xProject/0x-mesh/pull/820).
+-   Implemented new database solutions for both standalone and browser nodes. [#793](https://github.com/0xProject/0x-mesh/pull/793).
+
+### Bug fixes 🐞
+
+-   Implemented log rotation for telemetry deployments. This fixed an issue that would cause nodes with telemetry to crash after running out of disk space. [#887](https://github.com/0xProject/0x-mesh/pull/887).
+-   Stopped emitting STOPPED_WATCHING events for orders that were already stored. [#881](https://github.com/0xProject/0x-mesh/pull/881)
+-   Fixed an issue that caused ordersync responses of zero orders to be treated as unsuccessful. [#875](https://github.com/0xProject/0x-mesh/pull/875)
+-   Fixed a bug that would cause browser nodes to crash if "getOrdersAsync" was called before any orders were received. [#842](https://github.com/0xProject/0x-mesh/pull/842).
+
+## v9.4.2
+
+### Bug fixes 🐞
+
+-   Fixes a bug that would cause Mesh nodes to crash upon receiving requests from legacy Mesh nodes [#888](https://github.com/0xProject/0x-mesh/pull/888).
 
 ## v9.4.1
 
