@@ -14,9 +14,7 @@ RUN npm run build
 
 # Final Image
 FROM chromedp/headless-shell:latest
-# Install dumb-init or tini
-RUN apt update && apt install dumb-init musl
-# or RUN apt install tini
+RUN apt update && apt install dumb-init musl && rm -rf /var/lib/apt/lists/*
 WORKDIR /usr/mesh
 
 COPY --from=mesh-builder /0x-mesh/mesh-wasm-runner /usr/mesh/mesh-wasm-runner
@@ -29,6 +27,9 @@ EXPOSE 60559
 
 RUN chmod +x ./mesh-wasm-runner
 
+# Since mesh wasm runner can spawn a headless-chrome process we use `dumb-init`
+# as a simple init system to reap potential zombie processes.
+# ref: https://github.com/Yelp/dumb-init#why-you-need-an-init-system
 ENTRYPOINT ["dumb-init", "--"]
 
 CMD ["./mesh-wasm-runner"]

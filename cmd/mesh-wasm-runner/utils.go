@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/0xProject/0x-mesh/core"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
@@ -25,7 +24,7 @@ func startFileServer(ctx context.Context, config *WasmRunnerConfig) {
 	log.Error(http.ListenAndServe(fmt.Sprintf(":%s", config.FileServerPort), wrapHandler(http.FileServer(http.Dir(config.WasmPayloadPath)))))
 }
 
-func getJSONConfig(nodeConfig *core.Config) (string, error) {
+func getJSONConfig(nodeConfig *Config) (string, error) {
 	jsonBytes, err := json.Marshal(nodeConfig)
 	return string(jsonBytes), err
 }
@@ -44,7 +43,7 @@ func getAllocatedBrowserURL(config *WasmRunnerConfig) string {
 	return result["webSocketDebuggerUrl"].(string)
 }
 
-func startNode(ctx context.Context, url string, nodeConfig *core.Config, browserLogMessages chan string) {
+func startNode(ctx context.Context, url string, nodeConfig *Config, browserLogMessages chan string) {
 	// Use chromedp to visit the web page for the browser node.
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
