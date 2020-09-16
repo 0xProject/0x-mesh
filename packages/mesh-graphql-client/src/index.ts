@@ -1,4 +1,4 @@
-import { MeshWrapper } from '@0x/mesh-browser-lite/lib/types';
+import { Mesh } from '@0x/mesh-browser-lite';
 import { SignedOrder } from '@0x/types';
 import { from, HttpLink, split } from '@apollo/client';
 import {
@@ -236,7 +236,7 @@ const orderEventsSubscription = gql`
 export interface LinkConfig {
     httpUrl?: string;
     webSocketUrl?: string;
-    meshWrapper?: MeshWrapper;
+    mesh?: Mesh;
 }
 
 export class MeshGraphQLClient {
@@ -245,15 +245,7 @@ export class MeshGraphQLClient {
     private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(linkConfig: LinkConfig) {
         let link: ApolloLink;
-        if (linkConfig.meshWrapper) {
-            if (linkConfig.httpUrl || linkConfig.webSocketUrl) {
-                throw new Error(
-                    'mesh-graphql-client: "httpUrl" and "webSocketUrl" cannot be provided if a browser link is used',
-                );
-            }
-
-            link = new BrowserLink(linkConfig.meshWrapper);
-        } else {
+        if (linkConfig.httpUrl && linkConfig.webSocketUrl) {
             if (!linkConfig.httpUrl || !linkConfig.webSocketUrl) {
                 throw new Error(
                     'mesh-graphql-client: Both "httpUrl" and "webSocketUrl" must be provided in "linkConfig" if a network link is used',
@@ -293,6 +285,14 @@ export class MeshGraphQLClient {
             });
             link = from([errorLink, splitLink]);
             this._subscriptionClient = wsSubClient;
+        } else {
+            if (!linkConfig.mesh) {
+                throw new Error(
+                    'mesh-graphql-client: "httpUrl" and "webSocketUrl" cannot be provided if a browser link is used',
+                );
+            }
+
+            link = new BrowserLink(linkConfig.mesh);
         }
         this._client = new ApolloClient({
             cache: new InMemoryCache({
@@ -424,6 +424,9 @@ export class MeshGraphQLClient {
     public async rawQueryAsync<T = any, TVariables = OperationVariables>(
         options: QueryOptions<TVariables>,
     ): Promise<ApolloQueryResult<T>> {
+        if (!this._subscriptionClient) {
+            throw new Error('mesh-graphql-client: Raw queries are not currently supported by browser nodes');
+        }
         return this._client.query<T>(options);
     }
 }

@@ -56,8 +56,7 @@ provider.start();
         },
         web3Provider: provider,
     });
-
-    let client: MeshGraphQLClient;
+    const client = new MeshGraphQLClient({ mesh });
 
     // This handler will be called whenver there is a critical error.
     mesh.onError((err: Error) => {
@@ -69,9 +68,6 @@ provider.start();
     // integration tests.
     mesh.onOrderEvents((events: OrderEvent[]) => {
         (async () => {
-            // FIXME - If this fixes the issue, I'll need to rethink how things
-            // work.
-            client = new MeshGraphQLClient({ meshWrapper: mesh.wrapper });
             for (const event of events) {
                 // Check the happy path for findOrdersAsync. There should
                 // be two orders. (just make sure it doesn't throw/reject).
@@ -95,7 +91,6 @@ provider.start();
 
     // Start Mesh *after* we set up the handlers.
     await mesh.startAsync();
-    client = new MeshGraphQLClient({ meshWrapper: mesh.wrapper });
 
     // HACK(albrow): Wait for GossipSub to initialize. We could remove this if we adjust
     // how we are waiting for the order (what log message we look for). As the test is

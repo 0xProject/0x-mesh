@@ -1,20 +1,23 @@
-import { MeshWrapper } from '@0x/mesh-browser-lite/lib/types';
-import { SignedOrder } from '@0x/order-utils';
+import { Mesh } from '@0x/mesh-browser-lite';
 import { ApolloLink, FetchResult, Operation } from '@apollo/client/link/core';
 import * as Observable from 'zen-observable';
 
 import { AddOrdersResponse, OrderResponse, OrdersResponse, StatsResponse } from './types';
 
 export class BrowserLink extends ApolloLink {
-    constructor(private readonly _meshWrapper: MeshWrapper) {
+    constructor(private readonly _mesh: Mesh) {
         super();
     }
 
     public request(operation: Operation): Observable<FetchResult> {
+        const wrapper = this._mesh.wrapper;
+        if (wrapper === undefined) {
+            throw new Error('mesh-graphql-client: Mesh node is not ready to receive requests');
+        }
         switch (operation.operationName) {
             case 'AddOrders':
                 return new Observable<{ data: AddOrdersResponse }>(observer => {
-                    this._meshWrapper
+                    wrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
                         .then(addOrders => {
                             observer.next({ data: { addOrders } });
@@ -27,7 +30,7 @@ export class BrowserLink extends ApolloLink {
                 });
             case 'Order':
                 return new Observable<{ data: OrderResponse }>(observer => {
-                    this._meshWrapper
+                    wrapper
                         .gqlGetOrderAsync(operation.variables.hash)
                         .then(order => {
                             observer.next({ data: { order } });
@@ -40,7 +43,7 @@ export class BrowserLink extends ApolloLink {
                 });
             case 'Orders':
                 return new Observable<{ data: OrdersResponse }>(observer => {
-                    this._meshWrapper
+                    wrapper
                         .gqlFindOrdersAsync(
                             operation.variables.sort,
                             operation.variables.filters,
@@ -65,7 +68,7 @@ export class BrowserLink extends ApolloLink {
                 });
             case 'Stats':
                 return new Observable<{ data: StatsResponse }>(observer => {
-                    this._meshWrapper
+                    wrapper
                         .gqlGetStatsAsync()
                         .then(stats => {
                             observer.next({

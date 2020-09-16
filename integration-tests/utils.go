@@ -206,7 +206,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, dataDir 
 	wg.Wait()
 }
 
-func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string) {
+func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string, browserErrors chan<- []string) {
 	// Use chromedp to visit the web page for the browser node.
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -222,9 +222,14 @@ func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogM
 				}
 			case runtime.APITypeError:
 				// Report any console.error events as test failures.
+				stringifiedBrowserErrors := make([]string, len(ev.Args))
 				for _, arg := range ev.Args {
-					t.Errorf("JavaScript console error: (%s) %s %s", arg.Type, arg.Value, arg.Description)
+					stringifiedBrowserErrors = append(
+						stringifiedBrowserErrors,
+						fmt.Sprintf("JavaScript console error: (%s) %s %s", arg.Type, arg.Value, arg.Description),
+					)
 				}
+				browserErrors <- stringifiedBrowserErrors
 			}
 		}
 	})

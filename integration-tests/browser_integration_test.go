@@ -122,12 +122,13 @@ func testBrowserIntegration(testBundlePath string) func(*testing.T) {
 		// standalone node will be sent. We use a large buffer so it doesn't cause
 		// goroutines to block.
 		browserLogMessages := make(chan string, 1024)
+		browserErrors := make(chan []string, 1)
 
 		// Start the browser node.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			startBrowserNode(t, ctx, ts.URL, browserLogMessages)
+			startBrowserNode(t, ctx, ts.URL, browserLogMessages, browserErrors)
 		}()
 
 		// browserPeerIDChan is used to retrieve the peer ID of the browser node.
@@ -189,8 +190,24 @@ func testBrowserIntegration(testBundlePath string) func(*testing.T) {
 			assert.NoError(t, err, "Standalone node did not receive order sent by browser node")
 		}()
 
-		// Wait for all expected messages to be logged.
-		messageWG.Wait()
+		// Wait for all expected messages to be logged. We call the Wait
+		// function from a go function to allow us to also listen for browser
+		// errors using a select statement.
+		waitChan := make(chan interface{}, 1)
+		go func() {
+			messageWG.Wait()
+			close(waitChan)
+		}()
+
+		select {
+		case errs := <-browserErrors:
+			for _, err := range errs {
+				fmt.Println(err)
+			}
+			t.FailNow()
+		case <-waitChan:
+		case <-ctx.Done():
+		}
 
 		// Cancel the context and wait for all outstanding goroutines to finish.
 		cancel()
