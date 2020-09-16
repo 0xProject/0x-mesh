@@ -1,17 +1,19 @@
 import { MeshWrapper } from '@0x/mesh-browser-lite/lib/types';
-import { Observable } from '@apollo/client';
+import { SignedOrder } from '@0x/order-utils';
 import { ApolloLink, FetchResult, Operation } from '@apollo/client/link/core';
+import * as Observable from 'zen-observable';
+
+import { AddOrdersResponse, OrderResponse, OrdersResponse, StatsResponse } from './types';
 
 export class BrowserLink extends ApolloLink {
     constructor(private readonly _meshWrapper: MeshWrapper) {
         super();
     }
 
-    public request(operation: Operation): Observable<FetchResult> | null {
-        // FIXME - Don't use the `any` type and possibly do more input sanitation
+    public request(operation: Operation): Observable<FetchResult> {
         switch (operation.operationName) {
             case 'AddOrders':
-                return new Observable((observer: any) => {
+                return new Observable<{ data: AddOrdersResponse }>(observer => {
                     this._meshWrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
                         .then(addOrders => {
@@ -19,12 +21,12 @@ export class BrowserLink extends ApolloLink {
                             observer.complete();
                             return { data: { addOrders } };
                         })
-                        .catch(err => {
+                        .catch((err: Error) => {
                             throw err;
                         });
                 });
             case 'Order':
-                return new Observable((observer: any) => {
+                return new Observable<{ data: OrderResponse }>(observer => {
                     this._meshWrapper
                         .gqlGetOrderAsync(operation.variables.hash)
                         .then(order => {
@@ -32,12 +34,12 @@ export class BrowserLink extends ApolloLink {
                             observer.complete();
                             return { data: { order } };
                         })
-                        .catch(err => {
+                        .catch((err: Error) => {
                             throw err;
                         });
                 });
             case 'Orders':
-                return new Observable((observer: any) => {
+                return new Observable<{ data: OrdersResponse }>(observer => {
                     this._meshWrapper
                         .gqlFindOrdersAsync(
                             operation.variables.sort,
@@ -57,12 +59,12 @@ export class BrowserLink extends ApolloLink {
                                 },
                             };
                         })
-                        .catch(err => {
+                        .catch((err: Error) => {
                             throw err;
                         });
                 });
             case 'Stats':
-                return new Observable((observer: any) => {
+                return new Observable<{ data: StatsResponse }>(observer => {
                     this._meshWrapper
                         .gqlGetStatsAsync()
                         .then(stats => {
@@ -78,13 +80,12 @@ export class BrowserLink extends ApolloLink {
                                 },
                             };
                         })
-                        .catch(err => {
+                        .catch((err: Error) => {
                             throw err;
                         });
                 });
             default:
                 throw new Error('browser link: unrecognized operation name');
         }
-        return null;
     }
 }

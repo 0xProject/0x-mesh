@@ -6,9 +6,30 @@ export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
 
-// FIXME - Should this be renamed to GQLOrderWithMetadata?:w
+// TODO(jalextowle): De-duplicate this type by creating a @0x/mesh-types package.
 /** @ignore */
-export interface WrapperOrderWithMetadata extends WrapperSignedOrder {
+export interface StringifiedSignedOrder {
+    makerAddress: string;
+    makerAssetData: string;
+    makerAssetAmount: string;
+    makerFee: string;
+    makerFeeAssetData: string;
+    takerAddress: string;
+    takerAssetData: string;
+    takerFeeAssetData: string;
+    takerAssetAmount: string;
+    takerFee: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    expirationTimeSeconds: string;
+    salt: string;
+    exchangeAddress: string;
+    chainId: string;
+    signature: string;
+}
+
+/** @ignore */
+export interface WrapperOrderWithMetadata extends StringifiedSignedOrder {
     hash: string;
     fillableTakerAssetAmount: string;
 }
@@ -597,34 +618,41 @@ export interface WrapperAcceptedOrderResult {
     isNew: boolean;
 }
 
+/**
+ * TODO(jalextowle): Remove duplicate type after the @0x/mesh-types package has
+ * been created.
+ * @ignore
+ */
+export enum RejectedOrderCode {
+    EthRpcRequestFailed = 'ETH_RPC_REQUEST_FAILED',
+    OrderHasInvalidMakerAssetAmount = 'ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT',
+    OrderHasInvalidTakerAssetAmount = 'ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT',
+    OrderExpired = 'ORDER_EXPIRED',
+    OrderFullyFilled = 'ORDER_FULLY_FILLED',
+    OrderCancelled = 'ORDER_CANCELLED',
+    OrderUnfunded = 'ORDER_UNFUNDED',
+    OrderHasInvalidMakerAssetData = 'ORDER_HAS_INVALID_MAKER_ASSET_DATA',
+    OrderHasInvalidMakerFeeAssetData = 'ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA',
+    OrderHasInvalidTakerAssetData = 'ORDER_HAS_INVALID_TAKER_ASSET_DATA',
+    OrderHasInvalidTakerFeeAssetData = 'ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA',
+    OrderHasInvalidSignature = 'ORDER_HAS_INVALID_SIGNATURE',
+    OrderMaxExpirationExceeded = 'ORDER_MAX_EXPIRATION_EXCEEDED',
+    InternalError = 'INTERNAL_ERROR',
+    MaxOrderSizeExceeded = 'MAX_ORDER_SIZE_EXCEEDED',
+    OrderAlreadyStoredAndUnfillable = 'ORDER_ALREADY_STORED_AND_UNFILLABLE',
+    OrderForIncorrectChain = 'ORDER_FOR_INCORRECT_CHAIN',
+    IncorrectExchangeAddress = 'INCORRECT_EXCHANGE_ADDRESS',
+    SenderAddressNotAllowed = 'SENDER_ADDRESS_NOT_ALLOWED',
+    DatabaseFullOfOrders = 'DATABASE_FULL_OF_ORDERS',
+}
+
 /** @ignore */
 export interface WrapperRejectedOrderResult {
     hash: string;
-    order: WrapperOrder;
-    code: string;
+    order: StringifiedSignedOrder;
+    code: RejectedOrderCode;
     message: string;
 }
-
-// I don't think this is needed since the GraphQL client will call the MeshWrapper
-// directly instead of going through the Mesh class.
-/*
-export interface AddOrderResults {
-    accepted: AcceptedOrderResult[];
-    rejected: RejectedOrderResult[];
-}
-
-export interface AcceptedOrderResult {
-    order: OrderWithMetadata;
-    isNew: boolean;
-}
-
-export interface RejectedOrderResult {
-    hash: string;
-    order: Order;
-    code: string;
-    message: string;
-}
-*/
 
 /** @ignore */
 export interface WrapperValidationResults {
@@ -741,8 +769,6 @@ export interface Stats {
     ethRPCRequestsSentInCurrentUTCDay: number;
     ethRPCRateLimitExpiredRequests: number;
 }
-
-// FIXME - Use the types defined in @0x/mesh-graphql-client
 
 /** @ignore */
 export interface WrapperOrderSort {

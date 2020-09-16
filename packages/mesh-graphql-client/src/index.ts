@@ -240,8 +240,7 @@ export interface LinkConfig {
 }
 
 export class MeshGraphQLClient {
-    // FIXME - This shouldn't be able to be undefined. It's only turned on because
-    // BrowserLink doesn't currently support subscriptions
+    // NOTE(jalextowle): BrowserLink doesn't support subscriptions at this time.
     private readonly _subscriptionClient?: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
     constructor(linkConfig: LinkConfig) {
@@ -378,6 +377,11 @@ export class MeshGraphQLClient {
 
     public onOrderEvents(): Observable<OrderEvent[]> {
         if (this._subscriptionClient !== undefined) {
+            // NOTE(jalextowle): We must use a variable here because Typescript
+            // thinks that this._subscriptionClient can become undefined between
+            // Observable events.
+            const subscriptionClient = this._subscriptionClient;
+
             // We handle incomingObservable and return a new outgoingObservable. This
             // can be thought of as "wrapping" the observable and we do it for two reasons:
             //
@@ -389,13 +393,10 @@ export class MeshGraphQLClient {
                 query: orderEventsSubscription,
             }) as Observable<FetchResult<OrderEventResponse>>;
             const outgoingObservable = new Observable<OrderEvent[]>(observer => {
-                // FIXME!!!!
-                // @ts-ignore-next-line
-                this._subscriptionClient.onError((err: ErrorEvent) => {
+                subscriptionClient.onError((err: ErrorEvent) => {
                     observer.error(new Error(err.message));
                 });
-                // @ts-ignore-next-line
-                this._subscriptionClient.onDisconnected((event: Event) => {
+                subscriptionClient.onDisconnected((event: Event) => {
                     observer.error(new Error('WebSocket connection lost'));
                 });
                 incomingObservable.subscribe({
@@ -414,7 +415,9 @@ export class MeshGraphQLClient {
             });
             return outgoingObservable;
         } else {
-            throw new Error('subscriptions are not currently supported by browser links');
+            throw new Error(
+                'mesh-graphql-client: Browser GraphQl API does not support subscriptions. Please use the legacy API to listen to events and errors',
+            );
         }
     }
 
