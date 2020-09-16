@@ -135,6 +135,7 @@ func updateHardCodedVersions(version string) {
 	// Update `packages/mesh-integration-tests/package.json`
 	integrationTestsPackageJSONPath := "packages/mesh-integration-tests/package.json"
 	updateFileWithRegex(integrationTestsPackageJSONPath, captureMeshBrowserVersionString, newBrowserDependencyString)
+	updateFileWithRegex(integrationTestsPackageJSONPath, `"@0x/mesh-graphql-client": "(.*)"`, fmt.Sprintf(`"@0x/mesh-graphql-client": "^%s"`, version))
 
 	// Update `packages/mesh-browser-shim/package.json`
 	testWasmPackageJSONPath := "packages/mesh-browser-shim/package.json"
