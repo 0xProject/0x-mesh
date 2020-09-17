@@ -45,7 +45,7 @@ require (
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/lib/pq v1.3.0
-	github.com/libp2p/go-libp2p v0.11.0
+	github.com/libp2p/go-libp2p v0.11.1-0.20200916050736-636d0787c332
 	github.com/libp2p/go-libp2p-autonat-svc v0.2.0
 	github.com/libp2p/go-libp2p-circuit v0.3.1
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
