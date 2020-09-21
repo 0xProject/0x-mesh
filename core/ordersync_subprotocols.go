@@ -170,7 +170,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false)
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}
@@ -361,7 +361,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false)
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}

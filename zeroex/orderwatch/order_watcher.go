@@ -1479,7 +1479,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}

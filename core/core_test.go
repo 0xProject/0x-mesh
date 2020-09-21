@@ -287,7 +287,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 		// We have to wait for latest block to be processed by the Mesh node.
 		time.Sleep(blockProcessingWaitTime)
 
-		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, true, constants.TestChainID)
+		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, constants.TestChainID, true)
 		require.NoError(t, err)
 		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 

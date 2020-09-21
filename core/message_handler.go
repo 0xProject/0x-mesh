@@ -56,7 +56,7 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, false, app.chainID)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, app.chainID, false)
 	if err != nil {
 		return err
 	}
