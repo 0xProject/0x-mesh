@@ -151,9 +151,7 @@ export class Mesh {
      */
     public onError(handler: (err: Error) => void): void {
         this._errHandler = handler;
-        if (this.wrapper !== undefined) {
-            this.wrapper.onError(this._errHandler);
-        }
+        this.wrapper?.onError(this._errHandler);
     }
 
     /**
@@ -166,9 +164,7 @@ export class Mesh {
      */
     public onOrderEvents(handler: (events: OrderEvent[]) => void): void {
         this._orderEventsHandler = orderEventsHandlerToWrapperOrderEventsHandler(handler);
-        if (this.wrapper !== undefined) {
-            this.wrapper.onOrderEvents(this._orderEventsHandler);
-        }
+        this.wrapper?.onOrderEvents(this._orderEventsHandler);
     }
 
     /**
