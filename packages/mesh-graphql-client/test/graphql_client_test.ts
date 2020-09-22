@@ -145,13 +145,15 @@ blockchainTests.resets('GraphQLClient', env => {
                     number: new BigNumber(0),
                     hash: '',
                 };
+                expect(stats.version).to.not.be.eq('');
+                stats.version = '';
 
                 const now = new Date(Date.now());
                 const expectedStartOfCurrentUTCDay = `${now.getUTCFullYear()}-${leftPad(
                     now.getUTCMonth() + 1,
                 )}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
-                    version: 'development',
+                    version: '',
                     pubSubTopic: '/0x-orders/version/3/chain/1337/schema/e30=',
                     rendezvous: '/0x-mesh/network/1337/version/2',
                     peerID: deployment.peerID,
