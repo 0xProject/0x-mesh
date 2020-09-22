@@ -228,9 +228,9 @@ func TestGetStats(t *testing.T) {
 	assert.NotNil(t, actualStats.LatestBlock)
 	assert.True(t, actualStats.LatestBlock.Number.String() != "0", "stats.LatestBlock.Number should not be 0")
 	assert.NotEmpty(t, actualStats.LatestBlock.Hash, "stats.LatestBlock.Hash should not be empty")
-
+	assert.NotEqual(t, actualStats.Version, "")
+	actualStats.Version = ""
 	expectedStats := &gqlclient.Stats{
-		Version:         "development",
 		PubSubTopic:     "/0x-orders/version/3/chain/1337/schema/e30=",
 		Rendezvous:      "/0x-mesh/network/1337/version/2",
 		PeerID:          peerID,
