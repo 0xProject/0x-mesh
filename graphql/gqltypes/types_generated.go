@@ -182,6 +182,7 @@ type Stats struct {
 	StartOfCurrentUTCDay              string       `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int          `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int          `json:"ethRPCRateLimitExpiredRequests"`
+	SecondaryRendezvous               []string     `json:"secondaryRendezvous"`
 	// The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
 	// Any order with an expiration time greater than this maximum will be rejected by Mesh.
 	MaxExpirationTime string `json:"maxExpirationTime"`

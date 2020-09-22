@@ -127,8 +127,8 @@ provider.start();
         console.error(err.toString());
     }
 });
+// tslint:enable:no-console
 
 async function sleepAsync(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// tslint:enable:no-console

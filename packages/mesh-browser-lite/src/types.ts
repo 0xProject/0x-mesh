@@ -6,6 +6,34 @@ export { SignedOrder } from '@0x/order-utils';
 export { BigNumber } from '@0x/utils';
 export { SupportedProvider } from 'ethereum-types';
 
+// TODO(jalextowle): De-duplicate this type by creating a @0x/mesh-types package.
+/** @ignore */
+export interface StringifiedSignedOrder {
+    makerAddress: string;
+    makerAssetData: string;
+    makerAssetAmount: string;
+    makerFee: string;
+    makerFeeAssetData: string;
+    takerAddress: string;
+    takerAssetData: string;
+    takerFeeAssetData: string;
+    takerAssetAmount: string;
+    takerFee: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    expirationTimeSeconds: string;
+    salt: string;
+    exchangeAddress: string;
+    chainId: string;
+    signature: string;
+}
+
+/** @ignore */
+export interface WrapperOrderWithMetadata extends StringifiedSignedOrder {
+    hash: string;
+    fillableTakerAssetAmount: string;
+}
+
 /** @ignore */
 export interface WrapperGetOrdersResponse {
     timestamp: string;
@@ -232,6 +260,16 @@ export interface MeshWrapper {
     getStatsAsync(): Promise<WrapperStats>;
     getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
     addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
+
+    // GraphQL API
+    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperAddOrderResults>;
+    gqlGetOrderAsync(orderHash: string): Promise<WrapperOrderWithMetadata>;
+    gqlFindOrdersAsync(
+        sort: WrapperOrderSort[],
+        filters: WrapperOrderFilter[],
+        limit: number,
+    ): Promise<WrapperOrderWithMetadata[]>;
+    gqlGetStatsAsync(): Promise<WrapperStats>; // This will not populate the `secondaryRendevous` field
 }
 
 /**
@@ -256,13 +294,8 @@ export interface WrapperConfig {
     maxBytesPerSecond?: number;
 }
 
-/**
- * The type for signed orders exposed by MeshWrapper. Unlike other types, the
- * analog isn't defined here. Instead we re-use the definition in
- * @0x/order-utils.
- * @ignore
- */
-export interface WrapperSignedOrder {
+/** @ignore */
+export interface WrapperOrder {
     makerAddress: string;
     makerAssetData: string;
     makerAssetAmount: string;
@@ -277,9 +310,13 @@ export interface WrapperSignedOrder {
     feeRecipientAddress: string;
     expirationTimeSeconds: string;
     salt: string;
-    signature: string;
     exchangeAddress: string;
     chainId: number;
+}
+
+/** @ignore */
+export interface WrapperSignedOrder extends WrapperOrder {
+    signature: string;
 }
 
 export interface ERC20TransferEvent {
@@ -570,6 +607,54 @@ export interface OrderEvent {
 }
 
 /** @ignore */
+export interface WrapperAddOrderResults {
+    accepted: WrapperAcceptedOrderResult[];
+    rejected: WrapperRejectedOrderResult[];
+}
+
+/** @ignore */
+export interface WrapperAcceptedOrderResult {
+    order: WrapperOrderWithMetadata;
+    isNew: boolean;
+}
+
+/**
+ * TODO(jalextowle): Remove duplicate type after the @0x/mesh-types package has
+ * been created.
+ * @ignore
+ */
+export enum RejectedOrderCode {
+    EthRpcRequestFailed = 'ETH_RPC_REQUEST_FAILED',
+    OrderHasInvalidMakerAssetAmount = 'ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT',
+    OrderHasInvalidTakerAssetAmount = 'ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT',
+    OrderExpired = 'ORDER_EXPIRED',
+    OrderFullyFilled = 'ORDER_FULLY_FILLED',
+    OrderCancelled = 'ORDER_CANCELLED',
+    OrderUnfunded = 'ORDER_UNFUNDED',
+    OrderHasInvalidMakerAssetData = 'ORDER_HAS_INVALID_MAKER_ASSET_DATA',
+    OrderHasInvalidMakerFeeAssetData = 'ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA',
+    OrderHasInvalidTakerAssetData = 'ORDER_HAS_INVALID_TAKER_ASSET_DATA',
+    OrderHasInvalidTakerFeeAssetData = 'ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA',
+    OrderHasInvalidSignature = 'ORDER_HAS_INVALID_SIGNATURE',
+    OrderMaxExpirationExceeded = 'ORDER_MAX_EXPIRATION_EXCEEDED',
+    InternalError = 'INTERNAL_ERROR',
+    MaxOrderSizeExceeded = 'MAX_ORDER_SIZE_EXCEEDED',
+    OrderAlreadyStoredAndUnfillable = 'ORDER_ALREADY_STORED_AND_UNFILLABLE',
+    OrderForIncorrectChain = 'ORDER_FOR_INCORRECT_CHAIN',
+    IncorrectExchangeAddress = 'INCORRECT_EXCHANGE_ADDRESS',
+    SenderAddressNotAllowed = 'SENDER_ADDRESS_NOT_ALLOWED',
+    DatabaseFullOfOrders = 'DATABASE_FULL_OF_ORDERS',
+}
+
+/** @ignore */
+export interface WrapperRejectedOrderResult {
+    hash: string;
+    order: StringifiedSignedOrder;
+    code: RejectedOrderCode;
+    message: string;
+}
+
+/** @ignore */
 export interface WrapperValidationResults {
     accepted: WrapperAcceptedOrderInfo[];
     rejected: WrapperRejectedOrderInfo[];
@@ -683,5 +768,18 @@ export interface Stats {
     startOfCurrentUTCDay: Date;
     ethRPCRequestsSentInCurrentUTCDay: number;
     ethRPCRateLimitExpiredRequests: number;
+}
+
+/** @ignore */
+export interface WrapperOrderSort {
+    field: string;
+    direction: string;
+}
+
+/** @ignore */
+export interface WrapperOrderFilter {
+    field: string;
+    kind: string;
+    value: any;
 }
 // tslint:disable-next-line:max-file-line-count

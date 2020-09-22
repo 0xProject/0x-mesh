@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/graphql"
+	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/browserutil"
 	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -71,6 +73,7 @@ type MeshWrapper struct {
 	orderEvents             chan []*zeroex.OrderEvent
 	orderEventsSubscription event.Subscription
 	orderEventsHandler      js.Value
+	resolver                *graphql.Resolver
 }
 
 // NewMeshWrapper creates a new wrapper from the given config.
@@ -81,9 +84,10 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 		return nil, err
 	}
 	return &MeshWrapper{
-		app:    app,
-		ctx:    ctx,
-		cancel: cancel,
+		app:      app,
+		ctx:      ctx,
+		cancel:   cancel,
+		resolver: graphql.NewResolver(app),
 	}, nil
 }
 
@@ -176,6 +180,70 @@ func (cw *MeshWrapper) GetOrders(perPage int, minOrderHash string) (js.Value, er
 	return js.ValueOf(ordersResponse), nil
 }
 
+func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
+	var newOrders []*gqltypes.NewOrder
+	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &newOrders); err != nil {
+		return js.Undefined(), err
+	}
+	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &pinned)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	encodedResults, err := json.Marshal(results)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	resultsJS := js.Global().Get("JSON").Call("parse", string(encodedResults))
+	return resultsJS, nil
+}
+
+func (cw *MeshWrapper) GQLGetOrder(hash string) (js.Value, error) {
+	order, err := cw.resolver.Query().Order(cw.ctx, hash)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	encodedResult, err := json.Marshal(order)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	orderJS := js.Global().Get("JSON").Call("parse", string(encodedResult))
+	return orderJS, nil
+}
+
+func (cw *MeshWrapper) GQLFindOrders(rawSort js.Value, rawFilter js.Value, limit int) (js.Value, error) {
+	var sort []*gqltypes.OrderSort
+	if err := jsutil.InefficientlyConvertFromJS(rawSort, &sort); err != nil {
+		return js.Undefined(), err
+	}
+	var filter []*gqltypes.OrderFilter
+	if err := jsutil.InefficientlyConvertFromJS(rawFilter, &filter); err != nil {
+		return js.Undefined(), err
+	}
+	orders, err := cw.resolver.Query().Orders(cw.ctx, sort, filter, &limit)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	encodedResults, err := json.Marshal(orders)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	ordersJS := js.Global().Get("JSON").Call("parse", string(encodedResults))
+	return ordersJS, nil
+}
+
+func (cw *MeshWrapper) GQLGetStats() (js.Value, error) {
+	stats, err := cw.resolver.Query().Stats(cw.ctx)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	encodedResults, err := json.Marshal(stats)
+	if err != nil {
+		return js.Undefined(), err
+	}
+	statsJS := js.Global().Get("JSON").Call("parse", string(encodedResults))
+	return statsJS, nil
+}
+
 // JSValue satisfies the js.Wrapper interface. The return value is a JavaScript
 // object consisting of named functions. They act like methods by capturing the
 // MeshWrapper through a closure.
@@ -217,10 +285,34 @@ func (cw *MeshWrapper) JSValue() js.Value {
 				return cw.GetOrders(args[0].Int(), minOrderHash)
 			})
 		}),
-		// addOrdersAsync(orders: Array<SignedOrder>): Promise<ValidationResults>
+		// addOrdersAsync(orders: SignedOrder[], pinned: boolean): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
 				return cw.AddOrders(args[0], args[1].Bool())
+			})
+		}),
+		// gqlAddOrdersAsync(newOrders: SignedOrder[], pinned: boolean): Promise<AddOrderResults>
+		"gqlAddOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLAddOrders(args[0], args[1].Bool())
+			})
+		}),
+		// gqlGetOrderAsync(orderHash: string): Promise<OrderWithMetadata>
+		"gqlGetOrderAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLGetOrder(args[0].String())
+			})
+		}),
+		// gqlFindOrdersAsync(sort: OrderSort[], filters: OrderFilter[], limit: number): Promise<OrderWithMetadata[]>
+		"gqlFindOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GQLFindOrders(args[0], args[1], args[2].Int())
+			})
+		}),
+		// gqlGetStatsAsync(): Promise<Stats>
+		"gqlGetStatsAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			return jsutil.WrapInPromise(func() (interface{}, error) {
+				return cw.GetStats()
 			})
 		}),
 	})

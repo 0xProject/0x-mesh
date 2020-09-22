@@ -151,6 +151,7 @@ type Stats {
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
+    secondaryRendezvous: [String!]!
     """
     The max expiration time expressed as seconds since the Unix Epoch and encoded as a numerical string.
     Any order with an expiration time greater than this maximum will be rejected by Mesh.

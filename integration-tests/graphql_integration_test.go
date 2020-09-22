@@ -125,7 +125,7 @@ func TestGetOrder(t *testing.T) {
 	wg.Wait()
 }
 
-func TestGetOrders(t *testing.T) {
+func TestFindOrders(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
@@ -148,7 +148,7 @@ func TestGetOrders(t *testing.T) {
 	assert.Len(t, validationResponse.Rejected, 0)
 
 	// Get orders without any options.
-	actualOrders, err := client.GetOrders(ctx)
+	actualOrders, err := client.FindOrders(ctx)
 	require.NoError(t, err)
 	require.Len(t, actualOrders, 10)
 	expectedOrders := make([]*gqlclient.OrderWithMetadata, len(signedTestOrders))
@@ -180,7 +180,7 @@ func TestGetOrders(t *testing.T) {
 	assertOrdersAreUnsortedEqual(t, expectedOrders, actualOrders)
 
 	// Get orders with filter, sort, and limit.
-	opts := gqlclient.GetOrdersOpts{
+	opts := gqlclient.FindOrdersOpts{
 		Filters: []gqlclient.OrderFilter{
 			{
 				Field: gqlclient.OrderFieldChainID,
@@ -201,7 +201,7 @@ func TestGetOrders(t *testing.T) {
 		},
 		Limit: 5,
 	}
-	actualOrdersWithOpts, err := client.GetOrders(ctx, opts)
+	actualOrdersWithOpts, err := client.FindOrders(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, actualOrdersWithOpts, 5)
 	sortOrdersByHashDesc(expectedOrders)

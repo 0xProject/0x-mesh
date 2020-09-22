@@ -107,6 +107,10 @@ func updateHardCodedVersions(version string) {
 	// Update `packages/mesh-graphql-client/package.json`
 	tsClientPackageJSONPath := "packages/mesh-graphql-client/package.json"
 	updateFileWithRegex(tsClientPackageJSONPath, captureVersionString, newVersionString)
+	// NOTE(jalextowle): `@0x/mesh-browser` uses the local version of `@0x/mesh-browser-lite`
+	// on the `development` branch. Once the `@0x/mesh-browser-lite` package has been published,
+	// we need to update dependency in `@0x/mesh-browser` to published version.
+	updateFileWithRegex(tsClientPackageJSONPath, captureMeshBrowserLiteVersionString, newBrowserLiteDependencyString)
 
 	// Update `packages/mesh-browser-lite/package.json`
 	browserLitePackageJSONPath := "packages/mesh-browser-lite/package.json"
@@ -131,6 +135,7 @@ func updateHardCodedVersions(version string) {
 	// Update `packages/mesh-integration-tests/package.json`
 	integrationTestsPackageJSONPath := "packages/mesh-integration-tests/package.json"
 	updateFileWithRegex(integrationTestsPackageJSONPath, captureMeshBrowserVersionString, newBrowserDependencyString)
+	updateFileWithRegex(integrationTestsPackageJSONPath, `"@0x/mesh-graphql-client": "(.*)"`, fmt.Sprintf(`"@0x/mesh-graphql-client": "^%s"`, version))
 
 	// Update `packages/mesh-browser-shim/package.json`
 	testWasmPackageJSONPath := "packages/mesh-browser-shim/package.json"

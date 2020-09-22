@@ -194,16 +194,16 @@ func (c *Client) GetOrder(ctx context.Context, hash common.Hash) (*OrderWithMeta
 	return orderWithMetadataFromGQLType(resp.Order), nil
 }
 
-// GetOrdersOpts is a set of options for the GetOrders method. They can
+// FindOrdersOpts is a set of options for the FindOrders method. They can
 // be omitted in order to use the defaults.
-type GetOrdersOpts struct {
+type FindOrdersOpts struct {
 	// TODO(albrow): Document fields.
 	Filters []OrderFilter
 	Sort    []OrderSort
 	Limit   int
 }
 
-func (c *Client) GetOrders(ctx context.Context, opts ...GetOrdersOpts) ([]*OrderWithMetadata, error) {
+func (c *Client) FindOrders(ctx context.Context, opts ...FindOrdersOpts) ([]*OrderWithMetadata, error) {
 	req := graphql.NewRequest(ordersQuery)
 
 	if len(opts) > 0 {
