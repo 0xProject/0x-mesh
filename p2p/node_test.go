@@ -258,7 +258,7 @@ func TestPeerDiscovery(t *testing.T) {
 	// Create three nodes: 0, 1, and 2.
 	//
 	//   - node0 is connected to node1
-	//   - node1 is ocnnected to node2
+	//   - node1 is connected to node2
 	//   - node0 is not initially connected to node2
 	//
 	node0 := newTestNode(t, ctx, notifee)
@@ -268,14 +268,9 @@ func TestPeerDiscovery(t *testing.T) {
 	go startNodeAndCheckError(t, node1)
 	go startNodeAndCheckError(t, node2)
 	connectTestNodes(t, node0, node1)
+	connectTestNodes(t, node1, node2)
 
-	err := node2.Connect(peer.AddrInfo{
-		ID:    node1.host.ID(),
-		Addrs: node1.host.Addrs(),
-	}, testConnectionTimeout)
-	require.NoError(t, err)
-
-	// Wait for node0 ande node2 to find each other
+	// Wait for node0 and node2 to find each other
 loop:
 	for {
 		select {
@@ -316,9 +311,9 @@ func TestBanIP(t *testing.T) {
 	// Unfortunately, libp2p swallows the error and creates a new one so there is
 	// no way for us to guarantee that the error we got is the one that we expect.
 	err := node0.Connect(node1AddrInfo, testConnectionTimeout)
-	require.Error(t, err, "node0 should not be abble to connect to node1")
+	require.Error(t, err, "node0 should not be able to connect to node1")
 	err = node1.Connect(node0AddrInfo, testConnectionTimeout)
-	require.Error(t, err, "node1 should not be abble to connect to node0")
+	require.Error(t, err, "node1 should not be able to connect to node0")
 }
 
 func TestUnbanIP(t *testing.T) {

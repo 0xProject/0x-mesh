@@ -25,8 +25,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p-secio"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -124,7 +124,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		kadDHT, err = dht.New(ctx, h, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
+		kadDHT, err = dht.New(ctx, h, dht.Datastore(store), dht.V1ProtocolOverride(p2p.DHTProtocolID), dht.Mode(dht.ModeServer))
 		if err != nil {
 			log.WithField("error", err).Fatal("could not create DHT")
 		}
@@ -167,7 +167,10 @@ func main() {
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.BandwidthReporter(bandwidthCounter),
 		libp2p.Peerstore(peerStore),
-		p2p.Filters(filters),
+		// TODO(jalextowle): This should be changed to libp2p.ConnectionGater
+		// after v10
+		libp2p.Filters(filters), //nolint:staticcheck
+		libp2p.Security(secio.ID, secio.New),
 	}
 
 	if config.EnableRelayHost {
@@ -184,7 +187,7 @@ func main() {
 	basicHost.Network().Notify(&notifee{})
 
 	// Enable AutoNAT service.
-	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
+	if _, err := autonat.NewAutoNATService(ctx, basicHost, true); err != nil {
 		log.WithField("error", err).Fatal("could not enable AutoNAT service")
 	}
 
