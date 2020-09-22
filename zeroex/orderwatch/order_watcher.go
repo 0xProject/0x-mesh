@@ -291,7 +291,18 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		w.unwatchOrder(order, nil, validationBlock)
+		// FIXME(jalextowle): Passing nil here means that the fillableTakerAssetAmount
+		// will not be updated. The fillableTakerAssetAmount of an expired order is
+		// equal to zero, so the only reason why this appears to be used is to make
+		// it possible to "unexpire" orders.
+		//
+		// There is another orderwatching path that does not follow this behavior.
+		// Explore this inconsistency and try to fix it.
+		if order.ShouldWatchWhenExpired {
+			w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, nil, validationBlock)
+		} else {
+			w.unwatchOrder(order, nil, validationBlock)
+		}
 		orderEvent := &zeroex.OrderEvent{
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
@@ -1418,17 +1429,22 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}).Error("validationResults.Rejected contained unknown order hash")
 				continue
 			}
-			oldFillableAmount := order.FillableTakerAssetAmount
-			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-				// If the oldFillableAmount was already 0, this order is already flagged for removal.
+			if order.IsRemoved {
+				// If the order is already flagged for removal, no updates are needed
 			} else {
-				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded
-				w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventEndState corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
 					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventEndState corresponding to RejectedOrderStatus")
 					return nil, err
+				}
+				if (endState == zeroex.ESOrderCancelled && order.ShouldWatchWhenCancelled) ||
+					(endState == zeroex.ESOrderExpired && order.ShouldWatchWhenExpired) ||
+					(endState == zeroex.ESOrderFilled && order.ShouldWatchWhenFullyFilled) ||
+					(endState == zeroex.ESOrderBecameUnfunded && order.ShouldWatchWhenUnfunded) {
+					w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, big.NewInt(0), validationBlock)
+				} else {
+					w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				}
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
