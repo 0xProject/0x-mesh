@@ -4,7 +4,7 @@
 #
 
 # mesh-builder produces a statically linked binary
-FROM golang:1.13.4-alpine3.10 as mesh-builder
+FROM golang:1.15.2-alpine3.12 as mesh-builder
 
 
 RUN apk update && apk add ca-certificates nodejs-current npm make git dep gcc build-base musl linux-headers
@@ -16,7 +16,7 @@ ADD . ./
 RUN go build ./cmd/mesh
 
 # Final Image
-FROM alpine:3.10
+FROM alpine:3.12
 
 RUN apk update && apk add ca-certificates --no-cache
 
@@ -24,11 +24,8 @@ WORKDIR /usr/mesh
 
 COPY --from=mesh-builder /0x-mesh/mesh /usr/mesh/mesh
 
-ENV WS_RPC_ADDR=localhost:60557
+ENV GRAPHQL_SERVER_ADDR=0.0.0.0:60557
 EXPOSE 60557
-
-ENV HTTP_RPC_ADDR=localhost:60556
-EXPOSE 60556
 
 ENV P2P_TCP_PORT=60558
 EXPOSE 60558

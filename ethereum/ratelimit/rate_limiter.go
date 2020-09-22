@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xProject/0x-mesh/meshdb"
+	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/benbjohnson/clock"
 	log "github.com/sirupsen/logrus"
-	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/time/rate"
 )
 
@@ -30,7 +30,7 @@ type rateLimiter struct {
 	perSecondLimiter      *rate.Limiter
 	currentUTCCheckpoint  time.Time // Start of current UTC 24hr period
 	grantedInLast24hrsUTC int       // Number of granted requests issued in last 24hr UTC
-	meshDB                *meshdb.MeshDB
+	database              *db.DB
 	aClock                clock.Clock
 	wasStartedOnce        bool       // Whether the rate limiter has previously been started
 	startMutex            sync.Mutex // Mutex around the start check
@@ -38,8 +38,8 @@ type rateLimiter struct {
 }
 
 // New instantiates a new RateLimiter
-func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.MeshDB, aClock clock.Clock) (RateLimiter, error) {
-	metadata, err := meshDB.GetMetadata()
+func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, database *db.DB, aClock clock.Clock) (RateLimiter, error) {
+	metadata, err := database.GetMetadata()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 	if currentUTCCheckpoint != storedUTCCheckpoint {
 		storedUTCCheckpoint = currentUTCCheckpoint
 		storedGrantedInLast24HrsUTC = 0
-		if err := meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+		if err := database.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 			metadata.StartOfCurrentUTCDay = storedUTCCheckpoint
 			metadata.EthRPCRequestsSentInCurrentUTCDay = storedGrantedInLast24HrsUTC
 			return metadata
@@ -73,7 +73,7 @@ func New(maxRequestsPer24Hrs int, maxRequestsPerSecond float64, meshDB *meshdb.M
 		aClock:                aClock,
 		maxRequestsPer24Hrs:   maxRequestsPer24Hrs,
 		perSecondLimiter:      perSecondLimiter,
-		meshDB:                meshDB,
+		database:              database,
 		currentUTCCheckpoint:  storedUTCCheckpoint,
 		grantedInLast24hrsUTC: storedGrantedInLast24HrsUTC,
 	}, nil
@@ -125,14 +125,14 @@ func (r *rateLimiter) Start(ctx context.Context, checkpointInterval time.Duratio
 		case <-ticker.C:
 			// Store grants issued and current UTC checkpoint to DB
 			r.mu.Lock()
-			err := r.meshDB.UpdateMetadata(func(metadata meshdb.Metadata) meshdb.Metadata {
+			err := r.database.UpdateMetadata(func(metadata *types.Metadata) *types.Metadata {
 				metadata.StartOfCurrentUTCDay = r.currentUTCCheckpoint
 				metadata.EthRPCRequestsSentInCurrentUTCDay = r.grantedInLast24hrsUTC
 				return metadata
 			})
 			r.mu.Unlock()
 			if err != nil {
-				if err == leveldb.ErrClosed {
+				if err == db.ErrClosed {
 					// We can't continue if the database is closed. Stop the rateLimiter and
 					// return an error.
 					ticker.Stop()

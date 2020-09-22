@@ -4,7 +4,7 @@ jobs:
     environment:
       BASH_ENV: ~/.nvm/nvm.sh
     docker:
-      - image: circleci/golang:1.13.4-browsers
+      - image: circleci/golang:1.15-browsers
       - image: 0xorg/ganache-cli:istanbul
         environment:
             VERSION: 6.2.4
@@ -29,12 +29,14 @@ jobs:
           name: Install dependencies
           command: make deps-no-lockfile
       - run:
-          name: Vendor Go dependencies as a workaround for https://github.com/golangci/golangci-lint/issues/865
-          command: go mod vendor
-      - run:
           name: Install Go linter
-          command: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.22.2
+          command: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
       - run:
+          # NOTE(jalextowle): We previously vendored our dependencies to avoid
+          # this issue: https://github.com/golangci/golangci-lint/issues/825.
+          # Vendoring caused an issue where the output on CI was not the same as
+          # that locally, so it has been removed. This should be reevaluated if
+          # the issue reappears.
           name: Run linters
           command: make lint
       - run:

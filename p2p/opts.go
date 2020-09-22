@@ -9,11 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	leveldbStore "github.com/ipfs/go-ds-leveldb"
+	"github.com/0xProject/0x-mesh/db"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -63,12 +62,7 @@ func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error)
 	}
 	advertiseAddrs := []ma.Multiaddr{tcpAdvertiseAddr, wsAdvertiseAddr}
 
-	// Set up the peerstore to use LevelDB.
-	store, err := leveldbStore.NewDatastore(getPeerstoreDir(config.DataDir), nil)
-	if err != nil {
-		return nil, err
-	}
-	pstore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+	pstore, err := pstoreds.NewPeerstore(ctx, config.DB.PeerStore(), pstoreds.DefaultOpts())
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +111,8 @@ func getPublicIP() (string, error) {
 }
 
 // NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh
-// in native (pure Go) environments. storageDir is the directory to use for
-// persisting the data with LevelDB.
-func NewDHT(ctx context.Context, storageDir string, host host.Host) (*dht.IpfsDHT, error) {
-	// Set up the DHT to use LevelDB.
-	store, err := leveldbStore.NewDatastore(storageDir, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(DHTProtocolID))
+// in native (pure Go) environments. Standalone nodes use a SQL key value store
+// to persist data and browser nodes use a Dexie key value store.
+func NewDHT(ctx context.Context, db *db.DB, host host.Host) (*dht.IpfsDHT, error) {
+	return dht.New(ctx, host, dht.Datastore(db.DHTStore()), dht.V1ProtocolOverride(DHTProtocolID), dht.Mode(dht.ModeAutoServer))
 }

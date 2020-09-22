@@ -13,7 +13,7 @@ import (
 	"github.com/plaid/go-envvar/envvar"
 )
 
-var functionDocsTemplate = "\n# Functions\n\n## loadMeshStreamingForURLAsync\n▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): *Promise‹`void`›*\n\n*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L7)*\n\nLoads the Wasm module that is provided by fetching a url.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`url` | `string` | The URL to query for the Wasm binary |\n\n<hr />\n\n## loadMeshStreamingAsync\n\n▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): *Promise‹`void`›*\n\n*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/%s/packages/browser-lite/src/index.ts#L15)*\n\nLoads the Wasm module that is provided by a response.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |\n\n<hr />"
+var functionDocsTemplate = "\n# Functions\n\n## loadMeshStreamingForURLAsync\n▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): *Promise‹`void`›*\n\n*Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/%s/packages/mesh-browser-lite/src/index.ts#L7)*\n\nLoads the Wasm module that is provided by fetching a url.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`url` | `string` | The URL to query for the Wasm binary |\n\n<hr />\n\n## loadMeshStreamingAsync\n\n▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): *Promise‹`void`›*\n\n*Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/%s/packages/mesh-browser-lite/src/index.ts#L15)*\n\nLoads the Wasm module that is provided by a response.\n\n**Parameters:**\n\nName | Type | Description |\n------ | ------ | ------ |\n`response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |\n\n<hr />"
 
 type envVars struct {
 	// Version is the new release version to use
@@ -38,26 +38,13 @@ func main() {
 	}
 
 	generateTypescriptDocs()
-	createReleaseChangelog(env.Version)
-}
 
-func createReleaseChangelog(version string) {
-	regex := fmt.Sprintf(`(?ms)(## v%s\n)(.*?)(## v)`, version)
-	changelog, err := getFileContentsWithRegex("CHANGELOG.md", regex)
+	// Run `yarn prettier` to prettify the newly generated docs
+	cmd = exec.Command("yarn", "prettier")
+	cmd.Dir = "."
+	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
-		log.Println("No CHANGELOG entries found for version", version)
-		return // Noop
-	}
-
-	releaseChangelog := fmt.Sprintf(`- [Docker image](https://hub.docker.com/r/0xorg/mesh/tags)
-- [README](https://github.com/0xProject/0x-mesh/blob/v%s/README.md)
-
-## Summary
-%s
-`, version, changelog)
-
-	err = ioutil.WriteFile("RELEASE_CHANGELOG.md", []byte(releaseChangelog), 0644)
-	if err != nil {
+		log.Print(string(stdoutStderr))
 		log.Fatal(err)
 	}
 }
@@ -105,56 +92,75 @@ func generateTypescriptDocs() {
 	}
 }
 
+const (
+	captureVersionString                = `"version": "(.*)"`
+	captureMeshBrowserVersionString     = `"@0x/mesh-browser": "(.*)"`
+	captureMeshBrowserLiteVersionString = `"@0x/mesh-browser-lite": "(.*)"`
+)
+
 // Update the version string in all files that must be updated for a new release
 func updateHardCodedVersions(version string) {
-	// Update `packages/rpc-client/package.json`
-	tsClientPackageJSONPath := "packages/rpc-client/package.json"
 	newVersionString := fmt.Sprintf(`"version": "%s"`, version)
-	regex := `"version": "(.*)"`
-	updateFileWithRegex(tsClientPackageJSONPath, regex, newVersionString)
-
-	// Update `packages/browser-lite/package.json`
-	browserLitePackageJSONPath := "packages/browser-lite/package.json"
-	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
-	regex = `"version": "(.*)"`
-	updateFileWithRegex(browserLitePackageJSONPath, regex, newVersionString)
-
-	// Update `packages/browser/package.json`
-	browserPackageJSONPath := "packages/browser/package.json"
-	newVersionString = fmt.Sprintf(`"version": "%s"`, version)
-	regex = `"version": "(.*)"`
-	updateFileWithRegex(browserPackageJSONPath, regex, newVersionString)
 	newBrowserLiteDependencyString := fmt.Sprintf(`"@0x/mesh-browser-lite": "^%s"`, version)
+	newBrowserDependencyString := fmt.Sprintf(`"@0x/mesh-browser": "^%s"`, version)
+
+	// Update `packages/mesh-graphql-client/package.json`
+	tsClientPackageJSONPath := "packages/mesh-graphql-client/package.json"
+	updateFileWithRegex(tsClientPackageJSONPath, captureVersionString, newVersionString)
 	// NOTE(jalextowle): `@0x/mesh-browser` uses the local version of `@0x/mesh-browser-lite`
 	// on the `development` branch. Once the `@0x/mesh-browser-lite` package has been published,
 	// we need to update dependency in `@0x/mesh-browser` to published version.
-	regex = `"@0x/mesh-browser-lite": "(.*)"`
-	updateFileWithRegex(browserPackageJSONPath, regex, newBrowserLiteDependencyString)
+	updateFileWithRegex(tsClientPackageJSONPath, captureMeshBrowserLiteVersionString, newBrowserLiteDependencyString)
+
+	// Update `packages/mesh-browser-lite/package.json`
+	browserLitePackageJSONPath := "packages/mesh-browser-lite/package.json"
+	updateFileWithRegex(browserLitePackageJSONPath, captureVersionString, newVersionString)
+
+	// Update `packages/mesh-browser/package.json`
+	browserPackageJSONPath := "packages/mesh-browser/package.json"
+	updateFileWithRegex(browserPackageJSONPath, captureVersionString, newVersionString)
+	// NOTE(jalextowle): `@0x/mesh-browser` uses the local version of `@0x/mesh-browser-lite`
+	// on the `development` branch. Once the `@0x/mesh-browser-lite` package has been published,
+	// we need to update dependency in `@0x/mesh-browser` to published version.
+	updateFileWithRegex(browserPackageJSONPath, captureMeshBrowserLiteVersionString, newBrowserLiteDependencyString)
+
+	// Update `packages/mesh-webpack-example-lite/package.json`
+	webpackExampleLitePackageJSONPath := "packages/mesh-webpack-example-lite/package.json"
+	updateFileWithRegex(webpackExampleLitePackageJSONPath, captureMeshBrowserLiteVersionString, newBrowserLiteDependencyString)
+
+	// Update `packages/mesh-webpack-example/package.json`
+	webpackExamplePackageJSONPath := "packages/mesh-webpack-example/package.json"
+	updateFileWithRegex(webpackExamplePackageJSONPath, captureMeshBrowserVersionString, newBrowserDependencyString)
+
+	// Update `packages/mesh-integration-tests/package.json`
+	integrationTestsPackageJSONPath := "packages/mesh-integration-tests/package.json"
+	updateFileWithRegex(integrationTestsPackageJSONPath, captureMeshBrowserVersionString, newBrowserDependencyString)
+	updateFileWithRegex(integrationTestsPackageJSONPath, `"@0x/mesh-graphql-client": "(.*)"`, fmt.Sprintf(`"@0x/mesh-graphql-client": "^%s"`, version))
+
+	// Update `packages/mesh-browser-shim/package.json`
+	testWasmPackageJSONPath := "packages/mesh-browser-shim/package.json"
+	updateFileWithRegex(testWasmPackageJSONPath, captureMeshBrowserLiteVersionString, newBrowserLiteDependencyString)
 
 	// Update `core.go`
 	corePath := "core/core.go"
 	newVersionString = fmt.Sprintf(`version$1= "%s"`, version)
-	regex = `version(.*)= "(.*)"`
-	updateFileWithRegex(corePath, regex, newVersionString)
+	updateFileWithRegex(corePath, `version(.*)= "(.*)"`, newVersionString)
 
 	// Update `docs/deployment_with_telemetry.md`
 	newVersionString = fmt.Sprintf(`image: 0xorg/mesh:%s`, version)
-	regex = `image: 0xorg/mesh:[0-9.]+.*`
-	updateFileWithRegex("docs/deployment_with_telemetry.md", regex, newVersionString)
+	updateFileWithRegex("docs/deployment_with_telemetry.md", `image: 0xorg/mesh:[0-9.]+.*`, newVersionString)
 
 	// Update `CHANGELOG.md`
 	changelog := "CHANGELOG.md"
 	newChangelogSection := fmt.Sprintf(`## v%s`, version)
-	regex = `(## Upcoming release)`
-	updateFileWithRegex(changelog, regex, newChangelogSection)
+	updateFileWithRegex(changelog, `(## Upcoming release)`, newChangelogSection)
 
 	// Update badge in README.md
-	pathToMDFilesWithBadges := []string{"README.md", "docs/rpc_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
+	pathToMDFilesWithBadges := []string{"README.md", "docs/graphql_api.md", "docs/deployment.md", "docs/deployment_with_telemetry.md"}
 	doubleDashVersion := strings.Replace(version, "-", "--", -1)
 	newSvgName := fmt.Sprintf("version-%s-orange.svg", doubleDashVersion)
-	regex = `version-(.*)-orange.svg`
 	for _, path := range pathToMDFilesWithBadges {
-		updateFileWithRegex(path, regex, newSvgName)
+		updateFileWithRegex(path, `version-(.*)-orange.svg`, newSvgName)
 	}
 }
 
@@ -186,20 +192,4 @@ func getDocsCommitHash(docsPath string) (string, error) {
 		return "", errors.New("No contents found")
 	}
 	return matches[1], nil
-}
-
-func getFileContentsWithRegex(filePath string, regex string) (string, error) {
-	dat, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var re = regexp.MustCompile(regex)
-	matches := re.FindAllStringSubmatch(string(dat), -1)
-
-	if len(matches) < 1 || len(matches[0]) < 3 {
-		return "", errors.New("No contents found")
-	}
-
-	return matches[0][2], nil
 }

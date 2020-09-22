@@ -20,7 +20,6 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -174,7 +173,7 @@ func (_ZRXToken *ZRXTokenTransactorRaw) Transact(opts *bind.TransactOpts, method
 
 // Allowance is a free data retrieval call binding the contract method 0xdd62ed3e.
 //
-// Solidity: function allowance(address _owner, address _spender) constant returns(uint256)
+// Solidity: function allowance(address _owner, address _spender) returns(uint256)
 func (_ZRXToken *ZRXTokenCaller) Allowance(opts *bind.CallOpts, _owner common.Address, _spender common.Address) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -186,21 +185,21 @@ func (_ZRXToken *ZRXTokenCaller) Allowance(opts *bind.CallOpts, _owner common.Ad
 
 // Allowance is a free data retrieval call binding the contract method 0xdd62ed3e.
 //
-// Solidity: function allowance(address _owner, address _spender) constant returns(uint256)
+// Solidity: function allowance(address _owner, address _spender) returns(uint256)
 func (_ZRXToken *ZRXTokenSession) Allowance(_owner common.Address, _spender common.Address) (*big.Int, error) {
 	return _ZRXToken.Contract.Allowance(&_ZRXToken.CallOpts, _owner, _spender)
 }
 
 // Allowance is a free data retrieval call binding the contract method 0xdd62ed3e.
 //
-// Solidity: function allowance(address _owner, address _spender) constant returns(uint256)
+// Solidity: function allowance(address _owner, address _spender) returns(uint256)
 func (_ZRXToken *ZRXTokenCallerSession) Allowance(_owner common.Address, _spender common.Address) (*big.Int, error) {
 	return _ZRXToken.Contract.Allowance(&_ZRXToken.CallOpts, _owner, _spender)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x70a08231.
 //
-// Solidity: function balanceOf(address _owner) constant returns(uint256)
+// Solidity: function balanceOf(address _owner) returns(uint256)
 func (_ZRXToken *ZRXTokenCaller) BalanceOf(opts *bind.CallOpts, _owner common.Address) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -212,21 +211,21 @@ func (_ZRXToken *ZRXTokenCaller) BalanceOf(opts *bind.CallOpts, _owner common.Ad
 
 // BalanceOf is a free data retrieval call binding the contract method 0x70a08231.
 //
-// Solidity: function balanceOf(address _owner) constant returns(uint256)
+// Solidity: function balanceOf(address _owner) returns(uint256)
 func (_ZRXToken *ZRXTokenSession) BalanceOf(_owner common.Address) (*big.Int, error) {
 	return _ZRXToken.Contract.BalanceOf(&_ZRXToken.CallOpts, _owner)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x70a08231.
 //
-// Solidity: function balanceOf(address _owner) constant returns(uint256)
+// Solidity: function balanceOf(address _owner) returns(uint256)
 func (_ZRXToken *ZRXTokenCallerSession) BalanceOf(_owner common.Address) (*big.Int, error) {
 	return _ZRXToken.Contract.BalanceOf(&_ZRXToken.CallOpts, _owner)
 }
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() constant returns(uint8)
+// Solidity: function decimals() returns(uint8)
 func (_ZRXToken *ZRXTokenCaller) Decimals(opts *bind.CallOpts) (uint8, error) {
 	var (
 		ret0 = new(uint8)
@@ -238,21 +237,21 @@ func (_ZRXToken *ZRXTokenCaller) Decimals(opts *bind.CallOpts) (uint8, error) {
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() constant returns(uint8)
+// Solidity: function decimals() returns(uint8)
 func (_ZRXToken *ZRXTokenSession) Decimals() (uint8, error) {
 	return _ZRXToken.Contract.Decimals(&_ZRXToken.CallOpts)
 }
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() constant returns(uint8)
+// Solidity: function decimals() returns(uint8)
 func (_ZRXToken *ZRXTokenCallerSession) Decimals() (uint8, error) {
 	return _ZRXToken.Contract.Decimals(&_ZRXToken.CallOpts)
 }
 
 // Name is a free data retrieval call binding the contract method 0x06fdde03.
 //
-// Solidity: function name() constant returns(string)
+// Solidity: function name() returns(string)
 func (_ZRXToken *ZRXTokenCaller) Name(opts *bind.CallOpts) (string, error) {
 	var (
 		ret0 = new(string)
@@ -264,21 +263,21 @@ func (_ZRXToken *ZRXTokenCaller) Name(opts *bind.CallOpts) (string, error) {
 
 // Name is a free data retrieval call binding the contract method 0x06fdde03.
 //
-// Solidity: function name() constant returns(string)
+// Solidity: function name() returns(string)
 func (_ZRXToken *ZRXTokenSession) Name() (string, error) {
 	return _ZRXToken.Contract.Name(&_ZRXToken.CallOpts)
 }
 
 // Name is a free data retrieval call binding the contract method 0x06fdde03.
 //
-// Solidity: function name() constant returns(string)
+// Solidity: function name() returns(string)
 func (_ZRXToken *ZRXTokenCallerSession) Name() (string, error) {
 	return _ZRXToken.Contract.Name(&_ZRXToken.CallOpts)
 }
 
 // Symbol is a free data retrieval call binding the contract method 0x95d89b41.
 //
-// Solidity: function symbol() constant returns(string)
+// Solidity: function symbol() returns(string)
 func (_ZRXToken *ZRXTokenCaller) Symbol(opts *bind.CallOpts) (string, error) {
 	var (
 		ret0 = new(string)
@@ -290,21 +289,21 @@ func (_ZRXToken *ZRXTokenCaller) Symbol(opts *bind.CallOpts) (string, error) {
 
 // Symbol is a free data retrieval call binding the contract method 0x95d89b41.
 //
-// Solidity: function symbol() constant returns(string)
+// Solidity: function symbol() returns(string)
 func (_ZRXToken *ZRXTokenSession) Symbol() (string, error) {
 	return _ZRXToken.Contract.Symbol(&_ZRXToken.CallOpts)
 }
 
 // Symbol is a free data retrieval call binding the contract method 0x95d89b41.
 //
-// Solidity: function symbol() constant returns(string)
+// Solidity: function symbol() returns(string)
 func (_ZRXToken *ZRXTokenCallerSession) Symbol() (string, error) {
 	return _ZRXToken.Contract.Symbol(&_ZRXToken.CallOpts)
 }
 
 // TotalSupply is a free data retrieval call binding the contract method 0x18160ddd.
 //
-// Solidity: function totalSupply() constant returns(uint256)
+// Solidity: function totalSupply() returns(uint256)
 func (_ZRXToken *ZRXTokenCaller) TotalSupply(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -316,14 +315,14 @@ func (_ZRXToken *ZRXTokenCaller) TotalSupply(opts *bind.CallOpts) (*big.Int, err
 
 // TotalSupply is a free data retrieval call binding the contract method 0x18160ddd.
 //
-// Solidity: function totalSupply() constant returns(uint256)
+// Solidity: function totalSupply() returns(uint256)
 func (_ZRXToken *ZRXTokenSession) TotalSupply() (*big.Int, error) {
 	return _ZRXToken.Contract.TotalSupply(&_ZRXToken.CallOpts)
 }
 
 // TotalSupply is a free data retrieval call binding the contract method 0x18160ddd.
 //
-// Solidity: function totalSupply() constant returns(uint256)
+// Solidity: function totalSupply() returns(uint256)
 func (_ZRXToken *ZRXTokenCallerSession) TotalSupply() (*big.Int, error) {
 	return _ZRXToken.Contract.TotalSupply(&_ZRXToken.CallOpts)
 }

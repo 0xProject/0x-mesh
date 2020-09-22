@@ -1,31 +1,15 @@
+// The root of the project is just a list of references and does not contain
+// any top-level TypeScript code.
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "target": "es5",
-        "lib": ["es2017", "dom"],
-        "experimentalDecorators": true,
-        "downlevelIteration": true,
-        "noImplicitReturns": true,
-        "pretty": true,
-        "skipLibCheck": true,
-        "typeRoots": ["node_modules/@0x/typescript-typings/types", "node_modules/@types"],
-        "strict": true,
-        // These settings are required for TypeScript project references
-        "composite": true,
-        "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true
-    },
-    // The root of the project is just a list of references and does not contain
-    // any top-level TypeScript code.
+    "extends": "./tsconfig-base",
     "include": [],
     "references": [
-        { "path": "./packages/browser" },
-        { "path": "./packages/browser-lite" },
-        { "path": "./packages/webpack-example" },
-        { "path": "./packages/webpack-example-lite" },
-        { "path": "./packages/rpc-client" },
-        { "path": "./packages/integration-tests" },
-        { "path": "./packages/test-wasm" }
+        { "path": "./packages/mesh-browser" },
+        { "path": "./packages/mesh-browser-lite" },
+        { "path": "./packages/mesh-webpack-example" },
+        { "path": "./packages/mesh-webpack-example-lite" },
+        { "path": "./packages/mesh-integration-tests" },
+        { "path": "./packages/mesh-browser-shim" },
+        { "path": "./packages/mesh-graphql-client" }
     ]
 }

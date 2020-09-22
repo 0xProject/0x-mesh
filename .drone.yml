@@ -1,5 +1,5 @@
 kind: pipeline
-type: docker
+type: kubernetes
 name: mesh
 
 steps:
@@ -17,7 +17,7 @@ node_selector:
   drone-builds: true
 ---
 kind: pipeline
-type: docker
+type: kubernetes
 name: mesh-bootstrap-autotag
 
 steps:
@@ -35,7 +35,7 @@ node_selector:
   drone-builds: true
 ---
 kind: pipeline
-type: docker
+type: kubernetes
 name: mesh-development
 
 steps:
@@ -60,7 +60,7 @@ node_selector:
   drone-builds: true
 ---
 kind: pipeline
-type: docker
+type: kubernetes
 name: mesh-bootstrap-development
 
 steps:
@@ -85,7 +85,7 @@ node_selector:
   drone-builds: true
 ---
 kind: pipeline
-type: docker
+type: kubernetes
 name: mesh-publish-release-notes
 
 steps:

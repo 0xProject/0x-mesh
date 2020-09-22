@@ -54,6 +54,9 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 	}
 
 	messageLoader, err := newLoader(chainID, customOrderSchema, contractAddresses)
+	if err != nil {
+		return nil, err
+	}
 	if err := messageLoader.AddSchemas(rootOrderSchemaLoader); err != nil {
 		return nil, err
 	}
@@ -70,7 +73,7 @@ func New(chainID int, customOrderSchema string, contractAddresses ethereum.Contr
 	}, nil
 }
 
-func loadExchangeAddress(loader *jsonschema.SchemaLoader, chainID int, contractAddresses ethereum.ContractAddresses) error {
+func loadExchangeAddress(loader *jsonschema.SchemaLoader, contractAddresses ethereum.ContractAddresses) error {
 	// Note that exchangeAddressSchema accepts both checksummed and
 	// non-checksummed (i.e. all lowercase) addresses.
 	exchangeAddressSchema := fmt.Sprintf(`{"enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
@@ -87,7 +90,7 @@ func newLoader(chainID int, customOrderSchema string, contractAddresses ethereum
 	if err := loadChainID(loader, chainID); err != nil {
 		return nil, err
 	}
-	if err := loadExchangeAddress(loader, chainID, contractAddresses); err != nil {
+	if err := loadExchangeAddress(loader, contractAddresses); err != nil {
 		return nil, err
 	}
 	if err := loader.AddSchemas(builtInSchemas...); err != nil {

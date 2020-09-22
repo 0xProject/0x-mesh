@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	p2pnet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,10 +28,7 @@ const (
 )
 
 var (
-	// Counter used for config.RandSeed. Atomically incremented each time a new Node
-	// is created.
-	counter              int64 = -1
-	testRendezvousPoints       = []string{"0x-mesh-testing-rendezvous"}
+	testRendezvousPoints = []string{"0x-mesh-testing-rendezvous"}
 )
 
 // dummyMessageHandler satisfies the MessageHandler interface but considers all
@@ -81,6 +78,8 @@ func (n *testNotifee) OpenedStream(network p2pnet.Network, stream p2pnet.Stream)
 func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *Node {
 	privKey, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
 	require.NoError(t, err)
+	db, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	config := Config{
 		SubscribeTopic:   testTopic,
 		PublishTopics:    []string{testTopic},
@@ -88,7 +87,7 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 		MessageHandler:   &dummyMessageHandler{},
 		RendezvousPoints: testRendezvousPoints,
 		UseBootstrapList: false,
-		DataDir:          "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:               db,
 	}
 
 	return newTestNodeWithConfig(t, ctx, notifee, config)
@@ -169,7 +168,7 @@ func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 	for _, msg := range messages {
 		found := false
 		for _, existing := range mh.messages {
-			if bytes.Compare(existing.Data, msg.Data) == 0 {
+			if bytes.Equal(existing.Data, msg.Data) {
 				found = true
 				break
 			}
@@ -259,7 +258,7 @@ func TestPeerDiscovery(t *testing.T) {
 	// Create three nodes: 0, 1, and 2.
 	//
 	//   - node0 is connected to node1
-	//   - node1 is ocnnected to node2
+	//   - node1 is connected to node2
 	//   - node0 is not initially connected to node2
 	//
 	node0 := newTestNode(t, ctx, notifee)
@@ -269,14 +268,9 @@ func TestPeerDiscovery(t *testing.T) {
 	go startNodeAndCheckError(t, node1)
 	go startNodeAndCheckError(t, node2)
 	connectTestNodes(t, node0, node1)
+	connectTestNodes(t, node1, node2)
 
-	err := node2.Connect(peer.AddrInfo{
-		ID:    node1.host.ID(),
-		Addrs: node1.host.Addrs(),
-	}, testConnectionTimeout)
-	require.NoError(t, err)
-
-	// Wait for node0 ande node2 to find each other
+	// Wait for node0 and node2 to find each other
 loop:
 	for {
 		select {
@@ -317,9 +311,9 @@ func TestBanIP(t *testing.T) {
 	// Unfortunately, libp2p swallows the error and creates a new one so there is
 	// no way for us to guarantee that the error we got is the one that we expect.
 	err := node0.Connect(node1AddrInfo, testConnectionTimeout)
-	require.Error(t, err, "node0 should not be abble to connect to node1")
+	require.Error(t, err, "node0 should not be able to connect to node1")
 	err = node1.Connect(node0AddrInfo, testConnectionTimeout)
-	require.Error(t, err, "node1 should not be abble to connect to node0")
+	require.Error(t, err, "node1 should not be able to connect to node0")
 }
 
 func TestUnbanIP(t *testing.T) {
@@ -400,6 +394,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 		streams: make(chan p2pnet.Stream),
 	}
 
+	db0, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node0Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -408,10 +404,12 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db0,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
+	db1, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node1Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -420,10 +418,12 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db1,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
+	db2, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node2Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -432,7 +432,7 @@ func TestRateValidatorGlobal(t *testing.T) {
 		}),
 		RendezvousPoints:         testRendezvousPoints,
 		UseBootstrapList:         false,
-		DataDir:                  "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                       db2,
 		GlobalPubSubMessageLimit: 1,
 		GlobalPubSubMessageBurst: 5,
 	}
@@ -487,6 +487,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		streams: make(chan p2pnet.Stream),
 	}
 
+	db0, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node0Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -495,10 +497,12 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db0,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}
+	db1, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node1Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -507,10 +511,12 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db1,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}
+	db2, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 	node2Config := Config{
 		SubscribeTopic: testTopic,
 		PublishTopics:  []string{testTopic},
@@ -519,7 +525,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 		}),
 		RendezvousPoints:          testRendezvousPoints,
 		UseBootstrapList:          false,
-		DataDir:                   "/tmp/0x-mesh/p2p-testing/" + uuid.New().String(),
+		DB:                        db2,
 		PerPeerPubSubMessageLimit: 1,
 		PerPeerPubSubMessageBurst: 5,
 	}

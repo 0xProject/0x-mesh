@@ -159,6 +159,9 @@ func (f *Filter) MarshalJSON() ([]byte, error) {
 func (f *Filter) UnmarshalJSON(data []byte) error {
 	j := jsonMarshallerForFilter{}
 	err := json.Unmarshal(data, &j)
+	if err != nil {
+		return err
+	}
 	filter, err := New(j.ChainID, j.CustomOrderSchema, ethereum.ContractAddresses{Exchange: j.ExchangeAddress})
 	if err != nil {
 		return err

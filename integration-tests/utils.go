@@ -14,25 +14,28 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum"
-	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // Since the tests take so long, we don't want them to run as part of the normal
 // testing process. They will only be run if the "--integration" flag is used.
-var browserIntegrationTestsEnabled bool
+var (
+	browserLegacyIntegrationTestsEnabled  bool
+	browserGraphQLIntegrationTestsEnabled bool
+)
 
 var nodeCount int32
 
 func init() {
-	flag.BoolVar(&browserIntegrationTestsEnabled, "enable-browser-integration-tests", false, "enable browser integration tests")
+	flag.BoolVar(&browserLegacyIntegrationTestsEnabled, "enable-browser-legacy-integration-tests", false, "enable browser legacy integration tests")
+	flag.BoolVar(&browserGraphQLIntegrationTestsEnabled, "enable-browser-graphql-integration-tests", false, "enable browser graphql integration tests")
 	testing.Init()
 	flag.Parse()
 }
@@ -51,22 +54,9 @@ func init() {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func removeOldFiles(t *testing.T, ctx context.Context) {
-	oldFiles, err := filepath.Glob(filepath.Join(standaloneDataDirPrefix + "*"))
-	require.NoError(t, err)
-
-	for _, oldFile := range oldFiles {
-		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "db")))
-		require.NoError(t, os.RemoveAll(filepath.Join(oldFile, "p2p")))
-	}
-
+func removeOldFiles(t *testing.T) {
+	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "sqlite-db")))
+	require.NoError(t, os.RemoveAll(filepath.Join(browserIntegrationTestDataDir, "p2p")))
 	require.NoError(t, os.RemoveAll(filepath.Join(bootstrapDataDir, "p2p")))
 }
 
@@ -116,29 +106,20 @@ func buildForTests(t *testing.T, ctx context.Context) {
 	buildStandaloneForTests(t, ctx)
 	buildBootstrapForTests(t, ctx)
 
-	fmt.Println("Clear yarn cache...")
-	cmd := exec.CommandContext(ctx, "yarn", "cache", "clean")
-	cmd.Dir = "../"
+	// Note(albrow): We have to rebuild the browser package manually in case
+	// any Go code was changed. The TypeScript compiler can automatically rebuild
+	// for TypeScript code changes only.
+	fmt.Println("Building mesh-browser package...")
+	cmd := exec.CommandContext(ctx, "yarn", "build")
+	cmd.Dir = "../packages/mesh-browser"
 	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "could not clean yarn cache: %s", string(output))
+	require.NoError(t, err, "could not build mesh-browser package: %s", string(output))
 
-	fmt.Println("Installing dependencies for TypeScript bindings...")
-	cmd = exec.CommandContext(ctx, "yarn", "install", "--force")
-	cmd.Dir = "../"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not install depedencies for TypeScript bindings: %s", string(output))
-
-	fmt.Println("Running postinstall for browser node...")
-	cmd = exec.CommandContext(ctx, "yarn", "postinstall")
-	cmd.Dir = "../packages/integration-tests"
-	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not run yarn postinstall: %s", string(output))
-
-	fmt.Println("Building TypeScript bindings...")
+	fmt.Println("Building integration-tests package...")
 	cmd = exec.CommandContext(ctx, "yarn", "build")
-	cmd.Dir = "../"
+	cmd.Dir = "../packages/mesh-integration-tests"
 	output, err = cmd.CombinedOutput()
-	require.NoError(t, err, "could not build TypeScript bindings: %s", string(output))
+	require.NoError(t, err, "could not build integration-tests package: %s", string(output))
 	fmt.Println("Done building everything")
 }
 
@@ -162,17 +143,21 @@ func startBootstrapNode(t *testing.T, ctx context.Context) {
 	assert.NoError(t, err, "could not run bootstrap node: %s", string(output))
 }
 
-func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOrderFilter string, logMessages chan<- string) {
+func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, dataDir string, customOrderFilter string, logMessages chan<- string) {
 	cmd := exec.CommandContext(ctx, "mesh")
+	if dataDir == "" {
+		// If dataDir is empty. Set a default data dir to a file in the /tmp directory
+		dataDir = filepath.Join("/tmp", "mesh_testing", uuid.New().String())
+	}
 	cmd.Env = append(
 		os.Environ(),
 		"VERBOSITY=6",
-		"DATA_DIR="+standaloneDataDirPrefix+strconv.Itoa(nodeID),
+		"DATA_DIR="+dataDir,
 		"BOOTSTRAP_LIST="+bootstrapList,
 		"ETHEREUM_RPC_URL="+ethereumRPCURL,
 		"ETHEREUM_CHAIN_ID="+strconv.Itoa(ethereumChainID),
-		"WS_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(wsRPCPort+nodeID),
-		"HTTP_RPC_ADDR="+standaloneRPCAddrPrefix+strconv.Itoa(httpRPCPort+nodeID),
+		"ENABLE_GRAPHQL_SERVER=true",
+		"GRAPHQL_SERVER_ADDR="+graphQLServerAddr,
 		"BLOCK_POLLING_INTERVAL="+standaloneBlockPollingInterval,
 		"ETHEREUM_RPC_MAX_REQUESTS_PER_24_HR_UTC="+standaloneEthereumRPCMaxRequestsPer24HrUtc,
 	)
@@ -221,7 +206,7 @@ func startStandaloneNode(t *testing.T, ctx context.Context, nodeID int, customOr
 	wg.Wait()
 }
 
-func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string) {
+func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogMessages chan<- string, browserErrors chan<- []string) {
 	// Use chromedp to visit the web page for the browser node.
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -237,9 +222,14 @@ func startBrowserNode(t *testing.T, ctx context.Context, url string, browserLogM
 				}
 			case runtime.APITypeError:
 				// Report any console.error events as test failures.
+				stringifiedBrowserErrors := make([]string, len(ev.Args))
 				for _, arg := range ev.Args {
-					t.Errorf("JavaScript console error: (%s) %s", arg.Type, arg.Value)
+					stringifiedBrowserErrors = append(
+						stringifiedBrowserErrors,
+						fmt.Sprintf("JavaScript console error: (%s) %s %s", arg.Type, arg.Value, arg.Description),
+					)
 				}
+				browserErrors <- stringifiedBrowserErrors
 			}
 		}
 	})
@@ -294,30 +284,8 @@ func waitForReceivedOrderLog(ctx context.Context, logMessages <-chan string, exp
 	})
 }
 
-// Ensure that all of the orders in given list of signed orders are included in a list of order info. The list
-// of order info can contain more orders than the first list and still pass this assertion.
-func assertSignedOrdersMatch(t *testing.T, expectedSignedOrders []*zeroex.SignedOrder, actualOrderInfo []*types.OrderInfo) {
-	for _, expectedOrder := range expectedSignedOrders {
-		foundMatchingOrder := false
-
-		expectedOrderHash, err := expectedOrder.ComputeOrderHash()
-		require.NoError(t, err)
-		for _, orderInfo := range actualOrderInfo {
-			if orderInfo.OrderHash.Hex() == expectedOrderHash.Hex() {
-				foundMatchingOrder = true
-				expectedOrder.ResetHash()
-				assert.Equal(t, expectedOrder, orderInfo.SignedOrder, "signedOrder did not match")
-				assert.Equal(t, expectedOrder.TakerAssetAmount, orderInfo.FillableTakerAssetAmount, "fillableTakerAssetAmount did not match")
-				break
-			}
-		}
-
-		assert.True(t, foundMatchingOrder, "found no matching entry in the getOrdersResponse")
-	}
-}
-
 // A holder type for parsing logged OrderEvents. These are received by either
-// an RPC subscription or in the TypeScript bindings and are not usually logged
+// a GraphQL subscription or in the TypeScript bindings and are not usually logged
 // by Mesh. They need to be explicitly logged.
 type orderEventLog struct {
 	OrderHash string `json:"orderHash"`

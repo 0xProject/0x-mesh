@@ -14,7 +14,7 @@ func main() {
 		log.Fatal("expects exactly one argument")
 	}
 	peerIDString := os.Args[1]
-	peerID, err := peer.IDB58Decode(peerIDString)
+	peerID, err := peer.Decode(peerIDString)
 	if err != nil {
 		log.Fatal(err)
 	}

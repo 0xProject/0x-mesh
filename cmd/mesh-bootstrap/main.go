@@ -8,15 +8,12 @@ package main
 import (
 	"context"
 	"fmt"
-	mathrand "math/rand"
 	"strings"
 	"time"
 
 	"github.com/0xProject/0x-mesh/loghooks"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/p2p/banner"
-	sqlds "github.com/0xProject/sql-datastore"
-	"github.com/ipfs/go-datastore"
 	leveldbStore "github.com/ipfs/go-ds-leveldb"
 	libp2p "github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
@@ -28,9 +25,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p-secio"
 	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -42,23 +38,6 @@ const (
 	// peerGraceDuration is the amount of time a newly opened connection is given
 	// before it becomes subject to pruning.
 	peerGraceDuration = 10 * time.Second
-	// defaultNetworkTimeout is the default timeout for network requests (e.g.
-	// connecting to a new peer).
-	defaultNetworkTimeout = 30 * time.Second
-	// checkBandwidthLoopInterval is how often to potentially check bandwidth usage
-	// for peers.
-	checkBandwidthLoopInterval = 5 * time.Second
-	// chanceToCheckBandwidthUsage is the approximate ratio of (number of check
-	// bandwidth loop iterations in which we check bandwidth usage) to (total
-	// number of check bandwidth loop iterations). We check bandwidth
-	// non-deterministically in order to prevent spammers from avoiding detection
-	// by carefully timing their bandwidth usage. So on each iteration of the
-	// check bandwidth loop we generate a number between 0 and 1. If its less than
-	// chanceToCheckBandiwdthUsage, we perform a bandwidth check.
-	chanceToCheckBandwidthUsage = 0.1
-	// DataStoreType constants
-	leveldbDataStore = "leveldb"
-	sqlDataStore     = "sqldb"
 )
 
 // Config contains configuration options for a Node.
@@ -77,29 +56,6 @@ type Config struct {
 	DataStoreType string `envvar:"DATA_STORE_TYPE" default:"leveldb"`
 	// LevelDBDataDir is the directory used for storing data when using leveldb as data store type.
 	LevelDBDataDir string `envvar:"LEVELDB_DATA_DIR" default:"0x_mesh"`
-	// SQLDBConnectionString is the connection URL used to connect to the
-	// database.
-	// NOTE: When set it has precedence over SQL_DB_HOST, SQL_DB_PORT etc.
-	SQLDBConnectionString string `envvar:"SQL_DB_CONNECTION_STRING" default:"" json:"-"`
-	// SQLDBHost is the database host used to connect to the database when
-	// using postgres as data store type.
-	SQLDBHost string `envvar:"SQL_DB_HOST" default:"localhost" json:"-"`
-	// SQLDBPort is the database port used to connect to the database when
-	// using postgres as data store type.
-	SQLDBPort string `envvar:"SQL_DB_PORT" default:"5432" json:"-"`
-	// SQLDBUser is the database user used to connect to the database when
-	// using postgres as data store type.
-	SQLDBUser string `envvar:"SQL_DB_USER" default:"postgres" json:"-"`
-	// SQLDBPassword is the database password used to connect to the database when
-	// using postgres as data store type.
-	SQLDBPassword string `envvar:"SQL_DB_PASSWORD" default:"" json:"-"`
-	// SQLDBName is the database name to connect to when using
-	// postgres as data store type.
-	SQLDBName string `envvar:"SQL_DB_NAME" default:"datastore" json:"-"`
-	// SQLDBEngine is the underyling database engine to use as the
-	// database driver.
-	// NOTE: Currently only `postgres` driver is supported.
-	SQLDBEngine string `envvar:"SQL_DB_ENGINE" default:"postgres"`
 	// UseBootstrapList determines whether or not to use the list of hard-coded
 	// peers to bootstrap the DHT for peer discovery.
 	UseBootstrapList bool `envvar:"USE_BOOTSTRAP_LIST" default:"true"`
@@ -119,9 +75,8 @@ type Config struct {
 	// we reach PeerCountLow. Defaults to 110.
 	PeerCountHigh int `envvar:"PEER_COUNT_HIGH" default:"110"`
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
-	// allowed to send before failing the bandwidth check. Defaults to 1 MiB, which
-	// is roughly 100x expected usage based on real world measurements.
-	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"1048576"`
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
 }
 
 func init() {
@@ -161,68 +116,30 @@ func main() {
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
-	var newDHT func(h host.Host) (routing.PeerRouting, error)
-
-	var peerStore peerstore.Peerstore
-
-	// TODO(oskar) - Figure out why returning an anonymous function from
-	// getNewDHT() is making kadDHT.runBootstrap panicing.
-	// When solved this big switch case can be removed from main()
-	switch config.DataStoreType {
-	case leveldbDataStore:
-		newDHT = func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			dhtDir := getDHTDir(config)
-			kadDHT, err = p2p.NewDHT(ctx, dhtDir, h)
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-			return kadDHT, err
-		}
-
-		// Set up the peerstore to use LevelDB.
-		store, err := leveldbStore.NewDatastore(getPeerstoreDir(config), nil)
+	newDHT := func(h host.Host) (routing.PeerRouting, error) {
+		var err error
+		dhtDir := getDHTDir(config)
+		// Set up the DHT to use LevelDB.
+		store, err := leveldbStore.NewDatastore(dhtDir, nil)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
-
-		peerStore, err = pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+		kadDHT, err = dht.New(ctx, h, dht.Datastore(store), dht.V1ProtocolOverride(p2p.DHTProtocolID), dht.Mode(dht.ModeServer))
 		if err != nil {
-			log.Fatal(err)
+			log.WithField("error", err).Fatal("could not create DHT")
 		}
+		return kadDHT, err
+	}
 
-	case sqlDataStore:
-		db, err := getSQLDatabase(config)
-		if err != nil {
-			log.WithField("error", err).Fatal("could not create SQL database")
-		}
+	// Set up the peerstore to use LevelDB.
+	store, err := leveldbStore.NewDatastore(getPeerstoreDir(config), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		err = prepareSQLDatabase(db)
-		if err != nil {
-			log.WithField("error", err).Fatal("failed to repare SQL tables for datastores")
-		}
-
-		newDHT = func(h host.Host) (routing.PeerRouting, error) {
-			var err error
-			dstore := sqlds.NewDatastore(db, sqlds.NewQueriesForTable(dhtTableName))
-
-			kadDHT, err = NewDHTWithDatastore(ctx, dstore, h)
-			if err != nil {
-				log.WithField("error", err).Fatal("could not create DHT")
-			}
-
-			return kadDHT, err
-		}
-
-		pstore := sqlds.NewDatastore(db, sqlds.NewQueriesForTable(peerStoreTableName))
-		peerStore, err = pstoreds.NewPeerstore(ctx, pstore, pstoreds.DefaultOpts())
-		if err != nil {
-			log.WithField("error", err).Fatal("could not create peerStore")
-		}
-
-	default:
-		log.Fatalf("invalid datastore configured: %s. Expected either %s or %s", config.DataStoreType, leveldbDataStore, sqlDataStore)
-
+	peerStore, err := pstoreds.NewPeerstore(ctx, store, pstoreds.DefaultOpts())
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Parse multiaddresses given in the config
@@ -250,7 +167,10 @@ func main() {
 		libp2p.AddrsFactory(newAddrsFactory(advertiseAddrs)),
 		libp2p.BandwidthReporter(bandwidthCounter),
 		libp2p.Peerstore(peerStore),
-		p2p.Filters(filters),
+		// TODO(jalextowle): This should be changed to libp2p.ConnectionGater
+		// after v10
+		libp2p.Filters(filters), //nolint:staticcheck
+		libp2p.Security(secio.ID, secio.New),
 	}
 
 	if config.EnableRelayHost {
@@ -267,7 +187,7 @@ func main() {
 	basicHost.Network().Notify(&notifee{})
 
 	// Enable AutoNAT service.
-	if _, err := autonat.NewAutoNATService(ctx, basicHost); err != nil {
+	if _, err := autonat.NewAutoNATService(ctx, basicHost, true); err != nil {
 		log.WithField("error", err).Fatal("could not enable AutoNAT service")
 	}
 
@@ -370,25 +290,4 @@ func parseAddrs(commaSeparatedAddrs string) ([]ma.Multiaddr, error) {
 		maddrs[i] = ma
 	}
 	return maddrs, nil
-}
-
-func continuoslyCheckBandwidth(ctx context.Context, banner *banner.Banner) error {
-	ticker := time.NewTicker(checkBandwidthLoopInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			// Check bandwidth usage non-deterministically
-			if mathrand.Float64() <= chanceToCheckBandwidthUsage {
-				banner.CheckBandwidthUsage()
-			}
-		}
-	}
-}
-
-// NewDHTWithDatastore returns a new Kademlia DHT instance configured with store
-// as the persistant storage interface.
-func NewDHTWithDatastore(ctx context.Context, store datastore.Batching, host host.Host) (*dht.IpfsDHT, error) {
-	return dht.New(ctx, host, dhtopts.Datastore(store), dhtopts.Protocols(p2p.DHTProtocolID))
 }

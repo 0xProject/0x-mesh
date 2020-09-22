@@ -4,16 +4,14 @@ package p2p
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	mathrand "math/rand"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/p2p/banner"
 	"github.com/0xProject/0x-mesh/p2p/ratevalidator"
 	"github.com/0xProject/0x-mesh/p2p/validatorset"
@@ -31,6 +29,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p-secio"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	filter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -69,7 +68,7 @@ const (
 	// defaultMaxBytesPerSecond is the maximum number of bytes per second that a
 	// peer is allowed to send before failing the bandwidth check. It's set to
 	// roughly 100x expected usage based on real world measurements.
-	defaultMaxBytesPerSecond = 1048576 // 1 MiB.
+	defaultMaxBytesPerSecond = 5242880 // 5 MiB.
 	// defaultGlobalPubSubMessageLimit is the default value for
 	// GlobalPubSubMessageLimit. This is an approximation based on a theoretical
 	// case where 1000 peers are sending maxShareBatch messages per second. It may
@@ -91,13 +90,14 @@ const (
 // 0x Mesh network who is capable of sending, receiving, validating, and storing
 // messages.
 type Node struct {
-	ctx              context.Context
-	config           Config
-	messageHandler   MessageHandler
-	host             host.Host
-	connManager      *connmgr.BasicConnMgr
-	dht              *dht.IpfsDHT
-	routingDiscovery discovery.Discovery
+	ctx            context.Context
+	config         Config
+	messageHandler MessageHandler
+	host           host.Host
+	connManager    *connmgr.BasicConnMgr
+	dht            *dht.IpfsDHT
+	// TODO(jalextowle): Make this linter compliant
+	routingDiscovery discovery.Discovery //nolint:staticcheck
 	pubsub           *pubsub.PubSub
 	sub              *pubsub.Subscription
 	banner           *banner.Banner
@@ -136,8 +136,9 @@ type Config struct {
 	// BootstrapList is a list of multiaddress strings to use for bootstrapping
 	// the DHT. If empty, the default list will be used.
 	BootstrapList []string
-	// DataDir is the directory to use for storing data.
-	DataDir string
+	// DB is a database instance that provides access to key value stores for
+	// the peerstore and the dht store.
+	DB *db.DB
 	// GlobalPubSubMessageLimit is the maximum number of messages per second that
 	// will be forwarded through GossipSub on behalf of other peers. It is an
 	// important mechanism for limiting our own upload bandwidth. Without a global
@@ -163,14 +164,9 @@ type Config struct {
 	// according to this custom validator, which will be run in addition to the
 	// default validators.
 	CustomMessageValidator pubsub.Validator
-}
-
-func getPeerstoreDir(datadir string) string {
-	return filepath.Join(datadir, "peerstore")
-}
-
-func getDHTDir(datadir string) string {
-	return filepath.Join(datadir, "dht")
+	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
+	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
+	MaxBytesPerSecond float64
 }
 
 // New creates a new Node with the given context and config. The Node will stop
@@ -193,14 +189,16 @@ func New(ctx context.Context, config Config) (*Node, error) {
 	if config.PerPeerPubSubMessageBurst == 0 {
 		config.PerPeerPubSubMessageBurst = defaultPerPeerPubSubMessageBurst
 	}
+	if config.MaxBytesPerSecond == 0 {
+		config.MaxBytesPerSecond = defaultMaxBytesPerSecond
+	}
 
 	// We need to declare the newDHT function ahead of time so we can use it in
 	// the libp2p.Routing option.
 	var kadDHT *dht.IpfsDHT
 	newDHT := func(h host.Host) (routing.PeerRouting, error) {
 		var err error
-		dhtDir := getDHTDir(config.DataDir)
-		kadDHT, err = NewDHT(ctx, dhtDir, h)
+		kadDHT, err = NewDHT(ctx, config.DB, h)
 		if err != nil {
 			log.WithField("error", err).Error("could not create DHT")
 		}
@@ -226,7 +224,10 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		libp2p.EnableAutoRelay(),
 		libp2p.EnableRelay(),
 		libp2p.BandwidthReporter(bandwidthCounter),
-		Filters(filters),
+		// TODO(jalextowle): This should be replaced with libp2p.ConnectionGater
+		// after v10 is released
+		libp2p.Filters(filters), //nolint:staticcheck
+		libp2p.Security(secio.ID, secio.New),
 	}...)
 	if config.Insecure {
 		opts = append(opts, libp2p.NoSecurity)
@@ -268,7 +269,7 @@ func New(ctx context.Context, config Config) (*Node, error) {
 		Host:                   basicHost,
 		Filters:                filters,
 		BandwidthCounter:       bandwidthCounter,
-		MaxBytesPerSecond:      defaultMaxBytesPerSecond,
+		MaxBytesPerSecond:      config.MaxBytesPerSecond,
 		LogBandwidthUsageStats: true,
 	})
 
@@ -333,32 +334,6 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 		}
 	}
 	return nil
-}
-
-func getPrivateKey(path string) (p2pcrypto.PrivKey, error) {
-	if path == "" {
-		// If path is empty, generate a new key.
-		priv, _, err := p2pcrypto.GenerateSecp256k1Key(rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-		return priv, nil
-	}
-
-	// Otherwise parse the key at the path given.
-	keyBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	decodedKey, err := p2pcrypto.ConfigDecodeKey(string(keyBytes))
-	if err != nil {
-		return nil, err
-	}
-	priv, err := p2pcrypto.UnmarshalPrivateKey(decodedKey)
-	if err != nil {
-		return nil, err
-	}
-	return priv, nil
 }
 
 // Multiaddrs returns all multi addresses at which the node is dialable.
@@ -434,7 +409,8 @@ func (n *Node) Start() error {
 			// Note(albrow): Advertise doesn't return an error, so we have no
 			// choice but to assume it worked.
 			for _, rendezvousPoint := range n.config.RendezvousPoints {
-				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL))
+				// TODO(jalextowle): Make this linter compliant
+				discovery.Advertise(n.ctx, n.routingDiscovery, rendezvousPoint, discovery.TTL(advertiseTTL)) //nolint:staticcheck
 			}
 		}
 	}()
@@ -610,7 +586,8 @@ func (n *Node) findNewPeers(ctx context.Context) error {
 		}).Trace("looking for new peers")
 		findPeersCtx, cancel := context.WithTimeout(ctx, defaultNetworkTimeout)
 		defer cancel()
-		peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousPoint, discovery.Limit(maxNewPeers))
+		// TODO(jalextowle): Make this linter compliant
+		peerChan, err := n.routingDiscovery.FindPeers(findPeersCtx, rendezvousPoint, discovery.Limit(maxNewPeers)) //nolint:staticcheck
 		if err != nil {
 			return err
 		}
@@ -703,7 +680,9 @@ func (n *Node) Send(data []byte) error {
 	// which is assigned to firstErr.
 	var firstErr error
 	for _, topic := range n.config.PublishTopics {
-		err := n.pubsub.Publish(topic, data)
+		// TODO(jalextowle): This should be replaced with `pubsub.Join`
+		// and `topic.Publish`
+		err := n.pubsub.Publish(topic, data) //nolint:staticcheck
 		if err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -716,7 +695,9 @@ func (n *Node) Send(data []byte) error {
 func (n *Node) receive(ctx context.Context) (*Message, error) {
 	if n.sub == nil {
 		var err error
-		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic)
+		// TODO(jalextowle): This should be replaced with `pubsub.Join`
+		// and `topic.Publish`
+		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}

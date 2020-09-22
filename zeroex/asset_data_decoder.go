@@ -132,35 +132,35 @@ func NewAssetDataDecoder() *AssetDataDecoder {
 		log.WithField("erc20BridgeAssetDataABI", erc20BridgeAssetDataAbi).Panic("erc20BridgeAssetDataABI should be ABI parsable")
 	}
 	idToAssetDataInfo := map[string]assetDataInfo{
-		ERC20AssetDataID: assetDataInfo{
+		ERC20AssetDataID: {
 			name: "ERC20Token",
 			abi:  erc20AssetDataABI,
 		},
-		ERC721AssetDataID: assetDataInfo{
+		ERC721AssetDataID: {
 			name: "ERC721Token",
 			abi:  erc721AssetDataABI,
 		},
-		ERC1155AssetDataID: assetDataInfo{
+		ERC1155AssetDataID: {
 			name: "ERC1155Assets",
 			abi:  erc1155AssetDataABI,
 		},
-		StaticCallAssetDataID: assetDataInfo{
+		StaticCallAssetDataID: {
 			name: "StaticCall",
 			abi:  staticCallAssetDataABI,
 		},
-		CheckGasPriceDefaultID: assetDataInfo{
+		CheckGasPriceDefaultID: {
 			name: "checkGasPrice",
 			abi:  checkGasPriceDefaultStaticCallDataABI,
 		},
-		CheckGasPriceID: assetDataInfo{
+		CheckGasPriceID: {
 			name: "checkGasPrice",
 			abi:  checkGasPriceStaticCallDataABI,
 		},
-		MultiAssetDataID: assetDataInfo{
+		MultiAssetDataID: {
 			name: "MultiAsset",
 			abi:  multiAssetDataABI,
 		},
-		ERC20BridgeAssetDataID: assetDataInfo{
+		ERC20BridgeAssetDataID: {
 			name: "ERC20Bridge",
 			abi:  erc20BridgeAssetDataABI,
 		},
@@ -180,7 +180,7 @@ func (a *AssetDataDecoder) GetName(assetData []byte) (string, error) {
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
-		return "", errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+		return "", fmt.Errorf("Unrecognized assetData with prefix: %s", idHex)
 	}
 	return info.name, nil
 }
@@ -194,11 +194,11 @@ func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}
 	idHex := common.Bytes2Hex(id)
 	info, ok := a.idToAssetDataInfo[idHex]
 	if !ok {
-		return errors.New(fmt.Sprintf("Unrecognized assetData with prefix: %s", idHex))
+		return fmt.Errorf("Unrecognized assetData with prefix: %s", idHex)
 	}
 
 	// This is necessary to prevent a nil pointer exception for ABIs with no inputs
-	if info.abi.Methods[info.name].Inputs.LengthNonIndexed() == 0 {
+	if len(info.abi.Methods[info.name].Inputs.NonIndexed()) == 0 {
 		return nil
 	}
 	err := info.abi.Methods[info.name].Inputs.Unpack(decodedAssetData, assetData[4:])
