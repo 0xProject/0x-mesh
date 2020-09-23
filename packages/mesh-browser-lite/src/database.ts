@@ -22,8 +22,8 @@ export interface Options {
 }
 
 export interface Query<T extends Record> {
-    filters?: Array<FilterOption<T>>;
-    sort?: Array<SortOption<T>>;
+    filters?: FilterOption<T>[];
+    sort?: SortOption<T>[];
     limit?: number;
     offset?: number;
 }
@@ -584,7 +584,7 @@ async function runQueryInMemoryAsync<T extends Record, Key>(
     return records;
 }
 
-function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, records: T[]): T[] {
+function filterRecords<T extends Record>(filters: FilterOption<T>[], records: T[]): T[] {
     let result = records;
     // Note(albrow): As an optimization, we could use the native Dexie.js index for
     // the *first* filter when possible.
@@ -619,7 +619,7 @@ function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, record
     return result;
 }
 
-function sortRecords<T extends Record>(sortOpts: Array<SortOption<T>>, records: T[]): T[] {
+function sortRecords<T extends Record>(sortOpts: SortOption<T>[], records: T[]): T[] {
     // Note(albrow): As an optimization, we could use native Dexie.js ordering for
     // the *first* sort option when possible.
     const result = records;
