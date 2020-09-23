@@ -84,7 +84,7 @@ provider.start();
                 // this.
                 console.log(JSON.stringify(event));
             }
-        })().catch(err => {
+        })().catch((err) => {
             console.error(err);
         });
     });
@@ -122,7 +122,7 @@ provider.start();
     const finishedDiv = document.createElement('div');
     finishedDiv.setAttribute('id', 'jsFinished');
     document.body.appendChild(finishedDiv);
-})().catch(err => {
+})().catch((err) => {
     if (err instanceof Error) {
         console.error(`${err.name}: ${err.message}`);
     } else {
@@ -132,5 +132,5 @@ provider.start();
 // tslint:enable:no-console
 
 async function sleepAsync(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

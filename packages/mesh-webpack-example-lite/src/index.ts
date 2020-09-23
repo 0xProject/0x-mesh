@@ -62,7 +62,7 @@ import {
     // Add the order and log the result.
     const result = await mesh.addOrdersAsync([order]);
     console.log(result);
-})().catch(err => {
+})().catch((err) => {
     console.error(err);
 });
 // tslint:enable:no-console

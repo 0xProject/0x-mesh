@@ -98,8 +98,10 @@ export class BatchingDatastore {
         return this._db.transaction('rw!', this._table, async () => {
             const prefixRegExp = new RegExp(prefix);
             const col =
-                prefix !== '' ? this._table.filter(entry => prefixRegExp.test(entry.key)) : this._table.toCollection();
-            return (await col.toArray()).map(entry => {
+                prefix !== ''
+                    ? this._table.filter((entry) => prefixRegExp.test(entry.key))
+                    : this._table.toCollection();
+            return (await col.toArray()).map((entry) => {
                 return {
                     key: entry.key,
                     value: entry.value,

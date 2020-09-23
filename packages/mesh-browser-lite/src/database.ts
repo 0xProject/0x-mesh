@@ -591,22 +591,22 @@ function filterRecords<T extends Record>(filters: FilterOption<T>[], records: T[
     for (const filter of filters) {
         switch (filter.kind) {
             case FilterKind.Equal:
-                result = result.filter(record => record[filter.field] === filter.value);
+                result = result.filter((record) => record[filter.field] === filter.value);
                 break;
             case FilterKind.NotEqual:
-                result = result.filter(record => record[filter.field] !== filter.value);
+                result = result.filter((record) => record[filter.field] !== filter.value);
                 break;
             case FilterKind.Greater:
-                result = result.filter(record => record[filter.field] > filter.value);
+                result = result.filter((record) => record[filter.field] > filter.value);
                 break;
             case FilterKind.GreaterOrEqual:
-                result = result.filter(record => record[filter.field] >= filter.value);
+                result = result.filter((record) => record[filter.field] >= filter.value);
                 break;
             case FilterKind.Less:
-                result = result.filter(record => record[filter.field] < filter.value);
+                result = result.filter((record) => record[filter.field] < filter.value);
                 break;
             case FilterKind.LessOrEqual:
-                result = result.filter(record => record[filter.field] <= filter.value);
+                result = result.filter((record) => record[filter.field] <= filter.value);
                 break;
             case FilterKind.Contains:
                 result = result.filter(containsFilterFunc(filter));
