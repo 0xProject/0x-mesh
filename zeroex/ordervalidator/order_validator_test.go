@@ -6,11 +6,11 @@ package ordervalidator
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math/big"
-	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,14 +18,13 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -35,11 +34,15 @@ import (
 
 const areNewOrders = false
 
+// emptyGetOrderRelevantStatesCallDataByteLength is all the boilerplate ABI encoding required when calling
+// `getOrderRelevantStates` that does not include the encoded SignedOrder. By subtracting this amount from the
+// calldata length returned from encoding a call to `getOrderRelevantStates` involving a single SignedOrder, we
+// get the number of bytes taken up by the SignedOrder alone.
+// i.e.: len(`"0x7f46448d0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"`)
+const emptyGetOrderRelevantStatesCallDataStringLength = 268
+
 const (
-	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = 1000.0
-	defaultCheckpointInterval   = 1 * time.Minute
-	defaultEthRPCTimeout        = 5 * time.Second
+	defaultEthRPCTimeout = 5 * time.Second
 )
 
 var (
@@ -98,41 +101,41 @@ func init() {
 
 func TestBatchValidateOffChainCases(t *testing.T) {
 	var testCases = []testCase{
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetAmount,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
 		},
-		testCase{
+		{
 			SignedOrder: scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(multiAssetAssetData)),
 			IsValid:     true,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(malformedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.MakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 scenario.NewSignedTestOrder(t, orderopts.TakerAssetData(unsupportedAssetData)),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
-		testCase{
+		{
 			SignedOrder:                 signedOrderWithCustomSignature(t, malformedSignature),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidSignature,
@@ -174,12 +177,45 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	ctx := context.Background()
 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
+}
+
+func TestBatchOffchainValidateZeroFeeAmount(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	makerFeeAssetData := common.Hex2Bytes("deadbeef")
+	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedOrders := []*zeroex.SignedOrder{
+		signedTestOrder,
+	}
+
+	rateLimiter := ratelimit.NewUnlimited()
+	rpcClient, err := rpc.Dial(constants.GanacheEndpoint)
+	require.NoError(t, err)
+	ethRPCClient, err := ethrpcclient.New(rpcClient, defaultEthRPCTimeout, rateLimiter)
+	require.NoError(t, err)
+
+	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	require.NoError(t, err)
+
+	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	assert.Len(t, accepted, 1)
+	require.Len(t, rejected, 0)
+	signedTestOrder.ResetHash()
+	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	actualOrderHash, err := accepted[0].ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, expectedOrderHash, actualOrderHash)
 }
 
 func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
@@ -191,7 +227,11 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	defer teardownSubTest(t)
 	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
 	makerFeeAssetData := common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000")
-	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedTestOrder := scenario.NewSignedTestOrder(
+		t,
+		orderopts.MakerFeeAssetData(makerFeeAssetData),
+		orderopts.MakerFee(big.NewInt(1)),
+	)
 	signedOrders := []*zeroex.SignedOrder{
 		signedTestOrder,
 	}
@@ -279,7 +319,7 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 		ctx := context.Background()
 		latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 		require.NoError(t, err)
-		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
 		assert.Len(t, validationResults.Accepted, 1)
 		require.Len(t, validationResults.Rejected, 0)
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
@@ -304,94 +344,10 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	ctx := context.Background()
 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
+	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
-	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-}
-
-func TestBatchValidateUnregisteredCoordinator(t *testing.T) {
-	// FeeRecipientAddress is an address for which there is no entry in the Coordinator registry
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SenderAddress(ganacheAddresses.Coordinator), orderopts.FeeRecipientAddress(constants.GanacheAccount4))
-	signedOrder.FeeRecipientAddress = constants.GanacheAccount4
-	orderHash, err := signedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	signedOrders := []*zeroex.SignedOrder{
-		signedOrder,
-	}
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-	assert.Len(t, validationResults.Accepted, 0)
-	require.Len(t, validationResults.Rejected, 1)
-	assert.Equal(t, ROCoordinatorEndpointNotFound, validationResults.Rejected[0].Status)
-	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
-}
-
-func TestBatchValidateCoordinatorSoftCancels(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	signedOrder := scenario.NewSignedTestOrder(t,
-		orderopts.SenderAddress(ganacheAddresses.Coordinator),
-		orderopts.SetupMakerState(true),
-		orderopts.FeeRecipientAddress(constants.GanacheAccount3),
-	)
-	orderHash, err := signedOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	signedOrders := []*zeroex.SignedOrder{
-		signedOrder,
-	}
-
-	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
-	require.NoError(t, err)
-
-	// generate a test server so we can capture and inspect the request
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(200)
-		_, err := res.Write([]byte(fmt.Sprintf(`{"orderHashes": ["%s"]}`, orderHash.Hex())))
-		require.NoError(t, err)
-	}))
-	defer testServer.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	opts := &bind.TransactOpts{
-		From:    signedOrder.FeeRecipientAddress,
-		Context: ctx,
-		Signer: func(s types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			testSigner := signer.NewTestSigner()
-			signature, err := testSigner.(*signer.TestSigner).SignTx(s.Hash(tx).Bytes(), address)
-			if err != nil {
-				return nil, err
-			}
-			return tx.WithSignature(s, signature)
-		},
-	}
-
-	coordinatorRegistryAddress := ganacheAddresses.CoordinatorRegistry
-	coordinatorRegistry, err := wrappers.NewCoordinatorRegistry(coordinatorRegistryAddress, ethClient)
-	require.NoError(t, err)
-	_, err = coordinatorRegistry.SetCoordinatorEndpoint(opts, testServer.URL)
-	require.NoError(t, err)
-
-	ctx = context.Background()
-	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
-	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock.Number)
-	assert.Len(t, validationResults.Accepted, 0)
-	require.Len(t, validationResults.Rejected, 1)
-	assert.Equal(t, ROCoordinatorSoftCancelled, validationResults.Rejected[0].Status)
 	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
 }
 
@@ -435,6 +391,56 @@ func TestComputeOptimalChunkSizesMultiAssetOrder(t *testing.T) {
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
 
+func abiEncode(signedOrder *zeroex.SignedOrder) ([]byte, error) {
+	trimmedOrder := signedOrder.Trim()
+
+	devUtilsABI, err := abi.JSON(strings.NewReader(wrappers.DevUtilsABI))
+	if err != nil {
+		return []byte{}, err
+	}
+
+	data, err := devUtilsABI.Pack(
+		"getOrderRelevantStates",
+		[]wrappers.LibOrderOrder{trimmedOrder},
+		[][]byte{signedOrder.Signature},
+	)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	dataBytes := hexutil.Bytes(data)
+	encodedData, err := json.Marshal(dataBytes)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return encodedData, nil
+}
+
+func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
+	testOrder := scenario.NewSignedTestOrder(t)
+
+	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
+	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+
+	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
+
+	for _, signedOrder := range testCases {
+		label := fmt.Sprintf("test order: %v", signedOrder)
+
+		encoded, err := abiEncode(signedOrder)
+		require.NoError(t, err)
+		expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+
+		length := computeABIEncodedSignedOrderStringLength(signedOrder)
+
+		assert.Equal(t, expectedLength, length, label)
+	}
+}
+
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
 	return func(t *testing.T) {
@@ -446,8 +452,4 @@ func signedOrderWithCustomSignature(t *testing.T, signature []byte) *zeroex.Sign
 	signedOrder := scenario.NewSignedTestOrder(t)
 	signedOrder.Signature = signature
 	return signedOrder
-}
-
-func copyOrder(order zeroex.Order) zeroex.Order {
-	return order
 }

@@ -4,24 +4,27 @@
     "engines": {
         "node": ">=11"
     },
-    "workspaces": [ 
-        "packages/*" 
-    ], 
+    "workspaces": [
+        "packages/*"
+    ],
     "scripts": {
         "wsrun": "wsrun",
-        "build": "wsrun --stages --fast-exit --exclude-missing build $PKG",
+        "build": "wsrun --stages --fast-exit --exclude-missing build",
         "build:ts": "tsc -b",
         "watch:ts": "tsc -b -w",
-        "clean": "wsrun --fast-exit --exclude-missing clean $PKG",
-        "docs:md": "wsrun --fast-exit --exclude-missing docs:md $PKG",
-        "lint": "wsrun lint $PKG",
-        "test": "wsrun --fast-exit --exclude-missing test $PKG "
+        "clean": "wsrun --fast-exit --exclude-missing clean",
+        "docs:md": "wsrun --fast-exit --exclude-missing docs:md",
+        "lint": "wsrun lint",
+        "prettier": "prettier --write '**/*.{ts,tsx,json,md}' --config .prettierrc",
+        "prettier:ci": "prettier --list-different '**/*.{ts,tsx,json,md}' --config .prettierrc",
+        "test": "wsrun --fast-exit --exclude-missing test "
     },
     "description": "A peer-to-peer network for sharing orders",
     "main": "index.js",
     "repository": "git@github.com:0xProject/0x-mesh.git",
     "private": true,
     "devDependencies": {
+        "@0x/ts-doc-gen": "^0.0.16",
         "@0x/tslint-config": "^4.0.0",
         "@types/base64-arraybuffer": "^0.1.0",
         "es6-promise": "^4.2.6",
@@ -31,10 +34,13 @@
         "prettier": "^1.19.1",
         "ts-loader": "^6.2.1",
         "tslint": "5.11.0",
-        "typescript": "^3.5.3",
+        "typescript": "^3.9.3",
         "webpack": "^4.41.5",
         "webpack-cli": "^3.3.10",
         "wrtc": "0.4.1",
         "wsrun": "^5.2.0"
+    },
+    "resolutions": {
+        "@0x/ts-doc-gen/typedoc-plugin-markdown": "2.2.x"
     }
 }

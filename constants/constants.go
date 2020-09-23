@@ -21,11 +21,12 @@ const TestChainID = 1337
 // GanacheEndpoint specifies the Ganache test Ethereum node JSON RPC endpoint used in tests
 const GanacheEndpoint = "http://localhost:8545"
 
-// NullAddress is an Ethereum address with all zeroes.
-var NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-
-// NullBytes is an empty byte array
-var NullBytes = common.FromHex("0x")
+var (
+	// NullAddress is an Ethereum address with all zeroes.
+	NullAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	// NullBytes is an empty byte array
+	NullBytes = common.FromHex("0x")
+)
 
 var (
 	// GanacheAccount0 is the first account exposed on the Ganache test Ethereum node
@@ -105,3 +106,8 @@ var (
 const ParityFilterUnknownBlock = "One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found"
 
 const GethFilterUnknownBlock = "unknown block"
+
+var (
+	ZRXAssetData  = common.Hex2Bytes("f47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c")
+	WETHAssetData = common.Hex2Bytes("f47261b00000000000000000000000000b1ba0af832d7c05fd64161e0db78e85978e8082")
+)

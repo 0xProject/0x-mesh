@@ -18,6 +18,8 @@ type violationsTracker struct {
 
 // BUG(albrow): newViolationsTracker currently leaks goroutines due to a
 // limitation of the caching library used under the hood.
+//nolint:unparam // NOTE(jalextowle): Leave the function signature the same so
+//                  that things don't need to be changed when the bug is fixed
 func newViolationsTracker(ctx context.Context) *violationsTracker {
 	cache := ccache.New(ccache.Configure().MaxSize(violationsCacheSize).ItemsToPrune(violationsCacheSize / 10))
 	// TODO(albrow): We should be calling Stop to cleanup any goroutines

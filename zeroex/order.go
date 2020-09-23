@@ -118,8 +118,8 @@ func (c ContractEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// OrderEvent is the order event emitted by Mesh nodes on the "orders" topic
-// when calling JSON-RPC method `mesh_subscribe`
+// OrderEvent is the order event emitted by the Mesh GraphQL API or the SubScribeToOrderEvents
+// method in core.
 type OrderEvent struct {
 	// Timestamp is an order event timestamp that can be used for bookkeeping purposes.
 	// If the OrderEvent represents a Mesh-specific event (e.g., ADDED, STOPPED_WATCHING),
@@ -513,10 +513,10 @@ func SignTestOrder(order *Order) (*SignedOrder, error) {
 	return signedOrder, nil
 }
 
-// Trim converts the order to a TrimmedOrder, which is the format expected by
+// Trim converts the order to a LibOrderOrder, which is the format expected by
 // our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrder) Trim() wrappers.TrimmedOrder {
-	return wrappers.TrimmedOrder{
+func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
+	return wrappers.LibOrderOrder{
 		MakerAddress:          s.MakerAddress,
 		TakerAddress:          s.TakerAddress,
 		FeeRecipientAddress:   s.FeeRecipientAddress,
@@ -602,8 +602,6 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 	})
 	return signedOrderBytes, err
 }
-
-const addressHexLength = 42
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
 func (s *SignedOrder) UnmarshalJSON(data []byte) error {

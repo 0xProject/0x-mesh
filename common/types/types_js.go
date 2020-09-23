@@ -5,6 +5,8 @@ package types
 import (
 	"encoding/json"
 	"syscall/js"
+
+	"github.com/0xProject/0x-mesh/packages/mesh-browser/go/jsutil"
 )
 
 func (r GetOrdersResponse) JSValue() js.Value {
@@ -20,7 +22,7 @@ func (r GetOrdersResponse) JSValue() js.Value {
 
 func (l LatestBlock) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
-		"number": l.Number,
+		"number": l.Number.String(),
 		"hash":   l.Hash.String(),
 	})
 }
@@ -42,9 +44,14 @@ func (s Stats) JSValue() js.Value {
 		"numOrders":                         s.NumOrders,
 		"numOrdersIncludingRemoved":         s.NumOrdersIncludingRemoved,
 		"numPinnedOrders":                   s.NumPinnedOrders,
-		"maxExpirationTime":                 s.MaxExpirationTime,
+		"maxExpirationTime":                 s.MaxExpirationTime.String(),
 		"startOfCurrentUTCDay":              s.StartOfCurrentUTCDay.String(),
 		"ethRPCRequestsSentInCurrentUTCDay": s.EthRPCRequestsSentInCurrentUTCDay,
 		"ethRPCRateLimitExpiredRequests":    s.EthRPCRateLimitExpiredRequests,
 	})
+}
+
+func (o OrderWithMetadata) JSValue() js.Value {
+	value, _ := jsutil.InefficientlyConvertToJS(o)
+	return value
 }

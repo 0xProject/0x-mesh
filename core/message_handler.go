@@ -94,9 +94,9 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 			"from":              msg.From.String(),
 		}).Trace("not storing rejected order received from peer")
 		switch rejectedOrderInfo.Status {
-		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.ROCoordinatorRequestFailed, ordervalidator.RODatabaseFullOfOrders:
-			// Don't incur a negative score for these status types (it might not be
-			// their fault).
+		case ordervalidator.ROInternalError, ordervalidator.ROEthRPCRequestFailed, ordervalidator.RODatabaseFullOfOrders:
+			// Don't incur a negative score for these status types
+			// (it might not be their fault).
 		default:
 			// For other status types, we need to update the peer's score
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)

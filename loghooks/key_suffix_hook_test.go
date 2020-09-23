@@ -14,8 +14,6 @@ import (
 )
 
 type myStruct struct {
-	myInt    int
-	myString string
 }
 
 func TestGetTypeForValue(t *testing.T) {

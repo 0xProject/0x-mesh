@@ -9,38 +9,42 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
 	"github.com/0xProject/0x-mesh/ethereum/ethrpcclient"
-	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
-	"github.com/0xProject/0x-mesh/ethereum/simplestack"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
-	"github.com/0xProject/0x-mesh/meshdb"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/davecgh/go-spew/spew"
+	geth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
+	blockRetentionLimit         = 20
 	ethereumRPCRequestTimeout   = 30 * time.Second
-	miniHeaderRetentionLimit    = 2
-	blockPollingInterval        = 1000 * time.Millisecond
+	blockPollingInterval        = 1 * time.Second
 	ethereumRPCMaxContentLength = 524288
-	maxEthRPCRequestsPer24HrUTC = 1000000
-	maxEthRPCRequestsPerSeconds = 1000.0
+
+	// processBlockSleepTime is the amount of time ot wait for order watcher to
+	// process block events. If possible, we should listen for order events instead
+	// of sleeping, but we need to use this in some places where we don't expect
+	// any order events.
+	processBlockSleepTime = 350 * time.Millisecond
 )
 
 var (
@@ -111,6 +115,105 @@ func init() {
 	}
 }
 
+func TestOrderWatcherTakerWhitelist(t *testing.T) {
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	require.NoError(t, err)
+
+	testCases := []*struct {
+		order                     *zeroex.SignedOrder
+		isTakerAddressWhitelisted bool
+	}{
+		{
+			scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true)),
+			true,
+		},
+		{
+			scenario.NewSignedTestOrder(
+				t,
+				orderopts.SetupMakerState(true),
+				orderopts.TakerAddress(ganacheAddresses.ExchangeProxyFlashWallet),
+			),
+			true,
+		},
+		{
+			scenario.NewSignedTestOrder(
+				t,
+				orderopts.SetupMakerState(true),
+				orderopts.TakerAddress(common.HexToAddress("0x1")),
+			),
+			false,
+		},
+	}
+
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+
+	for _, testCase := range testCases {
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, false, constants.TestChainID)
+		require.NoError(t, err)
+		if testCase.isTakerAddressWhitelisted {
+			orderHash, err := testCase.order.ComputeOrderHash()
+			require.NoError(t, err)
+			assert.Len(t, results.Rejected, 0)
+			require.Len(t, results.Accepted, 1)
+			assert.Equal(t, results.Accepted[0].OrderHash, orderHash)
+		} else {
+			orderHash, err := testCase.order.ComputeOrderHash()
+			require.NoError(t, err)
+			assert.Len(t, results.Accepted, 0)
+			require.Len(t, results.Rejected, 1)
+			assert.Equal(t, results.Rejected[0].OrderHash, orderHash)
+			assert.Equal(t, results.Rejected[0].Kind, ordervalidator.MeshValidation)
+			assert.Equal(t, results.Rejected[0].Status, ordervalidator.ROTakerAddressNotAllowed)
+		}
+	}
+}
+
+func TestOrderWatcherStoresValidOrders(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	signedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+	)
+	setupOrderWatcherScenario(ctx, t, database, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+
+	orders, err := database.FindOrders(nil)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
+}
+
 func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -119,13 +222,18 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	signedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.MakerAssetData(scenario.ZRXAssetData),
+	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -144,13 +252,19 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
@@ -161,7 +275,9 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
@@ -173,9 +289,9 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 		orderopts.MakerFeeAssetData(scenario.WETHAssetData),
 		orderopts.MakerFee(wethFeeAmount),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -194,12 +310,19 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
@@ -210,7 +333,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -220,9 +345,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -241,13 +366,20 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
+
 }
 
 func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
@@ -258,7 +390,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -268,9 +402,9 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's NFT approval to ERC721Proxy. We do this by setting the
 	// operator/spender to the null address.
@@ -290,13 +424,19 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
@@ -307,7 +447,9 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
@@ -316,9 +458,9 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's ERC1155 approval to ERC1155Proxy
 	opts := &bind.TransactOpts{
@@ -337,13 +479,19 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
@@ -354,7 +502,9 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	tokenID := big.NewInt(1)
@@ -365,9 +515,9 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 		orderopts.MakerAssetAmount(big.NewInt(1)),
 		orderopts.MakerAssetData(makerAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Reduce Maker's ERC1155 balance
 	opts := &bind.TransactOpts{
@@ -386,13 +536,19 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
@@ -403,16 +559,18 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
 		orderopts.SetupMakerState(true),
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Remove Maker's ZRX approval to ERC20Proxy
 	opts := &bind.TransactOpts{
@@ -431,13 +589,19 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
@@ -448,7 +612,9 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -456,9 +622,9 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Transfer makerAsset out of maker address
 	opts := &bind.TransactOpts{
@@ -477,13 +643,19 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Transfer makerAsset back to maker address
 	zrxCoinbase := constants.GanacheAccount0
@@ -503,13 +675,19 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
-	var newOrders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&newOrders)
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherNoChange(t *testing.T) {
@@ -520,7 +698,11 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+	}()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -528,16 +710,23 @@ func TestOrderWatcherNoChange(t *testing.T) {
 		orderopts.MakerAssetData(scenario.ZRXAssetData),
 		orderopts.TakerAssetData(scenario.WETHAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, _ := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	dbOrder := orders[0]
-	assert.Equal(t, false, dbOrder.IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Transfer more ZRX to makerAddress (doesn't impact the order)
 	zrxCoinbase := constants.GanacheAccount0
@@ -552,13 +741,25 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	var newOrders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&newOrders)
+	// HACK(albrow): Normally we would wait for order events instead of sleeping here,
+	// but in this case we don't *expect* any order events. Sleeping is a workaround.
+	// We could potentially solve this by adding internal events inside of order watcher
+	// that are only used for testing, but that would also incur some overhead.
+	time.Sleep(processBlockSleepTime)
+
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	require.NotEqual(t, dbOrder.LastUpdated, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
@@ -569,7 +770,9 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t,
@@ -577,9 +780,9 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 		orderopts.MakerAssetData(scenario.WETHAssetData),
 		orderopts.TakerAssetData(scenario.ZRXAssetData),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Withdraw maker's WETH (i.e. decrease WETH balance)
 	// HACK(fabio): For some reason the txn fails with "out of gas" error with the
@@ -602,12 +805,20 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderBecameUnfunded, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
 	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Deposit maker's ETH (i.e. increase WETH balance)
 	opts = &bind.TransactOpts{
@@ -627,13 +838,19 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 
-	var newOrders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&newOrders)
+	latestStoredBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherCanceled(t *testing.T) {
@@ -644,13 +861,15 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Cancel order
 	opts := &bind.TransactOpts{
@@ -670,13 +889,19 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherCancelUpTo(t *testing.T) {
@@ -687,13 +912,15 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Cancel order with epoch
 	opts := &bind.TransactOpts{
@@ -713,13 +940,19 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderCancelled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherERC20Filled(t *testing.T) {
@@ -730,7 +963,9 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
@@ -738,9 +973,9 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Fill order
 	opts := &bind.TransactOpts{
@@ -761,13 +996,19 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFullyFilled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, big.NewInt(0), orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
 
 func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
@@ -778,7 +1019,9 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
 	takerAddress := constants.GanacheAccount3
@@ -786,9 +1029,9 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.SetupTakerAddress(takerAddress),
 	)
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, ethClient, meshDB, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder)
 
 	// Partially fill order
 	opts := &bind.TransactOpts{
@@ -810,14 +1053,21 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderFilled, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	latestStoredBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, false, orders[0].IsRemoved)
-	assert.Equal(t, halfAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     halfAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: latestStoredBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 }
+
 func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
@@ -826,12 +1076,11 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
+	dbOptions := db.TestOptions()
+	database, err := db.New(ctx, dbOptions)
+	require.NoError(t, err)
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
@@ -840,23 +1089,25 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Simulate a block found with a timestamp past expirationTime
-	latestBlock, err := meshDB.FindLatestMiniHeader()
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
-	nextBlock := &miniheader.MiniHeader{
+	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
 		Hash:      common.HexToHash("0x1"),
 		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
 		Timestamp: expirationTime.Add(1 * time.Minute),
 	}
 	expiringBlockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type:        blockwatch.Added,
 			BlockHeader: nextBlock,
 		},
@@ -869,38 +1120,42 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	orderEvent := orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState)
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	assert.Equal(t, orderEvent.OrderHash, orders[0].Hash)
-	assert.Equal(t, true, orders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, orders[0].FillableTakerAssetAmount)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          true,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: nextBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
 
 	// Simulate a block re-org
 	replacementBlockHash := common.HexToHash("0x2")
 	reorgBlockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type:        blockwatch.Removed,
 			BlockHeader: nextBlock,
 		},
-		&blockwatch.Event{
+		{
 			Type: blockwatch.Added,
-			BlockHeader: &miniheader.MiniHeader{
+			BlockHeader: &types.MiniHeader{
 				Parent:    nextBlock.Parent,
 				Hash:      replacementBlockHash,
 				Number:    nextBlock.Number,
-				Logs:      []types.Log{},
+				Logs:      []ethtypes.Log{},
 				Timestamp: expirationTime.Add(-2 * time.Hour),
 			},
 		},
-		&blockwatch.Event{
+		{
 			Type: blockwatch.Added,
-			BlockHeader: &miniheader.MiniHeader{
+			BlockHeader: &types.MiniHeader{
 				Parent:    replacementBlockHash,
 				Hash:      common.HexToHash("0x3"),
 				Number:    big.NewInt(0).Add(nextBlock.Number, big.NewInt(1)),
-				Logs:      []types.Log{},
+				Logs:      []ethtypes.Log{},
 				Timestamp: expirationTime.Add(-1 * time.Hour),
 			},
 		},
@@ -913,13 +1168,17 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	orderEvent = orderEvents[0]
 	assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState)
 
-	var newOrders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&newOrders)
+	newOrders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, newOrders, 1)
-	assert.Equal(t, orderEvent.OrderHash, newOrders[0].Hash)
-	assert.Equal(t, false, newOrders[0].IsRemoved)
-	assert.Equal(t, signedOrder.TakerAssetAmount, newOrders[0].FillableTakerAssetAmount)
+	expectedOrderState = orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		fillableAmount:     signedOrder.TakerAssetAmount,
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: reorgBlockEvents[len(reorgBlockEvents)-1].BlockHeader,
+	}
+	checkOrderState(t, expectedOrderState, newOrders[0])
 }
 
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
@@ -930,23 +1189,16 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	// Set up test and orderWatcher. Manually change maxOrders.
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
-
-	// Store metadata entry in DB
-	metadata := &meshdb.Metadata{
-		EthereumChainID:   1337,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
-	}
-	err = meshDB.SaveMetadata(metadata)
-	require.NoError(t, err)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	orderWatcher.maxOrders = 20
+	defer cancel()
+	maxOrders := 10
+	dbOpts := db.TestOptions()
+	dbOpts.MaxOrders = maxOrders
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	orderWatcher.maxOrders = maxOrders
 
 	// Create and watch maxOrders orders. Each order has a different expiration time.
 	optionsForIndex := func(index int) []orderopts.Option {
@@ -957,14 +1209,14 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		}
 	}
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, orderWatcher.maxOrders, optionsForIndex)
+	signedOrders := scenario.NewSignedTestOrdersBatch(t, maxOrders, optionsForIndex)
 	for _, signedOrder := range signedOrders {
-		watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
+		watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
 	}
 
 	// We don't care about the order events above for the purposes of this test,
 	// so we only subscribe now.
-	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// The next order should cause some orders to be removed and the appropriate
@@ -975,32 +1227,76 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
-	expectedOrderEvents := int(float64(orderWatcher.maxOrders)*(1-maxOrdersTrimRatio)) + 1
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
+	expectedOrderEvents := 2
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
-	for i, orderEvent := range orderEvents {
-		// Last event should be ADDED. The other events should be STOPPED_WATCHING.
-		if i == expectedOrderEvents-1 {
-			assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState, "order event %d had wrong EndState", i)
-		} else {
-			// For STOPPED_WATCHING events, we also make sure that the expiration time is after
-			// the current max expiration time.
-			assert.Equal(t, zeroex.ESStoppedWatching, orderEvent.EndState, "order event %d had wrong EndState", i)
+
+	storedMaxExpirationTime, err := database.GetCurrentMaxExpirationTime()
+	require.NoError(t, err)
+
+	// One event should be STOPPED_WATCHING. The other event should be ADDED.
+	// The order in which the events are emitted is not guaranteed.
+	numAdded := 0
+	numStoppedWatching := 0
+	for _, orderEvent := range orderEvents {
+		switch orderEvent.EndState {
+		case zeroex.ESOrderAdded:
+			numAdded += 1
 			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
-			assert.True(t, orderExpirationTime.Cmp(orderWatcher.MaxExpirationTime()) != -1, "remaining order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, orderWatcher.MaxExpirationTime())
+			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
+		case zeroex.ESStoppedWatching:
+			numStoppedWatching += 1
+			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
+		default:
+			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
 		}
 	}
+	assert.Equal(t, 1, numAdded, "wrong number of ADDED events")
+	assert.Equal(t, 1, numStoppedWatching, "wrong number of STOPPED_WATCHING events")
 
 	// Now we check that the correct number of orders remain and that all
 	// remaining orders have an expiration time less than the current max.
-	expectedRemainingOrders := int(float64(orderWatcher.maxOrders)*maxOrdersTrimRatio) + 1
-	var remainingOrders []*meshdb.Order
-	require.NoError(t, meshDB.Orders.FindAll(&remainingOrders))
+	expectedRemainingOrders := orderWatcher.maxOrders
+	remainingOrders, err := database.FindOrders(nil)
+	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
-		assert.True(t, order.SignedOrder.ExpirationTimeSeconds.Cmp(orderWatcher.MaxExpirationTime()) == -1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.SignedOrder.ExpirationTimeSeconds, orderWatcher.MaxExpirationTime())
+		assert.True(t, order.ExpirationTimeSeconds.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, storedMaxExpirationTime)
 	}
+
+	// Confirm that a pinned order will be accepted even if its expiration
+	// is greater than the current max.
+	pinnedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(big.NewInt(0).Add(storedMaxExpirationTime, big.NewInt(10))),
+	)
+	pinnedOrderHash, err := pinnedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, pinnedOrder, true)
+
+	expectedOrderEvents = 2
+	orderEvents = waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
+	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
+
+	// One event should be STOPPED_WATCHING. The other event should be ADDED.
+	// The order in which the events are emitted is not guaranteed.
+	numAdded = 0
+	numStoppedWatching = 0
+	for _, orderEvent := range orderEvents {
+		switch orderEvent.EndState {
+		case zeroex.ESOrderAdded:
+			numAdded += 1
+			assert.Equal(t, pinnedOrderHash.Hex(), orderEvent.OrderHash.Hex(), "ADDED event had wrong order hash")
+		case zeroex.ESStoppedWatching:
+			numStoppedWatching += 1
+		default:
+			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
+		}
+	}
+	assert.Equal(t, 1, numAdded, "wrong number of ADDED events")
+	assert.Equal(t, 1, numStoppedWatching, "wrong number of STOPPED_WATCHING events")
 }
 
 func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
@@ -1011,13 +1307,12 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -1027,13 +1322,6 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	numOrders := 2
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
-
-	// Creating a valid order involves transferring sufficient funds to the maker, and setting their allowance for
-	// the maker asset. These transactions must be mined and Mesh's BlockWatcher poller must process these blocks
-	// in order for the order validation run at order submission to occur at a block number equal or higher then
-	// the one where these state changes were included. With the BlockWatcher poller configured to run every 200ms,
-	// we wait 500ms here to give it ample time to run before submitting the above order to the Mesh node.
-	time.Sleep(500 * time.Millisecond)
 
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
@@ -1048,8 +1336,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 	}
 
-	var orders []*meshdb.Order
-	err = meshDB.Orders.FindAll(&orders)
+	orders, err := database.FindOrders(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, numOrders)
 }
@@ -1062,30 +1349,28 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
-
-	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Create and add two orders to OrderWatcher
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderOne)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderOne, false)
 	signedOrderTwo := signedOrders[1]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrderTwo)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderTwo, false)
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
 
 	// Set lastUpdate for signedOrderOne to more than defaultLastUpdatedBuffer so that signedOrderOne
 	// does not get re-validated by the cleanup job
-	signedOrderOneDB := &meshdb.Order{}
-	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), signedOrderOneDB)
-	require.NoError(t, err)
-	signedOrderOneDB.LastUpdated = time.Now().Add(-defaultLastUpdatedBuffer - 1*time.Minute)
-	err = meshDB.Orders.Update(signedOrderOneDB)
+	err = database.UpdateOrder(signedOrderOneHash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		orderToUpdate.LastUpdated = time.Now().Add(-defaultLastUpdatedBuffer - 1*time.Minute)
+		return orderToUpdate, nil
+	})
 	require.NoError(t, err)
 
 	// Subscribe to OrderWatcher
@@ -1098,165 +1383,10 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	select {
-	case _ = <-orderEventsChan:
+	case <-orderEventsChan:
 		t.Error("Expected no orderEvents to fire after calling Cleanup()")
 	case <-time.After(100 * time.Millisecond):
 		// Noop
-	}
-}
-
-func TestOrderWatcherUpdateBlockHeadersStoredInDBHeaderExists(t *testing.T) {
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
-
-	headerOne := &miniheader.MiniHeader{
-		Number:    big.NewInt(5),
-		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
-		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
-		Timestamp: time.Now().UTC(),
-	}
-
-	testCases := []struct {
-		events              []*blockwatch.Event
-		startMiniHeaders    []*miniheader.MiniHeader
-		expectedMiniHeaders []*miniheader.MiniHeader
-	}{
-		// Scenario 1: Header 1 exists in DB. Get's removed and then re-added.
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-			expectedMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-		},
-		// Scenario 2: Header doesn't exist, get's added and then removed
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders:    []*miniheader.MiniHeader{},
-			expectedMiniHeaders: []*miniheader.MiniHeader{},
-		},
-		// Scenario 3: Header added, removed then re-added
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders: []*miniheader.MiniHeader{},
-			expectedMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-		},
-		// Scenario 4: Header removed, added then removed again
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-			expectedMiniHeaders: []*miniheader.MiniHeader{},
-		},
-		// Scenario 5: Call added twice for the same block
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Added,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders: []*miniheader.MiniHeader{},
-			expectedMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-		},
-		// Scenario 6: Call removed twice for the same block
-		{
-			events: []*blockwatch.Event{
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-				&blockwatch.Event{
-					Type:        blockwatch.Removed,
-					BlockHeader: headerOne,
-				},
-			},
-			startMiniHeaders: []*miniheader.MiniHeader{
-				headerOne,
-			},
-			expectedMiniHeaders: []*miniheader.MiniHeader{},
-		},
-	}
-
-	for _, testCase := range testCases {
-		for _, startMiniHeader := range testCase.startMiniHeaders {
-			err = meshDB.MiniHeaders.Insert(startMiniHeader)
-			require.NoError(t, err)
-		}
-
-		miniHeadersColTxn := meshDB.MiniHeaders.OpenTransaction()
-		defer func() {
-			_ = miniHeadersColTxn.Discard()
-		}()
-
-		err = updateBlockHeadersStoredInDB(miniHeadersColTxn, testCase.events)
-		require.NoError(t, err)
-
-		err = miniHeadersColTxn.Commit()
-		require.NoError(t, err)
-
-		miniHeaders := []*miniheader.MiniHeader{}
-		err = meshDB.MiniHeaders.FindAll(&miniHeaders)
-		require.NoError(t, err)
-		assert.Equal(t, testCase.expectedMiniHeaders, miniHeaders)
-
-		err := meshDB.ClearAllMiniHeaders()
-		require.NoError(t, err)
 	}
 }
 
@@ -1268,12 +1398,10 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
@@ -1285,29 +1413,25 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
 	signedOrderTwo := signedOrders[1]
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false)
 
 	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 	require.NoError(t, err)
-	var orderOne meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	orderOne, err := database.GetOrder(signedOrderOneHash)
 	require.NoError(t, err)
 	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
 	// expiry event for it.
-	ordersToRevalidate := map[common.Hash]*meshdb.Order{
-		signedOrderOneHash: &orderOne,
+	ordersToRevalidate := map[common.Hash]*types.OrderWithMetadata{
+		signedOrderOneHash: orderOne,
 	}
 
-	ordersColTxn := meshDB.Orders.OpenTransaction()
-	defer func() {
-		_ = ordersColTxn.Discard()
-	}()
-
-	previousLatestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	latestBlockTimestamp := expirationTime.Add(1 * time.Second)
-	orderEvents, err := orderWatcher.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, ordersToRevalidate)
+	// Make a "fake" block with a timestamp 1 second after expirationTime.
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	latestBlock.Timestamp = expirationTime.Add(1 * time.Second)
+	orderEvents, err := orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 1)
@@ -1319,11 +1443,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), orderEvent.FillableTakerAssetAmount)
 	assert.Len(t, orderEvent.ContractEvents, 0)
 
-	err = ordersColTxn.Commit()
-	require.NoError(t, err)
-
-	var orderTwo meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderTwoHash.Bytes(), &orderTwo)
+	orderTwo, err := database.GetOrder(signedOrderTwoHash)
 	require.NoError(t, err)
 	assert.Equal(t, true, orderTwo.IsRemoved)
 }
@@ -1336,12 +1456,10 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
@@ -1353,25 +1471,25 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
 	signedOrderTwo := signedOrders[1]
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderOne)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrderTwo)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Simulate a block found with a timestamp past expirationTime
-	latestBlock, err := meshDB.FindLatestMiniHeader()
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
 	blockTimestamp := expirationTime.Add(1 * time.Minute)
-	nextBlock := &miniheader.MiniHeader{
+	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
 		Hash:      common.HexToHash("0x1"),
 		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
 		Timestamp: blockTimestamp,
 	}
 	expiringBlockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type:        blockwatch.Added,
 			BlockHeader: nextBlock,
 		},
@@ -1387,25 +1505,20 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 
 	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 	require.NoError(t, err)
-	var orderOne meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderOneHash.Bytes(), &orderOne)
+	orderOne, err := database.GetOrder(signedOrderOneHash)
 	require.NoError(t, err)
 	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
 	// unexpiry event for it.
-	ordersToRevalidate := map[common.Hash]*meshdb.Order{
-		signedOrderOneHash: &orderOne,
+	ordersToRevalidate := map[common.Hash]*types.OrderWithMetadata{
+		signedOrderOneHash: orderOne,
 	}
 
-	ordersColTxn := meshDB.Orders.OpenTransaction()
-	defer func() {
-		_ = ordersColTxn.Discard()
-	}()
-
-	// LatestBlockTimestamp is earlier than previous latest simulating block-reorg where new latest block
-	// has an earlier timestamp than the last
-	previousLatestBlockTimestamp := blockTimestamp
-	latestBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.handleOrderExpirations(ordersColTxn, latestBlockTimestamp, previousLatestBlockTimestamp, ordersToRevalidate)
+	// Make a "fake" block with a timestamp 1 minute before expirationTime. This simulates
+	// block-reorg where new latest block has an earlier timestamp than the last
+	latestBlock, err = database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	latestBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 1)
@@ -1417,79 +1530,9 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	assert.Equal(t, signedOrderTwo.TakerAssetAmount, orderEvent.FillableTakerAssetAmount)
 	assert.Len(t, orderEvent.ContractEvents, 0)
 
-	err = ordersColTxn.Commit()
-	require.NoError(t, err)
-
-	var orderTwo meshdb.Order
-	err = meshDB.Orders.FindByID(signedOrderTwoHash.Bytes(), &orderTwo)
+	orderTwo, err := database.GetOrder(signedOrderTwoHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, orderTwo.IsRemoved)
-}
-
-func TestOrderWatcherMaintainMiniHeaderRetentionLimit(t *testing.T) {
-	if !serialTestsEnabled {
-		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
-	}
-
-	// Set up test and orderWatcher
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
-	err = meshDB.UpdateMiniHeaderRetentionLimit(miniHeaderRetentionLimit)
-	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
-	_, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-
-	latestMiniHeader, err := meshDB.FindLatestMiniHeader()
-	require.NoError(t, err)
-
-	headerOne := &miniheader.MiniHeader{
-		Number:    big.NewInt(0).Add(latestMiniHeader.Number, big.NewInt(1)),
-		Hash:      common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
-		Parent:    common.HexToHash("0x26b13ac89500f7fcdd141b7d1b30f3a82178431eca325d1cf10998f9d68ff5ba"),
-		Timestamp: time.Now().UTC(),
-	}
-	headerTwo := &miniheader.MiniHeader{
-		Number:    big.NewInt(0).Add(headerOne.Number, big.NewInt(1)),
-		Hash:      common.HexToHash("0x72ca9481b09b8c00b2c38575e5652f2de1077f1676c6b868cf575229fcb06a96"),
-		Parent:    common.HexToHash("0x293b9ea024055a3e9eddbf9b9383dc7731744111894af6aa038594dc1b61f87f"),
-		Timestamp: time.Now().UTC(),
-	}
-	headerThree := &miniheader.MiniHeader{
-		Number:    big.NewInt(0).Add(headerTwo.Number, big.NewInt(1)),
-		Hash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		Parent:    common.HexToHash("0x72ca9481b09b8c00b2c38575e5652f2de1077f1676c6b868cf575229fcb06a96"),
-		Timestamp: time.Now().UTC(),
-	}
-
-	blockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
-			Type:        blockwatch.Added,
-			BlockHeader: headerOne,
-		},
-		&blockwatch.Event{
-			Type:        blockwatch.Added,
-			BlockHeader: headerTwo,
-		},
-		&blockwatch.Event{
-			Type:        blockwatch.Added,
-			BlockHeader: headerThree,
-		},
-	}
-	err = orderWatcher.handleBlockEvents(ctx, blockEvents)
-	require.NoError(t, err)
-
-	latestMiniHeader, err = meshDB.FindLatestMiniHeader()
-	require.NoError(t, err)
-	assert.Equal(t, headerThree.Hash, latestMiniHeader.Hash)
-
-	totalMiniHeaders, err := meshDB.MiniHeaders.Count()
-	require.NoError(t, err)
-	assert.Equal(t, meshDB.MiniHeaderRetentionLimit, totalMiniHeaders)
 }
 
 // Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
@@ -1503,12 +1546,10 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	// Set up test and orderWatcher
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	meshDB, err := meshdb.New("/tmp/leveldb_testing/"+uuid.New().String(), ganacheAddresses)
-	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
 
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
@@ -1517,25 +1558,25 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, ethClient, signedOrder)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false)
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Simulate a block found with a timestamp past expirationTime. This will mark the order as removed
 	// and will remove it from the expiration watcher.
-	latestBlock, err := meshDB.FindLatestMiniHeader()
+	latestBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
 	blockTimestamp := expirationTime.Add(1 * time.Minute)
-	nextBlock := &miniheader.MiniHeader{
+	nextBlock := &types.MiniHeader{
 		Parent:    latestBlock.Hash,
 		Hash:      common.HexToHash("0x1"),
 		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
 		Timestamp: blockTimestamp,
 	}
 	expiringBlockEvents := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type:        blockwatch.Added,
 			BlockHeader: nextBlock,
 		},
@@ -1548,18 +1589,12 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	var orderOne meshdb.Order
-	err = meshDB.Orders.FindByID(orderHash.Bytes(), &orderOne)
+	orderOne, err := database.GetOrder(orderHash)
 	require.NoError(t, err)
-
-	ordersColTxn := meshDB.Orders.OpenTransaction()
-	defer func() {
-		_ = ordersColTxn.Discard()
-	}()
 
 	validationResults := ordervalidator.ValidationResults{
 		Accepted: []*ordervalidator.AcceptedOrderInfo{
-			&ordervalidator.AcceptedOrderInfo{
+			{
 				OrderHash:                orderHash,
 				SignedOrder:              signedOrder,
 				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrder.TakerAssetAmount, big.NewInt(2)),
@@ -1568,19 +1603,23 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		},
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
-	orderHashToDBOrder := map[common.Hash]*meshdb.Order{
-		orderHash: &orderOne,
+	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{
+		orderHash: orderOne,
 	}
 	exchangeFillEvent := "ExchangeFillEvent"
 	orderHashToEvents := map[common.Hash][]*zeroex.ContractEvent{
-		orderHash: []*zeroex.ContractEvent{
+		orderHash: {
 			&zeroex.ContractEvent{
 				Kind: exchangeFillEvent,
 			},
 		},
 	}
-	validationBlockTimestamp := expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(ordersColTxn, &validationResults, orderHashToDBOrder, orderHashToEvents, validationBlockTimestamp)
+	// Make a "fake" block with a timestamp 1 minute before expirationTime. This simulates
+	// block-reorg where new latest block has an earlier timestamp than the last
+	validationBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	validationBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
+	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, validationBlock)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 2)
@@ -1594,11 +1633,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	assert.Len(t, orderEventOne.ContractEvents, 1)
 	assert.Equal(t, orderEventOne.ContractEvents[0].Kind, exchangeFillEvent)
 
-	err = ordersColTxn.Commit()
-	require.NoError(t, err)
-
-	var existingOrder meshdb.Order
-	err = meshDB.Orders.FindByID(orderHash.Bytes(), &existingOrder)
+	existingOrder, err := database.GetOrder(orderHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, existingOrder.IsRemoved)
 }
@@ -1607,9 +1642,9 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 	blockEventsChan := make(chan []*blockwatch.Event, 100)
 	ts := time.Now().Add(1 * time.Hour)
 	blockEventsOne := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type: blockwatch.Added,
-			BlockHeader: &miniheader.MiniHeader{
+			BlockHeader: &types.MiniHeader{
 				Parent:    common.HexToHash("0x0"),
 				Hash:      common.HexToHash("0x1"),
 				Number:    big.NewInt(1),
@@ -1620,9 +1655,9 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 	blockEventsChan <- blockEventsOne
 
 	blockEventsTwo := []*blockwatch.Event{
-		&blockwatch.Event{
+		{
 			Type: blockwatch.Added,
-			BlockHeader: &miniheader.MiniHeader{
+			BlockHeader: &types.MiniHeader{
 				Parent:    common.HexToHash("0x1"),
 				Hash:      common.HexToHash("0x2"),
 				Number:    big.NewInt(2),
@@ -1648,11 +1683,304 @@ func TestDrainAllBlockEventsChan(t *testing.T) {
 	require.Equal(t, allEvents[0], blockEventsOne[0])
 }
 
-func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *ethclient.Client, meshDB *meshdb.MeshDB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
-	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, meshDB)
+func TestRevalidateOrdersForMissingEvents(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	database, err := db.New(ctx, db.TestOptions())
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	err = orderWatcher.RevalidateOrdersForMissingEvents(ctx)
+	require.NoError(t, err)
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
+// TestMissingOrderEventsWithMissingBlocks tests that the orderwatcher will not
+// miss block events for orders that were originally validated in a block that
+// currently exists in the database.
+func TestMissingOrderEvents(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	// TODO(jalextowle): This test will fail with "context canceled" if a context
+	// with a timeout is used here.
+	ctx := context.Background()
+	dbOpts := db.TestOptions()
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	validator, err := ordervalidator.New(
+		&SlowContractCaller{
+			caller:            ethRPCClient,
+			contractCallDelay: time.Second,
+		},
+		constants.TestChainID,
+		ethereumRPCMaxContentLength,
+		ganacheAddresses,
+	)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, dbOpts.MaxMiniHeaders, validator)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	// Add new block events and then check to see if the order has been removed from the blockwatcher
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &types.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
+	}
+	newBlockEvents := []*blockwatch.Event{
+		{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- newBlockEvents
+
+	// Await canceled event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
+// TestMissingOrderEventsWithMissingBlocks tests that the orderwatcher will not
+// miss block events for orders that were originally validated in a block that no
+// longer exists in the database. This covers an edge case where the blockwatcher
+// had to catch up a significant number of blocks during a previous call to
+// `handleBlockEvents`.
+// TODO(jalextowle): De-duplicate the code in this test and the above test
+func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx := context.Background()
+	dbOpts := db.TestOptions()
+	dbOpts.MaxMiniHeaders = 1
+	database, err := db.New(ctx, dbOpts)
+	require.NoError(t, err)
+
+	validator, err := ordervalidator.New(
+		&SlowContractCaller{
+			caller:            ethRPCClient,
+			contractCallDelay: time.Second,
+		},
+		constants.TestChainID,
+		ethereumRPCMaxContentLength,
+		ganacheAddresses,
+	)
+	require.NoError(t, err)
+
+	blockWatcher, orderWatcher := setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, dbOpts.MaxMiniHeaders, validator)
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Create a new order
+	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	err = blockWatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	orderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	// Cancel the order
+	opts := &bind.TransactOpts{
+		From:   signedOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+	}
+	trimmedOrder := signedOrder.Trim()
+	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	// Cancel a new order to remove old miniheaders from the database.
+	dummyOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	opts = &bind.TransactOpts{
+		From:   dummyOrder.MakerAddress,
+		Signer: scenario.GetTestSignerFn(dummyOrder.MakerAddress),
+	}
+	trimmedOrder = dummyOrder.Trim()
+	txn, err = exchange.CancelOrder(opts, trimmedOrder)
+	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, ethClient, txn)
+
+	validationResultsChan := make(chan *ordervalidator.ValidationResults, 1)
+	g, innerCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		// NOTE(jalextowle): Sleep to allow the call to ValidateAndStoreValidOrders
+		// to begin before syncing to latest block.
+		time.Sleep(time.Second)
+		err := blockWatcher.SyncToLatestBlock()
+		return err
+	})
+	g.Go(func() error {
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+		if err != nil {
+			return err
+		}
+		validationResultsChan <- validationResults
+		return nil
+	})
+	err = g.Wait()
+	require.NoError(t, err)
+
+	select {
+	case validationResults := <-validationResultsChan:
+		require.Equal(t, len(validationResults.Accepted), 1)
+		assert.Equal(t, len(validationResults.Rejected), 0)
+		orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 4*time.Second)
+		assert.Equal(t, zeroex.ESOrderAdded, orderEvents[0].EndState)
+		assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+	default:
+		t.Fatal("No validation results received")
+	}
+
+	// Add new block events and then check to see if the order has been removed from the blockwatcher
+	latestBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	nextBlock := &types.MiniHeader{
+		Parent:    latestBlock.Hash,
+		Hash:      common.HexToHash("0x1"),
+		Number:    big.NewInt(0).Add(latestBlock.Number, big.NewInt(1)),
+		Timestamp: latestBlock.Timestamp.Add(15 * time.Second),
+	}
+	newBlockEvents := []*blockwatch.Event{
+		{
+			Type:        blockwatch.Added,
+			BlockHeader: nextBlock,
+		},
+	}
+	orderWatcher.blockEventsChan <- newBlockEvents
+
+	// Await canceled event
+	orderEvents := waitForOrderEvents(t, orderEventsChan, 1, 10*time.Second)
+	assert.Equal(t, zeroex.ESOrderCancelled, orderEvents[0].EndState)
+	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
+}
+
+func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedOrder) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
+	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Start watching an order
-	watchOrder(ctx, t, orderWatcher, blockWatcher, ethClient, signedOrder)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -1661,11 +1989,11 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, ethClient *eth
 	return blockWatcher, orderEventsChan
 }
 
-func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, ethClient *ethclient.Client, signedOrder *zeroex.SignedOrder) {
+func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedOrder, pinned bool) {
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, false, constants.TestChainID)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, pinned, constants.TestChainID)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)
@@ -1673,28 +2001,30 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	require.Len(t, validationResults.Accepted, 1, "Expected order to pass validation and get added to OrderWatcher")
 }
 
-func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, meshDB *meshdb.MeshDB) (*blockwatch.Watcher, *Watcher) {
-	blockWatcherClient, err := blockwatch.NewRpcClient(ethRPCClient)
+func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, database *db.DB) (*blockwatch.Watcher, *Watcher) {
+	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
+	return setupOrderWatcherWithValidator(ctx, t, ethRPCClient, database, blockRetentionLimit, orderValidator)
+}
+
+func setupOrderWatcherWithValidator(ctx context.Context, t *testing.T, ethRPCClient ethrpcclient.Client, database *db.DB, maxMiniHeaders int, v *ordervalidator.OrderValidator) (*blockwatch.Watcher, *Watcher) {
+	blockWatcherClient := blockwatch.NewRpcClient(ctx, ethRPCClient)
 	topics := GetRelevantTopics()
-	stack := simplestack.New(meshDB.MiniHeaderRetentionLimit, []*miniheader.MiniHeader{})
 	blockWatcherConfig := blockwatch.Config{
-		Stack:           stack,
+		DB:              database,
 		PollingInterval: blockPollingInterval,
 		WithLogs:        true,
 		Topics:          topics,
 		Client:          blockWatcherClient,
 	}
-	blockWatcher := blockwatch.New(blockWatcherConfig)
-	orderValidator, err := ordervalidator.New(ethRPCClient, constants.TestChainID, ethereumRPCMaxContentLength, ganacheAddresses)
+	blockWatcher, err := blockwatch.New(ctx, maxMiniHeaders, blockWatcherConfig)
 	require.NoError(t, err)
 	orderWatcher, err := New(Config{
-		MeshDB:            meshDB,
+		DB:                database,
 		BlockWatcher:      blockWatcher,
-		OrderValidator:    orderValidator,
+		OrderValidator:    v,
 		ChainID:           constants.TestChainID,
 		ContractAddresses: ganacheAddresses,
-		MaxExpirationTime: constants.UnlimitedExpirationTime,
 		MaxOrders:         1000,
 	})
 	require.NoError(t, err)
@@ -1702,12 +2032,14 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	// Start OrderWatcher
 	go func() {
 		err := orderWatcher.Watch(ctx)
-		require.NoError(t, err)
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	// Ensure at least one block has been processed and is stored in the DB
 	// before tests run
-	storedBlocks, err := meshDB.FindAllMiniHeadersSortedByNumber()
+	storedBlocks, err := database.FindMiniHeaders(nil)
 	require.NoError(t, err)
 	if len(storedBlocks) == 0 {
 		err := blockWatcher.SyncToLatestBlock()
@@ -1720,6 +2052,34 @@ func setupOrderWatcher(ctx context.Context, t *testing.T, ethRPCClient ethrpccli
 	return blockWatcher, orderWatcher
 }
 
+var _ bind.ContractCaller = &SlowContractCaller{}
+
+// SlowContractCaller satisfies the bind.ContractCall interface by wrapping another
+// contract caller and adding delays before the contract call.
+type SlowContractCaller struct {
+	caller            bind.ContractCaller
+	contractCallDelay time.Duration
+	codeAtDelay       time.Duration
+}
+
+func (s *SlowContractCaller) CallContract(ctx context.Context, call geth.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(s.contractCallDelay):
+	}
+	return s.caller.CallContract(ctx, call, blockNumber)
+}
+
+func (s *SlowContractCaller) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(s.codeAtDelay):
+	}
+	return s.caller.CodeAt(ctx, contract, blockNumber)
+}
+
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	blockchainLifecycle.Start(t)
 	return func(t *testing.T) {
@@ -1727,7 +2087,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	}
 }
 
-func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, expectedNumberOfEvents int, timeout time.Duration) []*zeroex.OrderEvent {
+func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEvent, expectedNumberOfEvents int, waitTimeForOrderEvents time.Duration) []*zeroex.OrderEvent {
 	allOrderEvents := []*zeroex.OrderEvent{}
 	for {
 		select {
@@ -1737,16 +2097,35 @@ func waitForOrderEvents(t *testing.T, orderEventsChan <-chan []*zeroex.OrderEven
 				return allOrderEvents
 			}
 			continue
-		case <-time.After(timeout):
+		case <-time.After(waitTimeForOrderEvents):
 			t.Fatalf("timed out waiting for %d order events (received %d events)", expectedNumberOfEvents, len(allOrderEvents))
 		}
 	}
 }
 
-func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *types.Transaction) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancelFn()
+func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *ethtypes.Transaction) {
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)
 	require.Equal(t, receipt.Status, uint64(1))
+}
+
+// orderState contains the order hash and some metadata fields for an order that are updated
+// by/controlled by order watcher.
+type orderState struct {
+	hash               common.Hash
+	isRemoved          bool
+	fillableAmount     *big.Int
+	lastUpdated        time.Time
+	lastValidatedBlock *types.MiniHeader
+}
+
+func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderWithMetadata) {
+	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
+	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
+	assert.Equal(t, expectedState.fillableAmount, order.FillableTakerAssetAmount, "FillableTakerAssetAmount")
+	assert.WithinDuration(t, expectedState.lastUpdated, order.LastUpdated, 4*time.Second, "LastUpdated")
+	assert.Equal(t, expectedState.lastValidatedBlock.Number, order.LastValidatedBlockNumber, "LastValidatedBlockNumber")
+	assert.Equal(t, expectedState.lastValidatedBlock.Hash, order.LastValidatedBlockHash, "LastValidatedBlockHash")
 }

@@ -1,0 +1,4 @@
+lib
+ethereum/blockwatch/testdata
+packages/**/generated/**
+*.d.ts

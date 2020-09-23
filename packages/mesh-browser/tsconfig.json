@@ -1,0 +1,14 @@
+{
+    "extends": "../../tsconfig-base",
+    "compilerOptions": {
+        "outDir": "lib",
+        "rootDir": "src"
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["./conversion-tests/**/*"],
+    "references": [
+        {
+            "path": "../mesh-browser-lite"
+        }
+    ]
+}

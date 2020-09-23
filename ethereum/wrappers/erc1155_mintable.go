@@ -20,7 +20,6 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -174,7 +173,7 @@ func (_ERC1155Mintable *ERC1155MintableTransactorRaw) Transact(opts *bind.Transa
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155BATCHRECEIVED(opts *bind.CallOpts) ([4]byte, error) {
 	var (
 		ret0 = new([4]byte)
@@ -186,21 +185,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155BATCHRECEIVED(opts *bind.C
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableSession) ERC1155BATCHRECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155BATCHRECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) ERC1155BATCHRECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155BATCHRECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155RECEIVED(opts *bind.CallOpts) ([4]byte, error) {
 	var (
 		ret0 = new([4]byte)
@@ -212,21 +211,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155RECEIVED(opts *bind.CallOp
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableSession) ERC1155RECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155RECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) ERC1155RECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155RECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOf(opts *bind.CallOpts, owner common.Address, id *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -238,21 +237,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOf(opts *bind.CallOpts, ow
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) BalanceOf(owner common.Address, id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOf(&_ERC1155Mintable.CallOpts, owner, id)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) BalanceOf(owner common.Address, id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOf(&_ERC1155Mintable.CallOpts, owner, id)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOfBatch(opts *bind.CallOpts, owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
 	var (
 		ret0 = new([]*big.Int)
@@ -264,21 +263,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOfBatch(opts *bind.CallOpt
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableSession) BalanceOfBatch(owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOfBatch(&_ERC1155Mintable.CallOpts, owners, ids)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) BalanceOfBatch(owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOfBatch(&_ERC1155Mintable.CallOpts, owners, ids)
 }
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCaller) Creators(opts *bind.CallOpts, arg0 *big.Int) (common.Address, error) {
 	var (
 		ret0 = new(common.Address)
@@ -290,21 +289,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) Creators(opts *bind.CallOpts, arg
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableSession) Creators(arg0 *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.Creators(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) Creators(arg0 *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.Creators(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleBaseType(opts *bind.CallOpts, id *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -316,21 +315,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleBaseType(opts *bind
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) GetNonFungibleBaseType(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) GetNonFungibleBaseType(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleIndex(opts *bind.CallOpts, id *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -342,21 +341,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleIndex(opts *bind.Ca
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) GetNonFungibleIndex(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleIndex(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) GetNonFungibleIndex(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleIndex(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsApprovedForAll(opts *bind.CallOpts, owner common.Address, operator common.Address) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -368,21 +367,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) IsApprovedForAll(opts *bind.CallO
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsApprovedForAll(owner common.Address, operator common.Address) (bool, error) {
 	return _ERC1155Mintable.Contract.IsApprovedForAll(&_ERC1155Mintable.CallOpts, owner, operator)
 }
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsApprovedForAll(owner common.Address, operator common.Address) (bool, error) {
 	return _ERC1155Mintable.Contract.IsApprovedForAll(&_ERC1155Mintable.CallOpts, owner, operator)
 }
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsFungible(opts *bind.CallOpts, id *big.Int) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -394,21 +393,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) IsFungible(opts *bind.CallOpts, i
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungible(opts *bind.CallOpts, id *big.Int) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -420,21 +419,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungible(opts *bind.CallOpts
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleBaseType(opts *bind.CallOpts, id *big.Int) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -446,21 +445,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleBaseType(opts *bind.
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungibleBaseType(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungibleBaseType(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleItem(opts *bind.CallOpts, id *big.Int) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -472,21 +471,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleItem(opts *bind.Call
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungibleItem(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleItem(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungibleItem(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleItem(&_ERC1155Mintable.CallOpts, id)
 }
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) MaxIndex(opts *bind.CallOpts, arg0 *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -498,21 +497,21 @@ func (_ERC1155Mintable *ERC1155MintableCaller) MaxIndex(opts *bind.CallOpts, arg
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) MaxIndex(arg0 *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.MaxIndex(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) MaxIndex(arg0 *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.MaxIndex(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCaller) OwnerOf(opts *bind.CallOpts, id *big.Int) (common.Address, error) {
 	var (
 		ret0 = new(common.Address)
@@ -524,14 +523,14 @@ func (_ERC1155Mintable *ERC1155MintableCaller) OwnerOf(opts *bind.CallOpts, id *
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableSession) OwnerOf(id *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.OwnerOf(&_ERC1155Mintable.CallOpts, id)
 }
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) OwnerOf(id *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.OwnerOf(&_ERC1155Mintable.CallOpts, id)
 }
@@ -1305,4 +1304,3 @@ func (_ERC1155Mintable *ERC1155MintableFilterer) ParseURI(log types.Log) (*ERC11
 	}
 	return event, nil
 }
-

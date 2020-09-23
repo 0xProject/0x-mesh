@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/scenario"
 	"github.com/0xProject/0x-mesh/zeroex"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,12 +31,14 @@ func TestCalculateDelayWithJitters(t *testing.T) {
 }
 
 func TestHandleRawRequest(t *testing.T) {
+	db, err := db.New(context.Background(), db.TestOptions())
+	require.NoError(t, err)
 	n, err := p2p.New(
 		context.Background(),
 		p2p.Config{
 			MessageHandler:   &noopMessageHandler{},
 			RendezvousPoints: []string{"/test-rendezvous-point"},
-			DataDir:          "/tmp",
+			DB:               db,
 		},
 	)
 	require.NoError(t, err)
@@ -55,7 +58,7 @@ func TestHandleRawRequest(t *testing.T) {
 	// This request has multiple subprotocols included and nil metadata. This
 	// has the same structure as requests that would have been sent by older
 	// versions of Mesh, and allows us to test that newer Mesh nodes provide
-	// backwards compatability as ordersync providers.
+	// backwards compatibility as ordersync providers.
 	res := s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)
@@ -67,11 +70,13 @@ func TestHandleRawRequest(t *testing.T) {
 	// object.
 	var metadata oneOrderSubprotocolRequestMetadata
 	err = json.Unmarshal(res.Metadata, &metadata)
+	require.NoError(t, err)
 	assert.Equal(t, oneOrderSubprotocolRequestMetadata{}, metadata)
 
 	// Test handling a request from a node that is using the new first request
 	// encoding scheme.
 	rawReq, err = s.createFirstRequestForAllSubprotocols()
+	require.NoError(t, err)
 	res = s.handleRawRequest(rawReq, n.ID())
 	require.NotNil(t, res)
 	assert.True(t, res.Complete)
@@ -164,11 +169,11 @@ func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *R
 	}, nil
 }
 
-func (s *oneOrderSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, error) {
+func (s *oneOrderSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return &Request{
 		RequesterID: s.myPeerID,
 		Metadata:    res.Metadata,
-	}, nil
+	}, len(res.Orders), nil
 }
 
 func (s *oneOrderSubprotocol) GenerateFirstRequestMetadata() (json.RawMessage, error) {
@@ -219,7 +224,7 @@ func (s *hostedSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Req
 	return s.hostSubp.HandleOrderSyncRequest(ctx, req)
 }
 
-func (s *hostedSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, error) {
+func (s *hostedSubprotocol) HandleOrderSyncResponse(ctx context.Context, res *Response) (*Request, int, error) {
 	return s.hostSubp.HandleOrderSyncResponse(ctx, res)
 }
 
