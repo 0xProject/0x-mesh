@@ -84,7 +84,7 @@ export function wrapperContractEventsToContractEvents(wrapperContractEvents: Wra
     if (wrapperContractEvents === null) {
         return contractEvents;
     }
-    wrapperContractEvents.forEach(wrapperContractEvent => {
+    wrapperContractEvents.forEach((wrapperContractEvent) => {
         const kind = wrapperContractEvent.kind as ContractEventKind;
         const rawParameters = wrapperContractEvent.parameters;
         let parameters: ContractEventParameters;
@@ -140,11 +140,11 @@ export function wrapperContractEventsToContractEvents(wrapperContractEvents: Wra
             case ContractEventKind.ERC1155TransferBatchEvent:
                 const erc1155TransferBatchEvent = rawParameters as WrapperERC1155TransferBatchEvent;
                 const ids: BigNumber[] = [];
-                erc1155TransferBatchEvent.ids.forEach(id => {
+                erc1155TransferBatchEvent.ids.forEach((id) => {
                     ids.push(new BigNumber(id));
                 });
                 const values: BigNumber[] = [];
-                erc1155TransferBatchEvent.values.forEach(value => {
+                erc1155TransferBatchEvent.values.forEach((value) => {
                     values.push(new BigNumber(value));
                 });
                 parameters = {

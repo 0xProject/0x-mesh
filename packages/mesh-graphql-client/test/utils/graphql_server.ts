@@ -11,10 +11,10 @@ async function buildBinaryAsync(): Promise<void> {
     const cwd = join(__dirname, '../../../../../').normalize();
     const build = spawn('make', ['mesh'], { cwd });
     await new Promise<void>((resolve, reject) => {
-        build.on('close', code => {
+        build.on('close', (code) => {
             code === 0 ? resolve() : reject(new Error('Failed to build 0x-mesh'));
         });
-        build.on('error', error => {
+        build.on('error', (error) => {
             reject(error);
         });
     });
@@ -22,7 +22,7 @@ async function buildBinaryAsync(): Promise<void> {
 
 async function cleanupAsync(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-        rimraf(dataDir, err => {
+        rimraf(dataDir, (err) => {
             if (err != null) {
                 reject(err);
             }
@@ -84,7 +84,7 @@ export class MeshHarness {
         }
         return new Promise<string>((resolve, reject) => {
             const stream = jsonstream.parse(true);
-            stream.on('data', data => {
+            stream.on('data', (data) => {
                 // Note(albrow): Uncomment this if you need to see the output from the server.
                 // console.log(data);
                 const dataString = JSON.stringify(data);
@@ -116,12 +116,12 @@ export class MeshHarness {
         env.ENABLE_GRAPHQL_SERVER = true;
         env.GRAPHQL_SERVER_ADDR = `localhost:${this._graphQLServerPort}`;
         this._mesh = spawn('mesh', [], { env });
-        this._mesh.stderr.on('error', error => {
+        this._mesh.stderr.on('error', (error) => {
             throw new Error(`${error.name} - ${error.message}`);
         });
     }
 }
 
 async function sleepAsync(ms: number): Promise<NodeJS.Timer> {
-    return new Promise<NodeJS.Timer>(resolve => setTimeout(resolve, ms));
+    return new Promise<NodeJS.Timer>((resolve) => setTimeout(resolve, ms));
 }

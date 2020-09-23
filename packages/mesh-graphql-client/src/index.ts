@@ -276,7 +276,7 @@ export class MeshGraphQLClient {
             );
             const errorLink = onError(({ graphQLErrors, networkError }) => {
                 if (graphQLErrors != null && graphQLErrors.length > 0) {
-                    const allMessages = graphQLErrors.map(err => err.message).join('\n');
+                    const allMessages = graphQLErrors.map((err) => err.message).join('\n');
                     throw new Error(`GraphQL error(s): ${allMessages}`);
                 }
                 if (networkError != null) {
@@ -392,7 +392,7 @@ export class MeshGraphQLClient {
             const incomingObservable = this._client.subscribe({
                 query: orderEventsSubscription,
             }) as Observable<FetchResult<OrderEventResponse>>;
-            const outgoingObservable = new Observable<OrderEvent[]>(observer => {
+            const outgoingObservable = new Observable<OrderEvent[]>((observer) => {
                 subscriptionClient.onError((err: ErrorEvent) => {
                     observer.error(new Error(err.message));
                 });
@@ -402,14 +402,14 @@ export class MeshGraphQLClient {
                 incomingObservable.subscribe({
                     next: (result: FetchResult<OrderEventResponse>) => {
                         if (result.errors != null && result.errors.length > 0) {
-                            result.errors.forEach(err => observer.error(err));
+                            result.errors.forEach((err) => observer.error(err));
                         } else if (result.data == null) {
                             observer.error(new Error('received no data'));
                         } else {
                             observer.next(result.data.orderEvents.map(fromStringifiedOrderEvent));
                         }
                     },
-                    error: err => observer.error(err),
+                    error: (err) => observer.error(err),
                     complete: () => observer.complete(),
                 });
             });
