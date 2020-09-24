@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -287,7 +288,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 		// We have to wait for latest block to be processed by the Mesh node.
 		time.Sleep(blockProcessingWaitTime)
 
-		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, constants.TestChainID, true)
+		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, constants.TestChainID, true, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 

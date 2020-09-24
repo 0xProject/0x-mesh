@@ -72,7 +72,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool) int
+		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) int
 	}
 
 	Order struct {
@@ -160,7 +160,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error)
+	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
 	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
@@ -294,7 +294,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool)), true
+		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts)), true
 
 	case "Order.chainId":
 		if e.complexity.Order.ChainID == nil {
@@ -1114,7 +1114,39 @@ type Mutation {
     """
     Adds one or more orders to Mesh.
     """
-    addOrders(orders: [NewOrder!]!, pinned: Boolean = true): AddOrdersResults!
+    addOrders(
+        orders: [NewOrder!]!, 
+        pinned: Boolean = true, 
+        opts: AddOrdersOpts = { 
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): AddOrdersResults!
+}
+
+input AddOrdersOpts {
+    """
+    Indicates that the orders being added should be kept by the database after
+    cancellation.
+    """
+    keepCancelled: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    expiry.
+    """
+    keepExpired: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    being fully filled.
+    """
+    keepFullyFilled: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    becoming unfunded.
+    """
+    keepUnfunded: Boolean = false
 }
 
 type OrderEvent {
@@ -1260,6 +1292,14 @@ func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, r
 		}
 	}
 	args["pinned"] = arg1
+	var arg2 *gqltypes.AddOrdersOpts
+	if tmp, ok := rawArgs["opts"]; ok {
+		arg2, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg2
 	return args, nil
 }
 
@@ -1857,7 +1897,7 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool))
+		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5121,6 +5161,42 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAddOrdersOpts(ctx context.Context, obj interface{}) (gqltypes.AddOrdersOpts, error) {
+	var it gqltypes.AddOrdersOpts
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "keepCancelled":
+			var err error
+			it.KeepCancelled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "keepExpired":
+			var err error
+			it.KeepExpired, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "keepFullyFilled":
+			var err error
+			it.KeepFullyFilled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "keepUnfunded":
+			var err error
+			it.KeepUnfunded, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj interface{}) (gqltypes.NewOrder, error) {
 	var it gqltypes.NewOrder
 	var asMap = obj.(map[string]interface{})
@@ -6930,6 +7006,18 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalOAddOrdersOpts2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx context.Context, v interface{}) (gqltypes.AddOrdersOpts, error) {
+	return ec.unmarshalInputAddOrdersOpts(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx context.Context, v interface{}) (*gqltypes.AddOrdersOpts, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOAddOrdersOpts2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {

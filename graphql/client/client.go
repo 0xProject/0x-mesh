@@ -15,8 +15,17 @@ type Client struct {
 }
 
 const (
-	addOrdersMutation = `mutation AddOrders($orders: [NewOrder!]!, $pinned: Boolean = true) {
-		addOrders(orders: $orders, pinned: $pinned) {
+	addOrdersMutation = `mutation AddOrders(
+	$orders: [NewOrder!]!,
+	$pinned: Boolean = true,
+	$opts: AddOrdersOpts = {
+		keepCancelled: false,
+		keepExpired: false,
+		keepFullyFilled: false,
+		keepUnfunded: false,
+	},
+) {
+		addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
 			accepted {
 				order {
 					hash
@@ -154,6 +163,18 @@ type AddOrdersOpts struct {
 	// and will always stay in storage until they are no longer fillable. Defaults
 	// to true.
 	Pinned bool `json:"pinned"`
+	// KeepCancelled signals that this order should not be deleted
+	// if it is cancelled.
+	KeepCancelled bool `json:"keepWhenCancelled"`
+	// KeepExpired signals that this order should not be deleted
+	// if it becomes expired.
+	KeepExpired bool `json:"keepWhenExpired"`
+	// KeepFullyFilled signals that this order should not be deleted
+	// if it is fully filled.
+	KeepFullyFilled bool `json:"keepWhenFullyFilled"`
+	// KeepUnfunded signals that this order should not be deleted
+	// if it becomes unfunded.
+	KeepUnfunded bool `json:"keepWhenUnfunded"`
 }
 
 // AddOrders adds orders to 0x Mesh and broadcasts them throughout the 0x Mesh network.
@@ -167,6 +188,10 @@ func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, op
 	// Only set the pinned variable if opts were provided.
 	if len(opts) > 0 {
 		req.Var("pinned", opts[0].Pinned)
+		req.Var("keepCancelled", opts[0].KeepCancelled)
+		req.Var("keepExpired", opts[0].KeepExpired)
+		req.Var("keepFullyFilled", opts[0].KeepFullyFilled)
+		req.Var("keepUnfunded", opts[0].KeepUnfunded)
 	}
 
 	var resp struct {

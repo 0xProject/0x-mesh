@@ -157,7 +157,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, testCase := range testCases {
-		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, false)
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		if testCase.isTakerAddressWhitelisted {
 			orderHash, err := testCase.order.ComputeOrderHash()
@@ -1326,7 +1326,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, constants.TestChainID, false)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, constants.TestChainID, false, &types.AddOrdersOpts{})
 	require.Len(t, validationResults.Rejected, 0)
 	require.NoError(t, err)
 
@@ -1727,7 +1727,7 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -1815,7 +1815,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -1932,7 +1932,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -1993,7 +1993,8 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, pinned)
+	// TODO(jalextowle): Surface AddOrdersOpts in this function and write tests that use it.
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, pinned, &types.AddOrdersOpts{})
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)

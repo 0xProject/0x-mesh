@@ -55,6 +55,18 @@ type AddOrdersOpts struct {
 	// and will always stay in storage until they are no longer fillable. Defaults
 	// to true.
 	Pinned bool `json:"pinned"`
+	// KeepCancelled signals that this order should not be deleted
+	// if it is cancelled.
+	KeepCancelled bool `json:"keepWhenCancelled"`
+	// KeepExpired signals that this order should not be deleted
+	// if it becomes expired.
+	KeepExpired bool `json:"keepWhenExpired"`
+	// KeepFullyFilled signals that this order should not be deleted
+	// if it is fully filled.
+	KeepFullyFilled bool `json:"keepWhenFullyFilled"`
+	// KeepUnfunded signals that this order should not be deleted
+	// if it becomes unfunded.
+	KeepUnfunded bool `json:"keepWhenUnfunded"`
 }
 
 // OrderInfo represents an fillable order and how much it could be filled for.
@@ -138,18 +150,18 @@ type OrderWithMetadata struct {
 	// LastValidatedBlockHash is the hash of the block at which the order was
 	// last validated.
 	LastValidatedBlockHash common.Hash `json:"lastValidatedBlockHash"`
-	// KeepWhenCancelled signals that this order should not be deleted
+	// KeepCancelled signals that this order should not be deleted
 	// if it is cancelled.
-	KeepWhenCancelled bool `json:"keepWhenCancelled"`
-	// KeepWhenExpired signals that this order should not be deleted
+	KeepCancelled bool `json:"keepWhenCancelled"`
+	// KeepExpired signals that this order should not be deleted
 	// if it becomes expired.
-	KeepWhenExpired bool `json:"keepWhenExpired"`
-	// KeepWhenFullyFilled signals that this order should not be deleted
+	KeepExpired bool `json:"keepWhenExpired"`
+	// KeepFullyFilled signals that this order should not be deleted
 	// if it is fully filled.
-	KeepWhenFullyFilled bool `json:"keepWhenFullyFilled"`
-	// KeepWhenUnfunded signals that this order should not be deleted
+	KeepFullyFilled bool `json:"keepWhenFullyFilled"`
+	// KeepUnfunded signals that this order should not be deleted
 	// if it becomes unfunded.
-	KeepWhenUnfunded bool `json:"keepWhenUnfunded"`
+	KeepUnfunded bool `json:"keepWhenUnfunded"`
 }
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {

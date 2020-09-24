@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/p2p"
@@ -56,7 +57,7 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, app.chainID, false)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, app.chainID, false, &types.AddOrdersOpts{})
 	if err != nil {
 		return err
 	}

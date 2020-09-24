@@ -21,6 +21,7 @@ import * as Observable from 'zen-observable';
 
 import { BrowserLink } from './browser_link';
 import {
+    AddOrdersOpts,
     AddOrdersResponse,
     AddOrdersResults,
     convertFilterValue,
@@ -83,8 +84,12 @@ const statsQuery = gql`
 `;
 
 const addOrdersMutation = gql`
-    mutation AddOrders($orders: [NewOrder!]!, $pinned: Boolean = true) {
-        addOrders(orders: $orders, pinned: $pinned) {
+    mutation AddOrders(
+        $orders: [NewOrder!]!
+        $pinned: Boolean = true
+        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
+    ) {
+        addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
             accepted {
                 order {
                     hash
@@ -327,12 +332,17 @@ export class MeshGraphQLClient {
         return fromStringifiedStats(stats);
     }
 
-    public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<AddOrdersResults> {
+    public async addOrdersAsync(
+        orders: SignedOrder[],
+        pinned: boolean = true,
+        opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false },
+    ): Promise<AddOrdersResults> {
         const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
                 pinned,
+                opts,
             },
         });
         if (resp.data == null) {

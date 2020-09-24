@@ -298,7 +298,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		//
 		// There is another orderwatching path that does not follow this behavior.
 		// Explore this inconsistency and try to fix it.
-		if order.KeepWhenExpired {
+		if order.KeepExpired {
 			w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, nil, validationBlock)
 		} else {
 			w.unwatchOrder(order, nil, validationBlock)
@@ -993,7 +993,7 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
@@ -1438,10 +1438,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventEndState corresponding to RejectedOrderStatus")
 					return nil, err
 				}
-				if (endState == zeroex.ESOrderCancelled && order.KeepWhenCancelled) ||
-					(endState == zeroex.ESOrderExpired && order.KeepWhenExpired) ||
-					(endState == zeroex.ESOrderFilled && order.KeepWhenFullyFilled) ||
-					(endState == zeroex.ESOrderBecameUnfunded && order.KeepWhenUnfunded) {
+				if (endState == zeroex.ESOrderCancelled && order.KeepCancelled) ||
+					(endState == zeroex.ESOrderExpired && order.KeepExpired) ||
+					(endState == zeroex.ESOrderFilled && order.KeepFullyFilled) ||
+					(endState == zeroex.ESOrderBecameUnfunded && order.KeepUnfunded) {
 					w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, big.NewInt(0), validationBlock)
 				} else {
 					w.unwatchOrder(order, big.NewInt(0), validationBlock)
@@ -1495,7 +1495,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
@@ -1524,7 +1524,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
 	if err != nil {
 		return nil, err
 	}
