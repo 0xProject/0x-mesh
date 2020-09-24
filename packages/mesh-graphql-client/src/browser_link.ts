@@ -16,6 +16,14 @@ export class BrowserLink extends ApolloLink {
         }
         switch (operation.operationName) {
             case 'AddOrders':
+                if (
+                    operation.variables.opts.keepCancelled ||
+                    operation.variables.opts.keepExpired ||
+                    operation.variables.opts.keepFullyFilled ||
+                    operation.variables.opts.keepUnfunded
+                ) {
+                    throw new Error('mesh-graphql-client: Browser nodes do not support true values in AddOrdersOpts');
+                }
                 return new Observable<{ data: AddOrdersResponse }>((observer) => {
                     wrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)

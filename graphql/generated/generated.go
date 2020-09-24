@@ -1115,9 +1115,9 @@ type Mutation {
     Adds one or more orders to Mesh.
     """
     addOrders(
-        orders: [NewOrder!]!, 
-        pinned: Boolean = true, 
-        opts: AddOrdersOpts = { 
+        orders: [NewOrder!]!,
+        pinned: Boolean = true,
+        opts: AddOrdersOpts = {
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
