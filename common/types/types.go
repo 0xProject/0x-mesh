@@ -138,18 +138,18 @@ type OrderWithMetadata struct {
 	// LastValidatedBlockHash is the hash of the block at which the order was
 	// last validated.
 	LastValidatedBlockHash common.Hash `json:"lastValidatedBlockHash"`
-	// ShouldWatchWhenCancelled signals that this order should not be deleted
+	// KeepWhenCancelled signals that this order should not be deleted
 	// if it is cancelled.
-	ShouldWatchWhenCancelled bool `json:"shouldWatchWhenCancelled"`
-	// ShouldWatchWhenExpired signals that this order should not be deleted
+	KeepWhenCancelled bool `json:"keepWhenCancelled"`
+	// KeepWhenExpired signals that this order should not be deleted
 	// if it becomes expired.
-	ShouldWatchWhenExpired bool `json:"shouldWatchWhenExpired"`
-	// ShouldWatchWhenFullyFilled signals that this order should not be deleted
+	KeepWhenExpired bool `json:"keepWhenExpired"`
+	// KeepWhenFullyFilled signals that this order should not be deleted
 	// if it is fully filled.
-	ShouldWatchWhenFullyFilled bool `json:"shouldWatchWhenFullyFilled"`
-	// ShouldWatchWhenUnfunded signals that this order should not be deleted
+	KeepWhenFullyFilled bool `json:"keepWhenFullyFilled"`
+	// KeepWhenUnfunded signals that this order should not be deleted
 	// if it becomes unfunded.
-	ShouldWatchWhenUnfunded bool `json:"shouldWatchWhenUnfunded"`
+	KeepWhenUnfunded bool `json:"keepWhenUnfunded"`
 }
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {

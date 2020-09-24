@@ -298,7 +298,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		//
 		// There is another orderwatching path that does not follow this behavior.
 		// Explore this inconsistency and try to fix it.
-		if order.ShouldWatchWhenExpired {
+		if order.KeepWhenExpired {
 			w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, nil, validationBlock)
 		} else {
 			w.unwatchOrder(order, nil, validationBlock)
@@ -1438,10 +1438,10 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventEndState corresponding to RejectedOrderStatus")
 					return nil, err
 				}
-				if (endState == zeroex.ESOrderCancelled && order.ShouldWatchWhenCancelled) ||
-					(endState == zeroex.ESOrderExpired && order.ShouldWatchWhenExpired) ||
-					(endState == zeroex.ESOrderFilled && order.ShouldWatchWhenFullyFilled) ||
-					(endState == zeroex.ESOrderBecameUnfunded && order.ShouldWatchWhenUnfunded) {
+				if (endState == zeroex.ESOrderCancelled && order.KeepWhenCancelled) ||
+					(endState == zeroex.ESOrderExpired && order.KeepWhenExpired) ||
+					(endState == zeroex.ESOrderFilled && order.KeepWhenFullyFilled) ||
+					(endState == zeroex.ESOrderBecameUnfunded && order.KeepWhenUnfunded) {
 					w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, big.NewInt(0), validationBlock)
 				} else {
 					w.unwatchOrder(order, big.NewInt(0), validationBlock)
