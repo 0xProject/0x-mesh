@@ -57,16 +57,16 @@ type AddOrdersOpts struct {
 	Pinned bool `json:"pinned"`
 	// KeepCancelled signals that this order should not be deleted
 	// if it is cancelled.
-	KeepCancelled bool `json:"keepWhenCancelled"`
+	KeepCancelled bool `json:"keepCancelled"`
 	// KeepExpired signals that this order should not be deleted
 	// if it becomes expired.
-	KeepExpired bool `json:"keepWhenExpired"`
+	KeepExpired bool `json:"keepExpired"`
 	// KeepFullyFilled signals that this order should not be deleted
 	// if it is fully filled.
-	KeepFullyFilled bool `json:"keepWhenFullyFilled"`
+	KeepFullyFilled bool `json:"keepFullyFilled"`
 	// KeepUnfunded signals that this order should not be deleted
 	// if it becomes unfunded.
-	KeepUnfunded bool `json:"keepWhenUnfunded"`
+	KeepUnfunded bool `json:"keepUnfunded"`
 }
 
 // OrderInfo represents an fillable order and how much it could be filled for.
@@ -138,6 +138,8 @@ type OrderWithMetadata struct {
 	// IsPinned indicates whether or not the order is pinned. Pinned orders are
 	// not removed from the database unless they become unfillable.
 	IsPinned bool `json:"isPinned"`
+	// IsUnfillable indicates whether or not the order has become unfillable.
+	IsUnfillable bool `json:"isUnfillable"`
 	// JSON-encoded list of assetdatas contained in MakerAssetData. For non-MAP
 	// orders, the list contains only one element which is equal to MakerAssetData.
 	// For MAP orders, it contains each component assetdata.
@@ -152,16 +154,16 @@ type OrderWithMetadata struct {
 	LastValidatedBlockHash common.Hash `json:"lastValidatedBlockHash"`
 	// KeepCancelled signals that this order should not be deleted
 	// if it is cancelled.
-	KeepCancelled bool `json:"keepWhenCancelled"`
+	KeepCancelled bool `json:"keepCancelled"`
 	// KeepExpired signals that this order should not be deleted
 	// if it becomes expired.
-	KeepExpired bool `json:"keepWhenExpired"`
+	KeepExpired bool `json:"keepExpired"`
 	// KeepFullyFilled signals that this order should not be deleted
 	// if it is fully filled.
-	KeepFullyFilled bool `json:"keepWhenFullyFilled"`
+	KeepFullyFilled bool `json:"keepFullyFilled"`
 	// KeepUnfunded signals that this order should not be deleted
 	// if it becomes unfunded.
-	KeepUnfunded bool `json:"keepWhenUnfunded"`
+	KeepUnfunded bool `json:"keepUnfunded"`
 }
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {

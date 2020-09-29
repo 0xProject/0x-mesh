@@ -132,10 +132,15 @@ CREATE TABLE IF NOT EXISTS orders (
 	fillableTakerAssetAmount TEXT NOT NULL,
 	isRemoved                BOOLEAN NOT NULL,
 	isPinned                 BOOLEAN NOT NULL,
+	isUnfillable             BOOLEAN NOT NULL,
 	parsedMakerAssetData     TEXT NOT NULL,
 	parsedMakerFeeAssetData  TEXT NOT NULL,
 	lastValidatedBlockNumber TEXT NOT NULL,
-	lastValidatedBlockHash   TEXT NOT NULL
+	lastValidatedBlockHash   TEXT NOT NULL,
+	keepCancelled            BOOLEAN NOT NULL,
+	keepExpired              BOOLEAN NOT NULL,
+	keepFullyFilled          BOOLEAN NOT NULL,
+	keepUnfunded             BOOLEAN NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS miniHeaders (
@@ -188,10 +193,15 @@ const insertOrderQuery = `INSERT INTO orders (
 	fillableTakerAssetAmount,
 	isRemoved,
 	isPinned,
+	isUnfillable,
 	parsedMakerAssetData,
 	parsedMakerFeeAssetData,
 	lastValidatedBlockNumber,
-	lastValidatedBlockHash
+	lastValidatedBlockHash,
+	keepCancelled,
+	keepExpired,
+	keepFullyFilled,
+	keepUnfunded
 ) VALUES (
 	:hash,
 	:chainID,
@@ -215,10 +225,15 @@ const insertOrderQuery = `INSERT INTO orders (
 	:fillableTakerAssetAmount,
 	:isRemoved,
 	:isPinned,
+	:isUnfillable,
 	:parsedMakerAssetData,
 	:parsedMakerFeeAssetData,
 	:lastValidatedBlockNumber,
-	:lastValidatedBlockHash
+	:lastValidatedBlockHash,
+	:keepCancelled,
+	:keepExpired,
+	:keepFullyFilled,
+	:keepUnfunded
 ) ON CONFLICT DO NOTHING
 `
 
@@ -244,10 +259,15 @@ const updateOrderQuery = `UPDATE orders SET
 	fillableTakerAssetAmount = :fillableTakerAssetAmount,
 	isRemoved = :isRemoved,
 	isPinned = :isPinned,
+	isUnfillable = :isUnfillable,
 	parsedMakerAssetData = :parsedMakerAssetData,
 	parsedMakerFeeAssetData = :parsedMakerFeeAssetData,
 	lastValidatedBlockNumber = :lastValidatedBlockNumber,
-	lastValidatedBlockHash = :lastValidatedBlockHash
+	lastValidatedBlockHash = :lastValidatedBlockHash,
+	keepCancelled = :keepCancelled,
+	keepExpired = :keepExpired,
+	keepFullyFilled = :keepFullyFilled,
+	keepUnfunded = :keepUnfunded
 WHERE orders.hash = :hash
 `
 
@@ -381,27 +401,23 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderSta
 	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		for i, hash := range hashes {
 			var foundOrder sqltypes.Order
-			err := db.sqldb.GetContext(db.ctx, &foundOrder, "SELECT isRemoved, fillableTakerAssetAmount FROM orders WHERE hash = $1", hash)
+			err := db.sqldb.GetContext(db.ctx, &foundOrder, "SELECT isRemoved, isUnfillable, fillableTakerAssetAmount FROM orders WHERE hash = $1", hash)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					orderStatuses[i] = &StoredOrderStatus{
 						IsStored:                 false,
 						IsMarkedRemoved:          false,
+						IsMarkedUnfillable:       false,
 						FillableTakerAssetAmount: nil,
 					}
 				} else {
 					return err
 				}
-			} else if foundOrder.IsRemoved {
-				orderStatuses[i] = &StoredOrderStatus{
-					IsStored:                 true,
-					IsMarkedRemoved:          true,
-					FillableTakerAssetAmount: foundOrder.FillableTakerAssetAmount.Int,
-				}
 			} else {
 				orderStatuses[i] = &StoredOrderStatus{
 					IsStored:                 true,
-					IsMarkedRemoved:          false,
+					IsMarkedRemoved:          foundOrder.IsRemoved,
+					IsMarkedUnfillable:       foundOrder.IsUnfillable,
 					FillableTakerAssetAmount: foundOrder.FillableTakerAssetAmount.Int,
 				}
 			}

@@ -207,14 +207,15 @@ func TestGetOrderStatuses(t *testing.T) {
 
 	removedOrder := newTestOrder()
 	removedOrder.IsRemoved = true
-	notRemovedOrder := newTestOrder()
-	_, _, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, notRemovedOrder})
+	unfillableOrder := newTestOrder()
+	unfillableOrder.IsUnfillable = true
+	_, _, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, unfillableOrder})
 	require.NoError(t, err)
 
 	hashes := []common.Hash{
 		common.HexToHash("0xace746910c6a8a4730878e6e8a4abb328844c0b58f0cdfbb5b6ad28ee0bae347"),
 		removedOrder.Hash,
-		notRemovedOrder.Hash,
+		unfillableOrder.Hash,
 	}
 	actualStatuses, err := db.GetOrderStatuses(hashes)
 	require.NoError(t, err)
@@ -222,17 +223,20 @@ func TestGetOrderStatuses(t *testing.T) {
 		{
 			IsStored:                 false,
 			IsMarkedRemoved:          false,
+			IsMarkedUnfillable:       false,
 			FillableTakerAssetAmount: nil,
 		},
 		{
 			IsStored:                 true,
 			IsMarkedRemoved:          true,
+			IsMarkedUnfillable:       false,
 			FillableTakerAssetAmount: removedOrder.FillableTakerAssetAmount,
 		},
 		{
 			IsStored:                 true,
 			IsMarkedRemoved:          false,
-			FillableTakerAssetAmount: notRemovedOrder.FillableTakerAssetAmount,
+			IsMarkedUnfillable:       true,
+			FillableTakerAssetAmount: unfillableOrder.FillableTakerAssetAmount,
 		},
 	}
 	assert.Equal(t, expectedStatuses, actualStatuses)
