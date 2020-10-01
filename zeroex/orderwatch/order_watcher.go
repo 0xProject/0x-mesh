@@ -299,7 +299,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		// There is another orderwatching path that does not follow this behavior.
 		// Explore this inconsistency and try to fix it.
 		if order.KeepExpired {
-			w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, nil, validationBlock)
+			w.markOrderUnfillable(order, nil, validationBlock)
 		} else {
 			w.unwatchOrder(order, nil, validationBlock)
 		}
@@ -1305,7 +1305,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 			// than OFIsRemoved once configurable order validation
 			// is implemented.
 			{
-				Field: db.OFIsRemoved,
+				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
 				Value: false,
 			},
@@ -1331,7 +1331,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 			// than OFIsRemoved once configurable order validation
 			// is implemented.
 			{
-				Field: db.OFIsRemoved,
+				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
 				Value: true,
 			},
@@ -1390,7 +1390,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
 			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
-			isOrderUnexpired := order.IsRemoved && expirationTimeIsValid
+			isOrderUnexpired := order.IsUnfillable && expirationTimeIsValid
 
 			// We can tell that an order was previously expired if it was marked as removed with a
 			// non-zero fillable amount. There is no other explanation for this database state. The
@@ -1450,7 +1450,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				continue
 			}
 			// FIXME(jalextowle): Decide whether or not this needs to change.
-			if order.IsRemoved {
+			if order.IsUnfillable {
 				// If the order is already flagged for removal, no updates are needed
 			} else {
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
@@ -1463,7 +1463,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					(endState == zeroex.ESOrderExpired && order.KeepExpired) ||
 					(endState == zeroex.ESOrderFilled && order.KeepFullyFilled) ||
 					(endState == zeroex.ESOrderBecameUnfunded && order.KeepUnfunded) {
-					w.updateOrderFillableTakerAssetAmountAndBlockInfo(order, big.NewInt(0), validationBlock)
+					w.markOrderUnfillable(order, big.NewInt(0), validationBlock)
 				} else {
 					w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				}
@@ -1803,6 +1803,7 @@ func (w *Watcher) updateOrderFillableTakerAssetAmountAndBlockInfo(order *types.O
 func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = false
+		orderToUpdate.IsUnfillable = false
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
@@ -1817,9 +1818,29 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 	}
 }
 
+func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
+	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		orderToUpdate.IsUnfillable = true
+		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
+		if newFillableAmount != nil {
+			orderToUpdate.FillableTakerAssetAmount = newFillableAmount
+		}
+		return orderToUpdate, nil
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
+}
+
 func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
+		orderToUpdate.IsUnfillable = true
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
