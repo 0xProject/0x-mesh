@@ -32,10 +32,11 @@ const concurrencyLimit = 5
 // disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
 // machines with a `Code`
 type RejectedOrderInfo struct {
-	OrderHash   common.Hash         `json:"orderHash"`
-	SignedOrder *zeroex.SignedOrder `json:"signedOrder"`
-	Kind        RejectedOrderKind   `json:"kind"`
-	Status      RejectedOrderStatus `json:"status"`
+	OrderHash                common.Hash         `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
+	Kind                     RejectedOrderKind   `json:"kind"`
+	Status                   RejectedOrderStatus `json:"status"`
+	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
@@ -515,10 +516,11 @@ func (o *OrderValidator) batchOnchainValidation(
 					status = ROInvalidSignature
 				}
 				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      status,
+					OrderHash:                orderHash,
+					SignedOrder:              signedOrder,
+					Kind:                     ZeroExValidation,
+					Status:                   status,
+					FillableTakerAssetAmount: fillableTakerAssetAmount,
 				})
 				continue
 			case zeroex.OSFillable:
@@ -527,10 +529,11 @@ func (o *OrderValidator) batchOnchainValidation(
 				// partially fillable orders as invalid
 				if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
 					validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        ZeroExValidation,
-						Status:      ROUnfunded,
+						OrderHash:                orderHash,
+						SignedOrder:              signedOrder,
+						Kind:                     ZeroExValidation,
+						Status:                   ROUnfunded,
+						FillableTakerAssetAmount: fillableTakerAssetAmount,
 					})
 				} else {
 					validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{

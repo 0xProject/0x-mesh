@@ -289,15 +289,6 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		// FIXME(jalextowle): Does this work correctly?
-		//
-		// FIXME(jalextowle): Passing nil here means that the fillableTakerAssetAmount
-		// will not be updated. The fillableTakerAssetAmount of an expired order is
-		// equal to zero, so the only reason why this appears to be used is to make
-		// it possible to "unexpire" orders.
-		//
-		// There is another orderwatching path that does not follow this behavior.
-		// Explore this inconsistency and try to fix it.
 		if order.KeepExpired {
 			w.markOrderUnfillable(order, nil, validationBlock)
 		} else {
@@ -328,8 +319,6 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		// FIXME(jalextowle): This may need to be changed once configurable
-		// order validation is implemented.
 		w.rewatchOrder(order, order.FillableTakerAssetAmount, validationBlock)
 		orderEvent := &zeroex.OrderEvent{
 			Timestamp:                validationBlock.Timestamp,
@@ -1285,12 +1274,6 @@ func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Add
 	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
 }
 
-// FIXME(jalextowle): It should be evaluated whether or not it makes sense to
-// expire orders that are cancelled, filled, etc.
-//
-// FIXME(jalextowle): I think that this could cause an error if the order was
-// marked as removed because of an event that is ultimately re-orged away.
-//
 // findOrdersToExpire returns all orders with an expiration time less than or equal to the latest
 // block timestamp that have not already been removed.
 func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
@@ -1301,9 +1284,6 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 				Kind:  db.LessOrEqual,
 				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
-			// FIXME(jalextowle): Check for OFIsUnfillable rather
-			// than OFIsRemoved once configurable order validation
-			// is implemented.
 			{
 				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
@@ -1327,9 +1307,6 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 				Kind:  db.Greater,
 				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
-			// FIXME(jalextowle): Check for OFIsUnfillable rather
-			// than OFIsRemoved once configurable order validation
-			// is implemented.
 			{
 				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
@@ -1365,12 +1342,6 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 		newFillableAmount := acceptedOrderInfo.FillableTakerAssetAmount
 		oldAmountIsMoreThenNewAmount := oldFillableAmount.Cmp(newFillableAmount) == 1
 
-		// FIXME(jalextowle): Read through this this if-statement. It
-		// provides insight into what needs to change for configurable
-		// order watching.
-		//
-		// FIXME(jalextowle): Some changes are probably required for this
-		// to work properly.
 		if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
 			// A previous event caused this order to be removed from DB because its
 			// fillableAmount became 0, but it has now been revived (e.g., block re-org
@@ -1449,9 +1420,8 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}).Error("validationResults.Rejected contained unknown order hash")
 				continue
 			}
-			// FIXME(jalextowle): Decide whether or not this needs to change.
 			if order.IsUnfillable {
-				// If the order is already flagged for removal, no updates are needed
+				// If the order is already marked as unfillable, no updates are needed
 			} else {
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
@@ -1514,12 +1484,6 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	)
 }
 
-// FIXME(jalextowle): Make a decision about how to treat new orders with special
-// validation configurations. The challenge is determining whether these orders
-// should be considered or rejected depending on their DevUtils "validity." If
-// we decide to "accept" unfillable new orders, then how do we need to change
-// the structure of validationResults to allow this change to be propogated?
-//
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
@@ -1545,6 +1509,28 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		// If the order isn't new, we don't add to OrderWatcher.
 		if acceptedOrderInfo.IsNew {
 			newOrderInfos = append(newOrderInfos, acceptedOrderInfo)
+		}
+	}
+
+	if opts.KeepCancelled || opts.KeepExpired || opts.KeepFullyFilled || opts.KeepUnfunded {
+		for _, rejectedOrderInfo := range zeroexResults.Rejected {
+			// NOTE(jalextowle): We can use the rejectedOrderInfo.Status
+			// field to see whether or not the order is new or not. If
+			// the order has already been stored, the rejectedOrderInfo.Status
+			// field will be ordervalidator.ROOrderAlreadyStoredAndUnfillable.
+			// If the rejection reason involves on-chain validation, then the
+			// order is new.
+			if (opts.KeepCancelled && rejectedOrderInfo.Status.Code == ordervalidator.ROCancelled.Code) ||
+				(opts.KeepExpired && rejectedOrderInfo.Status.Code == ordervalidator.ROExpired.Code) ||
+				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
+				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
+				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
+					OrderHash:                rejectedOrderInfo.OrderHash,
+					SignedOrder:              rejectedOrderInfo.SignedOrder,
+					FillableTakerAssetAmount: rejectedOrderInfo.FillableTakerAssetAmount,
+					IsNew:                    true,
+				})
+			}
 		}
 	}
 
@@ -1741,12 +1727,8 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		if !orderStatus.IsStored {
 			// If not stored, add the order to a set of new orders.
 			newValidOrders = append(newValidOrders, order)
-		} else if orderStatus.IsMarkedRemoved {
-			// FIXME(jalextowle): This will need to be updated once
-			// configurable order watching is enabled. Some orders
-			// that are not marked as removed will still be unfillable.
-			//
-			// If stored but marked as removed, reject the order.
+		} else if orderStatus.IsMarkedRemoved || orderStatus.IsMarkedUnfillable {
+			// If stored but marked as removed or unfillable, reject the order.
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1754,11 +1736,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
 			})
 		} else {
-			// FIXME(jalextowle): This will need to be updated once
-			// configurable order watching is enabled. Some orders
-			// that are not marked as removed will still be unfillable.
-			//
-			// If stored but not marked as removed, accept the order without re-validation
+			// If stored but not marked as removed or unfillable, accept the order without re-validation
 			results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
 				OrderHash:                orderHash,
 				SignedOrder:              order,
