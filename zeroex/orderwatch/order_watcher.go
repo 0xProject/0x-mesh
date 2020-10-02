@@ -1525,9 +1525,10 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
 				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
 				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
-					OrderHash:                rejectedOrderInfo.OrderHash,
-					SignedOrder:              rejectedOrderInfo.SignedOrder,
-					FillableTakerAssetAmount: rejectedOrderInfo.FillableTakerAssetAmount,
+					OrderHash:   rejectedOrderInfo.OrderHash,
+					SignedOrder: rejectedOrderInfo.SignedOrder,
+					// TODO(jalextowle): Verify that this is consistent with the OrderWatcher
+					FillableTakerAssetAmount: big.NewInt(0),
 					IsNew:                    true,
 				})
 			}

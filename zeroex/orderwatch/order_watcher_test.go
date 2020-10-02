@@ -176,9 +176,131 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 		}
 	}
 }
+func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
 
-// FIXME - We should have tests for the non-happy paths
-func TestOrderWatcherStoresOrders(t *testing.T) {
+	for _, testCase := range []*struct {
+		description          string
+		signedOrderGenerator func() *zeroex.SignedOrder
+		addOrdersOpts        *types.AddOrdersOpts
+	}{
+		{
+			description: "doesn't store cancelled orders when KeepCancelled is disabled",
+			signedOrderGenerator: func() *zeroex.SignedOrder {
+				signedOrder := scenario.NewSignedTestOrder(t,
+					orderopts.SetupMakerState(true),
+					orderopts.MakerAssetData(scenario.ZRXAssetData),
+				)
+				// Cancel order
+				opts := &bind.TransactOpts{
+					From:   signedOrder.MakerAddress,
+					Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+				}
+				trimmedOrder := signedOrder.Trim()
+				txn, err := exchange.CancelOrder(opts, trimmedOrder)
+				require.NoError(t, err)
+				waitTxnSuccessfullyMined(t, ethClient, txn)
+				return signedOrder
+			},
+			addOrdersOpts: &types.AddOrdersOpts{
+				KeepCancelled:   false,
+				KeepExpired:     true,
+				KeepFullyFilled: true,
+				KeepUnfunded:    true,
+			},
+		},
+		{
+			description: "doesn't store expired orders when KeepExpired is disabled",
+			signedOrderGenerator: func() *zeroex.SignedOrder {
+				return scenario.NewSignedTestOrder(t,
+					orderopts.SetupMakerState(true),
+					orderopts.MakerAssetData(scenario.ZRXAssetData),
+					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
+				)
+			},
+			addOrdersOpts: &types.AddOrdersOpts{
+				KeepCancelled:   true,
+				KeepExpired:     false,
+				KeepFullyFilled: true,
+				KeepUnfunded:    true,
+			},
+		},
+		{
+			description: "doesn't store fully filled orders when KeepFullyFilled is disabled",
+			signedOrderGenerator: func() *zeroex.SignedOrder {
+				takerAddress := constants.GanacheAccount3
+				signedOrder := scenario.NewSignedTestOrder(t,
+					orderopts.SetupMakerState(true),
+					orderopts.SetupTakerAddress(takerAddress),
+					orderopts.MakerAssetData(scenario.ZRXAssetData),
+				)
+				// Fill order
+				opts := &bind.TransactOpts{
+					From:   takerAddress,
+					Signer: scenario.GetTestSignerFn(takerAddress),
+					Value:  big.NewInt(100000000000000000),
+				}
+				trimmedOrder := signedOrder.Trim()
+				txn, err := exchange.FillOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
+				require.NoError(t, err)
+				waitTxnSuccessfullyMined(t, ethClient, txn)
+				return signedOrder
+			},
+			addOrdersOpts: &types.AddOrdersOpts{
+				KeepCancelled:   true,
+				KeepExpired:     true,
+				KeepFullyFilled: false,
+				KeepUnfunded:    true,
+			},
+		},
+		{
+			description: "doesn't store unfunded orders when KeepUnfunded is disabled",
+			signedOrderGenerator: func() *zeroex.SignedOrder {
+				return scenario.NewSignedTestOrder(t,
+					orderopts.MakerAssetData(scenario.ZRXAssetData),
+					orderopts.MakerFee(big.NewInt(1)),
+					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
+				)
+			},
+			addOrdersOpts: &types.AddOrdersOpts{
+				KeepCancelled:   true,
+				KeepExpired:     true,
+				KeepFullyFilled: true,
+				KeepUnfunded:    false,
+			},
+		},
+	} {
+		teardownSubTest := setupSubTest(t)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		database, err := db.New(ctx, db.TestOptions())
+		require.NoError(t, err, testCase.description)
+
+		blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+
+		signedOrder := testCase.signedOrderGenerator()
+
+		err = blockWatcher.SyncToLatestBlock()
+		require.NoError(t, err)
+
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		require.NoError(t, err)
+
+		assert.Len(t, validationResults.Accepted, 0, testCase.description)
+		assert.Len(t, validationResults.Rejected, 1, testCase.description)
+
+		orders, err := database.FindOrders(nil)
+		require.NoError(t, err, testCase.description)
+		require.Len(t, orders, 0)
+
+		teardownSubTest(t)
+		cancel()
+	}
+}
+
+func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 	if !serialTestsEnabled {
 		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
 	}
@@ -188,6 +310,7 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 		expectedFillableAmount *big.Int
 		signedOrderGenerator   func() *zeroex.SignedOrder
 		addOrdersOpts          *types.AddOrdersOpts
+		shouldBeAccepted       bool
 	}{
 		{
 			description:            "stores valid orders",
@@ -198,7 +321,8 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
 			},
-			addOrdersOpts: &types.AddOrdersOpts{},
+			addOrdersOpts:    &types.AddOrdersOpts{},
+			shouldBeAccepted: true,
 		},
 		{
 			description:            "stores cancelled orders when KeepCancelled is enabled",
@@ -219,7 +343,8 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
 			},
-			addOrdersOpts: &types.AddOrdersOpts{KeepCancelled: true},
+			addOrdersOpts:    &types.AddOrdersOpts{KeepCancelled: true},
+			shouldBeAccepted: false,
 		},
 		{
 			description:            "stores expired orders when KeepExpired is enabled",
@@ -231,7 +356,8 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
 				)
 			},
-			addOrdersOpts: &types.AddOrdersOpts{KeepExpired: true},
+			addOrdersOpts:    &types.AddOrdersOpts{KeepExpired: true},
+			shouldBeAccepted: false,
 		},
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
@@ -255,7 +381,8 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
 			},
-			addOrdersOpts: &types.AddOrdersOpts{KeepFullyFilled: true},
+			addOrdersOpts:    &types.AddOrdersOpts{KeepFullyFilled: true},
+			shouldBeAccepted: false,
 		},
 		{
 			description:            "stores unfunded orders when KeepUnfunded is enabled",
@@ -267,7 +394,8 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
 				)
 			},
-			addOrdersOpts: &types.AddOrdersOpts{KeepUnfunded: true},
+			addOrdersOpts:    &types.AddOrdersOpts{KeepUnfunded: true},
+			shouldBeAccepted: false,
 		},
 	} {
 		teardownSubTest := setupSubTest(t)
@@ -283,9 +411,16 @@ func TestOrderWatcherStoresOrders(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		// FIXME(jalextowle): Should I check the validation results
-		_, err = orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
+
+		if testCase.shouldBeAccepted {
+			assert.Len(t, validationResults.Accepted, 1, testCase.description)
+			assert.Len(t, validationResults.Rejected, 0, testCase.description)
+		} else {
+			assert.Len(t, validationResults.Accepted, 0, testCase.description)
+			assert.Len(t, validationResults.Rejected, 1, testCase.description)
+		}
 
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
