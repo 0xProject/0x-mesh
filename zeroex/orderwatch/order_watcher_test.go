@@ -310,7 +310,6 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		expectedFillableAmount *big.Int
 		signedOrderGenerator   func() *zeroex.SignedOrder
 		addOrdersOpts          *types.AddOrdersOpts
-		shouldBeAccepted       bool
 	}{
 		{
 			description:            "stores valid orders",
@@ -321,8 +320,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
 			},
-			addOrdersOpts:    &types.AddOrdersOpts{},
-			shouldBeAccepted: true,
+			addOrdersOpts: &types.AddOrdersOpts{},
 		},
 		{
 			description:            "stores cancelled orders when KeepCancelled is enabled",
@@ -343,8 +341,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
 			},
-			addOrdersOpts:    &types.AddOrdersOpts{KeepCancelled: true},
-			shouldBeAccepted: false,
+			addOrdersOpts: &types.AddOrdersOpts{KeepCancelled: true},
 		},
 		{
 			description:            "stores expired orders when KeepExpired is enabled",
@@ -356,8 +353,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
 				)
 			},
-			addOrdersOpts:    &types.AddOrdersOpts{KeepExpired: true},
-			shouldBeAccepted: false,
+			addOrdersOpts: &types.AddOrdersOpts{KeepExpired: true},
 		},
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
@@ -381,8 +377,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
 			},
-			addOrdersOpts:    &types.AddOrdersOpts{KeepFullyFilled: true},
-			shouldBeAccepted: false,
+			addOrdersOpts: &types.AddOrdersOpts{KeepFullyFilled: true},
 		},
 		{
 			description:            "stores unfunded orders when KeepUnfunded is enabled",
@@ -394,8 +389,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
 				)
 			},
-			addOrdersOpts:    &types.AddOrdersOpts{KeepUnfunded: true},
-			shouldBeAccepted: false,
+			addOrdersOpts: &types.AddOrdersOpts{KeepUnfunded: true},
 		},
 	} {
 		teardownSubTest := setupSubTest(t)
@@ -414,12 +408,14 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
-		if testCase.shouldBeAccepted {
-			assert.Len(t, validationResults.Accepted, 1, testCase.description)
-			assert.Len(t, validationResults.Rejected, 0, testCase.description)
-		} else {
+		isUnfillable := testCase.expectedFillableAmount.Cmp(big.NewInt(0)) == 0
+
+		if isUnfillable {
 			assert.Len(t, validationResults.Accepted, 0, testCase.description)
 			assert.Len(t, validationResults.Rejected, 1, testCase.description)
+		} else {
+			assert.Len(t, validationResults.Accepted, 1, testCase.description)
+			assert.Len(t, validationResults.Rejected, 0, testCase.description)
 		}
 
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
@@ -434,6 +430,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		expectedOrderState := orderState{
 			hash:               expectedOrderHash,
 			isRemoved:          false,
+			isUnfillable:       isUnfillable,
 			fillableAmount:     testCase.expectedFillableAmount,
 			lastUpdated:        time.Now(),
 			lastValidatedBlock: latestStoredBlock,
@@ -491,6 +488,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -549,6 +547,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -605,6 +604,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -663,6 +663,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -718,6 +719,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -775,6 +777,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -828,6 +831,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -882,6 +886,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -914,6 +919,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 	expectedOrderState = orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -953,6 +959,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -986,6 +993,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 	expectedOrderState = orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1045,6 +1053,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1077,6 +1086,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 	expectedOrderState = orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1128,6 +1138,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1179,6 +1190,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1235,6 +1247,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     big.NewInt(0),
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1292,6 +1305,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     halfAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: latestStoredBlock,
@@ -1357,6 +1371,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	expectedOrderState := orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          true,
+		isUnfillable:       true,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: nextBlock,
@@ -1405,6 +1420,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	expectedOrderState = orderState{
 		hash:               expectedOrderHash,
 		isRemoved:          false,
+		isUnfillable:       false,
 		fillableAmount:     signedOrder.TakerAssetAmount,
 		lastUpdated:        time.Now(),
 		lastValidatedBlock: reorgBlockEvents[len(reorgBlockEvents)-1].BlockHeader,
@@ -1677,6 +1693,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 	orderTwo, err := database.GetOrder(signedOrderTwoHash)
 	require.NoError(t, err)
 	assert.Equal(t, true, orderTwo.IsRemoved)
+	assert.Equal(t, true, orderTwo.IsUnfillable)
 }
 
 func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
@@ -1764,6 +1781,7 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	orderTwo, err := database.GetOrder(signedOrderTwoHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, orderTwo.IsRemoved)
+	assert.Equal(t, false, orderTwo.IsUnfillable)
 }
 
 // Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
@@ -1867,6 +1885,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	existingOrder, err := database.GetOrder(orderHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, existingOrder.IsRemoved)
+	assert.Equal(t, false, existingOrder.IsUnfillable)
 }
 
 func TestDrainAllBlockEventsChan(t *testing.T) {
@@ -2347,6 +2366,7 @@ func waitTxnSuccessfullyMined(t *testing.T, ethClient *ethclient.Client, txn *et
 type orderState struct {
 	hash               common.Hash
 	isRemoved          bool
+	isUnfillable       bool
 	fillableAmount     *big.Int
 	lastUpdated        time.Time
 	lastValidatedBlock *types.MiniHeader
@@ -2355,6 +2375,7 @@ type orderState struct {
 func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderWithMetadata) {
 	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
 	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
+	assert.Equal(t, expectedState.isUnfillable, order.IsUnfillable, "IsUnfillable")
 	assert.Equal(t, expectedState.fillableAmount, order.FillableTakerAssetAmount, "FillableTakerAssetAmount")
 	assert.WithinDuration(t, expectedState.lastUpdated, order.LastUpdated, 4*time.Second, "LastUpdated")
 	assert.Equal(t, expectedState.lastValidatedBlock.Number, order.LastValidatedBlockNumber, "LastValidatedBlockNumber")

@@ -1133,6 +1133,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		Salt:                     orderInfo.SignedOrder.Salt,
 		Signature:                orderInfo.SignedOrder.Signature,
 		IsRemoved:                false,
+		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
 		IsPinned:                 pinned,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
