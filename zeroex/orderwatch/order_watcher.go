@@ -984,13 +984,13 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
 
 	for _, orderInfo := range orderInfos {
-		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock)
+		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1104,7 +1104,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	return orderEvents, nil
 }
 
-func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader) (*types.OrderWithMetadata, error) {
+func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
@@ -1141,6 +1141,10 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		LastValidatedBlockNumber: validationBlock.Number,
 		LastValidatedBlockHash:   validationBlock.Hash,
+		KeepCancelled:            opts.KeepCancelled,
+		KeepExpired:              opts.KeepExpired,
+		KeepFullyFilled:          opts.KeepFullyFilled,
+		KeepUnfunded:             opts.KeepUnfunded,
 	}, nil
 }
 
@@ -1432,7 +1436,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}
 				if (endState == zeroex.ESOrderCancelled && order.KeepCancelled) ||
 					(endState == zeroex.ESOrderExpired && order.KeepExpired) ||
-					(endState == zeroex.ESOrderFilled && order.KeepFullyFilled) ||
+					(endState == zeroex.ESOrderFullyFilled && order.KeepFullyFilled) ||
 					(endState == zeroex.ESOrderBecameUnfunded && order.KeepUnfunded) {
 					w.markOrderUnfillable(order, big.NewInt(0), validationBlock)
 				} else {
@@ -1539,7 +1543,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
 	if err != nil {
 		return nil, err
 	}
