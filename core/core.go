@@ -878,7 +878,6 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
 }
 
-// FIXME - Make sure that all code paths are configured with opts properly
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
 func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	<-app.started
