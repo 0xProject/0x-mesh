@@ -29,7 +29,7 @@
         "@types/base64-arraybuffer": "^0.1.0",
         "es6-promise": "^4.2.6",
         "ignore-loader": "^0.1.2",
-        "isomorphic-fetch": "^2.2.1",
+        "isomorphic-fetch": "^3.0.0",
         "qunit-puppeteer": "^1.0.1",
         "prettier": "^2.1.2",
         "ts-loader": "^6.2.1",
