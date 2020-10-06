@@ -158,6 +158,7 @@ type Order struct {
 	IsPinned                 uint8          `json:"isPinned"`
 	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
 	IsUnfillable             uint8          `json:"isUnfillable"`
+	IsExpired                uint8          `json:"isExpired"`
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 	LastValidatedBlockNumber *SortedBigInt  `json:"lastValidatedBlockNumber"`
@@ -202,6 +203,7 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		IsRemoved:                order.IsRemoved == 1,
 		IsPinned:                 order.IsPinned == 1,
 		IsUnfillable:             order.IsUnfillable == 1,
+		IsExpired:                order.IsExpired == 1,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
@@ -242,6 +244,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		IsPinned:                 BoolToUint8(order.IsPinned),
 		IsNotPinned:              BoolToUint8(!order.IsPinned),
 		IsUnfillable:             BoolToUint8(order.IsUnfillable),
+		IsExpired:                BoolToUint8(order.IsExpired),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),

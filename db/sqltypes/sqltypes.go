@@ -244,6 +244,7 @@ type Order struct {
 	IsRemoved                bool             `db:"isRemoved"`
 	IsPinned                 bool             `db:"isPinned"`
 	IsUnfillable             bool             `db:"isUnfillable"`
+	IsExpired                bool             `db:"isExpired"`
 	ParsedMakerAssetData     *ParsedAssetData `db:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  *ParsedAssetData `db:"parsedMakerFeeAssetData"`
 	LastValidatedBlockNumber *SortedBigInt    `db:"lastValidatedBlockNumber"`
@@ -334,6 +335,7 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		IsRemoved:                order.IsRemoved,
 		IsPinned:                 order.IsPinned,
 		IsUnfillable:             order.IsUnfillable,
+		IsExpired:                order.IsExpired,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
@@ -373,6 +375,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		IsRemoved:                order.IsRemoved,
 		IsPinned:                 order.IsPinned,
 		IsUnfillable:             order.IsUnfillable,
+		IsExpired:                order.IsExpired,
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),

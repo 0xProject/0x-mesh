@@ -118,6 +118,7 @@ const (
 	OFIsRemoved                OrderField = "isRemoved"
 	OFIsPinned                 OrderField = "isPinned"
 	OFIsUnfillable             OrderField = "isUnfillable"
+	OFIsExpired                OrderField = "isExpired"
 	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
 	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
 	OFLastValidatedBlockNumber OrderField = "lastValidatedBlockNumber"

@@ -79,6 +79,7 @@ export interface Order {
     isPinned: number;
     isNotPinned: number; // Used in a compound index in queries related to max expiration time.
     isUnfillable: number;
+    isExpired: number;
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
     lastValidatedBlockNumber: string;
@@ -171,7 +172,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
             dhtstore: '&key,data',

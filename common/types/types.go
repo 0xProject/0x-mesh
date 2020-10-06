@@ -140,6 +140,8 @@ type OrderWithMetadata struct {
 	IsPinned bool `json:"isPinned"`
 	// IsUnfillable indicates whether or not the order has become unfillable.
 	IsUnfillable bool `json:"isUnfillable"`
+	// IsExpired indicates whether or not the order has become expired.
+	IsExpired bool `json:"isExpired"`
 	// JSON-encoded list of assetdatas contained in MakerAssetData. For non-MAP
 	// orders, the list contains only one element which is equal to MakerAssetData.
 	// For MAP orders, it contains each component assetdata.

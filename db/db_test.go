@@ -1243,6 +1243,8 @@ func newTestOrder() *types.OrderWithMetadata {
 		FillableTakerAssetAmount: big.NewInt(42),
 		IsRemoved:                false,
 		IsPinned:                 true,
+		IsUnfillable:             false,
+		IsExpired:                false,
 		ParsedMakerAssetData: []*types.SingleAssetData{
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
@@ -1371,6 +1373,39 @@ func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata,
 			filters: []OrderFilter{
 				{
 					Field: OFIsRemoved,
+					Kind:  Equal,
+					Value: false,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "IsPinned = true",
+			filters: []OrderFilter{
+				{
+					Field: OFIsPinned,
+					Kind:  Equal,
+					Value: true,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "IsUnfillable = false",
+			filters: []OrderFilter{
+				{
+					Field: OFIsUnfillable,
+					Kind:  Equal,
+					Value: false,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
+			name: "IsExpired = false",
+			filters: []OrderFilter{
+				{
+					Field: OFIsExpired,
 					Kind:  Equal,
 					Value: false,
 				},
