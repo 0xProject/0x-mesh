@@ -1135,6 +1135,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
 		IsPinned:                 pinned,
+		IsExpired:                orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
@@ -1805,6 +1806,9 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsUnfillable = true
+		if orderToUpdate.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0 {
+			orderToUpdate.IsExpired = true
+		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
@@ -1825,6 +1829,9 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.IsUnfillable = true
+		if orderToUpdate.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0 {
+			orderToUpdate.IsExpired = true
+		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
