@@ -1722,6 +1722,110 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 	}
 }
 
+func TestOrderWatcherOrderExpiredWhenAddedThenUnexpired(t *testing.T) {
+	if !serialTestsEnabled {
+		t.Skip("Serial tests (tests which cannot run in parallel) are disabled. You can enable them with the --serial flag")
+	}
+
+	// Set up test and orderWatcher
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	dbOptions := db.TestOptions()
+	database, err := db.New(ctx, dbOptions)
+	require.NoError(t, err)
+	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
+
+	// Create an order which will be expired when added to the OrderWatcher
+	expirationTime := time.Now().Add(-24 * time.Hour)
+	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
+	signedOrder := scenario.NewSignedTestOrder(t,
+		orderopts.SetupMakerState(true),
+		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
+	)
+	expectedOrderHash, err := signedOrder.ComputeOrderHash()
+	require.NoError(t, err)
+
+	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
+	orderWatcher.Subscribe(orderEventsChan)
+
+	// Add the order to Mesh
+	err = blockwatcher.SyncToLatestBlock()
+	require.NoError(t, err)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
+	require.NoError(t, err)
+
+	assert.Len(t, validationResults.Accepted, 0)
+	assert.Len(t, validationResults.Rejected, 1)
+	assert.Equal(t, ordervalidator.ROExpired, validationResults.Rejected[0].Status)
+
+	orders, err := database.FindOrders(nil)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	expectedValidationBlock, err := database.GetLatestMiniHeader()
+	require.NoError(t, err)
+	expectedOrderState := orderState{
+		hash:               expectedOrderHash,
+		isRemoved:          false,
+		isUnfillable:       true,
+		isExpired:          true,
+		fillableAmount:     big.NewInt(0),
+		lastUpdated:        time.Now(),
+		lastValidatedBlock: expectedValidationBlock,
+	}
+	checkOrderState(t, expectedOrderState, orders[0])
+
+	// TODO(jalextowle): This code isn't needed with the current hacky test.
+	// This could be improved by stubbing out validation.
+	// Grep for SlowContractCaller in this file to see how the interface
+	// works. The idea would be to create a contract caller that ensures that
+	// DevUtils is called when the OrderWatcher is deciding whether or not to
+	// unexpire the order.
+	//
+	// The reason why this can't be tested in a more straightforward
+	// way is that it's non-trivial to implement a re-org at the level of ganache.
+	// Using ganache to simulate the whole workflow would be the optimal testing
+	// solution.
+	//
+	// Simulate a block re-org
+	// replacementBlockHash := common.HexToHash("0x2")
+	// reorgBlockEvents := []*blockwatch.Event{
+	// 	{
+	// 		Type:        blockwatch.Removed,
+	// 		BlockHeader: expectedValidationBlock,
+	// 	},
+	// 	{
+	// 		Type: blockwatch.Added,
+	// 		BlockHeader: &types.MiniHeader{
+	// 			Parent:    expectedValidationBlock.Parent,
+	// 			Hash:      replacementBlockHash,
+	// 			Number:    expectedValidationBlock.Number,
+	// 			Logs:      []ethtypes.Log{},
+	// 			Timestamp: expirationTime.Add(-2 * time.Hour),
+	// 		},
+	// 	},
+	// 	{
+	// 		Type: blockwatch.Added,
+	// 		BlockHeader: &types.MiniHeader{
+	// 			Parent:    replacementBlockHash,
+	// 			Hash:      common.HexToHash("0x3"),
+	// 			Number:    big.NewInt(0).Add(expectedValidationBlock.Number, big.NewInt(1)),
+	// 			Logs:      []ethtypes.Log{},
+	// 			Timestamp: expirationTime.Add(-1 * time.Hour),
+	// 		},
+	// 	},
+	// }
+	// orderWatcher.blockEventsChan <- reorgBlockEvents
+
+	// HACK(jalextowle): The block events above don't actually exist in the Ganache
+	// environment that Mesh uses to validate orders. This means that Mesh won't be
+	// able to actually validate the order.
+	possiblyUnexpiredOrders, err := orderWatcher.findOrdersToPossiblyUnexpire(expirationTime.Add(-2 * time.Hour))
+	require.NoError(t, err)
+	assert.Len(t, possiblyUnexpiredOrders, 1)
+}
+
 // NOTE(jalextowle): We don't need to implement a test for this with configurations
 // as the configurations do not interact with the pinning system.
 func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
@@ -2697,7 +2801,7 @@ func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderW
 	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
 	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
 	assert.Equal(t, expectedState.isUnfillable, order.IsUnfillable, "IsUnfillable")
-	assert.Equal(t, expectedState.isExpired, order.IsExpired, "IsUnfillable")
+	assert.Equal(t, expectedState.isExpired, order.IsExpired, "IsExpired")
 	assert.Equal(t, expectedState.fillableAmount, order.FillableTakerAssetAmount, "FillableTakerAssetAmount")
 	assert.WithinDuration(t, expectedState.lastUpdated, order.LastUpdated, 4*time.Second, "LastUpdated")
 	assert.Equal(t, expectedState.lastValidatedBlock.Number, order.LastValidatedBlockNumber, "LastValidatedBlockNumber")
