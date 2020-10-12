@@ -2291,7 +2291,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	validationBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
 	validationBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, map[common.Hash]*types.OrderWithMetadata{}, validationBlock)
+	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, map[common.Hash]struct{}{}, validationBlock)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 2)

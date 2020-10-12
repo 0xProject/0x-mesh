@@ -275,7 +275,7 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 // process orders that require re-validation, since the validation process will already emit the necessary events.
 // latestBlockTimestamp is the latest block timestamp Mesh knows about
 // ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
-func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, map[common.Hash]*types.OrderWithMetadata, error) {
+func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, map[common.Hash]struct{}, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 
 	// Check for any orders that have now expired.
@@ -334,7 +334,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	if err != nil {
 		return orderEvents, nil, err
 	}
-	orderHashToPossiblyUnexpiredOrders := map[common.Hash]*types.OrderWithMetadata{}
+	orderHashToPossiblyUnexpiredOrders := map[common.Hash]struct{}{}
 	for _, order := range possiblyUnexpiredOrders {
 		// If we will re-validate this order, the revalidation process will discover
 		// whether or not it's unexpired, and an appropriate event will already be
@@ -343,7 +343,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 			continue
 		}
 		ordersToRevalidate[order.Hash] = order
-		orderHashToPossiblyUnexpiredOrders[order.Hash] = order
+		orderHashToPossiblyUnexpiredOrders[order.Hash] = struct{}{}
 	}
 
 	return orderEvents, orderHashToPossiblyUnexpiredOrders, nil
@@ -510,7 +510,7 @@ func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]*types.OrderWithMetadata{}, latestMiniHeader)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]struct{}{}, latestMiniHeader)
 	if err != nil {
 		return err
 	}
@@ -932,7 +932,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]*types.OrderWithMetadata{}, latestBlock)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]struct{}{}, latestBlock)
 	if err != nil {
 		return err
 	}
@@ -1381,7 +1381,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 	validationResults *ordervalidator.ValidationResults,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	orderHashToPossiblyUnexpiredOrder map[common.Hash]*types.OrderWithMetadata,
+	orderHashToPossiblyUnexpiredOrder map[common.Hash]struct{},
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
@@ -1486,7 +1486,9 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			if order.IsUnfillable {
 				// If the order is already marked as unfillable, no updates are needed
 				// other than updating the expiration state
-				w.updateOrderExpirationState(order, validationBlock)
+				if _, ok := orderHashToPossiblyUnexpiredOrder[order.Hash]; ok {
+					w.updateOrderExpirationState(order, validationBlock)
+				}
 			} else {
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
@@ -1526,7 +1528,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	ctx context.Context,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
-	orderHashToPossiblyUnexpiredOrder map[common.Hash]*types.OrderWithMetadata,
+	orderHashToPossiblyUnexpiredOrder map[common.Hash]struct{},
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	signedOrders := []*zeroex.SignedOrder{}
