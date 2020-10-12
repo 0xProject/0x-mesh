@@ -1989,7 +1989,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 		latestBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
 		latestBlock.Timestamp = expirationTime.Add(1 * time.Second)
-		orderEvents, err := orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
+		orderEvents, _, err := orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 		require.NoError(t, err, testCase.description)
 
 		require.Len(t, orderEvents, 1)
@@ -2084,7 +2084,7 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	latestBlock, err = database.GetLatestMiniHeader()
 	require.NoError(t, err)
 	latestBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
+	orderEvents, _, err = orderWatcher.handleOrderExpirations(latestBlock, ordersToRevalidate)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 1)
@@ -2187,7 +2187,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	validationBlock, err := database.GetLatestMiniHeader()
 	require.NoError(t, err)
 	validationBlock.Timestamp = expirationTime.Add(-1 * time.Minute)
-	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, validationBlock)
+	orderEvents, err = orderWatcher.convertValidationResultsIntoOrderEvents(&validationResults, orderHashToDBOrder, orderHashToEvents, map[common.Hash]*types.OrderWithMetadata{}, validationBlock)
 	require.NoError(t, err)
 
 	require.Len(t, orderEvents, 2)
