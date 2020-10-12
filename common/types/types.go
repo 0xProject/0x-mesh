@@ -56,16 +56,16 @@ type AddOrdersOpts struct {
 	// to true.
 	Pinned bool `json:"pinned"`
 	// KeepCancelled signals that this order should not be deleted
-	// if it is cancelled.
+	// even if it is cancelled.
 	KeepCancelled bool `json:"keepCancelled"`
 	// KeepExpired signals that this order should not be deleted
-	// if it becomes expired.
+	// even if it becomes expired.
 	KeepExpired bool `json:"keepExpired"`
 	// KeepFullyFilled signals that this order should not be deleted
-	// if it is fully filled.
+	// even if it is fully filled.
 	KeepFullyFilled bool `json:"keepFullyFilled"`
 	// KeepUnfunded signals that this order should not be deleted
-	// if it becomes unfunded.
+	// even if it becomes unfunded.
 	KeepUnfunded bool `json:"keepUnfunded"`
 }
 
