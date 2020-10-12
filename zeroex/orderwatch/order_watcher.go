@@ -1135,7 +1135,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
 		IsPinned:                 pinned,
-		IsExpired:                orderInfo.SignedOrder.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0,
+		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrder.ExpirationTimeSeconds) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
@@ -1367,7 +1367,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
 			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
-			isOrderUnexpired := order.IsUnfillable && expirationTimeIsValid
+			isOrderUnexpired := order.IsExpired && order.IsUnfillable && expirationTimeIsValid
 
 			// We can tell that an order was previously expired if it was marked as removed with a
 			// non-zero fillable amount. There is no other explanation for this database state. The
@@ -1789,6 +1789,7 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = false
 		orderToUpdate.IsUnfillable = false
+		orderToUpdate.IsExpired = false
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
@@ -1806,7 +1807,7 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsUnfillable = true
-		if orderToUpdate.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0 {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
@@ -1829,7 +1830,7 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.IsUnfillable = true
-		if orderToUpdate.ExpirationTimeSeconds.Cmp(big.NewInt(validationBlock.Timestamp.Unix())) >= 0 {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()

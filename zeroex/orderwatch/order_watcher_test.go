@@ -310,6 +310,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		expectedFillableAmount *big.Int
 		signedOrderGenerator   func() *zeroex.SignedOrder
 		addOrdersOpts          *types.AddOrdersOpts
+		isExpired              bool
 	}{
 		{
 			description:            "stores valid orders",
@@ -354,6 +355,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 				)
 			},
 			addOrdersOpts: &types.AddOrdersOpts{KeepExpired: true},
+			isExpired:     true,
 		},
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
@@ -431,6 +433,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 			hash:               expectedOrderHash,
 			isRemoved:          false,
 			isUnfillable:       isUnfillable,
+			isExpired:          testCase.isExpired,
 			fillableAmount:     testCase.expectedFillableAmount,
 			lastUpdated:        time.Now(),
 			lastValidatedBlock: latestStoredBlock,
@@ -1571,6 +1574,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 			hash:               expectedOrderHash,
 			isRemoved:          false,
 			isUnfillable:       false,
+			isExpired:          false,
 			fillableAmount:     halfAmount,
 			lastUpdated:        time.Now(),
 			lastValidatedBlock: latestStoredBlock,
@@ -1656,6 +1660,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 			hash:               expectedOrderHash,
 			isRemoved:          testCase.shouldBeRemoved,
 			isUnfillable:       true,
+			isExpired:          true,
 			fillableAmount:     signedOrder.TakerAssetAmount,
 			lastUpdated:        time.Now(),
 			lastValidatedBlock: nextBlock,
@@ -1705,6 +1710,7 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 			hash:               expectedOrderHash,
 			isRemoved:          false,
 			isUnfillable:       false,
+			isExpired:          false,
 			fillableAmount:     signedOrder.TakerAssetAmount,
 			lastUpdated:        time.Now(),
 			lastValidatedBlock: reorgBlockEvents[len(reorgBlockEvents)-1].BlockHeader,
@@ -1999,6 +2005,7 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 		require.NoError(t, err, testCase.description)
 		assert.Equal(t, testCase.shouldBeRemoved, orderTwo.IsRemoved, testCase.description)
 		assert.Equal(t, true, orderTwo.IsUnfillable, testCase.description)
+		assert.Equal(t, true, orderTwo.IsExpired, testCase.description)
 
 		cancel()
 		teardownSubTest(t)
@@ -2093,6 +2100,7 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, false, orderTwo.IsRemoved)
 	assert.Equal(t, false, orderTwo.IsUnfillable)
+	assert.Equal(t, false, orderTwo.IsExpired)
 }
 
 // Scenario: Order has become unexpired and filled in the same block events processed. We test this case using
@@ -2197,6 +2205,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, false, existingOrder.IsRemoved)
 	assert.Equal(t, false, existingOrder.IsUnfillable)
+	assert.Equal(t, false, existingOrder.IsExpired)
 }
 
 func TestDrainAllBlockEventsChan(t *testing.T) {
@@ -2678,6 +2687,7 @@ type orderState struct {
 	hash               common.Hash
 	isRemoved          bool
 	isUnfillable       bool
+	isExpired          bool
 	fillableAmount     *big.Int
 	lastUpdated        time.Time
 	lastValidatedBlock *types.MiniHeader
@@ -2687,6 +2697,7 @@ func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderW
 	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
 	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
 	assert.Equal(t, expectedState.isUnfillable, order.IsUnfillable, "IsUnfillable")
+	assert.Equal(t, expectedState.isExpired, order.IsExpired, "IsUnfillable")
 	assert.Equal(t, expectedState.fillableAmount, order.FillableTakerAssetAmount, "FillableTakerAssetAmount")
 	assert.WithinDuration(t, expectedState.lastUpdated, order.LastUpdated, 4*time.Second, "LastUpdated")
 	assert.Equal(t, expectedState.lastValidatedBlock.Number, order.LastValidatedBlockNumber, "LastValidatedBlockNumber")
