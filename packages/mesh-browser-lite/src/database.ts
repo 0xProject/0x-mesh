@@ -78,15 +78,22 @@ export interface Order {
     isRemoved: number;
     isPinned: number;
     isNotPinned: number; // Used in a compound index in queries related to max expiration time.
+    isUnfillable: number;
+    isExpired: number;
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
     lastValidatedBlockNumber: string;
     lastValidatedBlockHash: string;
+    keepCancelled: number;
+    keepExpired: number;
+    keepFullyFilled: number;
+    keepUnfunded: number;
 }
 
 export interface StoredOrderStatus {
     isStored: boolean;
     isMarkedRemoved: boolean;
+    isMarkedUnfillable: boolean;
     fillableTakerAssetAmount?: string;
 }
 
@@ -165,7 +172,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,[isNotPinned+expirationTimeSeconds]',
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
             dhtstore: '&key,data',
@@ -259,17 +266,13 @@ export class Database {
                 statuses.push({
                     isStored: false,
                     isMarkedRemoved: false,
-                });
-            } else if (order.isRemoved) {
-                statuses.push({
-                    isStored: true,
-                    isMarkedRemoved: true,
-                    fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    isMarkedUnfillable: false,
                 });
             } else {
                 statuses.push({
                     isStored: true,
-                    isMarkedRemoved: false,
+                    isMarkedRemoved: order.isRemoved === 1,
+                    isMarkedUnfillable: order.isUnfillable === 1,
                     fillableTakerAssetAmount: order.fillableTakerAssetAmount,
                 });
             }

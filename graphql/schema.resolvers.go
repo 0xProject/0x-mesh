@@ -13,13 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool) (*gqltypes.AddOrdersResults, error) {
+func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
 	isPinned := false
 	if pinned != nil {
 		isPinned = (*pinned)
 	}
 	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
-	results, err := r.app.AddOrders(ctx, signedOrders, isPinned)
+	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
+	results, err := r.app.AddOrders(ctx, signedOrders, isPinned, commonTypeOpts)
 	if err != nil {
 		return nil, err
 	}

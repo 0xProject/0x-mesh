@@ -640,9 +640,6 @@ func (w *Watcher) filterLogsRecursively(from, to int, allLogs []ethtypes.Log) ([
 			if from == to {
 				return allLogs, fmt.Errorf("Unable to get the logs for block #%d, because it contains too many logs", from)
 			}
-
-			// FIXME(jalextowle): This had deadcode previously. Was there something that should have
-			// been done here that wasn't originally?
 			firstBatchSize := numBlocks / 2
 			endFirstHalf := from + firstBatchSize
 			startSecondHalf := endFirstHalf + 1

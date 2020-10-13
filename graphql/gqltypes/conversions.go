@@ -14,6 +14,23 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 )
 
+func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
+	commonTypeOpts := &types.AddOrdersOpts{}
+	if opts.KeepCancelled != nil {
+		commonTypeOpts.KeepCancelled = *opts.KeepCancelled
+	}
+	if opts.KeepExpired != nil {
+		commonTypeOpts.KeepExpired = *opts.KeepExpired
+	}
+	if opts.KeepFullyFilled != nil {
+		commonTypeOpts.KeepFullyFilled = *opts.KeepFullyFilled
+	}
+	if opts.KeepUnfunded != nil {
+		commonTypeOpts.KeepUnfunded = *opts.KeepUnfunded
+	}
+	return commonTypeOpts
+}
+
 func StatsFromCommonType(stats *types.Stats) *Stats {
 	return &Stats{
 		Version:     stats.Version,

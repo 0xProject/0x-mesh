@@ -188,6 +188,7 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderSta
 		statuses[i] = &StoredOrderStatus{
 			IsStored:                 jsStatus.Get("isStored").Bool(),
 			IsMarkedRemoved:          jsStatus.Get("isMarkedRemoved").Bool(),
+			IsMarkedUnfillable:       jsStatus.Get("isMarkedUnfillable").Bool(),
 			FillableTakerAssetAmount: fillableAmount,
 		}
 	}

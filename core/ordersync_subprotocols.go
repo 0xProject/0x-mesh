@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/core/ordersync"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -170,7 +171,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false, &types.AddOrdersOpts{})
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}
@@ -361,7 +362,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, false, p.app.chainID)
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false, &types.AddOrdersOpts{})
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}
