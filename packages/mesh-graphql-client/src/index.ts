@@ -335,14 +335,20 @@ export class MeshGraphQLClient {
     public async addOrdersAsync(
         orders: SignedOrder[],
         pinned: boolean = true,
-        opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false },
+        opts?: AddOrdersOpts,
     ): Promise<AddOrdersResults> {
         const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
                 pinned,
-                opts,
+                opts: {
+                    keepCancelled: false,
+                    keepExpired: false,
+                    keepFullyFilled: false,
+                    keepUnfunded: false,
+                    ...opts,
+                },
             },
         });
         if (resp.data == null) {

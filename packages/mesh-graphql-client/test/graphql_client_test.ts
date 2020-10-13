@@ -112,6 +112,31 @@ blockchainTests.resets('GraphQLClient', (env) => {
                 });
             });
 
+            it('accepts expired order with "keepExpired"', async () => {
+                const order = await orderFactory.newSignedOrderAsync({
+                    expirationTimeSeconds: new BigNumber(0),
+                });
+                const hash = orderHashUtils.getOrderHashHex(order);
+                const validationResults = await deployment.client.addOrdersAsync([order], false, { keepExpired: true });
+                expect(validationResults).to.be.deep.eq({
+                    accepted: [],
+                    rejected: [
+                        {
+                            hash,
+                            order,
+                            code: RejectedOrderCode.OrderExpired,
+                            message: 'order expired according to latest block timestamp',
+                        },
+                    ],
+                });
+                const responseOrder = await deployment.client.getOrderAsync(hash);
+                expect(responseOrder).to.be.deep.eq({
+                    ...order,
+                    fillableTakerAssetAmount: new BigNumber(0),
+                    hash,
+                });
+            });
+
             it('rejects order with invalid signature', async () => {
                 const invalidOrder = {
                     ...(await orderFactory.newSignedOrderAsync({})),
