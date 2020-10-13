@@ -193,9 +193,7 @@ func (w *Watcher) mainLoop(ctx context.Context) error {
 			close(w.blockEventsChan)
 			return nil
 		case err := <-w.blockSubscription.Err():
-			logger.WithFields(logger.Fields{
-				"error": err.Error(),
-			}).Error("block subscription error encountered")
+			logger.WithField("error", err.Error()).Error("block subscription error encountered")
 		case events := <-w.blockEventsChan:
 			// Instead of simply processing the first array of events in the blockEventsChan,
 			// we might as well process _all_ events in the channel.
@@ -274,16 +272,16 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 
 // handleOrderExpirations takes care of generating expired and unexpired order events for orders that do not require re-validation.
 // Since expiry is now done according to block timestamp, we can figure out which orders have expired/unexpired statically. We do not
-// process blocks that require re-validation, since the validation process will already emit the necessary events.
+// process orders that require re-validation, since the validation process will already emit the necessary events.
 // latestBlockTimestamp is the latest block timestamp Mesh knows about
 // ordersToRevalidate contains all the orders Mesh needs to re-validate given the events emitted by the blocks processed
-func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, ordersToRevalidate map[common.Hash]*types.OrderWithMetadata) ([]*zeroex.OrderEvent, map[common.Hash]struct{}, error) {
 	orderEvents := []*zeroex.OrderEvent{}
 
 	// Check for any orders that have now expired.
 	expiredOrders, err := w.findOrdersToExpire(validationBlock.Timestamp)
 	if err != nil {
-		return orderEvents, err
+		return orderEvents, nil, err
 	}
 	for _, order := range expiredOrders {
 		// If we will re-validate this order, the revalidation process will discover that
@@ -291,7 +289,11 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		if _, ok := ordersToRevalidate[order.Hash]; ok {
 			continue
 		}
-		w.unwatchOrder(order, nil, validationBlock)
+		if order.KeepExpired {
+			w.markOrderUnfillable(order, nil, validationBlock)
+		} else {
+			w.unwatchOrder(order, nil, validationBlock)
+		}
 		orderEvent := &zeroex.OrderEvent{
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
@@ -309,7 +311,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 	// orders that have now become valid again as a result.
 	unexpiredOrders, err := w.findOrdersToUnexpire(validationBlock.Timestamp)
 	if err != nil {
-		return orderEvents, err
+		return orderEvents, nil, err
 	}
 	for _, order := range unexpiredOrders {
 		// If we will re-validate this order, the revalidation process will discover that
@@ -328,7 +330,23 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		orderEvents = append(orderEvents, orderEvent)
 	}
 
-	return orderEvents, nil
+	possiblyUnexpiredOrders, err := w.findOrdersToPossiblyUnexpire(validationBlock.Timestamp)
+	if err != nil {
+		return orderEvents, nil, err
+	}
+	orderHashToPossiblyUnexpiredOrders := map[common.Hash]struct{}{}
+	for _, order := range possiblyUnexpiredOrders {
+		// If we will re-validate this order, the revalidation process will discover
+		// whether or not it's unexpired, and an appropriate event will already be
+		// emitted
+		if _, ok := ordersToRevalidate[order.Hash]; ok {
+			continue
+		}
+		ordersToRevalidate[order.Hash] = order
+		orderHashToPossiblyUnexpiredOrders[order.Hash] = struct{}{}
+	}
+
+	return orderEvents, orderHashToPossiblyUnexpiredOrders, nil
 }
 
 // handleBlockEvents processes a set of block events into order events for a set of orders.
@@ -433,7 +451,7 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 		}
 	}
 
-	expirationOrderEvents, err := w.handleOrderExpirations(validationBlock, orderHashToDBOrder)
+	expirationOrderEvents, orderHashToPossiblyUnexpiredOrders, err := w.handleOrderExpirations(validationBlock, orderHashToDBOrder)
 	if err != nil {
 		return err
 	}
@@ -441,7 +459,7 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 	// This timeout of 1min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
-	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, validationBlock)
+	postValidationOrderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, orderHashToPossiblyUnexpiredOrders, validationBlock)
 	if err != nil {
 		return err
 	}
@@ -492,7 +510,7 @@ func (w *Watcher) RevalidateOrdersForMissingEvents(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestMiniHeader)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]struct{}{}, latestMiniHeader)
 	if err != nil {
 		return err
 	}
@@ -914,7 +932,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 	// This timeout of 30min is for limiting how long this call should block at the ETH RPC rate limiter
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, latestBlock)
+	orderEvents, err := w.generateOrderEventsIfChanged(ctx, orderHashToDBOrder, orderHashToEvents, map[common.Hash]struct{}{}, latestBlock)
 	if err != nil {
 		return err
 	}
@@ -982,13 +1000,13 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
 
 	for _, orderInfo := range orderInfos {
-		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock)
+		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1102,7 +1120,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	return orderEvents, nil
 }
 
-func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader) (*types.OrderWithMetadata, error) {
+func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
@@ -1131,13 +1149,19 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		Salt:                     orderInfo.SignedOrder.Salt,
 		Signature:                orderInfo.SignedOrder.Signature,
 		IsRemoved:                false,
+		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
 		IsPinned:                 pinned,
+		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrder.ExpirationTimeSeconds) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
 		FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 		LastValidatedBlockNumber: validationBlock.Number,
 		LastValidatedBlockHash:   validationBlock.Hash,
+		KeepCancelled:            opts.KeepCancelled,
+		KeepExpired:              opts.KeepExpired,
+		KeepFullyFilled:          opts.KeepFullyFilled,
+		KeepUnfunded:             opts.KeepUnfunded,
 	}, nil
 }
 
@@ -1283,7 +1307,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
 			{
-				Field: db.OFIsRemoved,
+				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
 				Value: false,
 			},
@@ -1294,7 +1318,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 // findOrdersToUnexpire returns all orders that:
 //
 //     1. have an expiration time greater than the latest block timestamp
-//     2. were previously removed
+//     2. were previously unfillable
 //     3. have a non-zero FillableTakerAssetAmount
 //
 func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
@@ -1306,7 +1330,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 				Value: big.NewInt(latestBlockTimestamp.Unix()),
 			},
 			{
-				Field: db.OFIsRemoved,
+				Field: db.OFIsUnfillable,
 				Kind:  db.Equal,
 				Value: true,
 			},
@@ -1319,10 +1343,45 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 	})
 }
 
+// findOrdersToPossiblyUnexpire returns all orders that:
+//
+//     1. have an expiration time greater than the latest block timestamp
+//     2. were previously unfillable
+//     3. were previously expired
+//     4. have a zero FillableTakerAssetAmount
+//
+func (w *Watcher) findOrdersToPossiblyUnexpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
+	return w.db.FindOrders(&db.OrderQuery{
+		Filters: []db.OrderFilter{
+			{
+				Field: db.OFExpirationTimeSeconds,
+				Kind:  db.Greater,
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
+			},
+			{
+				Field: db.OFIsUnfillable,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OFIsExpired,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OFFillableTakerAssetAmount,
+				Kind:  db.Equal,
+				Value: big.NewInt(0),
+			},
+		},
+	})
+}
+
 func (w *Watcher) convertValidationResultsIntoOrderEvents(
 	validationResults *ordervalidator.ValidationResults,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+	orderHashToPossiblyUnexpiredOrder map[common.Hash]struct{},
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	orderEvents := []*zeroex.OrderEvent{}
@@ -1359,7 +1418,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
 			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
-			isOrderUnexpired := order.IsRemoved && expirationTimeIsValid
+			isOrderUnexpired := order.IsExpired && order.IsUnfillable && expirationTimeIsValid
 
 			// We can tell that an order was previously expired if it was marked as removed with a
 			// non-zero fillable amount. There is no other explanation for this database state. The
@@ -1418,17 +1477,32 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				}).Error("validationResults.Rejected contained unknown order hash")
 				continue
 			}
-			oldFillableAmount := order.FillableTakerAssetAmount
-			if oldFillableAmount.Cmp(big.NewInt(0)) == 0 {
-				// If the oldFillableAmount was already 0, this order is already flagged for removal.
+			// NOTE(jalextowle): It's theoretically possible that an order could become
+			// unexpired for a long period of time. With this in mind, it's important
+			// that we set IsExpired to false regardless of why the check failed as
+			// any future attempts to unexpire the order will be unsuccessful unless other
+			// state changes occur. These state changes would be addressed by the core
+			// orderwatcher logic so we can safely avoid re-checking for unexpiry.
+			if order.IsUnfillable {
+				// If the order is already marked as unfillable, no updates are needed
+				// other than updating the expiration state
+				if _, ok := orderHashToPossiblyUnexpiredOrder[order.Hash]; ok {
+					w.updateOrderExpirationState(order, validationBlock)
+				}
 			} else {
-				// If oldFillableAmount > 0, it got fullyFilled, cancelled, expired or unfunded
-				w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				endState, ok := ordervalidator.ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderInfo.Status)
 				if !ok {
 					err := fmt.Errorf("no OrderEventEndState corresponding to RejectedOrderStatus: %q", rejectedOrderInfo.Status)
 					logger.WithError(err).WithField("rejectedOrderStatus", rejectedOrderInfo.Status).Error("no OrderEventEndState corresponding to RejectedOrderStatus")
 					return nil, err
+				}
+				if (endState == zeroex.ESOrderCancelled && order.KeepCancelled) ||
+					(endState == zeroex.ESOrderExpired && order.KeepExpired) ||
+					(endState == zeroex.ESOrderFullyFilled && order.KeepFullyFilled) ||
+					(endState == zeroex.ESOrderBecameUnfunded && order.KeepUnfunded) {
+					w.markOrderUnfillable(order, big.NewInt(0), validationBlock)
+				} else {
+					w.unwatchOrder(order, big.NewInt(0), validationBlock)
 				}
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
@@ -1454,6 +1528,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	ctx context.Context,
 	orderHashToDBOrder map[common.Hash]*types.OrderWithMetadata,
 	orderHashToEvents map[common.Hash][]*zeroex.ContractEvent,
+	orderHashToPossiblyUnexpiredOrder map[common.Hash]struct{},
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	signedOrders := []*zeroex.SignedOrder{}
@@ -1473,13 +1548,13 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlock)
 
 	return w.convertValidationResultsIntoOrderEvents(
-		validationResults, orderHashToDBOrder, orderHashToEvents, validationBlock,
+		validationResults, orderHashToDBOrder, orderHashToEvents, orderHashToPossiblyUnexpiredOrder, validationBlock,
 	)
 }
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, pinned bool, chainID int) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
@@ -1505,10 +1580,33 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 		}
 	}
 
+	if opts.KeepCancelled || opts.KeepExpired || opts.KeepFullyFilled || opts.KeepUnfunded {
+		for _, rejectedOrderInfo := range zeroexResults.Rejected {
+			// NOTE(jalextowle): We can use the rejectedOrderInfo.Status
+			// field to see whether or not the order is new or not. If
+			// the order has already been stored, the rejectedOrderInfo.Status
+			// field will be ordervalidator.ROOrderAlreadyStoredAndUnfillable.
+			// If the rejection reason involves on-chain validation, then the
+			// order is new.
+			if (opts.KeepCancelled && rejectedOrderInfo.Status.Code == ordervalidator.ROCancelled.Code) ||
+				(opts.KeepExpired && rejectedOrderInfo.Status.Code == ordervalidator.ROExpired.Code) ||
+				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
+				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
+				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
+					OrderHash:   rejectedOrderInfo.OrderHash,
+					SignedOrder: rejectedOrderInfo.SignedOrder,
+					// TODO(jalextowle): Verify that this is consistent with the OrderWatcher
+					FillableTakerAssetAmount: big.NewInt(0),
+					IsNew:                    true,
+				})
+			}
+		}
+	}
+
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1698,8 +1796,8 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		if !orderStatus.IsStored {
 			// If not stored, add the order to a set of new orders.
 			newValidOrders = append(newValidOrders, order)
-		} else if orderStatus.IsMarkedRemoved {
-			// If stored but marked as removed, reject the order.
+		} else if orderStatus.IsMarkedRemoved || orderStatus.IsMarkedUnfillable {
+			// If stored but marked as removed or unfillable, reject the order.
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1707,7 +1805,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 				Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
 			})
 		} else {
-			// If stored but not marked as removed, accept the order without re-validation
+			// If stored but not marked as removed or unfillable, accept the order without re-validation
 			results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
 				OrderHash:                orderHash,
 				SignedOrder:              order,
@@ -1752,6 +1850,8 @@ func (w *Watcher) updateOrderFillableTakerAssetAmountAndBlockInfo(order *types.O
 func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = false
+		orderToUpdate.IsUnfillable = false
+		orderToUpdate.IsExpired = false
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
@@ -1766,15 +1866,59 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 	}
 }
 
-func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
+func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
-		orderToUpdate.IsRemoved = true
+		orderToUpdate.IsUnfillable = true
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+			orderToUpdate.IsExpired = true
+		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
 		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
 		if newFillableAmount != nil {
 			orderToUpdate.FillableTakerAssetAmount = newFillableAmount
 		}
+		return orderToUpdate, nil
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
+}
+
+func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
+	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		orderToUpdate.IsRemoved = true
+		orderToUpdate.IsUnfillable = true
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+			orderToUpdate.IsExpired = true
+		}
+		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
+		if newFillableAmount != nil {
+			orderToUpdate.FillableTakerAssetAmount = newFillableAmount
+		}
+		return orderToUpdate, nil
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+			"order": order,
+		}).Error("Failed to update order")
+	}
+}
+
+func (w *Watcher) updateOrderExpirationState(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
+	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+			orderToUpdate.IsExpired = true
+		}
+		orderToUpdate.LastUpdated = time.Now().UTC()
+		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
+		orderToUpdate.LastValidatedBlockHash = validationBlock.Hash
 		return orderToUpdate, nil
 	})
 	if err != nil {

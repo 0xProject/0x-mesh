@@ -76,7 +76,7 @@ function constructValidationFunctionWrapper(
         try {
             result.success = validationFunction(JSON.parse(input));
             if (validationFunction.errors) {
-                result.errors = validationFunction.errors.map(error => JSON.stringify(error));
+                result.errors = validationFunction.errors.map((error) => JSON.stringify(error));
             }
         } catch (error) {
             result.fatal = JSON.stringify(error);

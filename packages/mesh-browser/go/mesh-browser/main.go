@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/0xProject/0x-mesh/graphql"
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
@@ -150,7 +151,9 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, err
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, pinned)
+	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
+	// currently.
+	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, pinned, &types.AddOrdersOpts{})
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -185,7 +188,9 @@ func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, 
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &newOrders); err != nil {
 		return js.Undefined(), err
 	}
-	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &pinned)
+	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
+	// currently.
+	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &pinned, &gqltypes.AddOrdersOpts{})
 	if err != nil {
 		return js.Undefined(), err
 	}

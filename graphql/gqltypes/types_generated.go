@@ -16,6 +16,21 @@ type AcceptedOrderResult struct {
 	IsNew bool `json:"isNew"`
 }
 
+type AddOrdersOpts struct {
+	// Indicates that the orders being added should be kept by the database after
+	// cancellation.
+	KeepCancelled *bool `json:"keepCancelled"`
+	// Indicates that the orders being added should be kept by the database after
+	// expiry.
+	KeepExpired *bool `json:"keepExpired"`
+	// Indicates that the orders being added should be kept by the database after
+	// being fully filled.
+	KeepFullyFilled *bool `json:"keepFullyFilled"`
+	// Indicates that the orders being added should be kept by the database after
+	// becoming unfunded.
+	KeepUnfunded *bool `json:"keepUnfunded"`
+}
+
 // The results of the addOrders mutation. Includes which orders were accepted and which orders where rejected.
 type AddOrdersResults struct {
 	// The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if

@@ -291,7 +291,39 @@ type Mutation {
     """
     Adds one or more orders to Mesh.
     """
-    addOrders(orders: [NewOrder!]!, pinned: Boolean = true): AddOrdersResults!
+    addOrders(
+        orders: [NewOrder!]!,
+        pinned: Boolean = true,
+        opts: AddOrdersOpts = {
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): AddOrdersResults!
+}
+
+input AddOrdersOpts {
+    """
+    Indicates that the orders being added should be kept by the database after
+    cancellation.
+    """
+    keepCancelled: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    expiry.
+    """
+    keepExpired: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    being fully filled.
+    """
+    keepFullyFilled: Boolean = false
+    """
+    Indicates that the orders being added should be kept by the database after
+    becoming unfunded.
+    """
+    keepUnfunded: Boolean = false
 }
 
 type OrderEvent {

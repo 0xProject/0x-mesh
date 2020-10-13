@@ -86,10 +86,10 @@ window.addEventListener(loadEventName, () => {
 const go = new Go();
 
 WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
-    .then(module => {
+    .then((module) => {
         go.run(module.instance);
     })
-    .catch(err => {
+    .catch((err) => {
         // tslint:disable-next-line no-console
         console.error('Could not load Wasm');
         // tslint:disable-next-line no-console
@@ -198,7 +198,7 @@ WebAssembly.instantiateStreaming(fetch('conversion_test.wasm'), go.importObject)
     const finishedDiv = document.createElement('div');
     finishedDiv.setAttribute('id', 'jsFinished');
     document.body.appendChild(finishedDiv);
-})().catch(err => {
+})().catch((err) => {
     console.log(err);
 });
 
@@ -1064,6 +1064,6 @@ async function waitForLoadAsync(): Promise<void> {
 }
 
 async function sleepAsync(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 // tslint:disable-line:max-file-line-count

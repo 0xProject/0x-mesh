@@ -157,10 +157,16 @@ type Order struct {
 	IsRemoved                uint8          `json:"isRemoved"`
 	IsPinned                 uint8          `json:"isPinned"`
 	IsNotPinned              uint8          `json:"isNotPinned"` // Used in a compound index in queries related to max expiration time.
+	IsUnfillable             uint8          `json:"isUnfillable"`
+	IsExpired                uint8          `json:"isExpired"`
 	ParsedMakerAssetData     string         `json:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  string         `json:"parsedMakerFeeAssetData"`
 	LastValidatedBlockNumber *SortedBigInt  `json:"lastValidatedBlockNumber"`
 	LastValidatedBlockHash   common.Hash    `json:"lastValidatedBlockHash"`
+	KeepCancelled            uint8          `json:"keepCancelled"`
+	KeepExpired              uint8          `json:"keepExpired"`
+	KeepFullyFilled          uint8          `json:"keepFullyFilled"`
+	KeepUnfunded             uint8          `json:"keepUnfunded"`
 }
 
 type Metadata struct {
@@ -196,10 +202,16 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		LastUpdated:              order.LastUpdated,
 		IsRemoved:                order.IsRemoved == 1,
 		IsPinned:                 order.IsPinned == 1,
+		IsUnfillable:             order.IsUnfillable == 1,
+		IsExpired:                order.IsExpired == 1,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
 		LastValidatedBlockHash:   order.LastValidatedBlockHash,
+		KeepCancelled:            order.KeepCancelled == 1,
+		KeepExpired:              order.KeepExpired == 1,
+		KeepFullyFilled:          order.KeepFullyFilled == 1,
+		KeepUnfunded:             order.KeepUnfunded == 1,
 	}
 }
 
@@ -231,10 +243,16 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		IsRemoved:                BoolToUint8(order.IsRemoved),
 		IsPinned:                 BoolToUint8(order.IsPinned),
 		IsNotPinned:              BoolToUint8(!order.IsPinned),
+		IsUnfillable:             BoolToUint8(order.IsUnfillable),
+		IsExpired:                BoolToUint8(order.IsExpired),
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),
 		LastValidatedBlockHash:   order.LastValidatedBlockHash,
+		KeepCancelled:            BoolToUint8(order.KeepCancelled),
+		KeepExpired:              BoolToUint8(order.KeepExpired),
+		KeepFullyFilled:          BoolToUint8(order.KeepFullyFilled),
+		KeepUnfunded:             BoolToUint8(order.KeepUnfunded),
 	}
 }
 

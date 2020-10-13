@@ -22,8 +22,8 @@ export interface Options {
 }
 
 export interface Query<T extends Record> {
-    filters?: Array<FilterOption<T>>;
-    sort?: Array<SortOption<T>>;
+    filters?: FilterOption<T>[];
+    sort?: SortOption<T>[];
     limit?: number;
     offset?: number;
 }
@@ -78,15 +78,22 @@ export interface Order {
     isRemoved: number;
     isPinned: number;
     isNotPinned: number; // Used in a compound index in queries related to max expiration time.
+    isUnfillable: number;
+    isExpired: number;
     parsedMakerAssetData: string;
     parsedMakerFeeAssetData: string;
     lastValidatedBlockNumber: string;
     lastValidatedBlockHash: string;
+    keepCancelled: number;
+    keepExpired: number;
+    keepFullyFilled: number;
+    keepUnfunded: number;
 }
 
 export interface StoredOrderStatus {
     isStored: boolean;
     isMarkedRemoved: boolean;
+    isMarkedUnfillable: boolean;
     fillableTakerAssetAmount?: string;
 }
 
@@ -165,7 +172,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,[isNotPinned+expirationTimeSeconds]',
+                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
             dhtstore: '&key,data',
@@ -259,17 +266,13 @@ export class Database {
                 statuses.push({
                     isStored: false,
                     isMarkedRemoved: false,
-                });
-            } else if (order.isRemoved) {
-                statuses.push({
-                    isStored: true,
-                    isMarkedRemoved: true,
-                    fillableTakerAssetAmount: order.fillableTakerAssetAmount,
+                    isMarkedUnfillable: false,
                 });
             } else {
                 statuses.push({
                     isStored: true,
-                    isMarkedRemoved: false,
+                    isMarkedRemoved: order.isRemoved === 1,
+                    isMarkedUnfillable: order.isUnfillable === 1,
                     fillableTakerAssetAmount: order.fillableTakerAssetAmount,
                 });
             }
@@ -584,29 +587,29 @@ async function runQueryInMemoryAsync<T extends Record, Key>(
     return records;
 }
 
-function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, records: T[]): T[] {
+function filterRecords<T extends Record>(filters: FilterOption<T>[], records: T[]): T[] {
     let result = records;
     // Note(albrow): As an optimization, we could use the native Dexie.js index for
     // the *first* filter when possible.
     for (const filter of filters) {
         switch (filter.kind) {
             case FilterKind.Equal:
-                result = result.filter(record => record[filter.field] === filter.value);
+                result = result.filter((record) => record[filter.field] === filter.value);
                 break;
             case FilterKind.NotEqual:
-                result = result.filter(record => record[filter.field] !== filter.value);
+                result = result.filter((record) => record[filter.field] !== filter.value);
                 break;
             case FilterKind.Greater:
-                result = result.filter(record => record[filter.field] > filter.value);
+                result = result.filter((record) => record[filter.field] > filter.value);
                 break;
             case FilterKind.GreaterOrEqual:
-                result = result.filter(record => record[filter.field] >= filter.value);
+                result = result.filter((record) => record[filter.field] >= filter.value);
                 break;
             case FilterKind.Less:
-                result = result.filter(record => record[filter.field] < filter.value);
+                result = result.filter((record) => record[filter.field] < filter.value);
                 break;
             case FilterKind.LessOrEqual:
-                result = result.filter(record => record[filter.field] <= filter.value);
+                result = result.filter((record) => record[filter.field] <= filter.value);
                 break;
             case FilterKind.Contains:
                 result = result.filter(containsFilterFunc(filter));
@@ -619,7 +622,7 @@ function filterRecords<T extends Record>(filters: Array<FilterOption<T>>, record
     return result;
 }
 
-function sortRecords<T extends Record>(sortOpts: Array<SortOption<T>>, records: T[]): T[] {
+function sortRecords<T extends Record>(sortOpts: SortOption<T>[], records: T[]): T[] {
     // Note(albrow): As an optimization, we could use native Dexie.js ordering for
     // the *first* sort option when possible.
     const result = records;
