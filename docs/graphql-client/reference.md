@@ -14,7 +14,7 @@
 
 _Overrides void_
 
-_Defined in [packages/mesh-graphql-client/src/browser_link.ts:7](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/browser_link.ts#L7)_
+_Defined in [packages/mesh-graphql-client/src/browser_link.ts:7](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/browser_link.ts#L7)_
 
 **Parameters:**
 
@@ -48,7 +48,7 @@ Defined in node_modules/@apollo/client/link/core/ApolloLink.d.ts:12
 
 _Overrides void_
 
-_Defined in [packages/mesh-graphql-client/src/browser_link.ts:12](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/browser_link.ts#L12)_
+_Defined in [packages/mesh-graphql-client/src/browser_link.ts:12](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/browser_link.ts#L12)_
 
 **Parameters:**
 
@@ -206,7 +206,7 @@ Defined in node_modules/@apollo/client/link/core/ApolloLink.d.ts:7
 
 \+ **new MeshGraphQLClient**(`linkConfig`: [LinkConfig](#interface-linkconfig)): _[MeshGraphQLClient](#class-meshgraphqlclient)_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:245](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L245)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:250](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L250)_
 
 **Parameters:**
 
@@ -220,16 +220,17 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:245](https://github.com/0
 
 ## addOrdersAsync
 
-▸ **addOrdersAsync**(`orders`: SignedOrder[], `pinned`: boolean): _Promise‹[AddOrdersResults](#interface-addordersresults)›_
+▸ **addOrdersAsync**(`orders`: SignedOrder[], `pinned`: boolean, `opts?`: [AddOrdersOpts](#interface-addordersopts)): _Promise‹[AddOrdersResults](#interface-addordersresults)›_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:330](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L330)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:335](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L335)_
 
 **Parameters:**
 
-| Name     | Type          | Default |
-| -------- | ------------- | ------- |
-| `orders` | SignedOrder[] | -       |
-| `pinned` | boolean       | true    |
+| Name     | Type                                      | Default |
+| -------- | ----------------------------------------- | ------- |
+| `orders` | SignedOrder[]                             | -       |
+| `pinned` | boolean                                   | true    |
+| `opts?`  | [AddOrdersOpts](#interface-addordersopts) | -       |
 
 **Returns:** _Promise‹[AddOrdersResults](#interface-addordersresults)›_
 
@@ -239,7 +240,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:330](https://github.com/0
 
 ▸ **findOrdersAsync**(`query`: [OrderQuery](#interface-orderquery)): _Promise‹[OrderWithMetadata](#interface-orderwithmetadata)[]›_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:361](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L361)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:377](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L377)_
 
 **Parameters:**
 
@@ -255,7 +256,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:361](https://github.com/0
 
 ▸ **getOrderAsync**(`hash`: string): _Promise‹[OrderWithMetadata](#interface-orderwithmetadata) | null›_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:345](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L345)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:361](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L361)_
 
 **Parameters:**
 
@@ -271,7 +272,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:345](https://github.com/0
 
 ▸ **getStatsAsync**(): _Promise‹[Stats](#interface-stats)›_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:319](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L319)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:324](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L324)_
 
 **Returns:** _Promise‹[Stats](#interface-stats)›_
 
@@ -281,7 +282,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:319](https://github.com/0
 
 ▸ **onOrderEvents**(): _Observable‹[OrderEvent](#interface-orderevent)[]›_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:378](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L378)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:394](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L394)_
 
 **Returns:** _Observable‹[OrderEvent](#interface-orderevent)[]›_
 
@@ -291,7 +292,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:378](https://github.com/0
 
 ▸ **rawQueryAsync**<**T**, **TVariables**>(`options`: QueryOptions‹TVariables›): _Promise‹ApolloQueryResult‹T››_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:424](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L424)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:440](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L440)_
 
 **Type parameters:**
 
@@ -317,7 +318,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:424](https://github.com/0
 
 • **ERC1155ApprovalForAllEvent**: = "ERC1155ApprovalForAllEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:130](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L130)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:137](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L137)_
 
 ---
 
@@ -325,7 +326,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:130](https://github.com/0
 
 • **ERC1155TransferBatchEvent**: = "ERC1155TransferBatchEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:132](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L132)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:139](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L139)_
 
 ---
 
@@ -333,7 +334,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:132](https://github.com/0
 
 • **ERC1155TransferSingleEvent**: = "ERC1155TransferSingleEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:131](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L131)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:138](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L138)_
 
 ---
 
@@ -341,7 +342,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:131](https://github.com/0
 
 • **ERC20ApprovalEvent**: = "ERC20ApprovalEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:126](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L126)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:133](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L133)_
 
 ---
 
@@ -349,7 +350,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:126](https://github.com/0
 
 • **ERC20TransferEvent**: = "ERC20TransferEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:125](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L125)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:132](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L132)_
 
 ---
 
@@ -357,7 +358,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:125](https://github.com/0
 
 • **ERC721ApprovalEvent**: = "ERC721ApprovalEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:128](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L128)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:135](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L135)_
 
 ---
 
@@ -365,7 +366,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:128](https://github.com/0
 
 • **ERC721ApprovalForAllEvent**: = "ERC721ApprovalForAllEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:129](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L129)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:136](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L136)_
 
 ---
 
@@ -373,7 +374,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:129](https://github.com/0
 
 • **ERC721TransferEvent**: = "ERC721TransferEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:127](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L127)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:134](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L134)_
 
 ---
 
@@ -381,7 +382,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:127](https://github.com/0
 
 • **ExchangeCancelEvent**: = "ExchangeCancelEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:134](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L134)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:141](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L141)_
 
 ---
 
@@ -389,7 +390,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:134](https://github.com/0
 
 • **ExchangeCancelUpToEvent**: = "ExchangeCancelUpToEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:135](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L135)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:142](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L142)_
 
 ---
 
@@ -397,7 +398,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:135](https://github.com/0
 
 • **ExchangeFillEvent**: = "ExchangeFillEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:133](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L133)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:140](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L140)_
 
 ---
 
@@ -405,7 +406,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:133](https://github.com/0
 
 • **WethDepositEvent**: = "WethDepositEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:136](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L136)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:143](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L143)_
 
 ---
 
@@ -413,7 +414,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:136](https://github.com/0
 
 • **WethWithdrawalEvent**: = "WethWithdrawalEvent"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:137](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L137)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:144](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L144)_
 
 <hr />
 
@@ -425,7 +426,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:137](https://github.com/0
 
 • **Equal**: = "EQUAL"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:174](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L174)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:181](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L181)_
 
 ---
 
@@ -433,7 +434,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:174](https://github.com/0
 
 • **Greater**: = "GREATER"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:176](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L176)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:183](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L183)_
 
 ---
 
@@ -441,7 +442,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:176](https://github.com/0
 
 • **GreaterOrEqual**: = "GREATER_OR_EQUAL"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:177](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L177)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:184](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L184)_
 
 ---
 
@@ -449,7 +450,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:177](https://github.com/0
 
 • **Less**: = "LESS"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:178](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L178)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:185](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L185)_
 
 ---
 
@@ -457,7 +458,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:178](https://github.com/0
 
 • **LessOrEqual**: = "LESS_OR_EQUAL"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:179](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L179)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:186](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L186)_
 
 ---
 
@@ -465,7 +466,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:179](https://github.com/0
 
 • **NotEqual**: = "NOT_EQUAL"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:175](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L175)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:182](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L182)_
 
 <hr />
 
@@ -477,7 +478,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:175](https://github.com/0
 
 • **Added**: = "ADDED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:143](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L143)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:150](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L150)_
 
 ---
 
@@ -485,7 +486,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:143](https://github.com/0
 
 • **Cancelled**: = "CANCELLED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:149](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L149)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:156](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L156)_
 
 ---
 
@@ -493,7 +494,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:149](https://github.com/0
 
 • **Expired**: = "EXPIRED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:151](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L151)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:158](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L158)_
 
 ---
 
@@ -501,7 +502,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:151](https://github.com/0
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:158](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L158)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:165](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L165)_
 
 ---
 
@@ -509,7 +510,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:158](https://github.com/0
 
 • **Filled**: = "FILLED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:145](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L145)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:152](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L152)_
 
 ---
 
@@ -517,7 +518,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:145](https://github.com/0
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:147](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L147)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:154](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L154)_
 
 ---
 
@@ -525,7 +526,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:147](https://github.com/0
 
 • **StoppedWatching**: = "STOPPED_WATCHING"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:163](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L163)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:170](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L170)_
 
 ---
 
@@ -533,7 +534,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:163](https://github.com/0
 
 • **Unexpired**: = "UNEXPIRED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:153](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L153)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:160](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L160)_
 
 ---
 
@@ -541,7 +542,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:153](https://github.com/0
 
 • **Unfunded**: = "UNFUNDED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:155](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L155)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:162](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L162)_
 
 <hr />
 
@@ -553,7 +554,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:155](https://github.com/0
 
 • **DatabaseFullOfOrders**: = "DATABASE_FULL_OF_ORDERS"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:102](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L102)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:109](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L109)_
 
 ---
 
@@ -561,7 +562,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:102](https://github.com/0
 
 • **EthRpcRequestFailed**: = "ETH_RPC_REQUEST_FAILED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:83](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L83)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:90](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L90)_
 
 ---
 
@@ -569,7 +570,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:83](https://github.com/0x
 
 • **IncorrectExchangeAddress**: = "INCORRECT_EXCHANGE_ADDRESS"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:100](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L100)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:107](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L107)_
 
 ---
 
@@ -577,7 +578,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:100](https://github.com/0
 
 • **InternalError**: = "INTERNAL_ERROR"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:96](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L96)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:103](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L103)_
 
 ---
 
@@ -585,7 +586,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:96](https://github.com/0x
 
 • **MaxOrderSizeExceeded**: = "MAX_ORDER_SIZE_EXCEEDED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:97](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L97)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:104](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L104)_
 
 ---
 
@@ -593,7 +594,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:97](https://github.com/0x
 
 • **OrderAlreadyStoredAndUnfillable**: = "ORDER_ALREADY_STORED_AND_UNFILLABLE"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:98](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L98)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:105](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L105)_
 
 ---
 
@@ -601,7 +602,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:98](https://github.com/0x
 
 • **OrderCancelled**: = "ORDER_CANCELLED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:88](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L88)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:95](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L95)_
 
 ---
 
@@ -609,7 +610,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:88](https://github.com/0x
 
 • **OrderExpired**: = "ORDER_EXPIRED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:86](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L86)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:93](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L93)_
 
 ---
 
@@ -617,7 +618,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:86](https://github.com/0x
 
 • **OrderForIncorrectChain**: = "ORDER_FOR_INCORRECT_CHAIN"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:99](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L99)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:106](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L106)_
 
 ---
 
@@ -625,7 +626,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:99](https://github.com/0x
 
 • **OrderFullyFilled**: = "ORDER_FULLY_FILLED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:87](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L87)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:94](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L94)_
 
 ---
 
@@ -633,7 +634,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:87](https://github.com/0x
 
 • **OrderHasInvalidMakerAssetAmount**: = "ORDER_HAS_INVALID_MAKER_ASSET_AMOUNT"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:84](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L84)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:91](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L91)_
 
 ---
 
@@ -641,7 +642,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:84](https://github.com/0x
 
 • **OrderHasInvalidMakerAssetData**: = "ORDER_HAS_INVALID_MAKER_ASSET_DATA"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:90](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L90)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:97](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L97)_
 
 ---
 
@@ -649,7 +650,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:90](https://github.com/0x
 
 • **OrderHasInvalidMakerFeeAssetData**: = "ORDER_HAS_INVALID_MAKER_FEE_ASSET_DATA"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:91](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L91)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:98](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L98)_
 
 ---
 
@@ -657,7 +658,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:91](https://github.com/0x
 
 • **OrderHasInvalidSignature**: = "ORDER_HAS_INVALID_SIGNATURE"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:94](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L94)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:101](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L101)_
 
 ---
 
@@ -665,7 +666,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:94](https://github.com/0x
 
 • **OrderHasInvalidTakerAssetAmount**: = "ORDER_HAS_INVALID_TAKER_ASSET_AMOUNT"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:85](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L85)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:92](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L92)_
 
 ---
 
@@ -673,7 +674,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:85](https://github.com/0x
 
 • **OrderHasInvalidTakerAssetData**: = "ORDER_HAS_INVALID_TAKER_ASSET_DATA"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:92](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L92)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:99](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L99)_
 
 ---
 
@@ -681,7 +682,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:92](https://github.com/0x
 
 • **OrderHasInvalidTakerFeeAssetData**: = "ORDER_HAS_INVALID_TAKER_FEE_ASSET_DATA"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:93](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L93)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:100](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L100)_
 
 ---
 
@@ -689,7 +690,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:93](https://github.com/0x
 
 • **OrderMaxExpirationExceeded**: = "ORDER_MAX_EXPIRATION_EXCEEDED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:95](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L95)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:102](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L102)_
 
 ---
 
@@ -697,7 +698,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:95](https://github.com/0x
 
 • **OrderUnfunded**: = "ORDER_UNFUNDED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:89](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L89)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:96](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L96)_
 
 ---
 
@@ -705,7 +706,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:89](https://github.com/0x
 
 • **SenderAddressNotAllowed**: = "SENDER_ADDRESS_NOT_ALLOWED"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:101](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L101)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:108](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L108)_
 
 <hr />
 
@@ -717,7 +718,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:101](https://github.com/0
 
 • **Asc**: = "ASC"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:169](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L169)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:176](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L176)_
 
 ---
 
@@ -725,7 +726,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:169](https://github.com/0
 
 • **Desc**: = "DESC"
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:170](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L170)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:177](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L177)_
 
 <hr />
 
@@ -741,7 +742,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:170](https://github.com/0
 
 • **httpUrl**? : _undefined | string_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:237](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L237)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:242](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L242)_
 
 ---
 
@@ -749,7 +750,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:237](https://github.com/0
 
 • **mesh**? : _Mesh_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:239](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L239)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:244](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L244)_
 
 ---
 
@@ -757,7 +758,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:239](https://github.com/0
 
 • **webSocketUrl**? : _undefined | string_
 
-_Defined in [packages/mesh-graphql-client/src/index.ts:238](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/index.ts#L238)_
+_Defined in [packages/mesh-graphql-client/src/index.ts:243](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/index.ts#L243)_
 
 <hr />
 
@@ -773,7 +774,7 @@ _Defined in [packages/mesh-graphql-client/src/index.ts:238](https://github.com/0
 
 • **isNew**: _boolean_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:66](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L66)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:73](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L73)_
 
 ---
 
@@ -781,7 +782,47 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:66](https://github.com/0x
 
 • **order**: _[OrderWithMetadata](#interface-orderwithmetadata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:63](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L63)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:70](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L70)_
+
+<hr />
+
+# Interface: AddOrdersOpts
+
+### Hierarchy
+
+-   **AddOrdersOpts**
+
+### Properties
+
+## `Optional` keepCancelled
+
+• **keepCancelled**? : _undefined | false | true_
+
+_Defined in [packages/mesh-graphql-client/src/types.ts:5](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L5)_
+
+---
+
+## `Optional` keepExpired
+
+• **keepExpired**? : _undefined | false | true_
+
+_Defined in [packages/mesh-graphql-client/src/types.ts:6](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L6)_
+
+---
+
+## `Optional` keepFullyFilled
+
+• **keepFullyFilled**? : _undefined | false | true_
+
+_Defined in [packages/mesh-graphql-client/src/types.ts:7](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L7)_
+
+---
+
+## `Optional` keepUnfunded
+
+• **keepUnfunded**? : _undefined | false | true_
+
+_Defined in [packages/mesh-graphql-client/src/types.ts:8](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L8)_
 
 <hr />
 
@@ -797,7 +838,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:63](https://github.com/0x
 
 • **addOrders**: _[StringifiedAddOrdersResults](#interface-stringifiedaddordersresults)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:9](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L9)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:16](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L16)_
 
 <hr />
 
@@ -813,7 +854,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:9](https://github.com/0xP
 
 • **accepted**: _[AcceptedOrderResult](#interface-acceptedorderresult)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:55](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L55)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:62](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L62)_
 
 ---
 
@@ -821,7 +862,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:55](https://github.com/0x
 
 • **rejected**: _[RejectedOrderResult](#interface-rejectedorderresult)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:58](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L58)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:65](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L65)_
 
 <hr />
 
@@ -837,7 +878,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:58](https://github.com/0x
 
 • **address**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:118](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L118)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:125](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L125)_
 
 ---
 
@@ -845,7 +886,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:118](https://github.com/0
 
 • **blockHash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:113](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L113)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:120](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L120)_
 
 ---
 
@@ -853,7 +894,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:113](https://github.com/0
 
 • **isRemoved**: _boolean_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:117](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L117)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:124](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L124)_
 
 ---
 
@@ -861,7 +902,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:117](https://github.com/0
 
 • **kind**: _[ContractEventKind](#enumeration-contracteventkind)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:119](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L119)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:126](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L126)_
 
 ---
 
@@ -869,7 +910,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:119](https://github.com/0
 
 • **logIndex**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:116](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L116)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:123](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L123)_
 
 ---
 
@@ -877,7 +918,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:116](https://github.com/0
 
 • **parameters**: _any_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:121](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L121)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:128](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L128)_
 
 ---
 
@@ -885,7 +926,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:121](https://github.com/0
 
 • **txHash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:114](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L114)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:121](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L121)_
 
 ---
 
@@ -893,7 +934,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:114](https://github.com/0
 
 • **txIndex**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:115](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L115)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:122](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L122)_
 
 <hr />
 
@@ -909,7 +950,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:115](https://github.com/0
 
 • **hash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:44](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L44)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:51](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L51)_
 
 ---
 
@@ -917,7 +958,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:44](https://github.com/0x
 
 • **number**: _BigNumber_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:43](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L43)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:50](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L50)_
 
 <hr />
 
@@ -933,7 +974,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:43](https://github.com/0x
 
 • **contractEvents**: _[ContractEvent](#interface-contractevent)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:109](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L109)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:116](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L116)_
 
 ---
 
@@ -941,7 +982,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:109](https://github.com/0
 
 • **endState**: _[OrderEventEndState](#enumeration-ordereventendstate)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:108](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L108)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:115](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L115)_
 
 ---
 
@@ -949,7 +990,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:108](https://github.com/0
 
 • **order**: _[OrderWithMetadata](#interface-orderwithmetadata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:107](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L107)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:114](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L114)_
 
 ---
 
@@ -957,7 +998,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:107](https://github.com/0
 
 • **timestampMs**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:106](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L106)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:113](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L113)_
 
 <hr />
 
@@ -973,7 +1014,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:106](https://github.com/0
 
 • **orderEvents**: _[StringifiedOrderEvent](#interface-stringifiedorderevent)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:21](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L21)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:28](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L28)_
 
 <hr />
 
@@ -989,7 +1030,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:21](https://github.com/0x
 
 • **field**: _[OrderField](#orderfield)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:188](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L188)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:195](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L195)_
 
 ---
 
@@ -997,7 +1038,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:188](https://github.com/0
 
 • **kind**: _[FilterKind](#enumeration-filterkind)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:189](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L189)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:196](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L196)_
 
 ---
 
@@ -1005,7 +1046,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:189](https://github.com/0
 
 • **value**: _OrderWithMetadata[OrderField]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:190](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L190)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:197](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L197)_
 
 <hr />
 
@@ -1021,7 +1062,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:190](https://github.com/0
 
 • **filters**? : _[OrderFilter](#interface-orderfilter)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:194](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L194)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:201](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L201)_
 
 ---
 
@@ -1029,7 +1070,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:194](https://github.com/0
 
 • **limit**? : _undefined | number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:196](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L196)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:203](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L203)_
 
 ---
 
@@ -1037,7 +1078,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:196](https://github.com/0
 
 • **sort**? : _[OrderSort](#interface-ordersort)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:195](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L195)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:202](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L202)_
 
 <hr />
 
@@ -1053,7 +1094,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:195](https://github.com/0
 
 • **order**: _[StringifiedOrderWithMetadata](#interface-stringifiedorderwithmetadata) | null_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:13](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L13)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:20](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L20)_
 
 <hr />
 
@@ -1069,7 +1110,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:13](https://github.com/0x
 
 • **direction**: _[SortDirection](#enumeration-sortdirection)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:184](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L184)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:191](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L191)_
 
 ---
 
@@ -1077,7 +1118,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:184](https://github.com/0
 
 • **field**: _[OrderField](#orderfield)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:183](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L183)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:190](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L190)_
 
 <hr />
 
@@ -1093,7 +1134,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:183](https://github.com/0
 
 • **orders**: _[StringifiedOrderWithMetadata](#interface-stringifiedorderwithmetadata)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:17](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L17)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:24](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L24)_
 
 <hr />
 
@@ -1143,7 +1184,7 @@ Defined in node_modules/@0x/types/lib/index.d.ts:8
 
 • **fillableTakerAssetAmount**: _BigNumber_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:49](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L49)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:56](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L56)_
 
 ---
 
@@ -1151,7 +1192,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:49](https://github.com/0x
 
 • **hash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:48](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L48)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:55](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L55)_
 
 ---
 
@@ -1271,7 +1312,7 @@ Defined in node_modules/@0x/types/lib/index.d.ts:19
 
 • **code**: _[RejectedOrderCode](#enumeration-rejectedordercode)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:76](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L76)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:83](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L83)_
 
 ---
 
@@ -1279,7 +1320,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:76](https://github.com/0x
 
 • **hash**? : _undefined | string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:71](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L71)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:78](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L78)_
 
 ---
 
@@ -1287,7 +1328,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:71](https://github.com/0x
 
 • **message**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:79](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L79)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:86](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L86)_
 
 ---
 
@@ -1295,7 +1336,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:79](https://github.com/0x
 
 • **order**: _SignedOrder_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:73](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L73)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:80](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L80)_
 
 <hr />
 
@@ -1311,7 +1352,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:73](https://github.com/0x
 
 • **ethRPCRateLimitExpiredRequests**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:39](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L39)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:46](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L46)_
 
 ---
 
@@ -1319,7 +1360,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:39](https://github.com/0x
 
 • **ethRPCRequestsSentInCurrentUTCDay**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:38](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L38)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:45](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L45)_
 
 ---
 
@@ -1327,7 +1368,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:38](https://github.com/0x
 
 • **ethereumChainID**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:30](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L30)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:37](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L37)_
 
 ---
 
@@ -1335,7 +1376,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:30](https://github.com/0x
 
 • **latestBlock**: _[LatestBlock](#interface-latestblock)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:31](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L31)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:38](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L38)_
 
 ---
 
@@ -1343,7 +1384,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:31](https://github.com/0x
 
 • **maxExpirationTime**: _BigNumber_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:36](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L36)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:43](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L43)_
 
 ---
 
@@ -1351,7 +1392,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:36](https://github.com/0x
 
 • **numOrders**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:33](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L33)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:40](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L40)_
 
 ---
 
@@ -1359,7 +1400,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:33](https://github.com/0x
 
 • **numOrdersIncludingRemoved**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:34](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L34)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:41](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L41)_
 
 ---
 
@@ -1367,7 +1408,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:34](https://github.com/0x
 
 • **numPeers**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:32](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L32)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:39](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L39)_
 
 ---
 
@@ -1375,7 +1416,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:32](https://github.com/0x
 
 • **numPinnedOrders**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:35](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L35)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:42](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L42)_
 
 ---
 
@@ -1383,7 +1424,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:35](https://github.com/0x
 
 • **peerID**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:29](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L29)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:36](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L36)_
 
 ---
 
@@ -1391,7 +1432,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:29](https://github.com/0x
 
 • **pubSubTopic**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:26](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L26)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:33](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L33)_
 
 ---
 
@@ -1399,7 +1440,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:26](https://github.com/0x
 
 • **rendezvous**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:27](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L27)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:34](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L34)_
 
 ---
 
@@ -1407,7 +1448,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:27](https://github.com/0x
 
 • **secondaryRendezvous**: _string[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:28](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L28)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:35](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L35)_
 
 ---
 
@@ -1415,7 +1456,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:28](https://github.com/0x
 
 • **startOfCurrentUTCDay**: _Date_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:37](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L37)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:44](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L44)_
 
 ---
 
@@ -1423,7 +1464,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:37](https://github.com/0x
 
 • **version**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:25](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L25)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:32](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L32)_
 
 <hr />
 
@@ -1439,7 +1480,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:25](https://github.com/0x
 
 • **stats**: _[StringifiedStats](#interface-stringifiedstats)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:5](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L5)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:12](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L12)_
 
 <hr />
 
@@ -1455,7 +1496,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:5](https://github.com/0xP
 
 • **isNew**: _boolean_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:254](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L254)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:261](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L261)_
 
 ---
 
@@ -1463,7 +1504,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:254](https://github.com/0
 
 • **order**: _[StringifiedOrderWithMetadata](#interface-stringifiedorderwithmetadata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:253](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L253)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:260](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L260)_
 
 <hr />
 
@@ -1479,7 +1520,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:253](https://github.com/0
 
 • **accepted**: _[StringifiedAcceptedOrderResult](#interface-stringifiedacceptedorderresult)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:248](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L248)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:255](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L255)_
 
 ---
 
@@ -1487,7 +1528,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:248](https://github.com/0
 
 • **rejected**: _[StringifiedRejectedOrderResult](#interface-stringifiedrejectedorderresult)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:249](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L249)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:256](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L256)_
 
 <hr />
 
@@ -1503,7 +1544,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:249](https://github.com/0
 
 • **hash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:201](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L201)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:208](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L208)_
 
 ---
 
@@ -1511,7 +1552,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:201](https://github.com/0
 
 • **number**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:200](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L200)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:207](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L207)_
 
 <hr />
 
@@ -1527,7 +1568,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:200](https://github.com/0
 
 • **contractEvents**: _[ContractEvent](#interface-contractevent)[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:269](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L269)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:276](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L276)_
 
 ---
 
@@ -1535,7 +1576,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:269](https://github.com/0
 
 • **endState**: _[OrderEventEndState](#enumeration-ordereventendstate)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:267](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L267)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:274](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L274)_
 
 ---
 
@@ -1543,7 +1584,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:267](https://github.com/0
 
 • **fillableTakerAssetAmount**: _BigNumber_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:268](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L268)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:275](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L275)_
 
 ---
 
@@ -1551,7 +1592,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:268](https://github.com/0
 
 • **order**: _[StringifiedOrderWithMetadata](#interface-stringifiedorderwithmetadata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:266](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L266)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:273](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L273)_
 
 ---
 
@@ -1559,7 +1600,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:266](https://github.com/0
 
 • **timestamp**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:265](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L265)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:272](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L272)_
 
 <hr />
 
@@ -1579,7 +1620,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:265](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#chainid)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:223](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L223)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L230)_
 
 ---
 
@@ -1589,7 +1630,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:223](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#exchangeaddress)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:224](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L224)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L231)_
 
 ---
 
@@ -1599,7 +1640,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:224](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#expirationtimeseconds)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L233)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:240](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L240)_
 
 ---
 
@@ -1609,7 +1650,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#feerecipientaddress)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:227](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L227)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L234)_
 
 ---
 
@@ -1617,7 +1658,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:227](https://github.com/0
 
 • **fillableTakerAssetAmount**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:244](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L244)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:251](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L251)_
 
 ---
 
@@ -1625,7 +1666,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:244](https://github.com/0
 
 • **hash**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:243](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L243)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:250](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L250)_
 
 ---
 
@@ -1635,7 +1676,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:243](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#makeraddress)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:225](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L225)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L232)_
 
 ---
 
@@ -1645,7 +1686,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:225](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#makerassetamount)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:229](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L229)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L236)_
 
 ---
 
@@ -1655,7 +1696,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:229](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#makerassetdata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L235)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:242](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L242)_
 
 ---
 
@@ -1665,7 +1706,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#makerfee)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L231)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L238)_
 
 ---
 
@@ -1675,7 +1716,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#makerfeeassetdata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L237)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:244](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L244)_
 
 ---
 
@@ -1685,7 +1726,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#salt)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L234)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:241](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L241)_
 
 ---
 
@@ -1695,7 +1736,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#senderaddress)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:228](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L228)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L235)_
 
 ---
 
@@ -1705,7 +1746,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:228](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#signature)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L239)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:246](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L246)_
 
 ---
 
@@ -1715,7 +1756,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#takeraddress)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:226](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L226)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L233)_
 
 ---
 
@@ -1725,7 +1766,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:226](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#takerassetamount)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L230)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L237)_
 
 ---
 
@@ -1735,7 +1776,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#takerassetdata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L236)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:243](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L243)_
 
 ---
 
@@ -1745,7 +1786,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#takerfee)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L232)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L239)_
 
 ---
 
@@ -1755,7 +1796,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0
 
 _Inherited from [StringifiedSignedOrder](#takerfeeassetdata)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L238)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:245](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L245)_
 
 <hr />
 
@@ -1771,7 +1812,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0
 
 • **code**: _[RejectedOrderCode](#enumeration-rejectedordercode)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:260](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L260)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:267](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L267)_
 
 ---
 
@@ -1779,7 +1820,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:260](https://github.com/0
 
 • **hash**? : _undefined | string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:258](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L258)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:265](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L265)_
 
 ---
 
@@ -1787,7 +1828,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:258](https://github.com/0
 
 • **message**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:261](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L261)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:268](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L268)_
 
 ---
 
@@ -1795,7 +1836,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:261](https://github.com/0
 
 • **order**: _[StringifiedSignedOrder](#interface-stringifiedsignedorder)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:259](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L259)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:266](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L266)_
 
 <hr />
 
@@ -1813,7 +1854,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:259](https://github.com/0
 
 • **chainId**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:223](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L223)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L230)_
 
 ---
 
@@ -1821,7 +1862,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:223](https://github.com/0
 
 • **exchangeAddress**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:224](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L224)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L231)_
 
 ---
 
@@ -1829,7 +1870,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:224](https://github.com/0
 
 • **expirationTimeSeconds**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L233)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:240](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L240)_
 
 ---
 
@@ -1837,7 +1878,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0
 
 • **feeRecipientAddress**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:227](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L227)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L234)_
 
 ---
 
@@ -1845,7 +1886,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:227](https://github.com/0
 
 • **makerAddress**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:225](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L225)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L232)_
 
 ---
 
@@ -1853,7 +1894,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:225](https://github.com/0
 
 • **makerAssetAmount**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:229](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L229)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L236)_
 
 ---
 
@@ -1861,7 +1902,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:229](https://github.com/0
 
 • **makerAssetData**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L235)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:242](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L242)_
 
 ---
 
@@ -1869,7 +1910,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0
 
 • **makerFee**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L231)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L238)_
 
 ---
 
@@ -1877,7 +1918,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:231](https://github.com/0
 
 • **makerFeeAssetData**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L237)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:244](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L244)_
 
 ---
 
@@ -1885,7 +1926,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0
 
 • **salt**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L234)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:241](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L241)_
 
 ---
 
@@ -1893,7 +1934,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:234](https://github.com/0
 
 • **senderAddress**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:228](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L228)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:235](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L235)_
 
 ---
 
@@ -1901,7 +1942,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:228](https://github.com/0
 
 • **signature**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L239)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:246](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L246)_
 
 ---
 
@@ -1909,7 +1950,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0
 
 • **takerAddress**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:226](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L226)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:233](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L233)_
 
 ---
 
@@ -1917,7 +1958,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:226](https://github.com/0
 
 • **takerAssetAmount**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L230)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:237](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L237)_
 
 ---
 
@@ -1925,7 +1966,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:230](https://github.com/0
 
 • **takerAssetData**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L236)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:243](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L243)_
 
 ---
 
@@ -1933,7 +1974,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:236](https://github.com/0
 
 • **takerFee**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L232)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:239](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L239)_
 
 ---
 
@@ -1941,7 +1982,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:232](https://github.com/0
 
 • **takerFeeAssetData**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L238)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:245](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L245)_
 
 <hr />
 
@@ -1957,7 +1998,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:238](https://github.com/0
 
 • **ethRPCRateLimitExpiredRequests**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:219](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L219)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:226](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L226)_
 
 ---
 
@@ -1965,7 +2006,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:219](https://github.com/0
 
 • **ethRPCRequestsSentInCurrentUTCDay**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:218](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L218)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:225](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L225)_
 
 ---
 
@@ -1973,7 +2014,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:218](https://github.com/0
 
 • **ethereumChainID**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:210](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L210)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:217](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L217)_
 
 ---
 
@@ -1981,7 +2022,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:210](https://github.com/0
 
 • **latestBlock**: _[StringifiedLatestBlock](#interface-stringifiedlatestblock)_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:211](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L211)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:218](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L218)_
 
 ---
 
@@ -1989,7 +2030,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:211](https://github.com/0
 
 • **maxExpirationTime**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:216](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L216)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:223](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L223)_
 
 ---
 
@@ -1997,7 +2038,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:216](https://github.com/0
 
 • **numOrders**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:213](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L213)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:220](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L220)_
 
 ---
 
@@ -2005,7 +2046,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:213](https://github.com/0
 
 • **numOrdersIncludingRemoved**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:214](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L214)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:221](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L221)_
 
 ---
 
@@ -2013,7 +2054,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:214](https://github.com/0
 
 • **numPeers**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:212](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L212)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:219](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L219)_
 
 ---
 
@@ -2021,7 +2062,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:212](https://github.com/0
 
 • **numPinnedOrders**: _number_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:215](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L215)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:222](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L222)_
 
 ---
 
@@ -2029,7 +2070,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:215](https://github.com/0
 
 • **peerID**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:209](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L209)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:216](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L216)_
 
 ---
 
@@ -2037,7 +2078,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:209](https://github.com/0
 
 • **pubSubTopic**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:206](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L206)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:213](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L213)_
 
 ---
 
@@ -2045,7 +2086,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:206](https://github.com/0
 
 • **rendezvous**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:207](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L207)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:214](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L214)_
 
 ---
 
@@ -2053,7 +2094,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:207](https://github.com/0
 
 • **secondaryRendezvous**: _string[]_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:208](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L208)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:215](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L215)_
 
 ---
 
@@ -2061,7 +2102,7 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:208](https://github.com/0
 
 • **startOfCurrentUTCDay**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:217](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L217)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:224](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L224)_
 
 ---
 
@@ -2069,6 +2110,6 @@ _Defined in [packages/mesh-graphql-client/src/types.ts:217](https://github.com/0
 
 • **version**: _string_
 
-_Defined in [packages/mesh-graphql-client/src/types.ts:205](https://github.com/0xProject/0x-mesh/blob/e7737277/packages/mesh-graphql-client/src/types.ts#L205)_
+_Defined in [packages/mesh-graphql-client/src/types.ts:212](https://github.com/0xProject/0x-mesh/blob/b8104145/packages/mesh-graphql-client/src/types.ts#L212)_
 
 <hr />
