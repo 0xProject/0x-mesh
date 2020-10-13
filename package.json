@@ -30,7 +30,6 @@
         "es6-promise": "^4.2.6",
         "ignore-loader": "^0.1.2",
         "isomorphic-fetch": "^3.0.0",
-        "qunit-puppeteer": "^1.0.1",
         "prettier": "^2.1.2",
         "ts-loader": "^8.0.5",
         "tslint": "6.1.3",
