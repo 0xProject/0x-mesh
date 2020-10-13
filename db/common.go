@@ -117,9 +117,15 @@ const (
 	OFFillableTakerAssetAmount OrderField = "fillableTakerAssetAmount"
 	OFIsRemoved                OrderField = "isRemoved"
 	OFIsPinned                 OrderField = "isPinned"
+	OFIsUnfillable             OrderField = "isUnfillable"
+	OFIsExpired                OrderField = "isExpired"
 	OFParsedMakerAssetData     OrderField = "parsedMakerAssetData"
 	OFParsedMakerFeeAssetData  OrderField = "parsedMakerFeeAssetData"
 	OFLastValidatedBlockNumber OrderField = "lastValidatedBlockNumber"
+	OFKeepCancelled            OrderField = "keepCancelled"
+	OFKeepExpired              OrderField = "keepExpired"
+	OFKeepFullyFilled          OrderField = "keepFullyFilled"
+	OFKeepUnfunded             OrderField = "keepUnfunded"
 )
 
 type OrderQuery struct {
@@ -143,6 +149,7 @@ type OrderFilter struct {
 type StoredOrderStatus struct {
 	IsStored                 bool     `json:"isStored"`
 	IsMarkedRemoved          bool     `json:"isMarkedRemoved"`
+	IsMarkedUnfillable       bool     `json:"isMarkedUnfillable"`
 	FillableTakerAssetAmount *big.Int `json:"fillableTakerAssetAmount"`
 }
 

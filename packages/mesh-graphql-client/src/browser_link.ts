@@ -16,10 +16,18 @@ export class BrowserLink extends ApolloLink {
         }
         switch (operation.operationName) {
             case 'AddOrders':
-                return new Observable<{ data: AddOrdersResponse }>(observer => {
+                if (
+                    operation.variables.opts.keepCancelled ||
+                    operation.variables.opts.keepExpired ||
+                    operation.variables.opts.keepFullyFilled ||
+                    operation.variables.opts.keepUnfunded
+                ) {
+                    throw new Error('mesh-graphql-client: Browser nodes do not support true values in AddOrdersOpts');
+                }
+                return new Observable<{ data: AddOrdersResponse }>((observer) => {
                     wrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
-                        .then(addOrders => {
+                        .then((addOrders) => {
                             observer.next({ data: { addOrders } });
                             observer.complete();
                             return { data: { addOrders } };
@@ -29,10 +37,10 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Order':
-                return new Observable<{ data: OrderResponse }>(observer => {
+                return new Observable<{ data: OrderResponse }>((observer) => {
                     wrapper
                         .gqlGetOrderAsync(operation.variables.hash)
-                        .then(order => {
+                        .then((order) => {
                             observer.next({ data: { order } });
                             observer.complete();
                             return { data: { order } };
@@ -42,14 +50,14 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Orders':
-                return new Observable<{ data: OrdersResponse }>(observer => {
+                return new Observable<{ data: OrdersResponse }>((observer) => {
                     wrapper
                         .gqlFindOrdersAsync(
                             operation.variables.sort,
                             operation.variables.filters,
                             operation.variables.limit,
                         )
-                        .then(orders => {
+                        .then((orders) => {
                             observer.next({
                                 data: {
                                     orders,
@@ -67,10 +75,10 @@ export class BrowserLink extends ApolloLink {
                         });
                 });
             case 'Stats':
-                return new Observable<{ data: StatsResponse }>(observer => {
+                return new Observable<{ data: StatsResponse }>((observer) => {
                     wrapper
                         .gqlGetStatsAsync()
-                        .then(stats => {
+                        .then((stats) => {
                             observer.next({
                                 data: {
                                     stats,

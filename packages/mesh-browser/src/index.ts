@@ -6,10 +6,10 @@ import { wasmBuffer } from './generated/wasm_buffer';
 // us initialize as quickly as possible.
 const go = new Go();
 WebAssembly.instantiate(wasmBuffer, go.importObject)
-    .then(module => {
+    .then((module) => {
         go.run(module.instance);
     })
-    .catch(err => {
+    .catch((err) => {
         // tslint:disable-next-line no-console
         console.error('Could not load Wasm');
         // tslint:disable-next-line no-console

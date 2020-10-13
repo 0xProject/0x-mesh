@@ -243,10 +243,16 @@ type Order struct {
 	FillableTakerAssetAmount *SortedBigInt    `db:"fillableTakerAssetAmount"`
 	IsRemoved                bool             `db:"isRemoved"`
 	IsPinned                 bool             `db:"isPinned"`
+	IsUnfillable             bool             `db:"isUnfillable"`
+	IsExpired                bool             `db:"isExpired"`
 	ParsedMakerAssetData     *ParsedAssetData `db:"parsedMakerAssetData"`
 	ParsedMakerFeeAssetData  *ParsedAssetData `db:"parsedMakerFeeAssetData"`
 	LastValidatedBlockNumber *SortedBigInt    `db:"lastValidatedBlockNumber"`
 	LastValidatedBlockHash   common.Hash      `db:"lastValidatedBlockHash"`
+	KeepCancelled            bool             `db:"keepCancelled"`
+	KeepExpired              bool             `db:"keepExpired"`
+	KeepFullyFilled          bool             `db:"keepFullyFilled"`
+	KeepUnfunded             bool             `db:"keepUnfunded"`
 }
 
 // EventLogs is a wrapper around []*ethtypes.Log that implements the
@@ -328,10 +334,16 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		LastUpdated:              order.LastUpdated,
 		IsRemoved:                order.IsRemoved,
 		IsPinned:                 order.IsPinned,
+		IsUnfillable:             order.IsUnfillable,
+		IsExpired:                order.IsExpired,
 		ParsedMakerAssetData:     ParsedAssetDataToCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataToCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: order.LastValidatedBlockNumber.Int,
 		LastValidatedBlockHash:   order.LastValidatedBlockHash,
+		KeepCancelled:            order.KeepCancelled,
+		KeepExpired:              order.KeepExpired,
+		KeepFullyFilled:          order.KeepFullyFilled,
+		KeepUnfunded:             order.KeepUnfunded,
 	}
 }
 
@@ -362,10 +374,16 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
 		IsRemoved:                order.IsRemoved,
 		IsPinned:                 order.IsPinned,
+		IsUnfillable:             order.IsUnfillable,
+		IsExpired:                order.IsExpired,
 		ParsedMakerAssetData:     ParsedAssetDataFromCommonType(order.ParsedMakerAssetData),
 		ParsedMakerFeeAssetData:  ParsedAssetDataFromCommonType(order.ParsedMakerFeeAssetData),
 		LastValidatedBlockNumber: NewSortedBigInt(order.LastValidatedBlockNumber),
 		LastValidatedBlockHash:   order.LastValidatedBlockHash,
+		KeepCancelled:            order.KeepCancelled,
+		KeepExpired:              order.KeepExpired,
+		KeepFullyFilled:          order.KeepFullyFilled,
+		KeepUnfunded:             order.KeepUnfunded,
 	}
 }
 

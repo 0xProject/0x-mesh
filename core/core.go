@@ -866,7 +866,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 // is true, the orders will be marked as pinned, which means they will only be
 // removed if they become unfillable and will not be removed due to having a high
 // expiration time or any incentive mechanisms.
-func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	signedOrdersRaw := []*json.RawMessage{}
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
@@ -875,11 +875,11 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	if err := json.NewDecoder(buf).Decode(&signedOrdersRaw); err != nil {
 		return nil, err
 	}
-	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned)
+	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
 }
 
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
-func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -944,7 +944,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, pinned, app.chainID)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, app.chainID, pinned, opts)
 	if err != nil {
 		return nil, err
 	}

@@ -22,7 +22,7 @@ import {
 
 import { MeshDeployment, startServerAndClientAsync } from './utils/graphql_server';
 
-blockchainTests.resets('GraphQLClient', env => {
+blockchainTests.resets('GraphQLClient', (env) => {
     describe('integration tests', () => {
         let deployment: MeshDeployment;
         let exchange: ExchangeContract;
@@ -109,6 +109,31 @@ blockchainTests.resets('GraphQLClient', env => {
                         },
                     ],
                     rejected: [],
+                });
+            });
+
+            it('accepts expired order with "keepExpired"', async () => {
+                const order = await orderFactory.newSignedOrderAsync({
+                    expirationTimeSeconds: new BigNumber(0),
+                });
+                const hash = orderHashUtils.getOrderHashHex(order);
+                const validationResults = await deployment.client.addOrdersAsync([order], false, { keepExpired: true });
+                expect(validationResults).to.be.deep.eq({
+                    accepted: [],
+                    rejected: [
+                        {
+                            hash,
+                            order,
+                            code: RejectedOrderCode.OrderExpired,
+                            message: 'order expired according to latest block timestamp',
+                        },
+                    ],
+                });
+                const responseOrder = await deployment.client.getOrderAsync(hash);
+                expect(responseOrder).to.be.deep.eq({
+                    ...order,
+                    fillableTakerAssetAmount: new BigNumber(0),
+                    hash,
                 });
             });
 
@@ -209,7 +234,7 @@ blockchainTests.resets('GraphQLClient', env => {
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the response.
                 const gotOrders = await deployment.client.findOrdersAsync();
-                const expectedOrders = orders.map(order => ({
+                const expectedOrders = orders.map((order) => ({
                     ...order,
                     hash: orderHashUtils.getOrderHashHex(order),
                     fillableTakerAssetAmount: order.takerAssetAmount,
@@ -237,7 +262,7 @@ blockchainTests.resets('GraphQLClient', env => {
                 });
                 // We expect 5 orders sorted in descending order by makerAssetAmount starting at 7.
                 // I.e. orders with makerAmounts of 7, 6, 5, 4, and 3.
-                const expectedOrders = orders.map(order => ({
+                const expectedOrders = orders.map((order) => ({
                     ...order,
                     hash: orderHashUtils.getOrderHashHex(order),
                     fillableTakerAssetAmount: order.takerAssetAmount,
@@ -288,7 +313,7 @@ blockchainTests.resets('GraphQLClient', env => {
                     // Subscribe to orders and wait for order events.
                     const orderEvents = deployment.client.onOrderEvents();
                     orderEvents.subscribe({
-                        error: err => {
+                        error: (err) => {
                             if (isDone && err.message === 'WebSocket connection lost') {
                                 // This error is expected to happen after the server is shut down.
                             } else {
@@ -345,7 +370,7 @@ blockchainTests.resets('GraphQLClient', env => {
                     // Subscribe to order events and assert that only a single cancel event was received.
                     const orderEvents = deployment.client.onOrderEvents();
                     orderEvents.subscribe({
-                        error: err => {
+                        error: (err) => {
                             if (isDone && err.message === 'WebSocket connection lost') {
                                 // This error is expected to happen after the server is shut down.
                             } else {
