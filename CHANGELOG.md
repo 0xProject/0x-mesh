@@ -2,6 +2,12 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v10.1.0
+
+### Features ✅
+
+-   Added support for continuing to watch and store orders that become unfillable. [#945](https://github.com/0xProject/0x-mesh/pull/945)
+
 ## v10.0.0
 
 ### Breaking changes 🛠
