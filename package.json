@@ -24,7 +24,7 @@
     "repository": "git@github.com:0xProject/0x-mesh.git",
     "private": true,
     "devDependencies": {
-        "@0x/ts-doc-gen": "^0.0.16",
+        "@0x/ts-doc-gen": "^0.0.25",
         "@0x/tslint-config": "^4.0.0",
         "@types/base64-arraybuffer": "^0.1.0",
         "es6-promise": "^4.2.6",
