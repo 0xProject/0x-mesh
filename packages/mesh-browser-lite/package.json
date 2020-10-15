@@ -23,7 +23,7 @@
     "dependencies": {
         "@0x/order-utils": "^10.2.0",
         "@0x/utils": "^5.4.0",
-        "ajv": "^6.12.5",
+        "ajv": "^6.12.6",
         "dexie": "^3.0.1",
         "ethereum-types": "^3.0.0"
     }
