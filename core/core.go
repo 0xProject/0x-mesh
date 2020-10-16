@@ -960,7 +960,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, app.chainID, opts)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, opts)
 	if err != nil {
 		return nil, err
 	}

@@ -157,7 +157,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, testCase := range testCases {
-		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, &types.AddOrdersOpts{})
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		if testCase.isTakerAddressWhitelisted {
 			orderHash, err := testCase.order.ComputeOrderHash()
@@ -285,7 +285,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		assert.Len(t, validationResults.Accepted, 0, testCase.description)
@@ -407,7 +407,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		isUnfillable := testCase.expectedFillableAmount.Cmp(big.NewInt(0)) == 0
@@ -1753,7 +1753,7 @@ func TestOrderWatcherOrderExpiredWhenAddedThenUnexpired(t *testing.T) {
 	// Add the order to Mesh
 	err = blockwatcher.SyncToLatestBlock()
 	require.NoError(t, err)
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, &types.AddOrdersOpts{KeepExpired: true})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, &types.AddOrdersOpts{KeepExpired: true})
 	require.NoError(t, err)
 
 	assert.Len(t, validationResults.Accepted, 0)
@@ -1973,7 +1973,7 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, constants.TestChainID, &types.AddOrdersOpts{})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, &types.AddOrdersOpts{})
 	require.Len(t, validationResults.Rejected, 0)
 	require.NoError(t, err)
 
@@ -2401,7 +2401,7 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2489,7 +2489,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2606,7 +2606,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2667,7 +2667,7 @@ func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockW
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, opts)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, opts)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)

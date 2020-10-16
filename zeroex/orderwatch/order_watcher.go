@@ -64,6 +64,7 @@ var errNoBlocksStored = errors.New("no blocks were stored in the database")
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
+	chainID                    int
 	db                         *db.DB
 	blockWatcher               *blockwatch.Watcher
 	eventDecoder               *decoder.Decoder
@@ -118,6 +119,7 @@ func New(config Config) (*Watcher, error) {
 	}
 
 	w := &Watcher{
+		chainID:                    config.ChainID,
 		db:                         config.DB,
 		blockWatcher:               config.BlockWatcher,
 		contractAddressToSeenCount: map[common.Address]uint{},
@@ -1554,11 +1556,11 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
-	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, opts.Pinned)
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, opts.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1651,7 +1653,7 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestBlock, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 
@@ -1733,7 +1735,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		if order.ChainID.Cmp(big.NewInt(int64(chainID))) != 0 {
+		if order.ChainID.Cmp(big.NewInt(int64(w.chainID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1742,9 +1744,6 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		// Only check the ExchangeAddress if we know the expected address for the
-		// given chainID/networkID. If we don't know it, the order could still be
-		// valid.
 		expectedExchangeAddress := w.contractAddresses.Exchange
 		if order.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
