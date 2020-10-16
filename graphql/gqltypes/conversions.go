@@ -16,6 +16,9 @@ import (
 
 func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 	commonTypeOpts := &types.AddOrdersOpts{}
+	if opts.Pinned != nil {
+		commonTypeOpts.Pinned = *opts.Pinned
+	}
 	if opts.KeepCancelled != nil {
 		commonTypeOpts.KeepCancelled = *opts.KeepCancelled
 	}

@@ -862,11 +862,27 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 }
 
 // AddOrders can be used to add orders to Mesh. It validates the given orders
-// and if they are valid, will store and broadcast the orders to peers. If pinned
-// is true, the orders will be marked as pinned, which means they will only be
-// removed if they become unfillable and will not be removed due to having a high
-// expiration time or any incentive mechanisms.
-func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+// and will store and broadcast the orders to peers if the order is valid or if
+// the options indicate that the order should be stored while unfillable.
+// opts is the set of options that should be applied to these orders. AddOrdersOpts
+// includes several fields that allow granular configuration to be applied:
+//
+// - Pinned: Indicates that these orders should not be pruned by spam prevention
+//   mechanisms.
+//
+// - KeepCancelled: Indicates that these orders should not be pruned if they are
+//   cancelled.
+//
+// - KeepExpired: Indicates that these orders should not be pruned if they are
+//   expired.
+//
+// - KeepFullyFilled: Indicates that these orders should not be pruned if they are
+//   fully filled.
+//
+// - KeepUnfunded: Indicates that these orders should not be pruned if they are
+//   unfunded.
+//
+func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	signedOrdersRaw := []*json.RawMessage{}
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
@@ -875,11 +891,11 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	if err := json.NewDecoder(buf).Decode(&signedOrdersRaw); err != nil {
 		return nil, err
 	}
-	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
+	return app.AddOrdersRaw(ctx, signedOrdersRaw, opts)
 }
 
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
-func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	<-app.started
 
 	allValidationResults := &ordervalidator.ValidationResults{
@@ -944,7 +960,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		orderHashesSeen[orderHash] = struct{}{}
 	}
 
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, app.chainID, pinned, opts)
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, app.chainID, opts)
 	if err != nil {
 		return nil, err
 	}

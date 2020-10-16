@@ -1000,13 +1000,13 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
 
 	for _, orderInfo := range orderInfos {
-		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock, opts)
+		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, now, validationBlock, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1120,7 +1120,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	return orderEvents, nil
 }
 
-func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
+func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
@@ -1150,7 +1150,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		Signature:                orderInfo.SignedOrder.Signature,
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
-		IsPinned:                 pinned,
+		IsPinned:                 opts.Pinned,
 		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrder.ExpirationTimeSeconds) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
@@ -1554,11 +1554,11 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
-	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, opts.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1606,7 +1606,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, opts)
 	if err != nil {
 		return nil, err
 	}

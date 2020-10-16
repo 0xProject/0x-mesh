@@ -17,6 +17,9 @@ type AcceptedOrderResult struct {
 }
 
 type AddOrdersOpts struct {
+	// Indicates that the order being added should be ignored when pruning the
+	// database using spam prevention techniques.
+	Pinned *bool `json:"pinned"`
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
 	KeepCancelled *bool `json:"keepCancelled"`

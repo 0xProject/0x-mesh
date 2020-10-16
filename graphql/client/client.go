@@ -17,15 +17,15 @@ type Client struct {
 const (
 	addOrdersMutation = `mutation AddOrders(
 	$orders: [NewOrder!]!,
-	$pinned: Boolean = true,
 	$opts: AddOrdersOpts = {
+		pinned: false,
 		keepCancelled: false,
 		keepExpired: false,
 		keepFullyFilled: false,
 		keepUnfunded: false,
 	},
 ) {
-		addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
+		addOrders(orders: $orders, opts: $opts) {
 			accepted {
 				order {
 					hash

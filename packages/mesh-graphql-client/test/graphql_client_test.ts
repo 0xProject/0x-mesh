@@ -112,12 +112,15 @@ blockchainTests.resets('GraphQLClient', (env) => {
                 });
             });
 
+            // TODO(jalextowle): Implement tests for the other configurations
             it('accepts expired order with "keepExpired"', async () => {
                 const order = await orderFactory.newSignedOrderAsync({
                     expirationTimeSeconds: new BigNumber(0),
                 });
                 const hash = orderHashUtils.getOrderHashHex(order);
-                const validationResults = await deployment.client.addOrdersAsync([order], false, { keepExpired: true });
+                const validationResults = await deployment.client.addOrdersAsync([order], {
+                    keepExpired: true,
+                });
                 expect(validationResults).to.be.deep.eq({
                     accepted: [],
                     rejected: [

@@ -99,6 +99,9 @@ provider.start();
     const fiveSeconds = 5000;
     await sleepAsync(fiveSeconds);
 
+    // TODO(jalextowle): It would be good to have more coverage of the different
+    // order options for browser nodes.
+    //
     // Send an order to the network. In the integration tests we will check that
     // the order was received.
     const result = await client.addOrdersAsync([signedOrder]);
