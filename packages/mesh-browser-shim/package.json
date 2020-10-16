@@ -16,7 +16,7 @@
         "ts-loader": "^8.0.5",
         "typescript": "^4.0.3",
         "webpack": "^4.43.0",
-        "webpack-cli": "^3.3.10"
+        "webpack-cli": "^4.0.0"
     },
     "dependencies": {
         "@0x/mesh-browser-lite": "1.0.0",
