@@ -221,6 +221,7 @@ func (s *ParsedAssetData) Scan(value interface{}) error {
 
 // Order is the SQL database representation a 0x order along with some relevant metadata.
 type Order struct {
+	Version                  int              `db:"version"`
 	Hash                     common.Hash      `db:"hash"`
 	ChainID                  *SortedBigInt    `db:"chainID"`
 	ExchangeAddress          common.Address   `db:"exchangeAddress"`
@@ -352,6 +353,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 		return nil
 	}
 	return &Order{
+		Version:                  3,
 		Hash:                     order.Hash,
 		ChainID:                  NewSortedBigInt(order.ChainID),
 		ExchangeAddress:          order.ExchangeAddress,

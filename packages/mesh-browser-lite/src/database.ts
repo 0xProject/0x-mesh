@@ -56,6 +56,7 @@ export enum FilterKind {
 
 export interface Order {
     hash: string;
+    version: number;
     chainId: number;
     makerAddress: string;
     makerAssetData: string;
@@ -172,7 +173,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
+                '&hash,version,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
             dhtstore: '&key,data',

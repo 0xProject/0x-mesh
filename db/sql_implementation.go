@@ -111,6 +111,7 @@ func (db *DB) PeerStore() ds.Batching {
 const schema = `
 CREATE TABLE IF NOT EXISTS orders (
 	hash                     TEXT UNIQUE NOT NULL,
+	version                  INTEGER NOT NULL,
 	chainID                  TEXT NOT NULL,
 	exchangeAddress          TEXT NOT NULL,
 	makerAddress             TEXT NOT NULL,
@@ -169,10 +170,13 @@ CREATE TABLE IF NOT EXISTS dhtstore (
 );
 `
 
+// FIXME(jalextowle): We may need different insert queries for different order types.
+//
 // Note(albrow): If needed, we can optimize this by using prepared
 // statements for inserts instead of just a string.
 const insertOrderQuery = `INSERT INTO orders (
 	hash,
+	version,
 	chainID,
 	exchangeAddress,
 	makerAddress,
@@ -206,6 +210,7 @@ const insertOrderQuery = `INSERT INTO orders (
 	keepUnfunded
 ) VALUES (
 	:hash,
+	:version,
 	:chainID,
 	:exchangeAddress,
 	:makerAddress,

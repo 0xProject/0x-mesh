@@ -1369,6 +1369,17 @@ func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata,
 			expectedMatchingOrders: storedOrders,
 		},
 		{
+			name: "Version = 3",
+			filters: []OrderFilter{
+				{
+					Field: OFVersion,
+					Kind:  Equal,
+					Value: 3,
+				},
+			},
+			expectedMatchingOrders: storedOrders,
+		},
+		{
 			name: "IsRemoved = false",
 			filters: []OrderFilter{
 				{

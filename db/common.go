@@ -96,6 +96,7 @@ type OrderField string
 
 const (
 	OFHash                     OrderField = "hash"
+	OFVersion                  OrderField = "version"
 	OFChainID                  OrderField = "chainID"
 	OFExchangeAddress          OrderField = "exchangeAddress"
 	OFMakerAddress             OrderField = "makerAddress"
