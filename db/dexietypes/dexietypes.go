@@ -152,6 +152,8 @@ type Order struct {
 	FeeRecipientAddress      common.Address `json:"feeRecipientAddress"`
 	ExpirationTimeSeconds    *SortedBigInt  `json:"expirationTimeSeconds"`
 	Salt                     *SortedBigInt  `json:"salt"`
+	Origin                   *SortedBigInt  `json:"origin"`
+	Pool                     *SortedBigInt  `json:"origin"`
 	Signature                []byte         `json:"signature"`
 	LastUpdated              time.Time      `json:"lastUpdated"`
 	FillableTakerAssetAmount *SortedBigInt  `json:"fillableTakerAssetAmount"`

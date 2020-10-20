@@ -239,6 +239,8 @@ type Order struct {
 	FeeRecipientAddress      common.Address   `db:"feeRecipientAddress"`
 	ExpirationTimeSeconds    *SortedBigInt    `db:"expirationTimeSeconds"`
 	Salt                     *SortedBigInt    `db:"salt"`
+	Origin                   *SortedBigInt    `db:"origin"`
+	Pool                     *SortedBigInt    `db:"pool"`
 	Signature                []byte           `db:"signature"`
 	LastUpdated              time.Time        `db:"lastUpdated"`
 	FillableTakerAssetAmount *SortedBigInt    `db:"fillableTakerAssetAmount"`

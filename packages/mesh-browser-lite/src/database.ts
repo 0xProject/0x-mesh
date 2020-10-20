@@ -62,16 +62,18 @@ export interface Order {
     makerAssetData: string;
     makerAssetAmount: string;
     makerFee: string;
-    makerFeeAssetData: string;
+    makerFeeAssetData?: string;
     takerAddress: string;
     takerAssetData: string;
-    takerFeeAssetData: string;
+    takerFeeAssetData?: string;
     takerAssetAmount: string;
     takerFee: string;
     senderAddress: string;
     feeRecipientAddress: string;
     expirationTimeSeconds: string;
     salt: string;
+    origin?: string;
+    pool?: string;
     signature: string;
     exchangeAddress: string;
     fillableTakerAssetAmount: string;
@@ -173,7 +175,7 @@ export class Database {
 
         this._db.version(1).stores({
             orders:
-                '&hash,version,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
+                '&hash,version,chainId,makerAddress,makerAssetData,makerAssetAmount,makerFee,makerFeeAssetData,takerAddress,takerAssetData,takerFeeAssetData,takerAssetAmount,takerFee,senderAddress,feeRecipientAddress,expirationTimeSeconds,salt,origin,pool,signature,exchangeAddress,fillableTakerAssetAmount,lastUpdated,isRemoved,isPinned,isUnfillable,isExpired,parsedMakerAssetData,parsedMakerFeeAssetData,lastValidatedBlockNumber,lastValidatedBlockHash,keepCancelled,keepExpired,keepFullyFilled,keepUnfunded,[isNotPinned+expirationTimeSeconds]',
             miniHeaders: '&hash,parent,number,timestamp',
             metadata: '&ethereumChainID',
             dhtstore: '&key,data',
